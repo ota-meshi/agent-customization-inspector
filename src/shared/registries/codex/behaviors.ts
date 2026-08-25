@@ -577,6 +577,140 @@ export const CODEX_USER_AGENTS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Codex repository plugin catalogs: local clients read a plugin catalog at the
+ * exact `$REPO_ROOT/.agents/plugins/marketplace.json` and at the
+ * legacy-compatible `$REPO_ROOT/.claude-plugin/marketplace.json`. This is
+ * where Codex differs from Claude Code and Copilot: no settings entry
+ * registers the catalog, so a committed file is already a source the vendor
+ * considers.
+ *
+ * A catalog exposes plugins for installation. It is not proof that any of them
+ * is installed or enabled: the installed copy lives under the User plugin
+ * cache and the per-plugin on/off value lives in the User configuration, both
+ * outside this Source (FR-009).
+ */
+export const CODEX_REPO_MARKETPLACE_BEHAVIOR = {
+  behaviorId: 'codex.behavior.repo.marketplace',
+  tool: 'codex',
+  surfaces: ['codex-plugin-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: '.agents/plugins/marketplace.json; .claude-plugin/marketplace.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.plugins',
+          url: 'https://developers.openai.com/plugins/build/plugins.md',
+          officialHost: 'developers.openai.com',
+          sections: [
+            'How local marketplaces work',
+            'Marketplace metadata',
+            'Build your own curated plugin list',
+            'Add a marketplace from the CLI',
+          ],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'The ChatGPT desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible one at $REPO_ROOT/.claude-plugin/marketplace.json, each a JSON catalog whose plugins[] entries name the plugins it exposes, and shows each as a selectable source in the Plugins Directory; the Codex CLI adds, lists, refreshes, and removes marketplace sources and prints the ones Codex is considering, including local defaults, while directing installation and testing back to the desktop app. The personal ~/.agents/plugins/marketplace.json named beside them is a different Source boundary this statement does not reach, and installation and per-plugin enablement are separate state.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex plugin manifests: a plugin root a catalog entry or an installation
+ * selected carries the required `.codex-plugin/plugin.json`, which identifies
+ * the plugin and points at the components it bundles.
+ *
+ * The scope is the plugin's own packaged content rather than the repository:
+ * which plugin root a client loads is decided by the catalog entry or by the
+ * installed copy, so this statement anchors at that root and names the one
+ * path below it. A file that merely matches that path is not thereby an
+ * enabled plugin (FR-009).
+ */
+export const CODEX_PLUGIN_MANIFEST_BEHAVIOR = {
+  behaviorId: 'codex.behavior.plugin.manifest',
+  tool: 'codex',
+  surfaces: ['codex-plugin-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'plugin',
+        lookupBase: 'registered-catalog',
+        relativeSelector: '.codex-plugin/plugin.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.plugins',
+          url: 'https://developers.openai.com/plugins/build/plugins.md',
+          officialHost: 'developers.openai.com',
+          sections: ['Plugin structure', 'Manifest fields'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'Every plugin has its required entry point at .codex-plugin/plugin.json, whose name, version, and description identify the plugin and whose skills, mcpServers, apps, and hooks fields point at bundled components relative to the plugin root; only plugin.json belongs in .codex-plugin/.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex personal plugins: a user keeps a marketplace of their own at
+ * `$HOME/.agents/plugins/marketplace.json`, and the plugins installed from any
+ * catalog live as cached copies under the Codex state directory.
+ *
+ * Non-authorizing. Both locations are User state outside this Source
+ * (`codex.excluded.user-runtime`), and the statement exists so
+ * `codex.plugins.activation` can describe Codex's runtime honestly: a catalog,
+ * an installation, an enablement value, and a cached copy are four separate
+ * states, and omitting the user's own scope would describe the composition as
+ * if a repository catalog were the only one in play.
+ */
+export const CODEX_USER_PLUGINS_BEHAVIOR = {
+  behaviorId: 'codex.behavior.user.plugins',
+  tool: 'codex',
+  surfaces: ['codex-plugin-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        // `$HOME/.agents/plugins`, not the Codex home, for the reason
+        // `codex.behavior.user.skills` records: no cited page documents an
+        // override relocating the separate `$HOME/.agents` directories. The
+        // installed copies do live under the Codex state directory, and the
+        // selector names both because one statement covers both halves of the
+        // user's plugin state.
+        vendorScope: 'user',
+        lookupBase: 'profile-data',
+        relativeSelector: '.agents/plugins/marketplace.json; installed copies under Codex state',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.plugins',
+          url: 'https://developers.openai.com/plugins/build/plugins.md',
+          officialHost: 'developers.openai.com',
+          sections: ['How local marketplaces work', 'Marketplace metadata'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "A personal marketplace lives at ~/.agents/plugins/marketplace.json, which the ChatGPT desktop app reads beside the repository ones; ChatGPT installs plugins into ~/.codex/plugins/cache/$MARKETPLACE_NAME/$PLUGIN_NAME/$VERSION/ and loads the installed copy from that cache rather than from the marketplace entry, and stores each plugin's on or off state in ~/.codex/config.toml.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Codex's contribution to the behavior registry, keyed by `behaviorId` in
  * identifier order. Each statement ships together with every other statement
  * its strategy composes — the two skill scopes for `codex.skills.discovery`
@@ -585,16 +719,19 @@ export const CODEX_USER_AGENTS_BEHAVIOR = {
  */
 export const CODEX_BEHAVIOR_STATEMENTS: Readonly<Record<CodexBehaviorId, VendorBehaviorStatement>> =
   {
+    [CODEX_PLUGIN_MANIFEST_BEHAVIOR.behaviorId]: CODEX_PLUGIN_MANIFEST_BEHAVIOR,
     [CODEX_REPO_AGENTS_BEHAVIOR.behaviorId]: CODEX_REPO_AGENTS_BEHAVIOR,
     [CODEX_REPO_CONFIG_BEHAVIOR.behaviorId]: CODEX_REPO_CONFIG_BEHAVIOR,
     [CODEX_REPO_HOOKS_BEHAVIOR.behaviorId]: CODEX_REPO_HOOKS_BEHAVIOR,
     [CODEX_REPO_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
     [CODEX_REPO_MCP_BEHAVIOR.behaviorId]: CODEX_REPO_MCP_BEHAVIOR,
+    [CODEX_REPO_MARKETPLACE_BEHAVIOR.behaviorId]: CODEX_REPO_MARKETPLACE_BEHAVIOR,
     [CODEX_REPO_RULES_BEHAVIOR.behaviorId]: CODEX_REPO_RULES_BEHAVIOR,
     [CODEX_REPO_SKILLS_BEHAVIOR.behaviorId]: CODEX_REPO_SKILLS_BEHAVIOR,
     [CODEX_USER_AGENTS_BEHAVIOR.behaviorId]: CODEX_USER_AGENTS_BEHAVIOR,
     [CODEX_USER_CONFIG_BEHAVIOR.behaviorId]: CODEX_USER_CONFIG_BEHAVIOR,
     [CODEX_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_USER_INSTRUCTIONS_BEHAVIOR,
+    [CODEX_USER_PLUGINS_BEHAVIOR.behaviorId]: CODEX_USER_PLUGINS_BEHAVIOR,
     [CODEX_USER_RULES_BEHAVIOR.behaviorId]: CODEX_USER_RULES_BEHAVIOR,
     [CODEX_USER_SKILLS_BEHAVIOR.behaviorId]: CODEX_USER_SKILLS_BEHAVIOR,
   };

@@ -44,6 +44,8 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     instructions: [],
     rules: [],
     prompts: [],
+    plugins: [],
+    outputStyles: [],
     permissions: [],
     settings: [],
     agents: [],
@@ -168,6 +170,9 @@ describe('authored file content in the browser', () => {
       'detailErrorMessage',
       'dispose',
       'entryDetail',
+      // What a plugin manifest's own request failed with: a message about a
+      // file, never any of its content, in the slot the manifest is shown in.
+      'entryDetailError',
       'fileDetailState',
       // The instruction comparison view (FR-011): the instruction kind's own
       // two ordinary detail loads, with the same guards as the skill one and
@@ -187,10 +192,12 @@ describe('authored file content in the browser', () => {
       // One declared permission policy's own load: a permissions row names a
       // policy rather than a file, so it is its own function's result and its
       // own slot, with the same guards and nothing that masks or reveals it.
+      'openPluginDetail',
       'openPolicyDetail',
       // The active route's title subject — a display name the page already
       // renders as its heading, never authored content.
       'pageSubject',
+      'pluginDetail',
       'policyDetail',
       // The prompt-and-command comparison view (FR-011): this kind's own two
       // ordinary detail loads, with the same guards as the others and

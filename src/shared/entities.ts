@@ -57,14 +57,12 @@ export type CustomizationKind =
   | 'permissions'
   /** A lifecycle hook declaration. */
   | 'hook'
-  /** An output-style definition. */
-  | 'output style'
-  /** A plugin manifest. */
+  /** A plugin, named by its declaration and resolved by one or more carriers. */
   | 'plugin'
-  /** A plugin marketplace catalog. */
-  | 'marketplace'
   /** Skill-local metadata beside a `SKILL.md`. */
   | 'skill metadata'
+  /** An output-style definition. */
+  | 'output style'
   /** A settings or configuration carrier. */
   | 'settings/config';
 
@@ -102,14 +100,12 @@ export const CUSTOMIZATION_KIND_ORDER: readonly CustomizationKind[] = [
   'permissions',
   /** Hooks follow permission policies. */
   'hook',
-  /** Output styles follow hooks. */
-  'output style',
-  /** Plugin manifests follow output styles. */
+  /** Plugins follow hooks. */
   'plugin',
-  /** Marketplace catalogs follow plugin manifests. */
-  'marketplace',
-  /** Skill metadata follows marketplace catalogs. */
+  /** Skill metadata follows plugins. */
   'skill metadata',
+  /** Output styles follow skill metadata. */
+  'output style',
   /** Settings and configuration carriers sort last. */
   'settings/config',
 ];
@@ -162,14 +158,12 @@ export const CUSTOMIZATION_KIND_PLURAL_TEXT: Readonly<Record<CustomizationKind, 
   permissions: 'permission policies',
   /** A hook row is one declaration. */
   hook: 'hook declarations',
-  /** An output-style row is one definition. */
-  'output style': 'output styles',
-  /** A plugin row is one manifest. */
-  plugin: 'plugin manifests',
-  /** A marketplace row is one catalog. */
-  marketplace: 'marketplace catalogs',
+  /** A plugin row is one declared plugin name, listing every carrier that resolves it. */
+  plugin: 'plugins',
   /** A skill-metadata row is one sibling metadata file. */
   'skill metadata': 'skill metadata files',
+  /** An output-style row is one definition. */
+  'output style': 'output styles',
   /** A settings or configuration row is the carrier file. */
   'settings/config': 'settings and configuration files',
 };
@@ -192,14 +186,12 @@ export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>
   permissions: 'Permissions',
   /** Label for a hook declaration. */
   hook: 'Hook',
-  /** Label for an output-style definition. */
-  'output style': 'Output style',
-  /** Label for a plugin manifest. */
+  /** Label for a plugin. */
   plugin: 'Plugin',
-  /** Label for a marketplace catalog. */
-  marketplace: 'Marketplace',
   /** Label for skill-local metadata. */
   'skill metadata': 'Skill metadata',
+  /** Label for an output-style definition. */
+  'output style': 'Output style',
   /** Label for a settings or configuration carrier. */
   'settings/config': 'Settings / Config',
 };

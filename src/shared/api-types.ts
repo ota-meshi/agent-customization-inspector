@@ -476,6 +476,82 @@ export interface PromptInventoryEntryDto {
 }
 
 /**
+ * One output-style file behind an inventory entry (contracts/http-api.md
+ * § get-session `outputStyles[]`). It names its file by `sourceRelativePath`
+ * and repeats nothing else the file publishes for itself — size, read
+ * outcome, and file-scoped diagnostics all stay on
+ * {@link CustomizationFileSummaryDto}.
+ */
+export interface OutputStyleDefinitionDto {
+  /**
+   * The Source-relative Path of the output-style file this definition is
+   * authored in — the file's identity (FR-030), which joins to `files[]` and
+   * is the detail route `/output-styles/<source-relative path>`.
+   */
+  readonly sourceRelativePath: string;
+  /**
+   * The tool whose recognition this definition is (FR-007). One definition per
+   * `(file, tool)` under the entry's name — the same unit as ToolRecognition.
+   * One product ships an output-style rule today, so a row holds one
+   * definition per file; the unit is per `(file, tool)` anyway, because that
+   * is what a definition is.
+   */
+  readonly tool: SupportedTool;
+  /**
+   * That tool's surfaces whose documented behavior the admitting rules rest
+   * on, deduplicated and in the closed surface order — the same statement
+   * {@link FileRecognitionDto} carries, because a definition is a recognition
+   * and FR-009 states the surfaces beside every recognition. Non-empty.
+   *
+   * Never a claim that a surface applied the style: an admission is not an
+   * activation (FR-009).
+   */
+  readonly surfaces: readonly VendorSurface[];
+  /**
+   * The kind's extraction-failure reference (FR-028): one extraction per kind
+   * means one record, which every failed definition of the file names as its
+   * own parse fact and the file's `files[]` entry lists once.
+   *
+   * No `parseStatus` beside it, for the reason a prompt definition carries
+   * none: this kind's row name is never unknown — a file whose parse failed
+   * takes the file name its vendor documents for a file that declares none —
+   * so a failed parse costs the declarations and not the row's identity.
+   */
+  readonly diagnosticIds: readonly string[];
+}
+
+/**
+ * One row of the output-style inventory (contracts/http-api.md § get-session
+ * `outputStyles[]`, data-model.md § Inventory unit): one style name as one
+ * tool resolves it, and every file that tool selects under it.
+ *
+ * The name is the unit rather than the file, the same way a prompt row's is:
+ * what a reader looks for is the style they would pick in the settings, and
+ * the vendor documents that name as the file's own name unless the
+ * frontmatter sets one. Two files of one repository can carry one name — the
+ * page says the layer closest to the working directory wins — so the row
+ * lists both and states no winner: which layer a session reaches is runtime
+ * this product never observes (FR-009).
+ */
+export interface OutputStyleInventoryEntryDto {
+  /**
+   * The style name one tool selects this row's files by, as that tool builds
+   * it: Claude Code takes the frontmatter `name`, falling back to the file
+   * name without its `.md` extension. Never empty — a declared empty name
+   * falls back like an absent one, because a picker cannot show a style by a
+   * name with no characters. Resolved by the admitting rule at recognition
+   * time (server/inspection/rules/registry.ts § CompiledStaticOutputStyleRule).
+   */
+  readonly name: string;
+  /**
+   * The recognitions selecting this name, one definition per `(file, tool)`,
+   * in Source-relative Path order and the contracted tool order within one
+   * file. Non-empty: a name nothing recognizes is no row.
+   */
+  readonly definitions: readonly OutputStyleDefinitionDto[];
+}
+
+/**
  * One custom-agent file behind an inventory entry (contracts/http-api.md
  * § get-session `agents[]`). It names its file by `sourceRelativePath` and
  * repeats nothing else the file publishes for itself — size, read outcome, and
@@ -913,6 +989,284 @@ export interface RuleFileDetailDto extends FileDetailBase {
 }
 
 /**
+ * What a carrier is to the plugin it declares
+ * (contracts/vendors/openai-codex.md § Documented Repository behavior): a
+ * plugin's own manifest, or a catalog that lists it.
+ *
+ * The two are equal carriers of one row and differ in what they establish: a
+ * manifest is the plugin's own declaration of itself, while a catalog entry is
+ * a table saying which plugin comes from which source. Neither says a plugin
+ * is installed, enabled, or loaded (FR-009).
+ *
+ * Every shipped carrier is a `catalog`: Codex activates a plugin through a
+ * catalog entry, so a manifest below the root that entry names is one of the
+ * plugin's own files. `manifest` is what a vendor whose client reads one at a
+ * fixed path will publish.
+ */
+export type PluginCarrierKind =
+  /** The plugin's own `.codex-plugin/plugin.json`. */
+  | 'manifest'
+  /** A marketplace catalog whose entries name the plugins it exposes. */
+  | 'catalog';
+
+/**
+ * One plugin a carrier declares — a manifest's own plugin, or one entry of a
+ * catalog — carrying the name it resolves and the fields the file wrote for it
+ * (FR-007).
+ */
+export interface PluginDeclarationDto {
+  /**
+   * The plugin name this declaration resolves, exactly as the file wrote it,
+   * or null when the declaration names none — a manifest with no `name` key,
+   * or a catalog entry that omits it. Never empty: an authored empty name is
+   * a name the row shows as written, and a missing one is the null row's
+   * (data-model.md § Inventory unit).
+   */
+  readonly name: string | null;
+  /**
+   * Every field this declaration writes, as the parser resolved it, in the
+   * shared declaration-entry shape the detail surfaces render. For a manifest
+   * that is the file's own top-level keys; for a catalog entry, that entry's
+   * own keys — its `source`, `policy`, and `category` among them. The values
+   * are the file's literals: an environment reference stays the characters
+   * that were written, never a process value (FR-026).
+   */
+  readonly fields: readonly DeclaredEntryDto[];
+  /**
+   * The Source-relative directory this plugin's files sit in, trailing slash
+   * kept — the plugin root the declaration's local source names — or null when
+   * the source names no directory here at all: a Git, npm, absolute, home, or
+   * root-escaping source is not a plugin root, whatever it points at.
+   *
+   * The declared root, answered from the entry's own text and never probed on
+   * disk: whether this repository carries it is what the row's `files[]` shows,
+   * which is empty for a root that is not there. Publishing a path only when
+   * something exists at it would make one fact two — the declaration's, and the
+   * filesystem's — where the row already states the second.
+   *
+   * The directory rather than the files under it, because the files are the
+   * generation's own `files[]` and a second list of them could disagree: which
+   * directory a plugin occupies is the fact only the admitting vendor knows,
+   * and the row derives its contents from it.
+   */
+  readonly pluginRoot: string | null;
+  /**
+   * The Source-relative Paths this plugin's own manifest may sit at inside that
+   * root, in the order the vendor's client checks them — one form for Codex
+   * (`<root>/.codex-plugin/plugin.json`) and Claude, four for Copilot, and none
+   * at all when the declaration names no root here.
+   *
+   * Where the detail opens, the way a skill's detail opens on its `SKILL.md`: a
+   * catalog entry is one file's statement about the plugin, while the manifest
+   * is the plugin's own. Which files those are inside a root, and in which
+   * order, is the admitting vendor's contract, so it is answered there and not
+   * derived from `pluginRoot` by a surface that would have to know the vendor.
+   *
+   * A list rather than one path because a vendor may document several forms and
+   * an order over them, and nothing here probes the filesystem: the surface
+   * that opens a manifest takes the first of these the commit actually carries,
+   * exactly as the file tree keeps only committed entries.
+   */
+  readonly manifestPaths: readonly string[];
+}
+
+/**
+ * One carrier resolving a plugin name, in the shape the inventory row lists
+ * (contracts/http-api.md § get-session `plugins[]`). It names its file by
+ * `sourceRelativePath` and never repeats that file's own published facts.
+ */
+export interface PluginCarrierDto {
+  /**
+   * The Source-relative Path of the file this declaration is authored in —
+   * the file's identity (FR-030), which joins to `files[]` and is the path
+   * half of the carrier's own detail route.
+   */
+  readonly sourceRelativePath: string;
+  /** The tool whose recognition this carrier is (FR-007). */
+  readonly tool: SupportedTool;
+  /**
+   * The vendor surfaces the recognition rests on — the union over its
+   * admissions. Naming a surface never claims that surface loaded the file
+   * (FR-009).
+   */
+  readonly surfaces: readonly VendorSurface[];
+  /** Which kind of carrier this file is for the plugin; see {@link PluginCarrierKind}. */
+  readonly carrier: PluginCarrierKind;
+  /**
+   * The owning recognition's extraction state, republished here because the
+   * declaration is that recognition's (FR-028). Always `parsed` under a named
+   * row — a failed carrier publishes no name — and on the null row it is what
+   * tells "the plugin is unnamed" (`parsed`) apart from "the names are
+   * unknown" (`failed`).
+   */
+  readonly parseStatus: RecognitionParseStatus;
+  /**
+   * The kind's extraction-failure reference (FR-028): one extraction per
+   * `(file, kind)` means one record, which the carrier's `files[]` entry lists
+   * once and each of its declarations republishes as its own parse fact.
+   */
+  readonly diagnosticIds: readonly string[];
+}
+
+/**
+ * The result of `get-plugin-carrier-detail`: one plugin carrier's detail
+ * (contracts/http-api.md § get-plugin-carrier-detail), discriminated by what
+ * the file is to the plugins it declares.
+ *
+ * The two carriers differ in what their own file is, so their details do. A
+ * manifest is itself the customization — one plugin, declared by the whole
+ * file — so its detail serves the complete authored source beside the parse
+ * (FR-007). A catalog is not: it is the table resolving many plugin names to
+ * their sources, so a page whose subject is one of them publishes that
+ * declaration and the catalog's own fields, and carries no `sourceText` field
+ * at all — showing the file would put every other plugin it lists on a screen
+ * about one, exactly as an MCP carrier's detail withholds its bytes.
+ */
+export type PluginCarrierDetailDto = PluginManifestDetailDto | PluginCatalogDetailDto;
+
+/**
+ * What one `get-plugin-carrier-detail` request names: the carrier file, and
+ * the plugin row the page is about (contracts/http-api.md
+ * § get-plugin-carrier-detail).
+ *
+ * The name is a parameter rather than a client-side filter because the answer
+ * is one row's: a catalog offering many plugins would otherwise ship every
+ * other plugin's declaration to a page about one of them.
+ */
+export interface PluginCarrierDetailParams {
+  /** The Source-relative Path of the carrier file; the file's identity (FR-030). */
+  readonly sourceRelativePath: string;
+  /**
+   * The plugin name the row is headed by, or null for the row that closes the
+   * list with the declarations resolving no name at all.
+   */
+  readonly pluginName: string | null;
+}
+
+/** What both plugin carrier details carry. */
+interface PluginCarrierDetailBase {
+  /** The carrier file's own diagnostics, in the commit's deterministic order (FR-028). */
+  readonly diagnostics: readonly SerializedDiagnostic[];
+}
+
+/**
+ * A plugin's own manifest: the complete authored file.
+ *
+ * The file and nothing read out of it. A manifest declares one plugin with its
+ * whole content, and it is strict JSON, so a parsed key list re-serialized
+ * beside it would be the same document one round trip further from what the
+ * author wrote — two renderings of one fact, which can disagree where one
+ * cannot. A parse that failed is stated by {@link diagnostics} (FR-028), and
+ * the name the row is headed by is the inventory's.
+ */
+export interface PluginManifestDetailDto extends PluginCarrierDetailBase {
+  /** Discriminant: the file is a plugin's own manifest. */
+  readonly carrier: 'manifest';
+  /**
+   * The committed file with its complete authored source, because a manifest
+   * is itself the customization (FR-007, FR-025).
+   */
+  readonly file: CustomizationFileDto;
+  /**
+   * The Source-relative directory this plugin's files occupy, trailing slash
+   * kept — the folder the manifest's presence made a plugin.
+   *
+   * The one fact the file does not carry: which directory is the plugin root is
+   * the admitting vendor's contract, and a surface that derived it from the
+   * carrier's path would have to know where inside a root that vendor keeps its
+   * manifest. The manifest's own path needs no field, being the file's.
+   */
+  readonly pluginRoot: string;
+}
+
+/**
+ * A catalog listing plugins: the file's own facts without its bytes, what the
+ * catalog declares about itself, and the plugins its entries resolve.
+ */
+export interface PluginCatalogDetailDto extends PluginCarrierDetailBase {
+  /** Discriminant: the file is a catalog listing plugins. */
+  readonly carrier: 'catalog';
+  /** The carrier's own facts — path, read outcome, size, diagnostics — without its source text. */
+  readonly file: CustomizationFileSummaryDto;
+  /**
+   * The entries of this catalog that resolve the requested plugin name, in the
+   * parser's resolved order, or null exactly for a failed extraction — the
+   * declarations are unknown rather than absent, and the diagnostics below are
+   * the failure's record (FR-028). Usually one; several only on the null row,
+   * where one catalog can hold more than one entry naming nothing.
+   */
+  readonly plugins: readonly PluginDeclarationDto[] | null;
+  /**
+   * What the catalog declares about itself — its `name` and `interface` — never
+   * the `plugins` array, whose entries are the declarations above. Empty for a
+   * failed extraction.
+   */
+  readonly catalogFields: readonly DeclaredEntryDto[];
+}
+
+/**
+ * One plugin inventory row: one resolved plugin name and every carrier that
+ * resolves it (contracts/http-api.md § get-session `plugins[]`, data-model.md
+ * § Inventory unit). Codex resolves a name through catalogs alone — the entry
+ * declares the offering, and the files below the root it names are the
+ * plugin's own rather than carriers of it — so a row lists one carrier per
+ * catalog that offers the name. A vendor whose client reads a manifest at a
+ * fixed path adds `manifest` carriers to the same row.
+ */
+export interface PluginInventoryEntryDto {
+  /**
+   * The name this plugin is resolved by, or null for the one row that closes
+   * the list with the carriers resolving no name at all.
+   *
+   * The admitting rule answers it, because how a name follows from a
+   * declaration is that vendor's own contract — the same rule a skill row's
+   * name follows (FR-007). Codex addresses a catalog's offering as
+   * `plugin@marketplace`, so the same plugin offered by two catalogs is two
+   * rows.
+   */
+  readonly name: string | null;
+  /**
+   * The carriers resolving this name, in Source-relative Path then tool
+   * order. Never empty: a row exists because a carrier declared it.
+   */
+  readonly carriers: readonly PluginCarrierDto[];
+  /**
+   * The Source-relative Paths of the files this plugin ships, sorted and
+   * deduplicated across its carriers — the plugin roots its offerings name,
+   * enumerated in full (contracts/inspection-path-allowlist.md § Bounded
+   * companion census).
+   *
+   * The plugin's own manifest is one of them rather than a row of its own: a
+   * plugin is its root, and the manifest is what it ships alongside the
+   * skills, hooks, and assets beside it. That holds for the one manifest that
+   * is itself a carrier — the folder a `.claude-plugin/plugin.json` makes a
+   * plugin — which the row names as its carrier and lists here too, so this
+   * list is the plugin's whole directory wherever it is shown. Empty for an
+   * offering whose source names nothing this repository holds as a directory.
+   */
+  readonly files: readonly string[];
+}
+
+/**
+ * Detail of an output style: the file plus what the one scan-time parse
+ * resolved (contracts/http-api.md § get-file-detail). The parse is a fact of
+ * the file rather than of a recognizing tool, so it is published once; which
+ * tools recognize the file, and the name each selects it by, are the
+ * inventory's facts (`outputStyles[].definitions[]` under the row each name
+ * keys).
+ */
+export interface OutputStyleFileDetailDto extends FileDetailBase {
+  /** Discriminant: the file is a recognized output style. */
+  readonly kind: 'output style';
+  /**
+   * The parsed declarations and instructions, or null exactly when extraction
+   * failed all-or-nothing (FR-028): nothing was parsed, the failure's
+   * Diagnostic is in `diagnostics`, and the complete source stays served.
+   */
+  readonly presentation: MarkdownPresentationDto | null;
+}
+
+/**
  * Detail of a recognized settings or configuration file: the file, and
  * nothing read out of it (contracts/http-api.md § get-file-detail).
  *
@@ -1107,6 +1461,7 @@ export type FileDetailDto =
   | AgentFileDetailDto
   | PromptFileDetailDto
   | RuleFileDetailDto
+  | OutputStyleFileDetailDto
   | SettingsFileDetailDto
   | UnrecognizedFileDetailDto;
 
@@ -1433,6 +1788,18 @@ export interface SessionSnapshot {
    * (data-model.md § Inventory unit).
    */
   readonly permissions: readonly PermissionsInventoryEntryDto[];
+  /**
+   * The plugin inventory: one entry per declared plugin name, in name order,
+   * each listing every carrier that resolves it; the one null-named entry
+   * closes the list with the carriers declaring no name
+   * (contracts/http-api.md § get-session `plugins[]`).
+   */
+  readonly plugins: readonly PluginInventoryEntryDto[];
+  /**
+   * The output-style inventory, one row per style name a tool selects
+   * (contracts/http-api.md § get-session `outputStyles[]`), sorted by name.
+   */
+  readonly outputStyles: readonly OutputStyleInventoryEntryDto[];
   /**
    * The settings-and-configuration inventory: one entry per recognized
    * settings or configuration file — the file a product reads its settings

@@ -24,6 +24,8 @@ import type {
   FileOpenTarget,
   InspectionDataResult,
   McpCarrierDetailDto,
+  PluginCarrierDetailDto,
+  PluginCarrierDetailParams,
   PermissionPolicyDetailDto,
   ScanAdmission,
   SessionSnapshot,
@@ -47,6 +49,7 @@ export const SESSION_RPC_FUNCTIONS = {
   getFileDetail: 'agent-customization-inspector:get-file-detail',
   /** One MCP-declaring file's declarations and file facts, never its source (FR-007). */
   getMcpCarrierDetail: 'agent-customization-inspector:get-mcp-carrier-detail',
+  getPluginCarrierDetail: 'agent-customization-inspector:get-plugin-carrier-detail',
   /** One declared permission policy, addressed by the path of the file that declares it. */
   getPermissionPolicyDetail: 'agent-customization-inspector:get-permission-policy-detail',
   /** Accept one explicit Repository scan command. */
@@ -229,6 +232,23 @@ export type FileDetailOutcome = DetailFetchOutcome<FileDetailDto>;
  * facts — the one detail response with no authored source in it (FR-007).
  */
 export type McpCarrierDetailOutcome = DetailFetchOutcome<McpCarrierDetailDto>;
+
+/**
+ * What one guarded detail request sends: the file's own Source-relative Path
+ * for the file-addressed functions, and the carrier's path with the plugin the
+ * page is about for `get-plugin-carrier-detail`, whose answer is one inventory
+ * row's rather than the whole carrier's
+ * (contracts/http-api.md § get-plugin-carrier-detail).
+ */
+type DetailRequestPayload = string | PluginCarrierDetailParams;
+
+/**
+ * The outcome of one guarded `get-plugin-carrier-detail` request: the shared
+ * detail outcome carrying one plugin carrier's declarations, with the complete
+ * authored source when that carrier is the plugin's own manifest and without
+ * it when the carrier is a catalog (FR-007).
+ */
+export type PluginCarrierDetailOutcome = DetailFetchOutcome<PluginCarrierDetailDto>;
 
 /**
  * The outcome of one guarded `get-permission-policy-detail` request: the
@@ -697,6 +717,22 @@ export class SessionApiClient {
   }
 
   /**
+   * Issues one guarded plugin-carrier request through the same guards, token
+   * family, and adoption rules as {@link fetchFileDetail}: the detail
+   * functions serve the one open detail, so a newer request of any of them
+   * supersedes an older of another (contracts/http-api.md
+   * § get-plugin-carrier-detail).
+   */
+  public fetchPluginCarrierDetail(
+    params: PluginCarrierDetailParams,
+  ): Promise<PluginCarrierDetailOutcome> {
+    return this.#fetchDetail<PluginCarrierDetailDto>(
+      SESSION_RPC_FUNCTIONS.getPluginCarrierDetail,
+      params,
+    );
+  }
+
+  /**
    * Issues one guarded permission-policy request through the same guards,
    * token family, and adoption rules as {@link fetchFileDetail}: the detail
    * functions serve the one open detail, so a newer request of any of them
@@ -713,15 +749,15 @@ export class SessionApiClient {
   }
 
   /**
-   * The one guarded detail fetch both detail functions share. `Detail` is the
+   * The one guarded detail fetch every detail function shares. `Detail` is the
    * invoked function's declared result payload; the cast below is the same
    * wire-boundary typing every guarded fetch performs on its own settled
-   * value, made once here so the two public methods cannot drift in guard
-   * order or outcome shape.
+   * value, made once here so the public methods cannot drift in guard order or
+   * outcome shape.
    */
   async #fetchDetail<Detail>(
     functionName: SessionRpcFunctionName,
-    sourceRelativePath: string,
+    payload: DetailRequestPayload,
   ): Promise<DetailFetchOutcome<Detail>> {
     const token = Symbol(functionName);
     const controller = new AbortController();
@@ -730,7 +766,7 @@ export class SessionApiClient {
     const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
-      settled = await this.#channel.call(functionName, sourceRelativePath);
+      settled = await this.#channel.call(functionName, payload);
     } catch (cause: unknown) {
       this.#outstandingData.delete(controller);
       const discarded = this.#guardSettlement(

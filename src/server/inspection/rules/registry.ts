@@ -18,6 +18,7 @@ import type {
   AgentPresentationDto,
   DeclaredEntryDto,
   McpServerDeclarationDto,
+  PluginDeclarationDto,
 } from '../../../shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import { VENDOR_SURFACE_ORDER } from '../../../shared/registries/behavior-text';
@@ -630,57 +631,18 @@ export abstract class CompiledInspectionRule extends CompiledRule {
  */
 export abstract class CompiledDerivedRule extends CompiledRule {
   /**
-   * Narrowed to the one kind a shipped derivation has. The constructor proves
-   * it; a derivation of another kind arrives with the unit that can answer for
-   * it, rather than by widening this one.
-   */
-  declare public readonly kind: 'instructions';
-
-  /**
-   * Builds the traversal plan for one configuration-read result: one exact
-   * Repository-root selector per declared basename, in authored order, each
-   * segment the name as the configuration wrote it — a name is compared to
-   * what the walk enumerated, so the shipped matchers' ASCII grammar is not
-   * this plan's (data-model.md § StructuredInspectorMatcher). The plan is per
-   * scan attempt, because
-   * the declared names are the attempt's stage-one configuration, and the
-   * walk that executes it merges a name that collides with a static target
-   * into one candidate with both provenances, exactly like any two plans
-   * admitting one file.
-   */
-  public planFor(declaredBasenames: readonly string[]): TraversalPlan {
-    return TraversalPlan.fromPrograms(
-      { kind: 'repository' },
-      declaredBasenames.map((basename) => [basename]),
-    );
-  }
-
-  /**
-   * The Repository root's `**`: a derived plan is one exact Repository-root
-   * selector per declared basename ({@link planFor}), so every candidate it
-   * admits sits at the root and governs the repository entirely.
-   *
-   * Declared here rather than inherited, because a derived rule has no
-   * matcher and so cannot be a static instruction unit: this class is the
-   * derived half of {@link CompiledInstructionRule}.
-   */
-  public applicabilityRangeOf(): string {
-    return '**';
-  }
-
-  /**
    * Compiles one shipped derived record, rejecting any that cannot derive.
-   * Which product recognizes it and which edges it carries are the vendor
-   * subclass's, exactly as for a static rule: a shared class resolving them
-   * would have to reach the aggregate registry, and that import runs back into
-   * this module.
+   * What the derivation targets, and which product recognizes it, are the
+   * subclasses': a derivation's plan is a fact about the kind it derives — one
+   * Repository-root selector per configured basename, one manifest below each
+   * local plugin root — and a class spanning both would answer for a kind it
+   * knows nothing about. The vendor half is a subclass's for the reason a
+   * static rule's is: a shared class resolving relations would have to reach
+   * the aggregate registry, and that import runs back into this module.
    */
   protected constructor(rule: InspectionRule) {
     if (rule.discoveryClass !== 'bounded-derived-candidate') {
       throw new TypeError(`rule ${rule.ruleId} is not a bounded-derived candidate`);
-    }
-    if (rule.kind !== 'instructions') {
-      throw new TypeError(`rule ${rule.ruleId} derives a kind this unit cannot answer for`);
     }
     super(rule);
   }
@@ -881,6 +843,41 @@ export function authoredSkillNameOf(
 }
 
 /**
+ * A compiled rule that admits an output-style file, and can therefore answer
+ * the one question only this kind's rule answers — the style name a reader
+ * selects it by, which is the kind's inventory unit (data-model.md
+ * § Inventory unit).
+ *
+ * The output-style sibling of {@link CompiledStaticPromptRule}, and its own
+ * unit for the same reason: how a name follows from a path and a declaration
+ * is the admitting vendor's own contract. Claude Code's is documented as the
+ * file name unless the frontmatter sets `name`, which is one product's rule
+ * rather than a shape every kind shares.
+ */
+export interface CompiledStaticOutputStyleRule extends CompiledInspectionRule {
+  /** The recognized kind; this unit compiles `output style` records alone. */
+  readonly kind: 'output style';
+  /**
+   * The style name one admitted file is selected by, as the admitting product
+   * builds it. Never empty: a file whose frontmatter declares no usable name
+   * falls back to its own file name, and being a named Markdown file is what
+   * an output style is (FR-007).
+   *
+   * `declared` is the file's frontmatter as the one scan-time parse resolved
+   * it, empty for a failed extraction — which lands the style on its file
+   * name, the same string the vendor's own fallback produces for a file that
+   * declares none, reached for a different reason. What distinguishes the two
+   * is the extraction Diagnostic the recognition carries, which every surface
+   * showing the definition shows beside it (FR-028).
+   *
+   * Never a claim that the style is applied: which style a session uses turns
+   * on settings, session state, and plugin overrides this tool never observes
+   * (FR-009).
+   */
+  styleNameOf(sourceRelativePath: string, declared: readonly DeclaredEntryDto[]): string;
+}
+
+/**
  * A compiled rule that admits an MCP declaration carrier, and can therefore
  * answer which servers one of its admitted files declares — the rows the MCP
  * inventory publishes, one per declaration (data-model.md § Inventory unit).
@@ -945,6 +942,185 @@ export interface CompiledStaticMcpProvenanceRule extends CompiledInspectionRule 
  * provenance alone, discriminated by `mcpReading`.
  */
 export type CompiledStaticMcpRule = CompiledStaticMcpReadingRule | CompiledStaticMcpProvenanceRule;
+
+/**
+ * What one plugin carrier's complete decoded text declares: the plugins it
+ * resolves, and the carrier's own fields when the carrier is a catalog.
+ *
+ * One reading rather than a method per field, because it comes from one parse:
+ * two methods over one text would parse it twice and could disagree about what
+ * it said. Where each plugin sits is part of it for the same reason — the
+ * directory follows from the `source` the same entry wrote, so answering it
+ * separately would pair two lists by position and leave nothing to keep the
+ * pairing true.
+ */
+export interface PluginCarrierReading {
+  /**
+   * The catalog's own declarations — the `name` and `interface` a catalog
+   * writes about itself, never its `plugins` array, whose entries are the
+   * declarations below. Empty for a manifest, whose own fields are its one
+   * declaration's.
+   */
+  readonly catalogFields: readonly DeclaredEntryDto[];
+  /**
+   * Every plugin the carrier declares, in the parser's resolved order — the
+   * names the inventory rows are named by, the fields the detail publishes by
+   * the keys the file wrote, and the directory each one's files occupy
+   * (FR-007). Empty when the carrier declares none.
+   *
+   * The wire declaration shape directly ({@link PluginDeclarationDto}), for the
+   * reason the MCP reading gives: what the one scan-time parse resolved is what
+   * the carrier's detail publishes, so a second internal shape would be a state
+   * able to disagree with it.
+   */
+  readonly plugins: readonly PluginDeclarationDto[];
+}
+
+/**
+ * A compiled rule that admits a plugin catalog: the file whose entries resolve
+ * plugin names to the sources those plugins come from.
+ *
+ * What it answers here is what every caller of this kind needs — the plugins
+ * the carrier declares, each with the directory its files occupy and the
+ * manifest inside it. How a catalog names itself, which of its entries reach a
+ * plugin root inside this repository, where that root keeps the plugin's own
+ * declaration, and how a name is composed from the parts are that vendor's own
+ * questions, answered inside that vendor's own reading.
+ */
+export interface CompiledStaticPluginCatalogRule extends CompiledInspectionRule {
+  /** The recognized kind; a plugin unit compiles plugin records alone. */
+  readonly kind: 'plugin';
+  /** Discriminant: the admitted file is a catalog listing plugins. */
+  readonly pluginCarrier: 'catalog';
+  /**
+   * What one admitted catalog declares, each entry carrying the Source-relative
+   * directory its plugin's files occupy and the manifest this vendor's client
+   * reads inside it — trailing slash kept on the directory, both null when the
+   * entry's source names no directory here.
+   *
+   * Paths and nothing else, because that is the part only the admitting vendor
+   * knows: which source forms name a directory here, where a plugin root sits
+   * relative to the catalog, and which file inside it is the plugin's own
+   * declaration are its contract, while enumerating a directory and reading
+   * what is in it are the same operations every directory-shaped customization
+   * uses. Neither path is probed: a directory this repository does not hold is
+   * named all the same — the entry declared it, and the files under it are
+   * simply none. Throws on unparsable text, exactly as the manifest unit does
+   * (FR-028).
+   *
+   * The carrier's own path is a parameter the catalog does not read: one call
+   * site asks either unit, and a catalog resolves its entries against the
+   * marketplace root the rule already fixes.
+   */
+  pluginCarrierReadingOf(sourceText: string, sourceRelativePath: string): PluginCarrierReading;
+}
+
+/**
+ * A compiled rule that admits a plugin's own manifest at a path the vendor's
+ * client reads it from, where the file's presence is what makes the directory
+ * holding it a plugin.
+ *
+ * Its own unit rather than a mode of the catalog above, because the two answer
+ * from different material: a catalog resolves many names out of its `plugins`
+ * array, while a manifest declares the one plugin it belongs to and takes its
+ * name and its root from where it sits. A unit that cannot answer for many
+ * plugins must not carry the member that promises to, so the `pluginCarrier`
+ * discriminant is what lets the recognizer prove which one it has.
+ *
+ * The shipped member is `claude.repo.skills-directory-plugin`: a folder under
+ * `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as
+ * `<folder>@skills-dir` with no marketplace and no install step
+ * (contracts/vendors/claude-code.md § Repository vendor behavior). Codex has no
+ * such rule: a Codex plugin root is activated through a catalog or an install,
+ * so its manifest is one of the files that plugin ships.
+ */
+export interface CompiledStaticPluginManifestRule extends CompiledInspectionRule {
+  /** The recognized kind; a plugin unit compiles plugin records alone. */
+  readonly kind: 'plugin';
+  /** Discriminant: the admitted file is one plugin's own manifest. */
+  readonly pluginCarrier: 'manifest';
+  /**
+   * What one admitted manifest declares: the single plugin it belongs to, under
+   * the name its vendor resolves that plugin by, with the root it sits in and
+   * its own path as that plugin's manifest.
+   *
+   * The path is a parameter because a manifest names neither: which directory
+   * is the plugin root, and how a name follows from it, are the admitting
+   * vendor's contract, and the file's own `name` key is one of the fields the
+   * detail publishes rather than the row's identity. Throws on unparsable text,
+   * exactly as the catalog unit does (FR-028).
+   */
+  pluginCarrierReadingOf(sourceText: string, sourceRelativePath: string): PluginCarrierReading;
+  /**
+   * The plugin this file's placement establishes, with nothing read out of the
+   * text: the name its vendor resolves the folder by, the root that folder is,
+   * and this file as that plugin's own manifest, with no declared fields.
+   *
+   * What makes the folder a plugin is this file being in it, so none of those
+   * three depends on the text parsing. It is what a recognition publishes when
+   * the parse failed, the way a skill keeps the name its path resolves when its
+   * frontmatter could not be read: the row stays the plugin's, carrying the
+   * diagnostic that says its declarations are unknown, where publishing nothing
+   * would move the plugin to the row for carriers that resolve no name and take
+   * the files below its root off the page with it (FR-028).
+   *
+   * The catalog unit has no counterpart: every plugin a catalog resolves is one
+   * its text declares, so its path establishes none and a failed parse there
+   * leaves nothing to keep.
+   */
+  pluginEstablishedByPath(sourceRelativePath: string): PluginDeclarationDto;
+}
+
+/**
+ * The Source-relative segments a documented local plugin source names, or null
+ * when it names no directory this Source could hold.
+ *
+ * Shared by every vendor's plugin rule because all three document the same
+ * form — a `./`-anchored relative path, resolved against the Source root — and
+ * what a directory here can be called is the platform's answer rather than any
+ * vendor's. What stays in each vendor's own module is the vendor's part: which
+ * key holds the source, which discriminant marks it local, and which other
+ * source forms exist.
+ *
+ * Rejected whole: a path not anchored at `./`; an empty segment, a `.`, or a
+ * `..`, none of which is a name the walk could have enumerated and the last of
+ * which would leave the root; and a segment carrying a NUL, which no
+ * filesystem entry can be named. The NUL is rejected here rather than left to
+ * the probe because the platform raises on such a path instead of answering
+ * that nothing is there, and one catalog's declaration would then fail the
+ * whole scan attempt rather than standing as an offering that occupies nothing
+ * (FR-028, FR-029).
+ *
+ * A trailing slash is an ordinary spelling of a directory, so a trailing empty
+ * segment is dropped rather than rejected.
+ */
+export function localPluginRootSegments(declaredPath: string | null): readonly string[] | null {
+  if (declaredPath === null || !declaredPath.startsWith('./')) {
+    return null;
+  }
+  const segments = declaredPath.slice('./'.length).split('/');
+  const named = segments.at(-1) === '' ? segments.slice(0, -1) : segments;
+  if (
+    named.length === 0 ||
+    named.some(
+      (segment) =>
+        segment === '' || segment === '.' || segment === '..' || segment.includes('\u0000'),
+    )
+  ) {
+    return null;
+  }
+  return named;
+}
+
+/**
+ * A compiled rule that admits a plugin carrier by path: the catalog whose
+ * entries resolve plugin names to their sources, or the manifest whose presence
+ * makes the directory holding it a plugin. The recognizer dispatches on
+ * `pluginCarrier`, which is what lets each unit be asked only what it can
+ * answer.
+ */
+export type CompiledStaticPluginRule =
+  CompiledStaticPluginCatalogRule | CompiledStaticPluginManifestRule;
 
 /**
  * A compiled rule that admits a file declaring a permission policy inside a
@@ -1089,8 +1265,8 @@ export function declaredAgentNameOf(declared: readonly DeclaredEntryDto[]): stri
 
 /**
  * A compiled static rule of every other kind — neither an instruction rule,
- * whose files govern a range, nor a command or skill rule, whose files are
- * invoked by a name, nor an MCP carrier rule, whose files declare servers, nor
+ * whose files govern a range, nor a command, skill, or output-style rule,
+ * whose files are invoked or selected by a name, nor an MCP carrier rule, whose files declare servers, nor
  * a custom-agent rule, whose files declare an agent. It answers no per-kind
  * question, which is the whole point: a rule-file rule has no such answer to
  * give — a rule file is published as the one Markdown or Starlark document its
@@ -1099,12 +1275,19 @@ export function declaredAgentNameOf(declared: readonly DeclaredEntryDto[]): stri
  */
 export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
   /**
-   * Every recognized kind but `instructions`, `prompt/command`, `skill`,
-   * `MCP`, `agent`, and `permissions`.
+   * Every recognized kind but `instructions`, `skill`, `MCP`, `agent`,
+   * `prompt/command`, `permissions`, `plugin`, and `output style`.
    */
   readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    | 'instructions'
+    | 'skill'
+    | 'MCP'
+    | 'agent'
+    | 'prompt/command'
+    | 'permissions'
+    | 'plugin'
+    | 'output style'
   >;
 }
 
@@ -1115,11 +1298,13 @@ export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
  */
 export type CompiledStaticCandidateRule =
   | CompiledStaticInstructionRule
+  | CompiledStaticSkillRule
   | CompiledStaticMcpRule
   | CompiledStaticAgentRule
   | CompiledStaticPromptRule
-  | CompiledStaticSkillRule
   | CompiledStaticPermissionsRule
+  | CompiledStaticPluginRule
+  | CompiledStaticOutputStyleRule
   | CompiledStaticOtherKindRule;
 
 /**
@@ -1134,7 +1319,33 @@ export type CompiledStaticCandidateRule =
  * proves its half in its constructor and declares the narrow `kind` its class
  * body promises, so the discriminant cannot disagree with the record.
  */
-export type CompiledCandidateRule = CompiledStaticCandidateRule | CompiledDerivedRule;
+/**
+ * A compiled derivation whose candidates are instruction files: the
+ * configured-basename derivation, whose plan is one exact Repository-root
+ * selector per declared name.
+ *
+ * The derived counterpart of {@link CompiledStaticInstructionRule}, and its
+ * own type for the same reason the static kinds are: a derivation of another
+ * kind cannot answer what range its files govern, and a union member that
+ * could be either would make every caller assert.
+ */
+export interface CompiledDerivedInstructionRule extends CompiledDerivedRule {
+  /** The derived kind; this unit derives instruction candidates alone. */
+  readonly kind: 'instructions';
+  /** The range each derived file governs, exactly as a static instruction unit answers it. */
+  applicabilityRangeOf(): string;
+  /** Builds the per-attempt plan from the configuration values the reader validated. */
+  planFor(declaredBasenames: readonly string[]): TraversalPlan;
+}
+
+/**
+ * What a scan submits to the traversal from a derivation: the closed union of
+ * the shipped derived units, discriminated by `kind` exactly as the static
+ * union is.
+ */
+export type CompiledDerivedCandidateRule = CompiledDerivedInstructionRule;
+
+export type CompiledCandidateRule = CompiledStaticCandidateRule | CompiledDerivedCandidateRule;
 
 /**
  * One derived rule a vendor's configuration-read logic activated for the
@@ -1144,7 +1355,7 @@ export type CompiledCandidateRule = CompiledStaticCandidateRule | CompiledDerive
  */
 export interface ConfiguredDerivedPlan {
   /** The compiled derived rule the activated plan belongs to. */
-  readonly rule: CompiledDerivedRule;
+  readonly rule: CompiledDerivedCandidateRule;
   /** The plan expanding the declarations, for the same walk. */
   readonly plan: TraversalPlan;
 }

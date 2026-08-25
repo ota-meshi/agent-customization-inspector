@@ -166,6 +166,32 @@ documented identical duplicates, and defines no general precedence among the rem
 files. `applyTo`, `/instructions` disablement, runtime context, and surface remain
 independent condition facts.
 
+A plugin name reaches a Repository file through the same settings chain Claude Code uses,
+spelled in two files. `.github/copilot/settings.json` registers catalogs under
+`extraKnownMarketplaces` and names the plugins to turn on under `enabledPlugins`, and
+Copilot CLI reads those same two keys from `.claude/settings.json` and
+`.claude/settings.local.json` as its documented shared cross-tool subset, so one Repository
+can carry the registration in either spelling. The editor registers catalogs of its own
+through `chat.plugins.marketplaces`, and a directory registered in `chat.pluginLocations`
+by absolute path is the one other way a plugin becomes available without an install. The
+same two repository-level keys are read by the Copilot cloud agent as well, which is hosted
+state this contract records and no surface projects.
+
+A catalog is where that chain reaches a Repository file. A repository publishes one at the
+first of the four documented marketplace locations it uses, which `copilot.repo.marketplace`
+admits, and the catalog maps each plugin name to that plugin's own source; only a documented
+local source below the marketplace root names a directory this repository carries.
+
+No rule admits a plugin manifest, and none derives one. A plugin root is established by
+installation, by a registered catalog, or by an absolute path in an editor setting — never
+by a file appearing at a Repository path — so the four manifest forms are where a root keeps
+its own declaration rather than where this product looks for one. Below a catalog's local
+source the plugin *is* its root: the files under it, the manifest among them in whichever of
+the four forms that root uses, are the files the plugin ships, enumerated by the bounded
+companion census (contracts/inspection-path-allowlist.md § Bounded companion census). A
+manifest at a repository's own root is a plugin that repository publishes rather than one a
+client loads here.
+
 ## Copilot CLI User behavior
 
 | Behavior ID | User base | Relative selector or locator | Runtime composition | Inspector status | Evidence |
@@ -252,8 +278,7 @@ duplicating the same surface provenance or merging runtime behavior.
 | `copilot.repo.mcp.vscode-root` | Repository | `['.mcp.json']` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | VS Code 1.118+ path/surface provenance only. The current guide omits this location, and no VS Code schema extractor is authorized until direct documentation resolves the conflict | `vscode.copilot.mcp`, `vscode.copilot.mcp.workspace-root-release` |
 | `copilot.repo.mcp.vscode` | Repository | `['.vscode', 'mcp.json']` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | Dedicated VS Code MCP candidate; schema differs from CLI | `vscode.copilot.mcp`, `github.copilot.cli.reference` |
 | `copilot.repo.settings` | Repository | `['.github', 'copilot', 'settings.json']`; `['.github', 'copilot', 'settings.local.json']`; `['.claude', 'settings.json']`; `['.claude', 'settings.local.json']` | `exact` for each selector | `static-candidate` | `copilot.behavior.cli.settings` | Documented supported subset; general `.vscode/settings.json` excluded | `github.copilot.cli.configuration` |
-| `copilot.repo.plugin-manifest` | Repository | `['.plugin', 'plugin.json']`; `['plugin.json']`; `['.github', 'plugin', 'plugin.json']`; `['.claude-plugin', 'plugin.json']` | `exact` for each selector, and only when the Inspector selected Repository boundary is intentionally treated as an authored plugin root | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | Inspector policy for an explicit root only; it is not Copilot discovery or activation evidence | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
-| `copilot.repo.marketplace` | Repository | `['marketplace.json']`; `['.plugin', 'marketplace.json']`; `['.github', 'plugin', 'marketplace.json']`; `['.claude-plugin', 'marketplace.json']` | `exact` for each selector, and only when the Inspector selected Repository boundary is intentionally treated as an authored catalog root | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | Inspector policy for an explicit root only; installation and enablement are separate | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
+| `copilot.repo.marketplace` | Repository | `['marketplace.json']`; `['.plugin', 'marketplace.json']`; `['.github', 'plugin', 'marketplace.json']`; `['.claude-plugin', 'marketplace.json']` | `exact` for each selector, in the documented recognition order; a repository that publishes a catalog is the marketplace root its `./` entries resolve against | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | The catalog is authored content this repository carries; registration by setting or command, installation, and enablement remain runtime conditions, so a row states what the catalog offers and never that a plugin is active | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
 
 A settings rule's behavior references are the documented lookups that locate the
 documents it publishes. The hook and plugin behaviors those same documents participate in
@@ -303,7 +328,6 @@ even when stored below the same boundary.
 
 | Rule ID | Accepted seed | Permitted target | Behavior refs | Strategy refs | Closed derivation and status | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `copilot.derived.local-plugin-manifest` | An accepted Copilot marketplace entry with a documented local `source` | At the validated local plugin root: `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, `.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | Accept `plugins/foo` or `./plugins/foo`; resolve from the catalog root and remain inside it; try only the enumerated manifest names in documented order; the derivation is nonrecursive. Git, HTTP(S), npm, absolute, and home-relative sources remain relationships | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
 
 The relationship-only rules referenced by this vendor—
 `copilot.relationship.prompt-reference`, `copilot.relationship.settings`,
@@ -357,9 +381,16 @@ import, installation, or activation authority.
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact supported frontmatter value/item occurrences in an accepted VS Code prompt or root direct-child CLI command; prompt/command invocation names derived from matched paths remain typed provenance, and links or `#file` targets remain inert |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported frontmatter value/item/map-entry occurrences in an accepted `.github/agents/*.md` or `.claude/agents/*.md`; body instructions remain `sourceText`, `hooks` declarations are owned by their separate contained recognitions, and `mcp-servers` is the agent's own frontmatter declaration owning no MCP recognition |
 | `settings/config` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact supported Repository/local or cross-tool-compatible settings leaf/item/map-entry occurrences; contained Hook values belong only to the `hook` recognition, and settings never own an MCP recognition |
-| `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact catalog and plugin-entry leaf/item occurrences in an accepted marketplace file; `marketplace.plugin.source` alone represents a plain-string source or object `path` leaf and may seed the closed local-manifest derivation, while inline component bodies are never activated |
-| `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component-path leaf/item occurrences in an accepted Copilot plugin manifest; inline Hook/MCP bodies and referenced scripts/assets do not gain plugin metadata IDs, and component paths never create candidates |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component-path leaf/item occurrences in an accepted Copilot plugin manifest, and exact catalog and plugin-entry leaf/item occurrences in an accepted marketplace file, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone represents a plain-string source or object `path` leaf and may seed the closed local-manifest derivation, while inline component bodies are never activated; inline Hook/MCP bodies and referenced scripts/assets do not gain plugin metadata IDs, and component paths never create candidates |
 | `hook` | `runtime-reference` | Version values, event map keys, matcher values, and exact handler leaf/item/map-entry occurrences in an accepted standalone hook file or settings/agent-contained declaration; plugin Hook paths remain relationships only |
+
+The `plugin` row's manifest clause — occurrences in an accepted Copilot plugin manifest —
+describes a source form no rule admits: a manifest below a catalog's local root is one of
+the files that plugin ships, and one at a repository's own root is a plugin that repository
+publishes (§ Repository Inspector matcher rules). It is frozen, digest-recorded design
+input with no consumer, and changing it is a digest-recorded change under the
+official-source contract's stop-and-regenerate rule. What the row governs is its other
+half: the catalog and plugin-entry occurrences `copilot.repo.marketplace` admits.
 
 No Copilot recognition uses the shared `rule`, `output style`, or `skill metadata` kind
 in the initial release. Typed surface, path-derived scope/invocation, selection,

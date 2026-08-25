@@ -126,7 +126,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(admitted.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -163,7 +162,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(admitted.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -189,7 +187,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -225,7 +222,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -245,7 +241,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(retry.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -279,7 +274,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -294,7 +288,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(second.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -341,7 +334,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -380,7 +372,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(admitted.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -449,7 +440,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -482,7 +472,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(retry.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -556,7 +545,6 @@ describe('scan lifecycle', () => {
     }).serialize();
     await coordinator.completeScan(first.scanRequestId, {
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
@@ -634,7 +622,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(first.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -656,7 +643,6 @@ describe('scan lifecycle', () => {
     await coordinator.completeScan(retry.scanRequestId, {
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
       outcome: 'complete',
       visitedEntries: 0,
@@ -686,7 +672,6 @@ describe('an explicit rescan replaces the whole generation (T182)', () => {
     }).serialize();
     await coordinator.completeScan(first.scanRequestId, {
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       visitedEntries: 4,
       candidateFiles: 2,
       readBytes: 10,
@@ -717,7 +702,6 @@ describe('an explicit rescan replaces the whole generation (T182)', () => {
     }
     await coordinator.completeScan(rescan.scanRequestId, {
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       visitedEntries: 3,
       candidateFiles: 1,
       readBytes: 7,
@@ -772,7 +756,6 @@ describe('an explicit rescan replaces the whole generation (T182)', () => {
     }
     await coordinator.completeScan(admitted.scanRequestId, {
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       visitedEntries: 1,
       candidateFiles: 1,
       readBytes: 5,

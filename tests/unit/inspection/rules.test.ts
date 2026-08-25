@@ -19,6 +19,7 @@ import {
   buildClaudeMcpFixture,
   buildClaudePermissionsFixture,
   buildCopilotSettingsFixture,
+  buildClaudeOutputStyleFixture,
   buildClaudeRuleFixture,
   buildClaudeAgentFixture,
   buildClaudeSkillFixture,
@@ -39,6 +40,7 @@ import {
   type ClaudeAgentFixture,
   type ClaudeInstructionFixture,
   type ClaudeMcpFixture,
+  type ClaudeOutputStyleFixture,
   type ClaudeRuleFixture,
   type ClaudeSkillFixture,
   type CodexInstructionFixture,
@@ -54,11 +56,17 @@ import {
   type CopilotInstructionFixture,
   type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
-import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
+
 import {
   CODEX_DERIVED_FALLBACK_RULE,
+  CodexCompiledPluginCatalogRule,
   CODEX_REPOSITORY_RULES,
 } from '../../../src/server/inspection/rules/codex';
+import {
+  CLAUDE_REPOSITORY_RULES,
+  ClaudeCompiledPluginCatalogRule,
+  ClaudeCompiledPluginManifestRule,
+} from '../../../src/server/inspection/rules/claude';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
@@ -110,7 +118,7 @@ async function scanFixture() {
 
 describe('the shipped codex.repo.skill plan', () => {
   it('compiles the authored program once into the immutable typed plan', () => {
-    expect(CODEX_REPOSITORY_RULES).toHaveLength(6);
+    expect(CODEX_REPOSITORY_RULES).toHaveLength(7);
     const compiled = CODEX_REPOSITORY_RULES.find(
       (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
     )!;
@@ -136,8 +144,31 @@ describe('the shipped codex.repo.skill plan', () => {
 
 describe('the bounded companion census', () => {
   // The census is not part of the walk: `traversal.ts` executes the allowlist
-  // and knows nothing about what sits beside a candidate. `runSourceScan` opts
-  // in for the rules that declare it, so these assertions go through the scan.
+  // and knows nothing about what sits beside a candidate. `runSourceScan`
+  // enumerates the directory each recognized customization occupies, so these
+  // assertions go through the scan.
+
+  /**
+   * The files the census contributed for the skill whose entry point is
+   * `entryPath`: what the scan published below that skill's own directory and
+   * no rule admitted. No recognition carries a companion list — the census
+   * publishes each listed file once as an ordinary file, and the skill's file
+   * list is derived from those paths where it is shown (`projectSkillInventory`).
+   */
+  function censusFilesOf(
+    publication: {
+      readonly files: readonly { readonly sourceRelativePath: string }[];
+      readonly recognitions: readonly { readonly sourceRelativePath: string }[];
+    },
+    entryPath: string,
+  ): readonly string[] {
+    const directory = entryPath.slice(0, entryPath.lastIndexOf('/') + 1);
+    const admitted = new Set(publication.recognitions.map((one) => one.sourceRelativePath));
+    return publication.files
+      .map((file) => file.sourceRelativePath)
+      .filter((path) => path.startsWith(directory) && !admitted.has(path));
+  }
+
   async function skillCompanions(publicPath: string) {
     const publication = await runSourceScan({
       sourceId: 'src-1',
@@ -147,7 +178,12 @@ describe('the bounded companion census', () => {
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
     }
-    return publication.skillCompanionsByPath.get(publicPath);
+    const recognition = publication.recognitions.find(
+      (candidate) => candidate.sourceRelativePath === publicPath,
+    );
+    return recognition?.details.kind === 'skill'
+      ? censusFilesOf(publication, publicPath)
+      : undefined;
   }
 
   it('lists what accompanies a skill without admitting any of it', async () => {
@@ -203,7 +239,7 @@ describe('the bounded companion census', () => {
     expect(new Set(opened).size).toBe(opened.length);
     // The census did list companions for `greet`, and each was read and
     // published as an ordinary file that no rule admitted.
-    const companions = [...publication.skillCompanionsByPath.values()].flat();
+    const companions = censusFilesOf(publication, '.agents/skills/greet/SKILL.md');
     expect(companions.length).toBeGreaterThan(0);
     for (const companion of companions) {
       const file = publication.files.find((one) => one.sourceRelativePath === companion);
@@ -670,16 +706,19 @@ describe('the shipped codex.repo.instructions plan (T207)', () => {
     expect(derived.discoveryClass).toBe('bounded-derived-candidate');
     expect(derived.kind).toBe('instructions');
     expect(derived.matcher).toBeNull();
-    // The derived rule feeds no static traversal plan: the walked list holds
-    // the static rules alone, and the configuration-read stage expands the
-    // derivation into its own per-scan plan. The carrier's own candidacy
-    // (`codex.repo.config`, T286) does not change that: the derivation stays
-    // Phase 15's, seeded by the configuration read rather than by the
-    // carrier's admission.
+    // Neither derived rule feeds a static traversal plan: the walked list
+    // holds the static rules alone, and each derivation is expanded into its
+    // own per-scan plan by the configuration read, whose seeds are pinned
+    // paths — `.codex/config.toml` for the fallback basenames, the two
+    // catalog locations for a catalog's local plugin sources. The carriers'
+    // own candidacy (`codex.repo.config`, T286; `codex.repo.marketplace`)
+    // does not change that: a seed is read as configuration and seeded into
+    // the walk, so its own admission is the walk's ordinary business.
     expect(CODEX_REPOSITORY_RULES.map((candidate) => candidate.rule.ruleId)).toEqual([
       'codex.repo.agent',
       'codex.repo.config',
       'codex.repo.instructions',
+      'codex.repo.marketplace',
       'codex.repo.rules',
       'codex.repo.settings',
       'codex.repo.skill',
@@ -1206,6 +1245,447 @@ describe('the shipped claude.repo.rules plan (T424)', () => {
     expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
       'claude.behavior.repo.rules',
     ]);
+  });
+});
+
+describe('the shipped Codex plugin plans (T753)', () => {
+  it('compiles the catalog program the contract row shows, and no manifest program', () => {
+    // No selector matches a manifest: Codex activates a plugin root rather
+    // than discovering one, so the only plugin file a rule admits by path is
+    // the catalog, and a manifest arrives through the derivation the catalog
+    // seeds (contracts/vendors/openai-codex.md § Derived Repository rules).
+    for (const candidate of CODEX_REPOSITORY_RULES) {
+      if (candidate.kind !== 'plugin') {
+        continue;
+      }
+      expect(candidate.rule.ruleId, candidate.rule.ruleId).toBe('codex.repo.marketplace');
+    }
+    // Two selectors, not a first-non-empty probe: the vendor reads both
+    // catalog locations, so a repository carrying both has two carriers and
+    // neither decides against the other (FR-009).
+    const catalog = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.marketplace',
+    )!;
+    expect(catalog.kind).toBe('plugin');
+    expect(catalog.plan.selectors).toHaveLength(2);
+    expect(catalog.plan.selectors.map((selector) => selector.remainder)).toEqual([
+      [
+        { kind: 'literal', value: '.agents' },
+        { kind: 'literal', value: 'plugins' },
+        { kind: 'literal', value: 'marketplace.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude-plugin' },
+        { kind: 'literal', value: 'marketplace.json' },
+      ],
+    ]);
+    expect(catalog.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('reads a catalog as its entries and the plugin roots they name', () => {
+    const catalog = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.marketplace',
+    )!;
+    if (!(catalog instanceof CodexCompiledPluginCatalogRule)) {
+      throw new Error('the catalog rule compiles into the Codex catalog unit');
+    }
+    const sourceText = JSON.stringify({
+      name: 'examples',
+      interface: { displayName: 'Examples' },
+      plugins: [
+        { name: 'first', source: { source: 'local', path: './plugins/first' } },
+        { name: 'second', source: './plugins/second/' },
+        // Not an object: omitted whole rather than published partially, the
+        // rule the MCP carrier reading follows.
+        'third',
+      ],
+    });
+    const reading = catalog.pluginCarrierReadingOf(sourceText);
+    // Each entry is published under the name Codex addresses it by: the
+    // entry's own name qualified by this catalog's.
+    expect(reading.plugins.map((plugin) => plugin.name)).toEqual([
+      'first@examples',
+      'second@examples',
+    ]);
+    // The catalog's own keys are its own, never the `plugins` array whose
+    // entries are the declarations.
+    expect(reading.catalogFields.map((field) => field.key)).toEqual(['name', 'interface']);
+    // Both documented local spellings name the same plugin root, and a trailing
+    // slash is an ordinary spelling of a directory. The answer is where each
+    // plugin sits, never a file below it: a plugin is its root, and its own
+    // manifest is one of the files it ships.
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([
+      'plugins/first/',
+      'plugins/second/',
+    ]);
+  });
+
+  it('derives nothing from a source the closed local form does not name', () => {
+    const catalog = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.marketplace',
+    )!;
+    if (!(catalog instanceof CodexCompiledPluginCatalogRule)) {
+      throw new Error('the catalog rule compiles into the Codex catalog unit');
+    }
+    const sourceText = JSON.stringify({
+      plugins: [
+        // A Git or npm source names no directory this Source holds.
+        { name: 'git', source: { source: 'git-subdir', path: './plugins/git', ref: 'main' } },
+        { name: 'npm', source: { source: 'npm', package: '@example/plugin' } },
+        // Absolute, home-relative, and root-escaping paths are not the
+        // documented form and would leave the Source (FR-004, FR-024).
+        { name: 'absolute', source: { source: 'local', path: '/opt/plugins/absolute' } },
+        { name: 'home', source: { source: 'local', path: '~/.codex/plugins/home' } },
+        { name: 'escaping', source: { source: 'local', path: './../outside/escaping' } },
+        // A path without the documented `./` prefix, and a source that is
+        // not a string or an object at all.
+        { name: 'bare', source: { source: 'local', path: 'plugins/bare' } },
+        { name: 'listed', source: ['./plugins/listed'] },
+        { name: 'nameless-source' },
+        // A segment no filesystem entry can be named. The platform raises on
+        // such a path rather than answering that nothing is there, so a
+        // declaration carrying one would fail the whole scan attempt instead
+        // of standing as an offering that occupies nothing (FR-028, FR-029).
+        { name: 'nul', source: { source: 'local', path: './plugins/\u0000bad' } },
+      ],
+    });
+    // Every entry is still published as a declaration — what a catalog wrote is
+    // what the row shows — while none of them names a directory this Source
+    // holds, so none ships a file here.
+    const reading = catalog.pluginCarrierReadingOf(sourceText);
+    expect(reading.plugins).toHaveLength(9);
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual(
+      reading.plugins.map(() => null),
+    );
+  });
+});
+
+describe('the shipped Claude plugin rules (T776)', () => {
+  it('anchors the skills-directory manifest at the root own skills directory', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.skills-directory-plugin',
+    )!;
+    expect(compiled.kind).toBe('plugin');
+    // No leading recursive step, unlike the plain-skill program beside it: a
+    // project-scope skills-directory plugin loads from the launch working
+    // directory's own `.claude/skills/` and the page documents it as not
+    // walking ancestors, so a nested `.claude/skills` belongs to a working
+    // directory this product does not select.
+    expect(compiled.plan.selectors[0]!.remainder.map((segment) => segment.kind)).toEqual([
+      'literal',
+      'literal',
+      'regex',
+      'literal',
+      'literal',
+    ]);
+  });
+
+  it('reads a manifest as the one plugin the folder holding it is', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.skills-directory-plugin',
+    )!;
+    if (!(compiled instanceof ClaudeCompiledPluginManifestRule)) {
+      throw new Error('the skills-directory rule compiles into the Claude manifest unit');
+    }
+    const reading = compiled.pluginCarrierReadingOf(
+      JSON.stringify({ name: 'declared-differently', version: '0.3.1' }),
+      '.claude/skills/release-notes/.claude-plugin/plugin.json',
+    );
+    // The name is the folder's, qualified by the vendor's own word for this
+    // path: what makes the folder a plugin is the manifest being in it rather
+    // than anything the manifest says, so its own `name` key stays one of the
+    // fields the detail publishes.
+    expect(reading.plugins.map((plugin) => plugin.name)).toEqual(['release-notes@skills-dir']);
+    expect(reading.plugins[0]!.fields.map((field) => field.key)).toEqual(['name', 'version']);
+    expect(reading.plugins[0]!.pluginRoot).toBe('.claude/skills/release-notes/');
+    expect(reading.plugins[0]!.manifestPaths).toEqual([
+      '.claude/skills/release-notes/.claude-plugin/plugin.json',
+    ]);
+    // A manifest declares one plugin and nothing about a catalog.
+    expect(reading.catalogFields).toEqual([]);
+  });
+
+  it('reads a catalog as its entries and the plugin roots they name', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.marketplace',
+    )!;
+    if (!(compiled instanceof ClaudeCompiledPluginCatalogRule)) {
+      throw new Error('the marketplace rule compiles into the Claude catalog unit');
+    }
+    const reading = compiled.pluginCarrierReadingOf(
+      JSON.stringify({
+        name: 'inspector-examples',
+        owner: { name: 'Platform team' },
+        plugins: [
+          { name: 'quality-review', source: { source: 'local', path: './plugins/quality-review' } },
+          { name: 'changelog-writer', source: './plugins/changelog-writer/' },
+          // Not an object: omitted whole rather than published partially.
+          'third',
+        ],
+      }),
+    );
+    expect(reading.plugins.map((plugin) => plugin.name)).toEqual([
+      'quality-review@inspector-examples',
+      'changelog-writer@inspector-examples',
+    ]);
+    expect(reading.catalogFields.map((field) => field.key)).toEqual(['name', 'owner']);
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([
+      'plugins/quality-review/',
+      'plugins/changelog-writer/',
+    ]);
+    // The manifest inside each root is named, not admitted: it is one of the
+    // files that plugin ships, and the detail opens on it.
+    expect(reading.plugins.map((plugin) => plugin.manifestPaths)).toEqual([
+      ['plugins/quality-review/.claude-plugin/plugin.json'],
+      ['plugins/changelog-writer/.claude-plugin/plugin.json'],
+    ]);
+  });
+
+  it('names no directory for a source the closed local form does not name', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.marketplace',
+    )!;
+    if (!(compiled instanceof ClaudeCompiledPluginCatalogRule)) {
+      throw new Error('the marketplace rule compiles into the Claude catalog unit');
+    }
+    const reading = compiled.pluginCarrierReadingOf(
+      JSON.stringify({
+        name: 'inspector-examples',
+        plugins: [
+          { name: 'shorthand', source: 'owner/repo' },
+          { name: 'git', source: { source: 'git', url: 'https://example.com/p.git' } },
+          { name: 'npm', source: { source: 'npm', package: '@example/plugin' } },
+          { name: 'absolute', source: { source: 'local', path: '/opt/plugins/absolute' } },
+          { name: 'home', source: { source: 'local', path: '~/.claude/plugins/home' } },
+          { name: 'escaping', source: { source: 'local', path: './../outside/escaping' } },
+          { name: 'bare', source: { source: 'local', path: 'plugins/bare' } },
+          { name: 'nameless-source' },
+        ],
+      }),
+    );
+    // Every entry is still published as a declaration — what a catalog wrote is
+    // what the row shows — while none of them names a directory this Source
+    // holds, so none ships a file here.
+    expect(reading.plugins).toHaveLength(8);
+    expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual(
+      reading.plugins.map(() => null),
+    );
+  });
+});
+
+describe('the one catalog location every product reads (T820)', () => {
+  it('admits `.claude-plugin/marketplace.json` under all three products', () => {
+    // The same physical path is Codex's legacy-compatible catalog location,
+    // where Claude documents a repository's own catalog, and the fourth form
+    // Copilot checks. Each product admits it through its own rule, which is
+    // what gives one file three recognitions and one row per name each of them
+    // resolves (FR-007, data-model.md § Inventory unit).
+    const admitting = [
+      ...CODEX_REPOSITORY_RULES,
+      ...CLAUDE_REPOSITORY_RULES,
+      ...COPILOT_REPOSITORY_RULES,
+    ].filter(
+      (compiled) =>
+        compiled.kind === 'plugin' &&
+        compiled.plan.selectors.some(
+          (selector) =>
+            selector.remainder.every(
+              (segment, index) =>
+                segment.kind === 'literal' &&
+                segment.value === ['.claude-plugin', 'marketplace.json'][index],
+            ) && selector.remainder.length === 2,
+        ),
+    );
+    expect(admitting.map((compiled) => compiled.rule.ruleId).toSorted()).toEqual([
+      'claude.repo.marketplace',
+      'codex.repo.marketplace',
+      'copilot.repo.marketplace',
+    ]);
+  });
+
+  it('resolves one catalog entry to the same name under every product', () => {
+    // Each product qualifies a plugin by the catalog's own name — the spelling
+    // its own commands take — so one catalog entry is one row rather than
+    // three that differ only in who read it.
+    const sourceText = JSON.stringify({
+      name: 'shared-tools',
+      plugins: [{ name: 'formatter', source: { source: 'local', path: './plugins/formatter' } }],
+    });
+    const names = [
+      ...CODEX_REPOSITORY_RULES,
+      ...CLAUDE_REPOSITORY_RULES,
+      ...COPILOT_REPOSITORY_RULES,
+    ]
+      .map((compiled) => {
+        // The kind is the discriminant the recognizer itself dispatches on, and
+        // a catalog unit is what a `.repo.marketplace` record compiles into:
+        // narrowing through it is what lets the reading be asked for at all.
+        if (compiled.kind !== 'plugin' || !compiled.rule.ruleId.endsWith('.repo.marketplace')) {
+          return null;
+        }
+        if (compiled.pluginCarrier !== 'catalog') {
+          throw new Error(`${compiled.rule.ruleId} is not a catalog unit`);
+        }
+        return compiled.pluginCarrierReadingOf(sourceText, '.claude-plugin/marketplace.json')
+          .plugins[0]?.name;
+      })
+      .filter((name) => name !== null);
+    expect(names).toEqual([
+      'formatter@shared-tools',
+      'formatter@shared-tools',
+      'formatter@shared-tools',
+    ]);
+  });
+});
+
+describe('the shipped claude.repo.output-style plan (T660)', () => {
+  it('compiles the root-anchored direct-child program the contract row shows', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.output-style',
+    )!;
+    expect(compiled.tool).toBe('claude');
+    expect(compiled.kind).toBe('output style');
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['claude.repo.output-style']!.matcher!),
+    );
+    // No recursive step at either end. The page names the direct Markdown
+    // children of an `.claude/output-styles/` directory and documents no
+    // descent into one, and the layer chain it does document runs from a
+    // session working directory this product never observes — so the selected
+    // root's own directory is the whole reach (FR-001, FR-009).
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'output-styles' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ]);
+    expect(compiled.plan.selectionPolicy).toBe('all-matches');
+  });
+
+  it('is explained by the selection strategy, by identity', () => {
+    const compiled = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.output-style',
+    )!;
+    expect(compiled.relations).toBe(RULE_RELATIONS['claude.repo.output-style']);
+    // Which style a session applies, and which layer wins a duplicate name,
+    // are the strategy's; the rule says only what may be read (FR-009).
+    expect(compiled.relations.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual(
+      ['claude.output-style.selection'],
+    );
+    // The Repository lookup alone: the User layer the same page names is a
+    // different Source boundary this rule may not read.
+    expect(compiled.relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.output-style',
+    ]);
+  });
+});
+
+describe('the direct-child Claude output-style inventory (T660)', () => {
+  let styleFixture: ClaudeOutputStyleFixture;
+
+  beforeAll(() => {
+    styleFixture = buildClaudeOutputStyleFixture('inspector-claude-output-style-rules');
+  });
+
+  afterAll(() => {
+    rmSync(styleFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits every direct `.md` child of the root `.claude/output-styles/`', async () => {
+    const result = await scanWith(styleFixture.root, CLAUDE_REPOSITORY_RULES);
+    const admitted = result.files
+      .filter((file) =>
+        resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, file.admissions).some(
+          (rule) => rule.rule.ruleId === 'claude.repo.output-style',
+        ),
+      )
+      .map((file) => file.publicPath)
+      .sort();
+    expect(admitted).toEqual([...styleFixture.expectedStylePaths]);
+  });
+
+  it('admits no nested layer, subdirectory, spelling variant, or VCS internal', async () => {
+    const result = await scanWith(styleFixture.root, CLAUDE_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of styleFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+    // The nested project layer is the documented boundary case: the page says
+    // project styles load from every `.claude/output-styles/` between the
+    // working directory and the repository root, and this product observes no
+    // working directory, so only the selected root's own layer is admitted.
+    expect(paths.has(styleFixture.duplicateNamePath)).toBe(false);
+  });
+
+  it('names each style by its declared name, falling back to the file name', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-output-styles',
+      root: styleFixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const names = publication.recognitions
+      .filter((recognition) => recognition.details.kind === 'output style')
+      .map((recognition) =>
+        recognition.details.kind === 'output style' ? recognition.details.styleName : '',
+      )
+      .sort();
+    expect(names).toEqual([...styleFixture.expectedStyleNames]);
+  });
+
+  it('falls back to the file name for a malformed style, without guessing a name', async () => {
+    // A failed extraction publishes no declarations, so the name the vendor
+    // documents for a file that declares none is what stands — the file name,
+    // which is the path's own fact rather than a reading of the failed parse
+    // (FR-028).
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-output-styles',
+      root: styleFixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const malformed = publication.recognitions.find(
+      (recognition) =>
+        recognition.sourceRelativePath === styleFixture.malformedStylePath &&
+        recognition.details.kind === 'output style',
+    );
+    expect(malformed?.parseStatus).toBe('failed');
+    if (malformed?.details.kind !== 'output style') {
+      throw new Error('expected an output-style recognition');
+    }
+    expect(malformed.details.styleName).toBe('broken');
+    // All-or-nothing: the declarations and the instructions are both empty
+    // while the complete source stays displayed (FR-028).
+    expect(malformed.details.frontmatter).toEqual([]);
+    expect(malformed.details.bodyText).toBe('');
+  });
+
+  it('carries the authored credential and environment reference into no name', async () => {
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-output-styles',
+      root: styleFixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error(`expected a publishable scan, got ${publication.kind}`);
+    }
+    const secret = publication.recognitions.find(
+      (recognition) =>
+        recognition.sourceRelativePath === styleFixture.secretStylePath &&
+        recognition.details.kind === 'output style',
+    );
+    if (secret?.details.kind !== 'output style') {
+      throw new Error('expected an output-style recognition');
+    }
+    // The name is the declared one; the credential the description and body
+    // carry is authored content the detail serves and the row never does
+    // (FR-026, FR-027).
+    expect(secret.details.styleName).toBe('Deploy notes');
+    expect(secret.details.bodyText).toContain(FIXTURE_SECRET_LITERAL);
   });
 });
 

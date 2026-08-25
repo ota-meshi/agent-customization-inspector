@@ -52,6 +52,8 @@ import type {
   FileDetailDto,
   FileOpenTarget,
   McpCarrierDetailDto,
+  PluginCarrierDetailDto,
+  PluginCarrierDetailParams,
   PermissionPolicyDetailDto,
   RejectionCode,
   SessionSnapshot,
@@ -85,6 +87,21 @@ export type RescanState =
   | 'accepted'
   /** The host returned a declared closed rejection for the command. */
   | 'rejected';
+
+/**
+ * Which slot a file detail request fills, and therefore which part of a page
+ * its failure belongs to.
+ *
+ * `page` is the file a detail page is *about*: its failure leaves nothing to
+ * show, so the page reports it. `pane` is a file selected inside a
+ * customization the page already describes — a skill's companion, one of a
+ * plugin's own files — which fails alone while the tree the reader retries
+ * from stays. `manifest` is a plugin's own declaration of itself, shown beside
+ * the offering: it is a third file with a third outcome, so its failure is
+ * reported where it is shown and never fails the pane the reader's selection
+ * is in.
+ */
+export type FileDetailSlot = 'page' | 'pane' | 'manifest';
 
 /**
  * Where the one open file detail stands (contracts/http-api.md
@@ -265,6 +282,39 @@ export class SessionViewState {
    * detail under two names.
    */
   public readonly openCompanion = shallowRef<FileDetailDto | null>(null);
+
+  /**
+   * The open plugin carrier's detail, or null while none is (contracts/http-api.md
+   * § get-plugin-carrier-detail). Its own slot beside the MCP carrier's,
+   * because the two responses are different shapes: a plugin manifest's
+   * detail carries the complete authored source its file is, and the page
+   * renders from whichever slot its own route filled.
+   */
+  public readonly pluginDetail = shallowRef<PluginCarrierDetailDto | null>(null);
+
+  /**
+   * What the plugin manifest's own request failed with, or null while none
+   * has (contracts/http-api.md § get-file-detail).
+   *
+   * Its own slot beside {@link detailErrorMessage} because the manifest and
+   * the file the reader selected are requests about two different files: a
+   * manifest this scan cannot read is a fact about the plugin panel, and
+   * failing the pane the selection is in with it would report the reader's own
+   * file as unreadable and never ask for it.
+   */
+  public readonly entryDetailError = shallowRef<string | null>(null);
+
+  /**
+   * Which row {@link pluginDetail} answers for, or null while it holds none.
+   *
+   * The response carries the carrier's own file and the declarations it was
+   * asked for, but not the name it was asked *about*, so the request is what
+   * says whether the held detail is still the open row's — which is what lets
+   * selecting another of the plugin's files keep the declarations instead of
+   * refetching them. Private: it is a request key, and a surface that wanted
+   * the row would take it from the route it came from.
+   */
+  #openPluginRow: PluginCarrierDetailParams | null = null;
 
   /**
    * The open MCP carrier detail, or null while none is. Its own slot beside
@@ -789,6 +839,12 @@ export class SessionViewState {
     this.entryDetail.value = null;
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
+    this.pluginDetail.value = null;
+    this.entryDetailError.value = null;
+    // The request key goes with the detail it keyed. It is authored text — a
+    // carrier's path and a declared plugin name — so leaving it behind would
+    // keep part of what the reader navigated away from in memory (FR-027).
+    this.#openPluginRow = null;
     this.policyDetail.value = null;
     this.fileDetailState.value = 'idle';
     for (const disposer of this.#openContentOwners) {
@@ -797,6 +853,110 @@ export class SessionViewState {
     // A detail failure belongs to the route that requested it. A session error
     // survives: it describes the session, not the file the reader just left.
     this.#detailError.value = null;
+  }
+
+  /**
+   * Fetches one file's detail under `owns`, settling every outcome that is not
+   * a detail and returning null for each of them, so the pages that open a
+   * file cannot drift into different handling of what a request can answer.
+   * A `stale` or failed settlement clears whatever is on screen: showing the
+   * previous file under a newer selection would claim a file the page does not
+   * have.
+   *
+   * `pane` marks a file selected *inside* a customization the page is already
+   * describing — a skill's companion, one of a plugin's own files. Only such a
+   * request can fail alone: what describes the customization is still in hand,
+   * and its tree is what the reader retries from, where the failure of the file
+   * a page is *about* leaves nothing to show.
+   */
+  async #fetchOwnedFileDetail(
+    sourceRelativePath: string,
+    owns: () => boolean,
+    slot: FileDetailSlot,
+  ): Promise<FileDetailDto | null> {
+    const outcome = await this.#client.fetchFileDetail(sourceRelativePath);
+    switch (outcome.kind) {
+      case 'adopted':
+        return owns() ? outcome.detail : null;
+      case 'rejected':
+        // The one rejection these requests can receive: no current generation
+        // holds a file at the path. It is a declared functional outcome, shown
+        // as its own state rather than as an error.
+        if (owns()) {
+          this.entryDetail.value = null;
+          this.openCompanion.value = null;
+          this.fileDetailState.value = 'stale';
+          // The rejection proves this client's snapshot is older than the
+          // host's committed generation — the path came from a snapshot whose
+          // file the commit since removed. Refetching now makes "return to the
+          // inventory and open it again" show what the current generation
+          // actually holds.
+          void this.refresh();
+        }
+        return null;
+      case 'failed':
+        // A fatal failure is the transport reporting the host is gone, which
+        // is true of the session rather than of this request, so it is the one
+        // outcome a no-longer-owning request still reports.
+        if (outcome.fatal) {
+          this.#sessionError.value = outcome.error.message;
+          this.view.value = 'ended';
+        } else if (owns()) {
+          if (slot === 'manifest') {
+            // The manifest's own outcome, in the slot that shows it: the pane
+            // state and the page error belong to the file the reader selected,
+            // which is a separate request with a separate answer.
+            this.entryDetail.value = null;
+            this.entryDetailError.value = outcome.error.message;
+            return null;
+          }
+          if (slot === 'pane') {
+            this.openCompanion.value = null;
+            this.fileDetailState.value = 'companion-failed';
+          } else {
+            this.entryDetail.value = null;
+            this.openCompanion.value = null;
+            this.fileDetailState.value = 'idle';
+          }
+          this.#detailError.value = outcome.error.message;
+        }
+        return null;
+      case 'newer-generation':
+        // The host has committed past this page's adopted snapshot, and the
+        // path may well survive there — the response was withheld so one
+        // generation's labels never sit over another's content. Adopting the
+        // newer snapshot is the fix, and the route re-requests under it: its
+        // open effect watches the committed generations, so the refresh both
+        // closes this selection and reopens the same path against the new
+        // snapshot. Fresh rather than joined, for the same reason as the
+        // rescan recovery: an in-flight fetch may predate the commit this
+        // withholding proves, and adopting its older snapshot would re-request
+        // nothing.
+        if (owns()) {
+          await this.#refreshFreshly();
+          // Adopting the newer snapshot closes this selection and advances the
+          // version, so still owning here means no adoption happened: the
+          // refresh failed non-fatally — a fatal failure purges, which changes
+          // the epoch. Without this transition the page would sit on a loading
+          // or held state with no request in flight and no recovery control;
+          // the entry-failure state is the surface with the retry. The
+          // refresh's own error stays the shell's to report
+          // (`#sessionError`), so no message is copied here — the route states
+          // its own condition and neither surface repeats the other.
+          if (owns()) {
+            this.entryDetail.value = null;
+            this.openCompanion.value = null;
+            this.fileDetailState.value = 'idle';
+          }
+        }
+        return null;
+      case 'purged':
+        // The disposer already cleared the detail along with the view.
+        return null;
+      case 'discarded':
+        // A newer selection superseded this request and owns the state now.
+        return null;
+    }
   }
 
   /**
@@ -864,97 +1024,10 @@ export class SessionViewState {
       this.entryDetail.value = null;
       this.openCompanion.value = null;
       this.carrierDetail.value = null;
+      this.pluginDetail.value = null;
       this.policyDetail.value = null;
     }
-    /**
-     * Fetches one detail and settles every non-detail outcome, so the entry
-     * point and the companion cannot drift into different handling. A `stale`
-     * or failed settlement clears whatever is on screen: on the held path that
-     * is the previous file, which the tree and the URL no longer name, and
-     * showing it under the newer selection would claim a file the page does
-     * not have.
-     */
-    const fetchOwned = async (sourceRelativePath: string): Promise<FileDetailDto | null> => {
-      const outcome = await this.#client.fetchFileDetail(sourceRelativePath);
-      switch (outcome.kind) {
-        case 'adopted':
-          return owns() ? outcome.detail : null;
-        case 'rejected':
-          // The one rejection these requests can receive: no current
-          // generation holds a file at the path. It is a declared functional
-          // outcome, shown as its own state rather than as an error.
-          if (owns()) {
-            this.entryDetail.value = null;
-            this.openCompanion.value = null;
-            this.fileDetailState.value = 'stale';
-            // The rejection proves this client's snapshot is older than the
-            // host's committed generation — the path came from a snapshot
-            // whose file the commit since removed. Refetching now makes
-            // "return to the inventory and open it again" show what the
-            // current generation actually holds.
-            void this.refresh();
-          }
-          return null;
-        case 'failed':
-          // A fatal failure is the transport reporting the host is gone, which
-          // is true of the session rather than of this request, so it is the
-          // one outcome a no-longer-owning request still reports.
-          if (outcome.fatal) {
-            this.#sessionError.value = outcome.error.message;
-            this.view.value = 'ended';
-          } else if (owns()) {
-            // A companion's own failure fails only the pane: the held entry
-            // still describes the skill — its recognition and file tree are
-            // not what failed — where an entry failure leaves nothing to show.
-            if (sourceRelativePath !== entryPath && this.entryDetail.value !== null) {
-              this.openCompanion.value = null;
-              this.fileDetailState.value = 'companion-failed';
-            } else {
-              this.entryDetail.value = null;
-              this.openCompanion.value = null;
-              this.fileDetailState.value = 'idle';
-            }
-            this.#detailError.value = outcome.error.message;
-          }
-          return null;
-        case 'newer-generation':
-          // The host has committed past this page's adopted snapshot, and the
-          // path may well survive there — the response was withheld so one
-          // generation's labels never sit over another's content. Adopting
-          // the newer snapshot is the fix, and the route re-requests under
-          // it: its open effect watches the committed generations, so the
-          // refresh both closes this selection and reopens the same path
-          // against the new snapshot. Fresh rather than joined, for the same
-          // reason as the rescan recovery: an in-flight fetch may predate the
-          // commit this withholding proves, and adopting its older snapshot
-          // would re-request nothing.
-          if (owns()) {
-            await this.#refreshFreshly();
-            // Adopting the newer snapshot closes this selection and advances
-            // the version, so still owning here means no adoption happened:
-            // the refresh failed non-fatally — a fatal failure purges, which
-            // changes the epoch. Without this transition the page would sit
-            // on a loading or held state with no request in flight and no
-            // recovery control; the entry-failure state is the surface with
-            // the retry. The refresh's own error stays the shell's to report
-            // (`#sessionError`), so no message is copied here — the route
-            // states its own condition and neither surface repeats the other.
-            if (owns()) {
-              this.entryDetail.value = null;
-              this.openCompanion.value = null;
-              this.fileDetailState.value = 'idle';
-            }
-          }
-          return null;
-        case 'purged':
-          // The disposer already cleared the detail along with the view.
-          return null;
-        case 'discarded':
-          // A newer selection superseded this request and owns the state now.
-          return null;
-      }
-    };
-    const entry = held ?? (await fetchOwned(entryPath));
+    const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page'));
     if (entry === null || !owns()) {
       return;
     }
@@ -973,7 +1046,9 @@ export class SessionViewState {
         ? this.openCompanion.value
         : null;
     const companion =
-      openPath === entryPath ? null : (heldCompanion ?? (await fetchOwned(openPath)));
+      openPath === entryPath
+        ? null
+        : (heldCompanion ?? (await this.#fetchOwnedFileDetail(openPath, owns, 'pane')));
     if ((openPath !== entryPath && companion === null) || !owns()) {
       return;
     }
@@ -1017,6 +1092,7 @@ export class SessionViewState {
     this.entryDetail.value = null;
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
+    this.pluginDetail.value = null;
     this.policyDetail.value = null;
     const outcome = await this.#client.fetchMcpCarrierDetail(sourceRelativePath);
     switch (outcome.kind) {
@@ -1068,6 +1144,198 @@ export class SessionViewState {
   }
 
   /**
+   * Requests one plugin carrier's declarations for one inventory row, the
+   * plugin's own manifest, and the file of that plugin the reader has selected,
+   * and adopts all three — or records why they could not be shown. The plugin
+   * counterpart of {@link openFileDetail}, through the same request version,
+   * epoch capture, and state machine, because the functions serve the one open
+   * detail (contracts/http-api.md § get-plugin-carrier-detail).
+   *
+   * The three are one open for the reason a skill's two are: a plugin is its
+   * root, so the page describes the offering, shows the plugin's own
+   * declaration of itself, and shows the file being read, all at once. The
+   * manifest takes the entry-point slot a skill's `SKILL.md` uses and is held
+   * across a file selection for the same reason; a file the plugin ships
+   * carries no recognition, so both are served by the file detail every
+   * unrecognized file is. `manifestPath` is null for an offering whose source
+   * names no directory here, and `selectedFilePath` is null when the manifest
+   * is what the reader has open.
+   */
+  public async openPluginDetail(
+    params: PluginCarrierDetailParams,
+    manifestPath: string | null,
+    selectedFilePath: string | null,
+    owner?: symbol,
+  ): Promise<void> {
+    this.#detailOwner = owner ?? null;
+    this.#detailRequestVersion += 1;
+    const requested = this.#detailRequestVersion;
+    this.#detailError.value = null;
+    this.entryDetailError.value = null;
+    const capturedEpoch = this.#clientData.epoch();
+    const owns = (): boolean =>
+      requested === this.#detailRequestVersion && this.#clientData.epoch() === capturedEpoch;
+    // The declarations already on screen when the row has not changed. Keeping
+    // them is what makes selecting another of the plugin's files a change to
+    // the source alone, for the reason the skill route's entry point is kept:
+    // clearing them would take the page through its loading state, unmounting
+    // the tree the reader is using — and the link they just activated with it,
+    // dropping keyboard focus to the document.
+    const held =
+      this.#openPluginRow !== null &&
+      this.#openPluginRow.sourceRelativePath === params.sourceRelativePath &&
+      this.#openPluginRow.pluginName === params.pluginName
+        ? this.pluginDetail.value
+        : null;
+    if (held !== null && this.fileDetailState.value === 'companion-failed') {
+      // A retry — or another file selected — from the failed pane: the
+      // declarations stay, and the pane returns to its in-flight state so the
+      // failed branch and its retry button unmount.
+      this.fileDetailState.value = 'ready';
+    }
+    if (held === null) {
+      this.fileDetailState.value = 'loading';
+      // The previous detail — every slot's — is dropped before the next one is
+      // asked for, so a slow request never leaves one file's content on screen
+      // under another customization's heading.
+      this.entryDetail.value = null;
+      this.openCompanion.value = null;
+      this.carrierDetail.value = null;
+      this.pluginDetail.value = null;
+      this.#openPluginRow = null;
+      this.policyDetail.value = null;
+    }
+    const detail = held ?? (await this.#fetchOwnedPluginCarrierDetail(params, owns));
+    if (detail === null || !owns()) {
+      // The fetch settled the state itself — a stale path, this route's own
+      // error, or a request this one no longer owns.
+      return;
+    }
+    this.pluginDetail.value = detail;
+    this.#openPluginRow = params;
+    // The declarations are the page's subject and are published the moment they
+    // are owned, not with the file: a file's own failure must fail only the
+    // pane, and that requires the row to already be the page's held state.
+    this.fileDetailState.value = 'ready';
+    this.#detailError.value = null;
+    // The plugin's own manifest, in the slot a skill's entry point uses: it is
+    // what the page shows beside the offering, so it stays while the reader
+    // steps through the other files the plugin ships.
+    // The file the reader selected comes first, and the manifest after it. Two
+    // files, two requests, two outcomes: asking for the manifest first let its
+    // failure return before the selection was ever requested, so a manifest
+    // this scan cannot read took the reader's own file down with it. One
+    // request when the manifest is what is open: it is already here, and asking
+    // again would put one file's detail in two slots.
+    await this.#openSelectedPluginFile(
+      selectedFilePath === manifestPath ? null : selectedFilePath,
+      owns,
+    );
+    if (manifestPath === null || !owns()) {
+      return;
+    }
+    const heldManifest =
+      this.entryDetail.value?.file.sourceRelativePath === manifestPath
+        ? this.entryDetail.value
+        : null;
+    const manifest =
+      heldManifest ?? (await this.#fetchOwnedFileDetail(manifestPath, owns, 'manifest'));
+    if (owns()) {
+      // Null when its own request failed, which the slot's error already says.
+      this.entryDetail.value = manifest;
+    }
+  }
+
+  /**
+   * Fetches one plugin carrier's declarations under `owns`, settling every
+   * outcome that is not a detail and returning null for each of them — the
+   * plugin half of what {@link #fetchOwnedFileDetail} does for a file, through
+   * the same states, because the two serve the one open detail.
+   */
+  async #fetchOwnedPluginCarrierDetail(
+    params: PluginCarrierDetailParams,
+    owns: () => boolean,
+  ): Promise<PluginCarrierDetailDto | null> {
+    const outcome = await this.#client.fetchPluginCarrierDetail(params);
+    switch (outcome.kind) {
+      case 'adopted':
+        return owns() ? outcome.detail : null;
+      case 'rejected':
+        // No current generation holds an admitted plugin carrier at the path — the
+        // same declared outcome, shown as the same stale state, as a file
+        // detail's (contracts/http-api.md § get-plugin-carrier-detail).
+        if (owns()) {
+          this.pluginDetail.value = null;
+          this.#openPluginRow = null;
+          this.fileDetailState.value = 'stale';
+          void this.refresh();
+        }
+        return null;
+      case 'failed':
+        if (outcome.fatal) {
+          this.#sessionError.value = outcome.error.message;
+          this.view.value = 'ended';
+        } else if (owns()) {
+          this.pluginDetail.value = null;
+          this.#openPluginRow = null;
+          this.fileDetailState.value = 'idle';
+          this.#detailError.value = outcome.error.message;
+        }
+        return null;
+      case 'newer-generation':
+        // Same recovery as the file detail's: adopt the newer snapshot, and
+        // the route's own open effect re-requests the path under it.
+        if (owns()) {
+          await this.#refreshFreshly();
+          if (owns()) {
+            this.pluginDetail.value = null;
+            this.#openPluginRow = null;
+            this.fileDetailState.value = 'idle';
+          }
+        }
+        return null;
+      case 'purged':
+        // The disposer already cleared the detail along with the view.
+        return null;
+      case 'discarded':
+        // A newer selection superseded this request and owns the state now.
+        return null;
+    }
+  }
+
+  /**
+   * Opens the file of the plugin the reader has selected, beside the
+   * declarations already published — reusing one it is already holding, for
+   * the reason the skill route's companion is reused: returning to a file is a
+   * change of selection, not of content, and a refetch could fail and take
+   * good state with it.
+   *
+   * A null selection leaves the pane empty, which is the answer for a row
+   * whose offering reached no files here.
+   */
+  async #openSelectedPluginFile(
+    selectedFilePath: string | null,
+    owns: () => boolean,
+  ): Promise<void> {
+    if (selectedFilePath === null) {
+      this.openCompanion.value = null;
+      return;
+    }
+    const held =
+      this.openCompanion.value?.file.sourceRelativePath === selectedFilePath
+        ? this.openCompanion.value
+        : null;
+    const file = held ?? (await this.#fetchOwnedFileDetail(selectedFilePath, owns, 'pane'));
+    if (file === null || !owns()) {
+      // The fetch settled the state itself — the pane's own failure, a stale
+      // path, or a request this one no longer owns.
+      return;
+    }
+    this.openCompanion.value = file;
+    this.fileDetailState.value = 'ready';
+  }
+
+  /**
    * Requests one declared permission policy and adopts it, or records why it
    * could not be shown — the policy counterpart of {@link openFileDetail},
    * through the same request version, epoch capture, and state machine,
@@ -1096,6 +1364,7 @@ export class SessionViewState {
     this.entryDetail.value = null;
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
+    this.pluginDetail.value = null;
     this.policyDetail.value = null;
     const outcome = await this.#client.fetchPermissionPolicyDetail(sourceRelativePath);
     switch (outcome.kind) {

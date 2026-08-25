@@ -338,6 +338,54 @@ export const CLAUDE_MCP_SELECTION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Claude plugin activation: which plugins a session can offer, and what each of
+ * the two documented paths requires before one is live.
+ *
+ * `filter` alone, because neither path composes a winner. A folder under the
+ * skills directory that carries `.claude-plugin/plugin.json` is loaded as
+ * `<folder>@skills-dir` on the next session with no marketplace and no install
+ * step, subject to the workspace trust dialog for a project-scope one; a
+ * catalog's plugins reach a session only once the catalog is registered — by
+ * `/plugin marketplace add` or `extraKnownMarketplaces` — and the plugin is
+ * enabled under `enabledPlugins`, keyed `<plugin-name>@<marketplace-name>`.
+ *
+ * Registration, enablement, trust, and installation are separate runtime states
+ * this product never reads, so an inventory row states the authored manifest and
+ * catalog facts and never that a plugin is active (FR-009,
+ * contracts/runtime-composition.md § claude.plugins.activation).
+ */
+export const CLAUDE_PLUGINS_ACTIVATION_STRATEGY = {
+  strategyId: 'claude.plugins.activation',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['filter'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['Skills-directory plugins', 'Plugin installation scopes'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "A skills-directory folder carrying .claude-plugin/plugin.json loads as <folder>@skills-dir on the next session with no marketplace and no install step, and a project-scope one — from the launch working directory's own .claude/skills/, without walking ancestors — loads only after the workspace trust dialog is accepted, with its MCP servers still going through per-server approval and its monitors not loading at all; an installed plugin instead belongs to the settings scope chosen at installation.",
+        },
+        {
+          sourceId: 'anthropic.claude-code.marketplaces.catalog-sources',
+          url: 'https://code.claude.com/docs/en/plugin-marketplaces',
+          officialHost: 'code.claude.com',
+          sections: ['Create the marketplace file', 'Require marketplaces for your team'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A catalog reaches a session only once it is added — users run /plugin marketplace add, or a settings file names it — so the catalog file states which plugins it offers and where each comes from, never that one is registered, installed, or enabled.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Claude's contribution to the strategy registry, keyed by `strategyId` in identifier order. */
 /**
  * Claude rule layering: add the applicable User and project rule layers
@@ -414,6 +462,66 @@ export const CLAUDE_SETTINGS_PRECEDENCE_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Claude Code output-style selection: which of several styles a session
+ * applies, and which file a name resolves to when more than one layer defines
+ * it.
+ *
+ * `select-closest` for the name, and only within the project chain: the page
+ * states that when more than one of the nested `.claude/output-styles/`
+ * directories between the working directory and the repository root defines a
+ * style with the same name, Claude Code uses the one closest to the working
+ * directory. It says nothing about how a project style and a same-named User or
+ * managed-policy style resolve against each other, so no order between those
+ * three levels is recorded — an order stated here would be this product's guess
+ * rather than the vendor's rule.
+ *
+ * `replace` for the application: one style is applied at a time — the
+ * `outputStyle` setting or the session's own choice picks it, and a plugin style
+ * marked `force-for-plugin` applies whenever its plugin is enabled and overrides
+ * that setting, with the first such plugin loaded winning.
+ *
+ * Recording it decides nothing a surface shows: the working directory, the
+ * settings and session state that select a style, and which plugins are
+ * enabled are all runtime this product never observes, so no row or detail
+ * projects a selection (FR-009).
+ */
+export const CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY = {
+  strategyId: 'claude.output-style.selection',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['select-closest', 'replace'],
+  // The locations, the same-name outcome, and the selection inputs are all on
+  // one page, so the composition itself is documented; the contract's own
+  // status column carries the surface qualifier beside it, because which IDE
+  // surfaces expose the picker is availability rather than a gap in what the
+  // page establishes (contracts/runtime-composition.md § Claude Code).
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.output-styles.locations',
+          url: 'https://code.claude.com/docs/en/output-styles',
+          officialHost: 'code.claude.com',
+          sections: ['Create a custom output style', 'How output styles work'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'A custom style is saved at one of three levels — User, project, and the managed settings directory — and project output styles load from every .claude/output-styles/ between the working directory and the repository root, where a style name more than one of those nested directories defines resolves to the directory closest to the working directory; no order between the three levels is stated. A style is applied by the outputStyle setting or the session picker, taking effect after /clear or the next session, plugins can ship styles in an output-styles/ directory, and a plugin style with force-for-plugin applies whenever the plugin is enabled and overrides the user setting, with the first such plugin loaded winning.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.ide.shared-differences',
+          url: 'https://code.claude.com/docs/en/ide-integrations',
+          officialHost: 'code.claude.com',
+          sections: ['Configure settings', 'VS Code extension vs. Claude Code CLI'],
+          reviewedOn: '2026-07-25',
+          establishes:
+            'The IDE integrations share the CLI configuration while differing per surface in what they expose, which is why the availability of the style picker is stated per surface rather than as one fact.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   Record<ClaudeStrategyId, RuntimeCompositionStrategy>
 > = {
@@ -424,5 +532,7 @@ export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   [CLAUDE_MCP_SELECTION_STRATEGY.strategyId]: CLAUDE_MCP_SELECTION_STRATEGY,
   [CLAUDE_RULES_LAYERING_STRATEGY.strategyId]: CLAUDE_RULES_LAYERING_STRATEGY,
   [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: CLAUDE_SETTINGS_PRECEDENCE_STRATEGY,
+  [CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY.strategyId]: CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY,
+  [CLAUDE_PLUGINS_ACTIVATION_STRATEGY.strategyId]: CLAUDE_PLUGINS_ACTIVATION_STRATEGY,
   [CLAUDE_SKILLS_SELECTION_STRATEGY.strategyId]: CLAUDE_SKILLS_SELECTION_STRATEGY,
 };

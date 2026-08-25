@@ -42,6 +42,10 @@ import {
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   createRepositoryFixtureRoot,
+  buildClaudePluginFixture,
+  buildCodexPluginFixture,
+  buildCopilotPluginFixture,
+  buildUnifiedPluginFixture,
 } from '../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
 import {
@@ -107,7 +111,6 @@ async function scanOnce(
     await context.coordinator.completeScan(admitted.scanRequestId, {
       files: publication.files,
       recognitions: publication.recognitions,
-      skillCompanionsByPath: publication.skillCompanionsByPath,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
       visitedEntries: publication.visitedEntries,
@@ -1232,7 +1235,6 @@ describe('publication authority and relationship targets', () => {
     await context.coordinator.completeScan(admitted.scanRequestId, {
       files: publication.files,
       recognitions: publication.recognitions,
-      skillCompanionsByPath: publication.skillCompanionsByPath,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
       visitedEntries: publication.visitedEntries,
@@ -1272,6 +1274,199 @@ describe('publication authority and relationship targets', () => {
       expect(bounded.has(path), `opened outside the shipped plans and censuses: ${path}`).toBe(
         true,
       );
+    }
+  });
+});
+
+describe('the Codex plugin scan (T754)', () => {
+  const cleanups: (() => void)[] = [];
+  afterEach(() => {
+    for (const cleanup of cleanups.splice(0)) {
+      cleanup();
+    }
+  });
+
+  /** Scans the plugin fixture with the shipped catalog and returns the publication. */
+  async function scanPluginFixture(prefix: string) {
+    const fixture = buildCodexPluginFixture(prefix);
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const publication = await runSourceScan({
+      sourceId: 'src-codex-plugins',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    return { fixture, publication };
+  }
+
+  it('admits the catalogs and nothing below the plugin roots they name', async () => {
+    const { fixture, publication } = await scanPluginFixture('inspector-plugin-scan');
+    const pluginRecognitions = publication.recognitions.filter(
+      (recognition) => recognition.details.kind === 'plugin',
+    );
+    const pluginPaths = [
+      ...new Set(pluginRecognitions.map((recognition) => recognition.sourceRelativePath)),
+    ].toSorted();
+    expect(pluginPaths).toEqual([...fixture.expectedPluginPaths].toSorted());
+    // The legacy-compatible catalog is one file all three products read: Codex
+    // reads it at the location its own page names, it is where Claude documents
+    // a repository's own catalog, and it is one of the four locations Copilot
+    // checks. One file, three recognitions, one row per name each of them
+    // resolves (FR-007).
+    expect(
+      pluginRecognitions
+        .filter(
+          (recognition) => recognition.sourceRelativePath === '.claude-plugin/marketplace.json',
+        )
+        .map((recognition) => recognition.tool)
+        .toSorted(),
+    ).toEqual(['claude', 'codex', 'copilot']);
+    // The components a manifest points at stay relationships: admitting one
+    // would read a file on the strength of a value another file wrote, which
+    // is exactly what `codex.excluded.plugin-files` forbids.
+    for (const componentPath of fixture.componentPaths) {
+      expect(pluginPaths, componentPath).not.toContain(componentPath);
+    }
+    // A manifest at any other depth, a catalog one directory below the root,
+    // and another extension are paths no selector reaches.
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(pluginPaths, nearMiss).not.toContain(nearMiss);
+    }
+  });
+
+  it('reads each physical file once, however many rules reached it', async () => {
+    const fixture = buildCodexPluginFixture('inspector-plugin-reads');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const reads: string[] = [];
+    const readFile = vi.spyOn(fsIo, 'readFile');
+    readFile.mockImplementation(async (path) => {
+      reads.push(String(path));
+      return realReadFile(path);
+    });
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-codex-plugin-reads',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      readFile.mockRestore();
+    }
+    for (const path of fixture.expectedPluginPaths) {
+      const absolute = join(fixture.root, ...path.split('/'));
+      expect(
+        reads.filter((read) => read === absolute),
+        path,
+      ).toHaveLength(1);
+    }
+  });
+
+  it('ships nothing for a source the Source does not hold as a directory', async () => {
+    const fixture = buildCodexPluginFixture('inspector-plugin-absent');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const rows = context.session.snapshot().plugins;
+
+    // A Git, npm, absolute, home, or root-escaping source names no directory
+    // here, and neither does a local path this repository does not carry: the
+    // offering stands as a row and ships nothing (FR-004, FR-024).
+    for (const name of [...fixture.nonLocalPluginNames, 'absent-plugin']) {
+      const row = rows.find((entry) => entry.name === `${name}@inspector-examples`);
+      expect(row, name).toBeDefined();
+      expect(row?.files, name).toEqual([]);
+    }
+  });
+
+  it('keeps a plugin root on the offering that named it, whatever its manifest calls itself', async () => {
+    const fixture = buildCodexPluginFixture('inspector-plugin-divergent');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+
+    // The entry is `renamed-helper` and the manifest below it declares another
+    // name. What a reader installs is the entry — `plugin@marketplace` — so the
+    // row is the offering's and the manifest is one of the files it ships.
+    const row = context.session
+      .snapshot()
+      .plugins.find((entry) => entry.name === 'renamed-helper@inspector-examples');
+    expect(row?.files).toContain(fixture.divergentNameManifestPath);
+    expect(context.session.snapshot().plugins.map((entry) => entry.name)).not.toContain(
+      'renamed-helper-v2',
+    );
+  });
+
+  it('keys a row by the catalog that offers the plugin, not by the name alone', async () => {
+    const fixture = buildCodexPluginFixture('inspector-plugin-marketplace');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const rows = context.session.snapshot().plugins;
+
+    // Both catalogs offer `release-notes` from plugin roots of their own, so
+    // the name is two rows and each ships its own files.
+    const current = rows.find((entry) => entry.name === 'release-notes@inspector-examples');
+    const legacy = rows.find((entry) => entry.name === 'release-notes@inspector-legacy');
+    expect(current?.files).toContain(fixture.objectSourceManifestPath);
+    expect(legacy?.files).toContain(fixture.legacyCatalogManifestPath);
+    expect(current?.files).not.toContain(fixture.legacyCatalogManifestPath);
+  });
+
+  it('publishes a malformed manifest as one of the plugin files, with its own diagnostic', async () => {
+    const fixture = buildCodexPluginFixture('inspector-plugin-malformed');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // The manifest is one of the files the plugin ships, so nothing parses it
+    // and nothing fails: it is published as the ordinary file it is, and the
+    // generation stays complete.
+    const row = snapshot.plugins.find((entry) => entry.name === 'broken-plugin@inspector-legacy');
+    expect(row?.files).toContain(fixture.malformedManifestPath);
+    const file = snapshot.files.find(
+      (candidate) => candidate.sourceRelativePath === fixture.malformedManifestPath,
+    );
+    expect(file?.diagnosticIds).toEqual([]);
+    expect(
+      snapshot.diagnostics.filter(
+        (diagnostic) => diagnostic.sourceRelativePath === fixture.malformedManifestPath,
+      ),
+    ).toEqual([]);
+  });
+
+  it('reads the whole plugin root a catalog offering names (T773)', async () => {
+    const fixture = buildCodexPluginFixture('inspector-plugin-files');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+
+    // A plugin is its root: the skills, hooks, MCP files, and documents it
+    // ships are what an agent is given, and the offering shown without them
+    // would show the entry and not the customization
+    // (contracts/inspection-path-allowlist.md § Bounded companion census).
+    const row = context.session
+      .snapshot()
+      .plugins.find((entry) => entry.name === 'release-notes@inspector-examples');
+    expect(row?.files).toEqual([
+      'plugins/release-notes/.codex-plugin/plugin.json',
+      'plugins/release-notes/.mcp.json',
+      'plugins/release-notes/README.md',
+      'plugins/release-notes/hooks/hooks.json',
+      'plugins/release-notes/skills/draft/SKILL.md',
+      'plugins/release-notes/skills/draft/reference.md',
+    ]);
+
+    // Each is published as the ordinary file it is, and none acquires a
+    // recognition: being in a plugin's directory makes a file the plugin's, not
+    // a customization of its own (`codex.excluded.plugin-files`).
+    const snapshot = context.session.snapshot();
+    const published = new Set(snapshot.files.map((file) => file.sourceRelativePath));
+    for (const file of row?.files ?? []) {
+      expect(published, file).toContain(file);
     }
   });
 });
@@ -1645,12 +1840,15 @@ describe('the unified skill inventory (T180)', () => {
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
     }
-    // The pipeline never reports itself running in reverse.
-    const order = ['enumerating', 'reading', 'recognizing'];
-    for (let index = 1; index < phases.length; index += 1) {
-      expect(order.indexOf(phases[index]!)).toBeGreaterThanOrEqual(
-        order.indexOf(phases[index - 1]!),
-      );
+    // The pipeline never reports itself running in reverse: every phase it
+    // reported is the next one of the documented sequence or a repeat of the
+    // current one (data-model.md § ScanProgress).
+    const pipeline = ['deriving', 'enumerating', 'reading', 'recognizing'];
+    let stage = 0;
+    for (const phase of phases) {
+      const rank = pipeline.indexOf(phase);
+      expect(rank, `${phase} after ${phases.join(' → ')}`).toBeGreaterThanOrEqual(stage);
+      stage = rank;
     }
     // The counters are cumulative for the attempt, and the committed figures
     // are the attempt's own totals rather than its starting zeros.
@@ -2853,6 +3051,439 @@ describe('a census-listed path a rule independently admits (FR-007)', () => {
         entry.definitions.flatMap((definition) => definition.companionFiles),
       ),
     ).toEqual(['.claude/skills/greet/reference.md', '.claude/skills/greet/reference.md']);
+  });
+});
+
+describe('the Claude plugin scan (T777)', () => {
+  /** Scans the Claude plugin fixture and returns its publishable outcome. */
+  async function scanClaudePluginFixture() {
+    const fixture = buildClaudePluginFixture('inspector-claude-plugin-scan');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-plugins',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    return { fixture, publication };
+  }
+
+  it('publishes a catalog root that is itself a plugin by placement, both ways', async () => {
+    // One directory, two ways in: a catalog offering names it, and the
+    // manifest inside it makes the folder a plugin on its own. Both rows are
+    // real and both list the file — a plugin is its root, so the manifest is
+    // one of the files the offering ships as well as the carrier of the row it
+    // heads (contracts/http-api.md § get-session `plugins[]`).
+    const root = createRepositoryFixtureRoot('inspector-claude-plugin-both-ways');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude-plugin'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude-plugin/marketplace.json'),
+      `${JSON.stringify({
+        name: 'inspector-examples',
+        plugins: [{ name: 'shared', source: { source: 'local', path: './.claude/skills/shared' } }],
+      })}\n`,
+      'utf8',
+    );
+    mkdirSync(join(root, '.claude/skills/shared/.claude-plugin'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude/skills/shared/.claude-plugin/plugin.json'),
+      `${JSON.stringify({ name: 'shared', version: '1.0.0' })}\n`,
+      'utf8',
+    );
+    writeFileSync(join(root, '.claude/skills/shared/notes.md'), '# notes\n', 'utf8');
+
+    const context = bootstrap(root);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const rows = context.session.snapshot().plugins;
+    const manifestPath = '.claude/skills/shared/.claude-plugin/plugin.json';
+    const offered = rows.find((entry) => entry.name === 'shared@inspector-examples');
+    const placed = rows.find((entry) => entry.name === 'shared@skills-dir');
+    // The shared catalog location, so the offering has a carrier per product.
+    expect(offered?.carriers.map((carrier) => carrier.tool)).toEqual([
+      'copilot',
+      'claude',
+      'codex',
+    ]);
+    expect(new Set(offered?.carriers.map((carrier) => carrier.sourceRelativePath))).toEqual(
+      new Set(['.claude-plugin/marketplace.json']),
+    );
+    expect(placed?.carriers.map((carrier) => carrier.sourceRelativePath)).toEqual([manifestPath]);
+    for (const row of [offered, placed]) {
+      expect([...(row?.files ?? [])].toSorted()).toEqual([
+        manifestPath,
+        '.claude/skills/shared/notes.md',
+      ]);
+    }
+  });
+
+  it('holds a declared root to the entry names its parents hold', async () => {
+    // The one path in a scan that nothing enumerated is the root a catalog
+    // spelled. A filesystem that compares names loosely resolves a spelling
+    // its directories do not hold — macOS is case-insensitive by default — and
+    // the files below it would then be published under a path no enumeration
+    // produces, and `./Node_Modules/acme` would reach an installed package the
+    // census root exclusion is written to keep out.
+    const root = createRepositoryFixtureRoot('inspector-claude-plugin-spelling');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude-plugin'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude-plugin/marketplace.json'),
+      `${JSON.stringify({
+        name: 'spelled',
+        plugins: [
+          { name: 'cased', source: { source: 'local', path: './Node_Modules/acme' } },
+          { name: 'exact', source: { source: 'local', path: './plugins/acme' } },
+        ],
+      })}\n`,
+      'utf8',
+    );
+    mkdirSync(join(root, 'node_modules/acme'), { recursive: true });
+    writeFileSync(join(root, 'node_modules/acme/index.js'), 'module.exports = {};\n', 'utf8');
+    mkdirSync(join(root, 'plugins/acme'), { recursive: true });
+    writeFileSync(join(root, 'plugins/acme/notes.md'), '# notes\n', 'utf8');
+
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-plugin-spelling',
+      root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const paths = publication.files.map((file) => file.sourceRelativePath);
+    expect(paths).toContain('plugins/acme/notes.md');
+    // Neither under the spelling that was asked for nor under the one the disk
+    // holds: the declaration names no directory this Source has.
+    expect(paths).not.toContain('Node_Modules/acme/index.js');
+    expect(paths).not.toContain('node_modules/acme/index.js');
+  });
+
+  it('keeps what a manifest placement establishes when its text does not parse', async () => {
+    // The folder is a plugin because the manifest is in it, so the name, the
+    // root, and the manifest's own path are the path's answers and not the
+    // parse's. A file that does not parse loses its declared fields and says so
+    // with a diagnostic; losing the plugin with them would move it to the row
+    // for carriers that resolve no name and take every file below its root off
+    // that plugin's page (FR-028).
+    const root = createRepositoryFixtureRoot('inspector-claude-plugin-malformed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude/skills/demo/.claude-plugin'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude/skills/demo/.claude-plugin/plugin.json'),
+      '{ "name": "demo",\n',
+      'utf8',
+    );
+    writeFileSync(join(root, '.claude/skills/demo/notes.md'), '# notes\n', 'utf8');
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-malformed-plugin',
+      root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const recognition = publication.recognitions.find(
+      (candidate) => candidate.details.kind === 'plugin',
+    );
+    expect(recognition?.parseStatus).toBe('failed');
+    if (recognition?.details.kind !== 'plugin') {
+      throw new Error('expected a plugin recognition');
+    }
+    expect(recognition.details.plugins).toEqual([
+      {
+        name: 'demo@skills-dir',
+        fields: [],
+        pluginRoot: '.claude/skills/demo/',
+        manifestPaths: ['.claude/skills/demo/.claude-plugin/plugin.json'],
+      },
+    ]);
+    // The root was enumerated too, so the plugin's own page has the file it
+    // ships beside the manifest that could not be read.
+    expect(publication.files.map((file) => file.sourceRelativePath)).toContain(
+      '.claude/skills/demo/notes.md',
+    );
+  });
+
+  it('admits the catalog and the skills-directory manifest, and nothing else', async () => {
+    const { fixture, publication } = await scanClaudePluginFixture();
+    const pluginPaths = [
+      ...new Set(
+        publication.recognitions
+          .filter(
+            (recognition) => recognition.details.kind === 'plugin' && recognition.tool === 'claude',
+          )
+          .map((recognition) => recognition.sourceRelativePath),
+      ),
+    ].toSorted();
+    expect(pluginPaths).toEqual([...fixture.expectedPluginPaths].toSorted());
+    // A manifest at the repository's own root, one a directory below a skills
+    // folder, and one under a nested `.claude/skills` are paths the anchored
+    // selector does not reach.
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(pluginPaths, nearMiss).not.toContain(nearMiss);
+    }
+    // A folder with a `SKILL.md` and no manifest is a skill and never a plugin.
+    expect(pluginPaths).not.toContain(fixture.plainSkillPath);
+    // The components the manifest points at stay relationships: admitting one
+    // would read a file on the strength of a value another file wrote, which is
+    // exactly what `claude.excluded.plugin-files` forbids.
+    for (const componentPath of fixture.componentPaths) {
+      expect(pluginPaths, componentPath).not.toContain(componentPath);
+    }
+  });
+
+  it('publishes what each plugin root ships as that plugin own files', async () => {
+    const fixture = buildClaudePluginFixture('inspector-claude-plugin-rows');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const rows = context.session
+      .snapshot()
+      .plugins.filter((entry) => entry.name?.includes('@') === true);
+    const skillsDirectoryRow = rows.find(
+      (entry) => entry.name === fixture.skillsDirectoryPluginName,
+    );
+    // The placement-loaded plugin: named after its folder, carried by the
+    // manifest that made the folder a plugin, and shipping every file below it —
+    // the manifest included, because a plugin is its root.
+    expect(skillsDirectoryRow?.carriers.map((carrier) => carrier.sourceRelativePath)).toEqual([
+      fixture.skillsDirectoryManifestPath,
+    ]);
+    // The manifest is one of the files the row lists as well as the carrier
+    // that resolves it: a plugin is its root, so `files` is that whole
+    // directory and the row's count is the number of files the plugin's own
+    // page lists (contracts/http-api.md § get-session `plugins[]`).
+    expect(skillsDirectoryRow?.files).toContain(fixture.skillsDirectoryManifestPath);
+    for (const componentPath of fixture.componentPaths) {
+      expect(skillsDirectoryRow?.files, componentPath).toContain(componentPath);
+    }
+
+    // A catalog entry's local root: its optional manifest is one of the files,
+    // never a carrier of its own.
+    const catalogRow = rows.find((entry) => entry.name === 'quality-review@inspector-examples');
+    // One catalog file, three products: `.claude-plugin/marketplace.json` is
+    // where Claude documents a repository's own catalog, the legacy-compatible
+    // location Codex reads, and one of the four Copilot checks — and all three
+    // resolve the entry under the same `<plugin>@<marketplace>` name, so the
+    // row lists a carrier per recognizing tool, in the closed tool order
+    // (FR-007).
+    expect(
+      catalogRow?.carriers.map((carrier) => `${carrier.sourceRelativePath} ${carrier.tool}`),
+    ).toEqual([
+      `${fixture.catalogPath} copilot`,
+      `${fixture.catalogPath} claude`,
+      `${fixture.catalogPath} codex`,
+    ]);
+    expect(catalogRow?.files).toContain(fixture.objectSourceManifestPath);
+
+    // A root the catalog names that ships no manifest still ships its files.
+    const bareRow = rows.find((entry) => entry.name === 'bare-helper@inspector-examples');
+    expect(bareRow?.files).toEqual([fixture.manifestlessRootFilePath]);
+
+    // Every source form that names no directory here: the offering stands and
+    // occupies nothing.
+    for (const nonLocal of fixture.nonLocalPluginNames) {
+      const row = rows.find((entry) => entry.name === `${nonLocal}@inspector-examples`);
+      expect(row?.files, nonLocal).toEqual([]);
+    }
+  });
+
+  it('reads a plugin file once and admits none of them', async () => {
+    const { fixture, publication } = await scanClaudePluginFixture();
+    const published = publication.files.map((file) => file.sourceRelativePath);
+    // Each of the plugin's files is published exactly once, and none of them
+    // carries a recognition: it belongs to the plugin whose root holds it, and
+    // that plugin already has a row (FR-003).
+    for (const componentPath of fixture.componentPaths) {
+      expect(
+        published.filter((path) => path === componentPath),
+        componentPath,
+      ).toHaveLength(1);
+      expect(
+        publication.recognitions.filter(
+          (recognition) => recognition.sourceRelativePath === componentPath,
+        ),
+        componentPath,
+      ).toEqual([]);
+    }
+    // The malformed manifest below a catalog's root is an ordinary published
+    // file: nothing parses it, so its trailing comma is no diagnostic (FR-028).
+    expect(published).toContain(fixture.malformedManifestPath);
+    const malformed = publication.files.find(
+      (file) => file.sourceRelativePath === fixture.malformedManifestPath,
+    );
+    expect(malformed?.diagnosticIds).toEqual([]);
+  });
+});
+
+describe('the Copilot plugin scan (T799)', () => {
+  it('admits the four catalog locations and nothing else', async () => {
+    const fixture = buildCopilotPluginFixture('inspector-copilot-plugin-scan');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const publication = await runSourceScan({
+      sourceId: 'src-copilot-plugins',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const pluginPaths = [
+      ...new Set(
+        publication.recognitions
+          .filter(
+            (recognition) =>
+              recognition.details.kind === 'plugin' && recognition.tool === 'copilot',
+          )
+          .map((recognition) => recognition.sourceRelativePath),
+      ),
+    ].toSorted();
+    expect(pluginPaths).toEqual([...fixture.expectedPluginPaths].toSorted());
+    // A manifest at the repository's own root is the plugin this repository
+    // publishes, a catalog a directory below the root is a path no selector
+    // reaches, and another extension is a third.
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(pluginPaths, nearMiss).not.toContain(nearMiss);
+    }
+    // An extension is never a plugin candidate (`copilot.excluded.cli-extensions`).
+    expect(pluginPaths).not.toContain(fixture.extensionPath);
+    expect(
+      publication.recognitions.filter(
+        (recognition) => recognition.sourceRelativePath === fixture.extensionPath,
+      ),
+    ).toEqual([]);
+  });
+
+  it('publishes each plugin root files under the row its catalog entry names', async () => {
+    const fixture = buildCopilotPluginFixture('inspector-copilot-plugin-rows');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const rows = context.session.snapshot().plugins;
+
+    // A root using the legacy `.plugin/` form, one using the plain
+    // `plugin.json`, and one using the Claude form Copilot also reads: the row
+    // is the offering either way, and the manifest is one of its files.
+    const review = rows.find((entry) => entry.name === 'quality-review@inspector-examples');
+    expect(review?.files).toContain(fixture.legacyFormManifestPath);
+    for (const component of fixture.componentPaths.filter((path) =>
+      path.startsWith('plugins/quality-review/'),
+    )) {
+      expect(review?.files, component).toContain(component);
+    }
+    const changelog = rows.find((entry) => entry.name === 'changelog-writer@inspector-examples');
+    expect(changelog?.files).toEqual([fixture.rootFormManifestPath]);
+    const notes = rows.find((entry) => entry.name === 'release-notes@inspector-examples');
+    expect(notes?.files).toEqual([fixture.claudeFormManifestPath]);
+
+    // Every source form that names no directory here ships nothing.
+    for (const nonLocal of fixture.nonLocalPluginNames) {
+      const row = rows.find((entry) => entry.name === `${nonLocal}@inspector-examples`);
+      expect(row?.files, nonLocal).toEqual([]);
+    }
+
+    // The other three catalogs are carriers of their own rows, each naming the
+    // same plugin root: one directory, three offerings, and the files under it
+    // reach each of their rows.
+    for (const marketplace of ['inspector-legacy', 'inspector-github', 'inspector-shared']) {
+      const row = rows.find((entry) => entry.name === `shared-helper@${marketplace}`);
+      expect(row?.files, marketplace).toEqual(['plugins/shared/plugin.json']);
+    }
+  });
+});
+
+describe('the unified plugin inventory (T821)', () => {
+  /** Scans the unified plugin fixture through a session, returning its snapshot. */
+  async function scanUnifiedPlugins(prefix: string) {
+    const fixture = buildUnifiedPluginFixture(prefix);
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    return { fixture, snapshot: context.session.snapshot() };
+  }
+
+  it('makes one row of a name every product resolves, listing a carrier per tool', async () => {
+    const { fixture, snapshot } = await scanUnifiedPlugins('inspector-unified-plugin-rows');
+    const shared = snapshot.plugins.find((entry) => entry.name === fixture.sharedPluginName);
+    // One catalog file, three products, one row: the row unit is the declared
+    // name, and each recognizing tool is a carrier of it in the closed tool
+    // order (data-model.md § Inventory unit).
+    expect(shared?.carriers.map((carrier) => carrier.tool)).toEqual(['copilot', 'claude', 'codex']);
+    expect(new Set(shared?.carriers.map((carrier) => carrier.sourceRelativePath))).toEqual(
+      new Set([fixture.sharedCatalogPath]),
+    );
+    // The files below the root that entry names are the plugin's own, whichever
+    // product reached them: two manifest forms, the skill it bundles, its hook
+    // file, and its MCP configuration.
+    expect(shared?.files).toEqual([...fixture.sharedPluginFiles].toSorted());
+
+    // Each product's own catalog location carries its own row.
+    const codexRow = snapshot.plugins.find((entry) => entry.name === fixture.codexPluginName);
+    expect(codexRow?.carriers.map((carrier) => carrier.tool)).toEqual(['codex']);
+    const copilotRow = snapshot.plugins.find((entry) => entry.name === fixture.copilotPluginName);
+    expect(copilotRow?.carriers.map((carrier) => carrier.tool)).toEqual(['copilot']);
+    // And the one plugin a product loads by placement alone.
+    const placed = snapshot.plugins.find(
+      (entry) => entry.name === fixture.skillsDirectoryPluginName,
+    );
+    expect(placed?.carriers.map((carrier) => carrier.sourceRelativePath)).toEqual([
+      fixture.skillsDirectoryManifestPath,
+    ]);
+
+    // A source outside this repository is a row that ships nothing here.
+    const remote = snapshot.plugins.find((entry) => entry.name === fixture.nonLocalPluginName);
+    expect(remote?.files).toEqual([]);
+  });
+
+  it('reads one physical file once, however many products recognize it', async () => {
+    const fixture = buildUnifiedPluginFixture('inspector-unified-plugin-reads');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    vi.clearAllMocks();
+    const publication = await runSourceScan({
+      sourceId: 'src-unified-plugins',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const path of [fixture.sharedCatalogPath, ...fixture.sharedPluginFiles]) {
+      expect(
+        opened.filter((opened) => opened === join(fixture.root, ...path.split('/'))),
+        path,
+      ).toHaveLength(1);
+    }
+    // Three recognitions come out of that one read of the shared catalog.
+    expect(
+      publication.recognitions
+        .filter((recognition) => recognition.sourceRelativePath === fixture.sharedCatalogPath)
+        .map((recognition) => recognition.tool)
+        .toSorted(),
+    ).toEqual(['claude', 'codex', 'copilot']);
+  });
+
+  it('keeps an MCP-shaped value inside a plugin file out of every MCP row', async () => {
+    const { fixture, snapshot } = await scanUnifiedPlugins('inspector-unified-plugin-mcp');
+    // The plugin's own manifest writes `mcpServers` as an inline map, and the
+    // root carries an `.mcp.json` of its own. Neither is an MCP carrier: only
+    // the exact locations a product documents are, and a plugin's files are
+    // published as the plugin's (data-model.md § Inventory unit).
+    const mcpPaths = snapshot.mcp.flatMap((entry) =>
+      entry.declarations.map((declaration) => declaration.sourceRelativePath),
+    );
+    expect(mcpPaths).not.toContain(fixture.inlineMcpManifestPath);
+    expect(mcpPaths).not.toContain('plugins/formatter/.mcp.json');
+    // They are still the plugin's files, read and published as such.
+    expect(
+      snapshot.plugins.find((entry) => entry.name === fixture.sharedPluginName)?.files,
+    ).toContain('plugins/formatter/.mcp.json');
   });
 });
 

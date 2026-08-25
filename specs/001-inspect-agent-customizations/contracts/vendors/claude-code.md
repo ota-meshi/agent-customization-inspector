@@ -97,6 +97,38 @@ Current Claude Code supports nested subagent spawning up to its documented depth
 No rule or relationship in this contract carries the obsolete assumption that a subagent
 cannot spawn another subagent.
 
+A plugin reaches this repository two ways, and only one of them needs a catalog.
+
+A folder under the skills directory that carries `.claude-plugin/plugin.json` is loaded as
+a plugin named `<folder>@skills-dir` on the next session, with no marketplace and no
+install step, and is discovered in place rather than copied into the plugin cache. The
+manifest's presence is what makes the folder a plugin, so it is the carrier
+`claude.repo.skills-directory-plugin` admits, and the folder holding it is the plugin root
+whose files the plugin ships. Project scope is the launch `cwd`'s own `.claude/skills/`
+and ancestor skill directories are not walked for this interpretation, which is why the
+matcher is anchored rather than layered like the plain-skill rule; the workspace trust
+dialog remains a runtime condition this product does not read.
+
+The other way is a catalog. `.claude/settings.json` registers one by name under
+`extraKnownMarketplaces`, honored only after the workspace trust dialog is accepted for
+that folder, and names the plugins to turn on under `enabledPlugins`, keyed
+`<plugin-name>@<marketplace-name>`. A repository's own catalog is documented at
+`.claude-plugin/marketplace.json` in its root, which `claude.repo.marketplace` admits: it
+maps each plugin name to that plugin's own source, and only a `./` path relative to the
+marketplace root names a directory this repository carries. A `github`, `git`, `npm`,
+`archive`, or `command` source leaves the name with no Repository directory, and enabling
+such a plugin in a project settings file does not install it for anyone else. The
+marketplace source and the plugin source are separate settings: the catalog says where each
+plugin comes from, never that it is installed.
+
+No rule admits the `.claude-plugin/plugin.json` below a catalog's local source, and none
+derives one. A manifest is optional there, and the plugin *is* its root: the files below
+that root — the manifest among them — are the files the plugin ships, enumerated by the
+bounded companion census (contracts/inspection-path-allowlist.md § Bounded companion
+census). Neither is a repository's own root treated as a plugin root: no cited page has
+Claude discover a plugin at an arbitrary path, and a manifest a repository keeps at its own
+root is a plugin it publishes rather than one a client loads here.
+
 ## Repository Inspector matchers
 
 These matchers are rooted at the exact Inspector selected Repository root. A descendant-inventory
@@ -119,8 +151,8 @@ unless a narrower exclusion or Global requirement is stated below.
 | `claude.repo.permissions` | Repository | `['.claude', 'settings.json']`; `['.claude', 'settings.local.json']` | `exact` for each selector, coinciding with `claude.repo.settings` by construction | `static-candidate` | `claude.behavior.repo.settings.shared`; `claude.behavior.repo.settings.local` | The same two files' permission-policy candidacy, recognized as `permissions` while `claude.repo.settings` recognizes them as `settings/config`: one file carries two recognitions when it declares for both, exactly as an admitted Codex config carrier does. A file that declares no `permissions` object is no permissions row | `anthropic.claude-code.settings.scopes-precedence` |
 | `claude.repo.mcp` | Repository | `['.mcp.json']` | `exact` | `static-candidate` | `claude.behavior.repo.mcp` | Conditional on the source root being Claude's project root and on trust/approval | `anthropic.claude-code.mcp.scopes-precedence` |
 | `claude.repo.output-style` | Repository | `['.claude', 'output-styles', /\.md$/u]` | `direct-child` of the Repository root's `.claude/output-styles/`; the page loads project styles from every such directory between the working directory and the repository root | `static-candidate` | `claude.behavior.repo.output-style` | Eligibility requires an ancestor layer of the active session and selection by settings/session state | `anthropic.claude-code.output-styles.locations` |
-| `claude.repo.plugin-manifest` | Repository | `['.claude-plugin', 'plugin.json']` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `claude.behavior.repo.plugin` | Inspector authoring policy only. Claude does not auto-discover this path at an arbitrary Repository root, and presence does not establish activation. A nested local manifest is reachable only through `claude.derived.local-plugin-manifest` | `anthropic.claude-code.plugins.components-scopes`; `anthropic.claude-code.marketplaces.catalog-sources` |
-| `claude.repo.marketplace` | Repository | `['.claude-plugin', 'marketplace.json']` | `exact`; the selected Repository root is treated as the authored marketplace root | `static-candidate` | `claude.behavior.repo.marketplace` | Inspector authoring policy only. Claude does not auto-register this catalog from an arbitrary Repository root; explicit registration remains a runtime condition | `anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.skills-directory-plugin` | Repository | `['.claude', 'skills', ANY_NAME, '.claude-plugin', 'plugin.json']` | `exact` under each direct child of the Repository root's `.claude/skills/`; the folder holding the manifest is the plugin root | `static-candidate` | `claude.behavior.repo.skills-directory-plugin` | A folder under the skills directory that carries this manifest is loaded as `<folder>@skills-dir` with no marketplace and no install step, so the manifest's presence is what makes the folder a plugin. Project scope is the launch `cwd`'s own `.claude/skills/`, and ancestor skill directories are not walked for this interpretation; workspace trust remains a runtime condition | `anthropic.claude-code.plugins.components-scopes` |
+| `claude.repo.marketplace` | Repository | `['.claude-plugin', 'marketplace.json']` | `exact`; the documented location of a repository's own catalog, which is the marketplace root its `./` entries resolve against | `static-candidate` | `claude.behavior.repo.marketplace` | The catalog is authored content this repository carries; explicit registration by configuration or command remains a runtime condition, so a row states what the catalog offers and never that a plugin is registered, installed, or enabled | `anthropic.claude-code.marketplaces.catalog-sources` |
 
 Contained `hooks` declarations are metadata on the accepted candidate that carries them
 and do not create another filesystem matcher; their owner set is the documented one — an
@@ -167,7 +199,6 @@ Claude Code vendor lookup claims.
 
 | Rule ID | Class | Closed derivation meaning | Behavior refs | Strategy refs | Status | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.derived.local-plugin-manifest` | `bounded-derived-candidate` | From an independently accepted marketplace catalog, accept only a local plugin `source` beginning with `./`, resolve it from the marketplace root without escape, and test only `<resolved-plugin-root>/.claude-plugin/plugin.json`. Absence is valid because the manifest is optional | `claude.behavior.repo.marketplace`; `claude.behavior.repo.plugin` | `claude.plugins.activation` | Inspector derivation aligned with vendor-relative-source semantics; not a Claude auto-scan | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `anthropic.claude-code.marketplaces.catalog-sources`; `anthropic.claude-code.plugins.components-scopes` |
 | `claude.excluded.user-runtime` | `excluded` | Exclude every User row above except `CLAUDE.md`, including settings/state, rules, skills, commands, agents, output styles, MCP state, plugins/cache, agent memory, auto memory, and workflows | `claude.behavior.user.rules`; `claude.behavior.user.skills`; `claude.behavior.user.commands`; `claude.behavior.user.agents`; `claude.behavior.user.settings`; `claude.behavior.user.output-style`; `claude.behavior.user.mcp-state`; `claude.behavior.user.plugins`; `claude.behavior.user.agent-memory`; `claude.behavior.user.auto-memory`; `claude.behavior.user.workflows` | — | Required by FR-016 and FR-018; exclusion does not deny vendor support | FR-013, FR-014, FR-016, FR-018, QR-001, QR-005 | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.changelog.legacy-command-nesting`; `anthropic.claude-code.subagents.scope-context`; `anthropic.claude-code.settings.scopes-precedence`; `anthropic.claude-code.output-styles.locations`; `anthropic.claude-code.mcp.scopes-precedence`; `anthropic.claude-code.directory.file-reference`; `anthropic.claude-code.plugins.components-scopes` |
 | `claude.excluded.plugin-files` | `excluded` | Exclude plugin component bodies such as skills, commands, agents, output styles, hooks, MCP/LSP declarations, monitors, themes, channels, settings, scripts, and assets; retain declarations as relationships | `claude.behavior.repo.plugin`; `claude.behavior.repo.marketplace` | `claude.plugins.activation` | Initial-release boundary; plugin manifest/catalog inventory is not component activation | FR-003, FR-004, FR-020, FR-021, FR-022, FR-024, QR-001, QR-005 | `anthropic.claude-code.plugins.components-scopes`; `anthropic.claude-code.directory.file-reference` |
 
@@ -232,8 +263,16 @@ read, connection, execution, import, installation, or activation authority.
 | `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Exact supported leaf/item occurrences in root `.claude/settings.json` or `.claude/settings.local.json`; contained Hook values belong only to the `hook` recognition, and settings never own an MCP recognition |
 | `permissions` | — | Every leaf/item occurrence of the top-level `permissions` object in root `.claude/settings.json` or `.claude/settings.local.json`, exactly as authored — the whole object, because an allowlist of some of its keys would drop authored policy without being able to say which; a settings file declaring no `permissions` object holds no permission-policy recognition, and every other settings key belongs to the `settings/config` recognition. A rule string names a tool and an optional specifier and is never resolved to a file, a command, or a domain |
 | `output style` | — | Exact frontmatter values in an accepted direct-child output-style Markdown file |
-| `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component/dependency leaf/item occurrences in an accepted `.claude-plugin/plugin.json`; inline Hook bodies are projected only by their separate contained recognitions, and inline MCP declarations are the manifest's own declared content |
-| `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact catalog and plugin-entry leaf/item occurrences in an accepted `.claude-plugin/marketplace.json`; `marketplace.plugin.source` alone may seed the closed local-manifest derivation |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component/dependency leaf/item occurrences in an accepted `.claude-plugin/plugin.json`, and exact catalog and plugin-entry leaf/item occurrences in an accepted `.claude-plugin/marketplace.json`, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone may seed the closed local-manifest derivation; inline Hook bodies are projected only by their separate contained recognitions, and inline MCP declarations are their carrier's own declared content |
+
+The `plugin` row's derivation clause — `marketplace.plugin.source` alone seeding a closed
+local-manifest derivation — describes a derivation no rule performs: a manifest below a
+catalog's local root is one of the files that plugin ships, not a candidate
+(§ Repository vendor behavior). It is frozen, digest-recorded design input with no
+consumer, and changing it is a digest-recorded change under the official-source contract's
+stop-and-regenerate rule. What the row governs is its other two halves: the manifest
+`claude.repo.skills-directory-plugin` admits, and the catalog entries
+`claude.repo.marketplace` admits.
 
 No Claude recognition uses the shared `skill metadata` kind in the initial release. Typed
 layer, path-derived namespace, selection, precedence, trust, surface, default, and

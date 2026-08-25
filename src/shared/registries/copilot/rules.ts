@@ -1373,10 +1373,139 @@ export const COPILOT_EXCLUDED_CLI_LSP_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `copilot.repo.marketplace` matcher: the four documented locations a
+ * marketplace root keeps its catalog at, checked in that order.
+ *
+ * Anchored at the selected root, because a repository that publishes a catalog
+ * *is* the marketplace root its `./` entries resolve against. Which of the four
+ * a given root uses is the vendor's own order, and admitting all four claims no
+ * registration: `chat.plugins.marketplaces` and the workspace settings'
+ * `extraKnownMarketplaces` are what make a session consider a catalog, and both
+ * are runtime inputs this product never reads.
+ */
+const COPILOT_REPO_MARKETPLACE_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [{ kind: 'literal', value: 'marketplace.json' }],
+    [
+      { kind: 'literal', value: '.plugin' },
+      { kind: 'literal', value: 'marketplace.json' },
+    ],
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'plugin' },
+      { kind: 'literal', value: 'marketplace.json' },
+    ],
+    [
+      { kind: 'literal', value: '.claude-plugin' },
+      { kind: 'literal', value: 'marketplace.json' },
+    ],
+  ],
+};
+
+/**
+ * Copilot Repository plugin catalogs: the read-authorizing counterpart of the
+ * two plugin behaviors, one per surface.
+ *
+ * Recognized as `plugin` rather than as a kind of its own, for the reason the
+ * other vendors' catalogs are: a catalog is the table that resolves a plugin
+ * name to the source that plugin comes from, so the names its `plugins[]`
+ * entries declare are the inventory's rows and this file is a carrier of them
+ * (data-model.md § Inventory unit).
+ *
+ * No rule admits a plugin manifest. A manifest is what a plugin root carries,
+ * and a root is established by installation, by a registered marketplace, or by
+ * an absolute path in a user setting — never by a file appearing at a
+ * repository path — so a manifest below a catalog's local source is one of the
+ * files that plugin ships, and a manifest at a repository's own root is a
+ * plugin that repository publishes
+ * (contracts/vendors/github-copilot.md § Repository Inspector matcher rules).
+ */
+export const COPILOT_REPO_MARKETPLACE_RULE = {
+  ruleId: 'copilot.repo.marketplace',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'plugin',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_MARKETPLACE_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.plugins',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
+          officialHost: 'docs.github.com',
+          sections: ['File locations', 'marketplace.json'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json — the four exact locations this rule admits — checked in that order, and its plugins array carries one entry per plugin with the name and the source that plugin comes from.',
+        },
+        {
+          sourceId: 'vscode.copilot.plugins',
+          url: 'https://code.visualstudio.com/docs/agent-customization/agent-plugins',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure plugin marketplaces'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A marketplace is a Git repository containing plugin definitions, added to a session through the chat.plugins.marketplaces setting, so a catalog a repository carries is authored content and registration is a separate runtime fact.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * `copilot.excluded.cli-extensions`: the CLI's experimental project extensions
+ * under `.github/extensions/`, which are never plugin candidates.
+ *
+ * A record rather than silence, because the path sits beside the customization
+ * locations this product does admit and a reader can point at it. An extension
+ * is executable JavaScript the CLI loads on enablement, not an authored
+ * customization document, and reading one would be reading a program rather
+ * than a declaration (FR-003, FR-024).
+ *
+ * `kind` is null: an excluded rule recognizes nothing, and an extension is not
+ * a plugin under another name — the two are distinct locations in the vendor's
+ * own file table.
+ */
+export const COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE = {
+  ruleId: 'copilot.excluded.cli-extensions',
+  tool: 'copilot',
+  discoveryClass: 'excluded',
+  kind: null,
+  sourceKinds: ['repository'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['experimental'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.plugins',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
+          officialHost: 'docs.github.com',
+          sections: ['File locations', 'Loading order and precedence'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "The plugin reference's own file table separates a plugin's manifest and components from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations, so an extension file is never one of the manifests a plugin is recognized by.",
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Copilot's contribution to the inspection-rule registry, keyed by `ruleId`. */
 export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, InspectionRule>> = {
   [COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE.ruleId]:
     COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
+  [COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE.ruleId]: COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE,
   [COPILOT_EXCLUDED_CLI_LSP_RULE.ruleId]: COPILOT_EXCLUDED_CLI_LSP_RULE,
   [COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE.ruleId]: COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
   [COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE.ruleId]: COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE,
@@ -1392,6 +1521,7 @@ export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, Inspection
   [COPILOT_REPO_INSTRUCTIONS_REPOSITORY_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_REPOSITORY_RULE,
   [COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE.ruleId]:
     COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE,
+  [COPILOT_REPO_MARKETPLACE_RULE.ruleId]: COPILOT_REPO_MARKETPLACE_RULE,
   [COPILOT_REPO_MCP_RULE.ruleId]: COPILOT_REPO_MCP_RULE,
   [COPILOT_REPO_MCP_VSCODE_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_RULE,
   [COPILOT_REPO_MCP_VSCODE_ROOT_RULE.ruleId]: COPILOT_REPO_MCP_VSCODE_ROOT_RULE,

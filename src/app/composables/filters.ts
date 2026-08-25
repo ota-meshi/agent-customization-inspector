@@ -32,6 +32,8 @@ import type {
   InstructionInventoryEntryDto,
   McpInventoryEntryDto,
   PermissionsInventoryEntryDto,
+  OutputStyleInventoryEntryDto,
+  PluginInventoryEntryDto,
   RuleInventoryEntryDto,
   SessionSnapshot,
   SettingsInventoryEntryDto,
@@ -159,6 +161,24 @@ export class InventoryFilterView {
   public readonly permissionsRows: ComputedRef<readonly PermissionsInventoryEntryDto[]>;
 
   /**
+   * The plugin rows that pass every active filter, in snapshot order. A row is
+   * one declared plugin name (data-model.md § Inventory unit); a filter keeps
+   * the carriers it matches and drops the row only when none is left, so a
+   * narrowed row states what still matches rather than every carrier the name
+   * has, exactly as the MCP rows do.
+   */
+  public readonly pluginRows: ComputedRef<readonly PluginInventoryEntryDto[]>;
+
+  /**
+   * The output-style rows that pass every active filter, in snapshot order. A
+   * row is one style name a tool selects (data-model.md § Inventory unit); a
+   * filter keeps the definitions it matches and drops the row only when none
+   * is left, so a narrowed row states what still matches rather than every
+   * file the name has.
+   */
+  public readonly outputStyleRows: ComputedRef<readonly OutputStyleInventoryEntryDto[]>;
+
+  /**
    * The settings-and-configuration rows that pass every active filter, in
    * snapshot order. A row is one recognized settings or configuration file
    * (data-model.md § Inventory unit), and the tool filter narrows it by the
@@ -242,6 +262,12 @@ export class InventoryFilterView {
         ...(snapshot.value?.permissions ?? []).flatMap((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
+        ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
+          entry.carriers.map((carrier) => carrier.tool),
+        ),
+        ...(snapshot.value?.outputStyles ?? []).flatMap((entry) =>
+          entry.definitions.map((definition) => definition.tool),
+        ),
         ...(snapshot.value?.settings ?? []).flatMap((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
@@ -259,6 +285,8 @@ export class InventoryFilterView {
         ...((snapshot.value?.prompts ?? []).length > 0 ? (['prompt/command'] as const) : []),
         ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
         ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
+        ...((snapshot.value?.plugins ?? []).length > 0 ? (['plugin'] as const) : []),
+        ...((snapshot.value?.outputStyles ?? []).length > 0 ? (['output style'] as const) : []),
         ...((snapshot.value?.settings ?? []).length > 0 ? (['settings/config'] as const) : []),
       ]);
       return CUSTOMIZATION_KIND_ORDER.filter((candidate) => present.has(candidate));
@@ -481,6 +509,41 @@ export class InventoryFilterView {
     );
 
     /**
+     * The plugin rows that survive every filter, each reduced to the carriers
+     * that matched: the same two questions every carrier-grouped row asks —
+     * does the file match the path filter, and is its recognizing tool the
+     * selected one.
+     */
+    this.pluginRows = computed(() =>
+      (snapshot.value?.plugins ?? []).flatMap((entry) => {
+        const carriers = entry.carriers.filter(
+          (carrier) =>
+            fileMatches(carrier.sourceRelativePath) &&
+            (effectiveTool.value === null || carrier.tool === effectiveTool.value),
+        );
+        return carriers.length === 0 ? [] : [{ ...entry, carriers }];
+      }),
+    );
+
+    /**
+     * The output styles that survive every filter, each reduced to the
+     * definitions that matched, by the same two questions the prompts filter
+     * asks of its own rows: this kind's row is a name and its definitions, so
+     * the filter narrows the definitions and keeps a row only while one is
+     * left.
+     */
+    this.outputStyleRows = computed(() =>
+      (snapshot.value?.outputStyles ?? []).flatMap((entry) => {
+        const definitions = entry.definitions.filter(
+          (definition) =>
+            fileMatches(definition.sourceRelativePath) &&
+            (effectiveTool.value === null || definition.tool === effectiveTool.value),
+        );
+        return definitions.length === 0 ? [] : [{ ...entry, definitions }];
+      }),
+    );
+
+    /**
      * The settings and configuration files that survive every filter, each
      * reduced to the recognitions that matched, by the same two questions the
      * rules filter asks of its own rows.
@@ -525,9 +588,13 @@ export class InventoryFilterView {
                       ? this.ruleRows.value.length
                       : candidate === 'permissions'
                         ? this.permissionsRows.value.length
-                        : candidate === 'settings/config'
-                          ? this.settingsRows.value.length
-                          : 0,
+                        : candidate === 'plugin'
+                          ? this.pluginRows.value.length
+                          : candidate === 'output style'
+                            ? this.outputStyleRows.value.length
+                            : candidate === 'settings/config'
+                              ? this.settingsRows.value.length
+                              : 0,
         );
       }
       return counts;
@@ -555,6 +622,12 @@ export class InventoryFilterView {
         ),
         ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
         ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
+          entry.carriers.map((carrier) => carrier.sourceRelativePath),
+        ),
+        ...(snapshot.value?.outputStyles ?? []).flatMap((entry) =>
+          entry.definitions.map((definition) => definition.sourceRelativePath),
+        ),
         ...(snapshot.value?.settings ?? []).map((entry) => entry.sourceRelativePath),
       ]);
       // A companion belongs to the customization whose directory holds it, and
@@ -564,11 +637,14 @@ export class InventoryFilterView {
       // belongs to states the diagnostic instead: `SkillRow` resolves the
       // census files' diagnostics beside the definition, which is what keeps a
       // `partial` generation able to say which file (FR-028).
-      const companions = new Set(
-        (snapshot.value?.skills ?? []).flatMap((entry) =>
+      const companions = new Set([
+        ...(snapshot.value?.skills ?? []).flatMap((entry) =>
           entry.definitions.flatMap((definition) => definition.companionFiles),
         ),
-      );
+        // A plugin's own files belong to the plugin's row, which already has
+        // them: the row is one plugin, and the files it ships are its own.
+        ...(snapshot.value?.plugins ?? []).flatMap((entry) => entry.files),
+      ]);
       // The tool selection is deliberately not consulted. A file here was
       // recognized by no product, so no tool selection can match it, and
       // emptying the list under one would take the only statement a `partial`

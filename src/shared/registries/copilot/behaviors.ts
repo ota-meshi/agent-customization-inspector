@@ -1896,6 +1896,307 @@ export const COPILOT_VSCODE_SETTINGS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Copilot VS Code plugins: a registered or installed plugin or marketplace root
+ * carries one of the four documented manifest forms, and the editor detects the
+ * format from which of them it finds.
+ *
+ * The root is established rather than discovered: a plugin reaches a session by
+ * installation, by a marketplace the settings register, or by an absolute path
+ * in `chat.pluginLocations` — never by a file appearing at an arbitrary
+ * repository path. Registration, workspace listing, installation, and enabled state
+ * are separate runtime facts this product never reads (FR-009).
+ */
+export const COPILOT_VSCODE_PLUGINS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.plugins',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'plugin',
+        lookupBase: 'registered-catalog',
+        relativeSelector:
+          'plugin.json; .claude-plugin/plugin.json; .plugin/plugin.json; and the corresponding marketplace files',
+        traversal: 'explicit-registration',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.plugins',
+          url: 'https://code.visualstudio.com/docs/agent-customization/agent-plugins',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Plugin formats', 'Configure plugin marketplaces', 'Use local plugins'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'VS Code detects a plugin format from its root manifest — plugin.json for Agent Plugins 1.0 and Copilot, .claude-plugin/plugin.json for Claude, .plugin/plugin.json for legacy OpenPlugin — and a plugin reaches a session by installation, by a marketplace registered through chat.plugins.marketplaces, or by an absolute directory path registered in chat.pluginLocations, never by a file appearing at an arbitrary workspace path.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot CLI plugins: an installed or registered plugin or marketplace root
+ * carries its manifest at one of four documented locations, checked in order.
+ *
+ * The same establishment rule as the editor's, spelled with the CLI's own
+ * install specifications: a marketplace plugin, a GitHub repository or
+ * subdirectory, a Git URL, or a local path given to `copilot plugins install`.
+ * Authored manifest, marketplace catalog, installed copy, enabled state, and
+ * component selection stay separate facts (FR-009).
+ */
+export const COPILOT_CLI_PLUGINS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.plugins',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'plugin',
+        lookupBase: 'registered-catalog',
+        relativeSelector:
+          '.plugin/plugin.json; plugin.json; .github/plugin/plugin.json; .claude-plugin/plugin.json, and the corresponding marketplace files, each checked in that order',
+        traversal: 'explicit-registration',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.plugins',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
+          officialHost: 'docs.github.com',
+          sections: ['File locations', 'marketplace.json', 'CLI commands'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * The Copilot CLI's experimental project extensions, recorded so
+ * `copilot.excluded.cli-extensions` can name what it leaves out. They are
+ * executable JavaScript the CLI loads on enablement rather than an authored
+ * customization document, and no rule admits one.
+ */
+export const COPILOT_CLI_EXTENSIONS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.extensions',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: '.github/extensions/<name>/extension.mjs; extension.cjs; extension.js',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['experimental'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.plugins',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
+          officialHost: 'docs.github.com',
+          sections: ['File locations', 'Loading order and precedence'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "The plugin reference separates a plugin's own components — agents, skills, hooks, MCP and LSP configuration — from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations rather than treating an extension file as a plugin.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot VS Code User plugins: the plugins a profile has available, which is
+ * installed and registered state rather than a file this repository carries.
+ *
+ * Recorded so `copilot.excluded.user-runtime` can name what it leaves out. A
+ * plugin reaches an editor session by being installed, by a marketplace a
+ * setting registers, or by an absolute directory path a setting names — all of
+ * it outside the Source, and none of it a claim this product makes about a
+ * repository's own catalog (FR-009).
+ */
+export const COPILOT_VSCODE_USER_PLUGINS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.user.plugins',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        // The profile's own plugin state, plus the copies the CLI installed
+        // under the user's home that the editor also offers.
+        lookupBase: 'profile-data',
+        relativeSelector:
+          '.copilot/installed-plugins/<marketplace>/<plugin>, and the directories the editor plugin settings register',
+        traversal: 'explicit-registration',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.plugins',
+          url: 'https://code.visualstudio.com/docs/agent-customization/agent-plugins',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure plugin marketplaces', 'Use local plugins'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'An editor session gets its plugins from marketplaces registered through the chat.plugins.marketplaces setting and from directories registered by absolute path in chat.pluginLocations, each carrying an enabled or disabled state of its own.',
+        },
+        {
+          sourceId: 'github.copilot.plugins',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/about-plugins',
+          officialHost: 'docs.github.com',
+          sections: ['Where can I get plugins?'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'A plugin is installed from a marketplace, a repository, or a local path, and which plugins a client turns on is settings and installed state rather than a property of an authored catalog.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot CLI User plugins: the installed copies under the user's home and the
+ * personal settings that enable them.
+ *
+ * Recorded so `copilot.excluded.user-runtime` can name what it leaves out.
+ * Installation and enablement are what a session runs; a repository's catalog
+ * says what it offers (FR-009).
+ */
+export const COPILOT_CLI_USER_PLUGINS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.user.plugins',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        // `~/.copilot` is this product's own home, but the settings file
+        // beside the installed copies is read as personal data of the same
+        // scope, so one statement covers both from the profile base.
+        lookupBase: 'profile-data',
+        relativeSelector:
+          '.copilot/installed-plugins/<marketplace>/<plugin>; .copilot/settings.json enabledPlugins and extraKnownMarketplaces',
+        traversal: 'explicit-registration',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.plugins',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
+          officialHost: 'docs.github.com',
+          sections: ['File locations'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'Installed plugins live under ~/.copilot/installed-plugins, by marketplace and plugin name for a marketplace install and under a direct-source directory otherwise.',
+        },
+        {
+          sourceId: 'github.copilot.plugins',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/about-plugins',
+          officialHost: 'docs.github.com',
+          sections: ['Where can I get plugins?'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'The CLI installs a plugin through its install command or slash command, or by naming it in the enabledPlugins field of a user-level ~/.copilot/settings.json or a repository-level .github/copilot/settings.json.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * The Copilot CLI's experimental personal extensions, recorded so
+ * `copilot.excluded.user-runtime` can name what it leaves out. The same
+ * executable-JavaScript shape as the project extensions this product also
+ * admits nothing from, in the user's own home instead of a repository.
+ */
+export const COPILOT_CLI_USER_EXTENSIONS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.user.extensions',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'profile-data',
+        relativeSelector: '.copilot/extensions/<name>/extension.mjs; extension.cjs; extension.js',
+        traversal: 'standard-location-chain',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['experimental'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.extensions',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-extensions',
+          officialHost: 'docs.github.com',
+          sections: ['How extensions are discovered', 'Choosing where an extension lives'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'The CLI looks for extensions in a repository .github/extensions directory and in ~/.copilot/extensions, each extension being a named subdirectory whose entry file is extension.mjs, extension.cjs, or extension.js that the CLI runs with Node.js.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot cloud agent plugins: the hosted side of the same two repository
+ * settings keys, plus the copies the hosted agent runs.
+ *
+ * A statement rather than a rule: the settings file it names is admitted by
+ * the settings rules as the authored file it is, and whether a hosted session
+ * has a plugin installed, available, or turned on is state this product never
+ * reads (FR-009).
+ */
+export const COPILOT_CLOUD_PLUGINS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cloud.plugins',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'hosted-managed',
+        lookupBase: 'hosted-state',
+        // The hosted copies have no path a reader could open; the repository
+        // keys that name them are the settings rules' own file.
+        relativeSelector: null,
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.plugins',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/about-plugins',
+          officialHost: 'docs.github.com',
+          sections: ['Where can I get plugins?', 'How plugin marketplaces work'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'The cloud agent turns plugins on declaratively through the enabledPlugins field of a repository .github/copilot/settings.json, with extraKnownMarketplaces naming a marketplace that is not registered by default, and a marketplace is a marketplace.json listing the plugins it makes available.',
+        },
+        {
+          sourceId: 'vscode.copilot.plugins',
+          url: 'https://code.visualstudio.com/docs/agent-customization/agent-plugins',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Configure plugin marketplaces'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'The same registered-marketplace and enabled-plugin keys are the cross-tool spelling a repository carries, so what a hosted session runs is that state rather than the authored catalog itself.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * The Copilot CLI's documented `.github/lsp.json` project LSP configuration,
  * recorded so `copilot.excluded.cli-lsp` can name what it leaves out. It is
  * language-server configuration rather than an agent customization, so it is
@@ -2091,7 +2392,14 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
   [COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR,
   [COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
   [COPILOT_VSCODE_USER_SKILLS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,
+  [COPILOT_CLI_EXTENSIONS_BEHAVIOR.behaviorId]: COPILOT_CLI_EXTENSIONS_BEHAVIOR,
+  [COPILOT_CLI_USER_EXTENSIONS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_EXTENSIONS_BEHAVIOR,
   [COPILOT_CLI_LSP_BEHAVIOR.behaviorId]: COPILOT_CLI_LSP_BEHAVIOR,
+  [COPILOT_CLI_PLUGINS_BEHAVIOR.behaviorId]: COPILOT_CLI_PLUGINS_BEHAVIOR,
+  [COPILOT_CLI_USER_PLUGINS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_PLUGINS_BEHAVIOR,
+  [COPILOT_VSCODE_PLUGINS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_PLUGINS_BEHAVIOR,
+  [COPILOT_VSCODE_USER_PLUGINS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_PLUGINS_BEHAVIOR,
+  [COPILOT_CLOUD_PLUGINS_BEHAVIOR.behaviorId]: COPILOT_CLOUD_PLUGINS_BEHAVIOR,
   [COPILOT_CLI_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_CLI_SETTINGS_BEHAVIOR,
   [COPILOT_CLI_USER_LSP_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_LSP_BEHAVIOR,
   [COPILOT_CLI_USER_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_SETTINGS_BEHAVIOR,

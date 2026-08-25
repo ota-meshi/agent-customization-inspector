@@ -53,17 +53,21 @@ import type {
   CompiledStaticAgentRule,
   CompiledStaticMcpReadingRule,
   CompiledStaticPermissionsCarrierRule,
+  CompiledStaticPluginRule,
+  PluginCarrierReading,
   SelectorOrigin,
 } from '../rules/registry';
 import { RecognitionExtraction } from '../parsers/extraction';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
-import { listCompanionFiles, type CompanionFile } from '../companion-census';
+import type { CompanionFile } from '../companion-census';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type {
   AgentPresentationDto,
   DeclaredEntryDto,
   McpServerDeclarationDto,
+  PluginCarrierKind,
+  PluginDeclarationDto,
   RecognitionParseStatus,
 } from '../../../shared/api-types';
 import type { RuleId } from '../../../shared/registries/identifier-types';
@@ -349,6 +353,77 @@ export type RecognitionDetails =
       readonly declaredPolicy: readonly DeclaredEntryDto[];
     }
   /**
+   * A plugin carrier, identified by the plugins it declares. The kind's
+   * inventory unit is one declared plugin name (data-model.md § Inventory
+   * unit), so the carrier's one recognition holds every declaration it makes
+   * and the session projection splits them into rows — a manifest declares one
+   * plugin, a catalog one per entry, and a name both of them resolve is one
+   * row carried by both files.
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'plugin';
+      /**
+       * Which kind of carrier this file is for the plugins below — its own
+       * manifest, or a catalog listing it. The admitting rule answers it,
+       * because which format a file is read as is that vendor's contract
+       * (`rules/registry.ts` § CompiledStaticPluginRule).
+       */
+      readonly carrier: PluginCarrierKind;
+      /**
+       * The catalog's own declarations — what it says about itself rather than
+       * about the plugins it lists. Empty for a manifest, whose own fields are
+       * its one declaration's, and empty for a `failed` extraction (FR-028).
+       */
+      readonly catalogFields: readonly DeclaredEntryDto[];
+      /**
+       * Every plugin the carrier declares, in the parser's resolved order —
+       * each under the name its admitting rule resolves, which is the identity
+       * the inventory row is grouped by, and with the fields the detail
+       * publishes by the keys the file wrote (FR-007). How a name follows from
+       * a declaration is that vendor's own contract, exactly as it is for a
+       * skill or a command: Codex resolves a catalog's offering as
+       * `plugin@marketplace` and a derived manifest under the offering that
+       * reached it (`rules/codex.ts`). Empty when the carrier declares none,
+       * and empty for a `failed` extraction, which publishes nothing while the
+       * carrier stays an admitted candidate (FR-028).
+       */
+      readonly plugins: readonly PluginDeclarationDto[];
+    }
+  /** An output style, identified by the name a reader selects it by. */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'output style';
+      /**
+       * The style name this recognition's own tool selects the file by — the
+       * identity its inventory row is grouped under (FR-007, data-model.md
+       * § Inventory unit), answered by the admitting rule from the path it
+       * matched and from what the file declared.
+       *
+       * Held rather than the declared name it may be built from: the declared
+       * name is one of the `frontmatter` entries below, so storing it too
+       * would publish a fact and something derived from it. Never empty: a
+       * file declaring no usable name is selected by its own file name, which
+       * is also what a `failed` extraction falls back to (FR-028).
+       */
+      readonly styleName: string;
+      /**
+       * Every key the output style's frontmatter declares, in authored order;
+       * the source of the detail response's `presentation.frontmatter`
+       * (FR-007). Empty when the file declares no frontmatter, and empty for a
+       * `failed` extraction, which publishes nothing while the complete source
+       * stays displayed (FR-028).
+       */
+      readonly frontmatter: readonly DeclaredEntryDto[];
+      /**
+       * The file with its frontmatter block removed: the instructions the
+       * vendor appends to the system prompt, and the source of the detail
+       * response's `presentation.bodyText`. Empty for a `failed` extraction:
+       * extraction is all-or-nothing (FR-028).
+       */
+      readonly bodyText: string;
+    }
+  /**
    * Every other kind. An identity or presentation arrives with the recognizer
    * phase that needs one; until then the kind alone is the record.
    *
@@ -365,7 +440,7 @@ export type RecognitionDetails =
       /** The recognized customization kind. */
       readonly kind: Exclude<
         CustomizationKind,
-        'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command'
+        'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'plugin' | 'output style'
       >;
     };
 
@@ -599,6 +674,54 @@ export class ToolRecognition {
   }
 
   /**
+   * Builds one output-style recognition from the shared Markdown extraction:
+   * the declarations the file wrote and the instructions left once the block
+   * is removed (FR-007). Both are empty for a failed extraction, which
+   * publishes nothing while the complete source stays displayed (FR-028).
+   *
+   * Its own factory rather than the command one under another kind: the two
+   * kinds ask their admitting rule different questions — what a file is
+   * invoked by, and what a style is selected by — and a row grouped by one
+   * would be wrong under the other (data-model.md § Inventory unit).
+   */
+  public static recognizeOutputStyle(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    extraction: RecognitionExtraction<ParsedMarkdownDocument | undefined>,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    // Asked of the admitting rule, which is where a product's own naming
+    // lives — the same question a command and a skill recognition ask. Any
+    // admission answers: a recognition's admissions are one product's, and
+    // that product defines the answer once, so they cannot disagree. The
+    // narrowing is the compiler's own, over the `kind` that discriminates
+    // `CompiledCandidateRule`.
+    const [admission] = admissions;
+    if (admission === undefined || admission.compiled.kind !== 'output style') {
+      throw new TypeError('an output-style recognition has no rule that can answer its name');
+    }
+    // The one parse the name may come out of: an output style declares its
+    // own `name`, so the rule is asked with the declarations beside the path.
+    // A failed extraction hands the rule an empty list, so the name falls back
+    // to the file name — the same string the vendor's own fallback produces
+    // for a file that declares none, reached for a different reason, which the
+    // extraction Diagnostic beside the row is what distinguishes (FR-028).
+    const frontmatter = extraction.extracted?.frontmatterEntries ?? [];
+    return ToolRecognition.#assemble(
+      sourceRelativePath,
+      tool,
+      {
+        kind: 'output style',
+        styleName: admission.compiled.styleNameOf(sourceRelativePath, frontmatter),
+        frontmatter,
+        bodyText: extraction.extracted?.body ?? '',
+      },
+      extraction.status,
+      admissions,
+    );
+  }
+
+  /**
    * Builds one MCP carrier recognition from the carrier rule's own
    * declaration extraction. `servers` is empty for a failed extraction, which
    * publishes nothing while the carrier stays an admitted candidate (FR-028);
@@ -615,6 +738,57 @@ export class ToolRecognition {
       sourceRelativePath,
       tool,
       { kind: 'MCP', servers: extraction.extracted ?? [] },
+      extraction.status,
+      admissions,
+    );
+  }
+
+  /**
+   * Builds one plugin carrier recognition from the admitting rule's own
+   * reading. `plugins` and `catalogFields` are empty for a failed extraction,
+   * which publishes nothing while the carrier stays an admitted candidate
+   * (FR-028); the carrier kind still stands, because which kind of file this
+   * is was decided by the rule that admitted it rather than by its content.
+   */
+  public static recognizePlugin(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    extraction: RecognitionExtraction<PluginCarrierReading>,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    // Asked of the admitting rule, exactly as a skill's name is
+    // ({@link recognizeSkill}): what this file is to the plugins it declares,
+    // and what its placement establishes when the text does not parse, are the
+    // vendor's own contract. Any admission answers — a recognition's
+    // admissions are one product's — and the narrowing is the compiler's own
+    // over the `pluginCarrier` discriminant.
+    const [admission] = admissions;
+    if (admission === undefined || admission.compiled.kind !== 'plugin') {
+      throw new TypeError('a plugin recognition has no rule that can answer its carrier');
+    }
+    return ToolRecognition.#assemble(
+      sourceRelativePath,
+      tool,
+      {
+        kind: 'plugin',
+        carrier: admission.compiled.pluginCarrier,
+        catalogFields: extraction.extracted?.catalogFields ?? [],
+        // The reading's declarations as they are: each already carries the
+        // name it resolves, the keys the file wrote, and where its plugin sits.
+        //
+        // A failed extraction keeps what the path establishes and nothing else.
+        // For a catalog that is nothing at all: every plugin it resolves is one
+        // its text declares, so the carrier's diagnostic says the names are
+        // unknown rather than absent. A manifest is the other way round — the
+        // folder holding it is a plugin because the file is there — so its own
+        // plugin, root, and manifest path stand, with no declared fields
+        // (FR-028).
+        plugins:
+          extraction.extracted?.plugins ??
+          (admission.compiled.pluginCarrier === 'manifest'
+            ? [admission.compiled.pluginEstablishedByPath(sourceRelativePath)]
+            : []),
+      },
       extraction.status,
       admissions,
     );
@@ -694,7 +868,10 @@ export class ToolRecognition {
   public static recognizeOther(
     sourceRelativePath: string,
     tool: SupportedTool,
-    kind: Exclude<CustomizationKind, 'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command'>,
+    kind: Exclude<
+      CustomizationKind,
+      'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'plugin' | 'output style'
+    >,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
     return ToolRecognition.#assemble(
@@ -757,19 +934,25 @@ export class ToolRecognition {
 }
 
 /**
- * What recognizing one candidate produced: its recognitions, and the files its
- * census found beside it.
- *
- * The companions travel back to the scan rather than being read here, because
- * the scan owns the closed per-file publication matrix — one read, one decode,
- * one closed outcome per file — and a recognizer that read them would be a
- * second place deciding what a read failure means.
+ * What recognizing one candidate produced: its recognitions, and the
+ * directories its customizations occupy for the scan to enumerate and publish.
  */
 export interface CandidateRecognition {
   /** The recognitions attached to the candidate; possibly empty. */
   readonly recognitions: readonly ToolRecognition[];
-  /** The accompanying files the candidate's census listed, for the scan to read and publish. */
-  readonly companions: readonly CompanionSourceFile[];
+  /**
+   * The Source-relative directories this candidate's customizations occupy,
+   * each with its trailing slash — a skill's own directory, and the plugin root
+   * of every plugin a catalog here declares from inside the Source. Empty for a
+   * candidate that is just a file.
+   *
+   * Directories rather than the files in them, because enumerating one and
+   * reading what is in it are the scan's: it owns the one read per published
+   * file, and a recognizer that read them would be a second place deciding what
+   * a read failure means (contracts/inspection-path-allowlist.md § Bounded
+   * companion census).
+   */
+  readonly directories: readonly string[];
 }
 
 /**
@@ -859,6 +1042,14 @@ export interface RecognitionAdmission {
 }
 
 /**
+ * A compiled unit that can read a plugin carrier: either static rule, or the
+ * derived manifest unit. The extraction slot is keyed by the reading rather
+ * than by how the file was admitted — a manifest reads the same whether the
+ * walk matched it or a catalog's local source derived it.
+ */
+type PluginReadingRule = CompiledStaticPluginRule;
+
+/**
  * The per-candidate extraction cache: one typed, lazily-run slot per
  * extraction family, so what an extraction produced is the slot's own type
  * and no consumer re-derives a payload's family from its runtime shape. Each
@@ -872,6 +1063,13 @@ class CandidateExtractions {
   /** The file's complete decoded text every slot reads; see {@link RecognitionInput.sourceText}. */
   readonly #sourceText: string;
 
+  /**
+   * The candidate's own Source-relative Path, for the one reading that needs
+   * it: a plugin manifest names neither its plugin nor its root, and where it
+   * sits is what answers both (`registry.ts` § CompiledStaticPluginManifestRule).
+   */
+  readonly #matchedPath: string;
+
   /** The one Markdown parse, run on first request; undefined until then. */
   #markdown: RecognitionExtraction<ParsedMarkdownDocument> | undefined;
 
@@ -881,15 +1079,19 @@ class CandidateExtractions {
   /** The per-tool custom-agent presentation readings, each run on its first request. */
   #agent = new Map<SupportedTool, RecognitionExtraction<AgentPresentationDto>>();
 
+  /** The per-tool plugin carrier readings, each run on its first request. */
+  #plugin = new Map<SupportedTool, RecognitionExtraction<PluginCarrierReading>>();
+
   /** The per-tool declared-policy readings, each run on its first request. */
   #declaredPolicy = new Map<
     SupportedTool,
     RecognitionExtraction<readonly DeclaredEntryDto[] | null>
   >();
 
-  /** Binds the slots to the one text they extract from. */
-  public constructor(sourceText: string) {
+  /** Binds the slots to the one text they extract from, and the path it was read at. */
+  public constructor(sourceText: string, matchedPath: string) {
     this.#sourceText = sourceText;
+    this.#matchedPath = matchedPath;
   }
 
   /**
@@ -931,6 +1133,25 @@ class CandidateExtractions {
       carrier.serverDeclarationsOf(text),
     );
     this.#mcp.set(carrier.tool, extraction);
+    return extraction;
+  }
+
+  /**
+   * The plugin carrier extraction, read by the admitting rule's own
+   * contract — a manifest's own keys or a catalog's `plugins` array — and keyed
+   * by the tool for the reason the MCP slot is: one physical file can be two
+   * vendors' carrier, and each publishes its own vendor's reading. Within one
+   * tool the reading runs once, whichever of its admissions asks first.
+   */
+  public plugin(carrier: PluginReadingRule): RecognitionExtraction<PluginCarrierReading> {
+    const existing = this.#plugin.get(carrier.tool);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const extraction = RecognitionExtraction.run(this.#sourceText, (text) =>
+      carrier.pluginCarrierReadingOf(text, this.#matchedPath),
+    );
+    this.#plugin.set(carrier.tool, extraction);
     return extraction;
   }
 
@@ -1014,23 +1235,51 @@ export async function recognizeCandidateForVendors(
       group.push(admission);
     }
   }
-  // The census belongs to the candidate's directory, not to a kind or a tool:
-  // one directory has one set of accompanying files however many products
-  // recognize its entry point, so it is enumerated exactly once per candidate
-  // — and only when a recognized kind is directory-shaped, which today is
-  // `skill` alone (contracts/inspection-path-allowlist.md § Bounded companion
-  // census). The files it lists are read and published by the scan as ordinary
-  // files that no rule admitted.
-  const census = [...byTool.values()].some((byKind) => byKind.has('skill'))
-    ? await listCompanionFiles(input.sourceRoot, input.absolutePath)
-    : [];
-  const candidateDirectory = input.matchedPath.slice(0, input.matchedPath.lastIndexOf('/') + 1);
-  const companions = census.map((listed) => new CompanionSourceFile(candidateDirectory, listed));
+  // Which directories this candidate's customizations occupy. Answering is all
+  // this module does with them: enumerating one and reading what is in it are
+  // the scan's, which owns the one read per published file, so nothing here
+  // touches the filesystem.
+  //
+  // This is the one place that decides which admissions occupy a directory and
+  // where it is, so a further directory-shaped kind is added here and nowhere
+  // else (contracts/inspection-path-allowlist.md § Bounded companion census).
+  const directories: string[] = [];
+  for (const { compiled } of input.admissions) {
+    if (compiled.kind === 'skill') {
+      // A skill *is* its directory, so its entry point sits at the root of it.
+      directories.push(input.matchedPath.slice(0, input.matchedPath.lastIndexOf('/') + 1));
+      break;
+    }
+  }
+  const extractions = new CandidateExtractions(input.sourceText, input.matchedPath);
+  // Where each plugin this candidate declares sits. The rule that admitted the
+  // text answers as it reads it, because which source forms name a directory
+  // here — and which directory a manifest's presence made a plugin — is that
+  // vendor's contract; a declaration naming none occupies nothing.
+  for (const { compiled } of input.admissions) {
+    if (compiled.kind !== 'plugin') {
+      continue;
+    }
+    const reading = extractions.plugin(compiled);
+    // The same fallback the recognition publishes: a manifest whose text does
+    // not parse still occupies the folder holding it, so that folder is
+    // enumerated and the plugin's own page has the files it ships
+    // ({@link ToolRecognition.recognizePlugin}).
+    const declarations =
+      reading.extracted?.plugins ??
+      (compiled.pluginCarrier === 'manifest'
+        ? [compiled.pluginEstablishedByPath(input.matchedPath)]
+        : []);
+    for (const plugin of declarations) {
+      if (plugin.pluginRoot !== null && !directories.includes(plugin.pluginRoot)) {
+        directories.push(plugin.pluginRoot);
+      }
+    }
+    break;
+  }
   // The typed extraction slots every recognition of this candidate shares
-  // ({@link CandidateExtractions}), dispatched to each kind's own factory so
-  // the payload a factory receives is the one its signature declares — no
-  // kind-erased value exists for a builder to re-classify.
-  const extractions = new CandidateExtractions(input.sourceText);
+  // ({@link CandidateExtractions}) are created above, because the directories
+  // come out of the same one reading a catalog's recognition publishes.
   const recognitions = [...byTool.entries()].flatMap(([tool, byKind]) =>
     [...byKind.entries()].map(([kind, group]) => {
       if (kind === 'instructions') {
@@ -1132,8 +1381,40 @@ export async function recognizeCandidateForVendors(
           }
         }
       }
+      if (kind === 'plugin') {
+        // Dispatched the way the MCP reading is, over the `kind` discriminant:
+        // a plugin unit owns its vendor's reading of the carrier it admits —
+        // a manifest's own keys or a catalog's entries — and a loop rather than
+        // `find` because a callback's narrowing does not reach the caller
+        // without a hand-authored predicate, which would assert rather than
+        // prove. Every shipped plugin rule compiles into such a unit, so a
+        // group without one cannot be produced by the shipped catalog and
+        // fails loudly here rather than publishing a recognition with no
+        // parse.
+        for (const { compiled } of group) {
+          if (compiled.kind === 'plugin') {
+            return ToolRecognition.recognizePlugin(
+              input.matchedPath,
+              tool,
+              extractions.plugin(compiled),
+              group,
+            );
+          }
+        }
+        throw new TypeError('a plugin recognition has no rule that can read its declarations');
+      }
+      if (kind === 'output style') {
+        // The same one parse the other frontmatter-led kinds read: what a file
+        // declares does not depend on which kind asks for it.
+        return ToolRecognition.recognizeOutputStyle(
+          input.matchedPath,
+          tool,
+          extractions.markdown(),
+          group,
+        );
+      }
       return ToolRecognition.recognizeOther(input.matchedPath, tool, kind, group);
     }),
   );
-  return { recognitions: recognitions.filter((recognition) => recognition !== null), companions };
+  return { recognitions: recognitions.filter((recognition) => recognition !== null), directories };
 }

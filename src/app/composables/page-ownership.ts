@@ -12,6 +12,7 @@
 // wraps `InventoryFilterView`.
 import { inject, onUnmounted } from 'vue';
 import { SESSION_VIEW_STATE, type SessionViewState } from '../session/view-state';
+import type { PluginCarrierDetailParams } from '../../shared/api-types';
 
 /**
  * One page instance's handle on the route-owned view state — the open detail
@@ -53,6 +54,19 @@ export class PageOwnership {
    */
   public async openCarrierDetail(sourceRelativePath: string): Promise<void> {
     await this.#viewState.openCarrierDetail(sourceRelativePath, this.#owner);
+  }
+
+  /**
+   * Requests one plugin carrier's detail for one inventory row, with that
+   * plugin's own manifest and the file the page has open, under this page's
+   * ownership ({@link SessionViewState.openPluginDetail}).
+   */
+  public async openPluginDetail(
+    params: PluginCarrierDetailParams,
+    manifestPath: string | null,
+    selectedFilePath: string | null,
+  ): Promise<void> {
+    await this.#viewState.openPluginDetail(params, manifestPath, selectedFilePath, this.#owner);
   }
 
   /**

@@ -42,6 +42,8 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.repo.instructions.launch'
   /** Claude project MCP declarations at `<project-root>/.mcp.json`. */
   | 'claude.behavior.repo.mcp'
+  /** Claude marketplace catalogs, read from a registered `<marketplace-root>`'s `.claude-plugin/marketplace.json`. */
+  | 'claude.behavior.repo.marketplace'
   /** Claude plugin content at an explicitly selected `<plugin-root>`; a non-authorizing MCP-selection input. */
   | 'claude.behavior.repo.plugin'
   /** Claude project rule discovery: Markdown found recursively under each layer's `.claude/rules/`. */
@@ -50,8 +52,12 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.repo.settings.shared'
   /** Claude personal project settings at `.claude/settings.local.json`, kept at the repository root with documented exceptions. */
   | 'claude.behavior.repo.settings.local'
+  /** Claude Repository output styles: direct Markdown children of every `.claude/output-styles/` layer. */
+  | 'claude.behavior.repo.output-style'
   /** Claude Repository skill discovery under `.claude/skills/<skill-name>/SKILL.md`. */
   | 'claude.behavior.repo.skills'
+  /** Claude plugins loaded by placement: a skills-directory folder carrying `.claude-plugin/plugin.json`. */
+  | 'claude.behavior.repo.skills-directory-plugin'
   /** Claude User subagents under `<claude-config-dir>/agents/`; a non-authorizing fact. */
   | 'claude.behavior.user.agents'
   /** Claude User subagent memory at `<claude-config-dir>/agent-memory/<agent-name>/`; a non-authorizing fact. */
@@ -62,6 +68,8 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.user.commands'
   /** Claude User instructions at `<claude-config-dir>/CLAUDE.md`. */
   | 'claude.behavior.user.instructions'
+  /** Claude User output styles under `<claude-config-dir>/output-styles/`; a non-authorizing fact. */
+  | 'claude.behavior.user.output-style'
   /** Claude User and per-project local MCP state at `<home>/.claude.json`; a non-authorizing fact. */
   | 'claude.behavior.user.mcp-state'
   /** Claude installed plugin data under `<claude-config-dir>/plugins/`; a non-authorizing fact. */
@@ -79,6 +87,8 @@ export type ClaudeBehaviorId =
  * phase that needs them.
  */
 export type CodexBehaviorId =
+  /** Codex plugin manifests at `.codex-plugin/plugin.json` in a plugin root a catalog or an installation selected. */
+  | 'codex.behavior.plugin.manifest'
   /** Codex project custom agents: standalone `.codex/agents/*.toml` spawned-session configuration layers. */
   | 'codex.behavior.repo.agents'
   /** Codex project configuration layers at `.codex/config.toml`. */
@@ -89,6 +99,8 @@ export type CodexBehaviorId =
   | 'codex.behavior.repo.instructions'
   /** Codex MCP server declarations: `[mcp_servers.*]` inside active `.codex/config.toml` layers. */
   | 'codex.behavior.repo.mcp'
+  /** Codex repository plugin catalogs at the exact `.agents/plugins/marketplace.json` and legacy `.claude-plugin/marketplace.json`. */
+  | 'codex.behavior.repo.marketplace'
   /** Codex rule files in every active trusted project config layer: `.codex/rules/*.rules`. */
   | 'codex.behavior.repo.rules'
   /** Codex Repository skill discovery under `.agents/skills/<name>/SKILL.md`. */
@@ -99,6 +111,8 @@ export type CodexBehaviorId =
   | 'codex.behavior.user.config'
   /** Codex User instruction fallback at `<CODEX_HOME>/AGENTS.override.md` then `AGENTS.md`. */
   | 'codex.behavior.user.instructions'
+  /** Codex personal marketplace at `$HOME/.agents/plugins/marketplace.json` and its installed/cache copies; a non-authorizing fact. */
+  | 'codex.behavior.user.plugins'
   /** Codex User rule files at `<CODEX_HOME>/rules/*.rules`; a non-authorizing fact. */
   | 'codex.behavior.user.rules'
   /** Codex User skill discovery under `$HOME/.agents/skills/<name>/SKILL.md`. */
@@ -128,8 +142,16 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cli.instructions.path'
   /** Copilot CLI repository-wide `.github/copilot-instructions.md` across its standard locations. */
   | 'copilot.behavior.cli.instructions.repository'
+  /** Non-authorizing: the CLI's experimental `.github/extensions/<name>/extension.*` project extensions. */
+  | 'copilot.behavior.cli.extensions'
+  /** User scope: the CLI's experimental `~/.copilot/extensions/<name>/extension.*` personal extensions. */
+  | 'copilot.behavior.cli.user.extensions'
+  /** User scope: the plugins a CLI session has installed or enabled through personal settings. */
+  | 'copilot.behavior.cli.user.plugins'
   /** Non-authorizing: the CLI's documented `.github/lsp.json` project LSP configuration. */
   | 'copilot.behavior.cli.lsp'
+  /** Copilot CLI plugin and marketplace manifests, at an installed or registered root. */
+  | 'copilot.behavior.cli.plugins'
   /** Copilot CLI workspace MCP declarations: `.mcp.json` and `.github/mcp.json` on each ancestor. */
   | 'copilot.behavior.cli.mcp'
   /** Copilot CLI custom-agent discovery: `.github/agents` and `.claude/agents` on each ancestor to the Git root. */
@@ -166,6 +188,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cloud.mcp'
   /** Copilot cloud agent's hosted organization and enterprise agent profiles; no filesystem locator. */
   | 'copilot.behavior.cloud.organization-agents'
+  /** Copilot cloud agent's plugin state: the settings a repository enables plugins through, and the hosted copies. */
+  | 'copilot.behavior.cloud.plugins'
   /** Copilot cloud agent's hosted organization instructions; no filesystem locator. */
   | 'copilot.behavior.cloud.organization-instructions'
   /** Copilot cloud agent's hosted remote-skill relay; no filesystem locator. */
@@ -186,6 +210,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.instructions.repository'
   /** Copilot VS Code workspace MCP configuration: `.vscode/mcp.json`, and root `.mcp.json` for 1.118+. */
   | 'copilot.behavior.vscode.mcp'
+  /** Copilot VS Code plugin and marketplace manifests, at a registered or installed root. */
+  | 'copilot.behavior.vscode.plugins'
   /** Non-authorizing: VS Code's general workspace `.vscode/settings.json` scope. */
   | 'copilot.behavior.vscode.settings'
   /** Copilot VS Code Repository skill discovery at the workspace root. */
@@ -202,6 +228,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.user.prompts'
   /** Non-authorizing: VS Code's User settings scope. */
   | 'copilot.behavior.vscode.user.settings'
+  /** User scope: the plugins a VS Code profile has installed, registered, or been given by path. */
+  | 'copilot.behavior.vscode.user.plugins'
   /** Copilot VS Code User skill discovery in home and profile locations. */
   | 'copilot.behavior.vscode.user.skills';
 
@@ -241,6 +269,10 @@ export type AnthropicSourceId =
   | 'anthropic.claude-code.permissions.rule-syntax'
   /** The plugins reference: component scopes and skills-directory plugins. */
   | 'anthropic.claude-code.plugins.components-scopes'
+  /** The plugin-marketplaces page: where a catalog lives, what its entries declare, and the sources they name. */
+  | 'anthropic.claude-code.marketplaces.catalog-sources'
+  /** The output-styles page: where a custom style lives, what its frontmatter declares, and how a same-name style resolves. */
+  | 'anthropic.claude-code.output-styles.locations'
   /**
    * The changelog releases that version-anchor legacy-command nesting: 1.0.45
    * restored the subdirectory-derived namespace in a command name, and 1.0.51
@@ -267,6 +299,8 @@ export type OpenAiSourceId =
   | 'openai.codex.hooks'
   /** The Codex MCP page: how MCP servers are declared and connected. */
   | 'openai.codex.mcp'
+  /** The Codex plugins page: local marketplace catalogs, their entry sources, and the plugin manifest and its bundled components. */
+  | 'openai.codex.plugins'
   /** The Codex rules page: where rule files live and what a `prefix_rule()` declares. */
   | 'openai.codex.rules'
   /** The Codex skills page: where Codex loads local skills, and their metadata. */
@@ -285,6 +319,8 @@ export type GitHubSourceId =
   | 'github.copilot.cli.custom-agents'
   /** The Copilot CLI custom-instructions how-to: the CLI instruction kinds and their locations. */
   | 'github.copilot.cli.instructions'
+  /** The Copilot CLI extensions page: where an extension directory lives, its entry file, and its experimental state. */
+  | 'github.copilot.cli.extensions'
   /** The Copilot CLI LSP-servers page: the `.github/lsp.json` project configuration and its priority. */
   | 'github.copilot.cli.lsp'
   /** The Copilot CLI MCP how-to: the per-repository carrier files and their two declaration schemas. */
@@ -297,6 +333,8 @@ export type GitHubSourceId =
   | 'github.copilot.cloud.instructions'
   /** The custom-instructions support matrix: which instruction file each surface reads. */
   | 'github.copilot.instructions.support'
+  /** The Copilot plugins concept page: what a plugin holds, where one comes from, and the settings each client installs it through. */
+  | 'github.copilot.plugins'
   /** The Copilot agent-skills page: cloud skill discovery, usage, and shared skills. */
   | 'github.copilot.skills'
   /** The custom-agents configuration reference: the shared agent profile format, its `mcp-servers` field included. */
@@ -312,6 +350,8 @@ export type VsCodeSourceId =
   | 'vscode.copilot.customization'
   /** The VS Code custom-instructions page: the instruction file kinds and their locations. */
   | 'vscode.copilot.instructions'
+  /** The VS Code agent-plugins page: plugin formats, marketplace configuration, and local plugin registration. */
+  | 'vscode.copilot.plugins'
   /** The VS Code prompt-files page: where prompt files live, their format, and how one is invoked. */
   | 'vscode.copilot.prompts'
   /** The VS Code AI-settings reference: the per-customization location settings. */
@@ -350,6 +390,10 @@ export type ClaudeStrategyId =
   | 'claude.instructions.layering'
   /** Claude MCP selection: whole same-name server entries in local, project, User, plugin, connector order. */
   | 'claude.mcp.selection'
+  /** Claude output-style selection: the closest project layer's same-name style, then the style settings or session state selected. */
+  | 'claude.output-style.selection'
+  /** Claude plugin activation: a placement-loaded skills-directory plugin, or a catalog entry a session registers and enables. */
+  | 'claude.plugins.activation'
   /** Claude rule layering: User then project rule layers, a `paths` rule activating on a matching read. */
   | 'claude.rules.layering'
   /** Claude settings precedence: managed, then command-line, then local, project, and User scopes, with permission rules of the two project-local files both in effect. */
@@ -370,6 +414,8 @@ export type CodexStrategyId =
   | 'codex.instructions.layering'
   /** Codex MCP configuration: `[mcp_servers.*]` resolved through the config-layer precedence. */
   | 'codex.mcp.configuration'
+  /** Codex plugin activation: a catalog exposes a plugin, an installation and an enablement value make it live. */
+  | 'codex.plugins.activation'
   /** Codex rule resolution: direct `.rules` files of the active layers, combined restrictively. */
   | 'codex.rules.resolution'
   /** Codex skill selection across Repository, User, admin, and system scopes. */
@@ -388,6 +434,8 @@ export type CopilotStrategyId =
   | 'copilot.cli.instructions.layering'
   /** Copilot CLI MCP selection: session-additional, plugin, workspace, then User sources. */
   | 'copilot.cli.mcp.selection'
+  /** Copilot CLI plugin activation: manifest and catalog recognition order at an established root, then registration and enablement. */
+  | 'copilot.cli.plugins.activation'
   /** Copilot CLI settings precedence over the documented defaults/managed/User/Repository/local/environment/flag cascade. */
   | 'copilot.cli.settings.precedence'
   /** Copilot CLI first-found skill selection across its documented source order. */
@@ -398,10 +446,14 @@ export type CopilotStrategyId =
   | 'copilot.cloud.instructions.layering'
   /** Copilot cloud hosted MCP selection: out-of-box, custom-agent, then repository-settings, later sources overriding. */
   | 'copilot.cloud.mcp.selection'
+  /** Copilot cloud plugin activation: authored catalog and settings kept apart from hosted installation and enablement. */
+  | 'copilot.cloud.plugins.activation'
   /** Copilot cloud progressive skill loading with unresolved collision behavior. */
   | 'copilot.cloud.skills.selection'
   /** Copilot VS Code custom-agent selection over profiles targeting VS Code, cross-scope duplicates unresolved. */
   | 'copilot.vscode.agents.selection'
+  /** Copilot VS Code plugin activation: manifest and catalog recognition order at an established root, then registration, recommendation, and enablement. */
+  | 'copilot.vscode.plugins.activation'
   /** Copilot VS Code MCP selection with the 1.118/current-guide location conflict and unknown total order. */
   | 'copilot.vscode.mcp.selection'
   /** Copilot VS Code instruction layering, personal before Repository before organization. */
@@ -429,8 +481,12 @@ export type ClaudeRuleId =
   | 'claude.repo.command'
   /** Repository Claude instructions at every depth; read-authorizing `static-candidate`. */
   | 'claude.repo.instructions'
+  /** The repository's own plugin catalog at `.claude-plugin/marketplace.json`; read-authorizing `static-candidate`. */
+  | 'claude.repo.marketplace'
   /** The exact root `.mcp.json` MCP declaration carrier; read-authorizing `static-candidate`. */
   | 'claude.repo.mcp'
+  /** Repository Claude output styles under the root's own `.claude/output-styles/`; read-authorizing `static-candidate`. */
+  | 'claude.repo.output-style'
   /** The permission policy the root Claude settings files declare; read-authorizing `static-candidate`. */
   | 'claude.repo.permissions'
   /** Repository Claude rule files under any `.claude/rules/` subtree; read-authorizing `static-candidate`. */
@@ -438,7 +494,11 @@ export type ClaudeRuleId =
   /** The root Claude settings files read as the project settings documents; read-authorizing `static-candidate`. */
   | 'claude.repo.settings'
   /** Repository Claude skills; read-authorizing `static-candidate`. */
-  | 'claude.repo.skill';
+  | 'claude.repo.skill'
+  /** The manifest that makes a skills-directory folder a plugin; read-authorizing `static-candidate`. */
+  | 'claude.repo.skills-directory-plugin'
+  /** The plugin component paths no rule admits; non-read `excluded`. */
+  | 'claude.excluded.plugin-files';
 
 /**
  * OpenAI Codex inspection rules
@@ -448,12 +508,16 @@ export type ClaudeRuleId =
 export type CodexRuleId =
   /** Configured instruction fallback basenames, seeded by the pinned `.codex/config.toml` path. */
   | 'codex.derived.fallback-basename'
+  /** The plugin content a manifest or a catalog points at, on record as excluded and admitted by nothing. */
+  | 'codex.excluded.plugin-files'
   /** Repository Codex custom agents as direct-child TOML of the root's `.codex/agents/`; read-authorizing `static-candidate`. */
   | 'codex.repo.agent'
   /** The root-exact `.codex/config.toml` MCP carrier; read-authorizing `static-candidate`. */
   | 'codex.repo.config'
   /** Repository Codex instructions at the exact root override/regular pair; read-authorizing `static-candidate`. */
   | 'codex.repo.instructions'
+  /** The exact Repository-root Codex plugin catalogs, whose entries name the plugins they resolve; read-authorizing `static-candidate`. */
+  | 'codex.repo.marketplace'
   /** Repository Codex rule files as direct children of the root layer's `.codex/rules/`; read-authorizing `static-candidate`. */
   | 'codex.repo.rules'
   /** The root-exact `.codex/config.toml` read as the project settings document; read-authorizing `static-candidate`. */
@@ -471,8 +535,12 @@ export type CopilotRuleId =
   | 'copilot.excluded.additional-standard-locations'
   /** Root direct-child Copilot custom agents under `.github/agents/`, which all three surfaces read; read-authorizing `static-candidate`. */
   | 'copilot.repo.agent'
+  /** The repository's own plugin catalog, at the four documented marketplace locations; read-authorizing `static-candidate`. */
+  | 'copilot.repo.marketplace'
   /** Root direct-child Copilot custom agents under `.claude/agents/`, which the editor and CLI surfaces read and the Cloud agent does not; read-authorizing `static-candidate`. */
   | 'copilot.repo.agent.claude'
+  /** The CLI's experimental `.github/extensions/` project extensions, which are never plugin candidates. */
+  | 'copilot.excluded.cli-extensions'
   /** The CLI's documented `.github/lsp.json`, left out of this release's read allowlist. */
   | 'copilot.excluded.cli-lsp'
   /** Runtime-supplied instruction and skill roots that never become scan roots. */

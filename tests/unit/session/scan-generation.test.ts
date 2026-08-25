@@ -27,7 +27,6 @@ function commitInput(
     outcome: 'complete' as const,
     files,
     recognitions,
-    skillCompanionsByPath: new Map<string, readonly string[]>(),
     diagnostics,
   };
 }

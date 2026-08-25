@@ -43,6 +43,22 @@
         "claude.behavior.user.plugins"
       ]
     },
+    "claude.output-style.selection": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.output-style",
+        "claude.behavior.repo.plugin",
+        "claude.behavior.user.output-style",
+        "claude.behavior.user.plugins"
+      ]
+    },
+    "claude.plugins.activation": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.marketplace",
+        "claude.behavior.repo.plugin",
+        "claude.behavior.repo.skills-directory-plugin",
+        "claude.behavior.user.plugins"
+      ]
+    },
     "claude.rules.layering": {
       "consumesBehaviors": ["claude.behavior.repo.rules", "claude.behavior.user.rules"]
     },
@@ -68,6 +84,13 @@
     "codex.mcp.configuration": {
       "consumesBehaviors": ["codex.behavior.repo.mcp", "codex.behavior.user.config"]
     },
+    "codex.plugins.activation": {
+      "consumesBehaviors": [
+        "codex.behavior.plugin.manifest",
+        "codex.behavior.repo.marketplace",
+        "codex.behavior.user.plugins"
+      ]
+    },
     "codex.rules.resolution": {
       "consumesBehaviors": ["codex.behavior.repo.rules", "codex.behavior.user.rules"]
     },
@@ -90,6 +113,9 @@
     },
     "copilot.cli.mcp.selection": {
       "consumesBehaviors": ["copilot.behavior.cli.mcp", "copilot.behavior.cli.user.mcp"]
+    },
+    "copilot.cli.plugins.activation": {
+      "consumesBehaviors": ["copilot.behavior.cli.plugins", "copilot.behavior.cli.user.plugins"]
     },
     "copilot.cli.settings.precedence": {
       "consumesBehaviors": ["copilot.behavior.cli.settings", "copilot.behavior.cli.user.settings"]
@@ -119,6 +145,9 @@
     "copilot.cloud.mcp.selection": {
       "consumesBehaviors": ["copilot.behavior.cloud.mcp"]
     },
+    "copilot.cloud.plugins.activation": {
+      "consumesBehaviors": ["copilot.behavior.cloud.plugins"]
+    },
     "copilot.cloud.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.cloud.remote-skills", "copilot.behavior.cloud.skills"]
     },
@@ -138,6 +167,12 @@
     "copilot.vscode.mcp.selection": {
       "consumesBehaviors": ["copilot.behavior.vscode.mcp", "copilot.behavior.vscode.user.mcp"]
     },
+    "copilot.vscode.plugins.activation": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.plugins",
+        "copilot.behavior.vscode.user.plugins"
+      ]
+    },
     "copilot.vscode.settings.precedence": {
       "consumesBehaviors": [
         "copilot.behavior.vscode.settings",
@@ -149,6 +184,10 @@
     }
   },
   "rules": {
+    "claude.excluded.plugin-files": {
+      "basedOnBehaviors": ["claude.behavior.repo.marketplace", "claude.behavior.repo.plugin"],
+      "explainedByStrategies": ["claude.plugins.activation"]
+    },
     "claude.repo.agent": {
       "basedOnBehaviors": ["claude.behavior.repo.agents"],
       "explainedByStrategies": ["claude.agent-context.composition", "claude.agents.selection"]
@@ -165,9 +204,17 @@
       ],
       "explainedByStrategies": ["claude.instructions.layering"]
     },
+    "claude.repo.marketplace": {
+      "basedOnBehaviors": ["claude.behavior.repo.marketplace", "claude.behavior.repo.plugin"],
+      "explainedByStrategies": ["claude.plugins.activation"]
+    },
     "claude.repo.mcp": {
       "basedOnBehaviors": ["claude.behavior.repo.mcp"],
       "explainedByStrategies": ["claude.mcp.selection"]
+    },
+    "claude.repo.output-style": {
+      "basedOnBehaviors": ["claude.behavior.repo.output-style"],
+      "explainedByStrategies": ["claude.output-style.selection"]
     },
     "claude.repo.permissions": {
       "basedOnBehaviors": [
@@ -191,9 +238,21 @@
       "basedOnBehaviors": ["claude.behavior.repo.skills"],
       "explainedByStrategies": ["claude.skills.selection"]
     },
+    "claude.repo.skills-directory-plugin": {
+      "basedOnBehaviors": ["claude.behavior.repo.skills-directory-plugin"],
+      "explainedByStrategies": ["claude.plugins.activation"]
+    },
     "codex.derived.fallback-basename": {
       "basedOnBehaviors": ["codex.behavior.repo.config", "codex.behavior.repo.instructions"],
       "explainedByStrategies": ["codex.config.precedence", "codex.instructions.layering"]
+    },
+    "codex.excluded.plugin-files": {
+      "basedOnBehaviors": [
+        "codex.behavior.plugin.manifest",
+        "codex.behavior.repo.marketplace",
+        "codex.behavior.user.plugins"
+      ],
+      "explainedByStrategies": ["codex.plugins.activation"]
     },
     "codex.repo.agent": {
       "basedOnBehaviors": ["codex.behavior.repo.agents"],
@@ -210,6 +269,10 @@
     "codex.repo.instructions": {
       "basedOnBehaviors": ["codex.behavior.repo.instructions"],
       "explainedByStrategies": ["codex.instructions.layering"]
+    },
+    "codex.repo.marketplace": {
+      "basedOnBehaviors": ["codex.behavior.repo.marketplace"],
+      "explainedByStrategies": ["codex.plugins.activation"]
     },
     "codex.repo.rules": {
       "basedOnBehaviors": ["codex.behavior.repo.rules"],
@@ -231,6 +294,10 @@
         "copilot.behavior.vscode.instructions.path"
       ],
       "explainedByStrategies": []
+    },
+    "copilot.excluded.cli-extensions": {
+      "basedOnBehaviors": ["copilot.behavior.cli.extensions"],
+      "explainedByStrategies": ["copilot.cli.plugins.activation"]
     },
     "copilot.excluded.cli-lsp": {
       "basedOnBehaviors": ["copilot.behavior.cli.lsp"],
@@ -331,6 +398,13 @@
     "copilot.repo.instructions.repository-cli-context": {
       "basedOnBehaviors": ["copilot.behavior.cli.instructions.repository"],
       "explainedByStrategies": ["copilot.cli.instructions.layering"]
+    },
+    "copilot.repo.marketplace": {
+      "basedOnBehaviors": ["copilot.behavior.cli.plugins", "copilot.behavior.vscode.plugins"],
+      "explainedByStrategies": [
+        "copilot.cli.plugins.activation",
+        "copilot.vscode.plugins.activation"
+      ]
     },
     "copilot.repo.mcp": {
       "basedOnBehaviors": ["copilot.behavior.cli.mcp"],

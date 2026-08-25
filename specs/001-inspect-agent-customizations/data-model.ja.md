@@ -872,7 +872,7 @@ Global authorityを直ちにrevokeできるが、uncancellable kernel operation�
 | Field | Type | Rule |
 |---|---|---|
 | `scanRequestId` | opaque ASCII stringまたはnull | Waiting/active/final source-scan progressではnon-nullで`Source.scanRequestId`と一致。Barrier所有disable progressではnull |
-| `phase` | `waiting \| cancelling \| deriving \| enumerating \| reading \| recognizing \| complete` | pipeline順に並ぶ。`waiting`はqueue中、`deriving`はvendorのreaderがseedの宣言する内容を展開する段階であり、walkに先立つ構成読み取り（admit済みのattemptはここから始まる）と、そのwalkが受理したfileをseedとするreaderのwalk後の実行（tasks.md T761）の両方を指す。`cancelling`はdisable/shutdown abortのdrain中。いずれもpath/source contentを含めない |
+| `phase` | `waiting \| cancelling \| deriving \| enumerating \| reading \| recognizing \| complete` | pipeline順に並ぶ。`waiting`はqueue中、`deriving`はvendorのreaderが固定pathのseedの宣言する内容を展開する段階であり、walkに先立つ構成読み取りを指す（admit済みのattemptはここから始まる）。`cancelling`はdisable/shutdown abortのdrain中。いずれもpath/source contentを含めない |
 | `queuedAt` | `UtcTimestamp`またはnull | Accepted commandが別transaction待ちになると設定し、work開始時にclear |
 | `startedAt` | `UtcTimestamp`またはnull | Source scan開始時、またはbarrier所有progressではdisable受理時。idle/waiting中はnull |
 | `visitedEntries` | non-negative safe integer | Bound済みtraversal planがnameを観測したdirectory entry数 |
@@ -957,6 +957,8 @@ substituteしない。
 | `permissions` | Policyを宣言するfile自身。条件は`rule` rowと同じ。別kindである理由は主題が違うことにある: permission policyはproductがどのcommandやtoolを実行してよいかを決めるものであり、ruleはproductが読む指針である。Codexは自身のpolicyを`.codex/rules/*.rules`に綴り、Claudeは自身のmodular instructionもまた`rules`と呼ぶため、vendorが共有する語でまとめると無関係な2つの主題が1つのlistに並ぶことになる。File全体がpolicyであるfileと、より大きなdocumentの1 blockとしてpolicyを運ぶfileは、どちらも1 rowである: 違うのはdetailが公開するものであって、rowが何であるかではない。Policyを宣言しないcarrierはrowにならない — documentの残りはそれを所有するrecognitionであり、rowにすれば作者が書いていないpolicyを述べることになる |
 | `prompt/command` | 読み手が起動する名前1つであり、条件は`skill` rowと同じ: その名前を解決する各recognition — `(file, tool)`ごとに1つ — がdefinitionとして名前のrowの中に並ぶため、2つのproductが1つの名前で起動する1 fileはそのrowの2 definitionとなり、product間で名前が異なる場合はそれぞれの名前のrowにdefinitionを持つ。どの名前になるかは、そのfileをadmitしたrule自身のものである。このkindの2つのlocationが異なる答えを返すためである。Command fileの名前が著述されることはない — どちらのproductもcommand fileの`name` keyを無視する — ため、名前は各productのadmitしたrule自身がpathから導出する: Claude Codeはcommand directory配下のpathを取り、区切りをすべて`:`に置き換える。したがって`frontend/component.md`は`frontend:component`、`team/review/security.md`は`team:review:security`となる。stemが大文字小文字を問わず`skill`である葉だけは例外で、自身ではなくそのdirectoryの名前を取る。これはproductがそう振る舞うのであって、どのpageも文書化していない。stemは大文字小文字を無視して比較する一方、`.md`拡張子はmatcherがadmitするものそのものであるため、`SKILL.MD`はここではそもそもcommand fileにならない。Copilot CLIはnamespaceを文書化しておらずsubdirectoryにも到達しないため、file名だけを取る。したがって両者はroot直下の子で正確に一致し、そのfileは両productを名指す1 rowとなり、nestedなfileはClaude単独のrowとなる。一方、VS Code prompt fileは自身で名乗る: 文書化された`name`が読み手が`/`の後に入力するものであり、宣言がなければfile自身の名前が代わりに立つ — したがってcommandが解決する名前を宣言したpromptは、1つのskill名を持つ2 fileと同じように、そのcommandのrowのdefinitionとなる。Skillと違い、rowは同名解決を述べない。いまや2つのprompt fileが1つの名前に到達し得るが、VS Codeはその結果を文書化していないため、rowが答えればどのpageも問うていない問いに答えることになる — definitionは並んで立ち、読み手は両方を見る（FR-009） |
 | `agent` | agent name 1つ: それを定義するすべてのfile — `(file, tool)`ごとに1 definition — がそのnameのrowの中に列挙されるので、1つのnameに解決される2つのfileは1 rowの2 definitionになる。nameはadmitしたproductがそのagentを識別する事実であり、どの事実かはproductによって異なる: OpenAI CodexとClaude Codeは`name` fieldをagentのidentityとし、filenameを一致させることはlookupではなくconventionだと述べている（Claude Codeはagents directory内のsubfolderもidentityに影響しないと述べる）ため、これらのrowをfileの名で名指せばproductが持たないagentを報告することになる。一方GitHub Copilotは`name`をoptionalなdisplay nameとして文書化し、profileをconfiguration file自身の名から`.md`または`.agent.md`を除いたもので識別するため、そのrowを宣言された`name`で名指せばCopilotがその名でdeduplicateしないagentを報告することになる。したがって2つのproductが認識する1つのfileは、両者の答えが異なる限り2つのrowに定義を持つ。Rowはskillのrowと違いsame-name resolutionを述べない: Claude Codeは1つの`.claude/agents/` tree配下で同名の2 fileのうち1つだけがloadされると述べ、どちらかを定めるruleを示さないので、答えるrowはどのpageも問うていない問いに答えることになる — definitionは並べて示され、読者は両方を見る（FR-009）。nameがnullである唯一のrowが末尾を締め、nameを公開しないfileを集める — 宣言された`name`でagentを識別するproductのもとで、宣言しないもの、scalar以外を宣言するもの、そして宣言をまったく読み取れずnameが不在ではなく不明なもの（FR-028）。file名で識別するproductのdefinitionはここに到達しない: fileが何を宣言していてもpathが答えるので、抽出の失敗はそのidentityを奪わない。Definitionは、admitしたruleが依拠するdocumented behaviorのsurfaceを、skill definitionと同じように述べる（FR-009）。sessionがそのagentをspawnした、あるいは選択したという主張では決してない |
+| `plugin` | admitしたruleが解決する1つのplugin名。その名前を解決する各recognition — `(carrier, tool)`につき1つ — がcarrierとしてその名前のrow内に列挙される。`MCP` rowと同じ条件である。どの名前かはfileをadmitしたruleに属する。skillのinvocation nameと同じである（FR-007）: Codexはcatalogの提供を`plugin@marketplace`としてaddressするため、2つのcatalogが提供する同じ名前は2 rowになる。他の製品のpluginフェーズは自分の名前を自分で解決する。carrierはそのpluginを宣言するfileである — それを提供するentryを持つcatalog、あるいはclientが固定pathのmanifestを読む製品ではplugin自身のmanifest。catalogがrowになることは無い: catalogはplugin名を出どころのsourceへ解決する表であり、それはこのkindのcarrierだからである。Rowはpluginが同梱するfileも持つ — その提供が名指すplugin rootを丸ごと列挙したもので、pluginのmanifestもその1つである（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。それらのfileは自身のrowを得ない: rowは件数を述べ、各fileはcarrier自身の詳細で開く。名前を1つも解決しないcarrierは1つのnull名rowに加わり、その状態はkindの無いfileではなく見えるrowのままになる（FR-028）。Rowはinstallation、enablement、trust、cachedコピーのいずれも述べない: 4つとも本製品が決して読まないUser stateである（FR-009） |
+| `output style` | 読み手が選択する1つのstyle名。その名前を解決する各recognition — `(file, tool)`につき1つ — が定義としてその名前のrow内に列挙される。`prompt/command` rowと同じ条件である。どの名前かはadmitしたruleに属する。それはadmitするvendor自身のcontractだからである: Claude Codeは、frontmatterが`name`を設定しない限りfile名がstyle名になると文書化しており、authoredな空の名前は不在のものと同じくフォールバックする。文字を持たない名前ではpickerがstyleを表示できないからである。1つのrepositoryの2つのproject layerが1つの名前を定義しうる — pageはこれをsession working directoryへの近さで解決するが、この製品はそれを決して観測しない — ため、選択されたroot自身のlayerだけがadmitされ、rowはsame-name resolutionを述べない: 定義は並んで立ち、読み手はそれらを見る（FR-009） |
 | `settings/config` | File自身。`rule` rowと同じ条件である: settingsまたはconfiguration fileは、rowのkeyになる名前を宣言せず、groupingの基準になる範囲も支配しないため、Source-relative Pathがrowのidentityであり、1つのfileを2つの製品が認識すれば1つのrow上の2つのrecognitionになる。主題が異なるため別のkindである: 製品が設定を読む先のfileであり、contextへ読み込むguidanceであるruleでも、何を実行してよいかを決めるpermission policyでもない。1つの物理fileがこのrowと別kindのrowを同時に持ちうる — Codexの`.codex/config.toml`は宣言した各serverのMCP rowと、それらの宣言が置かれたdocumentであるここのrowを持つ — また、linkがどのdetailを開くかはfileではなくそのlinkが載るrowから従う（FR-007） |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
@@ -1074,10 +1076,11 @@ summaryとして公開されるのではなく、これらのrecordから組み�
 どこで一致したかを述べる。カスタマイズがどこに適用されるか、そのruleがどこまで文書化されているかは
 admissionに載せない。どちらもsurfaceが示さないからである。
 
-Skillのcensusが得たsort済みcompanion file listはdetailsには載せない。これはそのfileのrecognitionが
-裏づけるinventory定義の上で公開される（contracts/http-api.md `skills[].definitions[].companionFiles`）。
+Skillのcensusが得たsort済みcompanion file listはdetailsには載せない。censusは列挙したfileを
+generationの通常のfileとして公開し、listは公開する場所 — そのfileのrecognitionが裏づけるinventory
+定義（contracts/http-api.md `skills[].definitions[].companionFiles`） — でそのpathから導く。
 recognition上の2つ目の綴りはそれらと食い違い得る状態になるからであり、1つのfileのすべての定義 —
-tool横断でもentry横断でも — は同じlistを運ぶ。censusはfileのものだからである。`SKILL.md`が単独で置かれている
+tool横断でもentry横断でも — は同じlistを運ぶ。directoryはそのfileのものだからである。`SKILL.md`が単独で置かれている
 場合、listはabsentではなくemptyとする。Directoryであることこそがskillの正体であり、認識されたskillは必ず
 列挙済みだからである。公開される件数はその`length`だけである
 （contracts/inspection-path-allowlist.md § Bounded companion census）。
@@ -1193,10 +1196,12 @@ Skillのdetail surfaceは、それを運ぶfileではなくskill自身から始�
 呼び出す名前を閉じたtool順で述べる。値はdetail上に再公開されるのではなく、そのfileを抱える
 rowから読み取られる（contracts/http-api.md § get-session `skills[]`）。定義は1つのtoolの
 recognitionであり、2つのtoolが異なる名前で
-呼び出す1つのfileは各名前のrowの定義になる。pageはrouteが指すfileを示す —
-detail URLは`/skills/<Source相対パス>`という
-file自身のidentityで、companionも同じrouteの下で開く —
-ため、どのdocumentがpageに出るかはlinkのidentityであってpreferenceではない。tool segmentは
+呼び出す1つのfileは各名前のrowの定義になる。pageはURLが選択したfileを示す —
+detail URLは`/skills/<SKILL.mdのSource相対パス>`というskill自身のidentityで、読んでいるfileは
+その傍らの`file` queryが名指す — ため、どのdocumentがpageに出るかはlinkのidentityであって
+preferenceではない。addressがskillでselectionがfileであるのは、pageの主題がskillだからである:
+companionはそれ自身のpageを持たず、与えてみればどのURLもまず自分がどのskillに属するかを
+解決しなければ何も述べられなくなった。tool segmentは
 持たない: 1つの`SKILL.md`を読む2つの製品は同じbyte、同じfrontmatter、同じcompanion
 directoryを読むため、製品ごとのaddressは1つのdocumentに、名前だけが異なる2つのURLを与える
 ことになる。このidentityは再スキャンとserver起動を跨いで安定である — それはURLのpath半分のことで、

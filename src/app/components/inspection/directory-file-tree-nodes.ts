@@ -7,12 +7,12 @@
 // Nesting is derived from the paths rather than requested from the host: the
 // census publishes Source-relative paths, and the directory structure is what
 // their shared prefixes already say.
-import { pathPresentationLabel } from '../../../shared/entities';
+import { inlinePresentationLabel, pathPresentationLabel } from '../../../shared/entities';
 
 /** One file's node: a leaf the reader can open. */
 export class SkillTreeFileNode {
   /**
-   * Discriminant of {@link SkillTreeNode}: the branch renders a node by this
+   * Discriminant of {@link DirectoryTreeNode}: the branch renders a node by this
    * field, never by testing its runtime shape.
    */
   public readonly kind = 'file' as const;
@@ -26,10 +26,19 @@ export class SkillTreeFileNode {
   /** The file's own name, as presentation text. */
   public readonly label: string;
 
+  /**
+   * The same name as accessible-name text: an accessible name collapses
+   * whitespace, so `a b.md` and `a  b.md` — two files a directory holds apart
+   * and the label above draws apart — would otherwise announce as one link
+   * (FR-025, WCAG 2.4.4).
+   */
+  public readonly accessibleLabel: string;
+
   /** Names one file by the last segment of its path below the tree root. */
   public constructor(sourceRelativePath: string, name: string) {
     this.sourceRelativePath = sourceRelativePath;
     this.label = pathPresentationLabel(name);
+    this.accessibleLabel = inlinePresentationLabel(name);
   }
 
   /** Stable identity for the render; a file's path is already unique. */
@@ -47,7 +56,7 @@ export class SkillTreeFileNode {
  */
 export class SkillTreeDirectoryNode {
   /**
-   * Discriminant of {@link SkillTreeNode}: the branch renders a node by this
+   * Discriminant of {@link DirectoryTreeNode}: the branch renders a node by this
    * field, never by testing its runtime shape.
    */
   public readonly kind = 'directory' as const;
@@ -59,7 +68,7 @@ export class SkillTreeDirectoryNode {
   public readonly label: string;
 
   /** The files and directories immediately inside it, in the order given. */
-  public readonly children: SkillTreeNode[] = [];
+  public readonly children: DirectoryTreeNode[] = [];
 
   /** Names one directory by the segments leading to it, its own name last. */
   public constructor(ancestors: readonly string[], name: string) {
@@ -69,7 +78,7 @@ export class SkillTreeDirectoryNode {
 }
 
 /** One node of the tree, discriminated by `kind`: a file to open, or a directory that holds nodes. */
-export type SkillTreeNode = SkillTreeFileNode | SkillTreeDirectoryNode;
+export type DirectoryTreeNode = SkillTreeFileNode | SkillTreeDirectoryNode;
 
 /**
  * The tree for one skill's files, rooted at `directory`.
@@ -78,8 +87,11 @@ export type SkillTreeNode = SkillTreeFileNode | SkillTreeDirectoryNode;
  * followed by the census in path order, so a directory's files are already
  * together — and a directory node is created the first time a file needs one.
  */
-export function buildSkillTree(files: readonly string[], directory: string): SkillTreeNode[] {
-  const roots: SkillTreeNode[] = [];
+export function buildDirectoryTree(
+  files: readonly string[],
+  directory: string,
+): DirectoryTreeNode[] {
+  const roots: DirectoryTreeNode[] = [];
   const directories = new Map<string, SkillTreeDirectoryNode>();
   for (const file of files) {
     const relative = file.startsWith(directory) ? file.slice(directory.length) : file;

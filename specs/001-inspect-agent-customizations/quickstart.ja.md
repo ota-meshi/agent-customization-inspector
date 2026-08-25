@@ -325,13 +325,14 @@ source checkでnetworkを使えるのはこのcommandだけとする。
 5. Repository、文書化済みUser、consent済みGlobalの表を独立して検証する。FR-015からFR-018が明示しない限り、
    文書化済みUser locationはGlobal read authorityにならず、runtime compositionはInspectorのRepository/Global
    source graphをmergeしない。
-6. 出荷済みの`bounded-derived-candidate` ruleは正確に4件であり、それぞれ自身のvendorの構成読み取り段階が
+6. 出荷済みの`bounded-derived-candidate` ruleは正確に1件であり、自身のvendorの構成読み取り段階が
    展開する。runtime extension pointは存在しない。
-   `copilot.derived.local-plugin-manifest`、`claude.derived.local-plugin-manifest`、
-   `codex.derived.local-plugin-manifest`、`codex.derived.fallback-basename`とする。
-   Skillのsibling `agents/openai.yaml`はこれに含まれない: それはderivationではなく、所有元skillの
-   bounded companion censusを通じて公開される（contracts/vendors/openai-codex.ja.md § Derived
-   Repository rule）。
+   `codex.derived.fallback-basename`である。3種類のfileは
+   意図的にこれに含まれない: 所有元skillのbounded companion censusを通じて公開されるskillのsibling
+   `agents/openai.yaml`と、plugin root配下のfileである。後者はadmitしたruleが
+   名指したdirectory形式のcustomizationであるがゆえに列挙される。いずれもcandidateではないため、
+   derivationでもない（contracts/vendors/openai-codex.ja.md § Derived Repository rule、
+   contracts/vendors/claude-code.ja.md § Repository vendor behavior）。
    各ruleはexact seed pathまたはseed rule/kind、closed declaration syntax、fixed base/placement/suffixを持つtyped
    edge 1本で、callback、arbitrary join、expression、glob、recursive derivationを表現不能にする。Programはtarget、
    declaration、name、ancestryの数値上限を定義せず、利用可能なcapacityはNode.jsと実行環境から継承する。Bounded-derived

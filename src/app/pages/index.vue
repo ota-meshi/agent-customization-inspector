@@ -190,6 +190,10 @@ const totalRowCount = computed(() => {
       return snapshot.value?.rules.length ?? 0;
     case 'permissions':
       return snapshot.value?.permissions.length ?? 0;
+    case 'plugin':
+      return snapshot.value?.plugins.length ?? 0;
+    case 'output style':
+      return snapshot.value?.outputStyles.length ?? 0;
     case 'settings/config':
       return snapshot.value?.settings.length ?? 0;
     default:
@@ -277,37 +281,53 @@ const staleFailureMessage = computed(() =>
     </template>
 
     <h2>Customization files</h2>
-    <InventoryFilters
-      v-model:source-id="selectedSourceId"
-      v-model:tool="selectedTool"
-      v-model:path-query="pathQuery"
-      :available-sources="filters.availableSources.value"
-      :available-tools="filters.availableTools.value"
-      :match-count="matchCount"
-      :total-count="totalRowCount"
-      :narrowed="filters.isNarrowed.value"
-      @clear="clearFilters"
-    />
-    <InventoryKindTabs
-      :kinds="filters.availableKinds.value"
-      :active-kind="filters.activeKind.value"
-      :counts="filters.kindCounts.value"
-      @select="kind = $event"
-    />
-    <InventoryList
-      :kind="filters.activeKind.value"
-      :instruction-rows="filters.instructionRows.value"
-      :skill-rows="filters.skillRows.value"
-      :mcp-rows="filters.mcpRows.value"
-      :agent-rows="filters.agentRows.value"
-      :prompt-rows="filters.promptRows.value"
-      :rule-rows="filters.ruleRows.value"
-      :permissions-rows="filters.permissionsRows.value"
-      :settings-rows="filters.settingsRows.value"
-      :files-by-path="filters.filesByPath.value"
-      :total-count="totalRowCount"
-      :diagnostics="snapshot.diagnostics"
-    />
+    <!-- The rail carries what decides which rows are on screen — the kind in
+         view and the filters that narrow it — and the rows take the rest of the
+         width, because a row is a path and a path is what needs the room. -->
+    <div class="aci-inventory-page__browse">
+      <div class="aci-inventory-page__rail">
+        <!-- The kind list is the part of the rail that gives way when the rail
+             is taller than the viewport, which is what keeps the filters below
+             it on screen. It is wrapped rather than styled through the
+             component, because how tall it may grow is the rail's decision
+             rather than the list's. -->
+        <div class="aci-inventory-page__kinds">
+          <InventoryKindTabs
+            :kinds="filters.availableKinds.value"
+            :active-kind="filters.activeKind.value"
+            :counts="filters.kindCounts.value"
+            @select="kind = $event"
+          />
+        </div>
+        <InventoryFilters
+          v-model:source-id="selectedSourceId"
+          v-model:tool="selectedTool"
+          v-model:path-query="pathQuery"
+          :available-sources="filters.availableSources.value"
+          :available-tools="filters.availableTools.value"
+          :match-count="matchCount"
+          :total-count="totalRowCount"
+          :narrowed="filters.isNarrowed.value"
+          @clear="clearFilters"
+        />
+      </div>
+      <InventoryList
+        :kind="filters.activeKind.value"
+        :instruction-rows="filters.instructionRows.value"
+        :skill-rows="filters.skillRows.value"
+        :mcp-rows="filters.mcpRows.value"
+        :agent-rows="filters.agentRows.value"
+        :prompt-rows="filters.promptRows.value"
+        :rule-rows="filters.ruleRows.value"
+        :permissions-rows="filters.permissionsRows.value"
+        :plugin-rows="filters.pluginRows.value"
+        :output-style-rows="filters.outputStyleRows.value"
+        :settings-rows="filters.settingsRows.value"
+        :files-by-path="filters.filesByPath.value"
+        :total-count="totalRowCount"
+        :diagnostics="snapshot.diagnostics"
+      />
+    </div>
 
     <!-- Outside every kind tab: these files are in no kind's inventory, so no
          kind presentation applies to them. It is a disclosure rather than a
@@ -354,6 +374,74 @@ const staleFailureMessage = computed(() =>
 </template>
 
 <style scoped>
+/* The kind rail and the rows it selects, side by side: the rail is as wide as
+   the longest kind label needs and no wider, and the rows take the rest.
+   `align-items: start` is what lets the rail be shorter than the rows and
+   stick, rather than being stretched to the panel's height. */
+.aci-inventory-page__browse {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
+  align-items: start;
+  margin-block-start: 1rem;
+}
+
+/* The rail stays on screen while the rows scroll past it, so choosing another
+   kind never means scrolling back up a long inventory. Its own scrollbar is
+   the last resort, for a viewport so short that even the filters do not fit;
+   what normally absorbs a rail taller than the viewport is the kind list
+   inside it. */
+.aci-inventory-page__rail {
+  position: sticky;
+  top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-block-size: calc(100dvh - 1.5rem);
+  overflow-y: auto;
+}
+
+/* Everything in the rail keeps its own height, so a short viewport never
+   squeezes the filters into an overflowing box. */
+.aci-inventory-page__rail > * {
+  flex: none;
+}
+
+/* The exception, and the reason the rail rarely scrolls: the kind list takes
+   the height that is left and scrolls within it. The filters stay on screen
+   whatever the viewport, because the control that clears them appears only
+   while a filter is applied — a control that arrives already scrolled out of
+   the rail is one the reader never learns is there. It keeps a few kinds
+   visible rather than collapsing to nothing on a very short viewport; below
+   that the rail's own scrollbar takes over. */
+.aci-inventory-page__kinds {
+  flex: 1 1 auto;
+  min-block-size: 6rem;
+  overflow-y: auto;
+}
+
+/* One column below the two-column threshold: a rail beside the rows would
+   leave neither enough width to read, so the kinds and filters go back above
+   the rows and stop sticking — a sticky rail on a short viewport is a rail
+   that covers the rows it selects. */
+@media (width < 48rem) {
+  .aci-inventory-page__browse {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aci-inventory-page__rail {
+    position: static;
+    max-block-size: none;
+    overflow-y: visible;
+  }
+
+  /* Nothing to give way to: the rail is as tall as it needs, above the rows. */
+  .aci-inventory-page__kinds {
+    min-block-size: 0;
+    overflow-y: visible;
+  }
+}
+
 /* An escaped root label has no break opportunities of its own; without this the
    shell scrolls sideways. It is not a `.aci-path`: the label is a presentation
    of a root, not a path anything can open. */

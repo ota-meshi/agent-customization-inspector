@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// One level of a skill's directory tree, and every level below it.
+// One level of a directory-shaped customization's tree, and every level below
+// it — a skill's directory, or the root of a plugin and everything it ships.
 //
 // Recursive so the markup is the structure: a directory's files are a list
 // *inside* that directory's item, which is what assistive technology reads as
@@ -7,15 +8,22 @@
 // between a directory and the files under it exists only in the pixels, and a
 // reader who cannot see them is told two files with the same name are siblings.
 import { computed } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
-import { detailRoute } from '../detail-route';
-import type { SkillTreeNode } from './skill-file-tree-nodes';
+import type { DirectoryTreeNode } from './directory-file-tree-nodes';
 
 const props = defineProps<{
   /** The nodes at this level, in the order the tree should read them. */
-  readonly nodes: readonly SkillTreeNode[];
+  readonly nodes: readonly DirectoryTreeNode[];
   /** The path of the file currently open, so the branch can mark it. */
   readonly selectedPath: string;
+  /**
+   * The route one of this customization's files opens at. A function rather
+   * than a kind, because a route is not always a path alone: a skill's is
+   * `/skills/<path>`, while a plugin's names the row as well, since one plugin
+   * root can be reached through more than one offering.
+   */
+  readonly routeFor: (sourceRelativePath: string) => RouteLocationRaw;
   /** How many branches stand above this one; 0 at the tree's own root. */
   readonly depth?: number;
 }>();
@@ -37,27 +45,32 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
   <!-- Markerless, so the list carries `role="list"`: WebKit drops list
        semantics from a list with no marker, and VoiceOver then stops announcing
        the item count and the nesting. -->
-  <ul class="aci-skill-file-tree-branch" role="list">
+  <ul class="aci-directory-file-tree-branch" role="list">
     <li v-for="node in nodes" :key="node.id">
       <!-- `aria-current` rather than a class alone: which file is open is
            information, not decoration (WCAG 1.4.1). The link's text is exactly
-           the name, so no template indentation renders with it. The branch is
-           the node's own `kind` — the union's discriminant — never a runtime
-           shape test over a value this surface built itself. -->
+           the name, so no template indentation renders with it, and its
+           accessible name is that same name under the single-line rule — an
+           accessible name collapses whitespace, and two files a directory holds
+           apart must not announce as one (FR-025). The branch is the node's own
+           `kind` — the union's discriminant — never a runtime shape test over a
+           value this surface built itself. -->
       <NuxtLink
         v-if="node.kind === 'file'"
-        class="aci-skill-file-tree-branch__file"
-        :to="detailRoute('skill', node.sourceRelativePath)"
+        class="aci-directory-file-tree-branch__file"
+        :to="routeFor(node.sourceRelativePath)"
         :aria-current="node.sourceRelativePath === selectedPath ? 'page' : undefined"
+        :aria-label="node.accessibleLabel"
         >{{ node.label }}</NuxtLink
       >
       <template v-else>
         <!-- A directory is not something to open: it holds the nodes under it,
              and every file the census reached is already one of them. -->
-        <span class="aci-skill-file-tree-branch__directory aci-authored-text"
+        <span class="aci-directory-file-tree-branch__directory aci-authored-text"
           >{{ node.label }}/</span
         >
-        <SkillFileTreeBranch
+        <DirectoryFileTreeBranch
+          :route-for="routeFor"
           :nodes="node.children"
           :selected-path="selectedPath"
           :depth="(depth ?? 0) + 1"
@@ -69,7 +82,7 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 </template>
 
 <style scoped>
-.aci-skill-file-tree-branch {
+.aci-directory-file-tree-branch {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -78,8 +91,8 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 /* Rows are full-width targets rather than bare text: a file browser is a list
    of things to click, and a click that only lands on the glyphs is a smaller
    target than the row it appears to be (WCAG 2.5.8). */
-.aci-skill-file-tree-branch__file,
-.aci-skill-file-tree-branch__directory {
+.aci-directory-file-tree-branch__file,
+.aci-directory-file-tree-branch__directory {
   border-radius: 4px;
   display: block;
   font-family: ui-monospace, monospace;
@@ -95,7 +108,7 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
   white-space: pre-wrap;
 }
 
-.aci-skill-file-tree-branch__directory {
+.aci-directory-file-tree-branch__directory {
   color: var(--aci-muted);
 }
 
@@ -103,11 +116,11 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
    targets, and one on hover so the pointer says what the row is. Colour is not
    the only signal either way: the open row below carries a background and a
    weight, and the focus ring is the shell's. */
-.aci-skill-file-tree-branch__file {
+.aci-directory-file-tree-branch__file {
   text-decoration: none;
 }
 
-.aci-skill-file-tree-branch__file:hover {
+.aci-directory-file-tree-branch__file:hover {
   background: color-mix(in srgb, CanvasText 8%, Canvas);
   text-decoration: underline;
 }
@@ -115,13 +128,13 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 /* The open file is marked by background and weight as well as by
    `aria-current`, so the state is not carried by colour alone (WCAG 1.4.1) and
    survives a forced-colours rendering. */
-.aci-skill-file-tree-branch__file[aria-current='page'] {
+.aci-directory-file-tree-branch__file[aria-current='page'] {
   background: color-mix(in srgb, CanvasText 14%, Canvas);
   font-weight: 600;
 }
 
 @media (forced-colors: active) {
-  .aci-skill-file-tree-branch__file[aria-current='page'] {
+  .aci-directory-file-tree-branch__file[aria-current='page'] {
     background: Highlight;
     color: HighlightText;
   }

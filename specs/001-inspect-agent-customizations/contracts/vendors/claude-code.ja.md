@@ -88,6 +88,35 @@ Composition列は[runtime composition](../runtime-composition.ja.md#claude-code-
 現在のClaude Codeは、文書化された深さ制限までnested subagent spawnをsupportする。この契約のruleや
 relationshipは、「subagentは別のsubagentをspawnできない」という古い前提を保持しない。
 
+pluginがこのrepositoryに到達する経路は2つあり、catalogを要するのは一方だけである。
+
+Skills directory配下のfolderが`.claude-plugin/plugin.json`を持つ場合、それは次のsessionで
+`<folder>@skills-dir`という名前のpluginとしてloadされる。marketplaceもinstall手順も要さず、
+plugin cacheへcopyされるのではなくその場でdiscoverされる。manifestがそこに在ること自体がその
+folderをpluginにするため、manifestは`claude.repo.skills-directory-plugin`がadmitするcarrierで
+あり、それを持つfolderがpluginの同梱fileを持つplugin rootである。project scopeは起動`cwd`自身の
+`.claude/skills/`であり、この解釈でancestor skill directoryを遡ることはない。plain skillのruleの
+ようにlayerさせず固定するのはそのためである。workspace trust dialogは本製品が読まないruntime条件で
+あり続ける。
+
+もう一方はcatalogである。`.claude/settings.json`は`extraKnownMarketplaces`でcatalogを名前ごとに
+登録し — そのfolderに対するworkspace trust dialogを受け入れた後にのみ有効となる — `enabledPlugins`で
+有効化するpluginを`<plugin-name>@<marketplace-name>`のkeyで指名する。repository自身のcatalogは
+rootの`.claude-plugin/marketplace.json`として文書化されており、`claude.repo.marketplace`がこれを
+admitする。catalogは各plugin名をそのplugin自身のsourceへ対応付け、このrepositoryが持つdirectoryを
+名指すのはmarketplace rootからの`./`相対pathだけである。`github`・`git`・`npm`・`archive`・
+`command` sourceの場合、その名前に対応するRepository directoryは存在せず、project settings fileで
+有効化してもそれが他者にinstallされることはない。marketplace sourceとplugin sourceは別の設定で
+あり、catalogは各pluginの取得元を述べるだけで、installされていることは述べない。
+
+Catalogのlocal source配下の`.claude-plugin/plugin.json`をadmitするruleは存在せず、導出するruleも
+存在しない。そこではmanifestは任意であり、pluginとはそのrootである: root配下のfile — manifestを
+含む — がそのpluginの同梱fileであり、bounded companion censusが列挙する
+（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。repository自身のrootを
+plugin rootとして扱うこともしない。任意のpathでClaudeがpluginをdiscoverするとどの引用ページも
+述べておらず、repositoryが自身のrootに置くmanifestは、ここでclientがloadするpluginではなく、
+そのrepositoryが配布するpluginだからである。
+
 ## RepositoryのInspector matcher
 
 これらのmatcherは、正確なInspector selected Repository rootをrootとする。Descendant-inventory expansionを
@@ -108,8 +137,8 @@ on-demand load — だけである。Runtime cwd chain上でしか文書化さ�
 | `claude.repo.permissions` | Repository | `['.claude', 'settings.json']`、`['.claude', 'settings.local.json']` | 各selectorを`exact`。構成上`claude.repo.settings`と一致する | `static-candidate` | `claude.behavior.repo.settings.shared`、`claude.behavior.repo.settings.local` | 同じ2 fileのpermission policyとしてのcandidacy。`claude.repo.settings`が`settings/config`として認識するのに対し、こちらは`permissions`として認識する: 双方に宣言があるfileは2つのrecognitionを持ち、これはadmit済みのCodex config carrierと同じである。`permissions` objectを宣言しないfileはpermissions rowにならない | `anthropic.claude-code.settings.scopes-precedence` |
 | `claude.repo.mcp` | Repository | `['.mcp.json']` | `exact` | `static-candidate` | `claude.behavior.repo.mcp` | Source rootがClaudeのproject rootであること、およびtrust/approvalがcondition | `anthropic.claude-code.mcp.scopes-precedence` |
 | `claude.repo.output-style` | Repository | `['.claude', 'output-styles', /\.md$/u]` | Repository rootの`.claude/output-styles/`の`direct-child`。ページはworking directoryとrepository rootの間の各directoryからproject styleを読み込む | `static-candidate` | `claude.behavior.repo.output-style` | Active sessionのancestor layerであることとsettings/session stateによるselectionが必要 | `anthropic.claude-code.output-styles.locations` |
-| `claude.repo.plugin-manifest` | Repository | `['.claude-plugin', 'plugin.json']` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `claude.behavior.repo.plugin` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootにあるこのpathをauto-discoveryせず、存在はactivationを証明しない。Nested local manifestへは`claude.derived.local-plugin-manifest`からだけ到達できる | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.marketplaces.catalog-sources` |
-| `claude.repo.marketplace` | Repository | `['.claude-plugin', 'marketplace.json']` | `exact`。Selected Repository rootをauthored marketplace rootとして扱う | `static-candidate` | `claude.behavior.repo.marketplace` | Inspectorのauthoring policyだけ。Claudeは任意のRepository rootからこのcatalogをauto-registerしない。Explicit registrationはruntime conditionのまま | `anthropic.claude-code.marketplaces.catalog-sources` |
+| `claude.repo.skills-directory-plugin` | Repository | `['.claude', 'skills', ANY_NAME, '.claude-plugin', 'plugin.json']` | Repository rootの`.claude/skills/`の各直下childの下で`exact`。manifestを持つfolderがplugin rootである | `static-candidate` | `claude.behavior.repo.skills-directory-plugin` | Skills directory配下でこのmanifestを持つfolderは、marketplaceもinstall手順もなしに`<folder>@skills-dir`としてloadされる。したがってmanifestがそこに在ること自体がそのfolderをpluginにする。Project scopeは起動`cwd`自身の`.claude/skills/`であり、この解釈でancestor skill directoryは遡らない。workspace trustはruntime条件のままである | `anthropic.claude-code.plugins.components-scopes` |
+| `claude.repo.marketplace` | Repository | `['.claude-plugin', 'marketplace.json']` | `exact`。repository自身のcatalogとして文書化された場所であり、その`./` entryが解決するmarketplace rootでもある | `static-candidate` | `claude.behavior.repo.marketplace` | Catalogはこのrepositoryが持つauthored contentである。configurationまたはcommandによる明示的な登録はruntime条件のままであるため、rowはcatalogが何をofferするかを述べ、pluginが登録・install・有効化されているとは決して述べない | `anthropic.claude-code.marketplaces.catalog-sources` |
 
 内包された`hooks` declarationは、それを運ぶ受理済みcandidateのmetadataであり、別のfilesystem matcherは
 作らない。そのowner集合は文書化されたもの — 受理済みsettings、skill、agent、plugin、marketplace
@@ -154,7 +183,6 @@ Environment validation、consent、canonicalization、およびabsentな`CLAUDE_
 
 | Rule ID | Class | Closed derivation meaning | Behavior refs | Strategy refs | Status | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.derived.local-plugin-manifest` | `bounded-derived-candidate` | 独立に受理したmarketplace catalogから、`./`で始まるlocal plugin `source`だけを受理し、marketplace rootからescapeなしで解決し、`<resolved-plugin-root>/.claude-plugin/plugin.json`だけを確認する。Manifestはoptionalなので不存在も正当 | `claude.behavior.repo.marketplace`、`claude.behavior.repo.plugin` | `claude.plugins.activation` | Vendorのrelative-source semanticsに整合するInspector derivation。Claudeのauto-scanではない | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `anthropic.claude-code.marketplaces.catalog-sources`、`anthropic.claude-code.plugins.components-scopes` |
 | `claude.excluded.user-runtime` | `excluded` | `CLAUDE.md`以外の全User rowを除外する。Settings/state、rule、skill、command、agent、output style、MCP state、plugin/cache、agent memory、auto memory、workflowを含む | `claude.behavior.user.rules`、`claude.behavior.user.skills`、`claude.behavior.user.commands`、`claude.behavior.user.agents`、`claude.behavior.user.settings`、`claude.behavior.user.output-style`、`claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.agent-memory`、`claude.behavior.user.auto-memory`、`claude.behavior.user.workflows` | — | FR-016とFR-018の要件。除外はvendor supportを否定しない | FR-013、FR-014、FR-016、FR-018、QR-001、QR-005 | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting`、`anthropic.claude-code.subagents.scope-context`、`anthropic.claude-code.settings.scopes-precedence`、`anthropic.claude-code.output-styles.locations`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.plugins.components-scopes` |
 | `claude.excluded.plugin-files` | `excluded` | Skill、command、agent、output style、hook、MCP/LSP declaration、monitor、theme、channel、settings、script、assetなどのplugin component bodyを除外し、declarationはrelationshipとして保持 | `claude.behavior.repo.plugin`、`claude.behavior.repo.marketplace` | `claude.plugins.activation` | Initial-release boundary。Plugin manifest/catalog inventoryはcomponent activationではない | FR-003、FR-004、FR-020、FR-021、FR-022、FR-024、QR-001、QR-005 | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.directory.file-reference` |
 
@@ -211,8 +239,15 @@ import、installation、activationのauthorityを一切与えない。
 | `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Root `.claude/settings.json`または`.claude/settings.local.json`の正確なsupported leaf/item occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを決して所有しない |
 | `permissions` | — | Root `.claude/settings.json`または`.claude/settings.local.json`のtop-level `permissions` objectが持つすべてのleaf/item occurrenceを、authoredなまま。一部のkeyだけをallowlistすると、どのauthored policyを落としたか言えないまま落とすことになるため、object全体を対象とする。`permissions` objectを宣言しないsettings fileはpermission policy recognitionを持たず、それ以外のsettings keyは`settings/config` recognitionに属する。rule文字列はtoolと任意のspecifierを名指すものであり、file・command・domainへ解決することは決してない |
 | `output style` | — | 受理済みdirect-child output-style Markdown fileの正確なfrontmatter value |
-| `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/plugin.json`の正確なmetadata/component/dependency leaf/item occurrence。Inline Hook bodyは別のcontained recognitionだけがprojectし、inline MCP declarationはmanifest自身の宣言contentである |
-| `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/marketplace.json`の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/plugin.json`の正確なmetadata/component/dependency leaf/item occurrenceと、entryがplugin名を解決する受理済み`.claude-plugin/marketplace.json`の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる。Inline Hook bodyは別のcontained recognitionだけがprojectし、inline MCP declarationはそのcarrier自身の宣言contentである |
+
+`plugin` rowのderivation記述 — `marketplace.plugin.source`だけがclosed local-manifest derivationを
+seedしうる — は、どのruleも行わないderivationを述べている: catalogのlocal root配下のmanifestは
+candidateではなく、そのpluginが同梱するfileである（§ Repository vendor behavior）。これは消費者を
+持たないfrozen・digest記録済みのdesign inputであり、その変更はofficial-source contractの
+stop-and-regenerate ruleに従うdigest記録済みの変更である。この行が統べているのは残り2つの半分、
+すなわち`claude.repo.skills-directory-plugin`がadmitするmanifestと、`claude.repo.marketplace`が
+admitするcatalog entryである。
 
 Initial releaseのClaude recognitionは、sharedな`skill metadata` kindを使用しない。Typed layer、path-derived namespace、
 selection、precedence、trust、surface、default、applicability factはauthored metadataではない: いずれもfileから読み出さず、

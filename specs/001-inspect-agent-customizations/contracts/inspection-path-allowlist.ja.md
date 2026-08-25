@@ -170,12 +170,28 @@ Censusが適用されるかどうかは、ruleの個別宣言ではなく認識�
 あることはkindの正体の一部であり、そのkindをadmitするruleはすべてcensusを求める。Rule単位の
 flagは、片方が既に決めていることを二重に述べるだけである。
 
-Censusの結果は件数ではなく、sortされたSource相対Pathのlistである。各pathは公開される他のすべての
-pathと同じく、exactなraw entry nameを`/`でjoinしたものである: filesystemは1つの名前につき1つの
-entryしか保持しないため、列挙されるpathはすべて曖昧さを持たず、見た目が同じにrenderされ得る2つの
-raw綴りは、別々に列挙される2つの実在fileである。Inventory rowはfile件数を述べ、
-file detail viewは各fileを名指す。件数をlistから導けば事実は1つで済み、両方を公開すれば食い違いうる
-2つの状態になる。
+同じ列挙は、candidate自身のdirectoryが届かない場所にfileを持つcustomizationにも使う。Pluginは
+そのrootそのものであり — 同梱するskill、hook、MCP file、assetこそがagentに与えられるもので
+ある — そのrootはselectorが一致させるのではなくcatalog entryが名指す。したがって、宣言された
+pluginがどこにあるかを述べるのはcatalogをadmitしたruleである: entryが宣言したsourceをそのvendor
+が文書化したlocal形式に照らして検証し、通常のSource相対directoryを答えるか、このSourceが持たない
+sourceには何も答えない。そのrootのfileはcandidateにならない: census済みのfileと同じく、rule、recognition、kind、自身のinventory rowの
+いずれも得ない。
+
+Censusを走らせて何も見つからなかったことと、そもそもcensusを走らせていないことは別の答えであり、
+別々に報告する。前者はentry pointだけを持つdirectory形式のcustomizationであり、そのrowは付随file
+0件と述べる。後者はどのdirectoryのentry pointでもないcandidateであり、どのrowもそれを述べない。
+Recognitionが持つのはdirectoryそのものであって、その列挙結果ではない。Customizationがどのdirectory
+を占めるかはそのcustomization自身の事実であり、1つのdirectoryは、そのentry pointをいくつの製品が
+認識しても1回だけ列挙されるからである。
+
+Censusの結果は件数ではなくfileそのものであり、generationの通常のfileとしてSource相対Pathで公開
+される。各pathは公開される他のすべてのpathと同じく、exactなraw entry nameを`/`でjoinしたもので
+ある: filesystemは1つの名前につき1つのentryしか保持しないため、列挙されるpathはすべて曖昧さを
+持たず、見た目が同じにrenderされ得る2つのraw綴りは、別々に列挙される2つの実在fileである。
+Customization自身のfile listは、表示する場所でその公開済みpathから導く。Inventory rowはfile件数を
+述べ、file detail viewは各fileを名指す。どちらもgenerationが公開したものから導けば事実は1つで済み、
+その傍らにlistを公開すれば食い違いうる2つの状態になる。
 
 Censusは列挙したfileを読む。Directory形式のcustomizationとは、entry pointとその傍らのfileの総体で
 あり、entry pointだけを表示してそれが同梱するfileを伏せるtoolは、そのcustomizationを表示していない。
@@ -191,7 +207,7 @@ directoryにあるfileを欠いたskillを見せることになる。
 
 それでもcensusは列挙であってadmitではない。列挙されたfileはrule、recognition、kind、自身のinventory row
 のいずれも獲得しない。そのdirectoryを持つcustomizationの一部であり、そのcustomizationには既にrowが
-ある。Censusはwalkを広げない。降りるのはadmit済みcandidate自身のdirectoryの内側だけであり、その外のpathを
+ある。Censusはwalkを広げない。降りるのは与えられたdirectoryの内側だけであり、その外のpathを
 列挙することはない。列挙したentryは他のfileと同じく、platformが透過的に解決するsymbolic linkを通して
 読む。そのdirectoryを読むagentが得るものがそれだからである。Censusに現れることは
 それらがvendorにloadされる証拠ではなく、relationship targetがそのedge経由で読まれることも依然としてない。
@@ -200,16 +216,34 @@ Targetが読めるようになるのは、独立にadmitされるか、既にそ
 Censusはallowlist walkの一部ではない。Traversalはshipped selector programを実行し、どのfileを
 読んでよいかに答える。Censusはcustomization自身のdirectoryに他に何があるかに答えるもので、どの
 selectorもそれを表現せず、censusを持つkindだけがそれを求める。したがってtraversalが既にadmitした
-candidateに対して実行し、起点はadmit済みcandidate自身のdirectoryだけである。任意のpathは存在しない。
-Censusはrecognizerの中で、認識されたkindとcandidate自身のpathから実行する。どちらも
-recognitionが既に保持しているため、どのkindがcensusを求めるかを先行するphaseが知る必要はない。
+candidateに対して実行し、起点はそのcandidateが名指したdirectoryだけである。任意のpathは存在しない。
+Directoryを名指すのはrecognitionである。認識されたkind、candidate自身のpath、そしてcatalogについては
+宣言されたsourceを検証できるvendor ruleを、recognitionが保持しているからである。Scanはそうして
+名指されたdirectoryの集合を1つずつ列挙するため、2つのcandidateが名指した同じdirectoryは1回だけ
+歩かれる。
 
-したがってcensusは、censusを持つkindのrecognitionごとに必ず実行され、その結果はそのrecognitionが
-裏づけるinventory定義の上で1回だけ公開される（contracts/http-api.md
-`skills[].definitions[].companionFiles`）。recognition上の2つ目の綴りは1つ目と食い違い得るからである。
-admitされたfileが単独で置かれている場合、listはabsentではなくemptyになる。「censusが実行されなかった」
-状態は存在せず、「何も付随しない」と区別する必要もない。Seed自身とVCS internalsを除外し、通常のtraversalと同じreal-path cycle規則でsymbolic linkを辿るため、
-subtreeへ戻るlinkは無限に辿られず終了する。
+したがってcensusは、censusを持つkindのrecognitionごとに必ず実行され、その結果はgenerationの通常の
+fileとして1回だけ公開される。Inventory定義が示すlist（contracts/http-api.md
+`skills[].definitions[].companionFiles`）は、表示する場所でその公開済みpathから導くため、食い違い得る
+2つ目の綴りは存在しない。admitされたfileが単独で置かれている場合、listはabsentではなくemptyになる。
+「censusが実行されなかった」状態は存在せず、「何も付随しない」と区別する必要もない。Recognitionがkindを
+確定させたfileはそれ自体が1つのcustomizationであって他のcustomizationに付随するfileではないため、
+どのdirectoryがそれを持っていても、付随fileとして二度目に公開されることはない。基準はadmissionでは
+なくrecognitionである: ruleがadmitしたものの、このscanがkindを確定できなかったfile — byteが読めない、
+textがparseできない — は、どのkindにも属さないfileとして単独で立つのではなく、そのdirectoryを持つ
+customizationとともに列挙され、read結果は同居するfileの傍らで述べられる。
+
+directory自体がcustomizationであるものは別の場合であり、そのdirectory内のfileをすべて保持する。
+pluginはそのrootである: folderをpluginにしているmanifestは、pluginを宣言するfileであると同時に
+pluginが同梱するfileの1つであり、そこで別のruleがadmitしたfileも同梱fileの1つでありながら自身のrowを
+保つ。これを除外すれば、rootが持つfileを自身のpageから欠いたpluginを公開することになる — 配置だけで
+pluginになっているrootをcatalogが提供する場合、そのmanifestが独立したrowとして存在するのに、
+catalog側のpluginはmanifestを持たないものとして表示されてしまう。2通りの道で辿り着く1つのdirectoryは
+1つのdirectoryであり、各rowは自身が何についてのrowかを示す。VCS internalsとinstalled-package
+directoryは列挙しない — この規則はcensusの下降だけでなくcensus root自身にも適用する。宣言が名指す
+rootは、walkが決して到達し得ない場所を指せる唯一のrootであり、catalog entryは`./.git`や
+`./node_modules/pkg`も他のdirectoryと同じように綴れるからである。symbolic linkは通常のtraversalと
+同じreal-path cycle規則で辿るため、subtreeへ戻るlinkは無限に辿られず終了する。
 
 下降は二重に封じ込められている。Censusはdirectoryのreal pathがcensus root内にある場合にだけそこへ入り、
 census root自身もそのreal pathがSource rootのreal path内にある場合にだけ有効とする。2つめのcheckは
@@ -224,7 +258,9 @@ fileへのsymbolic linkはentry自身のpathで列挙する。Directoryに置か
 
 列挙のfailureは1 fileに限定されず、通常のwalkと同様に伝播する。空のlistはadmitされたfileが単独で
 置かれていることを述べるため、permissionやI/O errorに対してそれを返すことは、読んでいないことを根拠に
-directoryについての事実を公開することになる。
+directoryについての事実を公開することになる。存在しないdirectoryは、読めなかったdirectoryとは別の
+答えである: catalogは、このSourceが持たないrootのpluginをofferすることがあり、その提示はscanを
+失敗させるのではなく、自身のfileを持たないまま成立する。
 
 ### Global selectorの要件
 

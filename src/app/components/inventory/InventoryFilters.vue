@@ -141,19 +141,29 @@ function toSelectValue(value: string | null): string {
 </template>
 
 <style scoped>
-/* The filter controls wrap instead of scrolling sideways, so a narrow viewport
-   or a large text size never hides one (WCAG 1.4.10). */
+/* One control per line, each as wide as the panel: the panel sits in the kind
+   rail, a column narrow enough that a row of controls would scroll sideways
+   and hide one (WCAG 1.4.10). */
 .aci-inventory-filters__grid {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 1rem;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .aci-inventory-filters__grid p {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  margin: 0.25rem 0;
+  margin: 0;
+}
+
+/* A control fills the column rather than sizing to its widest option: a Source
+   label is a display root, so left to itself the select would decide the rail's
+   width. */
+.aci-inventory-filters__grid select,
+.aci-inventory-filters__grid input {
+  inline-size: 100%;
+  min-inline-size: 0;
 }
 
 .aci-inventory-filters__grid label {

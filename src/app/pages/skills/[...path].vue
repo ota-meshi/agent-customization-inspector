@@ -22,16 +22,19 @@
 // looking at. Here the recognition on screen is always the skill's, and
 // selecting a file changes only which source is shown.
 //
-// The URL names a file — `/skills/<source-relative path>` — and nothing
-// else, the way every other file-subject detail route does (FR-030). No tool
-// segment, because two products reading one `SKILL.md` read the same bytes,
-// the same frontmatter, and the same companion directory: a per-tool address
-// would give one document two URLs differing only in a name. What differs is
-// the name each product invokes it by, and the page states them together
-// (FR-007). The path is stable across rescans and server launches — the host
-// resolves a detail request against whatever generation is current — so a
-// bookmarked link keeps naming the same file wherever a launch selects the
-// same root, the origin half being devframe's port selection (data-model.md
+// The URL names the skill — `/skills/<the SKILL.md's source-relative path>` —
+// and the file the reader has open inside it is a `file` query beside it. The
+// subject is what the address names, so stepping through a skill's scripts and
+// references never changes what the page is about; the query changes which
+// source is shown. No tool segment, because two products reading one
+// `SKILL.md` read the same bytes, the same frontmatter, and the same companion
+// directory: a per-tool address would give one document two URLs differing
+// only in a name. What differs is the name each product invokes it by, and the
+// page states them together (FR-007). Both coordinates are paths the scan
+// published, stable across rescans and server launches — the host resolves a
+// detail request against whatever generation is current — so a bookmarked link
+// keeps naming the same skill and file wherever a launch selects the same
+// root, the origin half being devframe's port selection (data-model.md
 // § Skill presentation), and a path the current scan does not hold is
 // reported rather than guessed at.
 //
@@ -59,14 +62,19 @@ import {
   watch,
   watchEffect,
 } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
-import SkillFileTree from '../../components/inspection/SkillFileTree.vue';
+import DirectoryFileTree from '../../components/inspection/DirectoryFileTree.vue';
 import OpenFileButton from '../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../components/inspection/SourceViewer.vue';
 import { frontmatterYamlText } from '../../components/inspection/frontmatter-yaml';
 import { LEADING_SKILL_FRONTMATTER_KEYS } from '../../components/inspection/declaration-order';
-import { decodeDetailRoutePath } from '../../components/detail-route';
+import {
+  decodeDetailRoutePath,
+  detailRoute,
+  selectedFileOf,
+  selectedFileQuery,
+} from '../../components/detail-route';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import { nextTabForKey } from '../../components/tab-navigation';
 import { skillComparisonRouteFor } from '../../composables/skill-comparison';
@@ -96,12 +104,11 @@ if (sessionViewState === undefined) {
 
 const route = useRoute();
 /**
- * The Source-relative path from the URL's catch-all segments — the whole
- * identity a reader bookmarks. The router hands the segments over
- * individually and decoded, so joining them with `/` restores the published
- * spelling exactly.
+ * The skill's own `SKILL.md`, from the URL's catch-all segments — the subject
+ * a reader bookmarks. The router hands the segments over individually and
+ * decoded, so joining them with `/` restores the published spelling exactly.
  */
-const openPath = computed((): string => {
+const entryPath = computed((): string => {
   const parameter = route.params['path'];
   // Each segment arrives percent-decoded but still spelled as the well-formed
   // text the link carried, so the escape the encoder applied is undone here:
@@ -109,6 +116,17 @@ const openPath = computed((): string => {
   // inventory published (`detail-route.ts`).
   return decodeDetailRoutePath(typeof parameter === 'string' ? [parameter] : (parameter ?? []));
 });
+
+/**
+ * The file of this skill the reader has open: the `file` query's path, or the
+ * entry point when the query names none — which is what a link from the
+ * inventory carries, and what the page opens on.
+ *
+ * A query rather than the address itself, because the subject is the skill:
+ * selecting `scripts/run.sh` changes which source is shown and nothing about
+ * what the page is describing (`detail-route.ts` § withSelectedFile).
+ */
+const openPath = computed((): string => selectedFileOf(route.query['file']) ?? entryPath.value);
 
 /**
  * The committed files' paths, as one membership index: the path is the
@@ -140,57 +158,35 @@ const detailError = sessionViewState.detailErrorMessage;
 const snapshot = sessionViewState.snapshot;
 
 /**
- * The inventory row and definition the URL's file belongs to — whether that
- * file is the skill's entry point or one of its companions.
+ * The inventory row and definition the URL names — the skill this page is
+ * about, found by its own entry point.
  *
  * Resolved from the committed snapshot rather than from a fetched detail,
- * because the entry point has to be known *before* anything is requested: it is
- * what carries the recognition this page is built around. A file the snapshot
- * does not hold belongs to no current generation, which is the same thing the
+ * because the skill has to be known *before* anything is requested: it is what
+ * carries the recognition this page is built around. A path the snapshot lists
+ * no skill at belongs to no current generation, which is the same thing the
  * host would answer, so the page can say so without a doomed request.
+ *
+ * Any definition of that file answers: every product that reads the file reads
+ * the same bytes and the same directory. Which names those products invoke it
+ * by is a separate question, answered over the whole inventory by
+ * {@link invocationNames}.
  */
 const owner = computed(() => {
-  const path = openPath.value;
-  if (!committedPaths.value.has(path)) {
-    return null;
-  }
-  // One walk over the inventory. Any definition of the file answers, because
-  // what this resolves is which skill the URL's file belongs to — a
-  // directory and its census — and every product that reads the file reads
-  // the same one. Which names those products invoke it by is a separate
-  // question, answered over the whole inventory by {@link invocationNames}.
-  //
-  // A file that is a skill's own entry point wins over every census that
-  // happens to list it, and the two are not exclusive: a skill nested inside
-  // another skill's directory is in that outer skill's census, so its
-  // `SKILL.md` is both an entry point and a companion. Among censuses, the
-  // innermost skill containing the file wins — everything under the inner
-  // skill is also under the outer one, and answering with whichever census
-  // the inventory happened to sort first would open the outer skill from the
-  // inner skill's own tree, with no way back to the file the reader clicked.
-  let deepest: { entry: SkillInventoryEntryDto; definition: SkillDefinitionDto } | null = null;
+  const path = entryPath.value;
   for (const entry of snapshot.value?.skills ?? []) {
     for (const definition of entry.definitions) {
       if (definition.sourceRelativePath === path) {
         return { entry, definition };
       }
-      if (
-        definition.companionFiles.includes(path) &&
-        (deepest === null ||
-          directoryOf(definition.sourceRelativePath).length >
-            directoryOf(deepest.definition.sourceRelativePath).length)
-      ) {
-        deepest = { entry, definition };
-      }
     }
   }
-  return deepest;
+  return null;
 });
 
 /**
- * The directory a path sits in, trailing slash kept. Its length orders two
- * skills that both list a file: the longer path is the one nested inside the
- * other, and it is the skill the file actually belongs to.
+ * The directory a path sits in, trailing slash kept — what the tree is rooted
+ * at, so each row shows a name rather than a path.
  */
 function directoryOf(path: string): string {
   return path.slice(0, path.lastIndexOf('/') + 1);
@@ -214,6 +210,29 @@ const treeFiles = computed(() => {
     committedPaths.value.has(path),
   );
 });
+
+/**
+ * Whether the URL's selection is one of this skill's own committed files.
+ *
+ * A `file` query naming anything else — a hand-edited URL, a link kept from a
+ * scan whose skill held that file — is a dead link rather than a file to open
+ * here: every statement on this page is the skill's, and showing a file the
+ * skill does not hold under them would attribute it to the skill.
+ */
+const selectionResolved = computed(() => treeFiles.value.includes(openPath.value));
+
+/**
+ * Where one file of this skill's directory opens: this same page, with that
+ * file selected. The entry point drops the query rather than naming itself,
+ * so the skill has one address and the link from the inventory is that address
+ * (`detail-route.ts` § withSelectedFile).
+ */
+function skillFileRoute(sourceRelativePath: string): RouteLocationRaw {
+  return {
+    path: detailRoute('skill', entryPath.value),
+    query: selectedFileQuery(sourceRelativePath === entryPath.value ? null : sourceRelativePath),
+  };
+}
 
 /** The directory the tree is rooted at, so a row shows a name rather than a path. */
 const treeDirectory = computed(() => directoryOf(treeFiles.value[0] ?? ''));
@@ -306,8 +325,8 @@ class SkillInvocation {
  * names: a companion is a file of the skill, not a skill of its own.
  */
 const invocationNames = computed((): readonly SkillInvocation[] => {
-  const entryPath = owner.value?.definition.sourceRelativePath;
-  if (entryPath === undefined) {
+  const definitionPath = owner.value?.definition.sourceRelativePath;
+  if (definitionPath === undefined) {
     return [];
   }
   const byTool = new Map<SupportedTool, SkillInvocation>();
@@ -317,7 +336,7 @@ const invocationNames = computed((): readonly SkillInvocation[] => {
   const named = new Set<string>();
   for (const entry of snapshot.value?.skills ?? []) {
     for (const definition of entry.definitions) {
-      if (definition.sourceRelativePath === entryPath) {
+      if (definition.sourceRelativePath === definitionPath) {
         byTool.set(
           definition.tool,
           new SkillInvocation(entry, definition, comparablePaths.value, named.has(entry.name)),
@@ -463,36 +482,54 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * do is pull the reader out of the list they are using, so the branches below
  * decide per case instead of resetting the strip on every change.
  *
- * Decided once per (skill, open file), not once per arrival. A commit drops
- * the open detail and the route re-requests the same path under the new
- * generation (FR-030), so a rescan while the reader is reading takes the
- * detail away and brings the same one back. Deciding again on that round trip
- * would send a reader who had opened the files list back to the declarations
- * — twice, since the empty moment in between reads as a skill with nothing in
- * it. What the current selection belongs to is remembered below — the skill,
- * the open file, and whether the declarations are in hand, because their
- * arrival is its own decision — so anything else decides on its own arrival,
- * and leaving the route drops the memory with the component.
+ * Decided once per (skill, open file), and only once the detail is in hand: a
+ * skill with nothing in it yet is not a skill with nothing to declare, and
+ * deciding from that moment would open every skill on its files and then move
+ * the reader when the declarations arrived.
+ *
+ * A commit drops the open detail and the route re-requests the same path under
+ * the new generation (FR-030), so a rescan while the reader is reading takes
+ * the detail away and brings the same one back. That round trip decides
+ * nothing: the gap is skipped because nothing is in hand, and the return
+ * matches the (skill, open file) already decided for — which is what keeps a
+ * reader who had opened the files list from being sent back to the
+ * declarations. Leaving the route drops the memory with the component.
  */
 const tabDecidedFor = ref<string | null>(null);
+
+/**
+ * The skill the strip last led with, so leading with it happens on the skill's
+ * own arrival and not again.
+ *
+ * Separate from the selection above because the two answer different
+ * questions: which file is being shown decides whether the files panel has to
+ * be in view, while which skill it belongs to decides whether the page is
+ * arriving at a skill at all. Choosing `SKILL.md` from the file list is a new
+ * selection but the same skill, and answering it by leaving the list would
+ * undo the reader's own click.
+ */
+const skillLedFor = ref<string | null>(null);
 watch(
   [
     () => owner.value?.definition.sourceRelativePath,
     () => openPath.value,
     () => skillPresentation.value !== null,
+    () => entryDetail.value !== null,
   ],
-  ([entryPathValue, openPathValue, hasPresentation], previous) => {
-    if (entryPathValue === undefined) {
+  ([entryPathValue, openPathValue, hasPresentation, entryHeld]) => {
+    if (entryPathValue === undefined || !entryHeld) {
       // Nothing is in hand: the first render before the detail arrives, and
       // the gap a rescan opens. There is no tab to decide between yet, and the
       // strip keeps whatever the reader last chose until there is.
       return;
     }
-    const decidingFor = `${entryPathValue}\u0000${openPathValue}\u0000${hasPresentation}`;
+    const decidingFor = `${entryPathValue}\u0000${openPathValue}`;
     if (tabDecidedFor.value === decidingFor) {
       return;
     }
     tabDecidedFor.value = decidingFor;
+    const skillArrived = skillLedFor.value !== entryPathValue;
+    skillLedFor.value = entryPathValue;
     // A companion is shown in the files panel, so that is where the reader has
     // to be to see it — however they arrived. Keying only on the skill left a
     // history step to another of its files changing the URL and the tree's
@@ -507,29 +544,16 @@ watch(
       selectTab('files');
       return;
     }
-    // The entry point is open. Lead with the skill when the skill itself
-    // changed, and when its declarations have just arrived — the first render
-    // has no presentation yet, so the branch above sends the page to the files
-    // and this is what brings it back once there is a skill to show. Any other
-    // change leaves the tab alone: choosing `SKILL.md` from the file list is a
-    // file selection, and answering it by leaving the list would undo the
-    // reader's own click.
-    const skillChanged = previous === undefined || previous[0] !== entryPathValue;
-    const declarationsArrived = previous !== undefined && !previous[2] && hasPresentation;
-    if (skillChanged || declarationsArrived) {
+    // The entry point is open and there is a skill to show. Lead with it on
+    // the skill's own arrival, and leave the strip alone otherwise: reaching
+    // the entry point from the file list is a file selection, and answering it
+    // by leaving the list would undo the reader's own click.
+    if (skillArrived) {
       selectTab('skill');
     }
   },
   { immediate: true },
 );
-
-/** The declarations as one block, so the recursive renderer draws them all. */
-/**
- * The entry point's own Source-relative Path. The instructions viewer takes it
- * so the body is highlighted as what the file is — the language comes from the
- * path, and the body is that file with its frontmatter block removed.
- */
-const entryPath = computed(() => treeFiles.value[0] ?? '');
 
 /**
  * Whether the file left no instructions at all. Only an empty string counts: a
@@ -617,7 +641,7 @@ const detailFailure = computed<string | null>(() => {
  * other.
  */
 const detailAnnouncement = computed(() => {
-  if (detailState.value === 'stale' || owner.value === null) {
+  if (detailState.value === 'stale' || !selectionResolved.value) {
     return 'Nothing in the current scan sits at this link\u2019s path.';
   }
   if (detailFailure.value !== null) {
@@ -638,6 +662,16 @@ const heading = ref<HTMLHeadingElement | null>(null);
 /** The pane holding the open file's source; read by the focus guard below. */
 const paneElement = ref<HTMLElement | null>(null);
 
+/**
+ * The height the pane had when the file it was showing left it, or 0 while a
+ * file is in hand. It floors the pane for as long as the next file is in
+ * flight, so stepping through a skill's directory keeps the page the size it
+ * was instead of collapsing to the loading line and expanding again. A floor
+ * rather than a fixed size: the file that arrives sets the pane's real height,
+ * whether it is taller or shorter.
+ */
+const reservedPaneHeight = ref(0);
+
 /** Set as the route is left, so the focus guard yields to the next route. */
 let leaving = false;
 
@@ -650,7 +684,7 @@ const pageOwnership = usePageOwnership();
 
 const requestOpen = (): void => {
   const resolved = owner.value;
-  if (resolved === null) {
+  if (resolved === null || !selectionResolved.value) {
     return;
   }
   void pageOwnership.openFileDetail(resolved.definition.sourceRelativePath, openPath.value);
@@ -677,10 +711,11 @@ watch(
     (): number | null => snapshot.value?.globalGeneration ?? null,
   ],
   ([path, definitionPath]) => {
-    if (path === '' || definitionPath === null) {
+    if (path === '' || definitionPath === null || !selectionResolved.value) {
       // The URL names nothing this generation holds — a link from an earlier
-      // scan, or a file that is no longer committed. Dropping what is open is
-      // the point: the page shows the recoverable state below, and holding the
+      // scan, a file that is no longer committed, or a `file` query naming
+      // something this skill does not hold. Dropping what is open is the
+      // point: the page shows the recoverable state below, and holding the
       // last skill's source behind it would keep authored content the reader
       // has navigated away from.
       pageOwnership.close();
@@ -716,7 +751,7 @@ const titleSubject = computed<string | null>(() => {
   if (detailState.value === 'loading') {
     return 'Loading a skill';
   }
-  if (detailState.value === 'stale' || owner.value === null) {
+  if (detailState.value === 'stale' || !selectionResolved.value) {
     return 'Link not in this scan';
   }
   // Only a whole-skill failure retitles the tab. A companion that failed to
@@ -778,7 +813,16 @@ watch(
 // gone. Leaving the route is excluded: the next route owns focus then.
 watch(
   openFile,
-  (file) => {
+  (file, previous) => {
+    if (file === null && previous !== null) {
+      // The pane's own height, taken before Vue patches the content away: the
+      // line that replaces it is one line tall, so without this the page
+      // shortens by the height of a file and springs back a frame later when
+      // the next one arrives — a blink on every step through the tree, and a
+      // scroll position that moves under the reader. Read here because this
+      // watcher is synchronous; afterwards the element is already empty.
+      reservedPaneHeight.value = paneElement.value?.offsetHeight ?? 0;
+    }
     if (file === null && !leaving && paneElement.value?.contains(document.activeElement) === true) {
       focusHeading();
     }
@@ -870,7 +914,7 @@ onBeforeUnmount(() => {
       <p class="aci-empty">Loading this skill…</p>
     </template>
 
-    <template v-else-if="detailState === 'stale' || owner === null">
+    <template v-else-if="detailState === 'stale' || !selectionResolved">
       <p class="aci-error">
         Nothing in the current scan sits at this link's path. The inventory may have changed since
         the link was made; a rescan that brings the path back will make it resolve again.
@@ -1059,7 +1103,13 @@ onBeforeUnmount(() => {
         </p>
 
         <div class="aci-skill-detail__layout">
-          <SkillFileTree :files="treeFiles" :selected-path="openPath" :directory="treeDirectory" />
+          <DirectoryFileTree
+            :files="treeFiles"
+            :selected-path="openPath"
+            :directory="treeDirectory"
+            label="Files in this skill"
+            :route-for="skillFileRoute"
+          />
 
           <!-- One element for all three states, so the skip target above survives
              the swap between them: a target that unmounted when loading became
@@ -1071,6 +1121,11 @@ onBeforeUnmount(() => {
             ref="paneElement"
             tabindex="-1"
             class="aci-skill-detail__main"
+            :style="
+              openFile === null && reservedPaneHeight > 0
+                ? { minBlockSize: `${reservedPaneHeight}px` }
+                : undefined
+            "
           >
             <!-- Only the pane failed: the recognition and the tree above still
                describe the skill, and the reader keeps them while retrying the

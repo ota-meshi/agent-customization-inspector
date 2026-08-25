@@ -406,6 +406,58 @@ describe('the Copilot prompt composition graph (T497)', () => {
   });
 });
 
+describe('the Claude output-style composition strategy (T669)', () => {
+  it('ships the selection pipeline with its exact documented operations', () => {
+    // `select-closest`, `replace`: the page states that a same-name style
+    // resolves to the project layer closest to the working directory, and
+    // that one style is applied at a time — the `outputStyle` setting or the
+    // session's choice picks it, and a plugin style marked `force-for-plugin`
+    // overrides that choice
+    // (contracts/runtime-composition.md § claude.output-style.selection).
+    const selection = RUNTIME_COMPOSITION_STRATEGIES['claude.output-style.selection'];
+    expect(selection.tool).toBe('claude');
+    expect(selection.surfaces).toEqual(['claude-cli-and-ide-clients']);
+    expect(selection.operations).toEqual(['select-closest', 'replace']);
+    expect(selection.documentationStatus).toBe('documented');
+    expect(selection.lifecycleQualifiers).toEqual([]);
+  });
+
+  it('composes the strategy from every documented style source, by identity', () => {
+    // The closest-layer rule is about the project chain alone, while the style
+    // a session ends up applying is chosen from every documented source: the
+    // User layer, and the plugin scopes a plugin ships its `output-styles/`
+    // directory through, whose `force-for-plugin` style overrides the user's
+    // own setting. Omitting any of them would describe a selection over inputs
+    // the page does not have.
+    const consumed = STRATEGY_RELATIONS['claude.output-style.selection'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.output-style',
+      'claude.behavior.repo.plugin',
+      'claude.behavior.user.output-style',
+      'claude.behavior.user.plugins',
+    ]);
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('explains the output-style rule through the selection strategy alone, by identity', () => {
+    const rule = RULE_RELATIONS['claude.repo.output-style'];
+    expect(rule.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.output-style',
+    ]);
+    expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.output-style.selection',
+    ]);
+    for (const behavior of rule.basedOnBehaviors) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+    for (const strategy of rule.explainedByStrategies) {
+      expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+    }
+  });
+});
+
 describe('the Claude rule composition strategy (T431)', () => {
   it('ships the rule layering pipeline with its exact documented operations', () => {
     // `filter`, `append` is the complete documented pipeline: a `paths` rule
@@ -810,13 +862,33 @@ describe('the Copilot settings composition graph (T636)', () => {
     }
   });
 
-  it('defers the Plugin and Hook families rather than composing them here', () => {
-    // The settings documents can carry an inline hook block and a plugin map;
-    // both are the Hook and Plugin recognitions' subject and arrive with their
-    // phases, so no strategy of either family ships yet.
+  it('defers the Hook family, and keeps the Plugin family the plugin rules own', () => {
+    // The settings documents can carry an inline hook block and a plugin map.
+    // The hook half is the Hook recognition's subject and arrives with its own
+    // phase, so no Copilot hook strategy ships yet. The plugin half does have
+    // its strategies now, one per surface the vendor documents — but they
+    // belong to the catalog rule the plugin phase added, not to the settings
+    // recognition: what a settings file names is registration and enablement,
+    // which is runtime state this product never reads (FR-009).
     const ids = Object.keys(RUNTIME_COMPOSITION_STRATEGIES);
     expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('hooks'))).toEqual([]);
-    expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('plugins'))).toEqual([]);
+    expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('plugins'))).toEqual([
+      'copilot.vscode.plugins.activation',
+      'copilot.cli.plugins.activation',
+      'copilot.cloud.plugins.activation',
+    ]);
+    for (const strategyId of [
+      'copilot.vscode.plugins.activation',
+      'copilot.cli.plugins.activation',
+      'copilot.cloud.plugins.activation',
+    ] as const) {
+      expect(
+        STRATEGY_RELATIONS[strategyId].consumesBehaviors.some((behavior) =>
+          behavior.behaviorId.includes('settings'),
+        ),
+        strategyId,
+      ).toBe(false);
+    }
   });
 });
 
@@ -1708,5 +1780,64 @@ describe('the Copilot custom-agent composition strategies (T559)', () => {
         expect(row.evidence, `${strategyId} ${path}`).toEqual(cited);
       }
     }
+  });
+});
+
+describe('the Codex plugin activation strategy (T766)', () => {
+  it('composes all three plugin scopes, by identity', () => {
+    const strategy = RUNTIME_COMPOSITION_STRATEGIES['codex.plugins.activation'];
+    expect(strategy.tool).toBe('codex');
+    expect(strategy.surfaces).toEqual(['codex-local-clients']);
+    // `filter` then `select-first`: a client keeps the entries the catalogs it
+    // reads expose, then takes the manifest of the plugin root it established
+    // (contracts/runtime-composition.md § codex.plugins.activation).
+    expect(strategy.operations).toEqual(['filter', 'select-first']);
+    const consumed = STRATEGY_RELATIONS['codex.plugins.activation'].consumesBehaviors;
+    expect(consumed.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.plugin.manifest',
+      'codex.behavior.repo.marketplace',
+      'codex.behavior.user.plugins',
+    ]);
+    // The User scope is consumed though it is never read: the strategy
+    // describes Codex's runtime, and a composition over the repository catalog
+    // alone would describe a different product.
+    for (const behavior of consumed) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+    }
+  });
+
+  it('bases each plugin rule on the behaviors it walks between, by identity', () => {
+    const catalog = RULE_RELATIONS['codex.repo.marketplace'];
+    expect(catalog.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.marketplace',
+    ]);
+    for (const rule of [catalog]) {
+      expect(rule.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+        'codex.plugins.activation',
+      ]);
+      for (const behavior of rule.basedOnBehaviors) {
+        expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+      }
+      for (const strategy of rule.explainedByStrategies) {
+        expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+      }
+    }
+  });
+
+  it('keeps the plugin-content exclusion citing what it does not authorize', () => {
+    // An exclusion cites the behavior it declines to read: without the
+    // citation the omission would be indistinguishable from the vendor not
+    // documenting the content at all.
+    const exclusion = RULE_RELATIONS['codex.excluded.plugin-files'];
+    expect(exclusion.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.plugin.manifest',
+      'codex.behavior.repo.marketplace',
+      'codex.behavior.user.plugins',
+    ]);
+    expect(exclusion.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.plugins.activation',
+    ]);
+    expect(INSPECTION_RULES['codex.excluded.plugin-files'].matcher).toBeNull();
+    expect(INSPECTION_RULES['codex.excluded.plugin-files'].kind).toBeNull();
   });
 });

@@ -1484,10 +1484,12 @@ and CLI are released and versioned together. Nuxt is configured as an SPA (`ssr:
 with the static Nitro preset, `app.baseURL: '/'`, `app.buildAssetsDir: '/_nuxt/'`, no CDN
 URL, explicit imports, and component auto-discovery disabled. Every nested client route
 therefore resolves the same root-absolute, same-origin asset URLs. A detail route belongs
-to the recognized kind whose surface it is, which is why `/skills/<source-relative path>` names `skills`
-rather than the file: what a detail shows is a skill's declarations, its instructions, and
-its directory, and another kind's detail answers different questions with a different
-layout. Every shipped inspection rule recognizes `skill`, so that is the one detail route;
+to the recognized kind whose surface it is, which is why `/skills/<the SKILL.md's
+source-relative path>` names `skills` rather than the file: what a detail shows is a
+skill's declarations, its instructions, and its directory, and another kind's detail
+answers different questions with a different layout. Which file of that directory is being
+read is a `file` query beside the address, so the subject stays the customization the page
+describes. Every shipped inspection rule recognizes `skill`, so that is the one detail route;
 the phase that recognizes a second kind brings that kind's route and page with it. The `src/server/cli.ts` entry
 starts with the exact BOM-free, LF-terminated first line `#!/usr/bin/env node`, tsdown
 preserves that shebang in the packaged `dist/cli.mjs`, and `package.json.bin` maps to it
@@ -1536,10 +1538,10 @@ stable-partitioning all P1 work ahead of all P2 work. Setup and the blocking sec
 foundation run first. Each family then completes its US1 discovery and US2 complete inert
 detail before its US3 comparison, and only then advances to the next family in this exact
 order: SKILL (including Skill Metadata) → Instructions → MCP → Rules → Commands → Copilot
-Prompts → Custom Agents → Configuration/Settings → Output Styles → Marketplaces → Plugin
-Manifests → Hooks. Repository-wide Inventory, Detail, and Comparison Acceptance follow in
-that order; Global inspection (US4, P3), cross-cutting verification, and release evidence
-remain last.
+Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks.
+Repository-wide Inventory, Detail, and Comparison Acceptance follow in that order;
+Global inspection (US4, P3), cross-cutting verification, and release evidence remain
+last.
 
 The three registry modules have distinct ownership even though one validator loads them as
 a closed graph. `vendor-behaviors.ts` mirrors documented vendor lookup statements;

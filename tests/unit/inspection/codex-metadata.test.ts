@@ -23,6 +23,7 @@ import {
   SKILL_CONTENT_CASES,
 } from '../../fixtures/content/build-fixtures';
 import type { ToolRecognition } from '../../../src/server/inspection/recognizers/candidate';
+import type { CompiledCandidateRule } from '../../../src/server/inspection/rules/registry';
 
 // Selected by identity: the shipped Codex catalog holds the instruction rule
 // too, and these cases are about the skill recognition alone.
@@ -269,7 +270,7 @@ describe('Codex permission-policy reading (T411)', () => {
     // (contracts/inspection-path-allowlist.md § Bounded companion census). A
     // rule file is one file, so nothing beside it is read on its account.
     const matchedPath = '.codex/rules/default.rules';
-    const { companions } = await recognizeCandidateForVendors(
+    const { directories } = await recognizeCandidateForVendors(
       {
         matchedPath,
         absolutePath: join(root, matchedPath),
@@ -279,7 +280,7 @@ describe('Codex permission-policy reading (T411)', () => {
       },
       ['codex'],
     );
-    expect(companions).toEqual([]);
+    expect(directories).toEqual([]);
   });
 });
 
@@ -568,5 +569,87 @@ describe('Codex custom-agent reading (T518)', () => {
       metadata: [],
       instructionsText: '',
     });
+  });
+});
+
+// T764: what a Codex plugin carrier publishes — the manifest's own keys, a
+// catalog's entries beside the catalog's own declarations, and the component
+// values that stay declarations and reach no read.
+const codexCatalogRule = CODEX_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'codex.repo.marketplace',
+);
+
+/** Recognizes one plugin carrier's text through the rule that admits its shape. */
+async function recognizePluginCarrier(
+  compiled: CompiledCandidateRule,
+  matchedPath: string,
+  sourceText: string,
+): Promise<ToolRecognition> {
+  const { recognitions } = await recognizeCandidateForVendors(
+    {
+      matchedPath,
+      absolutePath: join(pluginRoot, matchedPath),
+      sourceRoot: pluginRoot,
+      admissions: [{ compiled, origin: { planIndex: 0, selectorIndex: 0 } }],
+      sourceText,
+    },
+    ['codex'],
+  );
+  const [recognition] = recognitions;
+  if (recognition === undefined) {
+    throw new Error('expected one Codex recognition');
+  }
+  return recognition;
+}
+
+let pluginRoot: string;
+
+describe('the Codex plugin carrier reading (T764)', () => {
+  beforeAll(() => {
+    pluginRoot = mkdtempSync(join(tmpdir(), 'inspector-codex-plugin-metadata-'));
+    // A manifest is the entry point of a plugin root, so recognizing one
+    // enumerates that root: the directory has to exist here exactly as it does
+    // in a real scan, where the traversal found the manifest inside it
+    // (contracts/inspection-path-allowlist.md § Bounded companion census).
+    mkdirSync(join(pluginRoot, 'plugins/secret-keeper/.codex-plugin'), { recursive: true });
+  });
+  afterAll(() => {
+    rmSync(pluginRoot, { recursive: true, force: true });
+  });
+
+  it('publishes a catalog as its entries, with the catalog own keys beside them', async () => {
+    const recognition = await recognizePluginCarrier(
+      codexCatalogRule!,
+      '.agents/plugins/marketplace.json',
+      JSON.stringify({
+        name: 'inspector-examples',
+        interface: { displayName: 'Inspector Examples' },
+        plugins: [
+          {
+            name: 'release-notes',
+            source: { source: 'local', path: './plugins/release-notes' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+          },
+        ],
+      }),
+    );
+    if (recognition.details.kind !== 'plugin') {
+      throw new Error('expected a plugin recognition');
+    }
+    expect(recognition.details.carrier).toBe('catalog');
+    expect(recognition.details.catalogFields.map((field) => field.key)).toEqual([
+      'name',
+      'interface',
+    ]);
+    // Published under the name Codex addresses the offering by: the entry's own
+    // name qualified by the catalog's, which is the selector `codex plugin add`
+    // takes. The entry's raw `name` stays one of the fields below.
+    expect(recognition.details.plugins.map((plugin) => plugin.name)).toEqual([
+      'release-notes@inspector-examples',
+    ]);
+    // Installation and authentication policy are the entry's own declared
+    // values; nothing turns them into a state this product asserts (FR-009).
+    const [entry] = recognition.details.plugins;
+    expect(entry!.fields.map((field) => field.key)).toEqual(['name', 'source', 'policy']);
   });
 });

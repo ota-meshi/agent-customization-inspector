@@ -42,11 +42,14 @@ import {
   buildClaudeMcpFixture,
   buildClaudeRuleFixture,
   buildClaudeAgentFixture,
+  buildClaudePluginFixture,
   buildCopilotAgentFixture,
+  buildCopilotPluginFixture,
   buildCodexAgentFixture,
   buildCodexMcpFixture,
   buildClaudePermissionsFixture,
   buildCopilotSettingsFixture,
+  buildClaudeOutputStyleFixture,
   buildCodexRuleFixture,
   buildCodexSkillFixture,
   buildCopilotCliMcpFixture,
@@ -394,6 +397,81 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     expect(serialized).not.toContain(sentinel);
   });
 
+  it('follows no path a manifest or a catalog declares (T765)', async () => {
+    // A plugin's own files are read because they are in the plugin's directory,
+    // never because the manifest named them: the census enumerates the plugin
+    // root, and a declared value reaches no read of its own
+    // (`codex.excluded.plugin-files`). The two coincide for a component that
+    // sits where it says it does, so what proves the difference is a manifest
+    // whose declarations point outside the root and at a path that does not
+    // exist — neither is opened, while the root's own files are.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-zero-activation-plugins-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.agents/plugins'), { recursive: true });
+    writeFileSync(
+      join(root, '.agents/plugins/marketplace.json'),
+      `${JSON.stringify({
+        name: 'examples',
+        plugins: [{ name: 'helper', source: { source: 'local', path: './plugins/helper' } }],
+      })}\n`,
+      'utf8',
+    );
+    mkdirSync(join(root, 'plugins/helper/.codex-plugin'), { recursive: true });
+    mkdirSync(join(root, 'plugins/helper/skills/draft'), { recursive: true });
+    mkdirSync(join(root, 'plugins/helper/hooks'), { recursive: true });
+    // Two of these declarations name nothing inside the plugin root: one
+    // escapes it, and one names a file no directory holds.
+    mkdirSync(join(root, 'outside'), { recursive: true });
+    writeFileSync(join(root, 'outside/secret.json'), '{"escaped":true}\n', 'utf8');
+    writeFileSync(
+      join(root, 'plugins/helper/.codex-plugin/plugin.json'),
+      `${JSON.stringify({
+        name: 'helper',
+        skills: './skills/',
+        mcpServers: './.mcp.json',
+        apps: './.app.json',
+        hooks: './hooks/hooks.json',
+        interface: { logo: './assets/logo.png' },
+        escaping: '../../outside/secret.json',
+      })}\n`,
+      'utf8',
+    );
+    writeFileSync(join(root, 'plugins/helper/.mcp.json'), '{"mcpServers":{}}\n', 'utf8');
+    writeFileSync(join(root, 'plugins/helper/.app.json'), '{"servers":{}}\n', 'utf8');
+    writeFileSync(join(root, 'plugins/helper/hooks/hooks.json'), '{"PreToolUse":[]}\n', 'utf8');
+    writeFileSync(
+      join(root, 'plugins/helper/skills/draft/SKILL.md'),
+      '---\nname: draft\n---\n',
+      'utf8',
+    );
+    vi.clearAllMocks();
+
+    const publication = await runSourceScan({
+      sourceId: 'src-plugins',
+      root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable scan');
+    }
+    // The catalog, the derived manifest, and the plugin root's own files — the
+    // directory the census bounds, in full. Nothing else: the declaration that
+    // escapes the root is not opened, and the asset path that names no file
+    // produces no attempt at all.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    expect(opened.toSorted()).toEqual(
+      [
+        join(root, '.agents/plugins/marketplace.json'),
+        join(root, 'plugins/helper/.codex-plugin/plugin.json'),
+        join(root, 'plugins/helper/.mcp.json'),
+        join(root, 'plugins/helper/.app.json'),
+        join(root, 'plugins/helper/hooks/hooks.json'),
+        join(root, 'plugins/helper/skills/draft/SKILL.md'),
+      ].toSorted(),
+    );
+    expect(opened).not.toContain(join(root, 'outside/secret.json'));
+  });
+
   it("reads a skill's own directory once each and nothing beyond it", async () => {
     // The census bounds what a directory-shaped customization is, and the scan
     // reads what it bounds. What must not happen is a read outside that bound,
@@ -414,8 +492,12 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable scan');
     }
-    const companionFiles =
-      publication.skillCompanionsByPath.get('.agents/skills/greet/SKILL.md') ?? [];
+    const companionFiles = publication.files
+      .map((file) => file.sourceRelativePath)
+      .filter(
+        (path) =>
+          path.startsWith('.agents/skills/greet/') && path !== '.agents/skills/greet/SKILL.md',
+      );
     expect(companionFiles).toEqual([
       '.agents/skills/greet/reference.md',
       '.agents/skills/greet/scripts/run.sh',
@@ -1047,6 +1129,78 @@ describe('Codex rule inspection enforces nothing (T412)', () => {
       const absolute = join(fixture.root, ...admitted.split('/'));
       expect(opened.filter((path) => path === absolute).length, admitted).toBeLessThanOrEqual(1);
     }
+  });
+
+  // An output style's content is instructions a product appends to its system
+  // prompt. Inspecting one must therefore prove that the instructions are read
+  // as text and never appended, applied, or acted on, and that a name the
+  // style mentions is never resolved or opened (T668).
+  it('reads output styles without applying, resolving, or opening what they name', async () => {
+    const fixture = buildClaudeOutputStyleFixture('inspector-zero-activation-output-styles');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during output-style inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [https as unknown as Record<string, unknown>, 'request'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during output-style inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    let publication;
+    try {
+      publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // Nothing outside the admitted set is opened: the nested project layer the
+    // vendor documents and this Source boundary excludes stays unread, exactly
+    // as the spelling variants do.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // Each admitted style is read exactly once, and the environment reference
+    // one of them writes reaches no lookup: the authored characters are the
+    // whole value (FR-026).
+    for (const admitted of fixture.expectedStylePaths) {
+      const absolute = join(fixture.root, ...admitted.split('/'));
+      expect(opened.filter((path) => path === absolute).length, admitted).toBeLessThanOrEqual(1);
+    }
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable scan');
+    }
+    const serialized = JSON.stringify(publication.recognitions);
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
   });
 
   it('assembles the rule detail without any request or read', async () => {
@@ -1921,6 +2075,178 @@ describe('Claude subagent inspection activates nothing (T539)', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Copilot plugin inspection activates nothing (T810)', () => {
+  it('reads the catalogs and the plugin roots, and starts nothing', async () => {
+    const fixture = buildCopilotPluginFixture('inspector-zero-activation-copilot-plugins');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during plugin inspection`);
+      };
+    }
+    // The same closed Node surfaces the other cases spy on. A Copilot plugin
+    // declares MCP and LSP servers, agents, skills, and hooks, its catalog names
+    // GitHub, git, and npm sources, and the repository carries an executable
+    // CLI extension; reaching any of them would need one of these.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during plugin inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const admitted of fixture.expectedPluginPaths) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...admitted.split('/'))),
+        admitted,
+      ).toHaveLength(1);
+    }
+    // A component is read once, because it sits in the plugin's own root.
+    for (const component of fixture.componentPaths) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...component.split('/'))),
+        component,
+      ).toHaveLength(1);
+    }
+    // The CLI extension is executable JavaScript no rule admits and no plugin
+    // root holds, so nothing opens it — let alone imports it.
+    expect(opened).not.toContain(join(fixture.root, ...fixture.extensionPath.split('/')));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+  });
+});
+
+describe('Claude plugin inspection activates nothing (T788)', () => {
+  it('reads the carriers and the plugin roots, and connects to nothing', async () => {
+    const fixture = buildClaudePluginFixture('inspector-zero-activation-claude-plugins');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during plugin inspection`);
+      };
+    }
+    // The same closed Node surfaces the other cases spy on. A plugin declares
+    // an MCP server, hook files, and bundled skills, and a catalog entry names
+    // git, npm, and command sources; reaching any of them would need one of
+    // these, so a scan that touches none of them installed nothing, connected
+    // to nothing, and ran nothing.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during plugin inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    // The admitted carriers are read once each.
+    for (const admitted of fixture.expectedPluginPaths) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...admitted.split('/'))),
+        admitted,
+      ).toHaveLength(1);
+    }
+    // A component the manifest points at is read once as well — because it sits
+    // in the plugin's own root, never on the strength of the declaration — and
+    // a path no rule and no root reaches is not opened at all.
+    for (const component of fixture.componentPaths) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...component.split('/'))),
+        component,
+      ).toHaveLength(1);
+    }
+    // The one near miss that is read: a manifest one directory too deep is no
+    // plugin, and it is still a file of the plugin whose root holds it, so the
+    // census reads it as one of that plugin's own.
+    expect(
+      opened.filter(
+        (path) => path === join(fixture.root, ...fixture.nearMissInsidePluginRootPath.split('/')),
+      ),
+    ).toHaveLength(1);
+    for (const forbidden of fixture.nearMissPaths) {
+      if (forbidden === fixture.nearMissInsidePluginRootPath) {
+        continue;
+      }
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
   });
 });
 

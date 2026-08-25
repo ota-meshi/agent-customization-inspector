@@ -481,9 +481,96 @@ export const CLAUDE_REPO_PLUGIN_BEHAVIOR = {
             'Plugin manifest schema',
             'File locations reference',
           ],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-25',
           establishes:
             'A plugin is installed into a settings scope chosen at installation; its manifest is optional, with components — MCP declarations among them — auto-discovered at default locations under the plugin root or redirected by manifest-declared paths.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude plugins loaded by placement: a folder under a skills directory that
+ * carries `.claude-plugin/plugin.json` is loaded as `<folder>@skills-dir` on
+ * the next session, with no marketplace and no install step.
+ *
+ * The one plugin interpretation that needs no registration, which is why it is
+ * a Repository statement where `claude.behavior.repo.plugin` is a statement
+ * about an explicitly selected root. The manifest's presence is what makes the
+ * folder a plugin, so the file the rule admits is the carrier and the folder is
+ * the plugin root whose files the plugin ships.
+ *
+ * Project scope is the launch working directory's own `.claude/skills/` and
+ * this interpretation does not walk ancestor skill directories, unlike plain
+ * skill discovery. Which of those a session actually loads stays conditional on
+ * the workspace trust dialog, a runtime input this product never reads
+ * (FR-009).
+ */
+export const CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.skills-directory-plugin',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'workspace-root',
+        relativeSelector: '.claude/skills/<plugin-name>/.claude-plugin/plugin.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['Skills-directory plugins', 'File locations reference'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "Any folder under a skills directory that contains a .claude-plugin/plugin.json manifest is loaded as a plugin named <folder>@skills-dir on the next session, with no marketplace and no install step, and is discovered in place rather than copied into the plugin cache; the project-scope skills directory is the launch working directory's own .claude/skills/, which this interpretation does not walk ancestors of, and it loads only after the workspace trust dialog is accepted.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude marketplace catalogs: a registered `<marketplace-root>` carries
+ * `.claude-plugin/marketplace.json`, whose entries name the plugins it offers
+ * and the source each comes from.
+ *
+ * A repository documents its own catalog at that path in its root, so the file
+ * is authored content this Source carries. Registration — `/plugin marketplace
+ * add`, or `extraKnownMarketplaces` in a settings file — is what makes a
+ * session consider it, and that is a runtime input this product never reads:
+ * a row states what the catalog offers, never that a plugin is registered,
+ * installed, or enabled (FR-009).
+ */
+export const CLAUDE_REPO_MARKETPLACE_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.marketplace',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'registered-catalog',
+        relativeSelector: '.claude-plugin/marketplace.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.marketplaces.catalog-sources',
+          url: 'https://code.claude.com/docs/en/plugin-marketplaces',
+          officialHost: 'code.claude.com',
+          sections: ['Create the marketplace file', 'Plugin sources'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A repository publishes its catalog as .claude-plugin/marketplace.json in its root, defining the marketplace name, owner, and a plugins list whose entries each need a name and a source; a source starting with ./ names a plugin in the same repository, resolved against the marketplace root, while GitHub, git, git-subdirectory, npm, archive, and command sources name plugins fetched from elsewhere. Users reach a catalog by adding it, so registration is separate from the catalog file.',
         },
       ]
     : [],
@@ -633,7 +720,7 @@ export const CLAUDE_USER_PLUGINS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Plugin installation scopes', 'Plugin caching and file resolution'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-25',
           establishes:
             'Plugin enablement is recorded per installation scope in settings files — the user scope in ~/.claude/settings.json — and marketplace plugins are copied into the local plugin cache at ~/.claude/plugins/cache, which is what makes plugin-provided servers user-side installation state rather than a repository fact.',
         },
@@ -1158,10 +1245,94 @@ export const CLAUDE_USER_AUTO_MEMORY_BEHAVIOR = {
     : [],
 } as const satisfies VendorBehaviorStatement;
 
+/**
+ * Claude Code Repository output styles: the direct Markdown children of every
+ * `.claude/output-styles/` between the launch working directory and the
+ * repository root (output-styles page § Create a custom output style).
+ *
+ * The layer chain is the traversal — the same upward walk the skills lookup
+ * documents — and within a layer the page names direct files rather than a
+ * subtree: it says project styles load from every such directory between the
+ * working directory and the repository root, and nothing about descending
+ * into one. `documented` because the page states the locations, the file
+ * shape, and the same-name outcome together; which layer a session actually
+ * reaches is runtime this product never observes (FR-009).
+ */
+export const CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.output-style',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'runtime-cwd',
+        // The vendor's own spelling: the directory and the files it names
+        // directly, which is documentation rather than an Inspector selector
+        // (contracts/inspection-path-allowlist.md § "Vendor locators are not
+        // Inspector matchers").
+        relativeSelector: '.claude/output-styles/*.md',
+        traversal: 'ancestor-chain-to-repository-root',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.output-styles.locations',
+          url: 'https://code.claude.com/docs/en/output-styles',
+          officialHost: 'code.claude.com',
+          sections: ['Create a custom output style', 'How output styles work'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'A custom output style is a Markdown file of frontmatter and instructions saved at the User, project, or managed-policy level; project styles load from every .claude/output-styles/ between the working directory and the repository root, the file name becomes the style name unless the frontmatter sets name, and the instructions are added to the end of the system prompt.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude Code User output styles under the Claude configuration directory,
+ * recorded so `claude.output-style.selection` can name the layer below the
+ * project ones and `claude.excluded.user-runtime` can name what it leaves out
+ * (contracts/vendors/claude-code.md § Documented User behavior). A
+ * non-authorizing statement: this release inspects no User layer.
+ */
+export const CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.output-style',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'output-styles/*.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.output-styles.locations',
+          url: 'https://code.claude.com/docs/en/output-styles',
+          officialHost: 'code.claude.com',
+          sections: ['Create a custom output style'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'A custom output style can be saved at the User level in ~/.claude/output-styles, beside the project and managed-policy levels.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
 export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   Record<ClaudeBehaviorId, VendorBehaviorStatement>
 > = {
   [CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR,
+  [CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR.behaviorId]: CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR,
+  [CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR.behaviorId]: CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR,
   [CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR,
   [CLAUDE_REPO_AGENTS_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENTS_BEHAVIOR,
   [CLAUDE_REPO_COMMANDS_BEHAVIOR.behaviorId]: CLAUDE_REPO_COMMANDS_BEHAVIOR,
@@ -1171,7 +1342,10 @@ export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
     CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR.behaviorId]: CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
   [CLAUDE_REPO_MCP_BEHAVIOR.behaviorId]: CLAUDE_REPO_MCP_BEHAVIOR,
+  [CLAUDE_REPO_MARKETPLACE_BEHAVIOR.behaviorId]: CLAUDE_REPO_MARKETPLACE_BEHAVIOR,
   [CLAUDE_REPO_PLUGIN_BEHAVIOR.behaviorId]: CLAUDE_REPO_PLUGIN_BEHAVIOR,
+  [CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_BEHAVIOR.behaviorId]:
+    CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_BEHAVIOR,
   [CLAUDE_REPO_RULES_BEHAVIOR.behaviorId]: CLAUDE_REPO_RULES_BEHAVIOR,
   [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
   [CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,

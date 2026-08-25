@@ -125,7 +125,7 @@ async function recognizeWith(
   // These cases are about the recognitions; the census the recognizer also
   // returns has its own suite (`companion-census.test.ts`) and its own
   // publication path (`repository-scan.test.ts`).
-  const { recognitions, companions } = await recognizeCandidateForVendors(
+  const { recognitions, directories } = await recognizeCandidateForVendors(
     {
       matchedPath,
       absolutePath: join(root, matchedPath),
@@ -138,7 +138,7 @@ async function recognizeWith(
     },
     [tool],
   );
-  return { recognitions, companions };
+  return { recognitions, directories };
 }
 
 async function recognize(
@@ -149,14 +149,18 @@ async function recognize(
   return (await recognizeWith('codex', matchedPath, rules, sourceText)).recognitions;
 }
 
-/** The census paths the recognizer returned beside its recognitions. */
+/**
+ * The directories the recognizer said this candidate's customizations occupy.
+ * Enumerating what is in them is the scan's, so these cases assert which
+ * directories were named rather than their contents
+ * (contracts/inspection-path-allowlist.md § Bounded companion census).
+ */
 async function censusOf(
   tool: SupportedTool,
   matchedPath: string,
   rules: readonly CompiledStaticCandidateRule[],
 ) {
-  const { companions } = await recognizeWith(tool, matchedPath, rules);
-  return companions.map((companion) => companion.sourceRelativePath);
+  return (await recognizeWith(tool, matchedPath, rules)).directories;
 }
 
 describe('Codex skill recognition', () => {
@@ -257,20 +261,20 @@ describe('Codex skill recognition', () => {
     }
   });
 
-  it('lists what accompanies the skill as Source-relative Paths', async () => {
-    // The census answers relative to the directory it enumerated; the
-    // recognizer holds the candidate's own Source-relative Path and is what
-    // turns one into the other.
+  it('names the directory a skill occupies', async () => {
+    // A skill *is* its directory, so the answer is the entry point's own
+    // directory. What is in it is the scan's to enumerate.
     expect(await censusOf('codex', '.agents/skills/greet/SKILL.md', [codexSkillRule])).toEqual([
-      '.agents/skills/greet/reference.md',
-      '.agents/skills/greet/scripts/run.sh',
+      '.agents/skills/greet/',
     ]);
   });
 
-  it('lists nothing for a skill whose directory holds only its own file', async () => {
-    // Empty, not absent: every recognized skill has been enumerated, because
+  it('names the directory even when it holds only the skill own file', async () => {
+    // Named, not absent: every recognized skill occupies a directory, because
     // being a directory is what a skill is.
-    expect(await censusOf('codex', '.agents/skills/solo/SKILL.md', [codexSkillRule])).toEqual([]);
+    expect(await censusOf('codex', '.agents/skills/solo/SKILL.md', [codexSkillRule])).toEqual([
+      '.agents/skills/solo/',
+    ]);
   });
 
   it('keeps a malformed frontmatter document from failing the recognition', async () => {
@@ -375,8 +379,7 @@ describe('Claude skill recognition (T127)', () => {
     writeFileSync(join(root, '.claude/skills/stocked/reference.md'), 'reference\n', 'utf8');
     writeFileSync(join(root, '.claude/skills/stocked/scripts/run.sh'), 'echo hi\n', 'utf8');
     expect(await censusOf('claude', '.claude/skills/stocked/SKILL.md', [claudeSkillRule])).toEqual([
-      '.claude/skills/stocked/reference.md',
-      '.claude/skills/stocked/scripts/run.sh',
+      '.claude/skills/stocked/',
     ]);
   });
 });
@@ -442,18 +445,15 @@ describe('the Copilot recognition matrix (T155)', () => {
     ]);
   });
 
-  it('lists a shared candidate’s companions once, however many products recognize it', async () => {
-    // The census belongs to the candidate's directory: two recognizing
-    // products do not give a skill two sets of accompanying files, so the
-    // companion list carries each path exactly once.
-    const { companions } = await recognizeMatrix('.agents/skills/greet/SKILL.md', [
+  it('names a shared candidate’s directory once, however many products recognize it', async () => {
+    // The directory belongs to the candidate: two recognizing products do not
+    // give a skill two directories, so it is named exactly once and the scan
+    // enumerates it once.
+    const { directories } = await recognizeMatrix('.agents/skills/greet/SKILL.md', [
       copilotSkillRule,
       codexSkillRule,
     ]);
-    expect(companions.map((companion) => companion.sourceRelativePath)).toEqual([
-      '.agents/skills/greet/reference.md',
-      '.agents/skills/greet/scripts/run.sh',
-    ]);
+    expect(directories).toEqual(['.agents/skills/greet/']);
   });
 });
 
@@ -502,10 +502,10 @@ describe('Codex instruction recognition (T207, presentation added by T222)', () 
     // is called for by the recognized kind, and `instructions` calls for
     // none — nothing beside the file belongs to it
     // (contracts/inspection-path-allowlist.md § Bounded companion census).
-    const { companions } = await recognizeWith('codex', 'AGENTS.override.md', [
+    const { directories } = await recognizeWith('codex', 'AGENTS.override.md', [
       codexInstructionsRule,
     ]);
-    expect(companions).toEqual([]);
+    expect(directories).toEqual([]);
   });
 
   it('fails a malformed frontmatter block all-or-nothing, publishing nothing parsed', async () => {
@@ -709,10 +709,10 @@ describe('Codex MCP recognition (T283)', () => {
   it('runs no census for an MCP carrier and produces nothing for another tool', async () => {
     // The carrier is just a file — nothing beside it belongs to it — and the
     // admission is Codex's alone.
-    const { companions, recognitions } = await recognizeWith('codex', carrierPath, [
+    const { directories, recognitions } = await recognizeWith('codex', carrierPath, [
       codexConfigRule,
     ]);
-    expect(companions).toEqual([]);
+    expect(directories).toEqual([]);
     expect(recognitions).toHaveLength(1);
     const other = await recognizeWith('claude', carrierPath, [codexConfigRule]);
     expect(other.recognitions).toEqual([]);
@@ -1562,10 +1562,10 @@ describe('Claude MCP recognition (T306)', () => {
   });
 
   it('runs no census for an MCP carrier and produces nothing for another tool', async () => {
-    const { companions, recognitions } = await recognizeWith('claude', carrierPath, [
+    const { directories, recognitions } = await recognizeWith('claude', carrierPath, [
       claudeMcpRule,
     ]);
-    expect(companions).toEqual([]);
+    expect(directories).toEqual([]);
     // An unparseable empty-string carrier still has its one failed
     // recognition; the point here is the census and the tool gate.
     expect(recognitions).toHaveLength(1);
@@ -2049,8 +2049,8 @@ describe('Claude instruction recognition (T228)', () => {
   it('runs no census for an instruction candidate', async () => {
     // A skill is a directory; an instruction file is just a file
     // (contracts/inspection-path-allowlist.md § Bounded companion census).
-    const { companions } = await recognizeWith('claude', 'CLAUDE.md', [claudeInstructionsRule]);
-    expect(companions).toEqual([]);
+    const { directories } = await recognizeWith('claude', 'CLAUDE.md', [claudeInstructionsRule]);
+    expect(directories).toEqual([]);
   });
 
   it('produces no Claude recognition for a filename-only AGENTS.md', async () => {
@@ -2318,8 +2318,7 @@ describe('Codex custom-agent recognition (T509)', () => {
     // The census belongs to a directory-shaped kind, which today is `skill`
     // alone (contracts/inspection-path-allowlist.md § Bounded companion
     // census): an agent file is one file, so its siblings are not its own.
-    const companions = await censusOf('codex', agentPath, [codexAgentRule]);
-    expect(companions).toEqual([]);
+    expect(await censusOf('codex', agentPath, [codexAgentRule])).toEqual([]);
   });
 });
 
@@ -2452,7 +2451,6 @@ describe('Claude custom-agent recognition (T529)', () => {
     // The census belongs to a directory-shaped kind, which today is `skill`
     // alone (contracts/inspection-path-allowlist.md § Bounded companion
     // census).
-    const companions = await censusOf('claude', agentPath, [claudeAgentRule]);
-    expect(companions).toEqual([]);
+    expect(await censusOf('claude', agentPath, [claudeAgentRule])).toEqual([]);
   });
 });

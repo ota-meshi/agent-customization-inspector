@@ -19,20 +19,25 @@ import {
   CODEX_REPO_CONFIG_BEHAVIOR,
   CODEX_REPO_HOOKS_BEHAVIOR,
   CODEX_REPO_INSTRUCTIONS_BEHAVIOR,
+  CODEX_PLUGIN_MANIFEST_BEHAVIOR,
+  CODEX_REPO_MARKETPLACE_BEHAVIOR,
   CODEX_REPO_MCP_BEHAVIOR,
   CODEX_REPO_RULES_BEHAVIOR,
   CODEX_REPO_SKILLS_BEHAVIOR,
   CODEX_USER_AGENTS_BEHAVIOR,
   CODEX_USER_CONFIG_BEHAVIOR,
   CODEX_USER_INSTRUCTIONS_BEHAVIOR,
+  CODEX_USER_PLUGINS_BEHAVIOR,
   CODEX_USER_RULES_BEHAVIOR,
   CODEX_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
   CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  CODEX_EXCLUDED_PLUGIN_FILES_RULE,
   CODEX_REPO_AGENT_RULE,
   CODEX_REPO_CONFIG_RULE,
   CODEX_REPO_INSTRUCTIONS_RULE,
+  CODEX_REPO_MARKETPLACE_RULE,
   CODEX_REPO_RULES_RULE,
   CODEX_REPO_SETTINGS_RULE,
   CODEX_REPO_SKILL_RULE,
@@ -42,6 +47,7 @@ import {
   CODEX_CONFIG_PRECEDENCE_STRATEGY,
   CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   CODEX_MCP_CONFIGURATION_STRATEGY,
+  CODEX_PLUGINS_ACTIVATION_STRATEGY,
   CODEX_RULES_RESOLUTION_STRATEGY,
   CODEX_SKILLS_DISCOVERY_STRATEGY,
 } from './strategies';
@@ -95,6 +101,21 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
     consumesBehaviors: [CODEX_REPO_MCP_BEHAVIOR, CODEX_USER_CONFIG_BEHAVIOR],
   },
   /**
+   * Plugin activation composes all three plugin scopes: the two repository
+   * catalog locations, the plugin root's own manifest, and the user's personal
+   * marketplace with the installed copies beside it. The User scope is listed
+   * though it is never read, for the reason the skill and rule strategies list
+   * theirs — the strategy describes Codex's runtime, and a composition over the
+   * repository catalog alone would describe a different product.
+   */
+  [CODEX_PLUGINS_ACTIVATION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CODEX_PLUGIN_MANIFEST_BEHAVIOR,
+      CODEX_REPO_MARKETPLACE_BEHAVIOR,
+      CODEX_USER_PLUGINS_BEHAVIOR,
+    ],
+  },
+  /**
    * Rule resolution composes both documented rule scopes: the project layers
    * this product can read and the User layer it may not. Both are listed
    * because the strategy describes Codex's runtime — the restrictive decision
@@ -117,6 +138,21 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
 
 /** What each Codex inspection rule is based on and explained by. What evidences it is its own `evidence`. */
 export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> = {
+  /**
+   * The exclusion cites all three plugin behaviors: it is the scope statement
+   * for what a manifest and a catalog point at, and for the installed copies
+   * the User scope holds. Citing behavior it deliberately does not authorize
+   * is what an exclusion is for. The activation strategy explains it, because
+   * what those components are to a running client is that strategy's.
+   */
+  [CODEX_EXCLUDED_PLUGIN_FILES_RULE.ruleId]: {
+    basedOnBehaviors: [
+      CODEX_PLUGIN_MANIFEST_BEHAVIOR,
+      CODEX_REPO_MARKETPLACE_BEHAVIOR,
+      CODEX_USER_PLUGINS_BEHAVIOR,
+    ],
+    explainedByStrategies: [CODEX_PLUGINS_ACTIVATION_STRATEGY],
+  },
   /**
    * The derivation is based on both behaviors it spans — the config lookup
    * that declares the basenames and the instruction lookup that consumes
@@ -185,6 +221,17 @@ export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> 
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: {
     basedOnBehaviors: [CODEX_REPO_INSTRUCTIONS_BEHAVIOR],
     explainedByStrategies: [CODEX_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
+  /**
+   * The catalog rule is based on the catalog lookup alone: the manifest
+   * behavior belongs to the plugin roots its entries name, which the
+   * derivation reaches, not to the file this rule admits. The activation
+   * strategy explains it, and owns everything the row does not state — that a
+   * listed plugin is installed, enabled, trusted, or loaded from its cache.
+   */
+  [CODEX_REPO_MARKETPLACE_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_REPO_MARKETPLACE_BEHAVIOR],
+    explainedByStrategies: [CODEX_PLUGINS_ACTIVATION_STRATEGY],
   },
   /**
    * The Repository rule-file rule is based on the project rule lookup alone —

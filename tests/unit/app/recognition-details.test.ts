@@ -101,6 +101,8 @@ function snapshotWith(
     instructions,
     rules: [],
     prompts: [],
+    plugins: [],
+    outputStyles: [],
     permissions: [],
     settings: [],
     agents: [],

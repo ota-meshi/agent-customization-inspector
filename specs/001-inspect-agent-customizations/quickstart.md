@@ -394,13 +394,15 @@ Verify:
    A documented User location never becomes Global read authority unless FR-015 through
    FR-018 name it, and runtime composition never merges the Inspector's Repository and
    Global source graphs.
-6. The shipped `bounded-derived-candidate` rules are exactly four, each expanded by its own
+6. The shipped `bounded-derived-candidate` rule is exactly one, expanded by its own
    vendor's configuration-read stage and none by a runtime extension point:
-   `copilot.derived.local-plugin-manifest`,
-   `claude.derived.local-plugin-manifest`, `codex.derived.local-plugin-manifest`, and
-   `codex.derived.fallback-basename`. A skill's sibling `agents/openai.yaml` is not among
-   them: it is published through the owning skill's bounded companion census, not through a
-   derivation (contracts/vendors/openai-codex.md § Derived Repository rules). Each is one typed
+   `codex.derived.fallback-basename`. Three kinds of file are deliberately not among them:
+   a skill's sibling `agents/openai.yaml`, published through the owning skill's bounded
+   companion census, and the files of a plugin root, enumerated because the root is a
+   directory-shaped customization the admitting rule named — none is a candidate, so none
+   is a derivation
+   (contracts/vendors/openai-codex.md § Derived Repository rules,
+   contracts/vendors/claude-code.md § Repository vendor behavior). Each is one typed
    edge with an exact seed path or seed rule/kind, closed declaration syntax, and fixed base/
    placement/suffix; callbacks, arbitrary joins, expressions, globs,
    and recursive derivation are unrepresentable. The program defines no numeric target,

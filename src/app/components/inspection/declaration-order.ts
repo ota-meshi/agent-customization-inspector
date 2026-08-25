@@ -134,6 +134,31 @@ export const LEADING_INSTRUCTION_FRONTMATTER_KEYS: readonly string[] = [
 ];
 
 /**
+ * The declared keys an output style is read for, in the order Claude Code's
+ * output-styles page § Frontmatter publishes them.
+ *
+ * One product's table, because one product documents this kind: the page
+ * lists the four fields a style file supports and what each is for, and a
+ * reader comparing two styles should not have to find `keep-coding-instructions`
+ * in a different place in each. Every other key the file wrote keeps its
+ * authored place after these.
+ */
+export const LEADING_OUTPUT_STYLE_FRONTMATTER_KEYS: readonly string[] = [
+  // What the style is and how a picker shows it: `name` is the style name when
+  // the file sets one — the row's identity otherwise falls back to the file
+  // name — and `description` is the line the settings picker shows beside it.
+  'name',
+  'description',
+
+  // What it does to the system prompt: whether Claude Code's built-in software
+  // engineering instructions stay, and — for a style a plugin ships — whether
+  // the style applies whenever the plugin is enabled, overriding the reader's
+  // own selection.
+  'keep-coding-instructions',
+  'force-for-plugin',
+];
+
+/**
  * The declared keys a prompt file is read for, in the order VS Code's "Use
  * prompt files in VS Code" page § Prompt file format publishes them.
  *

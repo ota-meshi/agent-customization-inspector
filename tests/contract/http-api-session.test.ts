@@ -149,7 +149,6 @@ describe('rescan-repository admission', () => {
       readBytes: 0,
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
     });
     const context = hostContext();
@@ -187,7 +186,6 @@ describe('rescan-repository admission', () => {
       readBytes: 0,
       files: [],
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       diagnostics: [],
     });
     const context = hostContext();

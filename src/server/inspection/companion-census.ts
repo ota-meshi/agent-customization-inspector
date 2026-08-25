@@ -22,7 +22,7 @@
 // Nothing here reads a byte either: this module answers which files accompany
 // the candidate and where they are, and the scan does the reading through the
 // one read path every other file goes through.
-import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { readdir, realpath } from './fs-io';
 import {
   INSTALLED_PACKAGE_DIRECTORIES,
@@ -65,23 +65,30 @@ export class CompanionFile {
 }
 
 /**
- * Lists the regular files accompanying `seedPath` in its own directory,
- * recursively, excluding the seed itself, VCS internals, and installed-package
- * directories, exactly as the walk excludes them (traversal.ts). Display paths are
- * relative to that directory, spelled with the exact entry names like every
+ * Lists the regular files under `censusRoot`, recursively, excluding VCS
+ * internals and installed-package directories, exactly as the walk excludes them (traversal.ts). Display paths are
+ * relative to the census root, spelled with the exact entry names like every
  * other published path (FR-024), and sorted, so two scans of one tree publish
  * the same list.
  *
+ * The census root is the caller's rather than this function's, because where a
+ * customization's directory sits relative to its entry point is a fact about
+ * the kind: a skill's `SKILL.md` sits at the skill's own root, while a plugin
+ * root carries its manifest one directory below it. The caller decides once and
+ * passes both spellings of that directory — this one operates on the raw
+ * absolute path, and the addresses the caller builds use its own public prefix,
+ * so no published path is decoded back into a filesystem operand (FR-024).
+ *
  * The result is relative to the census root rather than to the Source: the
- * caller holds the candidate's own Source-relative Path and prefixes it, so no
- * Source-relative path is re-derived here. `sourceRoot` is not for naming — it
- * is the containment boundary.
+ * caller holds the customization's own Source-relative prefix and prefixes it,
+ * so no Source-relative path is re-derived here. `sourceRoot` is not for
+ * naming — it is the containment boundary.
  *
  * The list rather than a count is the census result, because the count is
  * `length` and keeping both would be two states that can disagree.
  *
- * The walk starts at a directory the allowlist traversal already reached and
- * descends only into directories that really are inside it. That alone does not
+ * The walk starts at a directory the caller named and descends only into
+ * directories that really are inside it. That alone does not
  * keep it inside the Source: a skill directory may itself be a symbolic link
  * out of the tree, and its real path would then become a census root somewhere
  * else entirely. So the census root is first required to be inside the Source
@@ -108,19 +115,54 @@ export class CompanionFile {
  */
 export async function listCompanionFiles(
   sourceRoot: string,
-  seedPath: string,
+  censusRoot: string,
 ): Promise<readonly CompanionFile[]> {
-  const seedDirectory = dirname(seedPath);
   const rootReal = await realpath(sourceRoot);
-  const seedReal = await realpath(seedDirectory);
-  if (!isWithin(rootReal, seedReal)) {
+  const censusReal = await realpath(censusRoot);
+  if (
+    !isWithin(rootReal, censusReal) ||
+    isExcludedDirectory(relative(sourceRoot, censusRoot), relative(rootReal, censusReal))
+  ) {
     return [];
   }
   const found: string[] = [];
-  await collectWithin(seedDirectory, seedPath, seedReal, rootReal, new Set([seedReal]), found);
+  await collectWithin(censusRoot, censusReal, rootReal, new Set([censusReal]), found);
   return found
-    .map((absolute) => new CompanionFile(seedDirectory, absolute))
+    .map((absolute) => new CompanionFile(censusRoot, absolute))
     .toSorted((left, right) => (left.censusRelativePath < right.censusRelativePath ? -1 : 1));
+}
+
+/**
+ * Whether the census root sits where the ordinary walk never descends: inside
+ * VCS internals, or inside a directory a package manager filled.
+ *
+ * The descent below excludes both, so without this the exclusion would depend
+ * on where a census started. It is the census root that can be named rather
+ * than reached — a plugin root comes from a catalog entry's declared source, so
+ * `./.git` and `./node_modules/pkg` are spellings a file can ask for, where the
+ * walk could never have arrived at either — and a root inside one of them would
+ * publish an object store or an installed package as the files a plugin ships
+ * (contracts/inspection-path-allowlist.md § Bounded companion census).
+ *
+ * Held to the descent's own rule, each half in the descent's own terms
+ * (`collectWithin`): VCS internals are excluded by the spelling *and* by where
+ * it resolves, because a link is how a declaration reaches an object store
+ * under an ordinary name, while an installed-package directory is excluded by
+ * the spelling alone, because that name is what a package manager fills and a
+ * directory that merely resolves into one is not it. Both are read as the
+ * segments below the Source root, so a Source whose own path carries such a
+ * segment is an ordinary Source, exactly as `isVcsInternalPath` judges it.
+ *
+ * `relative` is safe for both arguments because containment is established
+ * first: two paths on different Windows volumes never reach this.
+ */
+function isExcludedDirectory(declaredSteps: string, resolvedSteps: string): boolean {
+  const declaredSegments = declaredSteps.split(sep);
+  return (
+    declaredSegments.some(
+      (segment) => VCS_INTERNALS.has(segment) || INSTALLED_PACKAGE_DIRECTORIES.has(segment),
+    ) || resolvedSteps.split(sep).some((segment) => VCS_INTERNALS.has(segment))
+  );
 }
 
 /**
@@ -145,13 +187,12 @@ function isWithin(container: string, candidate: string): boolean {
 }
 
 /**
- * One directory level of {@link listCompanionFiles}. `seedReal` is the real
+ * One directory level of {@link listCompanionFiles}. `censusReal` is the real
  * path of the census root and bounds every descent below it.
  */
 async function collectWithin(
   directory: string,
-  seedPath: string,
-  seedReal: string,
+  censusReal: string,
   rootReal: string,
   visitedRealPaths: Set<string>,
   found: string[],
@@ -189,12 +230,7 @@ async function collectWithin(
       }
     }
     if (isFile) {
-      // The seed is what the caller's row already names; every path is the
-      // exact entry spelling, and a filesystem holds one entry per name, so
-      // the raw comparison is the whole exclusion.
-      if (entryPath !== seedPath) {
-        found.push(entryPath);
-      }
+      found.push(entryPath);
       continue;
     }
     if (isDirectory) {
@@ -213,14 +249,14 @@ async function collectWithin(
       // followed one would report the object store as a skill's companions.
       // An installed-package directory is excluded by name alone, exactly as
       // the walk excludes it (traversal.ts).
-      if (!isWithin(seedReal, real) || isVcsInternalPath(rootReal, real)) {
+      if (!isWithin(censusReal, real) || isVcsInternalPath(rootReal, real)) {
         continue;
       }
       if (visitedRealPaths.has(real)) {
         continue;
       }
       visitedRealPaths.add(real);
-      await collectWithin(entryPath, seedPath, seedReal, rootReal, visitedRealPaths, found);
+      await collectWithin(entryPath, censusReal, rootReal, visitedRealPaths, found);
       visitedRealPaths.delete(real);
     }
   }

@@ -116,10 +116,19 @@ test.describe('the complete literal Codex configuration detail', () => {
     // numbers, and `#` comments. Distinct token classes are what colouring
     // looks like in the DOM; a plain-text model would put every character in
     // one.
-    const tokenClasses = await page
-      .locator('.monaco-editor .view-line span[class^="mtk"]')
-      .evaluateAll((nodes) => new Set(nodes.map((node) => node.className)).size);
-    expect(tokenClasses).toBeGreaterThan(1);
+    //
+    // Polled rather than read once, because a grammar is a lazily fetched
+    // chunk: the text renders as soon as the model exists and is re-tokenized
+    // when the grammar arrives, so a single read taken when the text appears
+    // catches the plain render on a browser that fetches a moment slower —
+    // every character in one class, which is what an uncoloured document
+    // looks like too.
+    await expect(async () => {
+      const tokenClasses = await page
+        .locator('.monaco-editor .view-line span[class^="mtk"]')
+        .evaluateAll((nodes) => new Set(nodes.map((node) => node.className)).size);
+      expect(tokenClasses).toBeGreaterThan(1);
+    }).toPass();
     // Tokenizing is all it is: no language service stands behind that
     // grammar, so nothing marks the document invalid (FR-033).
     await expect(

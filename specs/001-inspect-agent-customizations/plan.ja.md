@@ -969,8 +969,9 @@ LICENSE
 使用する。NuxtはSPA（`ssr: false`）とし、static Nitro preset、`app.baseURL: '/'`、
 `app.buildAssetsDir: '/_nuxt/'`、CDN URLなし、明示的importを使い、component auto-discoveryを無効にする。
 これにより全nested client routeが同じroot-absolute same-origin asset URLをresolveする。Detail routeは、それが表示する
-認識済みkindに属する。`/skills/<Source相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
-指示、directoryであり、別kindのdetailは別のlayoutで別の問いに答える。出荷中のinspection ruleはすべて`skill`を認識するため
+認識済みkindに属する。`/skills/<SKILL.mdのSource相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
+指示、directoryであり、別kindのdetailは別のlayoutで別の問いに答える。そのdirectoryのどのfileを読んでいるかは
+addressの傍らの`file` queryであり、主題はpageが記述するcustomizationのままとなる。出荷中のinspection ruleはすべて`skill`を認識するため
 detail routeはこの1つであり、2つ目のkindを認識するphaseがそのkindのrouteとpageを併せて追加する。`src/server/cli.ts` entryは
 BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まり、tsdownがpackaged `dist/cli.mjs`でそのshebangを
 保持し、`package.json.bin`は別のbootstrap wrapperなしでそれを直接指す。同時に配布されるartifact同士を
@@ -1009,7 +1010,7 @@ Task generationは、すべてのP1 workをすべてのP2 workより前へstable
 orderを維持する。最初にSetupとblocking secure foundationを実施する。次に各familyでUS1 discoveryとUS2の完全で
 不活性なdetailを完了してからUS3 comparisonを行い、その後にだけ次のfamilyへ進む。正確な順序は、SKILL
 （Skill Metadataを含む）→ Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents →
-Configuration/Settings → Output Styles → Marketplaces → Plugin Manifests → Hooksとする。その後、Repository-wide
+Configuration/Settings → Output Styles → Plugins → Hooksとする。その後、Repository-wide
 Inventory、Detail、Comparison Acceptanceをこの順で完了する。Global inspection（US4、P3）、cross-cutting
 verification、release evidenceは最後に実施する。
 

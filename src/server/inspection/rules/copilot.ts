@@ -21,8 +21,11 @@ import {
   type CompiledStaticMcpProvenanceRule,
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
+  type CompiledStaticPluginCatalogRule,
+  type PluginCarrierReading,
   type CompiledStaticSkillRule,
   authoredSkillNameOf,
+  localPluginRootSegments,
 } from './registry';
 import { ParsedJsoncDocument, ParsedStrictJsonDocument } from '../parsers/json';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
@@ -525,6 +528,192 @@ export class CopilotCompiledSkillRule
 }
 
 /**
+ * The key a Copilot plugin catalog lists its entries under
+ * (contracts/vendors/github-copilot.md § Repository vendor behavior): the CLI
+ * reference defines a marketplace as a `plugins` array of one object per
+ * plugin. A literal here rather than anything a caller passes, because it is
+ * this vendor's own format.
+ */
+const COPILOT_CATALOG_PLUGINS_KEY = 'plugins';
+
+/** The key a catalog and a plugin declaration each write their name under. */
+const COPILOT_PLUGIN_NAME_KEY = 'name';
+
+/** The key a catalog entry writes its source under. */
+const COPILOT_PLUGIN_SOURCE_KEY = 'source';
+
+/** The key a source object writes its path under. */
+const COPILOT_PLUGIN_SOURCE_PATH_KEY = 'path';
+
+/** The `source.source` value naming the one form that is a path in this repository. */
+const COPILOT_LOCAL_SOURCE_VALUE = 'local';
+
+/**
+ * Where a Copilot plugin root may keep the plugin's own manifest, relative to
+ * that root, in the order the CLI checks them
+ * (`github.copilot.cli.plugins` § File locations).
+ *
+ * Four forms rather than one because this vendor reads four: a root
+ * `plugin.json` is the Copilot and Agent Plugins form, `.claude-plugin/` is the
+ * Claude form it also accepts, and `.plugin/` is the legacy OpenPlugin one.
+ * They name files rather than admitting them: no rule reaches a manifest below
+ * a catalog's root, and each is published as one of the plugin's own files.
+ */
+const COPILOT_PLUGIN_MANIFEST_PATHS: readonly string[] = [
+  '.plugin/plugin.json',
+  'plugin.json',
+  '.github/plugin/plugin.json',
+  '.claude-plugin/plugin.json',
+];
+
+/**
+ * The name one declaration resolves: the `name` scalar exactly as written, or
+ * null when it writes none or writes it as anything but a scalar — naming a
+ * plugin after the first item of a list it wrote would be an identity the file
+ * never declared (FR-007).
+ */
+function copilotPluginNameOf(fields: readonly DeclaredEntryDto[]): string | null {
+  for (const field of fields) {
+    if (field.keyKind === 'string' && field.key === COPILOT_PLUGIN_NAME_KEY) {
+      return field.value.kind === 'scalar' ? field.value.text : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * The name Copilot addresses one plugin by: the plugin's own name qualified by
+ * the marketplace it came from, `<plugin-name>@<marketplace-name>` — the key
+ * `enabledPlugins` uses and `copilot plugins install` takes — or null when
+ * either half is missing, because a plugin Copilot could not address is no name
+ * at all.
+ */
+function copilotQualifiedPluginNameOf(
+  pluginName: string | null,
+  marketplaceName: string | null,
+): string | null {
+  return pluginName === null || marketplaceName === null
+    ? null
+    : `${pluginName}@${marketplaceName}`;
+}
+
+/**
+ * The plugin root one catalog entry names inside the Source, as a
+ * Source-relative directory with its trailing slash, or null when the entry
+ * names none this repository holds.
+ *
+ * The documented local form and nothing else: the source is either the object
+ * form with `source: 'local'` and a `path`, or the plain string path an entry
+ * may use instead, and the path must begin with `./`. A GitHub shorthand, a Git
+ * URL, an npm or PyPI package, an absolute path, and a `..` segment all name
+ * nothing here, because the derivation is closed and a source it cannot
+ * validate is not a directory it may name (FR-004, FR-024).
+ */
+function copilotLocalPluginRootOf(fields: readonly DeclaredEntryDto[]): string | null {
+  let declaredPath: string | null = null;
+  for (const field of fields) {
+    if (field.keyKind !== 'string' || field.key !== COPILOT_PLUGIN_SOURCE_KEY) {
+      continue;
+    }
+    if (field.value.kind === 'scalar') {
+      declaredPath = field.value.text;
+      break;
+    }
+    if (field.value.kind !== 'mapping') {
+      return null;
+    }
+    let isLocal = false;
+    let path: string | null = null;
+    for (const entry of field.value.entries) {
+      if (entry.keyKind !== 'string' || entry.value.kind !== 'scalar') {
+        continue;
+      }
+      if (entry.key === COPILOT_PLUGIN_SOURCE_KEY) {
+        isLocal = entry.value.text === COPILOT_LOCAL_SOURCE_VALUE;
+      }
+      if (entry.key === COPILOT_PLUGIN_SOURCE_PATH_KEY) {
+        path = entry.value.text;
+      }
+    }
+    // A git or npm entry also writes a `path` or a `repo`, so the discriminant
+    // is checked rather than the presence of a path.
+    declaredPath = isLocal ? path : null;
+    break;
+  }
+  const named = localPluginRootSegments(declaredPath);
+  return named === null ? null : `${named.join('/')}/`;
+}
+
+/**
+ * The Copilot plugin catalog rule compiled for execution: everything a Copilot
+ * rule is, plus the one question only a catalog answers — which plugins its
+ * entries resolve, and where each of them sits inside this Source.
+ */
+export class CopilotCompiledPluginCatalogRule
+  extends CopilotCompiledRule
+  implements CompiledStaticPluginCatalogRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'plugin';
+
+  /** Discriminant: the admitted file is a catalog listing plugins. */
+  public readonly pluginCarrier: 'catalog';
+
+  /**
+   * What one admitted catalog declares: its own keys except `plugins`, and one
+   * declaration per entry of that array in the parser's resolved order, each
+   * carrying the directory that entry's plugin occupies here and the manifest
+   * forms this vendor checks inside it.
+   *
+   * Entry classification is structural and total, exactly as the MCP carrier
+   * reading's is: only an object inside `plugins` is an entry, and a scalar or
+   * an array there is omitted whole rather than published partially, as is a
+   * `plugins` value that is not an array at all. Strict JSON because that is
+   * what the catalog is.
+   */
+  public pluginCarrierReadingOf(sourceText: string): PluginCarrierReading {
+    const entries = new ParsedStrictJsonDocument(sourceText).entries;
+    const declared = entries.find(
+      (entry) => entry.keyKind === 'string' && entry.key === COPILOT_CATALOG_PLUGINS_KEY,
+    );
+    const catalogFields = entries.filter((entry) => entry !== declared);
+    if (declared === undefined || declared.value.kind !== 'sequence') {
+      return { catalogFields, plugins: [] };
+    }
+    const marketplaceName = copilotPluginNameOf(catalogFields);
+    return {
+      catalogFields,
+      plugins: declared.value.items.flatMap((item) => {
+        if (item.kind !== 'mapping') {
+          return [];
+        }
+        const pluginRoot = copilotLocalPluginRootOf(item.entries);
+        return [
+          {
+            name: copilotQualifiedPluginNameOf(copilotPluginNameOf(item.entries), marketplaceName),
+            fields: item.entries,
+            pluginRoot,
+            manifestPaths:
+              pluginRoot === null
+                ? []
+                : COPILOT_PLUGIN_MANIFEST_PATHS.map((form) => `${pluginRoot}${form}`),
+          },
+        ];
+      }),
+    };
+  }
+
+  /** Compiles one Copilot plugin catalog record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'plugin') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Copilot plugin rule`);
+    }
+    this.pluginCarrier = 'catalog';
+  }
+}
+
+/**
  * A Copilot rule of every other kind, compiled for execution. It answers no
  * per-kind question — nothing about applicability, nothing a carrier
  * declares, nothing a file is invoked by (see
@@ -537,10 +726,17 @@ export class CopilotCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    | 'instructions'
+    | 'skill'
+    | 'MCP'
+    | 'agent'
+    | 'prompt/command'
+    | 'permissions'
+    | 'plugin'
+    | 'output style'
   >;
 
-  /** Compiles one Copilot record of any kind but the six with a question of their own. */
+  /** Compiles one Copilot record of any kind but the seven with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
@@ -549,7 +745,11 @@ export class CopilotCompiledOtherKindRule
       rule.kind === 'MCP' ||
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
-      rule.kind === 'permissions'
+      rule.kind === 'permissions' ||
+      // No shipped rule of this vendor carries the kind; the exclusion keeps
+      // the unit's type in step with the base, whose `kind` an output-style
+      // unit answers for (registry.ts § CompiledStaticOutputStyleRule).
+      rule.kind === 'output style'
     ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Copilot unit that answers for its kind`);
     }
@@ -617,5 +817,7 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
               ? rule.ruleId === 'copilot.repo.prompt'
                 ? new CopilotCompiledPromptFileRule(rule)
                 : new CopilotCompiledPromptRule(rule)
-              : new CopilotCompiledOtherKindRule(rule),
+              : rule.kind === 'plugin'
+                ? new CopilotCompiledPluginCatalogRule(rule)
+                : new CopilotCompiledOtherKindRule(rule),
   );

@@ -49,6 +49,8 @@ import type {
   FileOpenTarget,
   InspectionDataResult,
   McpCarrierDetailDto,
+  PluginCarrierDetailDto,
+  PluginCarrierDetailParams,
   PermissionPolicyDetailDto,
   ScanAdmission,
   SessionSnapshot,
@@ -117,7 +119,6 @@ export async function executeRepositoryScan(
     await context.coordinator.completeScan(scanRequestId, {
       files: publication.files,
       recognitions: publication.recognitions,
-      skillCompanionsByPath: publication.skillCompanionsByPath,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
       visitedEntries: publication.visitedEntries,
@@ -260,6 +261,42 @@ export function createInspectorDevframe(context: InspectorHostContext): Devframe
             // a later commit. A parsed carrier declaring no server is not
             // this case: it holds a recognition and answers with empty
             // servers (contracts/http-api.md § get-mcp-carrier-detail).
+            return { error: { code: 'stale-resource' } };
+          }
+          return { ...context.session.dataEnvelope(), data: detail };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:get-plugin-carrier-detail',
+        type: 'query',
+        // The plugin carrier's own detail function (contracts/http-api.md
+        // § get-plugin-carrier-detail). Not a `get-file-detail` variant
+        // because a plugin row names a declared plugin rather than a file
+        // (data-model.md § Inventory unit), and the two carriers of that row
+        // answer differently: a manifest is itself the customization and
+        // serves its complete source, while a catalog resolves many plugin
+        // names and serves its declarations without its bytes. The parameter
+        // names the row as well as the file, because a catalog offering also
+        // serves the plugin root it reached; both halves validate by
+        // resolution exactly as `get-file-detail`'s one does.
+        handler: (
+          params?: PluginCarrierDetailParams | null,
+        ): InspectionDataResult<PluginCarrierDetailDto> | DeterministicRejection => {
+          // The caller is the wire, which carries whatever was sent: this is
+          // the one function whose parameter is an object, so a `null` or an
+          // omitted argument would throw on the field read the others survive
+          // by returning `undefined`. It resolves nowhere instead, which is
+          // what the contract makes a value of another type answer
+          // (contracts/http-api.md § RPC boundary) — resolution, not a shape
+          // guard with a rejection vocabulary of its own.
+          const detail =
+            params === null || params === undefined
+              ? null
+              : context.session.pluginCarrierDetail(params);
+          if (detail === null) {
+            // No plugin recognition at the path — never scanned, or removed by
+            // a later commit. A parsed carrier declaring no plugin is not this
+            // case: it holds a recognition and answers with an empty list.
             return { error: { code: 'stale-resource' } };
           }
           return { ...context.session.dataEnvelope(), data: detail };
@@ -444,6 +481,7 @@ export async function startInspectorHost(
  * `/mcp/<source-relative path>` with `config.toml`,
  * `/rules/<source-relative path>` with `style.md`,
  * `/prompts-and-commands/<source-relative path>` with `deploy.md`,
+ * `/output-styles/<source-relative path>` with `diagrams.md`,
  * `/permissions/<source-relative path>` with `default.rules`,
  * `/agents/<source-relative path>` with `reviewer.toml`,
  * `/settings-and-configuration/<source-relative path>` with `config.toml` —
@@ -487,6 +525,8 @@ function createHostApp(): H3 {
   app.use('/prompts-and-commands/**', rewriteToShell);
   app.use('/permissions/**', rewriteToShell);
   app.use('/agents/**', rewriteToShell);
+  app.use('/plugins/**', rewriteToShell);
+  app.use('/output-styles/**', rewriteToShell);
   app.use('/settings-and-configuration/**', rewriteToShell);
   return app;
 }

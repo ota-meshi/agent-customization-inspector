@@ -197,6 +197,29 @@
     ]
   },
   {
+    "behaviorId": "claude.behavior.repo.marketplace",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": ".claude-plugin/marketplace.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.marketplaces.catalog-sources",
+        "url": "https://code.claude.com/docs/en/plugin-marketplaces",
+        "officialHost": "code.claude.com",
+        "sections": ["Create the marketplace file", "Plugin sources"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A repository publishes its catalog as .claude-plugin/marketplace.json in its root, defining the marketplace name, owner, and a plugins list whose entries each need a name and a source; a source starting with ./ names a plugin in the same repository, resolved against the marketplace root, while GitHub, git, git-subdirectory, npm, archive, and command sources name plugins fetched from elsewhere. Users reach a catalog by adding it, so registration is separate from the catalog file."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.mcp",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -228,6 +251,29 @@
     ]
   },
   {
+    "behaviorId": "claude.behavior.repo.output-style",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/output-styles/*.md",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.output-styles.locations",
+        "url": "https://code.claude.com/docs/en/output-styles",
+        "officialHost": "code.claude.com",
+        "sections": ["Create a custom output style", "How output styles work"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "A custom output style is a Markdown file of frontmatter and instructions saved at the User, project, or managed-policy level; project styles load from every .claude/output-styles/ between the working directory and the repository root, the file name becomes the style name unless the frontmatter sets name, and the instructions are added to the end of the system prompt."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.plugin",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -249,7 +295,7 @@
           "Plugin manifest schema",
           "File locations reference"
         ],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-25",
         "establishes": "A plugin is installed into a settings scope chosen at installation; its manifest is optional, with components — MCP declarations among them — auto-discovered at default locations under the plugin root or redirected by manifest-declared paths."
       }
     ]
@@ -365,6 +411,29 @@
         "sections": ["Choose where to start Claude", "Add per-directory skills"],
         "reviewedOn": "2026-07-25",
         "establishes": "The launch directory decides which skill layers load at startup, and nested directories can carry their own .claude/skills directories that join the session as files under them are accessed."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.skills-directory-plugin",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".claude/skills/<plugin-name>/.claude-plugin/plugin.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Skills-directory plugins", "File locations reference"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Any folder under a skills directory that contains a .claude-plugin/plugin.json manifest is loaded as a plugin named <folder>@skills-dir on the next session, with no marketplace and no install step, and is discovered in place rather than copied into the plugin cache; the project-scope skills directory is the launch working directory's own .claude/skills/, which this interpretation does not walk ancestors of, and it loads only after the workspace trust dialog is accepted."
       }
     ]
   },
@@ -539,6 +608,29 @@
     ]
   },
   {
+    "behaviorId": "claude.behavior.user.output-style",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "output-styles/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.output-styles.locations",
+        "url": "https://code.claude.com/docs/en/output-styles",
+        "officialHost": "code.claude.com",
+        "sections": ["Create a custom output style"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "A custom output style can be saved at the User level in ~/.claude/output-styles, beside the project and managed-policy levels."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.user.plugins",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -556,7 +648,7 @@
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Plugin installation scopes", "Plugin caching and file resolution"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-25",
         "establishes": "Plugin enablement is recorded per installation scope in settings files — the user scope in ~/.claude/settings.json — and marketplace plugins are copied into the local plugin cache at ~/.claude/plugins/cache, which is what makes plugin-provided servers user-side installation state rather than a repository fact."
       },
       {
@@ -643,6 +735,29 @@
         "sections": ["Variables"],
         "reviewedOn": "2026-08-20",
         "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.plugin.manifest",
+    "tool": "codex",
+    "surfaces": ["codex-plugin-clients"],
+    "locator": {
+      "vendorScope": "plugin",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": ".codex-plugin/plugin.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": ["Plugin structure", "Manifest fields"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Every plugin has its required entry point at .codex-plugin/plugin.json, whose name, version, and description identify the plugin and whose skills, mcpServers, apps, and hooks fields point at bundled components relative to the plugin root; only plugin.json belongs in .codex-plugin/."
       }
     ]
   },
@@ -743,6 +858,34 @@
         "sections": ["How Codex discovers guidance", "Customize fallback filenames"],
         "reviewedOn": "2026-08-17",
         "establishes": "Local Codex clients build the instruction chain once at session start, walking the project root down to the runtime cwd and stopping there — without a detectable project root only the current directory is checked — selecting at most one file per directory: AGENTS.override.md, then AGENTS.md, then the configured fallback basenames. Those basenames and the project-document byte budget are themselves configuration values, declared as project_doc_fallback_filenames and project_doc_max_bytes, so which names the walk accepts depends on configuration outside the instruction files themselves."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.marketplace",
+    "tool": "codex",
+    "surfaces": ["codex-plugin-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".agents/plugins/marketplace.json; .claude-plugin/marketplace.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": [
+          "How local marketplaces work",
+          "Marketplace metadata",
+          "Build your own curated plugin list",
+          "Add a marketplace from the CLI"
+        ],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The ChatGPT desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible one at $REPO_ROOT/.claude-plugin/marketplace.json, each a JSON catalog whose plugins[] entries name the plugins it exposes, and shows each as a selectable source in the Plugins Directory; the Codex CLI adds, lists, refreshes, and removes marketplace sources and prints the ones Codex is considering, including local defaults, while directing installation and testing back to the desktop app. The personal ~/.agents/plugins/marketplace.json named beside them is a different Source boundary this statement does not reach, and installation and per-plugin enablement are separate state."
       }
     ]
   },
@@ -893,6 +1036,29 @@
     ]
   },
   {
+    "behaviorId": "codex.behavior.user.plugins",
+    "tool": "codex",
+    "surfaces": ["codex-plugin-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".agents/plugins/marketplace.json; installed copies under Codex state",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": ["How local marketplaces work", "Marketplace metadata"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A personal marketplace lives at ~/.agents/plugins/marketplace.json, which the ChatGPT desktop app reads beside the repository ones; ChatGPT installs plugins into ~/.codex/plugins/cache/$MARKETPLACE_NAME/$PLUGIN_NAME/$VERSION/ and loads the installed copy from that cache rather than from the marketplace entry, and stores each plugin's on or off state in ~/.codex/config.toml."
+      }
+    ]
+  },
+  {
     "behaviorId": "codex.behavior.user.rules",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -981,6 +1147,29 @@
         "sections": ["Commands (alternative skill format)"],
         "reviewedOn": "2026-08-20",
         "establishes": "Copilot CLI documents .claude/commands/*.md as an alternative skill format that a same-name skill outranks, without establishing a complete project anchor or ancestor traversal."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.extensions",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/extensions/<name>/extension.mjs; extension.cjs; extension.js",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations", "Loading order and precedence"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The plugin reference separates a plugin's own components — agents, skills, hooks, MCP and LSP configuration — from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations rather than treating an extension file as a plugin."
       }
     ]
   },
@@ -1201,6 +1390,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.cli.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "plugin",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": ".plugin/plugin.json; plugin.json; .github/plugin/plugin.json; .claude-plugin/plugin.json, and the corresponding marketplace files, each checked in that order",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations", "marketplace.json", "CLI commands"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.cli.settings",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -1274,6 +1486,29 @@
         "sections": ["Custom agent locations"],
         "reviewedOn": "2026-08-20",
         "establishes": "User agents live at ~/.copilot/agents/ and plugin agents rank lowest; this page states that user-level agents have lower priority than project-level ones, which is one side of the retained project-versus-User conflict."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.extensions",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/extensions/<name>/extension.mjs; extension.cjs; extension.js",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.extensions",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-extensions",
+        "officialHost": "docs.github.com",
+        "sections": ["How extensions are discovered", "Choosing where an extension lives"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The CLI looks for extensions in a repository .github/extensions directory and in ~/.copilot/extensions, each extension being a named subdirectory whose entry file is extension.mjs, extension.cjs, or extension.js that the CLI runs with Node.js."
       }
     ]
   },
@@ -1382,6 +1617,37 @@
         "sections": ["MCP server configuration", "Environment variables"],
         "reviewedOn": "2026-08-20",
         "establishes": "Persistent user servers are configured in ~/.copilot/mcp-config.json — the file the copilot mcp add subcommand writes — and that source is the lowest priority of the documented loading order; COPILOT_HOME overrides the configuration and state directory whose default is $HOME/.copilot, which is the relocation the <COPILOT_HOME> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/installed-plugins/<marketplace>/<plugin>; .copilot/settings.json enabledPlugins and extraKnownMarketplaces",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Installed plugins live under ~/.copilot/installed-plugins, by marketplace and plugin name for a marketplace install and under a direct-source directory otherwise."
+      },
+      {
+        "sourceId": "github.copilot.plugins",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-plugins",
+        "officialHost": "docs.github.com",
+        "sections": ["Where can I get plugins?"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The CLI installs a plugin through its install command or slash command, or by naming it in the enabledPlugins field of a user-level ~/.copilot/settings.json or a repository-level .github/copilot/settings.json."
       }
     ]
   },
@@ -1667,6 +1933,37 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.cloud.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.plugins",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-plugins",
+        "officialHost": "docs.github.com",
+        "sections": ["Where can I get plugins?", "How plugin marketplaces work"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The cloud agent turns plugins on declaratively through the enabledPlugins field of a repository .github/copilot/settings.json, with extraKnownMarketplaces naming a marketplace that is not registered by default, and a marketplace is a marketplace.json listing the plugins it makes available."
+      },
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure plugin marketplaces"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The same registered-marketplace and enabled-plugin keys are the cross-tool spelling a repository carries, so what a hosted session runs is that state rather than the authored catalog itself."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.cloud.remote-skills",
     "tool": "copilot",
     "surfaces": ["copilot-cloud"],
@@ -1911,6 +2208,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.vscode.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "plugin",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": "plugin.json; .claude-plugin/plugin.json; .plugin/plugin.json; and the corresponding marketplace files",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Plugin formats", "Configure plugin marketplaces", "Use local plugins"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "VS Code detects a plugin format from its root manifest — plugin.json for Agent Plugins 1.0 and Copilot, .claude-plugin/plugin.json for Claude, .plugin/plugin.json for legacy OpenPlugin — and a plugin reaches a session by installation, by a marketplace registered through chat.plugins.marketplaces, or by an absolute directory path registered in chat.pluginLocations, never by a file appearing at an arbitrary workspace path."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.vscode.prompts",
     "tool": "copilot",
     "surfaces": ["copilot-vscode"],
@@ -2097,6 +2417,37 @@
         "sections": ["Configure the mcp.json file", "Synchronize MCP configuration across devices"],
         "reviewedOn": "2026-08-20",
         "establishes": "The user-profile mcp.json is the second documented location, opened through the MCP: Open User Configuration command, available across workspaces, per-profile, and synchronizable across devices; how a User declaration resolves against a same-name workspace declaration is not established."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/installed-plugins/<marketplace>/<plugin>, and the directories the editor plugin settings register",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure plugin marketplaces", "Use local plugins"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "An editor session gets its plugins from marketplaces registered through the chat.plugins.marketplaces setting and from directories registered by absolute path in chat.pluginLocations, each carrying an enabled or disabled state of its own."
+      },
+      {
+        "sourceId": "github.copilot.plugins",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-plugins",
+        "officialHost": "docs.github.com",
+        "sections": ["Where can I get plugins?"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "A plugin is installed from a marketplace, a repository, or a local path, and which plugins a client turns on is settings and installed state rather than a property of an authored catalog."
       }
     ]
   },

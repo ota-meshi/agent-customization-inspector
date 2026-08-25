@@ -47,7 +47,11 @@ import {
   COPILOT_VSCODE_MCP_BEHAVIOR,
   COPILOT_VSCODE_PROMPTS_BEHAVIOR,
   COPILOT_VSCODE_SKILLS_BEHAVIOR,
+  COPILOT_CLI_EXTENSIONS_BEHAVIOR,
   COPILOT_CLI_LSP_BEHAVIOR,
+  COPILOT_CLI_PLUGINS_BEHAVIOR,
+  COPILOT_CLI_USER_PLUGINS_BEHAVIOR,
+  COPILOT_CLOUD_PLUGINS_BEHAVIOR,
   COPILOT_CLI_SETTINGS_BEHAVIOR,
   COPILOT_CLI_USER_SETTINGS_BEHAVIOR,
   COPILOT_VSCODE_SETTINGS_BEHAVIOR,
@@ -57,6 +61,8 @@ import {
   COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR,
   COPILOT_VSCODE_USER_MCP_BEHAVIOR,
   COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,
+  COPILOT_VSCODE_PLUGINS_BEHAVIOR,
+  COPILOT_VSCODE_USER_PLUGINS_BEHAVIOR,
 } from './behaviors';
 import {
   COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
@@ -79,6 +85,8 @@ import {
   COPILOT_REPO_PROMPT_RULE,
   COPILOT_REPO_SETTINGS_RULE,
   COPILOT_REPO_SKILL_RULE,
+  COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE,
+  COPILOT_REPO_MARKETPLACE_RULE,
 } from './rules';
 import {
   COPILOT_CLI_AGENTS_SELECTION_STRATEGY,
@@ -95,6 +103,9 @@ import {
   COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY,
   COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY,
   COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY,
+  COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY,
+  COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY,
+  COPILOT_VSCODE_PLUGINS_ACTIVATION_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
 import type { CopilotRuleId, CopilotStrategyId } from '../identifier-types';
@@ -252,6 +263,26 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
    */
   [COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_VSCODE_SETTINGS_BEHAVIOR, COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR],
+  },
+  /**
+   * Each plugin activation composes its own surface's plugin lookup: what a
+   * root's manifest and a catalog's entries declare there. Registration,
+   * installation, workspace listing, and enablement are runtime inputs this
+   * product never reads, so nothing here is projected (FR-009).
+   */
+  [COPILOT_VSCODE_PLUGINS_ACTIVATION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_VSCODE_PLUGINS_BEHAVIOR, COPILOT_VSCODE_USER_PLUGINS_BEHAVIOR],
+  },
+  [COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLI_PLUGINS_BEHAVIOR, COPILOT_CLI_USER_PLUGINS_BEHAVIOR],
+  },
+  /**
+   * The hosted activation composes the one statement there is: no repository
+   * lookup of its own, because what a hosted session runs is installed and
+   * enabled state and the settings file naming it is the settings rules'.
+   */
+  [COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLOUD_PLUGINS_BEHAVIOR],
   },
 };
 
@@ -526,5 +557,27 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
       COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY,
       COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY,
     ],
+  },
+  /**
+   * The catalog rule is based on both surfaces' plugin lookup, because the file
+   * it admits is one catalog each of them reads, and is explained by both
+   * activation strategies for the same reason.
+   */
+  [COPILOT_REPO_MARKETPLACE_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_PLUGINS_BEHAVIOR, COPILOT_VSCODE_PLUGINS_BEHAVIOR],
+    explainedByStrategies: [
+      COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY,
+      COPILOT_VSCODE_PLUGINS_ACTIVATION_STRATEGY,
+    ],
+  },
+  /**
+   * The extension exclusion cites the behavior it is the scope statement for
+   * and nothing else: citing behavior it deliberately does not authorize is
+   * what an exclusion is for, and the CLI's plugin activation is what explains
+   * where an extension sits relative to the plugin components it is not one of.
+   */
+  [COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_EXTENSIONS_BEHAVIOR],
+    explainedByStrategies: [COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY],
   },
 };

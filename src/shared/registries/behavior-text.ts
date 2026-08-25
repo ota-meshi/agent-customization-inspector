@@ -27,8 +27,10 @@ export const VENDOR_SURFACE_ORDER: readonly VendorSurface[] = [
   'copilot-cloud',
   /** Claude Code's one surface follows Copilot's, as Claude does among the tools. */
   'claude-cli-and-ide-clients',
-  /** Codex's one surface sorts last, as Codex does among the tools. */
+  /** Codex's shared local-host surface sorts first of its two, as Codex sorts last among the tools. */
   'codex-local-clients',
+  /** Codex's plugin surface follows it: a narrower set of the same product's clients. */
+  'codex-plugin-clients',
 ];
 
 /**
@@ -42,6 +44,8 @@ export const VENDOR_SURFACE_TEXT: Readonly<Record<VendorSurface, string>> = {
   'claude-cli-and-ide-clients': 'CLI and IDE clients',
   /** Label for the ChatGPT desktop app, the Codex CLI, and the Codex IDE extension. */
   'codex-local-clients': 'Local clients',
+  /** Label for the ChatGPT desktop app and the Codex CLI's plugin-management commands. */
+  'codex-plugin-clients': 'Desktop app and plugin CLI',
   /** Label for local Copilot Chat and agent mode inside the editor. */
   'copilot-vscode': 'VS Code',
   /** Label for the local Copilot command-line client. */

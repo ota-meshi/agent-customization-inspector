@@ -51,6 +51,8 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     instructions: [],
     rules: [],
     prompts: [],
+    plugins: [],
+    outputStyles: [],
     permissions: [],
     settings: [],
     agents: [],

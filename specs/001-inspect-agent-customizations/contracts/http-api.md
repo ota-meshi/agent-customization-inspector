@@ -62,8 +62,9 @@ another machine remains prohibited.
    static-assets manifest, no per-asset integrity re-verification, and no hand-written
    router. The one product-owned piece in front of it is the closed detail-route
    rewrite — `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`,
-   `/prompts-and-commands/**`, `/permissions/**`, `/agents/**`, and
-   `/settings-and-configuration/**`, one family per shipped kind detail: a `GET`/`HEAD` whose path enters one of these route families is
+   `/prompts-and-commands/**`, `/permissions/**`, `/agents/**`,
+   `/plugins/**`, `/output-styles/**`, and `/settings-and-configuration/**`, one
+   family per shipped kind detail: a `GET`/`HEAD` whose path enters one of these route families is
    rewritten to `/` and falls
    through, so devframe's own static handler serves the packaged shell for detail deep
    links its extension-guarded SPA fallback would treat as file misses. The rewrite
@@ -93,13 +94,14 @@ another machine remains prohibited.
    printed or returned without a product-defined content filter.
 6. Every function reads only its declared parameters, and each function's section
    documents them with the rejection a mismatch produces. A declared parameter is
-   validated by resolution, never by a shape guard in front of it: the shipped catalog
-   declares exactly one parameter shape — the committed Source-relative Path
-   `get-file-detail`, `get-mcp-carrier-detail`, and `get-permission-policy-detail` each
-   take, a published identity
-   resolved against the committed generations and never a filesystem operand —
-   and any value whose resource the invoked function does not hold, a value of another
-   type included, resolves nowhere and is the `stale-resource` rejection; the Global functions' preview, allowlist-version,
+   validated by resolution, never by a shape guard in front of it: every detail
+   parameter is a published identity resolved against the committed generations and
+   never a filesystem operand — the committed Source-relative Path `get-file-detail`,
+   `get-mcp-carrier-detail`, and `get-permission-policy-detail` each take, and the
+   path-and-plugin-name pair `get-plugin-carrier-detail` takes, whose answer is one
+   inventory row's — and any value whose resource the invoked function does not hold, a
+   value of another type included, resolves nowhere and is the `stale-resource`
+   rejection; the Global functions' preview, allowlist-version,
    and consent parameters carry their own documented codes the same way. No generic
    malformed-argument vocabulary exists, because rejecting a shape the resolution already
    cannot match — or an extra positional argument the function never reads — is a runtime
@@ -117,6 +119,7 @@ another machine remains prohibited.
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot, or the control-only `GlobalFenceRecoverySnapshot` while fenced |
 | `agent-customization-inspector:get-file-detail` | read | One active-generation `FileDetail` |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | One active-generation `McpCarrierDetail`: one MCP-declaring file's declarations and file facts, never its source |
+| `agent-customization-inspector:get-plugin-carrier-detail` | read | One active-generation `PluginCarrierDetail` for one inventory row: the complete source when the carrier is a manifest and, when the carrier is a catalog, the requested entry's declarations, never the catalog's own bytes |
 | `agent-customization-inspector:get-permission-policy-detail` | read | One active-generation `PermissionPolicyDetail`: one declared permission policy, whole document or declared block |
 | `agent-customization-inspector:rescan-repository` | command | Accept one explicit Repository scan command |
 | `agent-customization-inspector:open-file` | command | Open one committed file in an application on the reader's own machine |
@@ -338,6 +341,38 @@ SessionSnapshot
 │       one row per declared permission policy, named by the path of the
 │       file that declares it; a carrier declaring none is recognized as
 │       whatever owns the rest of it, and is no row here
+├── plugins[]
+│   └── name string or null,
+│       carriers[] { sourceRelativePath, tool, surfaces[], carrier, parseStatus,
+│       diagnosticIds[] }, files[] — one row per plugin name, in name order,
+│       each listing
+│       every carrier that resolves it in Source-relative Path then tool order;
+│       the one null-named row closes the list with the carriers that resolve no
+│       name at all. Which name a carrier resolves belongs to the rule that
+│       admitted it, exactly as a command's does: Codex addresses a catalog's
+│       offering as `plugin@marketplace`, so one name two catalogs offer is two
+│       rows. `carrier` is `manifest` or `catalog`: the manifest a product
+│       loads a plugin by placement from, or the catalog whose entry offers it. A catalog is never a
+│       row of its own — it resolves plugin names to the sources they come from,
+│       which makes it a carrier. `files[]` are the files the plugin ships,
+│       sorted: the plugin root its offering names, enumerated in full,
+│       the plugin's own manifest among them — the manifest that is itself
+│       this row's carrier included, since the folder holding it is the
+│       plugin. A file there that a rule admitted on its own account is
+│       listed here too and keeps its own row, which is where its
+│       declarations and diagnostics are: one directory reached two ways is
+│       one directory. The row states no installation, enablement, trust, or cached copy
+├── outputStyles[]
+│   └── name string,
+│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       one row per style name a reader selects, in name order, each listing
+│       every file a recognizing tool selects under it, in Source-relative Path
+│       then tool order. Which name that is belongs to the rule that admitted
+│       the file: Claude Code takes the frontmatter `name`, falling back to the
+│       file name without its `.md` extension, and an authored empty name falls
+│       back the same way. Never empty. A row states no same-name resolution:
+│       the page resolves two project layers defining one name by proximity to
+│       a session working directory this product never observes
 ├── settings[]
 │   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
 │       one row per recognized settings or configuration file, named by its
@@ -671,7 +706,7 @@ the file:
 
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
-             'settings/config' | 'file'
+             'output style' | 'settings/config' | 'file'
 ├── kind 'instructions' — the file is a recognized instruction file:
 │   ├── file — one CustomizationFile, discriminated by encoding:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -708,6 +743,13 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   └── diagnostics[]
 ├── kind 'rule' — the file is a recognized rule file:
 │   ├── file — as above
+│   └── diagnostics[]
+├── kind 'output style' — the file is a recognized output style:
+│   ├── file — as above
+│   ├── presentation — as the instructions variant: the same one scan-time
+│   │   parse, with the same null-on-failure rule (FR-028). The frontmatter is
+│   │   what the style declares, and the body is the instructions the vendor
+│   │   appends to the system prompt
 │   └── diagnostics[]
 ├── kind 'settings/config' — the file is a recognized settings or
 │   configuration file:
@@ -1001,6 +1043,92 @@ current committed generation holds an MCP recognition at the path — never scan
 removed by a later commit, and a value
 of another type resolves the same way, so no separate malformed-argument outcome exists;
 the `global-disable-pending` conflict rejection while the disable fence is non-null.
+
+### `agent-customization-inspector:get-plugin-carrier-detail`
+
+Parameters: one object naming the committed Source-relative Path of the declaring file —
+the file's identity (FR-030) — and the plugin name of the inventory row being read, null
+for the row that closes the list with the declarations resolving no name at all.
+
+```json
+{ "sourceRelativePath": ".agents/plugins/marketplace.json", "pluginName": "secret-keeper@inspector-legacy" }
+```
+
+The name is a parameter rather than a filter the client applies to what came back, because
+the answer is one row's: a catalog offering many plugins would otherwise ship every other
+plugin's declaration to a page about one of them. A step between two plugins of one catalog
+is therefore a request of its own, exactly as a step between two files is.
+
+Returns one active-generation plugin carrier detail, discriminated by what the file is to
+the plugins it declares. The two carrier kinds answer differently, which is why
+this is the function's own result rather than a `FileDetail` variant: a manifest is itself
+the customization — one plugin, declared by the whole file — so it serves that complete
+authored source and nothing read out of it (FR-007, FR-025), a manifest being strict JSON
+whose parsed key list would be the same document a second time, while a catalog resolves
+many plugin names to the sources they come from, so it serves the requested entry's
+declarations and carries no `sourceText` field at all, the field being absent from the shape
+rather than a value a surface must decline to render. Showing a catalog's bytes on a page about one of its
+plugins would put every other plugin it lists there too, which is the same reason an MCP
+carrier's detail withholds its own.
+
+```text
+PluginCarrierDetail — carrier: 'manifest' | 'catalog'
+├── carrier 'manifest' — the file is the manifest that makes the folder holding
+│   it a plugin, which is what a product loading a plugin by placement reads:
+│   ├── file — one CustomizationFile with its complete authored source,
+│   │   discriminated by encoding exactly as `get-file-detail`'s is
+│   ├── pluginRoot — the Source-relative directory this manifest's presence
+│   │   makes a plugin, with its trailing slash; empty only when the
+│   │   admitting rule resolved none, which no shipped rule does
+│   └── diagnostics[] — where a manifest that could not be parsed is stated,
+│       there being no parsed key list for it to be absent from (FR-028)
+└── carrier 'catalog' — the file is a catalog listing plugins:
+    ├── file — the carrier's content-free summary, discriminated by encoding:
+    │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+    │   ├── readable text adds hadLeadingBom and sizeBytes — never sourceText
+    │   └── binary adds sizeBytes; unknown adds nothing further
+    ├── catalogFields[] { key, keyKind, value } — what the catalog declares
+    │   about itself, never its `plugins` array, empty for a failed extraction
+    ├── plugins[] — the requested row's declarations in the parser's resolved
+    │   order, empty when the catalog offers the name nowhere, null for a
+    │   failed extraction
+    └── diagnostics[]
+```
+
+Each catalog entry is `name` — the plugin name it resolves, or null when it declares none —
+`fields[] { key, keyKind, value }`, every key the file wrote for that plugin, in the same
+entry shape `presentation.frontmatter` uses, and what the admitting rules answer from that
+entry's declared source: `pluginRoot`, the Source-relative directory the plugin's files
+occupy — null when the source names no directory here at all, as a Git, npm, absolute,
+home, or root-escaping source does — and `manifestPaths[]`, the files inside it that a
+client reads as the plugin's declaration of itself, in order and without repetition, empty
+for such a source. The forms are every recognizing product's rather than one's: which file
+inside a root is the plugin's own declaration is each vendor's contract, and one catalog
+three products read resolves one plugin to one root with three lists of forms to look for
+there, so a surface given a single product's list would report that this scan holds no
+manifest for a plugin whose manifest it is listing among that plugin's own files. Nothing
+is probed on disk: these are what the entry declared, read through the vendor's contract,
+so a root this repository does not carry and one that ships no manifest each name paths the
+generation holds no file at. Whether a file is there is what `files[]` says, and the surfaces that
+open these paths keep only the ones the commit carries. They are what lets a surface show the plugin
+rather than the entry: which files a plugin ships and which of them is its own manifest is
+knowledge no client can derive from a path. Neither manifest form carries such a
+parse, for the same reason: the file itself is what the response carries. This tree is the response shape: a client
+can rely on exactly these fields and no others. Every value is the file's literal: a
+credential stays the characters that were written, an environment reference is never
+resolved (FR-026), and a component the manifest points at — bundled skills, `.mcp.json`,
+`.app.json`, hook files, assets — is a declared value here and is never opened
+(`codex.excluded.plugin-files`). Nothing in the response states that a plugin is installed,
+enabled, trusted, or loaded: all four are User state this product never reads (FR-009). The
+same inert-rendering, single-request, and request-token rules as `get-file-detail` apply,
+including the `(clientDataEpoch, sourceRelativePath)` capture.
+
+Outcomes: the `PluginCarrierDetail` result — a parsed catalog offering nothing under the
+requested name is a result with empty `plugins`, not a rejection; the `stale-resource`
+rejection when no current committed generation holds a plugin recognition at the path — never scanned or removed by a
+later commit, and a value of another type resolves the same way, so no separate
+malformed-argument outcome exists; the `global-disable-pending` conflict rejection while the
+disable fence is non-null.
 
 ### `agent-customization-inspector:get-permission-policy-detail`
 
@@ -1669,6 +1797,7 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    `/mcp/<source-relative path>`, `/rules/<source-relative path>`,
    `/prompts-and-commands/<source-relative path>`,
    `/permissions/<source-relative path>`, `/agents/<source-relative path>`,
+   `/plugins/<source-relative path>`, `/output-styles/<source-relative path>`,
    `/settings-and-configuration/<source-relative path>`) all boot the same packaged SPA
    shell, which embeds no session data.
 6. Queue ordering across Repository and each tool-specific Global rescan, duplicate

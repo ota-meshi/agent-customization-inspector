@@ -296,7 +296,7 @@ export const CLAUDE_REPO_SKILL_RULE = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Skills-directory plugins'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-25',
           establishes:
             'A skills directory at the exact launch working directory can also be interpreted as a plugin, a separate documented behavior that differs from plain-skill ancestor and lazy-descendant discovery and grants this rule no manifest authority.',
         },
@@ -454,6 +454,69 @@ export const CLAUDE_REPO_RULES_RULE = {
           reviewedOn: '2026-08-18',
           establishes:
             "Project rules are the .md files of a project's .claude/rules/ directory, all discovered recursively so they may be organized into subdirectories, and a nested .claude/rules/ directory loads on demand — the exact locations this rule admits. The personal rules the same section places in ~/.claude/rules/ are a different Source boundary this rule may not read.",
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `claude.repo.output-style` matcher, authored in the typed segment form
+ * the contract table shows: `['.claude', 'output-styles', /\.md$/u]`
+ * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+ *
+ * Root-anchored and with no `ANY_DIRECTORIES` between the directory and the
+ * file: the page names the direct Markdown children of an
+ * `.claude/output-styles/` directory and documents no descent into one, so a
+ * `.claude/output-styles/team/reviewer.md` is a near miss rather than a style.
+ *
+ * The layer chain the page does document — every `.claude/output-styles/`
+ * between the working directory and the repository root — is the vendor's
+ * walk from a session working directory this product never observes, so the
+ * rule admits the selected root's own directory and nothing else: a nested
+ * one belongs to a root the reader did not select (FR-001, FR-009).
+ */
+const CLAUDE_REPO_OUTPUT_STYLE_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'output-styles' },
+      { kind: 'regex', pattern: /\.md$/u },
+    ],
+  ],
+};
+
+/**
+ * Claude Repository output styles: the read-authorizing counterpart of
+ * `claude.behavior.repo.output-style`. Admitting a style is not asserting
+ * Claude applies it — which style a session uses turns on the `outputStyle`
+ * setting, session state, and plugin overrides this product never observes —
+ * and the instructions inside are read as text and never as a prompt
+ * (FR-009).
+ */
+export const CLAUDE_REPO_OUTPUT_STYLE_RULE = {
+  ruleId: 'claude.repo.output-style',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'output style',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_OUTPUT_STYLE_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.output-styles.locations',
+          url: 'https://code.claude.com/docs/en/output-styles',
+          officialHost: 'code.claude.com',
+          sections: ['Create a custom output style'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'A project output style is a Markdown file saved directly in .claude/output-styles, whose file name is the style name unless the frontmatter sets name — the exact location and identity this rule admits. The User-level ~/.claude/output-styles named beside it is a different Source boundary this rule may not read.',
         },
       ]
     : [],
@@ -702,14 +765,193 @@ export const CLAUDE_REPO_AGENT_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `claude.repo.skills-directory-plugin` matcher: the manifest that makes a
+ * skills-directory folder a plugin.
+ *
+ * Anchored at the selected root's own `.claude/skills/`, with no leading
+ * `ANY_DIRECTORIES` — the difference from the plain-skill program beside it,
+ * and what the cited page justifies: a project-scope skills-directory plugin
+ * loads from the launch working directory's own skills directory and is
+ * documented as not walking ancestors, where a plain skill is discovered in
+ * nested directories on demand. Admission never claims the session loaded it:
+ * the workspace trust dialog stays a runtime condition
+ * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+ */
+const CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'skills' },
+      ANY_NAME,
+      { kind: 'literal', value: '.claude-plugin' },
+      { kind: 'literal', value: 'plugin.json' },
+    ],
+  ],
+};
+
+/**
+ * Claude skills-directory plugins: the read-authorizing counterpart of
+ * `claude.behavior.repo.skills-directory-plugin`.
+ *
+ * Recognized as `plugin`, and its carrier is the manifest itself rather than a
+ * catalog entry: nothing else declares this plugin, so the file's presence in
+ * the folder is the declaration (data-model.md § Inventory unit). The folder
+ * holding `.claude-plugin/` is the plugin root, and the files below it are the
+ * plugin's own — enumerated as a directory-shaped customization's rather than
+ * admitted, so a bundled skill, hook file, or asset gets no rule and no row of
+ * its own (contracts/inspection-path-allowlist.md § Bounded companion census).
+ */
+export const CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE = {
+  ruleId: 'claude.repo.skills-directory-plugin',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'plugin',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['Skills-directory plugins', 'File locations reference'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A folder under a skills directory that contains .claude-plugin/plugin.json — the exact path this rule admits — is loaded as a plugin named <folder>@skills-dir with no marketplace and no install step, discovered in place; the manifest is the plugin metadata and the components it bundles sit at default locations under that same folder.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `claude.repo.marketplace` matcher: the catalog a repository publishes at
+ * its own root, which is also the marketplace root its `./` entries resolve
+ * against.
+ */
+const CLAUDE_REPO_MARKETPLACE_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude-plugin' },
+      { kind: 'literal', value: 'marketplace.json' },
+    ],
+  ],
+};
+
+/**
+ * Claude Repository plugin catalogs: the read-authorizing counterpart of
+ * `claude.behavior.repo.marketplace`.
+ *
+ * Recognized as `plugin` rather than as a kind of its own, for the reason the
+ * Codex catalog is: a catalog is the table that resolves a plugin name to the
+ * source that plugin comes from, so the names its `plugins[]` entries declare
+ * are the inventory's rows and this file is a carrier of them
+ * (data-model.md § Inventory unit).
+ *
+ * Admitting it claims no registration. `/plugin marketplace add` and
+ * `extraKnownMarketplaces` are what make a session consider a catalog, and both
+ * are runtime inputs this product never reads; what the row states is what the
+ * catalog offers (FR-009).
+ */
+export const CLAUDE_REPO_MARKETPLACE_RULE = {
+  ruleId: 'claude.repo.marketplace',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'plugin',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_MARKETPLACE_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.marketplaces.catalog-sources',
+          url: 'https://code.claude.com/docs/en/plugin-marketplaces',
+          officialHost: 'code.claude.com',
+          sections: ['Create the marketplace file', 'Plugin sources'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A repository defines its marketplace in .claude-plugin/marketplace.json in its root — the exact location this rule admits — listing a name, owner information, and plugin entries that each carry a name and the source the plugin is fetched from, where a ./ source names a plugin in the same repository resolved against the marketplace root.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * `claude.excluded.plugin-files`: the plugin content a manifest or a catalog
+ * entry points at — bundled skills, commands, agents, output styles, hook
+ * files, MCP configuration, scripts, and assets.
+ *
+ * A record rather than silence, because these are files a reader can point at
+ * and the vendor documents a plugin shipping them. The exclusion states that
+ * the omission is this product's scope rather than the vendor's silence: a
+ * component reaches a candidate only through a value another file wrote, and
+ * following one would read a file on the strength of a declaration rather than
+ * of a documented location (FR-004, FR-024).
+ *
+ * What it excludes is candidacy, not reading, exactly as its Codex counterpart
+ * does: a plugin root is a directory-shaped customization, so the files inside
+ * it are read and published as the plugin's own, and the difference is that a
+ * file is read because it sits in the plugin's directory and never because a
+ * declaration named it (contracts/inspection-path-allowlist.md § Bounded
+ * companion census).
+ *
+ * `kind` is null: an excluded rule recognizes nothing, so it names no
+ * recognized kind even though the files it lists are skills, commands, and MCP
+ * carriers in their own right.
+ */
+export const CLAUDE_EXCLUDED_PLUGIN_FILES_RULE = {
+  ruleId: 'claude.excluded.plugin-files',
+  tool: 'claude',
+  discoveryClass: 'excluded',
+  kind: null,
+  sourceKinds: ['repository'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['File locations reference', 'Plugin manifest schema'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "A plugin's components sit at default locations under its root — skills/, commands/, agents/, workflows/, output-styles/, hooks/hooks.json, .mcp.json, .lsp.json, bin/, settings.json — and the manifest's component path fields may redirect any of them, so every component this rule excludes is reached through a declaration or a default rather than through a documented Repository location of its own.",
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Claude's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRule>> = {
   [CLAUDE_REPO_AGENT_RULE.ruleId]: CLAUDE_REPO_AGENT_RULE,
   [CLAUDE_REPO_COMMAND_RULE.ruleId]: CLAUDE_REPO_COMMAND_RULE,
   [CLAUDE_REPO_INSTRUCTIONS_RULE.ruleId]: CLAUDE_REPO_INSTRUCTIONS_RULE,
+  [CLAUDE_REPO_MARKETPLACE_RULE.ruleId]: CLAUDE_REPO_MARKETPLACE_RULE,
   [CLAUDE_REPO_MCP_RULE.ruleId]: CLAUDE_REPO_MCP_RULE,
+  [CLAUDE_REPO_OUTPUT_STYLE_RULE.ruleId]: CLAUDE_REPO_OUTPUT_STYLE_RULE,
   [CLAUDE_REPO_PERMISSIONS_RULE.ruleId]: CLAUDE_REPO_PERMISSIONS_RULE,
   [CLAUDE_REPO_RULES_RULE.ruleId]: CLAUDE_REPO_RULES_RULE,
   [CLAUDE_REPO_SETTINGS_RULE.ruleId]: CLAUDE_REPO_SETTINGS_RULE,
   [CLAUDE_REPO_SKILL_RULE.ruleId]: CLAUDE_REPO_SKILL_RULE,
+  [CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE.ruleId]: CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE,
+  [CLAUDE_EXCLUDED_PLUGIN_FILES_RULE.ruleId]: CLAUDE_EXCLUDED_PLUGIN_FILES_RULE,
 };

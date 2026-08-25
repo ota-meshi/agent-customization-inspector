@@ -217,6 +217,9 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 
 - コーディングエージェントがlocal検証のためにPlaywright testを実行する場合、userが追加のbrowserを明示的に求めない限り、`chromium` project（Chrome）だけを実行してください。たとえば`--project=chromium`を明示し、設定済みbrowserをすべて実行するcommandを使わないでください。
 - このdefaultはコーディングエージェントが開始するlocal検証だけを対象にします。より広いbrowser coverageをconfigurationで明示的に要求するCI、release、その他project所有のsuiteは変更しません。
+- 変更が実際に影響しうるspec fileだけを実行し、それ以外は実行しないでください。全件実行には数分かかるため、1つのpageの挙動を知るために回せば、誰も尋ねていない300件の答えにその時間を使うことになります。spec名を指定してください: `npx playwright test --project=chromium tests/e2e/<spec>`。1件のcaseが問題なら`-g`でさらに絞ってください。
+- 最終確認も含め、全件実行はできる限り避けてください。作業を終えること自体は300件のbrowser testを回し直す理由になりません。その作業の変更が到達しうるspecを — 最後の変更だけでなく、その作業で行った全変更について — 名指しして実行してください。全件実行に手を伸ばすのは、shell、router、全pageが描画する共有componentのように変更が本当にsuite全体へ及ぶ場合だけとし、その場合は報告でそう述べてください。
+- どのbrowser testからも観測できない変更 — registryのコメント、仕様文書、taskのcheckbox、unit testやcontract test — の後にはend-to-end実行を行わず、それを所有するgateだけを実行してください。
 
 ## エージェントが起動したプロセスの方針
 

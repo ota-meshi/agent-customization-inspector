@@ -22,12 +22,15 @@ import {
   CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+  CLAUDE_REPO_MARKETPLACE_BEHAVIOR,
   CLAUDE_REPO_MCP_BEHAVIOR,
+  CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR,
   CLAUDE_REPO_PLUGIN_BEHAVIOR,
   CLAUDE_REPO_RULES_BEHAVIOR,
   CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
   CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
   CLAUDE_REPO_SKILLS_BEHAVIOR,
+  CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_BEHAVIOR,
   CLAUDE_USER_AGENTS_BEHAVIOR,
   CLAUDE_USER_AGENT_MEMORY_BEHAVIOR,
   CLAUDE_USER_AUTO_MEMORY_BEHAVIOR,
@@ -35,19 +38,24 @@ import {
   CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
   CLAUDE_USER_MCP_STATE_BEHAVIOR,
   CLAUDE_USER_PLUGINS_BEHAVIOR,
+  CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR,
   CLAUDE_USER_RULES_BEHAVIOR,
   CLAUDE_USER_SETTINGS_BEHAVIOR,
   CLAUDE_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
+  CLAUDE_EXCLUDED_PLUGIN_FILES_RULE,
   CLAUDE_REPO_AGENT_RULE,
   CLAUDE_REPO_COMMAND_RULE,
   CLAUDE_REPO_INSTRUCTIONS_RULE,
+  CLAUDE_REPO_MARKETPLACE_RULE,
   CLAUDE_REPO_MCP_RULE,
   CLAUDE_REPO_PERMISSIONS_RULE,
+  CLAUDE_REPO_OUTPUT_STYLE_RULE,
   CLAUDE_REPO_RULES_RULE,
   CLAUDE_REPO_SETTINGS_RULE,
   CLAUDE_REPO_SKILL_RULE,
+  CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE,
 } from './rules';
 import {
   CLAUDE_AGENTS_SELECTION_STRATEGY,
@@ -55,8 +63,10 @@ import {
   CLAUDE_COMMANDS_SELECTION_STRATEGY,
   CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   CLAUDE_MCP_SELECTION_STRATEGY,
+  CLAUDE_PLUGINS_ACTIVATION_STRATEGY,
   CLAUDE_RULES_LAYERING_STRATEGY,
   CLAUDE_SETTINGS_PRECEDENCE_STRATEGY,
+  CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY,
   CLAUDE_SKILLS_SELECTION_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
@@ -172,6 +182,42 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
     consumesBehaviors: [CLAUDE_REPO_SKILLS_BEHAVIOR, CLAUDE_USER_SKILLS_BEHAVIOR],
   },
   /**
+   * Output-style selection composes every documented source of a style: the
+   * project layers this product reads, the User layer it does not, and the
+   * plugin scopes a plugin ships its `output-styles/` directory through. The
+   * plugin scopes are inputs rather than context, because the page gives a
+   * plugin style a decision of its own — `force-for-plugin` applies it whenever
+   * the plugin is enabled and overrides the user's `outputStyle` setting — so a
+   * composition without them would describe a selection the vendor does not
+   * make. The managed-policy level the same page names is a condition rather
+   * than a behavior, and stays in the contract's condition column.
+   */
+  [CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR,
+      CLAUDE_REPO_PLUGIN_BEHAVIOR,
+      CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR,
+      CLAUDE_USER_PLUGINS_BEHAVIOR,
+    ],
+  },
+  /**
+   * Plugin activation composes the two paths a plugin reaches a session by: the
+   * placement-loaded skills-directory plugin, the catalog whose entries a
+   * session registers, and the plugin content either one establishes. The User
+   * scope is named too, because installed plugins live there and leaving it out
+   * would describe activation as if a repository were the only place a plugin
+   * comes from. None of it is projected: registration, enablement, and trust
+   * are runtime inputs this product never reads (FR-009).
+   */
+  [CLAUDE_PLUGINS_ACTIVATION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CLAUDE_REPO_MARKETPLACE_BEHAVIOR,
+      CLAUDE_REPO_PLUGIN_BEHAVIOR,
+      CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_BEHAVIOR,
+      CLAUDE_USER_PLUGINS_BEHAVIOR,
+    ],
+  },
+  /**
    * Settings precedence composes the project scope this product reads and the
    * User scope it does not: the order the page documents starts above the
    * project files, and leaving the User scope out would describe a precedence
@@ -272,6 +318,15 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
    * strategy, which owns the User-before-project order and the `paths`
    * activation the rule deliberately does not project (FR-009).
    */
+  /**
+   * The Repository output-style rule is based on the Repository lookup alone —
+   * the User layer is a different Source boundary this rule may not read — and
+   * is explained by the selection strategy that composes both.
+   */
+  [CLAUDE_REPO_OUTPUT_STYLE_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY],
+  },
   [CLAUDE_REPO_RULES_RULE.ruleId]: {
     basedOnBehaviors: [CLAUDE_REPO_RULES_BEHAVIOR],
     explainedByStrategies: [CLAUDE_RULES_LAYERING_STRATEGY],
@@ -285,5 +340,37 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
   [CLAUDE_REPO_SKILL_RULE.ruleId]: {
     basedOnBehaviors: [CLAUDE_REPO_SKILLS_BEHAVIOR],
     explainedByStrategies: [CLAUDE_SKILLS_SELECTION_STRATEGY],
+  },
+  /**
+   * The skills-directory plugin rule is based on the placement behavior alone —
+   * the explicitly selected plugin root beside it is what installation and
+   * registration establish, which this path deliberately needs none of — and is
+   * explained by the activation strategy, which is where the trust dialog and
+   * the per-component restrictions live.
+   */
+  [CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_PLUGINS_ACTIVATION_STRATEGY],
+  },
+  /**
+   * The catalog rule is based on the marketplace lookup, and on the plugin
+   * behavior its entries reach: an entry names a plugin root, and what a root
+   * carries is that behavior's. The activation strategy explains what a session
+   * still needs before either is live.
+   */
+  [CLAUDE_REPO_MARKETPLACE_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_MARKETPLACE_BEHAVIOR, CLAUDE_REPO_PLUGIN_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_PLUGINS_ACTIVATION_STRATEGY],
+  },
+  /**
+   * The exclusion cites the two behaviors whose files it is the scope statement
+   * for — what a manifest declares and what a catalog entry reaches — and citing
+   * behavior it deliberately does not authorize is what an exclusion is for. The
+   * activation strategy explains it, because what those components are to a
+   * running session is that strategy's.
+   */
+  [CLAUDE_EXCLUDED_PLUGIN_FILES_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_REPO_MARKETPLACE_BEHAVIOR, CLAUDE_REPO_PLUGIN_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_PLUGINS_ACTIVATION_STRATEGY],
   },
 };

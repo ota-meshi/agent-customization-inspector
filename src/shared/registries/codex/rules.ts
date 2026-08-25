@@ -524,12 +524,141 @@ export const CODEX_REPO_AGENT_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `codex.repo.marketplace` matcher: the two exact Repository-root catalog
+ * locations, the current `.agents/plugins/marketplace.json` and the
+ * legacy-compatible `.claude-plugin/marketplace.json`.
+ *
+ * Two selectors rather than a first-non-empty probe: the vendor reads both
+ * locations, so a repository carrying both has two catalogs and each is a
+ * carrier of its own. Which one a client prefers is runtime this product does
+ * not observe (FR-009).
+ */
+const CODEX_REPO_MARKETPLACE_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.agents' },
+      { kind: 'literal', value: 'plugins' },
+      { kind: 'literal', value: 'marketplace.json' },
+    ],
+    [
+      { kind: 'literal', value: '.claude-plugin' },
+      { kind: 'literal', value: 'marketplace.json' },
+    ],
+  ],
+};
+
+/**
+ * Codex Repository plugin catalogs: the read-authorizing counterpart of
+ * `codex.behavior.repo.marketplace`.
+ *
+ * Recognized as `plugin` rather than as a kind of its own, because a catalog
+ * is the table that resolves a plugin name to the source that plugin comes
+ * from: the names its `plugins[]` entries declare are the inventory's rows,
+ * and this file is a carrier of them the way `.mcp.json` carries server
+ * declarations without being a row itself (data-model.md § Inventory unit).
+ *
+ * Admitting the catalog also seeds the one closed derivation below: an entry
+ * whose source is a validated `./` local path names a plugin root inside this
+ * repository, and that root's own manifest is the second carrier of the same
+ * row.
+ */
+export const CODEX_REPO_MARKETPLACE_RULE = {
+  ruleId: 'codex.repo.marketplace',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'plugin',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_MARKETPLACE_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.plugins',
+          url: 'https://developers.openai.com/plugins/build/plugins.md',
+          officialHost: 'developers.openai.com',
+          sections: ['How local marketplaces work', 'Marketplace metadata'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'The desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible catalog at $REPO_ROOT/.claude-plugin/marketplace.json — the two exact locations this rule admits — and each is a JSON catalog whose plugins[] entries carry the plugin names and the sources they resolve to.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * `codex.excluded.plugin-files`: the plugin content a manifest or a catalog
+ * points at — bundled skills, `.mcp.json`, `.app.json`, hook files, assets and
+ * scripts — and the installed copies under the Codex plugin cache.
+ *
+ * A record rather than silence, because these are files a reader can point at
+ * and the vendor documents a plugin shipping them. The exclusion is what says
+ * the omission is this product's scope rather than the vendor's silence: a
+ * component reaches a candidate only through a value another file wrote, and
+ * following one would read a file on the strength of a declaration rather than
+ * of a documented location (FR-004, FR-024). The installed copies are User
+ * state outside this Source entirely.
+ *
+ * What it excludes is candidacy, not reading. A plugin root is a
+ * directory-shaped customization, so its bounded companion census enumerates it
+ * and the files inside it are read and published as the plugin's own
+ * (contracts/inspection-path-allowlist.md § Bounded companion census). The
+ * difference is the whole point: a file is read because it sits in the plugin's
+ * directory, never because the manifest named it, so a declared path that
+ * escapes the root or names nothing at all is opened by nothing.
+ *
+ * It authorizes nothing — an `excluded` rule has no matcher, and the shipped
+ * selectors reach none of these paths — so it is a maintained statement of
+ * scope rather than a mechanism. What a manifest wrote about its components
+ * stays visible as the declaration it is, on that manifest's own detail.
+ *
+ * `kind` is null: an excluded rule recognizes nothing, so it names no
+ * recognized kind even though the files it lists are skills, MCP carriers, and
+ * hooks in their own right. A census-listed file acquires none either: it has
+ * no rule, no recognition, and no inventory row of its own.
+ */
+export const CODEX_EXCLUDED_PLUGIN_FILES_RULE = {
+  ruleId: 'codex.excluded.plugin-files',
+  tool: 'codex',
+  discoveryClass: 'excluded',
+  kind: null,
+  sourceKinds: ['repository'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.plugins',
+          url: 'https://developers.openai.com/plugins/build/plugins.md',
+          officialHost: 'developers.openai.com',
+          sections: ['Plugin structure', 'Manifest fields', 'How local marketplaces work'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A plugin ships its skills, hooks, .mcp.json, .app.json, and assets beside the manifest that points at them, and an installed plugin is a copy under ~/.codex/plugins/cache that the ChatGPT desktop app loads instead of the marketplace entry — the content this rule keeps on record while admitting none of it.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Codex's contribution to the inspection-rule registry, keyed by `ruleId` in identifier order. */
 export const CODEX_INSPECTION_RULES: Readonly<Record<CodexRuleId, InspectionRule>> = {
   [CODEX_DERIVED_FALLBACK_BASENAME_RULE.ruleId]: CODEX_DERIVED_FALLBACK_BASENAME_RULE,
+  [CODEX_EXCLUDED_PLUGIN_FILES_RULE.ruleId]: CODEX_EXCLUDED_PLUGIN_FILES_RULE,
   [CODEX_REPO_AGENT_RULE.ruleId]: CODEX_REPO_AGENT_RULE,
   [CODEX_REPO_CONFIG_RULE.ruleId]: CODEX_REPO_CONFIG_RULE,
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: CODEX_REPO_INSTRUCTIONS_RULE,
+  [CODEX_REPO_MARKETPLACE_RULE.ruleId]: CODEX_REPO_MARKETPLACE_RULE,
   [CODEX_REPO_RULES_RULE.ruleId]: CODEX_REPO_RULES_RULE,
   [CODEX_REPO_SETTINGS_RULE.ruleId]: CODEX_REPO_SETTINGS_RULE,
   [CODEX_REPO_SKILL_RULE.ruleId]: CODEX_REPO_SKILL_RULE,

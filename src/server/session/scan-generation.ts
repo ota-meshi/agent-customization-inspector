@@ -81,14 +81,6 @@ interface ScanGenerationBase {
    * with that one direction.
    */
   readonly recognitions: readonly ToolRecognition[];
-  /**
-   * Each recognized skill entry point's census result, keyed by the entry
-   * point's Source-relative Path — the file's identity. Internal: the
-   * inventory's `SkillDefinitionDto.companionFiles` is its one publication
-   * (contracts/inspection-path-allowlist.md § Bounded companion census), so no
-   * wire recognition repeats it.
-   */
-  readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
   /** Diagnostics committed with this generation. */
   readonly diagnostics: readonly SerializedDiagnostic[];
 }
@@ -134,8 +126,6 @@ export interface ScanCommitInput {
   readonly files: readonly CustomizationFileDto[];
   /** Recognitions to publish, as the attempt constructed them. */
   readonly recognitions: readonly ToolRecognition[];
-  /** Each recognized skill entry point's census, keyed by its path. */
-  readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
   /** The attempt's diagnostics, already serialized for the DTO. */
   readonly diagnostics: readonly SerializedDiagnostic[];
 }
@@ -153,7 +143,6 @@ export function createBootstrapGeneration(now: string): RepositoryScanGeneration
     outcome: 'complete',
     files: [],
     recognitions: [],
-    skillCompanionsByPath: new Map(),
     diagnostics: [],
   };
 }
@@ -174,7 +163,6 @@ export function prepareNextRepositoryGeneration(
     outcome: input.outcome,
     files: input.files,
     recognitions: input.recognitions,
-    skillCompanionsByPath: input.skillCompanionsByPath,
     diagnostics: input.diagnostics,
   };
 }
@@ -197,7 +185,6 @@ export function createGlobalEnableGeneration(input: ScanCommitInput): GlobalScan
     outcome: input.outcome,
     files: input.files,
     recognitions: input.recognitions,
-    skillCompanionsByPath: input.skillCompanionsByPath,
     diagnostics: input.diagnostics,
   };
 }
@@ -218,7 +205,6 @@ export function prepareNextGlobalGeneration(
     outcome: input.outcome,
     files: input.files,
     recognitions: input.recognitions,
-    skillCompanionsByPath: input.skillCompanionsByPath,
     diagnostics: input.diagnostics,
   };
 }

@@ -311,13 +311,13 @@ test('lists the skill’s own directory in the files tab', async ({ page }) => {
   // binary asset included. Only files are links; `scripts/` is the directory
   // that holds one, not something to open.
   await expect(tree.getByRole('link')).toHaveText(['SKILL.md', 'logo.png', 'run.sh']);
-  await expect(tree.locator('.aci-skill-file-tree-branch__directory')).toHaveText(['scripts/']);
+  await expect(tree.locator('.aci-directory-file-tree-branch__directory')).toHaveText(['scripts/']);
   // The nesting is markup, not indentation: the file under `scripts/` is inside
   // that directory's own list item, which is what assistive technology reads as
   // containment.
   await expect(
     tree
-      .locator('li', { has: page.locator('.aci-skill-file-tree-branch__directory') })
+      .locator('li', { has: page.locator('.aci-directory-file-tree-branch__directory') })
       .locator('ul'),
   ).toHaveCount(1);
   // Which file is open is stated, not merely styled.
@@ -417,9 +417,11 @@ test('leaves the reader in the tree when they select another file', async ({ pag
   await expect(page.locator('.aci-empty')).toHaveCount(0);
 });
 
-test('opens the skill from any of its files, not only its entry point', async ({ page }) => {
-  // A link a reader kept points at one file; the skill it belongs to is what
-  // the page is about, so the same skill opens with that file showing.
+test('names the skill in the address and the file it is showing in the query', async ({ page }) => {
+  // The page's subject is the skill, so its address stays the `SKILL.md`
+  // however many of the directory's files a reader steps through; which one
+  // they are reading is the `file` query beside it. A link kept that way
+  // reopens the same skill with the same file showing.
   await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   await page
     .getByRole('navigation', { name: 'Files in this skill' })
@@ -430,6 +432,8 @@ test('opens the skill from any of its files, not only its entry point', async ({
   // reader was on rather than the one they moved to.
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
   const companionUrl = page.url();
+  expect(companionUrl).toContain('/skills/.agents/skills/greet/SKILL.md?');
+  expect(companionUrl).toContain('file=');
 
   await page.goto(companionUrl);
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/greet/');

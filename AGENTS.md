@@ -330,6 +330,18 @@ correct.
 - This default governs CodingAgent-initiated local verification only. It does not change CI,
   release, or other project-owned suites whose configuration explicitly requires broader
   browser coverage.
+- Run the spec files the change can actually affect, and nothing else. The whole suite takes
+  minutes, so running it to learn what one edited page does spends that time on 300 answers
+  nobody asked for. Name the specs: `npx playwright test --project=chromium tests/e2e/<spec>`,
+  narrowed further with `-g` when one case is in question.
+- Avoid running the whole suite at all, the final check included. Ending a task is not a
+  reason to re-run 300 browser tests: name the specs the task's changes could reach — across
+  every change it made, not just the last one — and run those. Reach for the whole suite only
+  when the change is genuinely suite-wide, such as the shell, the router, or a shared
+  component every page renders, and say so when reporting.
+- A change that no browser test can observe — a registry comment, a specification document, a
+  task checkbox, a unit or contract test — is not followed by an end-to-end run at all: run
+  the gate that owns it instead.
 
 ## Agent-started process policy
 

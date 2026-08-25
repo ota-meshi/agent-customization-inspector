@@ -19,9 +19,16 @@ behavior record never grants read authority.
 
 The ChatGPT desktop app, Codex CLI, and Codex IDE extension use the same local Codex host
 configuration for the behaviors marked **local clients** below. ChatGPT Work on the web
-does not read local Codex configuration. Repository marketplace discovery and plugin
-installation also have desktop/CLI management behavior that must not be generalized to
-hosted tasks.
+does not read local Codex configuration.
+
+The plugin behaviors are a narrower surface, marked **desktop app and plugin CLI**. The
+plugins page attributes every marketplace read, install, cache load, and enablement value
+to the ChatGPT desktop app, and documents the Codex CLI beside them as marketplace
+management — adding, listing, refreshing, and removing sources — ending with the
+instruction to use the desktop app to install and test a local plugin. It names the IDE
+extension nowhere, so a plugin behavior marked **local clients** would claim a client the
+page establishes nothing about, and marketplace discovery and plugin installation must not
+be generalized to hosted tasks either.
 
 ## Canonical evidence-assessment index
 
@@ -60,7 +67,21 @@ how completely that rule is documented.
 | `codex.behavior.repo.rules` | Local clients | Every active trusted project config layer | `.codex/rules/*.rules` | Codex scans the layer's `rules/` directory at startup; official text does not establish nested-subdirectory recursion | `codex.rules.resolution` | Partially documented; experimental | `openai.codex.rules` |
 | `codex.behavior.repo.mcp` | Local clients | Active project config layers | `[mcp_servers.*]` inside `.codex/config.toml` | MCP declarations follow config-layer resolution; project layers require trust | `codex.mcp.configuration` | Documented | `openai.codex.mcp`, `openai.codex.config-basic` |
 | `codex.behavior.repo.marketplace` | ChatGPT desktop and plugin-management CLI | Exact repository root | `.agents/plugins/marketplace.json`; legacy-compatible `.claude-plugin/marketplace.json` | A catalog exposes plugins for installation; it is not proof that a plugin is installed or enabled | `codex.plugins.activation` | Documented | `openai.codex.plugins` |
-| `codex.behavior.plugin.manifest` | Plugin-capable local clients | A plugin root selected by a marketplace or installation | `.codex-plugin/plugin.json` | Required plugin entry point; an arbitrary matching file is not automatically discovered as an enabled plugin | `codex.plugins.activation` | Documented | `openai.codex.plugins` |
+| `codex.behavior.plugin.manifest` | ChatGPT desktop and plugin-management CLI | A plugin root selected by a marketplace or installation | `.codex-plugin/plugin.json` | Required plugin entry point; an arbitrary matching file is not automatically discovered as an enabled plugin | `codex.plugins.activation` | Documented | `openai.codex.plugins` |
+
+A plugin name reaches a Repository file with no configuration step, which is where Codex
+differs from Claude Code and Copilot. The desktop client reads a repo catalog at the exact
+`$REPO_ROOT/.agents/plugins/marketplace.json` and at the legacy-compatible
+`$REPO_ROOT/.claude-plugin/marketplace.json`, so a committed catalog is already a source
+the vendor considers and no settings entry registers it. Each `plugins[]` entry points
+`source.path` at a plugin folder with a `./`-prefixed path relative to the marketplace
+root, and that folder carries the required `.codex-plugin/plugin.json`. That folder is what
+`codex.repo.marketplace`'s own rule names, and the scan enumerates it, publishing every file
+under it as the files that plugin ships. A value in `.codex/config.toml` naming a
+further catalog stays a recorded relationship that grants no read and creates no
+candidate. Installation and per-plugin enablement are User state — the installed copy
+under the Codex plugin cache and the on/off value in the User configuration — so neither
+is a Repository fact.
 
 ## Inspector Repository rules
 
@@ -81,14 +102,13 @@ Global requirement is stated below.
 | `codex.repo.settings` | Repository | `['.codex', 'config.toml']` | `exact` at the Repository root, over the selector `codex.repo.config` authors; two rules admit the one file and the walk merges them into one candidate read once, because the vendor contract gives that carrier separate `MCP` and `settings/config` recognitions and a recognition is what a rule produces | `static-candidate` | `codex.behavior.repo.config` | Documented; trust and runtime chain conditional | `openai.codex.config-basic` |
 | `codex.repo.hooks` | Repository | `['.codex', 'hooks.json']` | `exact` at the Repository root; the page names `<repo>/.codex/hooks.json` as the project location | `static-candidate` | `codex.behavior.repo.hooks` | Documented; trust and hook review conditional | `openai.codex.hooks` |
 | `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | `direct-child` of the Repository root's `rules/` directory; the page names `<repo>/.codex/rules/` and documents no nested recursion. Recognized as `permissions`: the file decides which commands may run outside the sandbox, which is a different subject from the instruction files Claude keeps under its own `rules/` | `static-candidate` | `codex.behavior.repo.rules` | Experimental; nested rule directories excluded | `openai.codex.rules` |
-| `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`; the selected Repository root is treated as the authored plugin root | `static-candidate` | `codex.behavior.plugin.manifest` | Inspector authored-project policy only; not Codex plugin discovery or activation | `openai.codex.plugins` |
 | `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`; `['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | Exact Repository-root locations | `openai.codex.plugins` |
 
 Inline MCP servers and inline hooks in an accepted `config.toml` are metadata on that
 file; they do not create another candidate. A standalone `.mcp.json` is not a Codex
 Repository candidate. The Inspector does not recursively search for arbitrary
-`.codex-plugin/plugin.json` files. A nested manifest is admitted only through the closed
-local-marketplace derivation below.
+`.codex-plugin/plugin.json` files, and no rule admits one at all: a manifest below a
+catalog's local root is one of the files that plugin ships (§ Derived Repository rules).
 
 ## Derived Repository rules
 
@@ -98,17 +118,50 @@ Inspector's closed derivation into Codex product behavior.
 
 | Rule ID | Class | Accepted seed | Closed derived target | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `codex.derived.local-plugin-manifest` | `bounded-derived-candidate` | A static accepted Codex marketplace local entry | `<catalog-root>/<validated-local-source>/.codex-plugin/plugin.json`; the source must use a documented local form, begin with `./`, remain inside the catalog root, and derive that exact manifest path | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace` | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
 | `codex.derived.fallback-basename` | `bounded-derived-candidate` | The pinned repository `.codex/config.toml`, read as configuration before the walk and never published | Each declared fallback basename as one entry name, matched at the Repository root — a name no entry bears matches nothing; runtime selection remains conditional because excluded higher layers may override it, and available capacity comes from Node.js and the execution environment | `codex.behavior.repo.config`, `codex.behavior.repo.instructions` | FR-003, FR-004, FR-005, FR-024, QR-001, QR-004, QR-005 | `codex.config.precedence`, `codex.instructions.layering` | `documented` | `openai.codex.agents-md`, `openai.codex.config-basic` |
+
+No rule admits a `.codex-plugin/plugin.json`, and none derives one — the catalog rule does
+name where each offering's manifest sits, so a surface can open the plugin's own
+declaration among the files it ships, and naming a path is not admitting a candidate. A
+plugin root is activated rather than discovered: which root a client loads is decided by a catalog entry or
+by the installed copy under the Codex plugin cache. A repository whose own root carries a
+manifest is publishing a plugin for others to install rather than carrying a customization a
+client reads here, and the path is a near miss at every depth including the root.
+
+What a repository catalog's local entry names is enumerated instead. `codex.repo.marketplace`
+admits the catalog, and the rule that admitted it answers where each local entry's plugin
+sits — `<repository root>/<validated-local-source>/`, where the source must use a documented
+local form, begin with `./`, and remain inside the root. The scan enumerates that directory,
+publishing every regular file under it as the files that plugin ships
+(contracts/inspection-path-allowlist.md § Bounded companion census). The plugin's own
+manifest is one of them. None becomes a candidate: no rule, no recognition, no kind, and no
+inventory row of its own.
 
 A skill's sibling `agents/openai.yaml` is deliberately not a derived candidate. The owning
 skill's bounded companion census already reads and publishes it as one of the files the
 skill's directory ships, and the detail surface lists and opens it there, so a derivation
 would re-admit a file the inventory already carries.
 
-Plugin skills, MCP files, app mappings, hook files, assets, scripts, and remote sources are
-relationships only in this release. A local marketplace entry cannot recursively expand
-those components.
+A repository catalog's marketplace root is the Repository root, which is what a `./` local
+source resolves against. The page establishes it through the personal scope: the pattern it
+documents beside a catalog at `~/.agents/plugins/marketplace.json` is
+`./.codex/plugins/<plugin-name>`, a path that resolves against the home directory rather
+than against the catalog's own directory. The repository half of that rule is the
+Repository root, so `./plugins/my-plugin` beside a catalog at
+`.agents/plugins/marketplace.json` is `plugins/my-plugin`.
+
+A manifest's declared components — plugin skills, MCP files, app mappings, hook files,
+assets, scripts, and remote sources — are relationships only: a declared value reaches no
+read, and a local marketplace entry cannot recursively expand what a manifest names.
+
+Those same files are nonetheless read when they sit in the plugin root, because the plugin
+root is a directory-shaped customization and its bounded companion census enumerates it
+(contracts/inspection-path-allowlist.md § Bounded companion census). The two are different
+mechanisms and the difference is what the exclusion states: a file is read because it is in
+the plugin's directory, never because the manifest pointed at it, so a declared path that
+escapes the root or names nothing is opened by nothing. A census-listed file acquires no
+rule, no recognition, no kind, and no inventory row of its own; it is published as one of
+the plugin's files, on the row of the offering that reached its manifest.
 
 ## Documented User behavior
 
@@ -231,9 +284,16 @@ authority.
 | `hook` | `runtime-reference` | Event map keys, matcher values, and handler leaves in accepted standalone `hooks.json` or inline `[hooks]`; same-layer standalone and inline occurrences remain distinct provenances |
 | `MCP` | `runtime-reference` | Server/table names and exact supported leaf/item occurrences under `[mcp_servers.*]` on an admitted config carrier; no process environment value is substituted |
 | `settings/config` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Exact supported TOML value/item/map-key occurrences on the admitted config carrier; MCP and Hook declarations belong only to their separate recognition rows, and configured target paths never gain read authority |
-| `plugin` | `declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact metadata and component/presentation leaf/item occurrences in an accepted `.codex-plugin/plugin.json`; an omitted `hooks` field may emit only the registry-defined documented-default component relationship |
-| `marketplace` | `plugin-source`<br>`runtime-reference` | Exact catalog/plugin-entry leaf/item occurrences in an accepted Repository-root marketplace file; `marketplace.plugin.source` alone may seed the closed local-manifest derivation |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact metadata and component/presentation leaf/item occurrences in an accepted `.codex-plugin/plugin.json`, and exact catalog/plugin-entry leaf/item occurrences in an accepted Repository-root marketplace file, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone may seed the closed local-manifest derivation; an omitted `hooks` field may emit only the registry-defined documented-default component relationship |
 | `skill metadata` | `skill-resource`<br>`runtime-reference` | Exact supported YAML leaf/item occurrences in a derived `agents/openai.yaml`; seed provenance is typed state and the file never inherits the owning `SKILL.md` metadata identity |
+
+The `plugin` row's manifest clauses — occurrences in an accepted `.codex-plugin/plugin.json`,
+and `marketplace.plugin.source` seeding a local-manifest derivation — describe a source form
+no rule admits and a derivation no rule performs (§ Derived Repository rules). They are
+frozen, digest-recorded design input with no consumer, exactly as the `skill metadata` row
+below is, and changing either is a digest-recorded change under the official-source
+contract's stop-and-regenerate rule. What the row governs today is its other half: the
+catalog entry's own occurrences.
 
 No Codex recognition uses the shared `prompt/command` or `output style` kind in the
 initial release. No initial-release recognition uses the `skill metadata` kind either:
@@ -261,3 +321,15 @@ surface.
    enabled state, component overrides, and hosted availability remain independent facts.
 6. Hosted ChatGPT Work does not read local Codex files. A local-file recognition must not
    be projected onto a hosted task.
+7. A plugin is scoped by the catalog that offers it. The page names the manifest `name` as
+   the plugin identifier and component namespace, and installs a plugin into
+   `<cache>/<marketplace>/<plugin>/<version>`, so one name two catalogs offer is two
+   installs. The inventory therefore keys a row by the pair — the catalog's own `name` and
+   the plugin's — and a manifest belongs to the catalog whose entry reached it. What the
+   page does not state is the spelling of that pair, nor what a client does when one
+   catalog's entry and the manifest it points at declare different names. The spelling the
+   inventory draws — `plugin@marketplace` — is the CLI's own: `codex plugin add` and
+   `codex plugin remove` take a `PLUGIN[@MARKETPLACE]` selector, `codex plugin list` prints
+   the qualified form, and `~/.codex/config.toml` keys per-plugin state by it (observed
+   against codex-cli 0.144.6, not established by the cited page). No row states a
+   resolution for the disagreement (FR-009).

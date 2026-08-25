@@ -320,8 +320,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
               : [],
           // This stand-in is an instructions recognizer, and an instructions
           // file is one file rather than a directory, so it has no census.
-          companions: [],
-          companionCollisions: 0,
+          directories: [],
         }),
       });
       if (publication.kind !== 'publishable') {
@@ -389,8 +388,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
             fakeRecognition(matchedPath, 'codex', 'failed'),
             fakeRecognition(matchedPath, 'copilot', 'failed'),
           ],
-          companions: [],
-          companionCollisions: 0,
+          directories: [],
         }),
       });
       if (publication.kind !== 'publishable') {
@@ -431,7 +429,6 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       finishedAt: '2026-07-22T00:00:01.000Z',
       outcome: 'partial',
       recognitions: [],
-      skillCompanionsByPath: new Map(),
       files: [
         {
           sourceId: 'src-1',
@@ -831,7 +828,6 @@ describe('late results after revocation are discarded (FR-029)', () => {
       await coordinator.completeScan(admitted.scanRequestId, {
         files: publication.files,
         recognitions: publication.recognitions,
-        skillCompanionsByPath: publication.skillCompanionsByPath,
         diagnostics: publication.diagnostics,
         outcome: publication.outcome,
         visitedEntries: 0,

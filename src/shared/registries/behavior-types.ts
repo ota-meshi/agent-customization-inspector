@@ -40,6 +40,22 @@ export type VendorSurface =
    */
   | 'codex-local-clients'
   /**
+   * The ChatGPT desktop app, which reads marketplace catalogs and installs and
+   * loads the plugins they expose, together with the Codex CLI's
+   * plugin-management commands, which add, list, refresh, and remove
+   * marketplace sources
+   * (contracts/vendors/openai-codex.md § Surface boundary).
+   *
+   * Narrower than `codex-local-clients` and not a subset of convenience: the
+   * plugins page attributes every marketplace read, install, cache load, and
+   * enablement value to the ChatGPT desktop app, and the CLI section it
+   * documents beside them is marketplace management that ends with "Use the
+   * ChatGPT desktop app to install and test a local plugin". The Codex IDE
+   * extension is named nowhere in it, so a plugin behavior on the wider
+   * surface would claim a client the page establishes nothing about.
+   */
+  | 'codex-plugin-clients'
+  /**
    * Local Copilot Chat and local agent mode inside VS Code. A cloud-agent
    * session started from VS Code is `copilot-cloud`, not this surface
    * (contracts/vendors/github-copilot.md § Surface boundary). Separate from

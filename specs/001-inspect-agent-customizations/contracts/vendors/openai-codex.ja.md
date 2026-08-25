@@ -16,8 +16,14 @@ authorityを与えない。
 ## Surface boundary
 
 ChatGPT desktop app、Codex CLI、Codex IDE extensionは、以下で**local client**としたbehaviorについて同じlocal
-Codex host configurationを使う。ChatGPT Work webはlocal Codex configurationを読まない。Repository marketplace
-discoveryとplugin installationにもdesktop/CLI固有の管理behaviorがあり、hosted taskへ一般化してはならない。
+Codex host configurationを使う。ChatGPT Work webはlocal Codex configurationを読まない。
+
+Plugin behaviorはより狭いsurfaceであり、**desktop appとplugin CLI**と記す。pluginsページは、marketplaceの
+読み取り、install、cacheからのload、enablement値のすべてをChatGPT desktop appに帰属させ、その傍らでCodex CLIを
+marketplace管理 — sourceの追加、一覧、更新、削除 — として文書化し、local pluginのinstallとtestにはdesktop appを
+使えという指示で締めくくっている。IDE extensionはどこにも登場しないため、plugin behaviorを**local client**と
+記せばページが何も確立していないclientを主張することになる。Marketplace discoveryとplugin installationを
+hosted taskへ一般化してはならないのも同じである。
 
 ## Canonical evidence-assessment index
 
@@ -53,7 +59,18 @@ fileをadmitしたかであって、そのruleがどれだけ文書化されて�
 | `codex.behavior.repo.rules` | Local client | Activeなtrusted project config layerすべて | `.codex/rules/*.rules` | Codexはstartup時にlayerの`rules/` directoryをscan。Official textはnested subdirectory recursionを確立しない | `codex.rules.resolution` | Partially documented、experimental | `openai.codex.rules` |
 | `codex.behavior.repo.mcp` | Local client | Active project config layer | `.codex/config.toml`内`[mcp_servers.*]` | MCP declarationはconfig-layer resolutionに従い、project layerはtrust必須 | `codex.mcp.configuration` | Documented | `openai.codex.mcp`, `openai.codex.config-basic` |
 | `codex.behavior.repo.marketplace` | ChatGPT desktopとplugin-management CLI | 正確なrepository root | `.agents/plugins/marketplace.json`、legacy-compatibleな`.claude-plugin/marketplace.json` | Catalogはinstallation用pluginを公開するが、installed/enabledの証明ではない | `codex.plugins.activation` | Documented | `openai.codex.plugins` |
-| `codex.behavior.plugin.manifest` | Plugin対応local client | Marketplaceまたはinstallationが選択したplugin root | `.codex-plugin/plugin.json` | 必須plugin entry point。任意のmatching fileをenabled pluginとして自動発見しない | `codex.plugins.activation` | Documented | `openai.codex.plugins` |
+| `codex.behavior.plugin.manifest` | ChatGPT desktopとplugin-management CLI | Marketplaceまたはinstallationが選択したplugin root | `.codex-plugin/plugin.json` | 必須plugin entry point。任意のmatching fileをenabled pluginとして自動発見しない | `codex.plugins.activation` | Documented | `openai.codex.plugins` |
+
+plugin名がRepository fileに到達するのに設定手順を要さない点が、Claude CodeおよびCopilotとの
+差である。desktop clientは正確な`$REPO_ROOT/.agents/plugins/marketplace.json`と、legacy互換の
+`$REPO_ROOT/.claude-plugin/marketplace.json`にあるrepo catalogを読むため、commitされたcatalogは
+それ自体でvendorが考慮するsourceであり、登録するsettings entryは存在しない。各`plugins[]` entryは
+`source.path`をmarketplace rootからの`./`接頭辞付き相対pathでplugin folderに向け、そのfolderが
+必須の`.codex-plugin/plugin.json`を持つ。そのfolderを`codex.repo.marketplace`自身のruleが名指し、
+scanがそれを列挙して、配下の全fileをそのpluginが同梱するfileとして公開する。`.codex/config.toml`にある別のcatalogを名指す値は、readを与えずcandidateも作らない
+記録上のrelationshipに留まる。installationとplugin単位のenablementはUser stateであり — Codexの
+plugin cache配下のinstalled copyと、User configuration中のon/off値 — いずれもRepositoryの事実では
+ない。
 
 ## Inspector Repository rule
 
@@ -72,13 +89,12 @@ FR-005、FR-024、QR-001、QR-004、QR-005である。
 | `codex.repo.settings` | Repository | `['.codex', 'config.toml']` | `codex.repo.config`がauthorするselectorの上でのRepository rootでの`exact`。2つのruleが1つのfileをadmitし、walkはそれらを1回のreadで1つのcandidateへmergeする。vendor contractがそのcarrierに`MCP`と`settings/config`の別々のrecognitionを与えており、recognitionはruleが生むものだからである | `static-candidate` | `codex.behavior.repo.config` | Documented。Trust/runtime chainはconditional | `openai.codex.config-basic` |
 | `codex.repo.hooks` | Repository | `['.codex', 'hooks.json']` | Repository rootでの`exact`。ページはproject locationとして`<repo>/.codex/hooks.json`を挙げる | `static-candidate` | `codex.behavior.repo.hooks` | Documented。Trust/hook reviewはconditional | `openai.codex.hooks` |
 | `codex.repo.rules` | Repository | `['.codex', 'rules', /\.rules$/u]` | Repository rootの`rules/` directoryの`direct-child`。ページは`<repo>/.codex/rules/`を挙げ、nested recursionは文書化していない。`permissions`として認識する: このfileはsandbox外でどのcommandを実行してよいかを決めるものであり、Claudeが自身の`rules/`に置くinstruction fileとは主題が異なる | `static-candidate` | `codex.behavior.repo.rules` | Experimental。Nested rule directoryはexcluded | `openai.codex.rules` |
-| `codex.repo.plugin-manifest` | Repository | `['.codex-plugin', 'plugin.json']` | `exact`。Selected Repository rootをauthored plugin rootとして扱う | `static-candidate` | `codex.behavior.plugin.manifest` | Inspectorのauthored-project policyだけ。Codex plugin discovery/activationではない | `openai.codex.plugins` |
 | `codex.repo.marketplace` | Repository | `['.agents', 'plugins', 'marketplace.json']`、`['.claude-plugin', 'marketplace.json']` | `exact` | `static-candidate` | `codex.behavior.repo.marketplace` | 正確なRepository-root location | `openai.codex.plugins` |
 
 受理済み`config.toml`内のinline MCP serverとinline hookはそのfileのmetadataであり、別candidateを作らない。
 Standalone `.mcp.json`はCodex Repository candidateではない。Inspectorは任意の
-`.codex-plugin/plugin.json`を再帰探索しない。Nested manifestは後述のclosed local-marketplace derivationを通じて
-のみ受理する。
+`.codex-plugin/plugin.json`を再帰探索せず、そもそもどのruleもmanifestをadmitしない: catalogの
+local root配下のmanifestは、そのpluginが同梱するfileの1つである（§ Derived Repository rule）。
 
 ## Derived Repository rule
 
@@ -88,15 +104,46 @@ indexが所有する。`documented` assessmentであっても、Inspectorのclos
 
 | Rule ID | Class | Accepted seed | Closed derived target | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `codex.derived.local-plugin-manifest` | `bounded-derived-candidate` | Static受理済みCodex marketplace local entry | `<catalog-root>/<validated-local-source>/.codex-plugin/plugin.json`。Sourceは文書化済みlocal formを使い`./`で始まりcatalog root内に留まり、そのexact manifest pathを導出 | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
 | `codex.derived.fallback-basename` | `bounded-derived-candidate` | Walkの前に構成として読み、決してpublishしない、固定されたrepositoryの`.codex/config.toml` | 宣言された各fallback basenameを1つのentry名としてRepository rootで突き合わせる — どのentryも名乗らない名前は何にも一致しない。Excluded higher layerがoverrideし得るためruntime selectionはconditionalで、利用可能なcapacityはNode.jsと実行環境から継承する | `codex.behavior.repo.config`, `codex.behavior.repo.instructions` | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `codex.config.precedence`, `codex.instructions.layering` | `documented` | `openai.codex.agents-md`, `openai.codex.config-basic` |
+`.codex-plugin/plugin.json`をadmitするruleは存在せず、導出するruleも存在しない。ただしcatalog rule
+は、各offeringのmanifestがどこにあるかは名指す。surfaceがpluginの同梱fileの中からplugin自身の宣言を
+開けるようにするためであり、pathを名指すことはcandidateをadmitすることではない。Plugin rootは
+discoverされるものではなくactivateされるものであり、clientがどのrootをloadするかはcatalog entry
+またはCodex plugin cacheのinstall済みcopyが決める。自身のrootにmanifestを持つrepositoryは、
+ここでclientが読むcustomizationを持っているのではなく、他者がinstallするpluginを公開している
+のであり、そのpathはrootを含むどの深さでもnear missである。
+
+代わりに、repository catalogのlocal entryが名指す先を列挙する。`codex.repo.marketplace`が
+catalogをadmitし、それをadmitしたruleが各local entryのpluginがどこにあるかに答える —
+`<Repository root>/<validated-local-source>/`。sourceは文書化済みlocal formを使い`./`で始まり
+root内に留まる。scanはそのdirectoryを列挙し、配下の全regular fileをそのpluginが同梱するfileと
+して公開する
+（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。pluginのmanifestも
+そのうちの1つである。いずれもcandidateにはならない: rule、recognition、kind、自身のinventory
+rowのいずれも得ない。
+
 Skillのsibling `agents/openai.yaml`は意図的にderived candidateではない。所有元skillのbounded
 companion censusが、skillのdirectoryが持つfileの一つとして既に読み取り・公開しており、detail
 surfaceがそこでそれを列挙して開くため、derivationはinventoryが既に持つfileを再admissionする
 ことになる。
 
-Plugin skill、MCP file、app mapping、hook file、asset、script、remote sourceはこのreleaseではrelationship-onlyである。
-Local marketplace entryからこれらcomponentへ再帰展開してはならない。
+Repository catalogのmarketplace rootはRepository rootであり、`./`のlocal sourceはこれに対して解決される。
+Pageはこれをpersonal scopeで示している: `~/.agents/plugins/marketplace.json`のcatalogのそばに文書化された
+パターンは`./.codex/plugins/<plugin-name>`であり、これはcatalog自身のdirectoryではなくhome directoryに対して
+解決されるpathである。その規則のrepository側がRepository rootであり、`.agents/plugins/marketplace.json`の
+catalogのそばの`./plugins/my-plugin`は`plugins/my-plugin`となる。
+
+Manifestが宣言するcomponent — plugin skill、MCP file、app mapping、hook file、asset、script、
+remote source — はrelationship-onlyである。宣言された値はどのreadにも到達せず、local marketplace
+entryからこれらcomponentへ再帰展開してはならない。
+
+それでも同じfileは、plugin root内にある限り読まれる。Plugin rootはdirectory形式のcustomizationで
+あり、そのbounded companion censusがrootを列挙するからである
+（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。両者は別のmechanismで
+あり、その違いこそがこのexclusionの述べる内容である: fileはpluginのdirectoryにあるから読まれるので
+あって、manifestが指したから読まれるのではない。したがってrootの外へ出る宣言されたpathや、何も
+指さないpathは、どこからも開かれない。Census済みのfileはrule、recognition、kind、自身のinventory
+rowのいずれも得ず、そのmanifestへ到達したofferingのrowで、pluginのfileの1つとして公開される。
 
 ## 文書化済みUser behavior
 
@@ -200,9 +247,15 @@ connection、execution、import、installation、activationのauthorityを一切
 | `hook` | `runtime-reference` | 受理済みstandalone `hooks.json`またはinline `[hooks]`のevent map key、matcher value、handler leaf。同じlayerのstandalone occurrenceとinline occurrenceは別provenanceのままとする |
 | `MCP` | `runtime-reference` | Admission済みconfig carrierの`[mcp_servers.*]`配下にあるserver/table nameと正確なsupported leaf/item occurrence。Process environment valueは置換しない |
 | `settings/config` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Admission済みconfig carrierの正確なsupported TOML value/item/map-key occurrence。MCP/Hook declarationは別のrecognition rowだけに属し、configured target pathはread authorityを得ない |
-| `plugin` | `declared-component`<br>`skill-resource`<br>`runtime-reference` | 受理済み`.codex-plugin/plugin.json`の正確なmetadata/component/presentation leaf/item occurrence。`hooks` field omitted時はregistry定義済みdocumented-default component relationshipだけをemitできる |
-| `marketplace` | `plugin-source`<br>`runtime-reference` | 受理済みRepository-root marketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 受理済み`.codex-plugin/plugin.json`の正確なmetadata/component/presentation leaf/item occurrenceと、entryがplugin名を解決する受理済みRepository-root marketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる。`hooks` field omitted時はregistry定義済みdocumented-default component relationshipだけをemitできる |
 | `skill metadata` | `skill-resource`<br>`runtime-reference` | Derived `agents/openai.yaml`の正確なsupported YAML leaf/item occurrence。Seed provenanceはtyped stateであり、このfileはowner `SKILL.md`のmetadata identityを継承しない |
+
+`plugin` rowのmanifestに関する記述 — 受理済み`.codex-plugin/plugin.json`内のoccurrenceと、
+`marketplace.plugin.source`がseedするlocal-manifest derivation — は、どのruleもadmitしないsource form
+と、どのruleも行わないderivationを述べている（§ Derived Repository rule）。これらは下の
+`skill metadata` rowと同じく、消費者を持たないfrozen・digest記録済みのdesign inputであり、いずれの
+変更もofficial-source contractのstop-and-regenerate ruleに従うdigest記録済みの変更である。この行が
+今統べているのはもう一方の半分、すなわちcatalog entry自身のoccurrenceである。
 
 Initial releaseのCodex recognitionは、sharedな`prompt/command`または`output style` kindを使用しない。
 Initial releaseのrecognitionは`skill metadata` kindも使用しない: sibling `agents/openai.yaml`は
@@ -225,3 +278,12 @@ path-derived scope、selection、precedence、trust、default、applicability fa
 5. Plugin manifestやmarketplaceはauthored metadataだけを証明する。Installed copy、enabled state、component override、
    hosted availabilityは独立factである。
 6. Hosted ChatGPT Workはlocal Codex fileを読まない。Local-file recognitionをhosted taskへprojectしてはならない。
+7. Pluginは、それを提供するcatalogによって限定される。Pageはmanifestの`name`をpluginのidentifierかつ
+   component namespaceと呼び、pluginを`<cache>/<marketplace>/<plugin>/<version>`へinstallするため、
+   2つのcatalogが提供する同じ名前は2つのinstallである。したがってinventoryはcatalog自身の`name`と
+   pluginの名前の組でrowをkeyし、manifestは、そのentryが到達したcatalogに属する。Pageが述べていないのは、その組の綴りと、
+   1つのcatalogのentryと、それが指すmanifestとが異なる名前を宣言したときclientがどうするかである。
+   Inventoryが描く綴り`plugin@marketplace`はCLI自身のものである: `codex plugin add`と
+   `codex plugin remove`は`PLUGIN[@MARKETPLACE]` selectorを取り、`codex plugin list`は限定された形を
+   表示し、`~/.codex/config.toml`はplugin単位のstateをそれでkeyする（codex-cli 0.144.6に対する観測で
+   あり、引用したpageが確立したものではない）。食い違いについてrowはresolutionを述べない（FR-009）。

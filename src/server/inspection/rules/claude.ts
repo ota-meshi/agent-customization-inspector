@@ -20,8 +20,13 @@ import {
   type CompiledStaticInstructionRule,
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
+  type CompiledStaticOutputStyleRule,
   type CompiledStaticPermissionsCarrierRule,
+  type CompiledStaticPluginCatalogRule,
+  type CompiledStaticPluginManifestRule,
   type CompiledStaticSkillRule,
+  type PluginCarrierReading,
+  localPluginRootSegments,
 } from './registry';
 import { ParsedStrictJsonDocument } from '../parsers/json';
 import { skillDirectoryOf } from '../../../shared/registries/skill-directory';
@@ -30,6 +35,7 @@ import type {
   AgentPresentationDto,
   DeclaredEntryDto,
   McpServerDeclarationDto,
+  PluginDeclarationDto,
 } from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
 import { CLAUDE_RULE_RELATIONS } from '../../../shared/registries/claude/relations';
@@ -368,6 +374,349 @@ export class ClaudeCompiledSkillRule extends ClaudeCompiledRule implements Compi
 }
 
 /**
+ * A Claude output-style rule compiled for execution: everything a Claude rule
+ * is, plus the one question only an output-style rule answers — the name a
+ * reader selects an admitted style by. The derivation lives here, beside the
+ * rule that owns it, because it is this vendor's own contract
+ * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+ */
+export class ClaudeCompiledOutputStyleRule
+  extends ClaudeCompiledRule
+  implements CompiledStaticOutputStyleRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'output style';
+
+  /**
+   * The vendor's documented style name: the frontmatter `name` the file
+   * declares, or its own file name without the `.md` extension when it
+   * declares none — "the file name becomes the style name unless you set
+   * `name` in the frontmatter" (output-styles page § Create a custom output
+   * style).
+   *
+   * Read by the string key and the scalar kind: a sequence under that key has
+   * a rendering too, and taking its text would name a style after the first
+   * item of a list the file did not write as a name. An authored empty name
+   * falls back the same way an absent one does, because a picker cannot show
+   * a style by a name with no characters.
+   *
+   * A failed extraction hands this an empty list, so the style lands on its
+   * file name — the same string the vendor's own fallback produces for a file
+   * declaring none, reached for a different reason (FR-028).
+   *
+   * Never empty, whatever the file is called: a file named exactly `.md` has no
+   * basename to fall back to, so the name is its entry name as written.
+   */
+  public styleNameOf(sourceRelativePath: string, declared: readonly DeclaredEntryDto[]): string {
+    for (const entry of declared) {
+      if (entry.keyKind === 'string' && entry.key === 'name' && entry.value.kind === 'scalar') {
+        if (entry.value.text !== '') {
+          return entry.value.text;
+        }
+        break;
+      }
+    }
+    const fileName = sourceRelativePath.split('/').at(-1) ?? '';
+    const withoutExtension = fileName.slice(0, -'.md'.length);
+    // A file named exactly `.md` is admitted — the selector's terminal step
+    // matches the extension, and `.md` ends with it — and stripping the
+    // extension from it leaves nothing. The name is then the entry name as
+    // written: a style name is never empty (api-types.ts
+    // § OutputStyleInventoryEntryDto), and `.md` is what a picker listing this
+    // file has to show, because the vendor's rule is the file name and this
+    // file's name is all extension.
+    return withoutExtension === '' ? fileName : withoutExtension;
+  }
+
+  /** Compiles one Claude output-style record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'output style') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Claude output-style rule`);
+    }
+  }
+}
+
+/**
+ * The key a Claude plugin catalog lists its entries under
+ * (contracts/vendors/claude-code.md § Repository vendor behavior): the page
+ * defines a marketplace as a `plugins` array of one object per plugin. A
+ * literal here rather than anything a caller passes, because it is this
+ * vendor's own format.
+ */
+const CLAUDE_CATALOG_PLUGINS_KEY = 'plugins';
+
+/** The key a catalog and a plugin declaration each write their name under. */
+const CLAUDE_PLUGIN_NAME_KEY = 'name';
+
+/** The key a catalog entry writes its source under. */
+const CLAUDE_PLUGIN_SOURCE_KEY = 'source';
+
+/**
+ * The key a source object writes its path under; an entry may also spell the
+ * whole source as that path string
+ * (`anthropic.claude-code.marketplaces.catalog-sources` § Plugin sources).
+ */
+const CLAUDE_PLUGIN_SOURCE_PATH_KEY = 'path';
+
+/** The `source.source` value naming the one form that is a path in this repository. */
+const CLAUDE_LOCAL_SOURCE_VALUE = 'local';
+
+/**
+ * Where a Claude plugin root keeps the plugin's own manifest, relative to that
+ * root (`claude.behavior.repo.plugin`): the file locations reference puts it at
+ * `.claude-plugin/plugin.json` and marks it optional.
+ *
+ * It names the file rather than admitting it below a catalog's root: no rule
+ * reaches a manifest there, and the file is published as one of the plugin's
+ * own. What this answers is which of those files the plugin's detail opens on.
+ */
+const CLAUDE_PLUGIN_MANIFEST_PATH = '.claude-plugin/plugin.json';
+
+/**
+ * The marketplace a skills-directory plugin is addressed under
+ * (`anthropic.claude-code.plugins.components-scopes` § Skills-directory
+ * plugins): the page names such a plugin `<folder>@skills-dir`, so the
+ * qualifier is the vendor's own word rather than a catalog name.
+ */
+const CLAUDE_SKILLS_DIRECTORY_MARKETPLACE = 'skills-dir';
+
+/**
+ * The name one declaration resolves: the `name` scalar exactly as written, or
+ * null when it writes none or writes it as anything but a scalar — naming a
+ * plugin after the first item of a list it wrote would be an identity the file
+ * never declared (FR-007).
+ */
+function claudePluginNameOf(fields: readonly DeclaredEntryDto[]): string | null {
+  for (const field of fields) {
+    if (field.keyKind === 'string' && field.key === CLAUDE_PLUGIN_NAME_KEY) {
+      return field.value.kind === 'scalar' ? field.value.text : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * The name Claude addresses one plugin by: the plugin's own name qualified by
+ * the marketplace it came from, `<plugin-name>@<marketplace-name>` — the key
+ * `enabledPlugins` uses and `/plugin` takes — or null when either half is
+ * missing, because a plugin Claude could not address is no name at all.
+ *
+ * It lives here because it is Claude's rule. Another product's plugin phase
+ * resolves its own names in its own module, exactly as each vendor resolves its
+ * own skill and command names (FR-007).
+ */
+function claudeQualifiedPluginNameOf(
+  pluginName: string | null,
+  marketplaceName: string | null,
+): string | null {
+  return pluginName === null || marketplaceName === null
+    ? null
+    : `${pluginName}@${marketplaceName}`;
+}
+
+/**
+ * The plugin root one catalog entry names inside the Source, as a
+ * Source-relative directory with its trailing slash, or null when the entry
+ * names none this repository holds.
+ *
+ * The documented local form is what this accepts and nothing else: the source
+ * is either the object form with `source: 'local'` and a `path`, or the plain
+ * string path an entry may use instead. The path must begin with `./`, and
+ * every segment after that prefix must be an ordinary entry name — a `..`
+ * segment, an absolute path, a `~` home path, and a GitHub, git, npm, archive,
+ * or command source all name nothing here, because the derivation is closed and
+ * a source it cannot validate is not a directory it may name (FR-004, FR-024).
+ *
+ * `./` is relative to the marketplace root, which for a repository's own
+ * catalog is the Source root: the catalog is documented at
+ * `.claude-plugin/marketplace.json` in that root.
+ */
+function claudeLocalPluginRootOf(fields: readonly DeclaredEntryDto[]): string | null {
+  let declaredPath: string | null = null;
+  for (const field of fields) {
+    if (field.keyKind !== 'string' || field.key !== CLAUDE_PLUGIN_SOURCE_KEY) {
+      continue;
+    }
+    if (field.value.kind === 'scalar') {
+      declaredPath = field.value.text;
+      break;
+    }
+    if (field.value.kind !== 'mapping') {
+      return null;
+    }
+    let isLocal = false;
+    let path: string | null = null;
+    for (const entry of field.value.entries) {
+      if (entry.keyKind !== 'string' || entry.value.kind !== 'scalar') {
+        continue;
+      }
+      if (entry.key === CLAUDE_PLUGIN_SOURCE_KEY) {
+        isLocal = entry.value.text === CLAUDE_LOCAL_SOURCE_VALUE;
+      }
+      if (entry.key === CLAUDE_PLUGIN_SOURCE_PATH_KEY) {
+        path = entry.value.text;
+      }
+    }
+    // A `github`, `git`, `npm`, `archive`, or `command` entry also writes a
+    // `path` or a `repo`, so the discriminant is checked rather than the
+    // presence of a path.
+    declaredPath = isLocal ? path : null;
+    break;
+  }
+  const named = localPluginRootSegments(declaredPath);
+  return named === null ? null : `${named.join('/')}/`;
+}
+
+/**
+ * The Claude plugin catalog rule compiled for execution: everything a Claude
+ * rule is, plus the one question only a catalog answers — which plugins its
+ * entries resolve, and where each of them sits inside this Source.
+ */
+export class ClaudeCompiledPluginCatalogRule
+  extends ClaudeCompiledRule
+  implements CompiledStaticPluginCatalogRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'plugin';
+
+  /** Discriminant: the admitted file is a catalog listing plugins. */
+  public readonly pluginCarrier: 'catalog';
+
+  /**
+   * What one admitted catalog declares: its own keys except `plugins`, and one
+   * declaration per entry of that array in the parser's resolved order, each
+   * carrying the directory that entry's plugin occupies here and the manifest
+   * inside it.
+   *
+   * Entry classification is structural and total, exactly as the MCP carrier
+   * reading's is: only an object inside `plugins` is an entry, and a scalar or
+   * an array there is omitted whole rather than published partially, as is a
+   * `plugins` value that is not an array at all. Strict JSON because that is
+   * what the catalog is.
+   *
+   * A plugin *is* its root: the optional `.claude-plugin/plugin.json` inside it
+   * is one of the files it ships rather than a customization of its own, so an
+   * entry answers the directory and names the manifest without admitting it.
+   */
+  public pluginCarrierReadingOf(sourceText: string): PluginCarrierReading {
+    const entries = new ParsedStrictJsonDocument(sourceText).entries;
+    const declared = entries.find(
+      (entry) => entry.keyKind === 'string' && entry.key === CLAUDE_CATALOG_PLUGINS_KEY,
+    );
+    const catalogFields = entries.filter((entry) => entry !== declared);
+    if (declared === undefined || declared.value.kind !== 'sequence') {
+      return { catalogFields, plugins: [] };
+    }
+    // Each entry is published under the name Claude addresses that plugin by,
+    // qualified by this catalog's own name; the entry's raw `name` stays one of
+    // the `fields` below, where the detail publishes it as written (FR-007).
+    const marketplaceName = claudePluginNameOf(catalogFields);
+    return {
+      catalogFields,
+      plugins: declared.value.items.flatMap((item) => {
+        if (item.kind !== 'mapping') {
+          return [];
+        }
+        const pluginRoot = claudeLocalPluginRootOf(item.entries);
+        return [
+          {
+            name: claudeQualifiedPluginNameOf(claudePluginNameOf(item.entries), marketplaceName),
+            fields: item.entries,
+            pluginRoot,
+            manifestPaths:
+              pluginRoot === null ? [] : [`${pluginRoot}${CLAUDE_PLUGIN_MANIFEST_PATH}`],
+          },
+        ];
+      }),
+    };
+  }
+
+  /** Compiles one Claude plugin catalog record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'plugin') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Claude plugin rule`);
+    }
+    this.pluginCarrier = 'catalog';
+  }
+}
+
+/**
+ * The Claude skills-directory plugin rule compiled for execution: everything a
+ * Claude rule is, plus the one question only a manifest carrier answers — which
+ * plugin this file declares, and which directory that plugin is.
+ */
+export class ClaudeCompiledPluginManifestRule
+  extends ClaudeCompiledRule
+  implements CompiledStaticPluginManifestRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'plugin';
+
+  /** Discriminant: the admitted file is one plugin's own manifest. */
+  public readonly pluginCarrier: 'manifest';
+
+  /**
+   * The one plugin this manifest declares: every key the file wrote, the folder
+   * holding `.claude-plugin/` as the plugin root, and this file's own path as
+   * that plugin's manifest.
+   *
+   * The name is the folder's, qualified by `skills-dir`: the cited page names
+   * such a plugin `<folder>@skills-dir`, and what makes the folder a plugin is
+   * this file being in it rather than anything the file says. The manifest's own
+   * `name` key stays one of the fields the detail publishes.
+   *
+   * Strict JSON, and a manifest that declares nothing at all still declares its
+   * plugin: the page makes every field optional but the folder is the plugin
+   * either way.
+   */
+  public pluginCarrierReadingOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): PluginCarrierReading {
+    const fields = new ParsedStrictJsonDocument(sourceText).entries;
+    return {
+      // A manifest declares one plugin and nothing about a catalog, so it
+      // publishes no catalog fields: its own keys are that plugin's.
+      catalogFields: [],
+      // The placement is what establishes the plugin; the parse adds the keys
+      // the file wrote to it.
+      plugins: [{ ...this.pluginEstablishedByPath(sourceRelativePath), fields }],
+    };
+  }
+
+  /**
+   * The plugin this manifest's placement establishes, with no fields read out
+   * of it (`registry.ts` § CompiledStaticPluginManifestRule).
+   */
+  public pluginEstablishedByPath(sourceRelativePath: string): PluginDeclarationDto {
+    // `<root>/.claude-plugin/plugin.json`: the two trailing segments are the
+    // rule's own literals, so what remains is the plugin root, and its last
+    // segment is the folder Claude names the plugin after.
+    const rootSegments = sourceRelativePath.split('/').slice(0, -2);
+    return {
+      name: claudeQualifiedPluginNameOf(
+        rootSegments.at(-1) ?? null,
+        CLAUDE_SKILLS_DIRECTORY_MARKETPLACE,
+      ),
+      fields: [],
+      pluginRoot: `${rootSegments.join('/')}/`,
+      manifestPaths: [sourceRelativePath],
+    };
+  }
+
+  /** Compiles one Claude skills-directory plugin record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'plugin') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Claude plugin rule`);
+    }
+    this.pluginCarrier = 'manifest';
+  }
+}
+
+/**
  * A Claude rule of every other kind, compiled for execution. It answers no
  * per-kind question — nothing about applicability, nothing a carrier
  * declares, nothing a file is invoked by (see
@@ -380,10 +729,17 @@ export class ClaudeCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    | 'instructions'
+    | 'skill'
+    | 'MCP'
+    | 'agent'
+    | 'prompt/command'
+    | 'permissions'
+    | 'plugin'
+    | 'output style'
   >;
 
-  /** Compiles one Claude record of any kind but the six with a question of their own. */
+  /** Compiles one Claude record of any kind but the seven with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
@@ -392,7 +748,8 @@ export class ClaudeCompiledOtherKindRule
       rule.kind === 'MCP' ||
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
-      rule.kind === 'permissions'
+      rule.kind === 'permissions' ||
+      rule.kind === 'output style'
     ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Claude unit that answers for its kind`);
     }
@@ -481,34 +838,48 @@ export class ClaudeCompiledAgentRule extends ClaudeCompiledRule implements Compi
  * `.claude/settings*.json` is both the permission policy's carrier and a
  * settings document of its own (FR-007).
  *
- * Every shipped rule is compiled rather than filtered: a Claude record that
- * authorizes no traversal is rejected by the {@link ClaudeCompiledRule}
- * constructor instead of being skipped, so a registry row that cannot be
- * executed fails the build that ships it rather than disappearing from the
- * scan. Skipping arrives with the first rule whose class belongs in this
- * registry but not in this list.
+ * The selection is by declared class, as the Codex list's is: the catalog now
+ * carries an `excluded` row — `claude.excluded.plugin-files`, which authorizes
+ * no traversal by definition — so the static candidates are taken and every one
+ * of them is compiled. A static record that still cannot be executed fails the
+ * build that ships it through the {@link ClaudeCompiledRule} constructor's
+ * guard rather than disappearing from the scan.
  */
 export const CLAUDE_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
   CLAUDE_INSPECTION_RULES,
-).map((rule) =>
-  // Each record compiles into the unit that can answer its kind's question:
-  // an instruction record what its files govern, a command record the name its
-  // files are invoked by, an MCP record which servers its carrier declares, a
-  // custom-agent record where its file's configuration ends and its
-  // instructions begin, a skill record the command name its file is invoked
-  // by; every other kind compiles into the plain one, which is what keeps a
-  // rule-file rule from carrying an answer it has none of.
-  rule.kind === 'instructions'
-    ? new ClaudeCompiledInstructionRule(rule)
-    : rule.kind === 'skill'
-      ? new ClaudeCompiledSkillRule(rule)
-      : rule.kind === 'MCP'
-        ? new ClaudeCompiledMcpCarrierRule(rule)
-        : rule.kind === 'agent'
-          ? new ClaudeCompiledAgentRule(rule)
-          : rule.kind === 'prompt/command'
-            ? new ClaudeCompiledPromptRule(rule)
-            : rule.kind === 'permissions'
-              ? new ClaudeCompiledPermissionsCarrierRule(rule)
-              : new ClaudeCompiledOtherKindRule(rule),
-);
+)
+  .filter((rule) => rule.discoveryClass === 'static-candidate')
+  .map((rule) =>
+    // Each record compiles into the unit that can answer its kind's question:
+    // an instruction record what its files govern, a command record the name its
+    // files are invoked by, an MCP record which servers its carrier declares, a
+    // custom-agent record where its file's configuration ends and its
+    // instructions begin, a skill record the command name its file is invoked
+    // by; every other kind compiles into the plain one, which is what keeps a
+    // rule-file rule from carrying an answer it has none of.
+    //
+    // The `plugin` kind is the one that dispatches on the rule rather than the
+    // kind, because this vendor admits both carriers of it: a catalog resolves
+    // many names out of its `plugins` array, and a skills-directory manifest
+    // declares the one plugin the folder holding it is
+    // (contracts/vendors/claude-code.md § Repository vendor behavior).
+    rule.kind === 'instructions'
+      ? new ClaudeCompiledInstructionRule(rule)
+      : rule.kind === 'skill'
+        ? new ClaudeCompiledSkillRule(rule)
+        : rule.kind === 'MCP'
+          ? new ClaudeCompiledMcpCarrierRule(rule)
+          : rule.kind === 'agent'
+            ? new ClaudeCompiledAgentRule(rule)
+            : rule.kind === 'prompt/command'
+              ? new ClaudeCompiledPromptRule(rule)
+              : rule.kind === 'permissions'
+                ? new ClaudeCompiledPermissionsCarrierRule(rule)
+                : rule.kind === 'output style'
+                  ? new ClaudeCompiledOutputStyleRule(rule)
+                  : rule.ruleId === 'claude.repo.marketplace'
+                    ? new ClaudeCompiledPluginCatalogRule(rule)
+                    : rule.ruleId === 'claude.repo.skills-directory-plugin'
+                      ? new ClaudeCompiledPluginManifestRule(rule)
+                      : new ClaudeCompiledOtherKindRule(rule),
+  );

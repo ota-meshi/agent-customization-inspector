@@ -33,6 +33,8 @@ import AgentRow from './rows/AgentRow.vue';
 import PromptRow from './rows/PromptRow.vue';
 import RuleRow from './rows/RuleRow.vue';
 import PermissionsRow from './rows/PermissionsRow.vue';
+import PluginRow from './rows/PluginRow.vue';
+import OutputStyleRow from './rows/OutputStyleRow.vue';
 import SettingsRow from './rows/SettingsRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
 import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
@@ -43,6 +45,8 @@ import type {
   InstructionInventoryEntryDto,
   McpInventoryEntryDto,
   PermissionsInventoryEntryDto,
+  OutputStyleInventoryEntryDto,
+  PluginInventoryEntryDto,
   RuleInventoryEntryDto,
   SerializedDiagnostic,
   SettingsInventoryEntryDto,
@@ -67,6 +71,10 @@ const props = defineProps<{
   ruleRows: readonly RuleInventoryEntryDto[];
   /** The permission-policy rows that passed the active filters, in snapshot order. */
   permissionsRows: readonly PermissionsInventoryEntryDto[];
+  /** The plugin name rows that passed the active filters, in snapshot order. */
+  pluginRows: readonly PluginInventoryEntryDto[];
+  /** The output-style name rows that passed the active filters, in snapshot order. */
+  outputStyleRows: readonly OutputStyleInventoryEntryDto[];
   /** The settings-and-configuration rows that passed the active filters, in snapshot order. */
   settingsRows: readonly SettingsInventoryEntryDto[];
   /** Every published file by path, so a row can resolve the files it names. */
@@ -96,9 +104,13 @@ const rowCount = computed(() =>
               ? props.ruleRows.length
               : props.kind === 'permissions'
                 ? props.permissionsRows.length
-                : props.kind === 'settings/config'
-                  ? props.settingsRows.length
-                  : 0,
+                : props.kind === 'plugin'
+                  ? props.pluginRows.length
+                  : props.kind === 'output style'
+                    ? props.outputStyleRows.length
+                    : props.kind === 'settings/config'
+                      ? props.settingsRows.length
+                      : 0,
 );
 </script>
 
@@ -188,6 +200,29 @@ const rowCount = computed(() =>
         <PermissionsRow
           v-for="entry in permissionsRows"
           :key="entry.sourceRelativePath"
+          :entry="entry"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'plugin'">
+        <!-- Keyed by the row's own name — the row unit is one declared plugin
+             name, unique in the list by construction, with the one null-named
+             row behind a fixed key of its own (data-model.md § Inventory
+             unit). -->
+        <PluginRow
+          v-for="entry in pluginRows"
+          :key="entry.name === null ? 'unnamed' : `name:${entry.name}`"
+          :entry="entry"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'output style'">
+        <!-- Keyed by the row's own name — the row unit is the style name a
+             reader selects, unique in the list by construction (data-model.md
+             § Inventory unit). -->
+        <OutputStyleRow
+          v-for="entry in outputStyleRows"
+          :key="entry.name"
           :entry="entry"
           :diagnostics="diagnostics"
         />

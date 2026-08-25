@@ -516,7 +516,7 @@ export const COPILOT_CLI_AGENTS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['Loading order and precedence'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-25',
           establishes:
             'Agents use first-found-wins precedence and a plugin agent never overrides a project-level or personal one, so plugin agents are the lowest documented source; an agent is deduplicated by an ID derived from its file name, so reviewer.agent.md is the agent reviewer.',
         },
@@ -650,11 +650,123 @@ export const COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Copilot VS Code plugin activation: which plugins the editor can offer, and
+ * what each of them still needs before it is live.
+ *
+ * `select-first` then `filter`: at a root the editor has established, the
+ * documented format order decides which manifest is the plugin's — a root
+ * `plugin.json` declaring the Agent Plugins schema, then the Copilot,
+ * Claude, and legacy OpenPlugin forms — and registration, workspace listing,
+ * installation, and enabled state then decide whether it runs.
+ *
+ * What the strategy deliberately does not compose is a winner. A plugin reaches
+ * a session by installation, by a registered marketplace, or by an absolute
+ * path in `chat.pluginLocations`, and all of that is runtime state this product
+ * never reads: an inventory row states what a catalog offers and what a
+ * manifest declares, never that a plugin is available (FR-009,
+ * contracts/runtime-composition.md § copilot.vscode.plugins.activation).
+ */
+export const COPILOT_VSCODE_PLUGINS_ACTIVATION_STRATEGY = {
+  strategyId: 'copilot.vscode.plugins.activation',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  operations: ['select-first', 'filter'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.plugins',
+          url: 'https://code.visualstudio.com/docs/agent-customization/agent-plugins',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Plugin formats', 'Configure plugin marketplaces', 'Use local plugins'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'VS Code auto-detects a plugin format by checking the root manifest and the format-specific manifest paths, taking the Copilot format when no other marker is found, and a plugin becomes available by being installed, by a marketplace registered in chat.plugins.marketplaces, or by a directory path registered in chat.pluginLocations with an enabled or disabled state.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot CLI plugin activation: the same two steps in the CLI's own spelling.
+ *
+ * `select-first` then `filter`: the manifest and marketplace locations are
+ * checked in the documented order at an established root, and installation and
+ * enablement then decide what a session runs. The plugin's components compose
+ * with project and personal configuration rather than overriding it — a plugin
+ * agent or skill loses to a project one of the same name, while a plugin MCP
+ * server wins by loading last — which is why nothing here is projected as a
+ * winner (FR-009, contracts/runtime-composition.md
+ * § copilot.cli.plugins.activation).
+ */
+export const COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY = {
+  strategyId: 'copilot.cli.plugins.activation',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  operations: ['select-first', 'filter'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.plugins',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
+          officialHost: 'docs.github.com',
+          sections: ['File locations', 'Loading order and precedence', 'CLI commands'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "A plugin manifest and a marketplace manifest are each checked at four documented locations in a fixed order; a plugin is installed by naming a marketplace plugin, a repository, a subdirectory, a Git URL, or a local path, and its components then compose with the rest — agents and skills are first-found-wins so a plugin's lose to a project's, MCP servers are last-wins so a plugin's takes precedence, and built-ins can be overridden by neither.",
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot cloud agent plugin activation: the hosted side of the same two
+ * steps.
+ *
+ * `filter` then `select-first`: what a repository's settings turn on and which
+ * marketplaces they add are filtered against what the hosted environment has
+ * installed and made available, and a plugin's own manifest is then read at
+ * the root that state established. Nothing is composed into a winner here for
+ * the reason the other two are not: installation, availability, and enablement
+ * are hosted state this product never reads, so a row states what a repository
+ * declares and never that a plugin is live (FR-009,
+ * contracts/runtime-composition.md § copilot.cloud.plugins.activation).
+ */
+export const COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY = {
+  strategyId: 'copilot.cloud.plugins.activation',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  operations: ['filter', 'select-first'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.plugins',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/about-plugins',
+          officialHost: 'docs.github.com',
+          sections: ['Where can I get plugins?', 'How plugin marketplaces work'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'The cloud agent turns plugins on through the enabledPlugins field of a repository .github/copilot/settings.json and adds a catalog through extraKnownMarketplaces in the same file, while a marketplace.json is what lists the plugins a marketplace makes available.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Copilot's contribution to the strategy registry, keyed by `strategyId`. */
 export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   Record<CopilotStrategyId, RuntimeCompositionStrategy>
 > = {
   [COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY.strategyId]: COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY,
+  [COPILOT_VSCODE_PLUGINS_ACTIVATION_STRATEGY.strategyId]:
+    COPILOT_VSCODE_PLUGINS_ACTIVATION_STRATEGY,
+  [COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY.strategyId]: COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY,
+  [COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY.strategyId]: COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY,
   [COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY.strategyId]: COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY,
   [COPILOT_CLI_AGENTS_SELECTION_STRATEGY.strategyId]: COPILOT_CLI_AGENTS_SELECTION_STRATEGY,
   [COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]:

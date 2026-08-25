@@ -49,9 +49,13 @@ import {
 } from './recognizers/candidate';
 import { join } from 'node:path';
 import { CODEX_REPOSITORY_RULES, readCodexConfiguredFallbackPlans } from './rules/codex';
+import { listCompanionFiles } from './companion-census';
+import { readdir } from './fs-io';
 import {
   readCandidate,
+  rethrowIfResourceExhaustion,
   runTraversalScan,
+  statThroughLink,
   type ConfigurationReadResult,
   type SeededCandidateRead,
   type TraversalScanResult,
@@ -108,13 +112,6 @@ export type ScanPublication =
       readonly files: readonly CustomizationFileDto[];
       /** Every recognition attached to a published readable file. */
       readonly recognitions: readonly ToolRecognition[];
-      /**
-       * Each recognized skill entry point's census, keyed by its public path.
-       * Kept beside the recognitions rather than on one: the list's one
-       * publication is the inventory's `SkillDefinitionDto.companionFiles`
-       * (contracts/inspection-path-allowlist.md § Bounded companion census).
-       */
-      readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
       /** The attempt's serialized diagnostics. */
       readonly diagnostics: readonly SerializedDiagnostic[];
       /**
@@ -273,12 +270,11 @@ export async function assembleScanPublication(
   // identity the scan publishes them under, and what the read loop below
   // iterates.
   const companions = new Map<string, string>();
-  // Each recognized skill entry point's census, keyed by the entry point's
-  // public path. The inventory's `SkillDefinitionDto.companionFiles` is the
-  // list's one publication (§ Bounded companion census); the recognition
-  // carries none.
-  const skillCompanionsByPath = new Map<string, readonly string[]>();
-
+  // Every directory a recognized customization occupies, collected while the
+  // candidates are recognized and enumerated once below: two candidates naming
+  // one directory list the same files, and walking it twice would read them
+  // twice (contracts/inspection-path-allowlist.md § Bounded companion census).
+  const occupiedDirectories = new Set<string>();
   for (const candidate of input.result.files) {
     switch (candidate.outcome.kind) {
       case 'readable': {
@@ -293,29 +289,11 @@ export async function assembleScanPublication(
           sourceText: candidate.outcome.sourceText,
         });
         const fileRecognitions = recognized.recognitions;
-        // A census-listed path a rule independently admits keeps its own
-        // recognitions and rows (FR-007): the walk admitted it, so it is a
-        // customization of its own rather than one of the files that ship with
-        // the skill beside it. A `CLAUDE.md` inside a skill directory is the
-        // case — an ordinary instruction file that happens to sit there — and
-        // listing it as a companion would put its diagnostics on the skill's
-        // row, offer it as one of the skill's files to compare, and let a
-        // binary one disappear from the files in no kind, all while its own
-        // kind already has it.
-        const independentlyAdmitted = new Set(
-          input.result.files.map((discovered) => discovered.publicPath),
-        );
-        const censusOnly = recognized.companions.filter(
-          (companion) => !independentlyAdmitted.has(companion.sourceRelativePath),
-        );
-        for (const companion of censusOnly) {
-          companions.set(companion.sourceRelativePath, companion.absolutePath);
-        }
-        if (fileRecognitions.some((recognition) => recognition.details.kind === 'skill')) {
-          skillCompanionsByPath.set(
-            candidate.publicPath,
-            censusOnly.map((companion) => companion.sourceRelativePath),
-          );
+        // The directories this candidate's customizations occupy. Enumerating
+        // them is deferred to one pass below, so a directory two candidates
+        // name is walked once.
+        for (const directory of recognized.directories) {
+          occupiedDirectories.add(directory);
         }
         const fileDiagnosticIds: string[] = [];
         // A failed extraction keeps the complete readable source displayed and
@@ -425,20 +403,73 @@ export async function assembleScanPublication(
     });
   }
 
-  // An admitted candidate is never read and published a second time as a
-  // companion. Each census already excludes its own seed, but two candidates in
-  // one directory list each other, and the second copy would put one file in the
-  // inventory twice under two identities — with its bytes read and counted
-  // twice. The shipped Codex matcher admits one `SKILL.md` per skill directory,
-  // so no shipped rule reaches this today; it is enforced rather than assumed
-  // because the next rule that admits two files in one directory would
-  // otherwise duplicate them with nothing to show it.
+  // The entry names each directory holds, read once per directory: census roots
+  // share their ancestors — every skill of one product sits under the same two
+  // — so without this the check below would re-read the Source root for each of
+  // them.
+  const entryNamesByDirectory = new Map<string, readonly string[]>();
+  // Every directory a recognized customization occupies, enumerated once each:
+  // the set is what makes a directory two candidates share get walked once.
+  for (const directory of occupiedDirectories) {
+    const segments = directory.slice(0, -1).split('/');
+    // Every segment has to be an entry name its parent actually holds. A
+    // skill's directory came out of the walk and always is one; a plugin root
+    // is a path a catalog spelled, and a filesystem that compares names
+    // loosely — case-insensitively, or across Unicode normalizations, which is
+    // the default on two of the three platforms — resolves a spelling its
+    // directories do not hold. Publishing the files under the spelling that
+    // was asked for would put a path in the inventory that no enumeration
+    // produces, breaking the one identity every published path has
+    // (contracts/inspection-path-allowlist.md § Bounded companion census), and
+    // it is how `./Node_Modules/acme` reaches an installed package the
+    // exclusion is written to keep out.
+    if (!(await holdsEveryEntryName(input.root, segments, entryNamesByDirectory))) {
+      continue;
+    }
+    const absoluteDirectory = join(input.root, ...segments);
+    let target;
+    try {
+      // Through the link, like every read this product performs (FR-024).
+      target = await statThroughLink(absoluteDirectory);
+    } catch (error) {
+      // Absence is the one failure this probe converts, and only for the
+      // caller that produces it: a catalog entry whose plugin root this
+      // repository does not carry — the entry is authored, the directory is
+      // simply not there, and a plugin with no files here is the ordinary
+      // answer rather than a scan failure. A skill's directory is always
+      // present, because the walk just read its entry point out of it.
+      //
+      // Every other failure propagates, exactly as it does in the ordinary
+      // walk and in the census below: a directory this process may not stat is
+      // not a directory that holds nothing, and answering "no files" on the
+      // strength of not having looked would publish a fact about the plugin
+      // the scan never established.
+      rethrowIfResourceExhaustion(error);
+      const code = (error as { code?: string }).code;
+      if (code === 'ENOENT' || code === 'ENOTDIR') {
+        continue;
+      }
+      throw error;
+    }
+    if (!target.isDirectory) {
+      continue;
+    }
+    for (const listed of await listCompanionFiles(input.root, absoluteDirectory)) {
+      companions.set(`${directory}${listed.censusRelativePath}`, listed.absolutePath);
+    }
+  }
+  // A path the walk admitted is a customization of its own, never one of the
+  // files that ship with the customization whose directory holds it: the walk
+  // read it already, and its own recognitions and rows are what say so
+  // (FR-007). Removing it here is also what keeps one file from being read
+  // twice when two candidates share a directory.
   for (const candidate of input.result.files) {
     companions.delete(candidate.publicPath);
   }
 
-  // A companion is read after its candidate, because which files accompany a
-  // candidate is only known once that candidate has been recognized. It is
+  // The files those directories hold are read after their candidates, because
+  // which directories a customization occupies is only known once its candidate
+  // has been recognized. Each is
   // published as an ordinary file with no recognitions: it belongs to the
   // customization, but no rule admitted it and nothing classified it, so it has
   // no kind and appears in no kind's inventory.
@@ -523,7 +554,6 @@ export async function assembleScanPublication(
     outcome: hasFileConfinedOutcome ? 'partial' : 'complete',
     files,
     recognitions,
-    skillCompanionsByPath,
     visitedEntries: input.result.visitedEntries,
     candidateFiles: input.result.candidateFiles,
     readBytes: input.result.readBytes + companionReadBytes,
@@ -554,6 +584,55 @@ export interface SourceScanInput {
    * where it is. The attempt ignores what it returns.
    */
   readonly onProgress?: (update: ScanProgressUpdate) => void;
+}
+
+/**
+ * Whether every segment of a Source-relative directory is an entry name its
+ * parent directory actually holds.
+ *
+ * A census root is either a directory the walk enumerated — where the segments
+ * came from `readdir` and always match — or one a catalog entry spelled, which
+ * is the only path in this scan nothing enumerated. Matching it against the
+ * entries themselves is what keeps the two the same thing: a filesystem that
+ * compares names loosely resolves `./Node_Modules/acme` to `node_modules/acme`
+ * and `./caf\u00e9` to a directory stored in the other Unicode normalization,
+ * and the files below either would be published under a path no enumeration
+ * ever produces. A declaration whose spelling is not there names no directory
+ * this Source holds, which is the ordinary answer for an offering whose source
+ * this repository does not carry.
+ *
+ * An enumeration failure propagates, exactly as it does everywhere else in
+ * this scan: absence is `ENOENT`/`ENOTDIR` and answers false, while a
+ * directory this process may not read is not a directory that holds nothing
+ * (FR-029).
+ */
+async function holdsEveryEntryName(
+  root: string,
+  segments: readonly string[],
+  entryNamesByDirectory: Map<string, readonly string[]>,
+): Promise<boolean> {
+  let parent = root;
+  for (const segment of segments) {
+    let entries = entryNamesByDirectory.get(parent);
+    if (entries === undefined) {
+      try {
+        entries = await readdir(parent);
+      } catch (error) {
+        rethrowIfResourceExhaustion(error);
+        const code = (error as { code?: string }).code;
+        if (code === 'ENOENT' || code === 'ENOTDIR') {
+          return false;
+        }
+        throw error;
+      }
+      entryNamesByDirectory.set(parent, entries);
+    }
+    if (!entries.includes(segment)) {
+      return false;
+    }
+    parent = join(parent, segment);
+  }
+  return true;
 }
 
 /**

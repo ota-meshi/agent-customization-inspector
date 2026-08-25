@@ -40,6 +40,13 @@ import type {
   McpServerDeclarationDto,
   McpInventoryEntryDto,
   PermissionPolicyDetailDto,
+  OutputStyleDefinitionDto,
+  OutputStyleInventoryEntryDto,
+  PluginCarrierDetailDto,
+  PluginCarrierDetailParams,
+  PluginCarrierDto,
+  PluginDeclarationDto,
+  PluginInventoryEntryDto,
   PromptDefinitionDto,
   AgentDefinitionDto,
   AgentInventoryEntryDto,
@@ -144,6 +151,58 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
 }
 
 /**
+ * The files one customization's directory holds: every published file under
+ * `directory` that is not itself a recognized customization
+ * (contracts/inspection-path-allowlist.md § Bounded companion census).
+ *
+ * Derived here rather than carried, because the files are the generation's own
+ * `files[]` and a second list of them could disagree. What a recognition does
+ * carry is the directory — the skill's own, or the plugin root a catalog entry
+ * named — since that is the fact the published files do not state.
+ *
+ * "Not a customization of its own" is read as "carries no recognition": a file
+ * a rule admitted keeps its own row (FR-007), and a row that listed it here
+ * would state its diagnostics, offer it for comparison, and speak for a file
+ * its own kind already publishes. One case reads the same either way: a file a
+ * rule admitted but the scan could not read carries no recognition, so it is
+ * listed here — it is in the directory, and this scan established no kind for
+ * it.
+ */
+function directoryFilesOf(
+  directory: string,
+  files: readonly CustomizationFileDto[],
+  recognized: ReadonlySet<string>,
+): string[] {
+  return directory === ''
+    ? []
+    : files
+        .map((file) => file.sourceRelativePath)
+        .filter((path) => path.startsWith(directory) && !recognized.has(path));
+}
+
+/**
+ * Every published file below one plugin root: a plugin *is* its root, so the
+ * whole directory is what it ships (contracts/inspection-path-allowlist.md
+ * § Bounded companion census).
+ *
+ * Where {@link directoryFilesOf} drops a file that carries a recognition, this
+ * keeps it. The two lists answer different questions: a companion is a file
+ * *accompanying* a customization, so one that is a customization itself is not
+ * among them, while a plugin's files are the directory the plugin is — its own
+ * manifest included, and a file another rule admitted included too. That file
+ * keeps its own row, where its declarations and diagnostics are; leaving it out
+ * here would publish a plugin whose own page is missing a file its root holds,
+ * and — for a catalog offering a root that is itself a plugin by placement —
+ * a plugin this scan says it holds no manifest for while listing that manifest
+ * as a row of its own.
+ */
+function pluginRootFilesOf(pluginRoot: string, files: readonly CustomizationFileDto[]): string[] {
+  return pluginRoot === ''
+    ? []
+    : files.map((file) => file.sourceRelativePath).filter((path) => path.startsWith(pluginRoot));
+}
+
+/**
  * Projects the skill inventory from a generation's recognitions
  * (contracts/http-api.md § get-session `skills[]`, data-model.md § Inventory
  * unit): one entry per invocation name as one tool resolves it, each listing
@@ -165,8 +224,9 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
  */
 function projectSkillInventory(
   recognitions: readonly ToolRecognition[],
-  skillCompanionsByPath: ReadonlyMap<string, readonly string[]>,
+  files: readonly CustomizationFileDto[],
 ): SkillInventoryEntryDto[] {
+  const recognized = new Set(recognitions.map((recognition) => recognition.sourceRelativePath));
   const byName = new Map<string, { name: string; definitions: SkillDefinitionDto[] }>();
   for (const recognition of recognitions) {
     if (!isSkillRecognition(recognition)) {
@@ -204,7 +264,9 @@ function projectSkillInventory(
       surfaces: surfacesOf(recognition),
       parseStatus: recognition.parseStatus,
       diagnosticIds: recognition.diagnosticIds,
-      companionFiles: skillCompanionsByPath.get(path) ?? [],
+      // The skill's own directory: a skill is its directory, so the entry
+      // point's path is where the files it ships are.
+      companionFiles: directoryFilesOf(path.slice(0, path.lastIndexOf('/') + 1), files, recognized),
     });
   }
   // One collision gate per recognizing tool over the whole generation's
@@ -416,6 +478,209 @@ function projectPromptInventory(
     };
     if (definitions === undefined) {
       byName.set(recognition.details.invocationName, [definition]);
+    } else {
+      definitions.push(definition);
+    }
+  }
+  return (
+    [...byName.entries()]
+      .map(([name, definitions]) => ({
+        name,
+        // Files in Source-relative Path order, then the contracted tool order
+        // within one file, so two snapshots of one generation publish the same
+        // rows and an opaque ID never decides a visible order.
+        definitions: definitions.toSorted((left, right) => {
+          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+          return pathDelta !== 0
+            ? pathDelta
+            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+        }),
+      }))
+      // Entries in name order: the row's own key sorts it.
+      .sort((left, right) => compareStrings(left.name, right.name))
+  );
+}
+
+/**
+/**
+ * Every documented form a plugin's own manifest may take inside the root one
+ * declaration named, across every product that recognizes the carrier
+ * declaring it, in the closed tool order and without repetition.
+ *
+ * Which file inside a plugin root a client reads as that plugin's declaration
+ * of itself is each vendor's own contract, so one carrier that three products
+ * read resolves one plugin to one root with three lists of forms to look for
+ * there. A surface showing the plugin's own manifest wants the forms rather
+ * than one product's, because the root ships whichever form its author chose:
+ * publishing a single product's list would state that this scan holds no
+ * manifest for a plugin whose manifest it is listing among the plugin's files.
+ *
+ * Folded per declared root, not per name: two entries of one name may name two
+ * directories, and a form built from one root says nothing about the other.
+ */
+function pluginManifestPathsAt(
+  recognitions: readonly ToolRecognition[],
+  sourceRelativePath: string,
+  declaration: PluginDeclarationDto,
+): readonly string[] {
+  const forms: string[] = [];
+  for (const tool of SUPPORTED_TOOL_ORDER) {
+    for (const recognition of recognitions) {
+      if (
+        recognition.tool !== tool ||
+        recognition.sourceRelativePath !== sourceRelativePath ||
+        recognition.details.kind !== 'plugin'
+      ) {
+        continue;
+      }
+      for (const candidate of recognition.details.plugins) {
+        if (
+          candidate.name !== declaration.name ||
+          candidate.pluginRoot !== declaration.pluginRoot
+        ) {
+          continue;
+        }
+        for (const form of candidate.manifestPaths) {
+          if (!forms.includes(form)) {
+            forms.push(form);
+          }
+        }
+      }
+    }
+  }
+  return forms;
+}
+
+/**
+ * The plugin inventory (contracts/http-api.md § get-session `plugins[]`,
+ * data-model.md § Inventory unit): one row per plugin name, listing every
+ * carrier that resolves it.
+ *
+ * The name is the recognition's own — the rule that admitted the carrier
+ * resolved it, because how a name follows from a declaration is that vendor's
+ * contract (Codex addresses a catalog's offering as `plugin@marketplace` and a
+ * derived manifest under the offering that reached it) — so this projection
+ * groups by it rather than deriving it a second time where the two could
+ * disagree.
+ *
+ * Grouped exactly as the MCP inventory is, and for the same reason: the row
+ * unit is a declaration inside a file rather than the file, so a carrier's one
+ * recognition holds every declaration it makes and this projection splits them.
+ * A carrier that resolves no name at all — a catalog listing nothing, a
+ * manifest with no `name` that no offering reached, an extraction that failed —
+ * lands on the one null-named row, so its state stays a visible row rather than
+ * a file in no kind (FR-028).
+ */
+function projectPluginInventory(
+  recognitions: readonly ToolRecognition[],
+  files: readonly CustomizationFileDto[],
+): PluginInventoryEntryDto[] {
+  const byName = new Map<string | null, { carriers: PluginCarrierDto[]; files: Set<string> }>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'plugin') {
+      continue;
+    }
+    // The surfaces are the union over the recognition's own admissions,
+    // computed here because this is where they are published — the rule every
+    // other inventory applies.
+    const recognizingSurfaces = new Set<VendorSurface>();
+    for (const provenance of recognition.provenances) {
+      for (const surface of provenance.recognizingSurfaces) {
+        recognizingSurfaces.add(surface);
+      }
+    }
+    const carrierShared = {
+      sourceRelativePath: recognition.sourceRelativePath,
+      tool: recognition.tool,
+      surfaces: VENDOR_SURFACE_ORDER.filter((surface) => recognizingSurfaces.has(surface)),
+      parseStatus: recognition.parseStatus,
+      diagnosticIds: recognition.diagnosticIds,
+    };
+    const carrier: PluginCarrierDto = { ...carrierShared, carrier: recognition.details.carrier };
+    // One row per name the carrier resolves. A carrier that resolves none joins
+    // the null row: "this file resolves no plugin name" is what that row says.
+    const names =
+      recognition.details.plugins.length === 0
+        ? [null]
+        : recognition.details.plugins.map((plugin) => plugin.name);
+    for (const [index, name] of names.entries()) {
+      const row = byName.get(name) ?? { carriers: [], files: new Set<string>() };
+      byName.set(name, row);
+      if (
+        !row.carriers.some(
+          (existing) =>
+            existing.sourceRelativePath === carrier.sourceRelativePath &&
+            existing.tool === carrier.tool,
+        )
+      ) {
+        // One carrier resolving the same name twice is one carrier of that row:
+        // the row lists the files that resolve the name, and listing one file
+        // twice would say two files do.
+        row.carriers.push(carrier);
+      }
+      // What this declaration's plugin ships joins the row's own list: one row
+      // is one plugin, and two offerings of it reach the files of each.
+      for (const file of pluginRootFilesOf(
+        recognition.details.plugins[index]?.pluginRoot ?? '',
+        files,
+      )) {
+        row.files.add(file);
+      }
+    }
+  }
+  return (
+    [...byName.entries()]
+      .map(([name, row]): PluginInventoryEntryDto => ({
+        name,
+        files: [...row.files].toSorted(compareStrings),
+        carriers: row.carriers.toSorted((left, right) => {
+          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+          return pathDelta !== 0
+            ? pathDelta
+            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+        }),
+      }))
+      // Named rows in name order, and the one no-name row after them all —
+      // nulls-last is the comparator's own rule ({@link compareStrings}).
+      .sort((left, right) => compareStrings(left.name, right.name))
+  );
+}
+
+/**
+ * Projects the output-style inventory from a generation's recognitions
+ * (contracts/http-api.md § get-session `outputStyles[]`, data-model.md
+ * § Inventory unit): one entry per style name a reader selects, each listing
+ * every file a recognizing tool selects under it.
+ *
+ * The name is the recognition's own — the admitting rule resolved it from the
+ * path and the file's declarations when it was recognized (`registry.ts`
+ * § CompiledStaticOutputStyleRule) — so this projection groups by it rather
+ * than deriving it a second time where the two could disagree.
+ *
+ * Grouped like the prompts inventory, because the unit is the same shape: a
+ * name, and the recognitions that resolve it. The row states no winner for a
+ * name two files carry: the vendor's rule is the layer closest to the working
+ * directory, and this product observes no working directory (FR-009).
+ */
+function projectOutputStyleInventory(
+  recognitions: readonly ToolRecognition[],
+): OutputStyleInventoryEntryDto[] {
+  const byName = new Map<string, OutputStyleDefinitionDto[]>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'output style') {
+      continue;
+    }
+    const definitions = byName.get(recognition.details.styleName);
+    const definition: OutputStyleDefinitionDto = {
+      sourceRelativePath: recognition.sourceRelativePath,
+      tool: recognition.tool,
+      // The surfaces this one recognition's admissions rest on, derived the
+      // same way every other kind's row derives them (FR-009).
+      surfaces: surfacesOf(recognition),
+      diagnosticIds: recognition.diagnosticIds,
+    };
+    if (definitions === undefined) {
+      byName.set(recognition.details.styleName, [definition]);
     } else {
       definitions.push(definition);
     }
@@ -1059,6 +1324,35 @@ export class InspectionSession {
           diagnostics,
         };
       }
+      // A recognized output style: the file plus the same one parse, because
+      // an output style is frontmatter and the instructions below it. Decided
+      // after the command variant for the same reason that one comes after
+      // instructions — the order settles an overlap without changing what a
+      // reader sees, since every Markdown variant renders the same document
+      // and the same declarations.
+      //
+      // A loop rather than `find`, for the reason the branch above states.
+      for (const recognition of generation.recognitions) {
+        if (
+          recognition.sourceRelativePath !== sourceRelativePath ||
+          recognition.details.kind !== 'output style'
+        ) {
+          continue;
+        }
+        return {
+          kind: 'output style',
+          file,
+          // The same all-or-nothing rule as the skill variant (FR-028).
+          presentation:
+            recognition.parseStatus === 'parsed'
+              ? {
+                  frontmatter: recognition.details.frontmatter,
+                  bodyText: recognition.details.bodyText,
+                }
+              : null,
+          diagnostics,
+        };
+      }
       // A recognized custom-agent file: the file and the two halves its own
       // parse resolved. Decided after the three Markdown kinds, and the
       // overlap that order settles is shipped rather than hypothetical: a
@@ -1272,6 +1566,105 @@ export class InspectionSession {
   }
 
   /**
+   * One plugin carrier's detail for one plugin row (contracts/http-api.md
+   * § get-plugin-carrier-detail), or null when the committed generations hold
+   * no plugin recognition at the path.
+   *
+   * The shape follows the carrier the admitting rule decided this file is: a
+   * manifest serves its complete authored source and nothing read out of it,
+   * because the file is itself the customization, while a catalog serves the
+   * requested entry's declarations without its own bytes, because a page about
+   * one plugin must not put every other plugin the catalog lists on the screen
+   * (FR-007).
+   *
+   * A catalog offering also serves the plugin root manifests it reached, with
+   * their complete source. The inventory row lists the offering rather than its
+   * content, so no row publishes a path for that manifest and no other page
+   * would show it; the offering's own detail is where the plugin's definition
+   * is read. Only the requested row's manifests travel, which is why the plugin
+   * name is a parameter rather than something the page filters after the fact.
+   *
+   * One file can carry a plugin recognition per product — the catalog at
+   * `.claude-plugin/marketplace.json` is Codex's legacy-compatible location,
+   * where Claude documents a repository's own catalog, and the fourth form
+   * Copilot checks — and the page they all reach is one, because the plugin
+   * and the file are its identity and every product reads the same bytes
+   * (FR-030). The declarations are therefore the same for each of them except
+   * in one respect: which file inside a plugin root a client reads as that
+   * plugin's own declaration is each vendor's contract, so the manifest forms
+   * are taken across every recognition at the path rather than from whichever
+   * one this loop reached first. Without that union a root shipping only
+   * another product's form would be published as a plugin whose manifest this
+   * scan holds none of, while the plugin's own files list it.
+   */
+  public pluginCarrierDetail(params: PluginCarrierDetailParams): PluginCarrierDetailDto | null {
+    const generations = [
+      this.committedRepositoryGeneration,
+      ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
+    ];
+    for (const generation of generations) {
+      // A loop rather than `find`: the callback's narrowing would not reach
+      // here without a hand-authored predicate, which asserts the kind instead
+      // of proving it, while `continue` narrows `details` by the compiler's own
+      // control flow.
+      for (const recognition of generation.recognitions) {
+        if (
+          recognition.sourceRelativePath !== params.sourceRelativePath ||
+          recognition.details.kind !== 'plugin'
+        ) {
+          continue;
+        }
+        const file = generation.files.find(
+          (candidate) => candidate.sourceRelativePath === params.sourceRelativePath,
+        );
+        if (file === undefined) {
+          // A recognition exists only for a committed file, so the pair cannot
+          // separate within one generation; failing loudly beats serving a
+          // detail whose file facts this commit does not hold.
+          throw new Error('a plugin recognition names a file its generation does not hold');
+        }
+        const diagnostics = generation.diagnostics.filter((diagnostic) =>
+          file.diagnosticIds.includes(diagnostic.diagnosticId),
+        );
+        return recognition.details.carrier === 'manifest'
+          ? {
+              carrier: 'manifest',
+              file,
+              // The one declaration a manifest makes carries the root the
+              // rule resolved; an extraction that failed published none, and
+              // the file's own directory chain is not this projection's to
+              // guess at, so the carrier answers with no root rather than a
+              // guessed one (FR-028).
+              pluginRoot: recognition.details.plugins[0]?.pluginRoot ?? '',
+              diagnostics,
+            }
+          : {
+              carrier: 'catalog',
+              file: summarizeFile(file),
+              catalogFields: recognition.details.catalogFields,
+              // Null exactly for a failed extraction: nothing was parsed, so
+              // the entries are unknown rather than absent (FR-028).
+              plugins:
+                recognition.parseStatus === 'parsed'
+                  ? recognition.details.plugins
+                      .filter((plugin) => plugin.name === params.pluginName)
+                      .map((plugin) => ({
+                        ...plugin,
+                        manifestPaths: pluginManifestPathsAt(
+                          generation.recognitions,
+                          params.sourceRelativePath,
+                          plugin,
+                        ),
+                      }))
+                  : null,
+              diagnostics,
+            };
+      }
+    }
+    return null;
+  }
+
+  /**
    * Resolves one MCP carrier's declarations — the servers it declares and
    * its own content-free file facts, never its source text (FR-007;
    * contracts/http-api.md § get-mcp-carrier-detail). Only the explicit
@@ -1405,12 +1798,7 @@ export class InspectionSession {
           ...this.committedRepositoryGeneration.recognitions,
           ...(this.committedGlobalGeneration?.recognitions ?? []),
         ],
-        // Paths are unique per Source, and the shipped milestone has one
-        // Source; the Global tasks merge per-Source maps here.
-        new Map([
-          ...this.committedRepositoryGeneration.skillCompanionsByPath,
-          ...(this.committedGlobalGeneration?.skillCompanionsByPath ?? new Map()),
-        ]),
+        committedFiles,
       ),
       mcp: projectMcpInventory([
         ...this.committedRepositoryGeneration.recognitions,
@@ -1429,6 +1817,17 @@ export class InspectionSession {
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),
       permissions: projectPermissionsInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      plugins: projectPluginInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        committedFiles,
+      ),
+      outputStyles: projectOutputStyleInventory([
         ...this.committedRepositoryGeneration.recognitions,
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),
@@ -1703,7 +2102,6 @@ export class SessionCoordinator {
       /** The attempt's recognitions; published as constructed by the commit. */
       readonly recognitions: readonly ToolRecognition[];
       /** Each recognized skill entry point's census, keyed by its path. */
-      readonly skillCompanionsByPath: ReadonlyMap<string, readonly string[]>;
       readonly diagnostics: readonly SerializedDiagnostic[];
       /**
        * The attempt's closed publication outcome (FR-028): 'partial' exactly
@@ -1762,7 +2160,6 @@ export class SessionCoordinator {
       outcome: result.outcome,
       files: result.files,
       recognitions: result.recognitions,
-      skillCompanionsByPath: result.skillCompanionsByPath,
       diagnostics: result.diagnostics,
     });
     // Atomic replacement: commit the generation, then update overlays. The

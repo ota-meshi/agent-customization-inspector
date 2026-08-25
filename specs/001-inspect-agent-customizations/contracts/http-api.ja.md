@@ -56,7 +56,7 @@ customization-selected destination、別machineへの調査content送信は禁�
    integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
    closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/rules/**`、
    `/prompts-and-commands/**`、`/permissions/**`、`/agents/**`、
-   `/settings-and-configuration/**`、shipped kind
+   `/plugins/**`、`/output-styles/**`、`/settings-and-configuration/**`、shipped kind
    detailごとに1 family — だけである: これらのroute familyに入るpathの`GET`/`HEAD`を`/`へ
    書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
    linkにも、devframe自身のstatic handlerがpackaged shellをserveする。Rewriteはfilesystemに
@@ -81,12 +81,13 @@ customization-selected destination、別machineへの調査content送信は禁�
    content filterなしで表示または返却する。
 6. 各functionは宣言済みparameterだけをreadし、各functionの節がそのparameterと、
    不一致が生むrejectionを文書化する。宣言済みparameterの検証はresolutionであって、
-   その前に置くshape guardではない: 出荷済みcatalogが宣言するparameterの形は1つだけ —
+   その前に置くshape guardではない: detailのparameterはいずれもcommit済みgenerationに
+   対して解決されるpublished identityであってfilesystem operandではない —
    `get-file-detail`、`get-mcp-carrier-detail`、`get-permission-policy-detail`がそれぞれ
-   取るcommit済みSource-relative Path、すなわちcommit済みgenerationに対して解決される
-   published identityであって
-   filesystem operandではない — であり、invokeされたfunctionがそのresourceを保持しない
-   あらゆる値は、別の型の値も含めて、どこにも解決されず`stale-resource` rejectionになる。
+   取るcommit済みSource-relative Pathと、`get-plugin-carrier-detail`が取るpathとplugin名の
+   組（その答えはinventory row 1件のものである） — であり、invokeされたfunctionが
+   そのresourceを保持しないあらゆる値は、別の型の値も含めて、どこにも解決されず
+   `stale-resource` rejectionになる。
    Global functionのpreview、allowlist-version、consentの各parameterも同じ形で自身の
    文書化済みcodeを持つ。汎用のmalformed-argument語彙は存在しない。Resolutionが既に
    一致させ得ないshapeや、functionがreadしない余分なpositional argumentの拒否は、
@@ -102,6 +103,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
 | `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | Active-generationの`McpCarrierDetail` 1件: MCPを宣言する1 fileの宣言とfileの事実。sourceは決して含まない |
+| `agent-customization-inspector:get-plugin-carrier-detail` | read | inventory row 1件についてのActive-generationの`PluginCarrierDetail` 1件: carrierがmanifestなら完全なsource、catalogなら要求されたentryの宣言。catalog自身のbyteは決して含まない |
 | `agent-customization-inspector:get-permission-policy-detail` | read | Active-generationの`PermissionPolicyDetail` 1件: 宣言された1つのpermission policyを、document全体またはblockとして |
 | `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
 | `agent-customization-inspector:open-file` | command | Commit済みfile 1件をreader自身のmachine上のapplicationで開く |
@@ -306,6 +308,34 @@ SessionSnapshot
 │       宣言された permission policy 1つにつき1行。宣言する file の path で
 │       名指す。宣言しない carrier は残りを所有する kind として認識され、
 │       ここには row を持たない
+├── plugins[]
+│   └── name string または null、
+│       carriers[] { sourceRelativePath, tool, surfaces[], carrier, parseStatus,
+│       diagnosticIds[] }、files[] — plugin名ごとに1 row、名前順。各rowは、その名前を解決する
+│       全carrierをSource相対Path順、次にtool順で列挙する。1つのnull名rowが、名前を
+│       1つも解決しないcarrierとともにlistを閉じる。carrierがどの名前を解決するかは
+│       admitしたruleに属する。commandと同じである: Codexはcatalogの提供を
+│       `plugin@marketplace`としてaddressするため、2つのcatalogが提供する同じ名前は
+│       2 rowになる。
+│       `carrier`は`manifest`か`catalog`である: 製品が配置だけでpluginを読み込む
+│       ときのmanifestか、それを提供するentryを持つcatalogかである。Catalogがrowになることは無い — catalogはplugin名を出どころのsourceへ解決
+│       するものであり、それはcarrierだからである。`files[]`はpluginが同梱するfileで
+│       sort済みである: その提供が名指すplugin rootを丸ごと列挙したもので、pluginの
+│       manifestもその1つであり、このrowのcarrier自身であるmanifestも含む。それが
+│       置かれたfolderがそのpluginだからである。root配下でruleがそれ自体をadmitした
+│       fileもここに含まれ、かつ自身のrowを保つ。宣言とdiagnosticはそちらにある。
+│       2通りの道で辿り着く1つのdirectoryは、1つのdirectoryだからである。Rowはinstallation、
+│       enablement、trust、cachedコピーのいずれも述べない
+├── outputStyles[]
+│   └── name string,
+│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       読み手が選択するstyle名ごとに1 row、名前順。各rowは、認識toolがその名前で
+│       選択する全fileを、Source相対Path順、次にtool順で列挙する。どの名前かは
+│       fileをadmitしたruleに属する: Claude Codeはfrontmatterの`name`を取り、
+│       無ければ`.md`拡張子を除いたfile名へフォールバックする。authoredな空の名前も
+│       同じくフォールバックする。空にはならない。Rowはsame-name resolutionを
+│       述べない: 1つの名前を定義する2つのproject layerを、pageはこの製品が決して
+│       観測しないsession working directoryへの近さで解決するからである
 ├── settings[]
 │   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
 │       認識された settings または configuration file 1つにつき1行。この
@@ -563,7 +593,7 @@ Active-generation file detailを1件返す。fileをrecognitionが所有する�
 
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
-             'settings/config' | 'file'
+             'output style' | 'settings/config' | 'file'
 ├── kind 'instructions' — fileは認識されたinstruction file:
 │   ├── file — encodingで判別されるCustomizationFile 1件:
 │   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
@@ -599,6 +629,12 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   └── diagnostics[]
 ├── kind 'rule' — fileは認識されたrule file:
 │   ├── file — 上と同じ
+│   └── diagnostics[]
+├── kind 'output style' — fileは認識されたoutput styleである:
+│   ├── file — 上と同じ
+│   ├── presentation — instructions variantと同じ: 同一のscan時parseであり、
+│   │   失敗時のnull規則も同じ（FR-028）。frontmatterはstyleが宣言するもの、
+│   │   bodyはvendorがsystem promptへ追加するinstructionsである
 │   └── diagnostics[]
 ├── kind 'settings/config' — fileは認識されたsettingsまたはconfiguration file:
 │   ├── file — 上と同じ
@@ -837,6 +873,85 @@ recognitionを保持しない場合 — 一度もscanされていない、また
 別の型の値も同じ形で解決されるため、
 独立したmalformed-argument outcomeは存在しない — は`stale-resource` rejection。Disable
 fenceがnon-nullの間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:get-plugin-carrier-detail`
+
+Parameter: 宣言するfileのcommit済みSource相対Path — fileのidentityである（FR-030） — と、
+読み出すinventory rowのplugin名を持つobject 1件。名前を1つも解決しない宣言でlistを閉じるrowでは
+`pluginName`はnullである。
+
+```json
+{ "sourceRelativePath": ".agents/plugins/marketplace.json", "pluginName": "secret-keeper@inspector-legacy" }
+```
+
+名前はclientが返ってきた内容に適用するfilterではなくparameterである。答えがrow 1件のものだから
+である: そうでなければ、多数のpluginをofferするcatalogは他の全pluginの宣言を、そのうち1件に
+ついてのpageへ送ることになる。したがって1つのcatalogの2つのplugin間を移動することは、2つの
+file間を移動するのとまったく同じく、それ自体が1つのrequestである。
+
+Active-generationのplugin carrier detailを1件返す。判別はそのfileが宣言するpluginに対して
+何であるかによる。2つのcarrier種別は異なる答えを返す。これが`FileDetail`のvariantでは
+なくこのfunction自身のresultである理由である: manifestはそれ自体がcustomizationであり — file全体で
+1つのpluginを宣言する — したがってその完全なauthored sourceをserveし、そこから読み出したものは
+何も伴わない（FR-007、FR-025）。manifestはstrict JSONであり、parseしたkey listは同じdocumentの
+2度目の提示にしかならないからである。一方catalogは多数のplugin名をその出どころのsourceへ解決する
+ため、要求されたentryの宣言をserveし、`sourceText` fieldをそもそも持たない。Fieldはshapeから欠けているのであり、surfaceが描画を拒む値ではない。
+Catalogのbyteを、そのpluginの1つについてのpageで見せることは、そこに列挙された他の全pluginも
+その画面に載せることになる。MCP carrierのdetailが自身のbyteを控えるのと同じ理由である。
+
+```text
+PluginCarrierDetail — carrier: 'manifest' | 'catalog'
+├── carrier 'manifest' — fileは、それが置かれたfolderをpluginにするmanifestで
+│   あり、配置だけでpluginを読み込む製品が読むものである:
+│   ├── file — 完全なauthored sourceを持つCustomizationFile 1件。
+│   │   encodingによる判別は`get-file-detail`と同じ
+│   ├── pluginRoot — このmanifestが置かれていることでpluginになるSource相対
+│   │   directory。末尾のslashを含む。admitしたruleが解決しなかった場合のみ
+│   │   空になるが、shipされているruleにそれは起きない
+│   └── diagnostics[] — parseできなかったmanifestはここで述べられる。
+│       欠落しうるparsed key list自体が存在しないからである（FR-028）
+└── carrier 'catalog' — fileはpluginを列挙するcatalogである:
+    ├── file — carrierのcontent-free summary。encodingで判別される:
+    │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+    │   ├── readable textはhadLeadingBomとsizeBytesを加える — sourceTextは決して含まない
+    │   └── binaryはsizeBytesを加える。unknownはそれ以上何も加えない
+    ├── catalogFields[] { key, keyKind, value } — catalogが自身について宣言する
+    │   もの。`plugins`配列は決して含まない。失敗したextractionでは空
+    ├── plugins[] — 要求されたrowの宣言。parserが解決した順。catalogがその名前を
+    │   どこでもofferしなければ空。失敗したextractionではnull
+    └── diagnostics[]
+```
+
+各catalog entryは`name` — それが解決するplugin名、宣言しなければnull — 、
+`fields[] { key, keyKind, value }`（そのpluginについてfileが書いた全key。
+`presentation.frontmatter`と同じentry shape）、そしてadmitした各ruleがそのentryの宣言済み
+sourceから答えるものである: `pluginRoot`はそのpluginのfileが占めるSource相対directoryで、
+sourceがここのdirectoryをまったく名指さない場合 — git、npm、絶対path、home、rootを出る
+source — はnullになる。`manifestPaths[]`はそのroot内で、clientがpluginの自己宣言として読む
+fileであり、順序付きで重複は無く、そうしたsourceでは空になる。形式は1製品のものではなく認識する
+全製品のものである: rootのどのfileがpluginの自己宣言かは各vendorのcontractであり、3製品が読む
+1つのcatalogは1つのpluginを1つのrootへ解決しつつ、そこで探す形式のlistを3つ持つ。1製品分の
+listだけを渡されたsurfaceは、pluginのfileとしてそのmanifestを列挙しながら、このscanは
+そのpluginのmanifestを持たないと述べてしまう。いずれもdisk上を探らない: entryが宣言した内容を
+vendorのcontractに従って読んだものであり、このrepositoryが持たないrootも、manifestを同梱しない
+rootも、generationがfileを持たないpathを名指す。fileが実在するかは`files[]`が述べ、これらのpathを
+開くsurfaceはcommitが持つものだけを残す。これらが、surfaceにentryではなく
+pluginを見せることを可能にする: pluginがどのfileを同梱し、そのどれが自身のmanifestかは、
+どのclientもpathから導けない知識だからである。どちらの形のmanifestもそのようなparseを
+持たない。理由は同じで、responseが運ぶのはfile自体である。このtreeがresponse shapeであり、clientは
+これらのfieldだけに依存でき、それ以外は無い。各値はfileのliteralである: credentialは書かれた
+文字のまま、environment referenceは決して解決されず（FR-026）、manifestが指すcomponent —
+bundled skill、`.mcp.json`、`.app.json`、hook file、asset — はここでは宣言された値であり、
+決して開かれない（`codex.excluded.plugin-files`）。Responseはpluginがinstall済み、有効、
+trusted、loadedであるとは何も述べない: 4つとも本製品が決して読まないUser stateである（FR-009）。
+Inert rendering、single request、request tokenの規則は`get-file-detail`と同じであり、
+`(clientDataEpoch, sourceRelativePath)`のcaptureも同じである。
+
+Outcome: `PluginCarrierDetail` result — parse済みで要求された名前を何もofferしないcatalogは
+`plugins`が空のresultであってrejectionではない。現在のcommit済みgenerationがそのpathにplugin recognitionを
+持たない場合は`stale-resource` rejection — 一度もscanされていないか、後のcommitで削除されたか
+である。別の型の値も同じく解決されるため、malformed-argumentの独立したoutcomeは存在しない。
+Disable fenceがnon-nullの間は`global-disable-pending` conflict rejectionである。
 
 ### `agent-customization-inspector:get-permission-policy-detail`
 
@@ -1418,6 +1533,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    （`/skills/<Source相対パス>`、`/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、
    `/rules/<Source相対パス>`、`/prompts-and-commands/<Source相対パス>`、
    `/permissions/<Source相対パス>`、`/agents/<Source相対パス>`、
+   `/plugins/<Source相対パス>`、`/output-styles/<Source相対パス>`、
    `/settings-and-configuration/<Source相対パス>`）のclient routeがすべて同じpackaged SPA
    shellをbootし、
    そのshellはsession dataをembedしない。

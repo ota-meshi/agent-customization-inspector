@@ -201,13 +201,31 @@ Whether a census applies follows from the recognized kind, not from a separate d
 on a rule. Being a directory is part of what a kind *is*, so every rule that admits that kind
 wants the census and a per-rule flag would state twice what one of them already decides.
 
-The census result is the list of Source-relative Paths, sorted, not a count of them. Each
-path is the exact raw entry names joined with `/`, like every published path: the
-filesystem holds one entry per name, so every listed path is unambiguous, and two raw
-spellings that would render alike are two real files listed apart. The
-inventory row states how many files there are and the file detail view names each one;
-deriving the number from the list keeps a single fact, where publishing both would be two
-states that can disagree.
+The same enumeration serves a customization whose files sit somewhere a candidate's own
+directory does not reach. A plugin is its root — the skills, hooks, MCP files, and assets it
+ships are what an agent is given — and that root is named by a catalog entry rather than
+matched by a selector, so the rule that admitted the catalog is what says where each plugin
+it declares sits: it validates the entry's declared source against its vendor's documented
+local form and answers an ordinary Source-relative directory, or nothing at all for a source
+this Source does not hold. No file of that root becomes a candidate: it acquires no rule, no recognition, no kind, and no inventory row of its own,
+exactly as a census-listed file does.
+
+A census that ran and found nothing is a different answer from no census at all, and the two
+are reported apart: the first is a directory-shaped customization whose directory holds only
+its entry point, which its row states as zero accompanying files, and the second is a
+candidate that is no directory's entry point, which no row states. What a recognition carries
+is the directory itself rather than a listing of it: which directories a customization
+occupies is a fact about that customization, and one directory is enumerated once however
+many products recognize its entry point.
+
+The census result is the files themselves, published as ordinary files of the generation at
+their Source-relative Paths, not a count of them. Each path is the exact raw entry names
+joined with `/`, like every published path: the filesystem holds one entry per name, so
+every listed path is unambiguous, and two raw spellings that would render alike are two real
+files listed apart. A customization's own file list is derived from those published paths
+wherever it is shown: the inventory row states how many files there are and the file detail
+view names each one, and deriving both from what the generation published keeps a single
+fact, where publishing a list beside it would be two states that can disagree.
 
 The census reads what it lists. A directory-shaped customization is its entry point plus the
 files beside it, and a tool that showed the entry point while withholding the files it ships
@@ -226,8 +244,8 @@ show a skill missing a file its own directory has.
 
 A census is still enumeration, never admission. A file it lists acquires no rule, no
 recognition, no kind, and no inventory row of its own: it is part of the customization whose
-directory holds it, and that customization already has a row. A census widens no walk: it descends only inside the
-admitted candidate's own directory, so no path outside it is ever enumerated, and an entry
+directory holds it, and that customization already has a row. A census widens no walk: it
+descends only inside the directory it was given, so no path outside it is ever enumerated, and an entry
 it does list is read the way every other file is — through the platform's transparent
 symbolic-link resolution, because that is what an agent reading that directory would get.
 Appearing in a census is not evidence that the vendor loads the file, and a relationship target is still never read through its edge —
@@ -237,19 +255,38 @@ that already bounds it.
 A census is not part of the allowlist walk. The traversal executes the shipped selector
 programs and answers which files may be read; a census answers what else sits in a
 customization's own directory, which no selector expresses and only a kind that has one
-wants. It therefore runs over the candidates the traversal already admitted, rooted only at
-an admitted candidate's own directory: there is no arbitrary path. It runs in the recognizer,
-from the recognized kind and the candidate's own path — both of which recognition already
-holds — so no earlier phase has to know which kinds want a census.
+wants. It therefore runs over the candidates the traversal already admitted, rooted only at a
+directory one of them named: there is no arbitrary path. Recognition is what names those
+directories, because it holds the recognized kind, the candidate's own path, and — for a
+catalog — the vendor rule that can validate a declared source; the scan then enumerates the
+set of named directories once each, so a directory two candidates name is walked once.
 
 A census therefore runs for every recognition of a kind that has one, and its result is
-published once, on the inventory definition that recognition backs (contracts/http-api.md
-`skills[].definitions[].companionFiles`) — a second spelling on the recognition could
-disagree with it. The list is empty, never absent, when the admitted file sits alone: there
-is no "no census ran" state to tell apart from "nothing accompanies it". It excludes the seed
-itself and VCS internals, and it follows symbolic links under the same real-path cycle rules
-as the ordinary traversal, so a link back into the subtree terminates rather than being
-walked forever.
+published once, as the ordinary files of the generation; the list an inventory definition
+shows (contracts/http-api.md `skills[].definitions[].companionFiles`) is derived from those
+paths where it is shown, so there is no second spelling of it to disagree. The list is empty,
+never absent, when the admitted file sits alone: there is no "no census ran" state to tell
+apart from "nothing accompanies it". A file a recognition established a kind for is a customization
+of its own rather than one of the files *accompanying* another, so it is never published a
+second time as a companion, whatever directory holds it. That turns on the recognition
+rather than the admission: a file a rule admitted whose kind this scan could not
+establish — its bytes unreadable, its text unparsable — is listed with the customization
+whose directory holds it, where its read outcome is stated beside the files it sits among,
+rather than standing alone as a file in no kind.
+
+A customization that *is* a directory is the other case, and it keeps every file in that
+directory. A plugin is its root: the manifest that makes the folder a plugin is one of the
+files the plugin ships as well as the file that declares it, and a file there that another
+rule admitted is one of them too while keeping its own row. Excluding it would publish a
+plugin whose own page is missing a file its root holds — a catalog offering a root that is
+itself a plugin by placement would be shown as having no manifest while that manifest is a
+row of its own. One directory reached two ways is one directory, and each row shows what it
+is about. VCS internals and installed-package directories are not
+enumerated — the census root is held to that rule as well as its descent, because a root a
+declaration names is the one a walk could never have arrived at, and a catalog entry may
+spell `./.git` or `./node_modules/pkg` as easily as any other directory. Symbolic links are
+followed under the same real-path cycle rules as the ordinary traversal, so a link back
+into the subtree terminates rather than being walked forever.
 
 Descent is contained twice. A census enters a directory only when that directory's real path
 is inside the census root, and the census root itself counts only when its own real path is
@@ -267,7 +304,9 @@ directory and an agent reading it would resolve the link too.
 An enumeration failure is not confined to one file and propagates, exactly as it does in the
 ordinary walk. The empty list states that the admitted file sits alone, so returning it for a
 permission or I/O error would publish a fact about the directory on the strength of not
-having read it.
+having read it. A directory that is not there is a different answer from one that could not
+be read: a catalog may offer a plugin whose root this Source does not carry, and that
+offering stands with no files of its own rather than failing the scan.
 
 ### Global selector requirements
 

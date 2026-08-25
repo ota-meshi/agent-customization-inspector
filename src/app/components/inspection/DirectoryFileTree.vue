@@ -7,9 +7,9 @@
 // lets the reader move between its files, rather than showing the entry point
 // and naming the rest.
 //
-// The tree is built from paths the snapshot already publishes — the definition's
-// own path and its census (`companionFiles`) — so it needs no new wire shape and
-// cannot show a file the scan did not read. A path with no committed file is
+// The tree is built from paths the snapshot already publishes — a skill
+// definition's own path and its `companionFiles`, or a plugin row's `files` —
+// so it needs no new wire shape and cannot show a file the scan did not read. A path with no committed file is
 // simply absent: every file in the tree is one the current generation holds, so
 // selecting any of them resolves.
 //
@@ -18,11 +18,17 @@
 // surface's own file switchers — reached from the detail page's link beside
 // the definition line — are where a pair is composed and switched.
 //
+// A skill is the clearest case and the one this file's examples name, but the
+// component is any directory-shaped customization's: a plugin root carries the
+// skills, hooks, MCP files, and assets the plugin ships, and its detail draws
+// the same tree.
+//
 // This component owns the landmark and the scroll box; the nesting is drawn by
 // the branch below it, which is recursive because the structure is.
 import { computed } from 'vue';
-import SkillFileTreeBranch from './SkillFileTreeBranch.vue';
-import { buildSkillTree } from './skill-file-tree-nodes';
+import type { RouteLocationRaw } from 'vue-router';
+import DirectoryFileTreeBranch from './DirectoryFileTreeBranch.vue';
+import { buildDirectoryTree } from './directory-file-tree-nodes';
 
 const props = defineProps<{
   /**
@@ -35,15 +41,25 @@ const props = defineProps<{
   readonly selectedPath: string;
   /** The directory prefix the tree is rooted at, stripped from every label. */
   readonly directory: string;
+  /**
+   * The landmark's accessible name, which says whose files these are — "Files
+   * in this skill", "Files in this plugin". A prop rather than fixed copy
+   * because the component draws any directory-shaped customization's
+   * directory, and a reader moving between landmarks hears which one they are
+   * in (WCAG 2.4.1).
+   */
+  readonly label: string;
+  /** The route one of these files opens at; see the branch's own prop. */
+  readonly routeFor: (sourceRelativePath: string) => RouteLocationRaw;
 }>();
 
 /** The tree's own nodes, derived from the paths the snapshot published. */
-const nodes = computed(() => buildSkillTree(props.files, props.directory));
+const nodes = computed(() => buildDirectoryTree(props.files, props.directory));
 </script>
 
 <template>
-  <nav class="aci-skill-file-tree" aria-label="Files in this skill">
-    <SkillFileTreeBranch :nodes="nodes" :selected-path="selectedPath" />
+  <nav class="aci-directory-file-tree" :aria-label="label">
+    <DirectoryFileTreeBranch :nodes="nodes" :selected-path="selectedPath" :route-for="routeFor" />
   </nav>
 </template>
 
@@ -52,7 +68,7 @@ const nodes = computed(() => buildSkillTree(props.files, props.directory));
    would otherwise push its own contents off the screen, and the cap keeps the
    two columns beside each other. Below the cap it is its natural height, so a
    three-file skill shows three files and no empty scroller. */
-.aci-skill-file-tree {
+.aci-directory-file-tree {
   max-height: 24rem;
   overflow-y: auto;
 }

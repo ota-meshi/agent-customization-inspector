@@ -234,11 +234,16 @@ button[aria-disabled='true'] {
   color: var(--aci-muted);
 }
 
-/* Customization-kind tabs. Colors come from the same system-color tokens as the
-   rest of the shell, so the strip follows the OS light/dark scheme instead of
-   pinning one palette. The selected tab is marked by weight and a border as
-   well as color, so it survives a monochrome or forced-colors rendering
-   (WCAG 2.2 AA, QR-004). */
+/* Detail tabs: the two or three halves a detail page shows one at a time.
+   Colors come from the same system-color tokens as the rest of the shell, so
+   the strip follows the OS light/dark scheme instead of pinning one palette.
+   The selected tab is marked by weight and a border as well as color, so it
+   survives a monochrome or forced-colors rendering (WCAG 2.2 AA, QR-004).
+
+   A detail page's tabs are a fixed handful named by its own module, so the
+   strip is a row that fits. The inventory's kinds are not: that list is the
+   closed customization catalog, which outgrew a row and is a rail of its own
+   (`InventoryKindTabs.vue`). */
 .aci-kind-tabs {
   display: flex;
   flex-wrap: wrap;

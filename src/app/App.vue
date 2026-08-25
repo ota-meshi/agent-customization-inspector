@@ -115,9 +115,13 @@ const routeTitle = computed(() =>
               ? CUSTOMIZATION_KIND_TEXT.rule
               : route.path.startsWith('/permissions')
                 ? CUSTOMIZATION_KIND_TEXT.permissions
-                : route.path.startsWith('/settings-and-configuration')
-                  ? CUSTOMIZATION_KIND_TEXT['settings/config']
-                  : 'Inspection',
+                : route.path.startsWith('/plugins')
+                  ? CUSTOMIZATION_KIND_TEXT.plugin
+                  : route.path.startsWith('/output-styles')
+                    ? CUSTOMIZATION_KIND_TEXT['output style']
+                    : route.path.startsWith('/settings-and-configuration')
+                      ? CUSTOMIZATION_KIND_TEXT['settings/config']
+                      : 'Inspection',
 );
 
 const startupErrorMessage = shallowRef<string | null>(null);

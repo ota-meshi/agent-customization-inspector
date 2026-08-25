@@ -282,6 +282,50 @@ export const CODEX_SKILLS_DISCOVERY_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Codex plugin activation: which plugins a client can offer, and which of them
+ * is actually live.
+ *
+ * `filter` then `select-first`, because the documented path has two steps of
+ * that shape. A client discovers the catalogs it reads — the two exact
+ * repository locations and the user's personal one — and keeps the entries
+ * they expose; then a plugin root is established through the entry or the
+ * installed copy, and the required `.codex-plugin/plugin.json` at that root is
+ * the manifest the client takes. Codex skips an entry whose source it cannot
+ * resolve rather than failing the whole catalog, which is the filter's other
+ * half.
+ *
+ * What the strategy deliberately does not compose is a winner. Installation,
+ * enablement, trust, and the cached copy are four separate states — a plugin is
+ * installed into the Codex plugin cache and loaded from there, and its on/off
+ * value lives in the User configuration — so an inventory row states the
+ * authored catalog and manifest facts and never that a plugin is available
+ * (FR-009). Local activation is also never projected onto hosted ChatGPT Work,
+ * which reads no local file (contracts/runtime-composition.md
+ * § codex.plugins.activation).
+ */
+export const CODEX_PLUGINS_ACTIVATION_STRATEGY = {
+  strategyId: 'codex.plugins.activation',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  operations: ['filter', 'select-first'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.plugins',
+          url: 'https://developers.openai.com/plugins/build/plugins.md',
+          officialHost: 'developers.openai.com',
+          sections: ['How local marketplaces work', 'Marketplace metadata', 'Plugin structure'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            "The ChatGPT desktop app reads the repo, legacy-compatible, and personal catalogs, Codex skips an entry whose source it cannot resolve instead of failing the catalog, ChatGPT installs a plugin into ~/.codex/plugins/cache and loads the installed copy from there rather than from the entry, ChatGPT stores each plugin's on or off state in ~/.codex/config.toml, and every plugin requires the .codex-plugin/plugin.json manifest at the plugin root it establishes.",
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Codex's contribution to the strategy registry, keyed by `strategyId` in identifier order. */
 export const CODEX_COMPOSITION_STRATEGIES: Readonly<
   Record<CodexStrategyId, RuntimeCompositionStrategy>
@@ -290,6 +334,7 @@ export const CODEX_COMPOSITION_STRATEGIES: Readonly<
   [CODEX_CONFIG_PRECEDENCE_STRATEGY.strategyId]: CODEX_CONFIG_PRECEDENCE_STRATEGY,
   [CODEX_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   [CODEX_MCP_CONFIGURATION_STRATEGY.strategyId]: CODEX_MCP_CONFIGURATION_STRATEGY,
+  [CODEX_PLUGINS_ACTIVATION_STRATEGY.strategyId]: CODEX_PLUGINS_ACTIVATION_STRATEGY,
   [CODEX_RULES_RESOLUTION_STRATEGY.strategyId]: CODEX_RULES_RESOLUTION_STRATEGY,
   [CODEX_SKILLS_DISCOVERY_STRATEGY.strategyId]: CODEX_SKILLS_DISCOVERY_STRATEGY,
 };

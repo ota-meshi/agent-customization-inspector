@@ -37,6 +37,10 @@ const claudeRulesRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.rules',
 );
 
+const claudeOutputStyleRule = CLAUDE_REPOSITORY_RULES.find(
+  (compiled) => compiled.rule.ruleId === 'claude.repo.output-style',
+)!;
+
 const claudeCommandRule = CLAUDE_REPOSITORY_RULES.find(
   (compiled) => compiled.rule.ruleId === 'claude.repo.command',
 );
@@ -426,6 +430,157 @@ describe('Claude skill declared name', () => {
       expect(provenance!.discoveryClass).toBe('static-candidate');
       expect(provenance!.matchedPath).toBe(matchedPath);
     }
+  });
+});
+
+describe('Claude output-style reading (T667)', () => {
+  /** Recognizes one authored output style at a `.claude/output-styles/` path. */
+  async function recognizeStyle(
+    sourceText: string,
+    matchedPath = '.claude/output-styles/diagrams.md',
+  ): Promise<ToolRecognition> {
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [
+          { compiled: claudeOutputStyleRule, origin: { planIndex: 0, selectorIndex: 0 } },
+        ],
+        sourceText,
+      },
+      ['claude'],
+    );
+    const [recognition] = recognitions;
+    if (recognition === undefined) {
+      throw new Error('expected one Claude output-style recognition');
+    }
+    return recognition;
+  }
+
+  it('publishes the declarations and the instructions apart', async () => {
+    // The detail surface is built from this: the keys the file declares, in
+    // authored order, and the body with its frontmatter block removed. The
+    // split is the parser's, so the two never overlap and nothing is invented.
+    const recognition = await recognizeStyle(
+      [
+        '---',
+        'name: Diagrams first',
+        'description: Lead every explanation with a diagram',
+        'keep-coding-instructions: true',
+        '---',
+        '',
+        '# Diagrams',
+        '',
+      ].join('\n'),
+    );
+    if (recognition.details.kind !== 'output style') {
+      throw new Error('expected an output-style recognition');
+    }
+    expect(recognition.parseStatus).toBe('parsed');
+    expect(recognition.details.frontmatter.map((entry) => entry.key)).toEqual([
+      'name',
+      'description',
+      'keep-coding-instructions',
+    ]);
+    expect(recognition.details.bodyText).toBe('\n# Diagrams\n');
+    expect(recognition.details.bodyText).not.toContain('name: Diagrams first');
+    // Nothing the file did not write: the recognition carries no copy of the
+    // complete source, which the detail response serves once as `sourceText`.
+    expect(JSON.stringify(recognition)).not.toContain('sourceText');
+  });
+
+  it('names the style by its declared name, and by its file name otherwise', async () => {
+    const declared = await recognizeStyle(
+      ['---', 'name: Diagrams first', '---', '', 'Body.', ''].join('\n'),
+    );
+    expect(declared.details.kind === 'output style' && declared.details.styleName).toBe(
+      'Diagrams first',
+    );
+    // The vendor's documented fallback: "the file name becomes the style name
+    // unless you set `name` in the frontmatter".
+    for (const source of ['', '# no frontmatter\n', '---\ndescription: x\n---\n']) {
+      const fallback = await recognizeStyle(source, '.claude/output-styles/code-review.md');
+      expect(fallback.details.kind === 'output style' && fallback.details.styleName).toBe(
+        'code-review',
+      );
+    }
+  });
+
+  it('names a file that is all extension by its own entry name', async () => {
+    // `.claude/output-styles/.md` is admitted — the selector's terminal step
+    // matches the extension, and this entry name ends with it — and stripping
+    // the extension leaves nothing to fall back to. The name is then the entry
+    // name as written, because a style name is never empty (api-types.ts
+    // § OutputStyleInventoryEntryDto) and the vendor's rule is the file name.
+    const recognition = await recognizeStyle('Body.\n', '.claude/output-styles/.md');
+    expect(recognition.details.kind === 'output style' && recognition.details.styleName).toBe(
+      '.md',
+    );
+  });
+
+  it('falls back for a declared empty name, which a picker cannot show', async () => {
+    const recognition = await recognizeStyle(
+      ['---', 'name: ""', '---', '', 'Body.', ''].join('\n'),
+      '.claude/output-styles/unnamed.md',
+    );
+    expect(recognition.details.kind === 'output style' && recognition.details.styleName).toBe(
+      'unnamed',
+    );
+  });
+
+  it('names a style only from a scalar, never from the first item of a list', async () => {
+    // `name: [a, b]` is nothing a picker could show a style by, so the file
+    // name stands — taking `a` would name it after an item the file never
+    // wrote as a name.
+    const recognition = await recognizeStyle(
+      '---\nname: [a, b]\n---\n',
+      '.claude/output-styles/listed.md',
+    );
+    if (recognition.details.kind !== 'output style') {
+      throw new Error('expected an output-style recognition');
+    }
+    expect(recognition.details.styleName).toBe('listed');
+    expect(recognition.details.frontmatter.map((entry) => entry.key)).toEqual(['name']);
+  });
+
+  it('fails the whole recognition without guessing a name', async () => {
+    const recognition = await recognizeStyle(
+      '---\nname: [unterminated\n---\n',
+      '.claude/output-styles/broken.md',
+    );
+    expect(recognition.parseStatus).toBe('failed');
+    if (recognition.details.kind !== 'output style') {
+      throw new Error('expected an output-style recognition');
+    }
+    // The name is the path's own fact, so it stands whether or not the
+    // frontmatter parsed (FR-028).
+    expect(recognition.details.styleName).toBe('broken');
+    // All-or-nothing: no partial declarations and no instructions either.
+    expect(recognition.details.frontmatter).toEqual([]);
+    expect(recognition.details.bodyText).toBe('');
+  });
+
+  it('resolves no environment reference the declarations contain', async () => {
+    // The literal is published as written; nothing looks up `HOME` or `TOKEN`,
+    // so no process value can reach a response (FR-026).
+    const recognition = await recognizeStyle(
+      '---\nname: "$HOME/${TOKEN}"\n---\n',
+      '.claude/output-styles/env.md',
+    );
+    expect(recognition.details.kind === 'output style' && recognition.details.styleName).toBe(
+      '$HOME/${TOKEN}',
+    );
+    expect(JSON.stringify(recognition)).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+
+  it('records the admitting rule and the path it matched on every provenance', async () => {
+    const recognition = await recognizeStyle('---\nname: Diagrams first\n---\n');
+    expect(recognition.provenances).toHaveLength(1);
+    const [provenance] = recognition.provenances;
+    expect(provenance!.ruleId).toBe('claude.repo.output-style');
+    expect(provenance!.discoveryClass).toBe('static-candidate');
+    expect(provenance!.matchedPath).toBe('.claude/output-styles/diagrams.md');
   });
 });
 

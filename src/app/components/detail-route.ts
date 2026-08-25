@@ -8,23 +8,26 @@
 // that matters, because an authored entry name must not be able to smuggle a
 // separator or a query into the URL.
 //
-// The one kind whose detail carries a second coordinate keeps its own module
-// for that coordinate alone and builds on these: an MCP declaration's route
-// names the declared server (`mcp-detail-route.ts`).
+// A detail whose subject is not the file alone carries a second coordinate in
+// the query. The file a reader selected inside a directory-shaped
+// customization is one of them and lives here, because two kinds share it; a
+// coordinate one kind has keeps its own module and builds on these — an MCP
+// declaration's route names the declared server (`mcp-detail-route.ts`), and a
+// plugin carrier's names the row (`plugin-detail-route.ts`).
 import type { CustomizationKind } from '../../shared/entities';
 
 /**
- * The kinds whose detail is addressed by a Source-relative Path alone. A kind
- * is here exactly when no further fact splits its detail: an instruction file,
- * a rule file, a prompt or command file, and a custom-agent file each have one
- * page however many products recognize them, a permission policy is addressed
- * by the path of the file that declares it — the identity its inventory row is
- * named by — an MCP carrier's own page is the carrier's, and a settings or
- * configuration file's page is that file's, its row unit being the file. A
- * skill is here too: its row unit is one invocation name, and two products
- * that invoke one `SKILL.md` differently put it on two rows, but both read the
- * same bytes, the same frontmatter, and the same companion directory, so the
- * page is the file's and the names are what the page states (FR-007).
+ * The kinds whose detail is rooted at a Source-relative Path. A kind is here
+ * exactly when one file names the subject: an instruction file, a rule file, a
+ * prompt or command file, and a custom-agent file each have one page however
+ * many products recognize them, a permission policy is addressed by the path
+ * of the file that declares it — the identity its inventory row is named by —
+ * an MCP carrier's own page is the carrier's, and a settings or configuration
+ * file's page is that file's, its row unit being the file. A skill is here
+ * too: its row unit is one invocation name, and two products that invoke one
+ * `SKILL.md` differently put it on two rows, but both read the same bytes, the
+ * same frontmatter, and the same companion directory, so the page is the
+ * `SKILL.md`'s and the names are what the page states (FR-007).
  */
 export type PathAddressedDetailKind = Extract<
   CustomizationKind,
@@ -35,6 +38,8 @@ export type PathAddressedDetailKind = Extract<
   | 'prompt/command'
   | 'rule'
   | 'permissions'
+  | 'plugin'
+  | 'output style'
   | 'settings/config'
 >;
 
@@ -46,9 +51,9 @@ const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = 
   /** Instruction files live under `/instructions/`. */
   instructions: 'instructions',
   /**
-   * Skills live under `/skills/`, addressed by the file's path — the
-   * `SKILL.md` or one of the companions its census lists, since the page shows
-   * the whole directory and lets the reader move between its files.
+   * Skills live under `/skills/`, addressed by the `SKILL.md`'s own path: the
+   * skill is the page's subject, and the file a reader selects inside its
+   * directory is the query coordinate {@link selectedFileQuery} adds.
    */
   skill: 'skills',
   /** MCP carriers live under `/mcp/`. */
@@ -71,6 +76,10 @@ const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = 
   rule: 'rules',
   /** Declared permission policies live under `/permissions/`. */
   permissions: 'permissions',
+  /** Plugin carriers live under `/plugins/`. */
+  plugin: 'plugins',
+  /** Output styles live under `/output-styles/`. */
+  'output style': 'output-styles',
   /**
    * Settings and configuration files live under `/settings-and-configuration/`.
    * The segment spells the kind out rather than taking the shorter half of it,
@@ -147,4 +156,39 @@ export function decodeDetailRoutePath(segments: readonly string[]): string {
  */
 export function detailRoute(kind: PathAddressedDetailKind, sourceRelativePath: string): string {
   return `/${DETAIL_ROUTE_SEGMENT[kind]}/${encodeDetailRoutePath(sourceRelativePath)}`;
+}
+
+/**
+ * The `file` query one directory-shaped customization's detail route carries,
+ * as the router's own query record, or no query at all for the selection the
+ * page opens on by itself.
+ *
+ * A second coordinate rather than a second address: a skill's scripts and a
+ * plugin's assets are files *of* one customization, so the page's subject —
+ * and therefore its path — stays that customization however many of its files
+ * a reader steps through. Addressing them by path instead put one skill's
+ * directory under as many URLs as it holds files, each of which had to work
+ * out which customization it belonged to before it could say anything about
+ * it.
+ *
+ * A record for the router to encode and join, never a string this module
+ * concatenates: `?` and `&` are the router's to place. The path still passes
+ * through {@link toJsonStringBody} first, for the reason a plugin name does
+ * (`plugin-detail-route.ts`): it is authored text that may not be well-formed
+ * UTF-16, which the router's `encodeURIComponent` throws on.
+ */
+export function selectedFileQuery(
+  sourceRelativePath: string | null,
+): Readonly<Record<string, string>> {
+  return sourceRelativePath === null ? {} : { file: toJsonStringBody(sourceRelativePath) };
+}
+
+/**
+ * The Source-relative Path a detail route's `file` query names, or null when
+ * it names none — an absent query, and the repeated one the router hands over
+ * as an array, which no link this product builds produces and which names no
+ * single file.
+ */
+export function selectedFileOf(parameter: unknown): string | null {
+  return typeof parameter === 'string' ? fromJsonStringBody(parameter) : null;
 }

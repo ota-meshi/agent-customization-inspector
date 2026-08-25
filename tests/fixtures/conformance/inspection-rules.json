@@ -1,5 +1,27 @@
 [
   {
+    "ruleId": "claude.excluded.plugin-files",
+    "tool": "claude",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["File locations reference", "Plugin manifest schema"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A plugin's components sit at default locations under its root — skills/, commands/, agents/, workflows/, output-styles/, hooks/hooks.json, .mcp.json, .lsp.json, bin/, settings.json — and the manifest's component path fields may redirect any of them, so every component this rule excludes is reached through a declaration or a default rather than through a documented Repository location of its own."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.agent",
     "tool": "claude",
     "discoveryClass": "static-candidate",
@@ -160,6 +182,44 @@
     ]
   },
   {
+    "ruleId": "claude.repo.marketplace",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "plugin",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude-plugin"
+          },
+          {
+            "kind": "literal",
+            "value": "marketplace.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.marketplaces.catalog-sources",
+        "url": "https://code.claude.com/docs/en/plugin-marketplaces",
+        "officialHost": "code.claude.com",
+        "sections": ["Create the marketplace file", "Plugin sources"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A repository defines its marketplace in .claude-plugin/marketplace.json in its root — the exact location this rule admits — listing a name, owner information, and plugin entries that each carry a name and the source the plugin is fetched from, where a ./ source names a plugin in the same repository resolved against the marketplace root."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.mcp",
     "tool": "claude",
     "discoveryClass": "static-candidate",
@@ -190,6 +250,48 @@
         "sections": ["MCP installation scopes"],
         "reviewedOn": "2026-08-20",
         "establishes": "The project MCP scope is one .mcp.json file at the project root, which is why this rule admits exactly that path at the selected root and nothing below it."
+      }
+    ]
+  },
+  {
+    "ruleId": "claude.repo.output-style",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "output style",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "output-styles"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.md$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.output-styles.locations",
+        "url": "https://code.claude.com/docs/en/output-styles",
+        "officialHost": "code.claude.com",
+        "sections": ["Create a custom output style"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "A project output style is a Markdown file saved directly in .claude/output-styles, whose file name is the style name unless the frontmatter sets name — the exact location and identity this rule admits. The User-level ~/.claude/output-styles named beside it is a different Source boundary this rule may not read."
       }
     ]
   },
@@ -403,8 +505,58 @@
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Skills-directory plugins"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-25",
         "establishes": "A skills directory at the exact launch working directory can also be interpreted as a plugin, a separate documented behavior that differs from plain-skill ancestor and lazy-descendant discovery and grants this rule no manifest authority."
+      }
+    ]
+  },
+  {
+    "ruleId": "claude.repo.skills-directory-plugin",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "plugin",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "skills"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": ".claude-plugin"
+          },
+          {
+            "kind": "literal",
+            "value": "plugin.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Skills-directory plugins", "File locations reference"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A folder under a skills directory that contains .claude-plugin/plugin.json — the exact path this rule admits — is loaded as a plugin named <folder>@skills-dir with no marketplace and no install step, discovered in place; the manifest is the plugin metadata and the components it bundles sit at default locations under that same folder."
       }
     ]
   },
@@ -435,6 +587,28 @@
         "sections": ["Codex configuration file"],
         "reviewedOn": "2026-08-17",
         "establishes": "Settings are scoped to a project or subfolder by a .codex/config.toml file in that repository."
+      }
+    ]
+  },
+  {
+    "ruleId": "codex.excluded.plugin-files",
+    "tool": "codex",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": ["Plugin structure", "Manifest fields", "How local marketplaces work"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A plugin ships its skills, hooks, .mcp.json, .app.json, and assets beside the manifest that points at them, and an installed plugin is a copy under ~/.codex/plugins/cache that the ChatGPT desktop app loads instead of the marketplace entry — the content this rule keeps on record while admitting none of it."
       }
     ]
   },
@@ -563,6 +737,58 @@
         "sections": ["How Codex discovers guidance"],
         "reviewedOn": "2026-08-17",
         "establishes": "AGENTS.override.md and AGENTS.md are the static per-directory instruction filenames, consulted in that order, and the chain walks the project root down to the runtime cwd and stops there."
+      }
+    ]
+  },
+  {
+    "ruleId": "codex.repo.marketplace",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "plugin",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".agents"
+          },
+          {
+            "kind": "literal",
+            "value": "plugins"
+          },
+          {
+            "kind": "literal",
+            "value": "marketplace.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude-plugin"
+          },
+          {
+            "kind": "literal",
+            "value": "marketplace.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": ["How local marketplaces work", "Marketplace metadata"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible catalog at $REPO_ROOT/.claude-plugin/marketplace.json — the two exact locations this rule admits — and each is a JSON catalog whose plugins[] entries carry the plugin names and the sources they resolve to."
       }
     ]
   },
@@ -719,6 +945,28 @@
         "sections": ["Types of custom instructions"],
         "reviewedOn": "2026-08-19",
         "establishes": "Copilot CLI discovers CLAUDE.md, its .claude spelling, and GEMINI.md in every standard location its session covers, not only at the repository root."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.excluded.cli-extensions",
+    "tool": "copilot",
+    "discoveryClass": "excluded",
+    "kind": null,
+    "sourceKinds": ["repository"],
+    "matcher": null,
+    "policyRefs": ["FR-003", "FR-004", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations", "Loading order and precedence"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The plugin reference's own file table separates a plugin's manifest and components from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations, so an extension file is never one of the manifests a plugin is recognized by."
       }
     ]
   },
@@ -1308,6 +1556,82 @@
         "sections": ["Copilot CLI"],
         "reviewedOn": "2026-08-19",
         "establishes": "The support matrix scopes the repository-wide instruction file to the Copilot CLI surface separately from the other two, which is the provenance this rule carries alone."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.marketplace",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "plugin",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "marketplace.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".plugin"
+          },
+          {
+            "kind": "literal",
+            "value": "marketplace.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "plugin"
+          },
+          {
+            "kind": "literal",
+            "value": "marketplace.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude-plugin"
+          },
+          {
+            "kind": "literal",
+            "value": "marketplace.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations", "marketplace.json"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json — the four exact locations this rule admits — checked in that order, and its plugins array carries one entry per plugin with the name and the source that plugin comes from."
+      },
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure plugin marketplaces"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A marketplace is a Git repository containing plugin definitions, added to a session through the chat.plugins.marketplaces setting, so a catalog a repository carries is authored content and registration is a separate runtime fact."
       }
     ]
   },

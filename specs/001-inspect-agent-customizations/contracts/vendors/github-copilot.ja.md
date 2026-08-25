@@ -151,6 +151,28 @@ modelへ渡される。
 残るfile間の一般precedenceを定義しない。`applyTo`、`/instructions` disablement、runtime context、surfaceは独立した
 condition factである。
 
+plugin名がRepository fileに到達する経路はClaude Codeと同じsettings chainであり、2つのfileで
+綴られる。`.github/copilot/settings.json`は`extraKnownMarketplaces`でcatalogを登録し、
+`enabledPlugins`で有効化するpluginを指名する。Copilot CLIはこの2つのkeyを、文書化された
+cross-toolの共有部分集合として`.claude/settings.json`と`.claude/settings.local.json`からも読む
+ため、1つのRepositoryはどちらの綴りでも登録を担える。editorは`chat.plugins.marketplaces`で
+独自にcatalogを登録し、`chat.pluginLocations`に絶対pathで登録されたdirectoryは、installなしに
+pluginが利用可能になるもう1つの経路である。同じrepository levelの2つのkeyはCopilot cloud agentも
+読む。これはこの契約が記録し、どのsurfaceも投影しないhosted stateである。
+
+そのchainがRepository fileに到達する地点がcatalogである。repositoryは文書化された4つの
+marketplace locationのうち使うものにcatalogを公開し、それを`copilot.repo.marketplace`がadmitする。
+catalogは各plugin名をそのplugin自身のsourceへ対応付け、このrepositoryが持つdirectoryを名指すのは
+marketplace root配下の文書化されたlocal sourceだけである。
+
+plugin manifestをadmitするruleは存在せず、導出するruleも存在しない。plugin rootはinstall、登録済み
+catalog、またはeditor設定の絶対pathによって確立されるものであり、Repository pathにfileが現れること
+によってではない。したがって4つのmanifest形式は、rootが自身の宣言を置く場所であって、本製品が
+manifestを探す場所ではない。catalogのlocal source配下では、pluginとはそのrootである: root配下の
+file — そのrootが使う形式のmanifestを含む — がpluginの同梱fileであり、bounded companion censusが
+列挙する（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。repository自身の
+rootにあるmanifestは、ここでclientがloadするpluginではなく、そのrepositoryが配布するpluginである。
+
 ## Copilot CLI User behavior
 
 | Behavior ID | User base | Relative selectorまたはlocator | Runtime composition | Inspector status | Evidence |
@@ -229,8 +251,7 @@ mergeしない。
 | `copilot.repo.mcp.vscode-root` | Repository | `['.mcp.json']` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | VS Code 1.118以降のpath/surface provenanceだけ。Current guideはこのlocationを省略し、direct documentationがconflictを解消するまでVS Code schema extractorを認可しない | `vscode.copilot.mcp`, `vscode.copilot.mcp.workspace-root-release` |
 | `copilot.repo.mcp.vscode` | Repository | `['.vscode', 'mcp.json']` | `exact` | `static-candidate` | `copilot.behavior.vscode.mcp` | VS Code専用MCP candidate。SchemaはCLIと異なる | `vscode.copilot.mcp`, `github.copilot.cli.reference` |
 | `copilot.repo.settings` | Repository | `['.github', 'copilot', 'settings.json']`、`['.github', 'copilot', 'settings.local.json']`、`['.claude', 'settings.json']`、`['.claude', 'settings.local.json']` | 各selectorを`exact` | `static-candidate` | `copilot.behavior.cli.settings` | Documented supported subset。General `.vscode/settings.json`はexcluded | `github.copilot.cli.configuration` |
-| `copilot.repo.plugin-manifest` | Repository | `['.plugin', 'plugin.json']`、`['plugin.json']`、`['.github', 'plugin', 'plugin.json']`、`['.claude-plugin', 'plugin.json']` | Inspector selected Repository boundaryを意図的にauthored plugin rootとして扱う場合だけ、各selectorを`exact` | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | 明示的rootだけを対象にするInspector policy。Copilot discovery/activation evidenceではない | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
-| `copilot.repo.marketplace` | Repository | `['marketplace.json']`、`['.plugin', 'marketplace.json']`、`['.github', 'plugin', 'marketplace.json']`、`['.claude-plugin', 'marketplace.json']` | Inspector selected Repository boundaryを意図的にauthored catalog rootとして扱う場合だけ、各selectorを`exact` | `static-candidate` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | 明示的rootだけを対象にするInspector policy。Installation/enablementは別 | `vscode.copilot.plugins`, `github.copilot.cli.plugins` |
+| `copilot.repo.marketplace` | Repository | `['marketplace.json']`、`['.plugin', 'marketplace.json']`、`['.github', 'plugin', 'marketplace.json']`、`['.claude-plugin', 'marketplace.json']` | 各selectorを`exact`とし、文書化された認識順で扱う。catalogを公開するrepositoryは、その`./` entryが解決するmarketplace rootである | `static-candidate` | `copilot.behavior.vscode.plugins`、`copilot.behavior.cli.plugins` | Catalogはこのrepositoryが持つauthored contentである。設定またはcommandによる登録、install、有効化はruntime条件のままであり、rowはcatalogが何をofferするかを述べ、pluginがactiveであるとは決して述べない | `vscode.copilot.plugins`、`github.copilot.cli.plugins` |
 
 Settings ruleのbehavior参照は、それが公開するdocumentを見つける文書化済みlookupである。
 同じdocumentが関与するhookおよびpluginのbehaviorは、HookおよびPlugin recognition自身の
@@ -272,7 +293,6 @@ settings、agent、skill、hook、MCP、LSP、extension、plugin、permission、
 
 | Rule ID | Accepted seed | 許可target | Behavior refs | Strategy refs | Closed derivationとstatus | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `copilot.derived.local-plugin-manifest` | Documented local `source`を持つaccepted Copilot marketplace entry | Validated local plugin rootの`.plugin/plugin.json`、`plugin.json`、`.github/plugin/plugin.json`、`.claude-plugin/plugin.json` | `copilot.behavior.vscode.plugins`, `copilot.behavior.cli.plugins` | `copilot.vscode.plugins.activation`, `copilot.cli.plugins.activation` | `plugins/foo`または`./plugins/foo`を受理しcatalog rootからresolveして内部に留める。列挙済みmanifest名だけをdocumented orderで確認し、derivationは再帰しない。Git、HTTP(S)、npm、absolute、home-relative sourceはrelationshipのまま | FR-003、FR-004、FR-005、FR-024、QR-001、QR-004、QR-005 | `github.copilot.cli.plugins`, `vscode.copilot.plugins` |
 
 このvendorが参照するrelationship-only rule、すなわち
 `copilot.relationship.prompt-reference`、`copilot.relationship.settings`、
@@ -320,9 +340,16 @@ installation、activationのauthorityを一切与えない。
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みVS Code promptまたはroot direct-child CLI commandの正確なsupported frontmatter value/item occurrence。Matched pathから導出するprompt/command invocation nameはtyped provenanceのままとし、linkまたは`#file` targetはinertに保つ |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.github/agents/*.md`または`.claude/agents/*.md`の正確なsupported frontmatter value/item/map-entry occurrence。Body instructionは`sourceText`のまま保持し、`hooks` declarationは別のcontained recognitionが所有し、`mcp-servers`はagent自身のfrontmatter宣言であってMCP recognitionを所有しない |
 | `settings/config` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 正確なsupported Repository/localまたはcross-tool-compatible settings leaf/item/map-entry occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを所有しない |
-| `marketplace` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みmarketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがplain-string sourceまたはobjectの`path` leafを表し、closedなlocal-manifest derivationをseedできる。Inline component bodyはactivateしない |
-| `plugin` | `declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みCopilot plugin manifestの正確なmetadata/component-path leaf/item occurrence。Inline Hook/MCP bodyと参照先script/assetはplugin metadata IDを取得せず、component pathはcandidateを作らない |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みCopilot plugin manifestの正確なmetadata/component-path leaf/item occurrenceと、entryがplugin名を解決する受理済みmarketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがplain-string sourceまたはobjectの`path` leafを表し、closedなlocal-manifest derivationをseedできる。Inline component bodyはactivateせず、inline Hook/MCP bodyと参照先script/assetはplugin metadata IDを取得せず、component pathはcandidateを作らない |
 | `hook` | `runtime-reference` | 受理済みstandalone hook fileまたはsettings/agent-contained declarationにあるversion value、event map key、matcher value、正確なhandler leaf/item/map-entry occurrence。Plugin Hook pathはrelationshipだけに保つ |
+
+`plugin` rowのmanifestに関する記述 — 受理済みCopilot plugin manifest内のoccurrence — は、どのruleも
+admitしないsource formを述べている: catalogのlocal root配下のmanifestはそのpluginが同梱するfileで
+あり、repository自身のrootにあるmanifestはそのrepositoryが配布するpluginである
+（§ Repository Inspector matcher rule）。これは消費者を持たないfrozen・digest記録済みのdesign input
+であり、その変更はofficial-source contractのstop-and-regenerate ruleに従うdigest記録済みの変更で
+ある。この行が統べているのはもう一方の半分、すなわち`copilot.repo.marketplace`がadmitするcatalogと
+plugin entryのoccurrenceである。
 
 Initial releaseのCopilot recognitionは、sharedな`rule`、`output style`、`skill metadata` kindを使用しない。Typed surface、
 path-derived scope/invocation、selection、precedence、trust、installation、enablement、default、applicability factはauthored

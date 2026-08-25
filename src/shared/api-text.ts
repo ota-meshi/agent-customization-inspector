@@ -11,7 +11,12 @@
 // data. `Readonly<Record<Union, string>>` still does the work the policy asks
 // of it wherever the table lives: a new member cannot compile until someone has
 // decided how it reads.
-import type { FileDetailDto, FileOpenTarget, ScanProgressPhase } from './api-types';
+import type {
+  FileDetailDto,
+  FileOpenTarget,
+  PluginCarrierKind,
+  ScanProgressPhase,
+} from './api-types';
 import { CUSTOMIZATION_KIND_TEXT } from './entities';
 
 /**
@@ -69,6 +74,18 @@ export const SCAN_PROGRESS_PHASE_TEXT: Readonly<Record<ScanProgressPhase, string
 };
 
 /**
+ * What each plugin carrier kind reads as (see {@link PluginCarrierKind}).
+ * Beside the union rather than in the row component, so a member added to the
+ * union cannot compile without its label.
+ */
+export const PLUGIN_CARRIER_TEXT: Readonly<Record<PluginCarrierKind, string>> = {
+  /** Caption for the plugin's own manifest. */
+  manifest: 'Manifest',
+  /** Caption for a catalog listing the plugin. */
+  catalog: 'Catalog entry',
+};
+
+/**
  * What a file detail's kind reads as (contracts/http-api.md § get-file-detail).
  * Every kind a recognition owns shares that customization kind's own caption,
  * so each reads the same wherever it is named, and they are listed in the
@@ -87,6 +104,8 @@ export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], strin
   'prompt/command': CUSTOMIZATION_KIND_TEXT['prompt/command'],
   /** Caption for a detail a rule recognition owns. */
   rule: CUSTOMIZATION_KIND_TEXT.rule,
+  /** Caption for a detail an output-style recognition owns. */
+  'output style': CUSTOMIZATION_KIND_TEXT['output style'],
   /** Caption for a detail a settings-or-configuration recognition owns. */
   'settings/config': CUSTOMIZATION_KIND_TEXT['settings/config'],
   /** Caption for a census-listed or otherwise unrecognized file's detail. */

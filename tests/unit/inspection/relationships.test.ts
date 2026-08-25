@@ -559,15 +559,42 @@ describe('failure propagation through the recognition domain (FR-028/FR-029)', (
     expect(recognitions[0]!.diagnosticIds).toEqual([]);
   });
 
-  it('propagates a provenance-side throw unchanged, with no recovered output', async () => {
-    // The census enumeration is the provenance-scoped operation the recognizer
-    // owns. Its failure is not confined to the file's own content, so the
-    // domain must not catch, classify, or convert it: the promise rejects with
-    // the real error and yields no recognition, Diagnostic, or partial result
-    // (FR-029; data-model.md § ToolRecognition).
+  it('propagates a census-side throw unchanged, with no recovered output', async () => {
+    // Enumerating the directory a recognized customization occupies is the
+    // scan's provenance-scoped operation. Its failure is not confined to one
+    // file's content, so nothing catches, classifies, or converts it: the
+    // promise rejects with the real error and yields no publication,
+    // Diagnostic, or partial result (FR-029; data-model.md § ToolRecognition).
+    const failure = new Error('census exploded');
+    vi.mocked(fsIo.readdir).mockRejectedValueOnce(failure);
     await expect(
-      recognizeClaude('.claude/skills/vanished/SKILL.md', '---\nname: gone\n---\n'),
-    ).rejects.toThrow(/ENOENT/u);
+      assembleScanPublication({
+        sourceId: 'source-1',
+        root,
+        rootFailureOwner: 'repository',
+        rules: [claudeSkillRule!],
+        result: {
+          kind: 'scanned',
+          files: [
+            {
+              rawSegments: ['.claude', 'skills', 'refs', 'SKILL.md'],
+              publicPath: '.claude/skills/refs/SKILL.md',
+              admissions: [{ planIndex: 0, selectorIndex: 0 }],
+              outcome: {
+                kind: 'readable',
+                encoding: 'utf-8',
+                hadLeadingBom: false,
+                sourceText: '---\nname: refs\n---\n',
+                sizeBytes: 20,
+              },
+            },
+          ],
+          visitedEntries: 4,
+          candidateFiles: 1,
+          readBytes: 20,
+        },
+      }),
+    ).rejects.toBe(failure);
   });
 
   it('aborts the whole publication when recognition rejects, committing nothing', async () => {

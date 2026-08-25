@@ -39,7 +39,12 @@ import {
   type CompiledStaticMcpReadingRule,
   type CompiledStaticOtherKindRule,
   type CompiledStaticPermissionsDocumentRule,
+  type CompiledStaticPluginCatalogRule,
+  type CompiledDerivedInstructionRule,
+  TraversalPlan,
   type CompiledStaticSkillRule,
+  type PluginCarrierReading,
+  localPluginRootSegments,
 } from './registry';
 import type { CustomizationKind } from '../../../shared/entities';
 import type {
@@ -53,11 +58,13 @@ import {
   readCandidate,
   rethrowIfResourceExhaustion,
   statThroughLink,
+  toPublicPath,
   type ConfigurationReadResult,
   type SeededCandidateRead,
 } from '../traversal';
 import { realpath } from '../fs-io';
 import { RecognitionExtraction } from '../parsers/extraction';
+import { ParsedStrictJsonDocument } from '../parsers/json';
 import { ParsedTomlDocument } from '../parsers/toml';
 import { CODEX_RULE_RELATIONS } from '../../../shared/registries/codex/relations';
 import {
@@ -323,6 +330,217 @@ export class CodexCompiledSkillRule extends CodexCompiledRule implements Compile
 }
 
 /**
+ * The key a Codex plugin catalog lists its entries under
+ * (contracts/vendors/openai-codex.md § Documented Repository behavior): the
+ * page defines a catalog as a `plugins` array of one object per plugin. It is
+ * a literal here rather than anything a caller passes, because it is this
+ * vendor's own format.
+ */
+const CODEX_CATALOG_PLUGINS_KEY = 'plugins';
+
+/** The key a plugin declaration writes its name under, in both carrier shapes. */
+const CODEX_PLUGIN_NAME_KEY = 'name';
+
+/** The key a catalog entry writes its source under. */
+const CODEX_PLUGIN_SOURCE_KEY = 'source';
+
+/**
+ * The key a local source object writes its path under; a local entry may also
+ * spell the whole source as that path string
+ * (`openai.codex.plugins` § Marketplace metadata).
+ */
+const CODEX_PLUGIN_SOURCE_PATH_KEY = 'path';
+
+/** The value `source.source` carries for the one form that names a local directory. */
+const CODEX_LOCAL_SOURCE_VALUE = 'local';
+
+/**
+ * Where a Codex plugin root keeps the plugin's own manifest, relative to that
+ * root (`codex.behavior.plugin.manifest`): the required entry point a
+ * plugin-capable client reads the plugin's declaration of itself from
+ * (contracts/vendors/openai-codex.md § Documented Repository behavior).
+ *
+ * It names the file rather than admitting it: no rule reaches a manifest, and
+ * the file is published as one of the plugin's own. What this answers is which
+ * of those files the plugin's detail opens on.
+ */
+const CODEX_PLUGIN_MANIFEST_PATH = '.codex-plugin/plugin.json';
+
+/**
+ * The name one plugin declaration resolves: the `name` scalar exactly as it
+ * was written, or null when the declaration writes none or writes it as
+ * anything but a scalar — naming a plugin after the first item of a list it
+ * wrote would be an identity the file never declared (FR-007).
+ */
+function codexPluginNameOf(fields: readonly DeclaredEntryDto[]): string | null {
+  for (const field of fields) {
+    if (field.keyKind === 'string' && field.key === CODEX_PLUGIN_NAME_KEY) {
+      return field.value.kind === 'scalar' ? field.value.text : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * The plugin root one catalog entry names inside the Source, as raw
+ * entry-name segments relative to the Source root, or null when the entry
+ * names none this derivation may follow.
+ *
+ * The documented local form is what this accepts and nothing else: the source
+ * is either the object form with `source: 'local'` and a `path`, or the plain
+ * string path a local entry may use instead. The path must begin with `./`,
+ * and every segment after that prefix must be an ordinary entry name — a `..`
+ * segment, an absolute path, a `~` home path, and a Git or npm source all
+ * derive nothing, because the derivation is closed and a source it cannot
+ * validate is not a target it may read (FR-004, FR-024).
+ *
+ * `./` is relative to the marketplace root, which for a repository catalog is
+ * the Source root itself — the personal pattern the same page documents,
+ * `./.codex/plugins/<name>` beside a catalog at `~/.agents/plugins/`, resolves
+ * against the home directory rather than against the catalog's own directory,
+ * and the repository half of that rule is the root
+ * (contracts/vendors/openai-codex.md § Derived Repository rules).
+ */
+function codexLocalPluginRootOf(fields: readonly DeclaredEntryDto[]): readonly string[] | null {
+  let declaredPath: string | null = null;
+  for (const field of fields) {
+    if (field.keyKind !== 'string' || field.key !== CODEX_PLUGIN_SOURCE_KEY) {
+      continue;
+    }
+    if (field.value.kind === 'scalar') {
+      declaredPath = field.value.text;
+      break;
+    }
+    if (field.value.kind !== 'mapping') {
+      return null;
+    }
+    let isLocal = false;
+    let path: string | null = null;
+    for (const entry of field.value.entries) {
+      if (entry.keyKind !== 'string' || entry.value.kind !== 'scalar') {
+        continue;
+      }
+      if (entry.key === CODEX_PLUGIN_SOURCE_KEY) {
+        isLocal = entry.value.text === CODEX_LOCAL_SOURCE_VALUE;
+      }
+      if (entry.key === CODEX_PLUGIN_SOURCE_PATH_KEY) {
+        path = entry.value.text;
+      }
+    }
+    // A `git-subdir` or `npm` entry also writes a `path` or a `package`; only
+    // the local form names a directory this Source holds, so the discriminant
+    // is checked rather than the presence of a path.
+    declaredPath = isLocal ? path : null;
+    break;
+  }
+  return localPluginRootSegments(declaredPath);
+}
+
+/**
+ * The name Codex resolves one catalog offering by: the entry's own name
+ * qualified by the catalog's, `plugin@marketplace`, or null when either half is
+ * missing — an offering Codex could not address is no name at all.
+ *
+ * The spelling is the tool's own. `codex plugin add` and `codex plugin remove`
+ * take a `PLUGIN[@MARKETPLACE]` selector, `codex plugin list` prints the
+ * qualified form in its `PLUGIN` column, and the per-plugin state in
+ * `~/.codex/config.toml` is keyed by it (observed against codex-cli 0.144.6).
+ * The cited page does not spell the pair out; what it establishes is that the
+ * pair is the identity — an installed plugin lives under
+ * `<cache>/<marketplace>/<plugin>/<version>`
+ * (contracts/vendors/openai-codex.md § Known uncertainties, item 7).
+ *
+ * It lives here because it is Codex's rule. Another product's plugin phase
+ * resolves its own names in its own module, exactly as each vendor resolves its
+ * own skill and command names (FR-007).
+ */
+function codexOfferedPluginNameOf(
+  entryName: string | null,
+  catalogName: string | null,
+): string | null {
+  return entryName === null || catalogName === null ? null : `${entryName}@${catalogName}`;
+}
+
+/**
+ * The Codex plugin catalog rule compiled for execution: everything a Codex rule
+ * is, plus the one question only a catalog answers — which plugins its entries
+ * resolve, and where each of them sits inside this Source.
+ */
+export class CodexCompiledPluginCatalogRule
+  extends CodexCompiledRule
+  implements CompiledStaticPluginCatalogRule
+{
+  /** Narrowed to the one kind this unit compiles; the constructor proves it. */
+  declare public readonly kind: 'plugin';
+
+  /** Discriminant: the admitted file is a catalog listing plugins. */
+  public readonly pluginCarrier: 'catalog';
+
+  /**
+   * What one admitted catalog declares: its own keys except `plugins`, and one
+   * declaration per entry of that array in the parser's resolved order, each
+   * carrying the directory that entry's plugin occupies here.
+   *
+   * Entry classification is structural and total, exactly as the MCP carrier
+   * reading's is: only an object inside `plugins` is an entry, and a scalar or
+   * an array there is omitted whole rather than published partially, as is a
+   * `plugins` value that is not an array at all. Strict JSON for the reason
+   * the manifest reading gives (FR-028).
+   *
+   * A plugin *is* its root: the `.codex-plugin/plugin.json` inside it is one of
+   * the files it ships rather than a customization of its own, so an entry
+   * answers the directory and never a file below it. Which source forms name a
+   * directory here is this vendor's contract, which is why the catalog that
+   * admitted the text is what answers.
+   */
+  public pluginCarrierReadingOf(sourceText: string): PluginCarrierReading {
+    const entries = new ParsedStrictJsonDocument(sourceText).entries;
+    const declared = entries.find(
+      (entry) => entry.keyKind === 'string' && entry.key === CODEX_CATALOG_PLUGINS_KEY,
+    );
+    const catalogFields = entries.filter((entry) => entry !== declared);
+    if (declared === undefined || declared.value.kind !== 'sequence') {
+      return { catalogFields, plugins: [] };
+    }
+    // Each entry is published under the name Codex addresses that offering by,
+    // qualified by this catalog's own name; the entry's raw `name` stays one of
+    // the `fields` below, where the detail publishes it as written (FR-007).
+    const catalogName = codexPluginNameOf(catalogFields);
+    return {
+      catalogFields,
+      plugins: declared.value.items.flatMap((item) => {
+        if (item.kind !== 'mapping') {
+          return [];
+        }
+        const named = codexLocalPluginRootOf(item.entries);
+        // A Git, npm, absolute, home, or root-escaping source names no
+        // directory this Source holds: the offering stands and occupies
+        // nothing here, and there is no manifest of its own to open either.
+        const pluginRoot = named === null ? null : `${toPublicPath(named)}/`;
+        return [
+          {
+            name: codexOfferedPluginNameOf(codexPluginNameOf(item.entries), catalogName),
+            fields: item.entries,
+            pluginRoot,
+            manifestPaths:
+              pluginRoot === null ? [] : [`${pluginRoot}${CODEX_PLUGIN_MANIFEST_PATH}`],
+          },
+        ];
+      }),
+    };
+  }
+
+  /** Compiles one Codex plugin catalog record, rejecting one of another kind. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'plugin') {
+      throw new TypeError(`rule ${rule.ruleId} is not a Codex plugin rule`);
+    }
+    this.pluginCarrier = 'catalog';
+  }
+}
+
+/**
  * A Codex rule of every other kind, compiled for execution. It answers no
  * per-kind question — neither an instruction rule's applicability, nor an MCP
  * carrier's declarations, nor a custom agent's, nor a skill's name (see
@@ -335,10 +553,17 @@ export class CodexCompiledOtherKindRule
   /** Narrowed to the kinds this unit compiles; the constructor proves it. */
   declare public readonly kind: Exclude<
     CustomizationKind,
-    'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'permissions'
+    | 'instructions'
+    | 'skill'
+    | 'MCP'
+    | 'agent'
+    | 'prompt/command'
+    | 'permissions'
+    | 'plugin'
+    | 'output style'
   >;
 
-  /** Compiles one Codex record of any kind but the six with a question of their own. */
+  /** Compiles one Codex record of any kind but the seven with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
@@ -347,7 +572,11 @@ export class CodexCompiledOtherKindRule
       rule.kind === 'MCP' ||
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
-      rule.kind === 'permissions'
+      rule.kind === 'permissions' ||
+      // No shipped rule of this vendor carries the kind; the exclusion keeps
+      // the unit's type in step with the base, whose `kind` an output-style
+      // unit answers for (registry.ts § CompiledStaticOutputStyleRule).
+      rule.kind === 'output style'
     ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Codex unit that answers for its kind`);
     }
@@ -382,13 +611,6 @@ export class CodexCompiledPermissionsDocumentRule
 }
 
 /**
- * A Codex derived rule compiled for execution: the shared derivation from the
- * base, plus what is Codex's own — the same two things a static Codex rule
- * fixes, for the same reasons. A derived candidate is recognized and rendered
- * exactly like a static one, so it has to answer the same questions: which
- * product recognized it, and which documented behavior its rule rests on.
- */
-/**
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers static instructions, skills, the
@@ -413,6 +635,14 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
     // servers its carrier declares, a custom-agent record what its file
     // declares, a skill record what Codex invokes it by; every other kind
     // compiles into the plain one.
+    //
+    // Every static Codex plugin record is a catalog: this vendor activates a
+    // plugin root rather than discovering one, so no selector of its own
+    // matches a manifest and the only plugin file it admits by path is the
+    // catalog whose entries name the sources
+    // (contracts/vendors/openai-codex.md § Derived Repository rules). A Codex
+    // manifest is one of the files that plugin ships, read from the plugin
+    // root the catalog's own entry names.
     rule.kind === 'instructions'
       ? new CodexCompiledInstructionRule(rule)
       : rule.kind === 'skill'
@@ -423,9 +653,18 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
             ? new CodexCompiledAgentRule(rule)
             : rule.kind === 'permissions'
               ? new CodexCompiledPermissionsDocumentRule(rule)
-              : new CodexCompiledOtherKindRule(rule),
+              : rule.kind === 'plugin'
+                ? new CodexCompiledPluginCatalogRule(rule)
+                : new CodexCompiledOtherKindRule(rule),
   );
 
+/**
+ * A Codex derived rule compiled for execution: the shared derivation from the
+ * base, plus what is Codex's own — the same two things a static Codex rule
+ * fixes, for the same reasons. A derived candidate is recognized and rendered
+ * exactly like a static one, so it has to answer the same questions: which
+ * product recognized it, and which documented behavior its rule rests on.
+ */
 export class CodexCompiledDerivedRule extends CompiledDerivedRule {
   /** Always `codex`; the discriminant a mixed vendor list narrows on. */
   public override readonly tool: 'codex';
@@ -454,13 +693,66 @@ export class CodexCompiledDerivedRule extends CompiledDerivedRule {
 }
 
 /**
+ * The Codex instruction derivation compiled for execution: the vendor half,
+ * plus what an instruction derivation targets — one exact Repository-root
+ * selector per configured basename, and the applicability range every file it
+ * admits governs.
+ */
+export class CodexCompiledDerivedInstructionRule
+  extends CodexCompiledDerivedRule
+  implements CompiledDerivedInstructionRule
+{
+  /** Narrowed to the one kind this unit derives; the constructor proves it. */
+  declare public readonly kind: 'instructions';
+
+  /**
+   * Builds the traversal plan for one configuration-read result: one exact
+   * Repository-root selector per declared basename, in authored order, each
+   * segment the name as the configuration wrote it — a name is compared to
+   * what the walk enumerated, so the shipped matchers' ASCII grammar is not
+   * this plan's (data-model.md § StructuredInspectorMatcher). The plan is per
+   * scan attempt, because the declared names are the attempt's stage-one
+   * configuration, and the walk that executes it merges a name that collides
+   * with a static target into one candidate with both provenances, exactly
+   * like any two plans admitting one file.
+   */
+  public planFor(declaredBasenames: readonly string[]): TraversalPlan {
+    return TraversalPlan.fromPrograms(
+      { kind: 'repository' },
+      declaredBasenames.map((basename) => [basename]),
+    );
+  }
+
+  /**
+   * The Repository root's `**`: a derived plan is one exact Repository-root
+   * selector per declared basename ({@link planFor}), so every candidate it
+   * admits sits at the root and governs the repository entirely.
+   *
+   * Declared here rather than inherited, because a derived rule has no
+   * matcher and so cannot be a static instruction unit: this class is the
+   * derived half of the instruction unit.
+   */
+  public applicabilityRangeOf(): string {
+    return '**';
+  }
+
+  /** Compiles the shipped Codex instruction derivation, rejecting any other. */
+  public constructor(rule: InspectionRule) {
+    super(rule);
+    if (rule.kind !== 'instructions') {
+      throw new TypeError(`rule ${rule.ruleId} derives a kind this unit cannot answer for`);
+    }
+  }
+}
+
+/**
  * The compiled `codex.derived.fallback-basename` unit the configuration-read
  * stage expands (T1089): the seed is the repository's own `.codex/config.toml`
  * read as configuration, and the derived targets are `instructions` candidates
  * at the Repository root, one per declared basename, scanned by the same walk
  * as every static candidate.
  */
-export const CODEX_DERIVED_FALLBACK_RULE = new CodexCompiledDerivedRule(
+export const CODEX_DERIVED_FALLBACK_RULE = new CodexCompiledDerivedInstructionRule(
   CODEX_DERIVED_FALLBACK_BASENAME_RULE,
 );
 
@@ -473,10 +765,14 @@ export const CODEX_DERIVED_FALLBACK_RULE = new CodexCompiledDerivedRule(
  * (`codex.repo.config`, T282) reuses this read instead of opening the file
  * again.
  *
- * An absent seed configures nothing — the probe's failure is the absence
- * fact — and performed no read to seed. An unreadable or binary seed also
- * configures nothing here, but its read did happen and is seeded, so the
- * walk publishes the candidate from the same classification this reader saw.
+ * A seed this reader cannot decode configures nothing, whichever way it fails:
+ * absent, unreadable, binary, or a non-regular entry at the pinned path. That
+ * is not a claim withheld from the reader, because the seed is a candidate of
+ * its own — `.codex/config.toml` is what `codex.repo.config` admits — so the
+ * walk probes the same path and publishes whatever it classifies there, and an
+ * unreadable one carries `file-unreadable` in a partial generation (FR-028).
+ * A read that did happen is seeded, so the walk classifies from this reader's
+ * bytes rather than opening the file again.
  */
 async function readConfigurationSeed(
   root: string,
@@ -492,12 +788,17 @@ async function readConfigurationSeed(
     // symbolic link is the file it resolves to.
     target = await statThroughLink(absolutePath);
   } catch (error) {
-    // Reached by every repository that ships no `.codex/config.toml`, and by
-    // one whose seed is a dangling link: absence is the ordinary answer here.
+    // Reached by every repository that ships no seed at the path, by one whose
+    // seed is a dangling link, and by one whose seed this process may not
+    // stat. All three configure nothing, and none of them is a statement this
+    // function has to make about the file: the walk admits the same path as a
+    // candidate and publishes what it finds there, so a seed that could not be
+    // read is reported as that file's own outcome (`codex.repo.config`).
+    //
     // The rethrow separates the machine running out of descriptors or memory
     // from that answer, because reporting exhaustion as "this repository
-    // declares no fallback names" would commit a complete generation missing
-    // every configured instruction file.
+    // declares nothing" would commit a complete generation missing every
+    // configured target.
     rethrowIfResourceExhaustion(error);
     return { sourceText: null, seededRead: null };
   }
@@ -514,8 +815,8 @@ async function readConfigurationSeed(
     // that is a symbolic link into `.git` never becomes a candidate
     // (`isVcsInternalPath`). Configuration must refuse the same spelling:
     // without this gate, the read that configures the scan would come from
-    // the VCS store the walk itself excludes, and the derived fallback plans
-    // would rest on bytes no candidate can ever publish.
+    // the VCS store the walk itself excludes, and the derived plans would
+    // rest on bytes no candidate can ever publish.
     if (isVcsInternalPath(await realpath(root), await realpath(absolutePath))) {
       return { sourceText: null, seededRead: null };
     }

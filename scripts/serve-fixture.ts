@@ -17,6 +17,9 @@ import {
   buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
   buildClaudeMcpFixture,
+  buildClaudeOutputStyleFixture,
+  buildClaudePluginFixture,
+  buildCodexPluginFixture,
   buildClaudeRuleFixture,
   buildClaudeAgentFixture,
   buildClaudeSkillFixture,
@@ -27,11 +30,13 @@ import {
   buildCodexRuleFixture,
   buildCodexSkillFixture,
   buildCopilotAgentFixture,
+  buildCopilotPluginFixture,
   buildCopilotCliMcpFixture,
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   buildCopilotVscodeMcpFixture,
   buildPriorityMcpFixture,
+  buildUnifiedPluginFixture,
 } from '../tests/fixtures/repositories/build-fixtures.ts';
 
 /** The repository root, one directory above this script. */
@@ -62,6 +67,12 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   'claude-agents': buildClaudeAgentFixture,
   'copilot-agents': buildCopilotAgentFixture,
   'claude-rules': buildClaudeRuleFixture,
+  'claude-output-styles': buildClaudeOutputStyleFixture,
+  'codex-plugins': buildCodexPluginFixture,
+  'claude-plugins': buildClaudePluginFixture,
+  'copilot-plugins': buildCopilotPluginFixture,
+  // Every product's plugin path in one tree, the shared catalog included.
+  'all-plugins': buildUnifiedPluginFixture,
   commands: buildCommandFixture,
   'codex-mcp': buildCodexMcpFixture,
   'claude-mcp': buildClaudeMcpFixture,

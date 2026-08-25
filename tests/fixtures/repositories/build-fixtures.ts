@@ -1688,6 +1688,1343 @@ export function buildClaudeRuleFixture(
   };
 }
 
+/**
+ * The Codex plugin fixture (T751): the exact-root plugin manifest, the two
+ * exact catalog locations, plugin roots the catalogs' local sources name, and
+ * the sources and near misses that must derive nothing.
+ */
+export interface CodexPluginFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the Codex plugin rules admit: the two catalogs,
+   * and nothing else. A plugin's own files — its `.codex-plugin/plugin.json`
+   * included — are read from the plugin root a catalog entry names and
+   * published as the plugin's files, never as candidates of their own
+   * (contracts/inspection-path-allowlist.md § Bounded companion census).
+   */
+  readonly expectedPluginPaths: readonly string[];
+  /** The catalog whose entries name every source form this fixture covers. */
+  readonly catalogPath: string;
+  /** The manifest inside the plugin root the catalog's object-form local source names. */
+  readonly objectSourceManifestPath: string;
+  /** The manifest derived from the catalog's plain-string local source. */
+  readonly stringSourceManifestPath: string;
+  /**
+   * The manifest whose own `name` differs from the catalog entry that names its
+   * plugin root: the row is the offering's, and this file is one of the files
+   * that plugin ships.
+   */
+  readonly divergentNameManifestPath: string;
+  /** The second catalog's own manifest for {@link sharedNameAcrossCatalogs}. */
+  readonly legacyCatalogManifestPath: string;
+  /**
+   * The manifest reached through a plugin root that is a symbolic link to a
+   * directory inside the repository: links are read through their targets, so
+   * the file is published under the link's own path (FR-024). Null where the
+   * platform refused to create the link, which is the one case the linked
+   * plugin is not in the tree at all.
+   */
+  readonly linkedManifestPath: string | null;
+  /**
+   * The plugin names whose entries name a source outside this repository — a
+   * Git subdirectory, an npm package, an absolute path, a home path, and a
+   * traversal escaping the root. Each is a row whose only carrier is the
+   * catalog entry.
+   */
+  readonly nonLocalPluginNames: readonly string[];
+  /**
+   * A manifest whose JSON no reader accepts. Nothing parses it — a plugin's own
+   * files are published as the files they are — so it is an ordinary published
+   * file of the plugin that ships it.
+   */
+  readonly malformedManifestPath: string;
+  /**
+   * The manifest declaring a literal credential and an environment reference,
+   * so a test can prove neither reaches the inventory and neither is resolved
+   * (FR-026, FR-027).
+   */
+  readonly secretManifestPath: string;
+  /** The component paths a manifest points at, which no rule may admit. */
+  readonly componentPaths: readonly string[];
+  /** Paths that look like plugin files but no selector reaches. */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the Codex plugin fixture: one repository carrying both catalog
+ * locations, every source form the catalog rule must accept or refuse,
+ * and — as a near miss — the root manifest of a plugin this repository
+ * publishes.
+ */
+export function buildCodexPluginFixture(
+  prefix = 'inspector-codex-plugins',
+  root = createRepositoryFixtureRoot(prefix),
+): CodexPluginFixture {
+  // The repository publishes a plugin of its own: the manifest a consumer
+  // installs from, with the components that plugin ships. No rule reaches it —
+  // Codex loads a plugin root a catalog entry or an installation selected, and
+  // this repository's own catalogs point elsewhere — so every path written here
+  // is a near miss that proves the root is not searched.
+  write(
+    root,
+    '.codex-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'inspector-tools',
+        version: '1.4.0',
+        description: 'Inspect a repository the way the docs describe it.',
+        author: { name: 'Platform team', email: 'platform@example.com' },
+        homepage: 'https://example.com/plugins/inspector-tools',
+        license: 'MIT',
+        keywords: ['inspection', 'docs'],
+        skills: './skills/',
+        mcpServers: './.mcp.json',
+        hooks: './hooks/hooks.json',
+        interface: {
+          displayName: 'Inspector Tools',
+          shortDescription: 'Repository inspection helpers',
+          category: 'Productivity',
+          capabilities: ['Read'],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // Components that plugin ships. None of them is a candidate either: the
+  // manifest's values are relationships, never read authority
+  // (`codex.excluded.plugin-files`). They accompany a manifest no rule reaches,
+  // so nothing lists them at all — the plugin roots a catalog does offer carry
+  // their own, below.
+  write(root, 'skills/review/SKILL.md', '---\nname: review\n---\n\nReview the diff.\n');
+  write(root, 'hooks/hooks.json', `${JSON.stringify({ PreToolUse: [] }, null, 2)}\n`);
+  write(root, '.app.json', `${JSON.stringify({ servers: {} }, null, 2)}\n`);
+
+  // The repository catalog at the current exact location, carrying every
+  // source form the derivation has to decide about.
+  write(
+    root,
+    '.agents/plugins/marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'inspector-examples',
+        interface: { displayName: 'Inspector Examples' },
+        plugins: [
+          {
+            name: 'release-notes',
+            source: { source: 'local', path: './plugins/release-notes' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'changelog-writer',
+            source: './plugins/changelog-writer',
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'linked-helper',
+            source: { source: 'local', path: './plugins/linked-helper' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'renamed-helper',
+            source: { source: 'local', path: './plugins/renamed-helper' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'absent-plugin',
+            source: { source: 'local', path: './plugins/absent-plugin' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'remote-helper',
+            source: {
+              source: 'git-subdir',
+              url: 'https://github.com/example/codex-plugins.git',
+              path: './plugins/remote-helper',
+              ref: 'main',
+            },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'npm-helper',
+            source: {
+              source: 'npm',
+              package: '@example/codex-plugin',
+              version: '^1.2.0',
+              registry: 'https://registry.npmjs.org',
+            },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'absolute-helper',
+            source: { source: 'local', path: '/opt/plugins/absolute-helper' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'home-helper',
+            source: { source: 'local', path: '~/.codex/plugins/home-helper' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'escaping-helper',
+            source: { source: 'local', path: './../outside/escaping-helper' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The legacy-compatible catalog at the second exact location, naming a
+  // plugin the current catalog does not.
+  write(
+    root,
+    '.claude-plugin/marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'inspector-legacy',
+        plugins: [
+          {
+            name: 'secret-keeper',
+            source: { source: 'local', path: './plugins/secret-keeper' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          {
+            name: 'broken-plugin',
+            source: { source: 'local', path: './plugins/broken-plugin' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+          // The name the current catalog also offers, from a plugin root of
+          // its own: two catalogs offering one name are two plugins, because
+          // the vendor installs each under its own catalog.
+          {
+            name: 'release-notes',
+            source: { source: 'local', path: './plugins/legacy-release-notes' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Productivity',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  // The plugin roots the local sources name, each with the required manifest.
+  write(
+    root,
+    'plugins/release-notes/.codex-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'release-notes',
+        version: '0.3.1',
+        description: 'Draft release notes from merged pull requests.',
+        skills: './skills/',
+        mcpServers: './.mcp.json',
+        hooks: './hooks/hooks.json',
+        interface: {
+          displayName: 'Release Notes',
+          category: 'Productivity',
+          logo: './assets/logo.png',
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // What that plugin actually ships. Its census lists them as the plugin's own
+  // files: they are read because they sit in the plugin root, never because the
+  // manifest named them, and none of them becomes a candidate of its own
+  // (contracts/inspection-path-allowlist.md § Bounded companion census).
+  write(
+    root,
+    'plugins/release-notes/skills/draft/SKILL.md',
+    '---\nname: draft\n---\n\nDraft the notes from the merged pull requests.\n',
+  );
+  write(root, 'plugins/release-notes/skills/draft/reference.md', 'Release note phrasing.\n');
+  write(
+    root,
+    'plugins/release-notes/.mcp.json',
+    `${JSON.stringify({ mcpServers: { changelog: { command: 'npx' } } }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'plugins/release-notes/hooks/hooks.json',
+    `${JSON.stringify({ PreToolUse: [] }, null, 2)}\n`,
+  );
+  write(root, 'plugins/release-notes/README.md', '# Release Notes\n\nInstall from the catalog.\n');
+  write(
+    root,
+    'plugins/changelog-writer/.codex-plugin/plugin.json',
+    `${JSON.stringify(
+      { name: 'changelog-writer', version: '2.0.0', description: 'Keep CHANGELOG.md current.' },
+      null,
+      2,
+    )}\n`,
+  );
+  // The catalog entry and this manifest agree on the name, so the plugin is one
+  // row with two carriers.
+  write(
+    root,
+    'plugins/secret-keeper/.codex-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'secret-keeper',
+        version: '0.1.0',
+        description: 'Bundles an MCP server that needs a token.',
+        mcpServers: './.mcp.json',
+        interface: {
+          displayName: 'Secret Keeper',
+          websiteURL: 'https://example.com/?token=sk-live-fixture-not-a-real-secret',
+        },
+        env: { API_TOKEN: '${CODEX_FIXTURE_TOKEN}' },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The second `release-notes`: a different plugin root, offered by the legacy
+  // catalog, which the vendor would install beside the other one.
+  write(
+    root,
+    'plugins/legacy-release-notes/.codex-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'release-notes',
+        version: '0.9.0',
+        description: 'The release-notes plugin the legacy catalog offers.',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // A manifest whose own `name` differs from the entry that reached it: the
+  // vendor documents the manifest `name` as the plugin identifier and never
+  // says what happens when a catalog calls the same plugin something else, so
+  // each declared name is its own row carrying the file that declared it, and
+  // no winner is invented (FR-009).
+  write(
+    root,
+    'plugins/renamed-helper/.codex-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'renamed-helper-v2',
+        version: '2.1.0',
+        description: 'Renamed in the manifest without updating the catalog entry.',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // Malformed JSON: a trailing comma the vendor's own strict reader rejects.
+  write(
+    root,
+    'plugins/broken-plugin/.codex-plugin/plugin.json',
+    '{\n  "name": "broken-plugin",\n  "version": "0.0.1",\n}\n',
+  );
+  // A plugin root reached through a symbolic link inside the repository. The
+  // link is materialized through the shared helper, because a platform without
+  // link support is a platform this fixture still has to build on: when the
+  // link cannot be made, the linked plugin is simply not part of the tree the
+  // builder describes.
+  const linkedRootAvailable = tryMaterializeSymlinks(
+    root,
+    () => {
+      write(
+        root,
+        'plugins/linked-target/.codex-plugin/plugin.json',
+        `${JSON.stringify({ name: 'linked-helper', version: '0.2.0' }, null, 2)}\n`,
+      );
+    },
+    () => {
+      symlinkSync('linked-target', join(root, 'plugins/linked-helper'), 'dir');
+    },
+    ['plugins/linked-helper'],
+  );
+
+  // Further near misses: a manifest one directory below the root, a catalog
+  // there too, and a manifest spelled with another extension.
+  write(
+    root,
+    'packages/api/.codex-plugin/plugin.json',
+    `${JSON.stringify({ name: 'nested-plugin' }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'packages/api/.agents/plugins/marketplace.json',
+    `${JSON.stringify({ name: 'nested-catalog', plugins: [] }, null, 2)}\n`,
+  );
+  write(root, '.codex-plugin/plugin.jsonc', '{\n  // not the required entry point\n}\n');
+
+  return {
+    root,
+    expectedPluginPaths: ['.agents/plugins/marketplace.json', '.claude-plugin/marketplace.json'],
+    catalogPath: '.agents/plugins/marketplace.json',
+    objectSourceManifestPath: 'plugins/release-notes/.codex-plugin/plugin.json',
+    stringSourceManifestPath: 'plugins/changelog-writer/.codex-plugin/plugin.json',
+    divergentNameManifestPath: 'plugins/renamed-helper/.codex-plugin/plugin.json',
+    legacyCatalogManifestPath: 'plugins/legacy-release-notes/.codex-plugin/plugin.json',
+    linkedManifestPath: linkedRootAvailable
+      ? 'plugins/linked-helper/.codex-plugin/plugin.json'
+      : null,
+    nonLocalPluginNames: [
+      'absolute-helper',
+      'escaping-helper',
+      'home-helper',
+      'npm-helper',
+      'remote-helper',
+    ],
+    malformedManifestPath: 'plugins/broken-plugin/.codex-plugin/plugin.json',
+    secretManifestPath: 'plugins/secret-keeper/.codex-plugin/plugin.json',
+    componentPaths: ['skills/review/SKILL.md', 'hooks/hooks.json', '.app.json'],
+    nearMissPaths: [
+      // The repository's own published plugin: the exact manifest path, at the
+      // one depth a root-anchored rule would have matched.
+      '.codex-plugin/plugin.json',
+      'packages/api/.codex-plugin/plugin.json',
+      'packages/api/.agents/plugins/marketplace.json',
+      '.codex-plugin/plugin.jsonc',
+    ],
+  };
+}
+
+/**
+ * One built Claude plugin fixture repository (T774): both carriers this vendor
+ * admits — the skills-directory manifest a folder is made a plugin by, and the
+ * repository's own catalog — with the plugin roots their entries name, the
+ * sources that name none, and the near misses that must stay unadmitted.
+ */
+export interface ClaudePluginFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the Claude plugin rules admit: the catalog, and
+   * one manifest per skills-directory plugin. A plugin's own files — including
+   * the optional manifest below a catalog's local root — are read from the
+   * plugin root and published as the plugin's files, never as candidates of
+   * their own (contracts/inspection-path-allowlist.md § Bounded companion
+   * census).
+   */
+  readonly expectedPluginPaths: readonly string[];
+  /** The catalog whose entries name every source form this fixture covers. */
+  readonly catalogPath: string;
+  /** The manifest that makes `.claude/skills/release-notes/` a plugin. */
+  readonly skillsDirectoryManifestPath: string;
+  /** The name that plugin is addressed by: the folder, qualified by the vendor's own word. */
+  readonly skillsDirectoryPluginName: string;
+  /** A skills-directory folder with a `SKILL.md` and no manifest: a skill, never a plugin. */
+  readonly plainSkillPath: string;
+  /** The optional manifest inside the plugin root the catalog's object-form local source names. */
+  readonly objectSourceManifestPath: string;
+  /** The plugin root a catalog entry names but that ships no manifest at all. */
+  readonly manifestlessRootFilePath: string;
+  /** The plugin names whose entries name a source outside this repository. */
+  readonly nonLocalPluginNames: readonly string[];
+  /**
+   * A manifest whose JSON no reader accepts, below a catalog's local root.
+   * Nothing parses it — a plugin's own files are published as the files they
+   * are — so it is an ordinary published file of the plugin that ships it.
+   */
+  readonly malformedManifestPath: string;
+  /**
+   * The manifest declaring a literal credential and an environment reference,
+   * so a test can prove neither is resolved (FR-026, FR-027).
+   */
+  readonly secretManifestPath: string;
+  /** The component paths a manifest points at, which no rule may admit. */
+  readonly componentPaths: readonly string[];
+  /** Paths that look like plugin files but no selector reaches. */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * The near miss that sits inside a plugin root: a manifest one directory
+   * deeper than the anchored selector reaches is no plugin of its own, and is
+   * still one of the files the plugin whose root holds it ships — admission and
+   * reading are different questions (contracts/inspection-path-allowlist.md
+   * § Bounded companion census).
+   */
+  readonly nearMissInsidePluginRootPath: string;
+}
+
+/**
+ * Builds the Claude plugin fixture: one repository carrying a skills-directory
+ * plugin beside a plain skill, the repository's own catalog, every source form
+ * the catalog rule must accept or refuse, and the near misses that prove the
+ * root is not searched for manifests.
+ */
+export function buildClaudePluginFixture(
+  prefix = 'inspector-claude-plugins',
+  root = createRepositoryFixtureRoot(prefix),
+): ClaudePluginFixture {
+  // The one plugin Claude loads by placement: a folder under the skills
+  // directory carrying the manifest, loaded as `<folder>@skills-dir` with no
+  // marketplace and no install step.
+  write(
+    root,
+    '.claude/skills/release-notes/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'release-notes',
+        version: '0.3.1',
+        description: 'Draft release notes from merged pull requests.',
+        author: { name: 'Platform team', email: 'platform@example.com' },
+        homepage: 'https://example.com/plugins/release-notes',
+        license: 'MIT',
+        keywords: ['release', 'changelog'],
+        skills: './skills/',
+        hooks: './hooks/hooks.json',
+        mcpServers: './.mcp.json',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // What that plugin ships. None of it is a candidate: the manifest's values
+  // are relationships, never read authority (`claude.excluded.plugin-files`),
+  // and these files are published because they sit in the plugin's own root.
+  write(
+    root,
+    '.claude/skills/release-notes/skills/draft/SKILL.md',
+    '---\nname: draft\ndescription: Draft the notes for a release.\n---\n\nDraft the notes.\n',
+  );
+  write(
+    root,
+    '.claude/skills/release-notes/hooks/hooks.json',
+    `${JSON.stringify({ hooks: { SessionStart: [] } }, null, 2)}\n`,
+  );
+  write(
+    root,
+    '.claude/skills/release-notes/.mcp.json',
+    `${JSON.stringify({ mcpServers: { notes: { command: 'notes-server' } } }, null, 2)}\n`,
+  );
+  write(root, '.claude/skills/release-notes/README.md', '# Release notes plugin\n');
+  // A plain skill beside it: the same directory tree, no manifest, so it is a
+  // skill and never a plugin.
+  write(
+    root,
+    '.claude/skills/greet/SKILL.md',
+    '---\nname: greet\ndescription: Greet a teammate.\n---\n\nSay hello.\n',
+  );
+
+  // The repository's own catalog, at the location the vendor documents.
+  write(
+    root,
+    '.claude-plugin/marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'inspector-examples',
+        owner: { name: 'Platform team', email: 'platform@example.com' },
+        plugins: [
+          {
+            name: 'quality-review',
+            source: { source: 'local', path: './plugins/quality-review' },
+            description: 'Adds a quality-review skill for quick code reviews.',
+            category: 'Productivity',
+          },
+          // The plain-string spelling of the same local form.
+          { name: 'changelog-writer', source: './plugins/changelog-writer' },
+          // A local root the repository carries that ships no manifest: the
+          // page makes the manifest optional, so the entry still declares a
+          // plugin and the root still holds its files.
+          { name: 'bare-helper', source: { source: 'local', path: './plugins/bare-helper' } },
+          // A root this repository does not carry: the offering stands and
+          // occupies nothing here.
+          { name: 'missing-helper', source: { source: 'local', path: './plugins/missing-helper' } },
+          // The manifest below this one is not JSON any reader accepts.
+          { name: 'broken-plugin', source: { source: 'local', path: './plugins/broken-plugin' } },
+          // Credentials and environment references stay exactly as written.
+          { name: 'secret-keeper', source: { source: 'local', path: './plugins/secret-keeper' } },
+          // Every source form that names no directory in this repository.
+          { name: 'remote-helper', source: 'owner/repo' },
+          { name: 'git-helper', source: { source: 'git', url: 'https://example.com/p.git' } },
+          { name: 'npm-helper', source: { source: 'npm', package: '@example/plugin' } },
+          { name: 'absolute-helper', source: { source: 'local', path: '/opt/plugins/absolute' } },
+          { name: 'home-helper', source: { source: 'local', path: '~/.claude/plugins/home' } },
+          { name: 'escaping-helper', source: { source: 'local', path: './../outside/escaping' } },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The plugin roots those entries name, each with the files it ships.
+  write(
+    root,
+    'plugins/quality-review/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'quality-review',
+        version: '1.2.0',
+        description: 'Review a change against the team checklist.',
+        skills: './skills/',
+        agents: './agents/',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/quality-review/skills/checklist/SKILL.md',
+    '---\nname: checklist\ndescription: Walk the review checklist.\n---\n\nWalk the checklist.\n',
+  );
+  write(root, 'plugins/quality-review/agents/reviewer.md', '---\nname: reviewer\n---\n\nReview.\n');
+  write(
+    root,
+    'plugins/changelog-writer/.claude-plugin/plugin.json',
+    `${JSON.stringify({ name: 'changelog-writer', version: '0.9.0' }, null, 2)}\n`,
+  );
+  // A root with no manifest at all: the files are still the plugin's.
+  write(root, 'plugins/bare-helper/commands/summarize.md', '# Summarize\n');
+  write(
+    root,
+    'plugins/broken-plugin/.claude-plugin/plugin.json',
+    '{\n  "name": "broken-plugin",\n  "version": "0.0.1",\n}\n',
+  );
+  write(
+    root,
+    'plugins/secret-keeper/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'secret-keeper',
+        version: '0.1.0',
+        description: 'Bundles an MCP server that needs a token.',
+        mcpServers: './.mcp.json',
+        env: { API_TOKEN: FIXTURE_ENVIRONMENT_REFERENCE },
+        interface: { websiteURL: `https://example.com/?token=${FIXTURE_SECRET_LITERAL}` },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/secret-keeper/.mcp.json',
+    `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`,
+  );
+
+  // Near misses. A manifest at the repository's own root is the plugin this
+  // repository publishes, which no rule reaches; a manifest one directory below
+  // a skills directory, and one under a nested `.claude/skills`, are paths the
+  // anchored selector does not admit.
+  write(
+    root,
+    '.claude-plugin/plugin.json',
+    `${JSON.stringify({ name: 'inspector-tools', version: '1.4.0' }, null, 2)}\n`,
+  );
+  write(
+    root,
+    '.claude/skills/release-notes/nested/.claude-plugin/plugin.json',
+    `${JSON.stringify({ name: 'nested-plugin' }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'packages/api/.claude/skills/api-tools/.claude-plugin/plugin.json',
+    `${JSON.stringify({ name: 'api-tools' }, null, 2)}\n`,
+  );
+  write(root, 'packages/api/.claude-plugin/marketplace.json', `${JSON.stringify({}, null, 2)}\n`);
+
+  return {
+    root,
+    expectedPluginPaths: [
+      '.claude-plugin/marketplace.json',
+      '.claude/skills/release-notes/.claude-plugin/plugin.json',
+    ],
+    catalogPath: '.claude-plugin/marketplace.json',
+    skillsDirectoryManifestPath: '.claude/skills/release-notes/.claude-plugin/plugin.json',
+    skillsDirectoryPluginName: 'release-notes@skills-dir',
+    plainSkillPath: '.claude/skills/greet/SKILL.md',
+    objectSourceManifestPath: 'plugins/quality-review/.claude-plugin/plugin.json',
+    manifestlessRootFilePath: 'plugins/bare-helper/commands/summarize.md',
+    nonLocalPluginNames: [
+      'absolute-helper',
+      'escaping-helper',
+      'git-helper',
+      'home-helper',
+      'missing-helper',
+      'npm-helper',
+      'remote-helper',
+    ],
+    malformedManifestPath: 'plugins/broken-plugin/.claude-plugin/plugin.json',
+    secretManifestPath: 'plugins/secret-keeper/.claude-plugin/plugin.json',
+    componentPaths: [
+      '.claude/skills/release-notes/skills/draft/SKILL.md',
+      '.claude/skills/release-notes/hooks/hooks.json',
+      '.claude/skills/release-notes/.mcp.json',
+    ],
+    nearMissPaths: [
+      '.claude-plugin/plugin.json',
+      '.claude/skills/release-notes/nested/.claude-plugin/plugin.json',
+      'packages/api/.claude/skills/api-tools/.claude-plugin/plugin.json',
+      'packages/api/.claude-plugin/marketplace.json',
+    ],
+    nearMissInsidePluginRootPath: '.claude/skills/release-notes/nested/.claude-plugin/plugin.json',
+  };
+}
+
+/**
+ * One built Copilot plugin fixture repository (T797): the four catalog
+ * locations this vendor checks, the plugin roots their entries name, the four
+ * manifest forms a root may use, and the near misses that must stay unadmitted
+ * — a manifest at the repository's own root among them.
+ */
+export interface CopilotPluginFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the Copilot plugin rule admits: the four catalog
+   * locations, and nothing else. A plugin's own files — its manifest included —
+   * are read from the plugin root a catalog entry names and published as the
+   * plugin's files, never as candidates of their own.
+   */
+  readonly expectedPluginPaths: readonly string[];
+  /** The catalog whose entries name every source form this fixture covers. */
+  readonly catalogPath: string;
+  /** The three other documented catalog locations, each carrying a catalog of its own. */
+  readonly otherCatalogPaths: readonly string[];
+  /** The manifest of the root a `./` entry names, in the first documented form. */
+  readonly legacyFormManifestPath: string;
+  /** The manifest of a root that uses the plain `plugin.json` form instead. */
+  readonly rootFormManifestPath: string;
+  /** The manifest of a root that uses the `.claude-plugin/` form Copilot also reads. */
+  readonly claudeFormManifestPath: string;
+  /** The plugin names whose entries name a source outside this repository. */
+  readonly nonLocalPluginNames: readonly string[];
+  /**
+   * The manifest declaring a literal credential and an environment reference,
+   * so a test can prove neither is resolved (FR-026, FR-027).
+   */
+  readonly secretManifestPath: string;
+  /** The component paths a manifest points at, which no rule may admit. */
+  readonly componentPaths: readonly string[];
+  /** The CLI extension file `copilot.excluded.cli-extensions` keeps out. */
+  readonly extensionPath: string;
+  /** Paths that look like plugin files but no selector reaches. */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the Copilot plugin fixture: one repository carrying all four catalog
+ * locations, plugin roots that use three of the four manifest forms, every
+ * source form the catalog rule must accept or refuse, an experimental CLI
+ * extension, and the near misses that prove the root is not searched.
+ */
+export function buildCopilotPluginFixture(
+  prefix = 'inspector-copilot-plugins',
+  root = createRepositoryFixtureRoot(prefix),
+): CopilotPluginFixture {
+  // The catalog at the first documented location, naming every source form.
+  write(
+    root,
+    'marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'inspector-examples',
+        owner: { name: 'Platform team', email: 'platform@example.com' },
+        plugins: [
+          {
+            name: 'quality-review',
+            source: { source: 'local', path: './plugins/quality-review' },
+            description: 'Adds a quality-review skill for quick code reviews.',
+          },
+          // The plain-string spelling of the same local form.
+          { name: 'changelog-writer', source: './plugins/changelog-writer' },
+          // A root that uses the Claude manifest form Copilot also reads.
+          { name: 'release-notes', source: { source: 'local', path: './plugins/release-notes' } },
+          { name: 'secret-keeper', source: { source: 'local', path: './plugins/secret-keeper' } },
+          // A root this repository does not carry.
+          { name: 'missing-helper', source: { source: 'local', path: './plugins/missing-helper' } },
+          // Every source form that names no directory here.
+          { name: 'shorthand-helper', source: 'octo-org/plugin-repo' },
+          { name: 'git-helper', source: { source: 'git', url: 'https://example.com/p.git' } },
+          { name: 'npm-helper', source: { source: 'npm', package: '@example/plugin' } },
+          { name: 'absolute-helper', source: { source: 'local', path: '/opt/plugins/absolute' } },
+          { name: 'escaping-helper', source: { source: 'local', path: './../outside/escaping' } },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The other three documented catalog locations, each a catalog of its own.
+  for (const [path, name] of [
+    ['.plugin/marketplace.json', 'inspector-legacy'],
+    ['.github/plugin/marketplace.json', 'inspector-github'],
+    ['.claude-plugin/marketplace.json', 'inspector-shared'],
+  ] as const) {
+    write(
+      root,
+      path,
+      `${JSON.stringify(
+        {
+          name,
+          plugins: [
+            { name: 'shared-helper', source: { source: 'local', path: './plugins/shared' } },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  }
+  write(
+    root,
+    'plugins/shared/plugin.json',
+    `${JSON.stringify({ name: 'shared-helper' }, null, 2)}\n`,
+  );
+
+  // Plugin roots, each using a different one of the documented manifest forms.
+  write(
+    root,
+    'plugins/quality-review/.plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'quality-review',
+        version: '1.2.0',
+        description: 'Review a change against the team checklist.',
+        skills: './skills/',
+        agents: './agents/',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/quality-review/skills/checklist/SKILL.md',
+    '---\nname: checklist\ndescription: Walk the review checklist.\n---\n\nWalk the checklist.\n',
+  );
+  write(
+    root,
+    'plugins/quality-review/agents/reviewer.agent.md',
+    '---\nname: reviewer\n---\n\nReview the diff.\n',
+  );
+  write(
+    root,
+    'plugins/changelog-writer/plugin.json',
+    `${JSON.stringify(
+      {
+        $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
+        name: 'changelog-writer',
+        version: '0.9.0',
+        description: 'Turn merged pull requests into a changelog entry.',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/release-notes/.claude-plugin/plugin.json',
+    `${JSON.stringify({ name: 'release-notes', version: '0.3.1' }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'plugins/secret-keeper/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'secret-keeper',
+        version: '0.1.0',
+        description: 'Bundles an MCP server that needs a token.',
+        env: { API_TOKEN: FIXTURE_ENVIRONMENT_REFERENCE },
+        homepage: `https://example.com/?token=${FIXTURE_SECRET_LITERAL}`,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/secret-keeper/.mcp.json',
+    `${JSON.stringify({ mcpServers: {} }, null, 2)}\n`,
+  );
+
+  // The CLI's experimental project extension: executable JavaScript the
+  // exclusion keeps out of the plugin kind entirely.
+  write(
+    root,
+    '.github/extensions/formatter/extension.mjs',
+    'export function activate() {\n  return { name: "formatter" };\n}\n',
+  );
+
+  // Near misses. A manifest at the repository's own root is the plugin this
+  // repository publishes, and a catalog one directory below the root is a path
+  // the anchored selectors do not reach.
+  write(root, 'plugin.json', `${JSON.stringify({ name: 'inspector-tools' }, null, 2)}\n`);
+  write(
+    root,
+    'packages/api/marketplace.json',
+    `${JSON.stringify({ name: 'nested', plugins: [] }, null, 2)}\n`,
+  );
+  write(root, 'marketplace.jsonc', '{\n  // not the documented form\n}\n');
+
+  return {
+    root,
+    expectedPluginPaths: [
+      'marketplace.json',
+      '.plugin/marketplace.json',
+      '.github/plugin/marketplace.json',
+      '.claude-plugin/marketplace.json',
+    ],
+    catalogPath: 'marketplace.json',
+    otherCatalogPaths: [
+      '.plugin/marketplace.json',
+      '.github/plugin/marketplace.json',
+      '.claude-plugin/marketplace.json',
+    ],
+    legacyFormManifestPath: 'plugins/quality-review/.plugin/plugin.json',
+    rootFormManifestPath: 'plugins/changelog-writer/plugin.json',
+    claudeFormManifestPath: 'plugins/release-notes/.claude-plugin/plugin.json',
+    nonLocalPluginNames: [
+      'absolute-helper',
+      'escaping-helper',
+      'git-helper',
+      'missing-helper',
+      'npm-helper',
+      'shorthand-helper',
+    ],
+    secretManifestPath: 'plugins/secret-keeper/plugin.json',
+    componentPaths: [
+      'plugins/quality-review/skills/checklist/SKILL.md',
+      'plugins/quality-review/agents/reviewer.agent.md',
+      'plugins/secret-keeper/.mcp.json',
+    ],
+    extensionPath: '.github/extensions/formatter/extension.mjs',
+    nearMissPaths: ['plugin.json', 'packages/api/marketplace.json', 'marketplace.jsonc'],
+  };
+}
+
+/**
+ * One built unified plugin fixture repository (T818): one repository whose
+ * plugins reach it every way the three products document, including the one
+ * catalog file all three read.
+ *
+ * The point of this tree is the cross-product view: a plugin name is one row
+ * however many products resolve it, and one physical file is read once however
+ * many of them recognize it (data-model.md § Inventory unit).
+ */
+export interface UnifiedPluginFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** The catalog at the one location all three products read. */
+  readonly sharedCatalogPath: string;
+  /** The name the shared catalog's local entry resolves, the same for every product. */
+  readonly sharedPluginName: string;
+  /** The Codex-only catalog location, and the name its entry resolves. */
+  readonly codexCatalogPath: string;
+  /** The name the Codex-only catalog's entry resolves. */
+  readonly codexPluginName: string;
+  /** The Copilot-only catalog location. */
+  readonly copilotCatalogPath: string;
+  /** The name the Copilot-only catalog's entry resolves. */
+  readonly copilotPluginName: string;
+  /** The manifest that makes a skills-directory folder a Claude plugin. */
+  readonly skillsDirectoryManifestPath: string;
+  /** The name that placement-loaded plugin is addressed by. */
+  readonly skillsDirectoryPluginName: string;
+  /**
+   * The cross-tool plugin root the shared catalog names, with the files it
+   * ships: two manifest forms, a bundled skill, a hook file, and an MCP
+   * configuration file no MCP rule reaches.
+   */
+  readonly sharedPluginFiles: readonly string[];
+  /**
+   * The manifest whose `mcpServers` is an inline map rather than a path, so a
+   * test can prove that an MCP-shaped value inside a plugin's own file joins no
+   * MCP row (data-model.md § Inventory unit).
+   */
+  readonly inlineMcpManifestPath: string;
+  /** The plugin name whose catalog entry names a source outside this repository. */
+  readonly nonLocalPluginName: string;
+}
+
+/**
+ * Builds the unified plugin fixture: one repository carrying the catalog all
+ * three products read, each product's own catalog location, a placement-loaded
+ * Claude plugin, and a cross-tool plugin root that ships two manifest forms.
+ */
+export function buildUnifiedPluginFixture(
+  prefix = 'inspector-unified-plugins',
+  root = createRepositoryFixtureRoot(prefix),
+): UnifiedPluginFixture {
+  // The one catalog location all three read: Codex's legacy-compatible
+  // location, where Claude documents a repository's own catalog, and the
+  // fourth form Copilot checks.
+  write(
+    root,
+    '.claude-plugin/marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'shared-tools',
+        owner: { name: 'Platform team', email: 'platform@example.com' },
+        plugins: [
+          {
+            name: 'formatter',
+            source: { source: 'local', path: './plugins/formatter' },
+            description: 'Formats a diff the way the team writes it.',
+          },
+          { name: 'remote-linter', source: { source: 'git', url: 'https://example.com/lint.git' } },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The cross-tool plugin root that catalog names: it ships a manifest in each
+  // form the products that read this catalog look for, plus its components.
+  write(
+    root,
+    'plugins/formatter/.codex-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'formatter',
+        version: '2.0.0',
+        description: 'Formats a diff the way the team writes it.',
+        skills: './skills/',
+        hooks: './hooks/hooks.json',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/formatter/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'formatter',
+        version: '2.0.0',
+        // An inline map rather than a path: an MCP-shaped value inside a
+        // plugin's own file is that file's content and joins no MCP row.
+        mcpServers: { formatter: { command: 'formatter-server', args: ['--stdio'] } },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/formatter/skills/format/SKILL.md',
+    '---\nname: format\ndescription: Format the staged diff.\n---\n\nFormat the diff.\n',
+  );
+  write(
+    root,
+    'plugins/formatter/hooks/hooks.json',
+    `${JSON.stringify({ hooks: { PreToolUse: [] } }, null, 2)}\n`,
+  );
+  write(
+    root,
+    'plugins/formatter/.mcp.json',
+    `${JSON.stringify({ mcpServers: { formatter: { command: 'formatter-server' } } }, null, 2)}\n`,
+  );
+
+  // Codex's own catalog location, offering a plugin of its own.
+  write(
+    root,
+    '.agents/plugins/marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'codex-tools',
+        plugins: [
+          { name: 'release-notes', source: { source: 'local', path: './plugins/release-notes' } },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/release-notes/.codex-plugin/plugin.json',
+    `${JSON.stringify({ name: 'release-notes', version: '0.4.0' }, null, 2)}\n`,
+  );
+
+  // Copilot's first catalog location, offering another.
+  write(
+    root,
+    'marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'copilot-tools',
+        plugins: [{ name: 'pr-summary', source: './plugins/pr-summary' }],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    'plugins/pr-summary/plugin.json',
+    `${JSON.stringify({ name: 'pr-summary', version: '1.1.0' }, null, 2)}\n`,
+  );
+
+  // The one plugin a product loads by placement alone.
+  write(
+    root,
+    '.claude/skills/changelog/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      { name: 'changelog', version: '0.2.0', description: 'Keep the changelog current.' },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    '.claude/skills/changelog/skills/entry/SKILL.md',
+    '---\nname: entry\ndescription: Add a changelog entry.\n---\n\nAdd an entry.\n',
+  );
+  // A plain skill beside it, so the skills inventory keeps its own row.
+  write(
+    root,
+    '.claude/skills/greet/SKILL.md',
+    '---\nname: greet\ndescription: Greet a teammate.\n---\n\nSay hello.\n',
+  );
+
+  return {
+    root,
+    sharedCatalogPath: '.claude-plugin/marketplace.json',
+    sharedPluginName: 'formatter@shared-tools',
+    codexCatalogPath: '.agents/plugins/marketplace.json',
+    codexPluginName: 'release-notes@codex-tools',
+    copilotCatalogPath: 'marketplace.json',
+    copilotPluginName: 'pr-summary@copilot-tools',
+    skillsDirectoryManifestPath: '.claude/skills/changelog/.claude-plugin/plugin.json',
+    skillsDirectoryPluginName: 'changelog@skills-dir',
+    sharedPluginFiles: [
+      'plugins/formatter/.claude-plugin/plugin.json',
+      'plugins/formatter/.codex-plugin/plugin.json',
+      'plugins/formatter/.mcp.json',
+      'plugins/formatter/hooks/hooks.json',
+      'plugins/formatter/skills/format/SKILL.md',
+    ],
+    inlineMcpManifestPath: 'plugins/formatter/.claude-plugin/plugin.json',
+    nonLocalPluginName: 'remote-linter@shared-tools',
+  };
+}
+
+/** One built output-style fixture repository (T658). */
+export interface ClaudeOutputStyleFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every Source-relative Path the `claude.repo.output-style` allowlist must
+   * admit, sorted exactly as the scan publishes them.
+   */
+  readonly expectedStylePaths: readonly string[];
+  /**
+   * The style names the inventory must publish, sorted, one row each: the
+   * frontmatter `name` where a file sets one, the file name without `.md`
+   * otherwise.
+   */
+  readonly expectedStyleNames: readonly string[];
+  /**
+   * The two files that resolve to one style name from two project layers,
+   * which the vendor resolves by proximity to a working directory this
+   * product never observes. Only the selected root's own layer is admitted,
+   * so the second is a near miss rather than a second definition.
+   */
+  readonly duplicateNamePath: string;
+  /**
+   * The style file whose frontmatter is malformed YAML: its extraction fails
+   * all-or-nothing while the complete source stays displayed (FR-028).
+   */
+  readonly malformedStylePath: string;
+  /**
+   * The style file whose body holds a literal credential and an environment
+   * reference, so a test can prove neither reaches the inventory and neither
+   * is resolved (FR-026, FR-027).
+   */
+  readonly secretStylePath: string;
+  /**
+   * Paths no shipped rule of any product may admit: the nested project layers
+   * the vendor documents but this Source boundary excludes, the spelling
+   * variants one step from the selector's literals, and VCS internals.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the Claude output-style fixture (T658): direct Markdown children of
+ * the selected root's `.claude/output-styles/`, the nested project layers that
+ * are near misses at this Source boundary, a declared-name style beside
+ * file-named ones, a duplicate name across layers, malformed frontmatter, and
+ * a credential-bearing body.
+ *
+ * The admitted files are written as styles an author would actually ship, so
+ * the fixture reads as a repository rather than as a test matrix.
+ */
+export function buildClaudeOutputStyleFixture(
+  prefix = 'inspector-claude-output-styles',
+  root = createRepositoryFixtureRoot(prefix),
+): ClaudeOutputStyleFixture {
+  // A declared name that differs from the file name: the row is `Diagrams
+  // first`, which is what the settings picker shows, and the file is
+  // `diagrams.md`.
+  write(
+    root,
+    '.claude/output-styles/diagrams.md',
+    [
+      '---',
+      'name: Diagrams first',
+      'description: Lead every explanation with a diagram',
+      'keep-coding-instructions: true',
+      '---',
+      '',
+      'When explaining code, architecture, or data flow, start with a Mermaid diagram',
+      'showing the structure, then explain in prose.',
+      '',
+      '## Diagram conventions',
+      '',
+      'Use `flowchart TD` for control flow and `sequenceDiagram` for request paths.',
+      'Keep diagrams under 15 nodes.',
+      '',
+    ].join('\n'),
+  );
+  // No `name` key: the file name is the style name, which is the vendor's
+  // documented fallback.
+  write(
+    root,
+    '.claude/output-styles/code-review.md',
+    [
+      '---',
+      'description: Review changes as a staff engineer would',
+      'keep-coding-instructions: true',
+      '---',
+      '',
+      'Open with the one change that matters most, then the rest in descending order of',
+      'consequence. Name the failure a defect would cause before naming the fix.',
+      '',
+      '## What not to raise',
+      '',
+      'Formatting a formatter already owns, and preferences with no failure behind them.',
+      '',
+    ].join('\n'),
+  );
+  // A style that turns the coding instructions off, which the page documents
+  // as the case for a style whose work is not software engineering.
+  write(
+    root,
+    '.claude/output-styles/plain-language.md',
+    [
+      '---',
+      'name: Plain language',
+      'description: Explain to a reader who does not write code',
+      '---',
+      '',
+      'Write for someone who knows the product but not the codebase. Expand an acronym',
+      'the first time it appears, and prefer a short sentence to a precise one.',
+      '',
+    ].join('\n'),
+  );
+  // A declared empty name: the picker cannot show a style by a name with no
+  // characters, so the file name stands in exactly as an absent one does.
+  write(
+    root,
+    '.claude/output-styles/unnamed.md',
+    ['---', 'name: ""', 'description: Declares an empty name', '---', '', 'Body.', ''].join('\n'),
+  );
+  // Malformed YAML frontmatter: extraction fails all-or-nothing while the
+  // complete source stays displayed (FR-028).
+  write(root, '.claude/output-styles/broken.md', '---\nname: [Unterminated\n---\n\n# Broken\n');
+  // The credential and environment-reference case: both are authored text a
+  // style file happens to contain, and neither may reach an inventory row or
+  // be resolved against the process environment (FR-026, FR-027).
+  write(
+    root,
+    '.claude/output-styles/secrets.md',
+    [
+      '---',
+      'name: Deploy notes',
+      `description: Never echo ${FIXTURE_SECRET_LITERAL}`,
+      '---',
+      '',
+      `- The staging token is ${FIXTURE_SECRET_LITERAL}.`,
+      `- The endpoint is ${FIXTURE_ENVIRONMENT_REFERENCE}.`,
+      '',
+    ].join('\n'),
+  );
+
+  // The nested project layer the page documents and this Source boundary
+  // excludes: it defines the same `Diagrams first` name, which is the
+  // duplicate the vendor resolves by proximity to a working directory this
+  // product never observes.
+  write(
+    root,
+    'packages/api/.claude/output-styles/diagrams.md',
+    ['---', 'name: Diagrams first', '---', '', 'Nested layer.', ''].join('\n'),
+  );
+
+  // Near miss: the page names direct children, so a subdirectory inside the
+  // styles directory is not a style.
+  write(root, '.claude/output-styles/team/reviewer.md', 'nested inside the styles directory\n');
+  // Near miss: the container literals are exact.
+  write(root, '.claude/output-style/diagrams.md', 'singular styles dir\n');
+  write(root, 'claude/output-styles/diagrams.md', 'no leading dot\n');
+  write(root, 'output-styles/diagrams.md', 'no .claude above it\n');
+  // Near miss: the terminal step is the extension, in its own directory so a
+  // case-insensitive filesystem cannot collide it with an admitted file.
+  write(root, '.claude/output-styles/uppercase/STYLE.MD', 'wrong case\n');
+  write(root, '.claude/output-styles/notes.md.bak', 'backup suffix\n');
+  write(root, '.claude/output-styles/apply.sh', 'echo not markdown\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/.claude/output-styles/hidden.md', 'vcs internal\n');
+  // Near miss: an installed dependency tree is never entered.
+  write(root, 'node_modules/pkg/.claude/output-styles/vendored.md', 'installed package\n');
+
+  // Other products' own customizations, admitted by their own rules and by no
+  // output-style rule: the fixture is a repository, not a directory of styles.
+  write(root, '.claude/CLAUDE.md', '# Directory-form project instructions\n');
+  write(root, '.github/copilot-instructions.md', '# Repository-wide instructions\n');
+
+  return {
+    root,
+    expectedStylePaths: [
+      '.claude/output-styles/broken.md',
+      '.claude/output-styles/code-review.md',
+      '.claude/output-styles/diagrams.md',
+      '.claude/output-styles/plain-language.md',
+      '.claude/output-styles/secrets.md',
+      '.claude/output-styles/unnamed.md',
+    ],
+    expectedStyleNames: [
+      'Deploy notes',
+      'Diagrams first',
+      'Plain language',
+      'broken',
+      'code-review',
+      'unnamed',
+    ],
+    duplicateNamePath: 'packages/api/.claude/output-styles/diagrams.md',
+    malformedStylePath: '.claude/output-styles/broken.md',
+    secretStylePath: '.claude/output-styles/secrets.md',
+    nearMissPaths: [
+      '.claude/output-style/diagrams.md',
+      '.claude/output-styles/apply.sh',
+      '.claude/output-styles/notes.md.bak',
+      '.claude/output-styles/team/reviewer.md',
+      '.claude/output-styles/uppercase/STYLE.MD',
+      '.git/.claude/output-styles/hidden.md',
+      'claude/output-styles/diagrams.md',
+      'node_modules/pkg/.claude/output-styles/vendored.md',
+      'output-styles/diagrams.md',
+      'packages/api/.claude/output-styles/diagrams.md',
+    ],
+  };
+}
+
 /** One built command fixture repository, covering both products (T440, T475). */
 export interface CommandFixture {
   /** The absolute fixture root to scan. */
@@ -4642,6 +5979,14 @@ export interface AllCustomizationKindFixture {
   readonly ruleFixture: CodexRuleFixture;
   /** The Claude rule fixture's own result, built into this root. */
   readonly claudeRuleFixture: ClaudeRuleFixture;
+  /** The Claude output-style fixture's own result, built into this root. */
+  readonly claudeOutputStyleFixture: ClaudeOutputStyleFixture;
+  /** The Codex plugin fixture's own result, built into this root. */
+  readonly codexPluginFixture: CodexPluginFixture;
+  /** The Claude plugin fixture's own result, built into this root. */
+  readonly claudePluginFixture: ClaudePluginFixture;
+  /** The Copilot plugin fixture's own result, built into this root. */
+  readonly copilotPluginFixture: CopilotPluginFixture;
   /** The Claude command fixture's own result, built into this root. */
   readonly commandFixture: CommandFixture;
   /** The Claude permission-policy fixture's own result, built into this root. */
@@ -4690,6 +6035,12 @@ export function buildAllCustomizationKindFixture(
   const skillFixture = buildAllToolSkillFixture(prefix, root);
   const ruleFixture = buildCodexRuleFixture(prefix, root);
   const claudeRuleFixture = buildClaudeRuleFixture(prefix, root);
+  // The output-style family, whose `.claude/output-styles/` paths are disjoint
+  // from every other builder's.
+  const claudeOutputStyleFixture = buildClaudeOutputStyleFixture(prefix, root);
+  const codexPluginFixture = buildCodexPluginFixture(prefix, root);
+  const claudePluginFixture = buildClaudePluginFixture(prefix, root);
+  const copilotPluginFixture = buildCopilotPluginFixture(prefix, root);
   const commandFixture = buildCommandFixture(prefix, root);
   const mcpFixture = buildPriorityMcpFixture(prefix, root);
   // The settings family, so one launch shows every inventory this release
@@ -4748,6 +6099,10 @@ export function buildAllCustomizationKindFixture(
     mcpFixture,
     ruleFixture,
     claudeRuleFixture,
+    claudeOutputStyleFixture,
+    codexPluginFixture,
+    claudePluginFixture,
+    copilotPluginFixture,
     commandFixture,
     claudePermissionsFixture,
     agentFixture,

@@ -145,6 +145,58 @@
     ]
   },
   {
+    "strategyId": "claude.output-style.selection",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "operations": ["select-closest", "replace"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.output-styles.locations",
+        "url": "https://code.claude.com/docs/en/output-styles",
+        "officialHost": "code.claude.com",
+        "sections": ["Create a custom output style", "How output styles work"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "A custom style is saved at one of three levels — User, project, and the managed settings directory — and project output styles load from every .claude/output-styles/ between the working directory and the repository root, where a style name more than one of those nested directories defines resolves to the directory closest to the working directory; no order between the three levels is stated. A style is applied by the outputStyle setting or the session picker, taking effect after /clear or the next session, plugins can ship styles in an output-styles/ directory, and a plugin style with force-for-plugin applies whenever the plugin is enabled and overrides the user setting, with the first such plugin loaded winning."
+      },
+      {
+        "sourceId": "anthropic.claude-code.ide.shared-differences",
+        "url": "https://code.claude.com/docs/en/ide-integrations",
+        "officialHost": "code.claude.com",
+        "sections": ["Configure settings", "VS Code extension vs. Claude Code CLI"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "The IDE integrations share the CLI configuration while differing per surface in what they expose, which is why the availability of the style picker is stated per surface rather than as one fact."
+      }
+    ]
+  },
+  {
+    "strategyId": "claude.plugins.activation",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "operations": ["filter"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Skills-directory plugins", "Plugin installation scopes"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A skills-directory folder carrying .claude-plugin/plugin.json loads as <folder>@skills-dir on the next session with no marketplace and no install step, and a project-scope one — from the launch working directory's own .claude/skills/, without walking ancestors — loads only after the workspace trust dialog is accepted, with its MCP servers still going through per-server approval and its monitors not loading at all; an installed plugin instead belongs to the settings scope chosen at installation."
+      },
+      {
+        "sourceId": "anthropic.claude-code.marketplaces.catalog-sources",
+        "url": "https://code.claude.com/docs/en/plugin-marketplaces",
+        "officialHost": "code.claude.com",
+        "sections": ["Create the marketplace file", "Require marketplaces for your team"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A catalog reaches a session only once it is added — users run /plugin marketplace add, or a settings file names it — so the catalog file states which plugins it offers and where each comes from, never that one is registered, installed, or enabled."
+      }
+    ]
+  },
+  {
     "strategyId": "claude.rules.layering",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -303,6 +355,24 @@
     ]
   },
   {
+    "strategyId": "codex.plugins.activation",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "operations": ["filter", "select-first"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": ["How local marketplaces work", "Marketplace metadata", "Plugin structure"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The ChatGPT desktop app reads the repo, legacy-compatible, and personal catalogs, Codex skips an entry whose source it cannot resolve instead of failing the catalog, ChatGPT installs a plugin into ~/.codex/plugins/cache and loads the installed copy from there rather than from the entry, ChatGPT stores each plugin's on or off state in ~/.codex/config.toml, and every plugin requires the .codex-plugin/plugin.json manifest at the plugin root it establishes."
+      }
+    ]
+  },
+  {
     "strategyId": "codex.rules.resolution",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -367,7 +437,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
         "officialHost": "docs.github.com",
         "sections": ["Loading order and precedence"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-25",
         "establishes": "Agents use first-found-wins precedence and a plugin agent never overrides a project-level or personal one, so plugin agents are the lowest documented source; an agent is deduplicated by an ID derived from its file name, so reviewer.agent.md is the agent reviewer."
       },
       {
@@ -429,6 +499,24 @@
         "sections": ["Adding per-repository MCP servers"],
         "reviewedOn": "2026-08-20",
         "establishes": "Among the project-level files, same-name definitions in files closer to the working directory take precedence, .mcp.json takes precedence over .github/mcp.json in the same directory, and project-level definitions take precedence over ~/.copilot/mcp-config.json."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.cli.plugins.activation",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "operations": ["select-first", "filter"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations", "Loading order and precedence", "CLI commands"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A plugin manifest and a marketplace manifest are each checked at four documented locations in a fixed order; a plugin is installed by naming a marketplace plugin, a repository, a subdirectory, a Git URL, or a local path, and its components then compose with the rest — agents and skills are first-found-wins so a plugin's lose to a project's, MCP servers are last-wins so a plugin's takes precedence, and built-ins can be overridden by neither."
       }
     ]
   },
@@ -530,6 +618,24 @@
         "sections": ["MCP server configurations"],
         "reviewedOn": "2026-08-20",
         "establishes": "The cloud agent processes out-of-the-box MCP configurations first, followed by the custom agent MCP configuration, and finally MCP configurations specified through repository settings, each level able to override settings from the previous one; the page does not fix the override unit or any cross-level merge rule."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.cloud.plugins.activation",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "operations": ["filter", "select-first"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.plugins",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-plugins",
+        "officialHost": "docs.github.com",
+        "sections": ["Where can I get plugins?", "How plugin marketplaces work"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The cloud agent turns plugins on through the enabledPlugins field of a repository .github/copilot/settings.json and adds a catalog through extraKnownMarketplaces in the same file, while a marketplace.json is what lists the plugins a marketplace makes available."
       }
     ]
   },
@@ -646,6 +752,24 @@
         "sections": ["Workspace .mcp.json files and server deduplication"],
         "reviewedOn": "2026-08-20",
         "establishes": "The 1.118 release adds workspace-root .mcp.json input and a most-specific same-name deduplication rule that enables one server and disables its duplicates, without defining a total order across the root, .vscode, User, and plugin inputs - the unknown-order operation this pipeline retains."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.vscode.plugins.activation",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "operations": ["select-first", "filter"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Plugin formats", "Configure plugin marketplaces", "Use local plugins"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "VS Code auto-detects a plugin format by checking the root manifest and the format-specific manifest paths, taking the Copilot format when no other marker is found, and a plugin becomes available by being installed, by a marketplace registered in chat.plugins.marketplaces, or by a directory path registered in chat.pluginLocations with an enabled or disabled state."
       }
     ]
   },
