@@ -44,6 +44,7 @@ import { SessionApiClient, type FileOpenOutcome, type SessionRpcChannel } from '
 import { ClientDataPurge } from './client-data';
 import { clearInventoryReturnPoint } from '../router.options';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
+import { HookComparisonState } from '../composables/hook-comparison';
 import { McpComparisonState } from '../composables/mcp-comparison';
 import { PluginComparisonState } from '../composables/plugin-comparison';
 import { PromptComparisonState } from '../composables/prompt-comparison';
@@ -52,6 +53,7 @@ import { SkillComparisonState } from '../composables/skill-comparison';
 import type {
   FileDetailDto,
   FileOpenTarget,
+  HookCarrierDetailDto,
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
@@ -188,6 +190,15 @@ export class SessionViewState {
    * source half at all (FR-007).
    */
   public readonly mcpComparison: McpComparisonState;
+
+  /**
+   * The hook kind's own comparison view: one declared lifecycle event's
+   * declarations in two of its row's carriers (`hook-comparison.ts`). Its own
+   * state beside the others because comparison is kind-specific with no shared
+   * module, and this kind's model is two carriers compared by the declarations
+   * each wrote, with no source half at all (FR-007).
+   */
+  public readonly hookComparison: HookComparisonState;
 
   /**
    * The plugin kind's own comparison view: one plugin name's declarations in
@@ -348,6 +359,16 @@ export class SessionViewState {
    * are one open detail, so at most one is non-null.
    */
   public readonly carrierDetail = shallowRef<McpCarrierDetailDto | null>(null);
+
+  /**
+   * The open hook carrier detail, or null while none is. Its own slot beside
+   * {@link carrierDetail} because it is another function's result about
+   * another subject — a hook row names a declared lifecycle event rather than
+   * a server (contracts/http-api.md § get-hook-carrier-detail) — while the
+   * request version, state machine, and purge path below are shared, so at
+   * most one slot is non-null.
+   */
+  public readonly hookDetail = shallowRef<HookCarrierDetailDto | null>(null);
 
   /**
    * The open permission policy, or null while none is. Its own slot beside
@@ -544,6 +565,17 @@ export class SessionViewState {
         this.view.value = 'ended';
       },
     });
+    // The hook kind's own comparison state, wired exactly like the ones above
+    // and for the same reasons.
+    this.hookComparison = new HookComparisonState({
+      client: this.#client,
+      clientData: this.#clientData,
+      refreshFreshly: () => this.#refreshFreshly(),
+      reportFatalFailure: (error) => {
+        this.#sessionError.value = error.message;
+        this.view.value = 'ended';
+      },
+    });
     // The plugin kind's own comparison state, wired exactly like the ones
     // above and for the same reasons.
     this.pluginComparison = new PluginComparisonState({
@@ -635,6 +667,7 @@ export class SessionViewState {
           this.skillComparison.close();
           this.instructionComparison.close();
           this.mcpComparison.close();
+          this.hookComparison.close();
           this.pluginComparison.close();
           this.promptComparison.close();
           this.customAgentComparison.close();
@@ -871,18 +904,8 @@ export class SessionViewState {
     // editor the reader was in, so by the time the watchers run the focused
     // element is already the document body and there is nothing left to
     // rescue (WCAG 2.4.3).
-    this.entryDetail.value = null;
-    this.openCompanion.value = null;
-    this.carrierDetail.value = null;
-    this.pluginDetail.value = null;
-    this.pluginManifestFile.value = null;
-    this.pluginOpenFile.value = null;
+    this.#dropOpenDetails();
     this.entryDetailError.value = null;
-    // The request key goes with the detail it keyed. It is authored text — a
-    // carrier's path and a declared plugin name — so leaving it behind would
-    // keep part of what the reader navigated away from in memory (FR-027).
-    this.#openPluginRow = null;
-    this.policyDetail.value = null;
     this.fileDetailState.value = 'idle';
     for (const disposer of this.#openContentOwners) {
       disposer();
@@ -997,6 +1020,34 @@ export class SessionViewState {
   }
 
   /**
+   * Drops every open detail slot and the request key beside them.
+   *
+   * One method rather than a list repeated at each open, because the list is
+   * what FR-027 is about: a slot a route forgets keeps the previous
+   * customization's authored source in memory after its page is gone, and the
+   * outgoing page's own close is a no-op by then — the incoming open has
+   * already taken ownership. A slot added to this class is added here, and
+   * every route drops it.
+   *
+   * `fileDetailState` is deliberately not touched: each caller sets the state
+   * its own request is in.
+   */
+  #dropOpenDetails(): void {
+    this.entryDetail.value = null;
+    this.openCompanion.value = null;
+    this.carrierDetail.value = null;
+    this.hookDetail.value = null;
+    this.pluginDetail.value = null;
+    this.pluginManifestFile.value = null;
+    this.pluginOpenFile.value = null;
+    this.policyDetail.value = null;
+    // The request key goes with the detail it keyed. It is authored text — a
+    // carrier's path and a declared plugin name — so leaving it behind would
+    // keep part of what the reader navigated away from in memory (FR-027).
+    this.#openPluginRow = null;
+  }
+
+  /**
    * Requests one customization's own file — a skill's entry point, or a file
    * that is itself the customization, an instruction file or a rule file —
    * and the file being read from it, and adopts
@@ -1053,16 +1104,11 @@ export class SessionViewState {
       this.fileDetailState.value = 'loading';
       // The previous detail's authored source is dropped before the next one
       // is asked for, so a slow request never leaves one file's content on
-      // screen under another customization's heading. The carrier slot too:
-      // an MCP page's detail — commands, headers, environment values — would
-      // otherwise survive a navigation to a skill or instruction page, whose
-      // open supersedes the outgoing page's ownership-guarded close, and the
-      // open-detail state would hold two slots at once.
-      this.entryDetail.value = null;
-      this.openCompanion.value = null;
-      this.carrierDetail.value = null;
-      this.pluginDetail.value = null;
-      this.policyDetail.value = null;
+      // screen under another customization's heading — an MCP page's
+      // commands, headers, and environment values would otherwise survive a
+      // navigation to a skill or instruction page, whose open supersedes the
+      // outgoing page's ownership-guarded close.
+      this.#dropOpenDetails();
     }
     const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page'));
     if (entry === null || !owns()) {
@@ -1123,14 +1169,10 @@ export class SessionViewState {
       return;
     }
     this.fileDetailState.value = 'loading';
-    // The previous detail — either slot's — is dropped before the next one is
+    // The previous detail — every slot's — is dropped before the next one is
     // asked for, so a slow request never leaves one file's content on screen
     // under another customization's heading.
-    this.entryDetail.value = null;
-    this.openCompanion.value = null;
-    this.carrierDetail.value = null;
-    this.pluginDetail.value = null;
-    this.policyDetail.value = null;
+    this.#dropOpenDetails();
     const outcome = await this.#client.fetchMcpCarrierDetail(sourceRelativePath);
     switch (outcome.kind) {
       case 'adopted':
@@ -1235,14 +1277,7 @@ export class SessionViewState {
       // The previous detail — every slot's — is dropped before the next one is
       // asked for, so a slow request never leaves one file's content on screen
       // under another customization's heading.
-      this.entryDetail.value = null;
-      this.openCompanion.value = null;
-      this.carrierDetail.value = null;
-      this.pluginDetail.value = null;
-      this.pluginManifestFile.value = null;
-      this.pluginOpenFile.value = null;
-      this.#openPluginRow = null;
-      this.policyDetail.value = null;
+      this.#dropOpenDetails();
     }
     const detail = held ?? (await this.#fetchOwnedPluginCarrierDetail(params, owns));
     if (detail === null || !owns()) {
@@ -1457,6 +1492,81 @@ export class SessionViewState {
   }
 
   /**
+   * Requests one hook carrier's declarations and adopts them, or records why
+   * they could not be shown — the hook counterpart of
+   * {@link openCarrierDetail}, through the same request version, epoch
+   * capture, and state machine, because the detail functions serve the one
+   * open detail (contracts/http-api.md § get-hook-carrier-detail).
+   */
+  public async openHookCarrierDetail(sourceRelativePath: string, owner?: symbol): Promise<void> {
+    this.#detailOwner = owner ?? null;
+    this.#detailRequestVersion += 1;
+    const requested = this.#detailRequestVersion;
+    this.#detailError.value = null;
+    const capturedEpoch = this.#clientData.epoch();
+    const owns = (): boolean =>
+      requested === this.#detailRequestVersion && this.#clientData.epoch() === capturedEpoch;
+    // The carrier already on screen when the selection moved within it: a step
+    // between two events of one carrier changes which declaration the page
+    // heads itself with, not the response it renders from, so the held detail
+    // answers without a second fetch — the rule {@link openCarrierDetail}
+    // applies to a step between two servers.
+    if (this.hookDetail.value?.file.sourceRelativePath === sourceRelativePath) {
+      this.fileDetailState.value = 'ready';
+      return;
+    }
+    this.fileDetailState.value = 'loading';
+    // The previous detail — every slot's — is dropped before the next one is
+    // asked for, so a slow request never leaves one file's content on screen
+    // under another customization's heading.
+    this.#dropOpenDetails();
+    const outcome = await this.#client.fetchHookCarrierDetail(sourceRelativePath);
+    switch (outcome.kind) {
+      case 'adopted':
+        if (owns()) {
+          this.hookDetail.value = outcome.detail;
+          this.fileDetailState.value = 'ready';
+          this.#detailError.value = null;
+        }
+        return;
+      case 'rejected':
+        // No current generation holds an admitted hook carrier at the path —
+        // the same declared outcome, shown as the same stale state, as a file
+        // detail's (contracts/http-api.md § get-hook-carrier-detail).
+        if (owns()) {
+          this.hookDetail.value = null;
+          this.fileDetailState.value = 'stale';
+          void this.refresh();
+        }
+        return;
+      case 'failed':
+        if (outcome.fatal) {
+          this.#sessionError.value = outcome.error.message;
+          this.view.value = 'ended';
+        } else if (owns()) {
+          this.hookDetail.value = null;
+          this.fileDetailState.value = 'idle';
+          this.#detailError.value = outcome.error.message;
+        }
+        return;
+      case 'newer-generation':
+        // Same recovery as the MCP carrier's: adopt the newer snapshot, and
+        // the route's own open effect re-requests the path under it.
+        if (owns()) {
+          await this.#refreshFreshly();
+          if (owns()) {
+            this.hookDetail.value = null;
+            this.fileDetailState.value = 'idle';
+          }
+        }
+        return;
+      case 'purged':
+        // The client-data purge already cleared the slots; nothing to adopt.
+        return;
+    }
+  }
+
+  /**
    * Requests one declared permission policy and adopts it, or records why it
    * could not be shown — the policy counterpart of {@link openFileDetail},
    * through the same request version, epoch capture, and state machine,
@@ -1485,6 +1595,7 @@ export class SessionViewState {
     this.entryDetail.value = null;
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
+    this.hookDetail.value = null;
     this.pluginDetail.value = null;
     this.policyDetail.value = null;
     const outcome = await this.#client.fetchPermissionPolicyDetail(sourceRelativePath);

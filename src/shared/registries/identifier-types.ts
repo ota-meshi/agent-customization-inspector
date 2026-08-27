@@ -38,6 +38,8 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.repo.instructions.ancestor'
   /** Claude instruction discovery in a subdirectory of the runtime `cwd`, on demand. */
   | 'claude.behavior.repo.instructions.descendant'
+  /** Claude hooks contained in an accepted settings, skill, agent, plugin, or marketplace declaration. */
+  | 'claude.behavior.repo.hooks-contained'
   /** Claude instruction discovery in the exact runtime `cwd`, at session start. */
   | 'claude.behavior.repo.instructions.launch'
   /** Claude project MCP declarations at `<project-root>/.mcp.json`. */
@@ -109,6 +111,8 @@ export type CodexBehaviorId =
   | 'codex.behavior.user.agents'
   /** Codex User configuration at `<CODEX_HOME>/config.toml`; a non-authorizing carrier fact. */
   | 'codex.behavior.user.config'
+  /** Codex User hooks at `<CODEX_HOME>/hooks.json` and inline `[hooks]` in `<CODEX_HOME>/config.toml`; a non-authorizing fact. */
+  | 'codex.behavior.user.hooks'
   /** Codex User instruction fallback at `<CODEX_HOME>/AGENTS.override.md` then `AGENTS.md`. */
   | 'codex.behavior.user.instructions'
   /** Codex personal marketplace at `$HOME/.agents/plugins/marketplace.json` and its installed/cache copies; a non-authorizing fact. */
@@ -160,6 +164,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cli.skills'
   /** The CLI's Repository settings files and the cross-tool Claude-compatible subset it also reads. */
   | 'copilot.behavior.cli.settings'
+  /** Copilot CLI Repository hook lookup: the root hook files and the inline `hooks` block of each supported settings document. */
+  | 'copilot.behavior.cli.hooks'
   /** Copilot CLI User path instructions below `<COPILOT_HOME>/instructions`. */
   | 'copilot.behavior.cli.user.instructions.path'
   /** Copilot CLI User instructions at `<COPILOT_HOME>/copilot-instructions.md`. */
@@ -174,6 +180,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cli.user.settings'
   /** Copilot CLI User skill discovery under `~/.copilot/skills` and `~/.agents/skills`. */
   | 'copilot.behavior.cli.user.skills'
+  /** Copilot CLI User hook lookup under the configuration home, files and inline block alike. */
+  | 'copilot.behavior.cli.user.hooks'
   /** Copilot cloud agent custom-agent profiles at the repository root's `.github/agents`. */
   | 'copilot.behavior.cloud.agents'
   /** Copilot cloud agent `AGENTS.md` discovery over the repository tree. */
@@ -196,6 +204,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.cloud.remote-skills'
   /** Copilot cloud agent Repository skill discovery at the repository root. */
   | 'copilot.behavior.cloud.skills'
+  /** Copilot cloud-agent hook lookup: the repository hook files present in the ephemeral clone. */
+  | 'copilot.behavior.cloud.hooks'
   /** Copilot VS Code custom-agent discovery in the workspace `.github/agents` and `.claude/agents` directories. */
   | 'copilot.behavior.vscode.agents'
   /** Copilot VS Code `AGENTS.md` discovery; the nested tier is experimental. */
@@ -216,6 +226,8 @@ export type CopilotBehaviorId =
   | 'copilot.behavior.vscode.settings'
   /** Copilot VS Code Repository skill discovery at the workspace root. */
   | 'copilot.behavior.vscode.skills'
+  /** Copilot VS Code workspace hook lookup: the root hook files and the Claude-format settings documents. */
+  | 'copilot.behavior.vscode.hooks'
   /** Copilot VS Code User `~/.claude/CLAUDE.md` personal instructions. */
   | 'copilot.behavior.vscode.user.claude'
   /** Copilot VS Code User custom agents in home and profile data; a non-authorizing fact. */
@@ -231,7 +243,9 @@ export type CopilotBehaviorId =
   /** User scope: the plugins a VS Code profile has installed, registered, or been given by path. */
   | 'copilot.behavior.vscode.user.plugins'
   /** Copilot VS Code User skill discovery in home and profile locations. */
-  | 'copilot.behavior.vscode.user.skills';
+  | 'copilot.behavior.vscode.user.skills'
+  /** Copilot VS Code User hook lookup in the home hooks directory and the User Claude settings document. */
+  | 'copilot.behavior.vscode.user.hooks';
 
 /**
  * Every documented vendor-behavior statement the product maintains. Each
@@ -267,6 +281,8 @@ export type AnthropicSourceId =
   | 'anthropic.claude-code.settings.scopes-precedence'
   /** The permissions page: the rule syntax a declared policy is written in, and how the rules are evaluated. */
   | 'anthropic.claude-code.permissions.rule-syntax'
+  /** The hooks reference: where a hook may be declared, and what a declaration's scope is. */
+  | 'anthropic.claude-code.hooks.locations-resolution'
   /** The plugins reference: component scopes and skills-directory plugins. */
   | 'anthropic.claude-code.plugins.components-scopes'
   /** The plugin-marketplaces page: where a catalog lives, what its entries declare, and the sources they name. */
@@ -338,7 +354,9 @@ export type GitHubSourceId =
   /** The Copilot agent-skills page: cloud skill discovery, usage, and shared skills. */
   | 'github.copilot.skills'
   /** The custom-agents configuration reference: the shared agent profile format, its `mcp-servers` field included. */
-  | 'github.copilot.custom-agents';
+  | 'github.copilot.custom-agents'
+  /** The Copilot hooks reference: the per-surface hook locations, the configuration format, and the disable switch. */
+  | 'github.copilot.hooks';
 
 /**
  * Microsoft Visual Studio Code official documentation pages cited by the
@@ -365,6 +383,8 @@ export type VsCodeSourceId =
   /** The VS Code 1.118 release note adding workspace-root `.mcp.json` and same-name deduplication. */
   | 'vscode.copilot.mcp.workspace-root-release'
   /** The VS Code settings page: the setting scopes and the order they override each other in. */
+  /** The VS Code agent-hooks page: the hook file locations, the configuration format, and agent-scoped hooks. */
+  | 'vscode.copilot.hooks'
   | 'vscode.settings';
 
 /**
@@ -386,6 +406,8 @@ export type ClaudeStrategyId =
   | 'claude.agents.selection'
   /** Claude command selection: commands share the skill command namespace, a same-name skill wins, and subdirectories namespace the command name. */
   | 'claude.commands.selection'
+  /** Claude hook composition: every applicable hook of every active source runs, a closer settings level adding to the broader ones. */
+  | 'claude.hooks.additive'
   /** Claude instruction layering: User, ancestor, launch, and lazy descendant files, broad to narrow. */
   | 'claude.instructions.layering'
   /** Claude MCP selection: whole same-name server entries in local, project, User, plugin, connector order. */
@@ -410,6 +432,8 @@ export type CodexStrategyId =
   | 'codex.agents.inheritance'
   /** Codex config-layer resolution: closest applicable value wins across User and project layers. */
   | 'codex.config.precedence'
+  /** Codex hook composition: every matching hook of every active source runs, file and inline together at one layer. */
+  | 'codex.hooks.additive'
   /** Codex instruction layering: per-directory first-non-empty selection, broad-to-narrow. */
   | 'codex.instructions.layering'
   /** Codex MCP configuration: `[mcp_servers.*]` resolved through the config-layer precedence. */
@@ -461,7 +485,13 @@ export type CopilotStrategyId =
   /** Copilot VS Code settings precedence: workspace scopes above User, with the other documented scopes retained. */
   | 'copilot.vscode.settings.precedence'
   /** Copilot VS Code progressive skill loading with undocumented duplicate precedence. */
-  | 'copilot.vscode.skills.selection';
+  | 'copilot.vscode.skills.selection'
+  /** Copilot CLI hook composition: every applicable source's hooks for the event, in the documented append order. */
+  | 'copilot.cli.hooks.composition'
+  /** Copilot cloud-agent hook composition over the repository hook files the ephemeral clone holds. */
+  | 'copilot.cloud.hooks.composition'
+  /** Copilot VS Code hook composition: workspace over User for one event, with agent and plugin hooks in addition. */
+  | 'copilot.vscode.hooks.composition';
 
 /**
  * Every documented runtime composition or projection strategy. Each vendor's
@@ -479,6 +509,8 @@ export type ClaudeRuleId =
   | 'claude.repo.agent'
   /** Repository Claude command files under the root's own `.claude/commands/`; read-authorizing `static-candidate`. */
   | 'claude.repo.command'
+  /** The `hooks` an accepted root settings file contains; read-authorizing `static-candidate`. */
+  | 'claude.repo.hooks.settings'
   /** Repository Claude instructions at every depth; read-authorizing `static-candidate`. */
   | 'claude.repo.instructions'
   /** The repository's own plugin catalog at `.claude-plugin/marketplace.json`; read-authorizing `static-candidate`. */
@@ -514,6 +546,10 @@ export type CodexRuleId =
   | 'codex.repo.agent'
   /** The root-exact `.codex/config.toml` MCP carrier; read-authorizing `static-candidate`. */
   | 'codex.repo.config'
+  /** The root-exact `.codex/hooks.json` standalone hook carrier; read-authorizing `static-candidate`. */
+  | 'codex.repo.hooks'
+  /** The root-exact `.codex/config.toml` read for the inline `[hooks]` table it contains; read-authorizing `static-candidate`. */
+  | 'codex.repo.hooks.inline'
   /** Repository Codex instructions at the exact root override/regular pair; read-authorizing `static-candidate`. */
   | 'codex.repo.instructions'
   /** The exact Repository-root Codex plugin catalogs, whose entries name the plugins they resolve; read-authorizing `static-candidate`. */
@@ -574,7 +610,13 @@ export type CopilotRuleId =
   /** The supported Copilot and Claude-compatible root settings documents; read-authorizing `static-candidate`. */
   | 'copilot.repo.settings'
   /** Repository Copilot skills in the three fixed directories; read-authorizing `static-candidate`. */
-  | 'copilot.repo.skill';
+  | 'copilot.repo.skill'
+  /** Root direct-child Copilot hook files under `.github/hooks/`, which all three surfaces read; read-authorizing `static-candidate`. */
+  | 'copilot.repo.hooks'
+  /** The inline `hooks` block of the CLI's own root settings documents; read-authorizing `static-candidate`. */
+  | 'copilot.repo.hooks.settings'
+  /** The inline `hooks` block of the Claude-format root settings documents, which the CLI and the editor both read; read-authorizing `static-candidate`. */
+  | 'copilot.repo.hooks.settings.claude';
 
 /**
  * Every Inspector policy rule. Each vendor's sub-union joins here, and the

@@ -22,11 +22,15 @@ import { recognizeCandidateForVendors } from '../../../src/server/inspection/rec
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import {
+  COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY,
   COPILOT_CLI_MCP_SELECTION_STRATEGY,
+  COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY,
   COPILOT_CLOUD_MCP_SELECTION_STRATEGY,
+  COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY,
   COPILOT_VSCODE_MCP_SELECTION_STRATEGY,
 } from '../../../src/shared/registries/copilot/strategies';
 import {
+  COPILOT_CLOUD_HOOKS_BEHAVIOR,
   COPILOT_CLOUD_MCP_BEHAVIOR,
   COPILOT_VSCODE_MCP_BEHAVIOR,
 } from '../../../src/shared/registries/copilot/behaviors';
@@ -752,6 +756,7 @@ describe('the Copilot CLI MCP carrier reading (T344)', () => {
           broken: 'not a mapping',
         },
       }),
+      '.mcp.json',
     );
     expect(servers.map((server) => server.name)).toEqual(['tavily', 'odd']);
     const serialized = JSON.stringify(servers);
@@ -783,6 +788,7 @@ describe('the Copilot CLI MCP carrier reading (T344)', () => {
         playwright: { type: 'local', command: 'npx', args: ['@playwright/mcp@latest'] },
         note: 'not a mapping',
       }),
+      '.github/mcp.json',
     );
     expect(servers.map((server) => server.name)).toEqual(['playwright']);
     expect(JSON.stringify(servers)).toContain('@playwright/mcp@latest');
@@ -795,10 +801,11 @@ describe('the Copilot CLI MCP carrier reading (T344)', () => {
     expect(
       copilotMcpRule.serverDeclarationsOf(
         JSON.stringify({ mcpServers: 'not a mapping', other: { command: 'x' } }),
+        '.mcp.json',
       ),
     ).toEqual([]);
-    expect(copilotMcpRule.serverDeclarationsOf('{}')).toEqual([]);
-    expect(copilotMcpRule.serverDeclarationsOf('[1, 2]')).toEqual([]);
+    expect(copilotMcpRule.serverDeclarationsOf('{}', '.mcp.json')).toEqual([]);
+    expect(copilotMcpRule.serverDeclarationsOf('[1, 2]', '.mcp.json')).toEqual([]);
   });
 
   it('throws on text strict JSON cannot parse, for the extraction boundary to confine', () => {
@@ -806,9 +813,20 @@ describe('the Copilot CLI MCP carrier reading (T344)', () => {
     // document exactly as the vendor's own reader would, and the recognizer's
     // extraction boundary turns the throw into that recognition's `failed`
     // state while the carrier stays an admitted candidate (FR-028).
-    expect(() => copilotMcpRule.serverDeclarationsOf('{ "mcpServers": {')).toThrow();
-    expect(() => copilotMcpRule.serverDeclarationsOf('// comment\n{}')).toThrow();
-    expect(() => copilotMcpRule.serverDeclarationsOf('')).toThrow();
+    expect(() => copilotMcpRule.serverDeclarationsOf('{ "mcpServers": {', '.mcp.json')).toThrow();
+    expect(() => copilotMcpRule.serverDeclarationsOf('', '.mcp.json')).toThrow();
+    // The two locations this one rule admits do not share a format: the
+    // vendor's editor host reads the root file, and reads it as JSONC, while
+    // nothing reads `.github/mcp.json` that way (`parsers/json.ts`).
+    expect(
+      copilotMcpRule.serverDeclarationsOf(
+        '// workspace servers\n{ "mcpServers": { "probe": {} } }',
+        '.mcp.json',
+      ),
+    ).toEqual([{ name: 'probe', fields: [] }]);
+    expect(() =>
+      copilotMcpRule.serverDeclarationsOf('// comment\n{}', '.github/mcp.json'),
+    ).toThrow();
   });
 
   it('records the documented source order as the strategy, not as a projection', () => {
@@ -839,7 +857,8 @@ describe('the Copilot VS Code MCP carrier reading (T364)', () => {
     // `servers` declare nothing. The values are the carrier's own literals -
     // the credential whole, the input reference as its own characters,
     // resolved against nothing (FR-007, FR-026).
-    const servers = copilotVscodeMcpRule.serverDeclarationsOf(`{
+    const servers = copilotVscodeMcpRule.serverDeclarationsOf(
+      `{
   // Workspace servers.
   "servers": {
     "gh": {
@@ -852,7 +871,9 @@ describe('the Copilot VS Code MCP carrier reading (T364)', () => {
   },
   "inputs": [{ "id": "api-key" }],
   "sandbox": { "network": {} }
-}`);
+}`,
+      '.vscode/mcp.json',
+    );
     expect(servers.map((server) => server.name)).toEqual(['gh', 'local']);
     const serialized = JSON.stringify(servers);
     expect(serialized).toContain('ghp-SECRET');
@@ -864,16 +885,24 @@ describe('the Copilot VS Code MCP carrier reading (T364)', () => {
     // second schema - so a document without `servers` declares none, as does
     // a non-mapping `servers`.
     expect(
-      copilotVscodeMcpRule.serverDeclarationsOf(JSON.stringify({ playwright: { command: 'x' } })),
+      copilotVscodeMcpRule.serverDeclarationsOf(
+        JSON.stringify({ playwright: { command: 'x' } }),
+        '.vscode/mcp.json',
+      ),
     ).toEqual([]);
     expect(
-      copilotVscodeMcpRule.serverDeclarationsOf(JSON.stringify({ servers: 'not a mapping' })),
+      copilotVscodeMcpRule.serverDeclarationsOf(
+        JSON.stringify({ servers: 'not a mapping' }),
+        '.vscode/mcp.json',
+      ),
     ).toEqual([]);
   });
 
   it('throws on text JSONC cannot parse, for the extraction boundary to confine', () => {
-    expect(() => copilotVscodeMcpRule.serverDeclarationsOf('{ "servers": {')).toThrow();
-    expect(() => copilotVscodeMcpRule.serverDeclarationsOf('')).toThrow();
+    expect(() =>
+      copilotVscodeMcpRule.serverDeclarationsOf('{ "servers": {', '.vscode/mcp.json'),
+    ).toThrow();
+    expect(() => copilotVscodeMcpRule.serverDeclarationsOf('', '.vscode/mcp.json')).toThrow();
   });
 
   it('owns no reading for the 1.118+ root provenance, whose conflict stays recorded', () => {
@@ -1179,5 +1208,184 @@ describe('Copilot custom-agent reading (T556)', () => {
     expect(
       recognition!.provenances.flatMap((provenance) => [...provenance.recognizingSurfaces]),
     ).toEqual(['copilot-vscode', 'copilot-cli', 'copilot-cloud']);
+  });
+});
+
+describe('the Copilot hook reading and its surface facts (T888)', () => {
+  const hookFileRule = COPILOT_REPOSITORY_RULES.find(
+    (compiled) => compiled.rule.ruleId === 'copilot.repo.hooks',
+  )!;
+  const settingsHookRule = COPILOT_REPOSITORY_RULES.find(
+    (compiled) => compiled.rule.ruleId === 'copilot.repo.hooks.settings',
+  )!;
+
+  /** Recognizes one authored carrier under one hook admission. */
+  async function recognizeHookCarrier(
+    matchedPath: string,
+    compiled: (typeof COPILOT_REPOSITORY_RULES)[number],
+    sourceText: string,
+  ): Promise<readonly ToolRecognition[]> {
+    mkdirSync(join(root, matchedPath, '..'), { recursive: true });
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['copilot'],
+    );
+    return recognitions;
+  }
+
+  it('retains every handler field a group declares, in the order the file wrote them', async () => {
+    // Nothing is normalized on the file's behalf: the OS-specific commands, the
+    // working directory, the environment map, and both timeout spellings are
+    // published as authored, and which of them a client uses is that client's
+    // own composition (FR-009).
+    const recognitions = await recognizeHookCarrier(
+      '.github/hooks/security.json',
+      hookFileRule,
+      `${JSON.stringify({
+        version: 1,
+        hooks: {
+          preToolUse: [
+            {
+              type: 'command',
+              bash: './check.sh',
+              powershell: 'pwsh -File check.ps1',
+              cwd: '.',
+              env: { POLICY: 'strict' },
+              timeout: 15,
+              timeoutSec: 30,
+            },
+            { type: 'command', bash: './check.sh' },
+          ],
+        },
+      })}\n`,
+    );
+    const details = recognitions[0]!.details;
+    if (details.kind !== 'hook') {
+      throw new Error('expected a hook recognition');
+    }
+    expect(details.events).toHaveLength(1);
+    const [first, second] = details.events[0]!.groups;
+    if (first?.kind !== 'mapping') {
+      throw new Error('expected the first group to be an object');
+    }
+    expect(first.entries.map((entry) => entry.key)).toEqual([
+      'type',
+      'bash',
+      'powershell',
+      'cwd',
+      'env',
+      'timeout',
+      'timeoutSec',
+    ]);
+    // The repeated handler is published twice: the file wrote it twice.
+    expect(second?.kind).toBe('mapping');
+  });
+
+  it('keeps a declared credential and environment reference literal', async () => {
+    const recognitions = await recognizeHookCarrier(
+      '.github/hooks/session.json',
+      hookFileRule,
+      `${JSON.stringify({
+        version: 1,
+        hooks: {
+          sessionStart: [
+            {
+              type: 'command',
+              command: `curl -H "Authorization: Bearer ${CONTENT_FIXTURE_SECRET}" \${SESSION_ENDPOINT}`,
+            },
+          ],
+        },
+      })}\n`,
+    );
+    const details = recognitions[0]!.details;
+    if (details.kind !== 'hook') {
+      throw new Error('expected a hook recognition');
+    }
+    // The literal reaches the detail exactly as written, unresolved and
+    // unmasked: this product renders what the file says (FR-026, FR-027).
+    const rendered = JSON.stringify(details.events);
+    expect(rendered).toContain(CONTENT_FIXTURE_SECRET);
+    expect(rendered).toContain('${SESSION_ENDPOINT}');
+  });
+
+  it('separates the standalone provenance from the contained one', async () => {
+    // Which rule admitted a carrier is what its provenance names, and the two
+    // forms never merge: a hook file's recognition is `copilot.repo.hooks`'s,
+    // and a settings document's is that pair's own rule's (T889).
+    const file = await recognizeHookCarrier(
+      '.github/hooks/format.json',
+      hookFileRule,
+      `${JSON.stringify({ version: 1, hooks: { postToolUse: [] } })}\n`,
+    );
+    const settings = await recognizeHookCarrier(
+      '.github/copilot/settings.json',
+      settingsHookRule,
+      `${JSON.stringify({ hooks: { postToolUse: [] } })}\n`,
+    );
+    expect(file[0]!.provenances[0]).toMatchObject({ ruleId: 'copilot.repo.hooks' });
+    expect(settings[0]!.provenances[0]).toMatchObject({ ruleId: 'copilot.repo.hooks.settings' });
+    if (file[0]!.details.kind !== 'hook' || settings[0]!.details.kind !== 'hook') {
+      throw new Error('expected two hook recognitions');
+    }
+    expect(file[0]!.details.carrier).toBe('standalone');
+    expect(settings[0]!.details.carrier).toBe('contained');
+  });
+
+  it('records each surface’s documented composition as its own strategy', () => {
+    // The editor resolves one event's workspace and User hooks with the
+    // workspace winning, then runs the applicable agent and plugin hooks in
+    // addition — `select-first` and `append` in one record, with `filter` for
+    // the settings and preview gates that decide which sources participate.
+    expect(COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.operations).toEqual([
+      'filter',
+      'select-first',
+      'append',
+    ]);
+    expect(COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.lifecycleQualifiers).toEqual(['preview']);
+    // The CLI composes instead of selecting: every entry of every active source
+    // runs for the event, in the documented source order, so a same-event
+    // winner would record the opposite of what the page states.
+    expect(COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY.operations).toEqual(['filter', 'append']);
+    expect(COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY.operations).not.toContain('select-first');
+    // The cloud agent has one source: the hook files of the ephemeral clone. No
+    // User scope is imported by analogy — the sandbox has none.
+    expect(COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY.operations).toEqual(['filter', 'append']);
+    expect(COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY.surfaces).toEqual(['copilot-cloud']);
+    expect(COPILOT_CLOUD_HOOKS_BEHAVIOR.locator).toEqual({
+      vendorScope: 'repository',
+      lookupBase: 'repository-root',
+      relativeSelector: '.github/hooks/*.json',
+      traversal: 'exact',
+    });
+  });
+
+  it('leaves a plugin’s own hook file a relationship rather than a candidate', () => {
+    // The vendor documents a plugin contributing hooks from its own
+    // `hooks.json` or `hooks/hooks.json`. No hook rule names such a path: the
+    // three shipped programs are the documented Repository locations and
+    // nothing else, so a component is reached through a declaration or a
+    // default rather than through a location of its own (FR-004, FR-024).
+    const programs = COPILOT_REPOSITORY_RULES.filter(
+      (compiled) => compiled.kind === 'hook',
+    ).flatMap((compiled) =>
+      compiled.plan.selectors.map((selector) =>
+        selector.remainder
+          .map((step) => (step.kind === 'literal' ? step.value : `<${step.kind}>`))
+          .join('/'),
+      ),
+    );
+    expect(programs.toSorted()).toEqual([
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+      '.github/copilot/settings.json',
+      '.github/copilot/settings.local.json',
+      '.github/hooks/<regex>',
+    ]);
   });
 });

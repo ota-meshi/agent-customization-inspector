@@ -61,6 +61,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
     plugins: [],
     outputStyles: [],
     permissions: [],
+    hooks: [],
     settings: [],
     agents: [],
     skills: [],

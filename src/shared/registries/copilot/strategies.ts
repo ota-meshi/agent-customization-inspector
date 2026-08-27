@@ -758,6 +758,127 @@ export const COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/**
+ * Copilot VS Code hook composition: for one event, the workspace hooks are
+ * resolved against the User ones with the workspace taking precedence
+ * (`select-first`), and the applicable agent and plugin hooks then run in
+ * addition to whatever that resolution kept (`append`). Which sources
+ * participate at all is the `filter`: the feature is preview, agent-scoped
+ * hooks need their own setting, parent-repository discovery is opt-in, and a
+ * location can be switched off through the locations setting.
+ *
+ * Matcher values are not part of the composition here, and the page is
+ * explicit about why: the editor parses the Claude matcher syntax and ignores
+ * the values, so a hook of a Claude-format document runs on every tool
+ * invocation. That is a runtime outcome no surface projects (FR-009) — a
+ * detail publishes the matcher its author wrote (FR-007).
+ */
+export const COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY = {
+  strategyId: 'copilot.vscode.hooks.composition',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  operations: ['filter', 'select-first', 'append'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['preview'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.hooks',
+          url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
+          officialHost: 'code.visualstudio.com',
+          sections: [
+            'Hook file locations',
+            'Agent-scoped hooks',
+            'How does VS Code handle Claude Code hook configurations?',
+          ],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'Workspace hooks take precedence over user hooks for the same event type, agent-scoped hooks run in addition to any workspace or user-level hooks configured for the same event and require the chat.useCustomAgentHooks setting, and a plugin contributes its own hooks.json or hooks/hooks.json. A hook location can be disabled by setting it to false in chat.hookFilesLocations, discovery from a parent repository root is opt-in through chat.useCustomizationsInParentRepositories, and VS Code currently ignores the matcher values of a Claude-format hook configuration so those hooks run on all tool invocations.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot CLI hook composition: every applicable source contributes and every
+ * one of its entries for the event runs (`append`), in the documented source
+ * order — policy, then user, then project, then plugins — with no source
+ * replacing another. The `filter` is which sources exist at all: policy hooks
+ * are machine-wide and survive `disableAllHooks`, while the others are turned
+ * off by it, and a plugin contributes only while it is installed.
+ *
+ * No `select-first`: the hooks reference states that when the same event
+ * appears in several sources, all hook entries from all sources are run, so a
+ * same-event winner would be a resolution that page documents the opposite of.
+ *
+ * `conflict`, because the two official pages disagree about the two inline
+ * blocks. The hooks reference lists the repository settings block and the
+ * user-level one as separate sources and runs every source's entries, while
+ * the configuration reference gives the repository `hooks` key a merge policy
+ * in which the repository overrides the user for the same key. Both citations
+ * stay on this record and no winner is manufactured out of them
+ * (data-model.md § RuntimeCompositionStrategy).
+ */
+export const COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY = {
+  strategyId: 'copilot.cli.hooks.composition',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  operations: ['filter', 'append'],
+  documentationStatus: 'conflict',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Repository settings (.github/copilot/settings.json)'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'The repository hooks object is merged with the user one so the repository entry overrides the user entry for the same key, and disableAllHooks is a repository-takes-precedence switch of the same file.',
+        },
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations', 'Disable all hooks'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'Copilot CLI loads hooks from policy, user, project, and plugin sources in that order and combines them — a plugin declaring its own in hooks.json or hooks/hooks.json inside its installation directory — and when the same event appears in multiple sources all hook entries from all sources are run; policy hooks load before all other hooks, cannot be disabled by disableAllHooks, and are available regardless of folder trust state.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
+ * Copilot cloud-agent hook composition: the repository hook files present in
+ * the ephemeral clone contribute, and every applicable entry runs
+ * (`append`). The `filter` is the sandbox itself — only a subset of events
+ * fires and only `bash` or `command` entries are honored — and the local User
+ * and policy sources of the CLI simply do not exist there.
+ */
+export const COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY = {
+  strategyId: 'copilot.cloud.hooks.composition',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  operations: ['filter', 'append'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations', 'Cloud agent execution environment'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'Under the cloud agent, hook configuration is loaded from the .github/hooks/*.json files of the cloned repository, a subset of events fires, only bash or command entries are honored, and policy hooks are not supported there.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
 /** Copilot's contribution to the strategy registry, keyed by `strategyId`. */
 export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   Record<CopilotStrategyId, RuntimeCompositionStrategy>
@@ -784,4 +905,7 @@ export const COPILOT_COMPOSITION_STRATEGIES: Readonly<
   [COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY,
   [COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY.strategyId]:
     COPILOT_VSCODE_SETTINGS_PRECEDENCE_STRATEGY,
+  [COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.strategyId]: COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY,
+  [COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY.strategyId]: COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY,
+  [COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY.strategyId]: COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY,
 };

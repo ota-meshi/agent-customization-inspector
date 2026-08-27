@@ -9,7 +9,7 @@ script/fixtureを追加するとcommandが実行可能になる。Current scaffo
 
 - 正確な`package.json` compatibility contract `^24.11.0 || ^26.0.0`
   （`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`）を満たすNode.js。Development/build基準は
-  Node.js 24.18.0
+  active LTSのNode.js
 - Repositoryの`packageManager` declarationを満たすpnpm
 - 追加compilerやplatform固有build workspaceは不要。Inspected-source accessはpackaged Node.js moduleで実装する
 - Project setup commandでPlaywright 1.61.1がinstallする正確なChromium、Firefox、WebKit revision。これらのpin済み
@@ -497,7 +497,8 @@ pnpm exec vitest run --project unit \
 7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
    発生させない。
 8. `/`、`/global-consent`、各kindのcomparison route（`/skills/compare`、`/instructions/compare`、
-   `/mcp/compare`、`/prompts-and-commands/compare`）、各kindのdetail routeのdirect loadが、
+   `/mcp/compare`、`/prompts-and-commands/compare`、`/agents/compare`、`/plugins/compare`、
+   `/hooks/compare`）、各kindのdetail routeのdirect loadが、
    devframe hostが配信する同じroot-absolute assetからbootする。
 9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
    現在の非supersededなRPCでのchannel lossまたは解釈できないprotocol、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
@@ -1178,7 +1179,7 @@ Testはさらに、automatic openingがOS default handlerへ委譲するだけ�
 certifyできないことも証明する。Release recordはpin済みPlaywright revisionを使用し、`--no-open`と表示URLをmanual certified-browser
 fallbackとする。Documentation gateはplanning setを公開せず、repository内の全英日document
 pairを別に検証する。同じtarballを[research.ja.md](research.ja.md)で定義した正確な6つのlower-bound OS/architecture
-certification jobでinstall/launchし、Node.js filesystem suiteに合格させる。Node.js 24.18.0はdevelopment/build
+certification jobでinstall/launchし、Node.js filesystem suiteに合格させる。Active LTSのNode.jsがdevelopment/build
 baselineである。これら有限sampleは、宣言済みNode.js 24/26 compatibility range内の全patch releaseをCIで網羅的に
 実行したとは主張せず、そのruntime contractも狭めない。最後にcomplete diffをreviewし、untested branch、secret exposure、古いofficial-path assumption、
 accidental source mutation、unrelated changeがないことを確認する。その結果生じたrepository remediationごとに、build、frozen install、

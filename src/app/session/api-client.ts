@@ -23,6 +23,7 @@ import type {
   FileDetailDto,
   FileOpenTarget,
   InspectionDataResult,
+  HookCarrierDetailDto,
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
@@ -51,6 +52,8 @@ export const SESSION_RPC_FUNCTIONS = {
   getFileDetail: 'agent-customization-inspector:get-file-detail',
   /** One MCP-declaring file's declarations and file facts, never its source (FR-007). */
   getMcpCarrierDetail: 'agent-customization-inspector:get-mcp-carrier-detail',
+  /** One hook-declaring file's lifecycle events and file facts, never its source (FR-007). */
+  getHookCarrierDetail: 'agent-customization-inspector:get-hook-carrier-detail',
   getPluginCarrierDetail: 'agent-customization-inspector:get-plugin-carrier-detail',
   /** One file a plugin ships, read as that plugin's (contracts/http-api.md § get-plugin-file-detail). */
   getPluginFileDetail: 'agent-customization-inspector:get-plugin-file-detail',
@@ -236,6 +239,13 @@ export type FileDetailOutcome = DetailFetchOutcome<FileDetailDto>;
  * facts — the one detail response with no authored source in it (FR-007).
  */
 export type McpCarrierDetailOutcome = DetailFetchOutcome<McpCarrierDetailDto>;
+
+/**
+ * The outcome of one guarded `get-hook-carrier-detail` request: the shared
+ * detail outcome over the hook carrier's own result
+ * (contracts/http-api.md § get-hook-carrier-detail).
+ */
+export type HookCarrierDetailOutcome = DetailFetchOutcome<HookCarrierDetailDto>;
 
 /**
  * What one guarded detail request sends: the file's own Source-relative Path
@@ -723,6 +733,20 @@ export class SessionApiClient {
   public fetchMcpCarrierDetail(sourceRelativePath: string): Promise<McpCarrierDetailOutcome> {
     return this.#fetchDetail<McpCarrierDetailDto>(
       SESSION_RPC_FUNCTIONS.getMcpCarrierDetail,
+      sourceRelativePath,
+    );
+  }
+
+  /**
+   * Issues one guarded hook-carrier-detail request through the same guards,
+   * token family, and adoption rules as {@link fetchFileDetail}: the detail
+   * functions serve the one open detail, so a newer request of any of them
+   * supersedes an older of another (contracts/http-api.md
+   * § get-hook-carrier-detail).
+   */
+  public fetchHookCarrierDetail(sourceRelativePath: string): Promise<HookCarrierDetailOutcome> {
+    return this.#fetchDetail<HookCarrierDetailDto>(
+      SESSION_RPC_FUNCTIONS.getHookCarrierDetail,
       sourceRelativePath,
     );
   }

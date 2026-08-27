@@ -3823,6 +3823,1460 @@ export function buildCodexRuleFixture(
   };
 }
 
+/**
+ * The inline `[hooks]` tables of a Codex config layer (T833): the second of the
+ * two documented hook forms, which the vendor loads beside a standalone
+ * `hooks.json` of the same layer rather than instead of it.
+ *
+ * A shared constant because two builders write it — the hook fixture's own
+ * config document, and the all-kinds tree, where several builders own that one
+ * path and the tables are appended to whatever the last of them wrote. Table
+ * headers only, so appending is always valid TOML.
+ */
+const CODEX_INLINE_HOOKS_TOML: readonly string[] = [
+  '# The inline form of the same layer, which Codex loads beside the',
+  '# standalone file rather than instead of it.',
+  '[[hooks.SessionStart]]',
+  'matcher = "^compact$"',
+  '',
+  '[[hooks.SessionStart.hooks]]',
+  'type = "command"',
+  'command = \'python3 "$(git rev-parse --show-toplevel)/.codex/hooks/session_start.py"\'',
+  'additionalContextLimit = 5000',
+  '',
+  '[[hooks.UserPromptSubmit]]',
+  '',
+  '[[hooks.UserPromptSubmit.hooks]]',
+  'type = "command"',
+  'command = \'python3 "$(git rev-parse --show-toplevel)/.codex/hooks/user_prompt_submit.py"\'',
+  'statusMessage = "Recording the prompt"',
+  '',
+];
+
+/** One built Claude contained-hook fixture repository (T857). */
+export interface ClaudeHookFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every accepted file in this tree that declares hooks, by its
+   * Source-relative Path. Claude documents no standalone project hook file, so
+   * every declaration is contained in a file another rule admits — and only
+   * the two settings documents publish hook rows for theirs.
+   */
+  readonly owners: {
+    /** The shared settings document, whose top-level `hooks` a team commits. */
+    readonly settings: string;
+    /** The personal settings document beside it, which declares its own. */
+    readonly localSettings: string;
+    /** A `SKILL.md` whose frontmatter registers hooks from its invocation onward. */
+    readonly skill: string;
+    /** A subagent file whose frontmatter registers hooks while it runs. */
+    readonly agent: string;
+    /** A skills-directory plugin manifest with inline hook configuration. */
+    readonly pluginManifest: string;
+    /** The repository's own catalog, whose entries declare hooks per plugin. */
+    readonly marketplace: string;
+  };
+  /**
+   * The events each hook-publishing owner declares, in authored order, by that
+   * owner's path — the settings documents alone. The other files in
+   * {@link owners} declare hooks too and publish no hook row: a skill's, a
+   * subagent's, a plugin manifest's, and a catalog entry's declarations are
+   * part of what that customization is, and its own row publishes the keys its
+   * file wrote.
+   */
+  readonly expectedEventsByOwner: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Paths no shipped rule of any product may admit and nothing reads: the
+   * fabricated standalone hook file Claude documents nowhere, the handler
+   * scripts declarations name, an unreferenced script beside them, and the User
+   * layer spelled inside the repository.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * The hook configuration a plugin bundles, inside the plugin roots the
+   * catalog's entries name. These files *are* read — a plugin root is a
+   * directory-shaped customization whose files the census enumerates
+   * (contracts/inspection-path-allowlist.md § Bounded companion census) — and
+   * they gain no hook recognition all the same: a plugin's components are that
+   * plugin's row, and no rule admits one as a hook carrier.
+   */
+  readonly pluginBundledHookPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Claude contained-hook fixture repository (T857).
+ *
+ * Claude documents no standalone project hook file at all, so this tree is
+ * every documented owner instead: the two settings documents, a skill and a
+ * subagent declaring hooks in frontmatter, a skills-directory plugin manifest
+ * with inline configuration, and the repository's own catalog, whose entries
+ * declare hooks for the plugins they offer.
+ *
+ * The declarations are what a hook declaration carries: command handlers with
+ * matchers, timeouts, and status messages; a literal credential and a literal
+ * environment reference inside a command, which must reach no inventory row and
+ * must never be resolved (FR-026, FR-027); a `hooks` value written as a path
+ * instead of a map — which the manifest schema allows and which declares no
+ * event here, because a component path is never followed (FR-004, FR-024); a
+ * malformed event whose value is not a list of groups, omitted whole; and one
+ * event two catalog entries both declare, which is what makes the per-entry
+ * identity visible.
+ *
+ * Near misses: a fabricated `.claude/hooks.json`, which Claude documents
+ * nowhere and no rule admits; the handler scripts under `.claude/hooks/`,
+ * including one no declaration names, because an unreferenced script is never
+ * inferred to be a hook (FR-034); and the User layer. A plugin's own bundled
+ * `hooks/hooks.json` sits apart from those: the census reads it as one of the
+ * plugin's files, and it gains no hook recognition all the same.
+ */
+export function buildClaudeHookFixture(
+  prefix = 'inspector-claude-hooks',
+  root = createRepositoryFixtureRoot(prefix),
+): ClaudeHookFixture {
+  const settingsPath = '.claude/settings.json';
+  const localSettingsPath = '.claude/settings.local.json';
+  const skillPath = '.claude/skills/release-notes/SKILL.md';
+  const agentPath = '.claude/agents/reviewer.md';
+  const pluginManifestPath = '.claude/skills/toolkit/.claude-plugin/plugin.json';
+  const marketplacePath = '.claude-plugin/marketplace.json';
+
+  // The shared settings document: the location the vendor names first, with a
+  // permission policy beside the hooks so the file keeps its three
+  // recognitions — the policy, the hooks, and the document itself.
+  write(
+    root,
+    settingsPath,
+    `${JSON.stringify(
+      {
+        permissions: { allow: ['Bash(git status)'], deny: ['Bash(rm -rf *)'] },
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Bash',
+              hooks: [
+                {
+                  type: 'command',
+                  command: '"${CLAUDE_PROJECT_DIR}"/.claude/hooks/block-rm.sh',
+                  timeout: 30,
+                },
+              ],
+            },
+          ],
+          PostToolUse: [
+            {
+              matcher: 'Write|Edit',
+              hooks: [
+                {
+                  type: 'command',
+                  command: '"${CLAUDE_PROJECT_DIR}"/.claude/hooks/format-code.sh',
+                  statusMessage: 'Formatting the edited file',
+                },
+              ],
+            },
+          ],
+          // Malformed: an event whose value is not a list of groups declares
+          // nothing and is omitted whole.
+          Stop: { matcher: '*' },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The personal document beside it, whose own hooks merge with the shared
+  // file's rather than replacing them.
+  write(
+    root,
+    localSettingsPath,
+    `${JSON.stringify(
+      {
+        permissions: { allow: ['Bash(gh pr view)'] },
+        hooks: {
+          SessionStart: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  // The credential and environment-reference case: both are
+                  // authored characters inside a command, and neither may reach
+                  // an inventory row or be resolved (FR-026, FR-027).
+                  command: `curl -H "Authorization: Bearer ${FIXTURE_SECRET_LITERAL}" ${FIXTURE_ENVIRONMENT_REFERENCE}/session`,
+                  statusMessage: 'Announcing the session',
+                },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // A skill whose frontmatter registers hooks from its invocation onward, in
+  // the same three-level format a settings file uses.
+  write(
+    root,
+    skillPath,
+    [
+      '---',
+      'name: release-notes',
+      'description: Draft release notes from merged pull requests.',
+      'hooks:',
+      '  PreToolUse:',
+      '    - matcher: Bash',
+      '      hooks:',
+      '        - type: command',
+      '          command: ./scripts/security-check.sh',
+      '  UserPromptSubmit:',
+      '    - hooks:',
+      '        - type: command',
+      '          command: ./scripts/note-prompt.sh',
+      '---',
+      '',
+      'Draft the notes from the merged pull requests.',
+      '',
+    ].join('\n'),
+  );
+  // A subagent whose frontmatter hooks run only while it runs.
+  write(
+    root,
+    agentPath,
+    [
+      '---',
+      'name: reviewer',
+      'description: Review a diff for correctness.',
+      'hooks:',
+      '  PostToolUse:',
+      '    - matcher: Edit',
+      '      hooks:',
+      '        - type: command',
+      '          command: ./scripts/review-edit.sh',
+      '          timeout: 20',
+      '---',
+      '',
+      'Review the diff and report what would break.',
+      '',
+    ].join('\n'),
+  );
+  // A skills-directory plugin manifest: the folder holding it is the plugin,
+  // and its `hooks` is inline configuration rather than a path.
+  write(
+    root,
+    pluginManifestPath,
+    `${JSON.stringify(
+      {
+        name: 'toolkit',
+        version: '1.2.0',
+        hooks: {
+          SessionEnd: [
+            {
+              hooks: [{ type: 'command', command: '"${CLAUDE_PLUGIN_ROOT}"/scripts/cleanup.sh' }],
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    '.claude/skills/toolkit/SKILL.md',
+    '---\nname: toolkit\ndescription: The skill this plugin folder ships.\n---\n\nRun the toolkit.\n',
+  );
+  // The repository's own catalog. Its first entry declares hooks as a path,
+  // which names a plugin file and declares no event here; its second declares
+  // them inline, for the plugin that entry offers.
+  write(
+    root,
+    marketplacePath,
+    `${JSON.stringify(
+      {
+        name: 'inspector-examples',
+        owner: { name: 'Inspector Examples' },
+        plugins: [
+          {
+            name: 'release-helper',
+            source: './plugins/release-helper',
+            hooks: './hooks/hooks.json',
+          },
+          {
+            name: 'formatter',
+            source: './plugins/formatter',
+            hooks: {
+              PostToolUse: [
+                {
+                  matcher: 'Write|Edit',
+                  hooks: [
+                    {
+                      type: 'command',
+                      command: '"${CLAUDE_PLUGIN_ROOT}"/scripts/format.sh',
+                      statusMessage: 'Formatting through the catalog entry',
+                    },
+                  ],
+                },
+              ],
+              // The event the shared settings document also declares: one row
+              // lists both carriers, and the catalog's declaration names the
+              // plugin entry it was written for.
+              PreToolUse: [
+                {
+                  matcher: 'Bash',
+                  hooks: [{ type: 'command', command: '"${CLAUDE_PLUGIN_ROOT}"/scripts/guard.sh' }],
+                },
+              ],
+            },
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The plugin roots the catalog's entries name, each with the manifest the
+  // census reaches and one bundled hook file no rule admits.
+  for (const plugin of ['release-helper', 'formatter']) {
+    write(
+      root,
+      `plugins/${plugin}/.claude-plugin/plugin.json`,
+      `${JSON.stringify({ name: plugin, version: '0.1.0' }, null, 2)}\n`,
+    );
+    write(root, `plugins/${plugin}/hooks/hooks.json`, '{ "hooks": { "SessionStart": [] } }\n');
+  }
+  // The handler scripts the declarations name, and one no declaration names: a
+  // declared path gains no read authority and becomes no candidate, and an
+  // unreferenced script is never inferred to be a hook (FR-034).
+  for (const script of ['block-rm.sh', 'format-code.sh', 'unreferenced.sh']) {
+    write(root, `.claude/hooks/${script}`, '#!/bin/sh\necho fixture\n');
+  }
+  // A fabricated standalone hook file: Claude documents no such project
+  // location, so no rule admits it and it is a near miss at every phase.
+  write(root, '.claude/hooks.json', '{ "hooks": { "Stop": [] } }\n');
+  // The User layer this vendor reads and this product may not.
+  write(root, 'home/.claude/settings.json', '{ "hooks": { "SessionStart": [] } }\n');
+  // An unrelated file sharing no segment with any selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    owners: {
+      settings: settingsPath,
+      localSettings: localSettingsPath,
+      skill: skillPath,
+      agent: agentPath,
+      pluginManifest: pluginManifestPath,
+      marketplace: marketplacePath,
+    },
+    expectedEventsByOwner: {
+      // The malformed `Stop` event is absent: its value is not a list of groups.
+      [settingsPath]: ['PreToolUse', 'PostToolUse'],
+      [localSettingsPath]: ['SessionStart'],
+    },
+    nearMissPaths: [
+      '.claude/hooks.json',
+      '.claude/hooks/block-rm.sh',
+      '.claude/hooks/format-code.sh',
+      '.claude/hooks/unreferenced.sh',
+      'README.md',
+      'home/.claude/settings.json',
+    ],
+    pluginBundledHookPaths: [
+      'plugins/formatter/hooks/hooks.json',
+      'plugins/release-helper/hooks/hooks.json',
+    ],
+  };
+}
+
+/** One built Codex hook fixture repository (T833). */
+export interface CodexHookFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * The Source-relative Path of the standalone `.codex/hooks.json` carrier —
+   * a file whose whole purpose is hooks, admitted by `codex.repo.hooks`.
+   */
+  readonly standaloneCarrierPath: string;
+  /**
+   * The Source-relative Path of the config layer whose inline `[hooks]` table
+   * is the same layer's other hook carrier, admitted by
+   * `codex.repo.hooks.inline`. The same physical file is also the MCP carrier
+   * and the settings document — three rules over one candidate read once.
+   */
+  readonly inlineCarrierPath: string;
+  /**
+   * The events the standalone file declares, in authored order — the hook
+   * inventory's rows. An event whose value is not a list of groups is
+   * deliberately absent: a malformed declaration is omitted whole.
+   */
+  readonly expectedStandaloneEvents: readonly string[];
+  /** The events the inline table declares, in authored order. */
+  readonly expectedInlineEvents: readonly string[];
+  /**
+   * The event both carriers declare: the same-layer case Codex loads from both
+   * forms rather than choosing between, so one row lists two declarations.
+   */
+  readonly sharedEvent: string;
+  /**
+   * Paths no shipped rule or derivation of any product may admit: the
+   * descendant `.codex` layer a runtime working directory would use, the
+   * scripts a handler names — an unreferenced script is never inferred to be a
+   * hook — a plugin's own bundled hooks and the managed `requirements.toml`
+   * that can declare them, and spelling variants one step from the carrier's
+   * literals.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Codex hook fixture repository (T833).
+ *
+ * The tree holds both documented forms at the one layer this product selects:
+ * the standalone `.codex/hooks.json` and the inline `[hooks]` table of the
+ * same layer's `.codex/config.toml`. That is the case the vendor documents as
+ * loading both with a startup warning, so one event — `SessionStart` — is
+ * declared by both carriers and its row lists two declarations, while the
+ * others belong to one carrier each.
+ *
+ * The declarations are what a hook declaration carries: command handlers with
+ * matchers, timeouts, and status messages; a literal credential and a literal
+ * environment reference inside a command, which must reach no inventory row
+ * and must never be resolved (FR-026, FR-027); handler scripts written as
+ * git-root-relative paths, which are on disk as near misses because a declared
+ * path gains no read authority and becomes no candidate; a malformed event
+ * whose value is not a list of groups, omitted whole; and a malformed group
+ * inside a well-formed event, published as authored because a reader needs the
+ * malformed group stated rather than silently dropped.
+ *
+ * Near misses: the descendant `.codex` layer, the handler scripts themselves,
+ * the singular and dotless directory spellings, a backup suffix, a root
+ * `hooks.json` with no `.codex` above it, the User layer spelled inside the
+ * repository, a plugin's own bundled `hooks/hooks.json`, the managed
+ * `requirements.toml` that can declare hooks inline, and VCS internals.
+ *
+ * A linked carrier is deliberately absent, unlike the rule and skill trees'
+ * cases: a layer has exactly one `.codex/hooks.json`, so a symbolic link at
+ * that path cannot stand beside the real file this tree needs, and transparent
+ * link reading is covered where a kind admits many files.
+ *
+ * Trust and review are deliberately not modelled by a file: whether the
+ * project layer is trusted, and whether a hook has been reviewed against its
+ * current hash, are runtime inputs this product never observes, so the
+ * fixture's job is to make the inventory state them nowhere (FR-009).
+ */
+export function buildCodexHookFixture(
+  prefix = 'inspector-codex-hooks',
+  root = createRepositoryFixtureRoot(prefix),
+): CodexHookFixture {
+  write(
+    root,
+    '.codex/hooks.json',
+    `${JSON.stringify(
+      {
+        // Top-level metadata the carrier declares about itself: documented as
+        // optional and as changing which hooks run not at all, so it is the
+        // carrier's own field rather than an event.
+        description: 'Repository lifecycle hooks for the inspector fixture.',
+        hooks: {
+          // Also declared inline in the same layer's config.toml: the
+          // documented both-forms case.
+          SessionStart: [
+            {
+              matcher: 'startup|resume',
+              hooks: [
+                {
+                  type: 'command',
+                  command:
+                    'python3 "$(git rev-parse --show-toplevel)/.codex/hooks/session_start.py"',
+                  statusMessage: 'Loading session notes',
+                  additionalContextLimit: 5000,
+                },
+              ],
+            },
+          ],
+          PreToolUse: [
+            {
+              matcher: '^Bash$',
+              hooks: [
+                {
+                  type: 'command',
+                  // The credential and environment-reference case: both are
+                  // authored characters inside a command, and neither may
+                  // reach an inventory row or be resolved (FR-026, FR-027).
+                  command: `curl -H "Authorization: Bearer ${FIXTURE_SECRET_LITERAL}" ${FIXTURE_ENVIRONMENT_REFERENCE}/policy`,
+                  statusMessage: 'Checking Bash command',
+                  timeout: 30,
+                },
+              ],
+            },
+            // A malformed group inside a well-formed event: an item that is
+            // not a table at all. It is published as authored, because a
+            // reader inspecting their own file needs it stated rather than
+            // dropped.
+            'not a group',
+          ],
+          PostToolUse: [
+            {
+              matcher: '^apply_patch$',
+              hooks: [
+                {
+                  type: 'command',
+                  command:
+                    'python3 "$(git rev-parse --show-toplevel)/.codex/hooks/post_tool_use_review.py"',
+                  timeout: 30,
+                  async: true,
+                },
+              ],
+            },
+          ],
+          // A handler form the page documents as parsed and skipped, kept
+          // because what a client does with a declaration is not this
+          // product's claim to make (FR-009).
+          PreCompact: [
+            {
+              hooks: [
+                { type: 'prompt', prompt: 'Summarize the open questions before compacting.' },
+              ],
+            },
+          ],
+          // Malformed: an event whose value is not a list of groups declares
+          // nothing and is omitted whole, the same answer an absent hook map
+          // gives.
+          Stop: { matcher: '^.*$' },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The same layer's config document, carrying the inline `[hooks]` table
+  // beside the general configuration and the MCP tables that are two other
+  // recognitions of this one file. Top-level keys before the first table
+  // header, because a TOML document requires that order.
+  write(
+    root,
+    '.codex/config.toml',
+    [
+      '# Codex project configuration for the hook fixture repository.',
+      'model = "gpt-5.4-codex"',
+      'approval_policy = "on-request"',
+      '',
+      '[mcp_servers.context7]',
+      'command = "npx"',
+      'args = ["-y", "@upstash/context7-mcp"]',
+      '',
+      ...CODEX_INLINE_HOOKS_TOML,
+    ].join('\n'),
+  );
+
+  // The handler scripts the declarations name. A declared path gains no read
+  // authority and becomes no candidate, and an unreferenced script is never
+  // inferred to be a hook (FR-034's rule, applied to this vendor's layer).
+  write(root, '.codex/hooks/session_start.py', 'print("fixture hook")\n');
+  write(root, '.codex/hooks/post_tool_use_review.py', 'print("fixture hook")\n');
+  write(root, '.codex/hooks/user_prompt_submit.py', 'print("fixture hook")\n');
+  write(root, '.codex/hooks/unreferenced.py', 'print("no declaration names this file")\n');
+  // Near miss: a descendant `.codex` layer belongs to a runtime working
+  // directory this product never selects, exactly as the nested `config.toml`
+  // and `AGENTS.md` do.
+  write(root, 'packages/api/.codex/hooks.json', '{ "hooks": { "Stop": [] } }\n');
+  // Near miss: the terminal literal is exact.
+  write(root, '.codex/hooks.json.bak', 'backup suffix\n');
+  write(root, '.codex/hooks.jsonc', 'wrong extension\n');
+  // Near miss: the container literals are exact.
+  write(root, '.codex/hook.json', 'singular container\n');
+  write(root, 'codex/hooks.json', 'no leading dot\n');
+  write(root, 'hooks.json', 'no .codex above it\n');
+  // Near miss: a plugin's own bundled hooks. The page documents that an enabled
+  // plugin can bundle lifecycle hooks through its manifest or a default
+  // `hooks/hooks.json`, and that content is on record as excluded — a plugin
+  // root's files belong to the plugin's row, and no hook rule reaches them.
+  write(root, 'plugins/release-notes/hooks/hooks.json', '{ "hooks": { "SessionEnd": [] } }\n');
+  // Near miss: managed hooks. The page documents an enterprise
+  // `requirements.toml` that can define `[hooks]` inline, which is
+  // administrator configuration rather than a repository customization, and no
+  // rule admits it.
+  write(root, 'requirements.toml', '[hooks]\n[[hooks.Stop]]\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/.codex/hooks.json', 'vcs internal\n');
+  // The User layer this rule may never read, spelled inside the repository so
+  // a test can prove the path is a near miss rather than a Source.
+  write(root, 'home/.codex/hooks.json', 'user layer\n');
+  // An unrelated file sharing no segment with the selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    standaloneCarrierPath: '.codex/hooks.json',
+    inlineCarrierPath: '.codex/config.toml',
+    // The malformed `Stop` event is absent: its value is not a list of groups.
+    expectedStandaloneEvents: ['SessionStart', 'PreToolUse', 'PostToolUse', 'PreCompact'],
+    expectedInlineEvents: ['SessionStart', 'UserPromptSubmit'],
+    sharedEvent: 'SessionStart',
+    nearMissPaths: [
+      '.codex/hook.json',
+      '.codex/hooks.json.bak',
+      '.codex/hooks.jsonc',
+      '.codex/hooks/post_tool_use_review.py',
+      '.codex/hooks/session_start.py',
+      '.codex/hooks/unreferenced.py',
+      '.codex/hooks/user_prompt_submit.py',
+      '.git/.codex/hooks.json',
+      'README.md',
+      'codex/hooks.json',
+      'home/.codex/hooks.json',
+      'hooks.json',
+      'packages/api/.codex/hooks.json',
+      'plugins/release-notes/hooks/hooks.json',
+      'requirements.toml',
+    ],
+  };
+}
+
+/** One built Copilot hook fixture repository (T878). */
+export interface CopilotHookFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every accepted file in this tree that declares hooks, by its
+   * Source-relative Path. Copilot documents both forms — files whose whole
+   * purpose is hooks, and an inline block in a settings document — and one
+   * owner more that publishes no hook row of its own.
+   */
+  readonly owners: {
+    /** A root hook file, the location all three surfaces read. */
+    readonly standalone: string;
+    /** A second hook file beside it: the documented lookup loads the directory's `*.json` files. */
+    readonly secondStandalone: string;
+    /** A hook file whose comment strict JSON cannot read, so its events are unknown. */
+    readonly malformed: string;
+    /** The CLI's shared repository settings document, whose top-level `hooks` a team commits. */
+    readonly settings: string;
+    /** The personal settings document beside it, which switches hooks off and declares none. */
+    readonly localSettings: string;
+    /** The cross-tool Claude-format document both the CLI and the editor read. */
+    readonly claudeSettings: string;
+    /**
+     * The personal document beside it, commented the way the committed Copilot
+     * settings document is: this vendor reads it, and Claude Code — whose
+     * format it is, and which calls a `//` comment in one of these files a
+     * syntax error — does not.
+     */
+    readonly claudeLocalSettings: string;
+    /** A custom agent whose frontmatter hooks are part of what that agent is. */
+    readonly agent: string;
+  };
+  /**
+   * The events each hook-publishing owner declares, in authored order, by that
+   * owner's path. The agent is absent: its frontmatter declarations are part
+   * of what that agent is, and its own row publishes the keys its file wrote.
+   * The file no reading can resolve is absent too — its events are unknown
+   * rather than empty, which is the null row's `failed` case (FR-028).
+   */
+  readonly expectedEventsByOwner: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The event two hook files of the same directory both declare, which is what
+   * makes the per-carrier identity visible: one row, two declarations, neither
+   * replacing the other.
+   */
+  readonly sharedEvent: string;
+  /**
+   * Paths no shipped rule of any product may admit and nothing reads: a nested
+   * file below the hook directory — the lookup loads that directory's own
+   * `*.json` files, not a subtree — the handler scripts a declaration names,
+   * spelling variants one segment from each admitted literal, a plugin's own
+   * bundled hook configuration, the User layer spelled inside the repository,
+   * and VCS internals.
+   */
+  readonly nearMissPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical Copilot hook fixture repository (T878).
+ *
+ * The tree holds every documented Repository hook source at once: two files of
+ * the root `.github/hooks/` directory, the CLI's own settings pair, and the
+ * cross-tool Claude-format document the editor reads as well. One event —
+ * `preToolUse` — is declared by both hook files, so its row lists two
+ * declarations; the Claude-format document declares its own event in that
+ * vendor's matcher-group spelling, and the same physical file is Claude Code's
+ * hook carrier too, so that row lists one declaration per product.
+ *
+ * The declarations are what a Copilot hook declaration carries: the documented
+ * `version` beside the event map, `bash`/`powershell`/`command` handlers with a
+ * working directory, environment variables, and a timeout; a literal credential
+ * and a literal environment reference inside a command, which must reach no
+ * inventory row and must never be resolved (FR-026, FR-027); a malformed event
+ * whose value is not a list of groups, omitted whole; and a malformed group
+ * inside a well-formed event, published as authored because a reader needs it
+ * stated rather than silently dropped.
+ *
+ * Two owners are here for what they do *not* produce. A settings document that
+ * switches hooks off and declares none publishes no row at all — a file that
+ * merely may carry a hook block and does not is on no row, not even the null
+ * one — and a custom agent's frontmatter hooks are part of what that agent is,
+ * so the agent's own row publishes them and the hook inventory does not.
+ *
+ * Comments run through the tree wherever this vendor accepts them — its hook
+ * files and both settings pairs — so the fixture shows what its own clients
+ * load. The cross-tool personal document is the same bytes read two ways: a
+ * row here, and a failed Claude recognition beside it
+ * (`parsers/json.ts` § ParsedJsonDocument).
+ *
+ * Near misses: a nested file under the hook directory, the handler scripts the
+ * declarations name — including one no declaration names, because an
+ * unreferenced script is never inferred to be a hook (FR-034) — the singular
+ * and dotless directory spellings, a backup suffix, a non-JSON file in the hook
+ * directory, a plugin's own bundled `hooks/hooks.json` with no catalog naming
+ * that plugin, the User layer spelled inside the repository, and VCS internals.
+ */
+export function buildCopilotHookFixture(
+  prefix = 'inspector-copilot-hooks',
+  root = createRepositoryFixtureRoot(prefix),
+): CopilotHookFixture {
+  const standalonePath = '.github/hooks/security.json';
+  const secondStandalonePath = '.github/hooks/format.json';
+  const malformedPath = '.github/hooks/draft.json';
+  const settingsPath = '.github/copilot/settings.json';
+  const localSettingsPath = '.github/copilot/settings.local.json';
+  const claudeSettingsPath = '.claude/settings.json';
+  const claudeLocalSettingsPath = '.claude/settings.local.json';
+  const agentPath = '.github/agents/reviewer.md';
+
+  // A hook file of the documented format: a `version`, an optional
+  // description, and the event map. The CLI's lowerCamelCase event names are
+  // what this file writes; the editor converts them at runtime, and a detail
+  // shows the key its author wrote (FR-007).
+  write(
+    root,
+    standalonePath,
+    `${JSON.stringify(
+      {
+        version: 1,
+        description: 'Repository policy hooks for the inspector fixture.',
+        hooks: {
+          preToolUse: [
+            {
+              type: 'command',
+              bash: './.github/hooks/scripts/check-policy.sh',
+              powershell: 'pwsh -File .github/hooks/scripts/check-policy.ps1',
+              cwd: '.',
+              env: { COPILOT_FIXTURE_ENDPOINT: FIXTURE_ENVIRONMENT_REFERENCE },
+              timeoutSec: 20,
+            },
+          ],
+          sessionStart: [
+            {
+              type: 'command',
+              // The credential and environment-reference case: both are
+              // authored characters inside a command, and neither may reach an
+              // inventory row or be resolved (FR-026, FR-027).
+              command: `curl -H "Authorization: Bearer ${FIXTURE_SECRET_LITERAL}" ${FIXTURE_ENVIRONMENT_REFERENCE}/session`,
+            },
+          ],
+          // Malformed: an event whose value is not a list of groups declares
+          // nothing and is omitted whole, the same answer an absent hook map
+          // gives.
+          stop: { type: 'command', command: './.github/hooks/scripts/farewell.sh' },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The second file of the same directory, which the documented lookup loads
+  // beside the first rather than instead of it — commented, because a hook
+  // file's comments are its own syntax rather than a failure
+  // (`parsers/json.ts` § ParsedJsonDocument).
+  write(
+    root,
+    secondStandalonePath,
+    [
+      '// Formatting and push guards, run for every surface that loads this file.',
+      '{',
+      '  "version": 1,',
+      '  "hooks": {',
+      '    "postToolUse": [{ "type": "command", "command": "npx prettier --write ." }],',
+      '',
+      '    // Also declared by the file above: two carriers, one event row.',
+      '    "preToolUse": [',
+      '      { "type": "command", "bash": "./.github/hooks/scripts/reject-force-push.sh" },',
+      '      // A malformed group inside a well-formed event: an item that is not',
+      '      // an object at all, published as authored.',
+      '      "always",',
+      '    ],',
+      '  },',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  // A hook file no reading can resolve: the object is never closed, which no
+  // leniency repairs, so the events are unknown and the recognition fails
+  // all-or-nothing (FR-028). Deliberately not a comment, which this carrier's
+  // format allows.
+  write(root, malformedPath, ['{', '  "version": 1,', '  "hooks": {', ''].join('\n'));
+  // The CLI's shared repository settings document: the inline block sits at the
+  // top level beside the other supported repository keys.
+  //
+  // Comment-free, because this pair is read strictly: the load that makes
+  // settings take effect — and that hook loading goes through — rejects a
+  // comment and a trailing comma, and no other surface of this vendor reads
+  // these two files at all (`parsers/json.ts` § acceptsComments). A commented
+  // file here would be a carrier whose recognition fails, which the JSONC
+  // carriers below and the divergent-reading suites already cover.
+  write(
+    root,
+    settingsPath,
+    `${JSON.stringify(
+      {
+        companyAnnouncements: ['Run the policy hooks before pushing.'],
+        enabledPlugins: { 'policy-guard@company-tools': true },
+        hooks: {
+          postToolUse: [
+            {
+              type: 'command',
+              command: './.github/hooks/scripts/record-edit.sh',
+              timeoutSec: 10,
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The personal document beside it: it switches every hook off and declares
+  // none of its own, which puts it on no hook row at all. Strict too, since the
+  // format is the pair's rather than one file's.
+  write(
+    root,
+    localSettingsPath,
+    `${JSON.stringify({ disableAllHooks: true, model: 'gpt-5.4-codex' }, null, 2)}\n`,
+  );
+  // The cross-tool document, in the Claude format both products read: the
+  // matcher-group spelling, which the editor parses and whose matcher values it
+  // ignores at runtime — a fact no surface projects (FR-009).
+  write(
+    root,
+    claudeSettingsPath,
+    `${JSON.stringify(
+      {
+        permissions: { allow: ['Bash(git status)'] },
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Bash',
+              hooks: [
+                {
+                  type: 'command',
+                  command: './.claude/hooks/guard.sh',
+                  timeout: 30,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The personal document of the cross-tool pair, commented like the Copilot
+  // settings document above: this vendor reads the block below and publishes
+  // its event, while Claude Code's recognitions of the same bytes fail with
+  // their diagnostic and the file stays an admitted candidate (FR-028). One
+  // file, two products, two answers
+  // (`parsers/json.ts` § ParsedJsonDocument).
+  write(
+    root,
+    claudeLocalSettingsPath,
+    [
+      '{',
+      '  // Personal: let git status through without a prompt.',
+      '  "permissions": { "allow": ["Bash(git status)"] },',
+      '',
+      '  "hooks": {',
+      '    // Announce the branch I am on when a session starts.',
+      '    "SessionStart": [',
+      '      { "hooks": [{ "type": "command", "command": "./.claude/hooks/announce.sh" }] },',
+      '    ],',
+      '  },',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  // A custom agent whose frontmatter hooks run only while it is active. It is
+  // an accepted file that declares hooks and publishes no hook row: the
+  // declaration is part of what this agent is.
+  write(
+    root,
+    agentPath,
+    [
+      '---',
+      'name: reviewer',
+      'description: Review a diff for correctness.',
+      'hooks:',
+      '  PostToolUse:',
+      '    - type: command',
+      '      command: ./.github/hooks/scripts/review-edit.sh',
+      '---',
+      '',
+      'Review the diff and report what would break.',
+      '',
+    ].join('\n'),
+  );
+
+  // The handler scripts the declarations name, and one no declaration names.
+  // A declared path gains no read authority and becomes no candidate (FR-004,
+  // FR-024), and an unreferenced script is never inferred to be a hook
+  // (FR-034).
+  write(root, '.github/hooks/scripts/check-policy.sh', 'echo policy\n');
+  write(root, '.github/hooks/scripts/check-policy.ps1', 'Write-Output policy\n');
+  write(root, '.github/hooks/scripts/reject-force-push.sh', 'echo push\n');
+  write(root, '.github/hooks/scripts/record-edit.sh', 'echo edit\n');
+  write(root, '.github/hooks/scripts/review-edit.sh', 'echo review\n');
+  write(root, '.github/hooks/scripts/unreferenced.sh', 'echo "no declaration names this file"\n');
+  // Near miss: the documented lookup loads the hook directory's own `*.json`
+  // files, so a nested one is a file no page documents a read of.
+  write(root, '.github/hooks/nested/deep.json', '{ "version": 1, "hooks": {} }\n');
+  // Near miss: the terminal literal is exact.
+  write(root, '.github/hooks/security.json.bak', 'backup suffix\n');
+  write(root, '.github/hooks/README.md', 'not a hook file\n');
+  // Near miss: the container literals are exact.
+  write(root, '.github/hook/security.json', 'singular container\n');
+  write(root, 'hooks/security.json', 'no .github above it\n');
+  write(root, '.claude/settings.local.json.bak', 'backup suffix\n');
+  // Near miss: a plugin's own bundled hooks. No catalog in this tree names
+  // that plugin, so nothing makes its directory a plugin root here, and no
+  // hook rule reaches a component path in any case.
+  write(root, 'plugins/policy-guard/hooks/hooks.json', '{ "version": 1, "hooks": {} }\n');
+  // Near miss: VCS internals are excluded from traversal entirely.
+  write(root, '.git/.github/hooks/security.json', 'vcs internal\n');
+  // The User layer these rules may never read, spelled inside the repository so
+  // a test can prove the paths are near misses rather than a Source.
+  write(root, 'home/.copilot/hooks/personal.json', '{ "version": 1, "hooks": {} }\n');
+  write(root, 'home/.copilot/settings.json', '{ "hooks": {} }\n');
+  // An unrelated file sharing no segment with any selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    owners: {
+      standalone: standalonePath,
+      secondStandalone: secondStandalonePath,
+      malformed: malformedPath,
+      settings: settingsPath,
+      localSettings: localSettingsPath,
+      claudeSettings: claudeSettingsPath,
+      claudeLocalSettings: claudeLocalSettingsPath,
+      agent: agentPath,
+    },
+    expectedEventsByOwner: {
+      // The malformed `stop` event is absent: its value is not a list of groups.
+      [standalonePath]: ['preToolUse', 'sessionStart'],
+      [secondStandalonePath]: ['postToolUse', 'preToolUse'],
+      [settingsPath]: ['postToolUse'],
+      [localSettingsPath]: [],
+      [claudeSettingsPath]: ['PreToolUse'],
+      // Read by this vendor alone: Claude Code's own recognitions of the same
+      // file fail on its comments, so the event has one declaration where the
+      // shared document above has two.
+      [claudeLocalSettingsPath]: ['SessionStart'],
+    },
+    sharedEvent: 'preToolUse',
+    nearMissPaths: [
+      '.claude/settings.local.json.bak',
+      '.git/.github/hooks/security.json',
+      '.github/hook/security.json',
+      '.github/hooks/README.md',
+      '.github/hooks/nested/deep.json',
+      '.github/hooks/scripts/check-policy.ps1',
+      '.github/hooks/scripts/check-policy.sh',
+      '.github/hooks/scripts/record-edit.sh',
+      '.github/hooks/scripts/reject-force-push.sh',
+      '.github/hooks/scripts/review-edit.sh',
+      '.github/hooks/scripts/unreferenced.sh',
+      '.github/hooks/security.json.bak',
+      'README.md',
+      'home/.copilot/hooks/personal.json',
+      'home/.copilot/settings.json',
+      'hooks/security.json',
+      'plugins/policy-guard/hooks/hooks.json',
+    ],
+  };
+}
+
+/** One built unified hook fixture repository (T899). */
+export interface UnifiedHookFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /**
+   * Every carrier in this tree that publishes hook rows, by its
+   * Source-relative Path: the two Codex forms of one layer, the settings
+   * documents two products read, and the Copilot hook files and settings pair.
+   */
+  readonly carriers: {
+    /** Codex's standalone `.codex/hooks.json`. */
+    readonly codexStandalone: string;
+    /** The inline `[hooks]` table of the same Codex layer. */
+    readonly codexInline: string;
+    /** The shared `.claude/settings.json`, which Claude Code and Copilot both read. */
+    readonly sharedSettings: string;
+    /** The personal `.claude/settings.local.json` beside it, read by both as well. */
+    readonly sharedLocalSettings: string;
+    /** A Copilot hook file of the root `.github/hooks/` directory. */
+    readonly copilotStandalone: string;
+    /** A second file of that directory, so one event has two hook-file carriers. */
+    readonly copilotSecondStandalone: string;
+    /** The CLI's own repository settings document, whose inline block only it reads. */
+    readonly copilotSettings: string;
+    /** A hook file whose comment strict JSON cannot read, so its events are unknown. */
+    readonly unreadable: string;
+  };
+  /**
+   * The accepted files that declare hooks and publish no hook row: their
+   * declarations are part of what those customizations are, and each one's own
+   * row publishes the keys its file wrote.
+   */
+  readonly nonPublishingOwners: readonly string[];
+  /**
+   * The events each publishing carrier declares, in authored order, by that
+   * carrier's path. The unreadable carrier is absent: its events are unknown
+   * rather than empty, which is the closing row's own statement (FR-028).
+   */
+  readonly expectedEventsByCarrier: Readonly<Record<string, readonly string[]>>;
+  /**
+   * The event two products declare in one physical file — the one-read case:
+   * `.claude/settings.json` is Claude Code's hook carrier and Copilot's, so
+   * this event's row lists one declaration per product over a single read.
+   */
+  readonly sharedFileEvent: string;
+  /**
+   * The event two vendors declare in different files, which is what makes the
+   * row unit visible: a hook row is one declared event name, and the carriers
+   * that declare it join it whoever reads them.
+   */
+  readonly crossVendorEvent: string;
+  /**
+   * Paths no shipped rule of any product may admit and nothing reads: the
+   * handler scripts declarations name, an unreferenced script beside them, the
+   * nested file below a hook directory, the User layers spelled inside the
+   * repository, and spelling variants one segment from an admitted literal.
+   */
+  readonly nearMissPaths: readonly string[];
+  /**
+   * The hook configuration a plugin bundles, inside the root the catalog's
+   * entry names. These files *are* read — a plugin root is a directory-shaped
+   * customization whose files the census enumerates
+   * (contracts/inspection-path-allowlist.md § Bounded companion census) — and
+   * they gain no hook recognition all the same: a plugin's components are that
+   * plugin's row, and no hook rule admits one.
+   */
+  readonly pluginBundledHookPaths: readonly string[];
+}
+
+/**
+ * Builds the canonical unified hook fixture repository (T899): one tree where
+ * hooks reach the inventory every documented way at once.
+ *
+ * The point of the tree is the row unit. A hook row is one declared lifecycle
+ * event, so a single event gathers every carrier that declares it: `SessionStart`
+ * is declared by Codex's standalone file, by the inline table of the same Codex
+ * layer, and by the shared `.claude/settings.local.json` that Claude Code and
+ * Copilot both read — five declarations over four reads, on one row. `PreToolUse`
+ * is the one-read case on its own: `.claude/settings.json` is one physical file
+ * with one recognition per product.
+ *
+ * The Copilot files use the CLI's lowerCamelCase event names, which are their own
+ * rows: an event row is the key its carrier wrote (FR-007), and this product
+ * never folds two spellings into one row on a vendor's behalf.
+ *
+ * Five accepted files declare hooks and publish no hook row — a skill, a
+ * subagent, a Copilot custom agent, a plugin manifest, and the repository's own
+ * catalog. Their declarations are part of what those customizations are, and
+ * each one's own row already publishes the keys its file wrote, so a hook row
+ * would publish one fact twice on a page whose subject is not that
+ * customization.
+ *
+ * One carrier is deliberately unreadable — a hook file with a comment, which
+ * this vendor documents as JSON — so the closing row states unknown events
+ * rather than none (FR-028), and the generation is partial.
+ *
+ * Near misses: the handler scripts the declarations name and one no declaration
+ * names, the nested file below `.github/hooks/`, both products' User layers
+ * spelled inside the repository, and the singular and dotless spellings of each
+ * admitted container. A plugin's own bundled `hooks/hooks.json` sits apart from
+ * those: the catalog names that root, so the census reads the file as one of
+ * the plugin's own, and it gains no hook recognition all the same.
+ */
+export function buildUnifiedHookFixture(
+  prefix = 'inspector-unified-hooks',
+  root = createRepositoryFixtureRoot(prefix),
+): UnifiedHookFixture {
+  const codexStandalone = '.codex/hooks.json';
+  const codexInline = '.codex/config.toml';
+  const sharedSettings = '.claude/settings.json';
+  const sharedLocalSettings = '.claude/settings.local.json';
+  const copilotStandalone = '.github/hooks/security.json';
+  const copilotSecondStandalone = '.github/hooks/format.json';
+  const copilotSettings = '.github/copilot/settings.json';
+  const unreadable = '.github/hooks/draft.json';
+
+  // Codex's standalone form: the file whose whole purpose is hooks, with the
+  // documented optional description beside its event map.
+  write(
+    root,
+    codexStandalone,
+    `${JSON.stringify(
+      {
+        description: 'Repository lifecycle hooks for the unified fixture.',
+        hooks: {
+          SessionStart: [
+            {
+              matcher: 'startup|resume',
+              hooks: [
+                {
+                  type: 'command',
+                  command:
+                    'python3 "$(git rev-parse --show-toplevel)/.codex/hooks/session_start.py"',
+                  statusMessage: 'Loading session notes',
+                },
+              ],
+            },
+          ],
+          PreToolUse: [
+            {
+              matcher: '^Bash$',
+              hooks: [
+                {
+                  type: 'command',
+                  // The credential and environment-reference case: neither may
+                  // reach an inventory row or be resolved (FR-026, FR-027).
+                  command: `curl -H "Authorization: Bearer ${FIXTURE_SECRET_LITERAL}" ${FIXTURE_ENVIRONMENT_REFERENCE}/policy`,
+                  timeout: 30,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The inline form of the same layer, which Codex loads beside the standalone
+  // file rather than instead of it — the same-layer case that puts two Codex
+  // declarations of `SessionStart` on one row.
+  write(
+    root,
+    codexInline,
+    [
+      '# Codex project configuration for the unified hook fixture.',
+      'model = "gpt-5.4-codex"',
+      '',
+      '[mcp_servers.context7]',
+      'command = "npx"',
+      'args = ["-y", "@upstash/context7-mcp"]',
+      '',
+      ...CODEX_INLINE_HOOKS_TOML,
+    ].join('\n'),
+  );
+  // The shared settings document: one physical file, one read, and a hook
+  // recognition for each product that documents reading it.
+  write(
+    root,
+    sharedSettings,
+    `${JSON.stringify(
+      {
+        permissions: { allow: ['Bash(git status)'], deny: ['Bash(rm -rf *)'] },
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Bash',
+              hooks: [
+                {
+                  type: 'command',
+                  command: '"${CLAUDE_PROJECT_DIR}"/.claude/hooks/block-rm.sh',
+                  timeout: 30,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The personal document beside it, declaring the event two other carriers
+  // declare as well: one row, five declarations, four reads.
+  write(
+    root,
+    sharedLocalSettings,
+    `${JSON.stringify(
+      {
+        hooks: {
+          SessionStart: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: '"${CLAUDE_PROJECT_DIR}"/.claude/hooks/announce.sh',
+                  statusMessage: 'Announcing the session',
+                },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // Copilot's hook files, in the CLI's own event spelling.
+  write(
+    root,
+    copilotStandalone,
+    `${JSON.stringify(
+      {
+        version: 1,
+        description: 'Repository policy hooks.',
+        hooks: {
+          preToolUse: [
+            {
+              type: 'command',
+              bash: './.github/hooks/scripts/check-policy.sh',
+              powershell: 'pwsh -File .github/hooks/scripts/check-policy.ps1',
+              timeoutSec: 20,
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    copilotSecondStandalone,
+    `${JSON.stringify(
+      {
+        version: 1,
+        hooks: {
+          // Also declared by the file above: two hook files, one event row.
+          preToolUse: [{ type: 'command', command: 'npx prettier --check .' }],
+          postToolUse: [{ type: 'command', command: 'npx prettier --write .' }],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The CLI's own settings document, whose inline block the editor documents no
+  // read of — which is why its row names the CLI surface alone.
+  write(
+    root,
+    copilotSettings,
+    `${JSON.stringify(
+      {
+        companyAnnouncements: ['Run the policy hooks before pushing.'],
+        hooks: {
+          postToolUse: [
+            { type: 'command', command: './.github/hooks/scripts/record-edit.sh', timeoutSec: 10 },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  // The unreadable carrier: an unterminated object, which every reader of this
+  // location rejects — the editor parses these files as JSONC and the CLI
+  // strictly, and neither accepts a document that simply stops. The extraction
+  // fails all-or-nothing, so the closing row states unknown events rather than
+  // none and the generation is partial (FR-028).
+  write(root, unreadable, ['{', '  "version": 1,', '  "hooks": {', ''].join('\n'));
+
+  // The five accepted owners that declare hooks and publish no hook row.
+  write(
+    root,
+    '.claude/skills/release-notes/SKILL.md',
+    [
+      '---',
+      'name: release-notes',
+      'description: Draft release notes from merged pull requests.',
+      'hooks:',
+      '  PreToolUse:',
+      '    - matcher: Bash',
+      '      hooks:',
+      '        - type: command',
+      '          command: ./scripts/security-check.sh',
+      '---',
+      '',
+      'Draft the notes from the merged pull requests.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.claude/agents/reviewer.md',
+    [
+      '---',
+      'name: reviewer',
+      'description: Review a diff for correctness.',
+      'hooks:',
+      '  PostToolUse:',
+      '    - matcher: Edit',
+      '      hooks:',
+      '        - type: command',
+      '          command: ./scripts/review-edit.sh',
+      '---',
+      '',
+      'Review the diff and report what would break.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.github/agents/reviewer.md',
+    [
+      '---',
+      'name: reviewer',
+      'description: Review a diff before it is pushed.',
+      'hooks:',
+      '  PostToolUse:',
+      '    - type: command',
+      '      command: ./.github/hooks/scripts/review-edit.sh',
+      '---',
+      '',
+      'Review the diff and report what would break.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.claude/skills/toolkit/.claude-plugin/plugin.json',
+    `${JSON.stringify(
+      {
+        name: 'toolkit',
+        version: '1.2.0',
+        hooks: {
+          SessionEnd: [
+            { hooks: [{ type: 'command', command: '"${CLAUDE_PLUGIN_ROOT}"/scripts/cleanup.sh' }] },
+          ],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    '.claude-plugin/marketplace.json',
+    `${JSON.stringify(
+      {
+        name: 'shared-tools',
+        owner: { name: 'The fixture team' },
+        plugins: [
+          {
+            name: 'formatter',
+            source: './plugins/formatter',
+            hooks: {
+              PostToolUse: [
+                { hooks: [{ type: 'command', command: './plugins/formatter/format.sh' }] },
+              ],
+            },
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  // The handler scripts the declarations name, and one no declaration names. A
+  // declared path gains no read authority and becomes no candidate (FR-004,
+  // FR-024), and an unreferenced script is never inferred to be a hook (FR-034).
+  write(root, '.codex/hooks/session_start.py', 'print("fixture hook")\n');
+  write(root, '.codex/hooks/user_prompt_submit.py', 'print("fixture hook")\n');
+  write(root, '.claude/hooks/block-rm.sh', 'echo blocked\n');
+  write(root, '.claude/hooks/announce.sh', 'echo announcing\n');
+  write(root, '.claude/hooks/unreferenced.sh', 'echo "no declaration names this file"\n');
+  write(root, '.github/hooks/scripts/check-policy.sh', 'echo policy\n');
+  write(root, '.github/hooks/scripts/check-policy.ps1', 'Write-Output policy\n');
+  write(root, '.github/hooks/scripts/record-edit.sh', 'echo edit\n');
+  write(root, '.github/hooks/scripts/review-edit.sh', 'echo review\n');
+  // Near miss: the documented Copilot lookup loads the hook directory's own
+  // `*.json` files, not a subtree.
+  write(root, '.github/hooks/nested/deep.json', '{ "version": 1, "hooks": {} }\n');
+  // Near miss: a plugin's own bundled hooks belong to the plugin's row.
+  write(root, 'plugins/formatter/hooks/hooks.json', '{ "hooks": { "SessionEnd": [] } }\n');
+  // Near miss: the container and terminal literals are exact.
+  write(root, '.codex/hook.json', 'singular container\n');
+  write(root, '.github/hook/security.json', 'singular container\n');
+  write(root, 'hooks/security.json', 'no .github above it\n');
+  write(root, '.claude/hooks.json', 'a location this vendor documents nowhere\n');
+  // The User layers these rules may never read, spelled inside the repository.
+  write(root, 'home/.codex/hooks.json', 'user layer\n');
+  write(root, 'home/.claude/settings.json', 'user layer\n');
+  write(root, 'home/.copilot/hooks/personal.json', 'user layer\n');
+  // An unrelated file sharing no segment with any selector.
+  write(root, 'README.md', 'unrelated\n');
+
+  return {
+    root,
+    carriers: {
+      codexStandalone,
+      codexInline,
+      sharedSettings,
+      sharedLocalSettings,
+      copilotStandalone,
+      copilotSecondStandalone,
+      copilotSettings,
+      unreadable,
+    },
+    nonPublishingOwners: [
+      '.claude-plugin/marketplace.json',
+      '.claude/agents/reviewer.md',
+      '.claude/skills/release-notes/SKILL.md',
+      '.claude/skills/toolkit/.claude-plugin/plugin.json',
+      '.github/agents/reviewer.md',
+    ],
+    expectedEventsByCarrier: {
+      [codexStandalone]: ['SessionStart', 'PreToolUse'],
+      [codexInline]: ['SessionStart', 'UserPromptSubmit'],
+      [sharedSettings]: ['PreToolUse'],
+      [sharedLocalSettings]: ['SessionStart'],
+      [copilotStandalone]: ['preToolUse'],
+      [copilotSecondStandalone]: ['preToolUse', 'postToolUse'],
+      [copilotSettings]: ['postToolUse'],
+    },
+    sharedFileEvent: 'PreToolUse',
+    crossVendorEvent: 'SessionStart',
+    nearMissPaths: [
+      '.claude/hooks.json',
+      '.claude/hooks/announce.sh',
+      '.claude/hooks/block-rm.sh',
+      '.claude/hooks/unreferenced.sh',
+      '.codex/hook.json',
+      '.codex/hooks/session_start.py',
+      '.codex/hooks/user_prompt_submit.py',
+      '.github/hook/security.json',
+      '.github/hooks/nested/deep.json',
+      '.github/hooks/scripts/check-policy.ps1',
+      '.github/hooks/scripts/check-policy.sh',
+      '.github/hooks/scripts/record-edit.sh',
+      '.github/hooks/scripts/review-edit.sh',
+      'README.md',
+      'home/.claude/settings.json',
+      'home/.codex/hooks.json',
+      'home/.copilot/hooks/personal.json',
+      'hooks/security.json',
+    ],
+    pluginBundledHookPaths: ['plugins/formatter/hooks/hooks.json'],
+  };
+}
+
 /** One built Claude instruction fixture repository (T226). */
 export interface ClaudeInstructionFixture {
   /** The absolute fixture root to scan. */
@@ -6247,6 +7701,12 @@ export interface AllCustomizationKindFixture {
   readonly copilotAgentFixture: CopilotAgentFixture;
   /** The all-vendor settings fixture's own result, built into this root. */
   readonly settingsFixture: CopilotSettingsFixture;
+  /** The Codex hook tree: both documented forms at the one selected layer. */
+  readonly hookFixture: CodexHookFixture;
+  /** The Claude hook tree: every documented owner of a contained declaration. */
+  readonly claudeHookFixture: ClaudeHookFixture;
+  /** The Copilot hook tree: the root hook files and the settings documents that carry a block. */
+  readonly copilotHookFixture: CopilotHookFixture;
 }
 
 /**
@@ -6290,6 +7750,12 @@ export function buildAllCustomizationKindFixture(
   const claudePluginFixture = buildClaudePluginFixture(prefix, root);
   const copilotPluginFixture = buildCopilotPluginFixture(prefix, root);
   const commandFixture = buildCommandFixture(prefix, root);
+  // The hook family, before the MCP builder because both write the root
+  // `.codex/config.toml`: this builder's own inline `[hooks]` tables are
+  // replaced by that write and appended again by the merge below, while its
+  // `.codex/hooks.json`, handler scripts, and near misses are disjoint from
+  // every other builder's paths and stand as written.
+  const hookFixture = buildCodexHookFixture(prefix, root);
   const mcpFixture = buildPriorityMcpFixture(prefix, root);
   // The settings family, so one launch shows every inventory this release
   // publishes. Built before the permissions fixture, which owns the two
@@ -6298,6 +7764,16 @@ export function buildAllCustomizationKindFixture(
   // write is the copy this tree shows and both products still recognize it.
   // Its own `.github/copilot/` documents and its excluded neighbours are
   // disjoint from every other builder's paths.
+  // The Copilot hook family before the settings builder, which owns
+  // `.github/copilot/settings*.json` here and writes its own `hooks` block into
+  // the shared document — so the contained Copilot row this tree shows is that
+  // builder's copy, while the `.github/hooks/` files, their handler scripts,
+  // and their near misses are disjoint from every other builder's paths and
+  // stand as written. Its `.claude/settings.json` and `.github/agents/` copies
+  // are replaced later for the same reason: the permissions and Claude hook
+  // builders own that settings document, and the Copilot agent builder owns
+  // that duplicate-name profile.
+  const copilotHookFixture = buildCopilotHookFixture(prefix, root);
   const settingsFixture = buildCopilotSettingsFixture(prefix, root);
   // After the MCP builder, which writes its own `.claude/settings.json` as an
   // unadmitted MCP owner: here that path is a permission-policy carrier, and
@@ -6334,12 +7810,25 @@ export function buildAllCustomizationKindFixture(
     // underscored integer are exactly what that row shows and what neither
     // neighbouring builder has a reason to write. Top-level keys before the
     // first table header, because a TOML document requires that order.
+    // The inline hook tables last: they are table headers, so they follow the
+    // server tables the MCP builder wrote, and the root layer alone carries
+    // them — the descendant layer is a near miss at every phase, and giving it
+    // hooks would state a candidacy no rule grants.
     write(
       root,
       path,
-      `${fallbackDeclaration}${CODEX_GENERAL_CONFIGURATION}\n${mcpCodexConfigs[index]!}`,
+      `${fallbackDeclaration}${CODEX_GENERAL_CONFIGURATION}\n${mcpCodexConfigs[index]!}${
+        path === '.codex/config.toml' ? `\n${CODEX_INLINE_HOOKS_TOML.join('\n')}` : ''
+      }`,
     );
   }
+  // The Claude hook family last among the builders that own its paths: the
+  // permissions builder writes the two `.claude/settings*.json` documents and
+  // the skill builders write `.claude/skills/`, and this tree needs those files
+  // to carry `hooks` — so its own copies are the ones the merged tree shows,
+  // each carrying the permission policy and skill content the earlier builders
+  // put there.
+  const claudeHookFixture = buildClaudeHookFixture(prefix, root);
   return {
     root,
     skillFixture,
@@ -6357,5 +7846,8 @@ export function buildAllCustomizationKindFixture(
     claudeAgentFixture,
     copilotAgentFixture,
     settingsFixture,
+    hookFixture,
+    claudeHookFixture,
+    copilotHookFixture,
   };
 }

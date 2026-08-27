@@ -57,6 +57,14 @@ export class PageOwnership {
   }
 
   /**
+   * Opens one hook carrier's declarations as this page's own request
+   * ({@link SessionViewState.openHookCarrierDetail}).
+   */
+  public async openHookCarrierDetail(sourceRelativePath: string): Promise<void> {
+    await this.#viewState.openHookCarrierDetail(sourceRelativePath, this.#owner);
+  }
+
+  /**
    * Requests one plugin carrier's detail for one inventory row, with that
    * plugin's own manifest and the file the page has open, under this page's
    * ownership ({@link SessionViewState.openPluginDetail}).

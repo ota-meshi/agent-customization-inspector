@@ -124,7 +124,7 @@ instruction-byte limits and excluded non-file inputs stay explicit condition fac
 
 ## Technical Context
 
-**Language/Version**: Node.js 24.18.0 LTS development/build baseline; package runtime
+**Language/Version**: Active LTS Node.js development/build baseline; package runtime
 compatibility contract `^24.11.0 || ^26.0.0`, exactly
 `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`; TypeScript 6.0.3; Vue 3.5.39. The six
 Node/OS floor jobs certify the two declared lower bounds rather than enumerating every
@@ -151,8 +151,18 @@ That revalidation is a planning gate, not permission for a task-local package or
 edit. If any selected package or version changes, implementation stops before configuration
 work, the compatibility decision is reviewed again, every dependency-baseline-bearing
 English/Japanese research, plan, quickstart, and task artifact is synchronized, and
-`/speckit.plan` followed by `/speckit.tasks` is rerun before work resumes. Configuration,
-CI, release, and package-policy
+`/speckit.plan` followed by `/speckit.tasks` is rerun before work resumes.
+An update Renovate automerges is outside this gate: which packages this project selects, and
+why each was chosen, do not change. Such an update is not confined to the lockfile —
+`:preserveSemverRanges` is `rangeStrategy: replace`, which rewrites the accepted range in
+`package.json` whenever the new version falls outside it — so what stands behind a bump is
+ci.yml, which runs the whole suite against that pull request before it merges. A version
+recorded in these artifacts is the one its reason was reviewed against. Two updates never
+automerge — a runtime dependency's major, and a minor to a package below 1.0.0, where
+SemVer permits a breaking change in any release — so replacing a package, crossing its
+major, or moving a pre-1.0 caret range still reaches this gate (AGENTS.md § Release
+policy).
+Configuration, CI, release, and package-policy
 instructions MUST use only that one synchronized baseline.
 
 **Formatting/Linting**: Code formatting is owned by Prettier — `pnpm run format`
@@ -175,7 +185,8 @@ work, T001 MUST confirm that determination in the `**Migration impact**` section
 those exact paired sections are its design-evidence destination. Discovery of an affected
 consumer or prior contract invalidates the determination and stops implementation for
 replanning. Every accepted new or changed dependency and every breaking public-contract
-change MUST record its rationale and migration impact. Design evidence MUST exist before
+change MUST record its rationale and migration impact; an update Renovate automerges is not
+such a change (see the dependency gate above). Design evidence MUST exist before
 implementation; the corresponding `validation.md`/`validation.ja.md` evidence MUST exist
 before release. Each record MUST identify affected consumers, contracts, data, and workflows;
 required migration steps and compatibility or support window; and rollback/support path, or
@@ -950,17 +961,17 @@ command returns zero only for its complete expected state. Any failure is automa
 and streams are never stitched.
 
 **Target Platform**: The supported runtime contract is the complete declared Node.js 24/26
-engine range on `ubuntu-24.04` x64, `macos-15` arm64, and `windows-2025` x64. The exact
+engine range on `ubuntu-latest`, `macos-latest`, and `windows-latest`. The exact
 six-job Cartesian product of the `24.11.0` and `26.0.0` floors with those OS/architecture
 targets is the mandatory lower-bound release-certification sample, not the full list of
 compatible Node minor/patch releases. One platform-independent tarball is built on
-`ubuntu-24.04` x64 with the Node.js 24.18.0 development/build baseline, receives a separate
+`ubuntu-latest` with the active LTS Node.js development/build baseline, receives a separate
 build/package smoke check there, and is installed unchanged in all six floor jobs. Each
 release records the resolved runner-image identifier and actual Node version. Other OS/
 architecture targets and Node versions outside the declared engine range are unsupported.
 Browser release certification runs the complete browser and accessibility suite against the
 exact Chromium, Firefox, and WebKit revisions installed by Playwright 1.61.1 on
-`ubuntu-24.04` x64 with Node.js 24.18.0. Those revisions are a finite reproducible
+`ubuntu-latest` with the active LTS Node.js. Those revisions are a finite reproducible
 certification baseline, not an exhaustive list of user browsers. The fixed OS helper passes
 the printed URL to the user's default handler without selecting or validating its family or
 version; helper success is not browser-compatibility evidence. A handler outside the
@@ -1172,9 +1183,10 @@ execution environment rather than a product-defined item ceiling.
       bilingual design evidence blocks T002, and missing bilingual validation evidence blocks
       release.
 - [x] **Complete verification**: Byte hygiene is delegated to `.gitattributes` and
-      `.editorconfig`; lint, typecheck, and the automated suites run locally, in independent
-      CI jobs, and again
-      after final release edits. Every repository remediation found by release review reruns the
+      `.editorconfig`; lint, typecheck, and the automated suites run locally and in
+      independent CI jobs, and the release path re-runs none of them — a suite a pull
+      request already ran against the same commit gains nothing by running again beside
+      the publishing credential. Every repository remediation found by release review reruns the
       complete applicable automated matrix, invalidates and regenerates every affected
       candidate/profile/fixture/human or manual evidence set, and repeats complete-diff/tarball
       review until no concern remains. After the bilingual Constitution record is the sole
@@ -1183,7 +1195,7 @@ execution environment rather than a product-defined item ceiling.
       later repository edit invalidates them and returns to remediation, digest/evidence
       revalidation, applicable gate reruns, and complete-diff review before the final sequence.
       The independent ESLint gate and the independent strict `typecheck` type-checking gate
-      run in each workflow as well.
+      are ci.yml's own jobs.
       The test layout covers unit, contract, integration,
       security, package, performance, end-to-end, error, boundary, and accessibility
       scenarios, including all four user stories, the published SC-002 profile/status
@@ -1465,7 +1477,7 @@ scripts/
 
 .github/workflows/
 ├── ci.yml
-└── release.yml
+└── Release.yml
 
 package.json
 pnpm-lock.yaml
@@ -1609,13 +1621,13 @@ build, because packaged-artifact verification belongs to that layer. The package
 assert the approved production-leaf set; the locked versions and their integrity stay owned
 by the committed lockfile, and no separate production-graph script or evidence file exists. Its `typecheck` script runs the strict
 TypeScript type check over the application, shared, source, script, and test code configured
-in `tsconfig.json` and is a required quality gate in local verification, its own independent
-CI job, and release. `study:evidence:inputs` invokes only
+in `tsconfig.json` and is a required quality gate in local verification and in its own
+independent CI job. `study:evidence:inputs` invokes only
 `node scripts/build-usability-study-inputs.mjs`, `study:evidence:capture` invokes only
 `node scripts/run-usability-study-capture.mjs`, and `study:evidence:verify` invokes only
 `node scripts/verify-usability-study-evidence.mjs`; none belongs to a default build/start/test
 chain, and only the explicit initial-release study protocol may invoke them. CI runs `format:check`
-as its own job, and release reruns it with the other gates after final edits. `check:official-sources` is the only
+as its own job. `check:official-sources` is the only
 documented network-enabled evidence-drift command. The `src/server/cli.ts` entry,
 `tsdown.config.ts`, assembly scripts, and these package scripts are foundation prerequisites:
 no build or package quality gate may be scheduled before they exist.

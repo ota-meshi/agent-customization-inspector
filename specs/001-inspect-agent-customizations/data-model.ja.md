@@ -957,6 +957,7 @@ substituteしない。
 | `permissions` | Policyを宣言するfile自身。条件は`rule` rowと同じ。別kindである理由は主題が違うことにある: permission policyはproductがどのcommandやtoolを実行してよいかを決めるものであり、ruleはproductが読む指針である。Codexは自身のpolicyを`.codex/rules/*.rules`に綴り、Claudeは自身のmodular instructionもまた`rules`と呼ぶため、vendorが共有する語でまとめると無関係な2つの主題が1つのlistに並ぶことになる。File全体がpolicyであるfileと、より大きなdocumentの1 blockとしてpolicyを運ぶfileは、どちらも1 rowである: 違うのはdetailが公開するものであって、rowが何であるかではない。Policyを宣言しないcarrierはrowにならない — documentの残りはそれを所有するrecognitionであり、rowにすれば作者が書いていないpolicyを述べることになる |
 | `prompt/command` | 読み手が起動する名前1つであり、条件は`skill` rowと同じ: その名前を解決する各recognition — `(file, tool)`ごとに1つ — がdefinitionとして名前のrowの中に並ぶため、2つのproductが1つの名前で起動する1 fileはそのrowの2 definitionとなり、product間で名前が異なる場合はそれぞれの名前のrowにdefinitionを持つ。どの名前になるかは、そのfileをadmitしたrule自身のものである。このkindの2つのlocationが異なる答えを返すためである。Command fileの名前が著述されることはない — どちらのproductもcommand fileの`name` keyを無視する — ため、名前は各productのadmitしたrule自身がpathから導出する: Claude Codeはcommand directory配下のpathを取り、区切りをすべて`:`に置き換える。したがって`frontend/component.md`は`frontend:component`、`team/review/security.md`は`team:review:security`となる。stemが大文字小文字を問わず`skill`である葉だけは例外で、自身ではなくそのdirectoryの名前を取る。これはproductがそう振る舞うのであって、どのpageも文書化していない。stemは大文字小文字を無視して比較する一方、`.md`拡張子はmatcherがadmitするものそのものであるため、`SKILL.MD`はここではそもそもcommand fileにならない。Copilot CLIはnamespaceを文書化しておらずsubdirectoryにも到達しないため、file名だけを取る。したがって両者はroot直下の子で正確に一致し、そのfileは両productを名指す1 rowとなり、nestedなfileはClaude単独のrowとなる。一方、VS Code prompt fileは自身で名乗る: 文書化された`name`が読み手が`/`の後に入力するものであり、宣言がなければfile自身の名前が代わりに立つ — したがってcommandが解決する名前を宣言したpromptは、1つのskill名を持つ2 fileと同じように、そのcommandのrowのdefinitionとなる。Skillと違い、rowは同名解決を述べない。いまや2つのprompt fileが1つの名前に到達し得るが、VS Codeはその結果を文書化していないため、rowが答えればどのpageも問うていない問いに答えることになる — definitionは並んで立ち、読み手は両方を見る（FR-009） |
 | `agent` | agent name 1つ: それを定義するすべてのfile — `(file, tool)`ごとに1 definition — がそのnameのrowの中に列挙されるので、1つのnameに解決される2つのfileは1 rowの2 definitionになる。nameはadmitしたproductがそのagentを識別する事実であり、どの事実かはproductによって異なる: OpenAI CodexとClaude Codeは`name` fieldをagentのidentityとし、filenameを一致させることはlookupではなくconventionだと述べている（Claude Codeはagents directory内のsubfolderもidentityに影響しないと述べる）ため、これらのrowをfileの名で名指せばproductが持たないagentを報告することになる。一方GitHub Copilotは`name`をoptionalなdisplay nameとして文書化し、profileをconfiguration file自身の名から`.md`または`.agent.md`を除いたもので識別するため、そのrowを宣言された`name`で名指せばCopilotがその名でdeduplicateしないagentを報告することになる。したがって2つのproductが認識する1つのfileは、両者の答えが異なる限り2つのrowに定義を持つ。Rowはskillのrowと違いsame-name resolutionを述べない: Claude Codeは1つの`.claude/agents/` tree配下で同名の2 fileのうち1つだけがloadされると述べ、どちらかを定めるruleを示さないので、答えるrowはどのpageも問うていない問いに答えることになる — definitionは並べて示され、読者は両方を見る（FR-009）。nameがnullである唯一のrowが末尾を締め、nameを公開しないfileを集める — 宣言された`name`でagentを識別するproductのもとで、宣言しないもの、scalar以外を宣言するもの、そして宣言をまったく読み取れずnameが不在ではなく不明なもの（FR-028）。file名で識別するproductのdefinitionはここに到達しない: fileが何を宣言していてもpathが答えるので、抽出の失敗はそのidentityを奪わない。Definitionは、admitしたruleが依拠するdocumented behaviorのsurfaceを、skill definitionと同じように述べる（FR-009）。sessionがそのagentをspawnした、あるいは選択したという主張では決してない |
+| `hook` | 宣言されたlifecycle event 1つ: そのeventの各宣言 — `(carrier, tool)`ごとに1つ — がそのeventのrowの中に並ぶ。`MCP` rowと同じ条件である。宣言の住処はhookのためにruleがadmitしたcarrierであり、documentedな2形式のいずれかである: 全体がhookのためのfileと、他のcontentと共にadmitされたfile内のhook table。各宣言はどちらであるかを自身の事実として述べる。1つのconfig layerが両形式を持ちうえ、vendorはどちらかを選ばず両方をloadするからである。したがって1 layerのstandalone fileとinline tableが同じeventを宣言する場合、それはそのeventのrowにおける2つの宣言であり、両方が効いていることを読み手が見る場所がそのrowである。他のkindのfileがhook風のconfigurationを綴っていても、それはそのkindの通常のcontentであり自身のdetailに見え、hook rowには加わらない。他のcustomizationが何であるかの一部であるdocumentedなhook宣言 — Claudeのskillやsubagentのfrontmatter `hooks`、plugin manifestやcatalog entryのもの — も同じである: vendorがhook locationとして文書化していること自体はここでのrowを意味しない。それを運ぶcustomization自身が、fileの書いたkeyを既に公開しているからである。eventがnullである唯一のrowが、空であること自体がfindingであるcarrierでlistを閉じる — 読めなかったhook blockでeventが不明なものと、全体がhookのためのfileでありながら何も宣言しないもの。hook tableを含みうるだけのfileが含んでいない場合はどのrowにも載らない: それを設定のあるrepositoryすべてについて述べても何も言っていないに等しく、hookが1つもないrepositoryにこのkindのtabを出すことになる。RowはtrustもreviewもenablementもStateしない: managedでないhookはclientが実行する前に現在のhashに対してreviewされる必要があるが、それはこの製品が決して読まないruntime state（FR-009）であり、ここでは宣言されたcommandを何も実行しない（FR-020）|
 | `plugin` | admitしたruleが解決する1つのplugin名。その名前を解決する各recognition — `(carrier, tool)`につき1つ — がcarrierとしてその名前のrow内に列挙される。`MCP` rowと同じ条件である。どの名前かはfileをadmitしたruleに属する。skillのinvocation nameと同じである（FR-007）: Codexはcatalogの提供を`plugin@marketplace`としてaddressするため、2つのcatalogが提供する同じ名前は2 rowになる。他の製品のpluginフェーズは自分の名前を自分で解決する。carrierはそのpluginを宣言するfileである — それを提供するentryを持つcatalog、あるいはclientが固定pathのmanifestを読む製品ではplugin自身のmanifest。catalogがrowになることは無い: catalogはplugin名を出どころのsourceへ解決する表であり、それはこのkindのcarrierだからである。Rowはpluginが同梱するfileも持つ — その提供が名指すplugin rootを丸ごと列挙したもので、pluginのmanifestもその1つである（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。それらのfileは自身のrowを得ない: rowは件数を述べ、各fileはcarrier自身の詳細で開く。名前を1つも解決しないcarrierは1つのnull名rowに加わり、その状態はkindの無いfileではなく見えるrowのままになる（FR-028）。Rowはinstallation、enablement、trust、cachedコピーのいずれも述べない: 4つとも本製品が決して読まないUser stateである（FR-009） |
 | `output style` | 読み手が選択する1つのstyle名。その名前を解決する各recognition — `(file, tool)`につき1つ — が定義としてその名前のrow内に列挙される。`prompt/command` rowと同じ条件である。どの名前かはadmitしたruleに属する。それはadmitするvendor自身のcontractだからである: Claude Codeは、frontmatterが`name`を設定しない限りfile名がstyle名になると文書化しており、authoredな空の名前は不在のものと同じくフォールバックする。文字を持たない名前ではpickerがstyleを表示できないからである。1つのrepositoryの2つのproject layerが1つの名前を定義しうる — pageはこれをsession working directoryへの近さで解決するが、この製品はそれを決して観測しない — ため、選択されたroot自身のlayerだけがadmitされ、rowはsame-name resolutionを述べない: 定義は並んで立ち、読み手はそれらを見る（FR-009） |
 | `settings/config` | File自身。`rule` rowと同じ条件である: settingsまたはconfiguration fileは、rowのkeyになる名前を宣言せず、groupingの基準になる範囲も支配しないため、Source-relative Pathがrowのidentityであり、1つのfileを2つの製品が認識すれば1つのrow上の2つのrecognitionになる。主題が異なるため別のkindである: 製品が設定を読む先のfileであり、contextへ読み込むguidanceであるruleでも、何を実行してよいかを決めるpermission policyでもない。1つの物理fileがこのrowと別kindのrowを同時に持ちうる — Codexの`.codex/config.toml`は宣言した各serverのMCP rowと、それらの宣言が置かれたdocumentであるここのrowを持つ — また、linkがどのdetailを開くかはfileではなくそのlinkが載るrowから従う（FR-007） |
@@ -1143,11 +1144,15 @@ File間のdeclaration comparisonは、sideごとに1つのcanonical serialized d
 ### Field reading
 
 Extractorは、認識したkindが公開する宣言を、そのformatのparserが解決した結果 — admit済みsource formごとに
-文書化された決定的なreading 1つ — として報告する: Markdown fileのfrontmatterはYAML 1.2 core schema、
-`.mcp.json`と`.github/mcp.json`のMCP carrier、および`.claude/settings.json`と`.claude/settings.local.json`のpermission policy carrierはstrict JSON（`JSON.parse`）、`.vscode/mcp.json`のcarrierは
-JSONC — commentとtrailing commaはeditor configuration format自身のsyntaxであり、それ以外のsyntax errorは
-依然としてdocument全体を失敗させる — であり、`.codex/config.toml`のcarrierは
-TOML 1.0である。どのformatでもquoteとescapeは1度だけ解決される。2回宣言されたkeyは、formatのparserが
+文書化された決定的なreading 1つ、JSON familyについては`(tool, path)`ごとに1つ — として報告する:
+Markdown fileのfrontmatterはYAML 1.2 core schema、`.codex/config.toml`のcarrierはTOML 1.0、
+JSON carrierはいずれも`JSON.parse`である。そのparseは、readingのclient自身がcommentを受け付ける場合を除いて
+strictである。受け付けるのはCopilotのeditorであり、`.vscode/mcp.json`、rootの`.mcp.json`、
+`.claude/settings.json`と`.claude/settings.local.json`のpair、`.github/hooks/*.json`に対するそのreadingでは、
+commentとtrailing commaを空白化してから同じparseへ渡す。それ以外のsyntax errorは依然としてdocument全体を
+失敗させる。どちらのparseになるかはfileだけの事実ではなくreaderとfileの組の事実であるため、1つの物理documentが、
+commentを受け付けるreaderを持つproductでは解決し、strictに読むproductでは失敗し得る。各答えとその測定根拠は
+parsing seamに記録されている。どのformatでもquoteとescapeは1度だけ解決される。2回宣言されたkeyは、formatのparserが
 解決を与える場合 — YAML schemaとstrict JSONはどちらも与える — 後の宣言に解決される。一方TOML 1.0は
 keyの再定義そのものを拒むため、それを宣言するcarrierは、parserが拒む他のあらゆるdocumentと同じく
 recognitionに失敗する。YAML schemaの下ではさらにaliasが指す先の値に解決され、`007`は`7`として読まれ、schema外のtagはそれが
@@ -1432,13 +1437,22 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   ここで出会う: VS Code prompt fileは、自身が宣言した名前を持つcommand fileと向かい合って立つ。Source diffの
   横では、認識する各toolのcellが、そのtoolがそのsideのfileを起動する名前を述べる — admitしたruleがそれを答え、
   このkindの2つのlocationが異なる答えを返すため、これはこのkind自身のtypedな事実である — 。定義を持たないcellは、
-  そのtoolがそのfileを読まないという事実のすべてである。Cross-source comparisonは常に各sourceの最後に
+  そのtoolがそのfileを読まないという事実のすべてである。Hook routeは、宣言済みlifecycle event 1つ —
+  このkindの行単位 — と、current generationにおけるそのeventの行が保持する2つのcarrierの
+  `sourceRelativePath` identityを名指す。内包された宣言はそれを運ぶfileを通じて名指される: 行が列挙し、
+  detail requestが解決するのはそのfileだからである。名指された行の外の選択は、どのcurrent行でもないeventを
+  含めて、比較されずに報告される。clientがruntimeに決めることは何一つ名指せない。そのような値をどの行も
+  保持しないからである（FR-009）。ペアは通常の`get-hook-carrier-detail` read 2件でloadされ、Monacoがdiffする
+  のは、名指されたeventに対する各sideのdeclarationを、入れ子のmappingのkeyをすべてsortした1つのcanonical
+  JSON documentへserializeしたものである（research.md § 7）: 1つのeventはTOMLのconfiguration layerからも
+  JSONのsettings documentからも宣言され得るうえ、carrierはbytesをどこにも表示しない（FR-007）ため、
+  serializationが両sideを読める唯一のspellingである。Cross-source comparisonは常に各sourceの最後に
   commit済みstateを比較する。fileのペアは通常の`FileDetail` request 2件で、片側のskill comparisonは1件でloadする — 不在はrequestを
   要しない — 。MonacoはcompleteなsourceText同士を比較し、不在側は空として、存在する側の内容を行ごとにそれ自体が
   差分として描画する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
-- `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText` — MCP comparisonでは、宣言済み
-  値を完全に運び同じruleでpurgeされる、1つのdeclarationのparsed entryのcanonical JSON serialization — を持つ
-  generation-scoped Monaco model。
+- `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText` — sideがfileではなくdeclarationで
+  あるcomparisonでは、宣言済み値を完全に運び同じruleでpurgeされる、1つのdeclarationのparsed値のcanonical
+  serialization — を持つgeneration-scoped Monaco model。
   所有editor、subscription、全modelはroute close、selection replacement、file removal、source disable、
   所属sequenceのgeneration変更時に個別にdisposeする。
 - Sensitive-contentに関するstateは一切存在しない。acknowledged flagも、注意書きも、`FileDetail` requestや

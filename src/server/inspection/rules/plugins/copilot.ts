@@ -21,7 +21,7 @@ import {
   localPluginRootSegments,
   UNRECOGNIZED_PLUGIN_SOURCE,
 } from './plugin-source';
-import { ParsedStrictJsonDocument } from '../../parsers/json';
+import { ParsedJsonDocument } from '../../parsers/json';
 import type { DeclaredEntryDto, PluginSourceForm } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
@@ -231,8 +231,12 @@ function copilotPluginSourceOf(
  * `plugins` value that is not an array at all. Strict JSON because that is
  * what the catalog is.
  */
-export function copilotPluginCatalogReadingOf(sourceText: string): PluginCarrierReading {
-  const entries = new ParsedStrictJsonDocument(sourceText).entries;
+export function copilotPluginCatalogReadingOf(
+  sourceText: string,
+  sourceRelativePath: string,
+): PluginCarrierReading {
+  const entries = new ParsedJsonDocument(sourceText, { tool: 'copilot', sourceRelativePath })
+    .entries;
   const declared = entries.find(
     (entry) => entry.keyKind === 'string' && entry.key === COPILOT_CATALOG_PLUGINS_KEY,
   );
@@ -291,8 +295,11 @@ export class CopilotCompiledPluginCatalogRule
    * What this catalog declares — its own keys, and one declaration per entry
    * (`plugins/copilot.ts` § copilotPluginCatalogReadingOf).
    */
-  public pluginCarrierReadingOf(sourceText: string): PluginCarrierReading {
-    return copilotPluginCatalogReadingOf(sourceText);
+  public pluginCarrierReadingOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): PluginCarrierReading {
+    return copilotPluginCatalogReadingOf(sourceText, sourceRelativePath);
   }
 
   /** Compiles one Copilot plugin catalog record, rejecting one of another kind. */

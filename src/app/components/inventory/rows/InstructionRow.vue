@@ -49,10 +49,11 @@ import type {
   InstructionInventoryEntryDto,
   SerializedDiagnostic,
 } from '../../../../shared/api-types';
+import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
   /** The committed instructions entry to render: one applicability range. */
-  entry: InstructionInventoryEntryDto;
+  entry: NarrowedInventoryRow<InstructionInventoryEntryDto>;
   /**
    * Every published file by its Source-relative Path — the file's identity
    * (FR-030). The row states each file's path and recognitions and repeats
@@ -130,15 +131,19 @@ const rowFiles = computed(() =>
  * diagnostic-only file is not comparison-eligible). The compare route's own pickers take over from there:
  * they hold every committed instruction file, so the reader steps to any
  * other pair on the comparison itself instead of composing one here (T278).
+ *
+ * The pair is drawn from the row's own files rather than from the members a
+ * filter left, so the link a reader followed is still there when they come
+ * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
 const compareRoute = computed(() => {
-  const readable = props.entry.files.filter((file) => {
-    const published = props.filesByPath.get(file.sourceRelativePath);
+  const readable = props.entry.rowFilePaths.filter((path) => {
+    const published = props.filesByPath.get(path);
     return published !== undefined && isReadableFile(published);
   });
   const [first, second] = readable;
   return first !== undefined && second !== undefined
-    ? instructionComparisonRouteFor(first.sourceRelativePath, second.sourceRelativePath)
+    ? instructionComparisonRouteFor(first, second)
     : null;
 });
 </script>

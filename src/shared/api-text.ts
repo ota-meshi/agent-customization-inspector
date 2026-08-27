@@ -14,6 +14,7 @@
 import type {
   FileDetailDto,
   FileOpenTarget,
+  HookCarrierForm,
   PluginCarrierKind,
   PluginSourceForm,
   ScanProgressPhase,
@@ -84,6 +85,18 @@ export const PLUGIN_CARRIER_TEXT: Readonly<Record<PluginCarrierKind, string>> = 
   manifest: 'Manifest',
   /** Caption for a catalog listing the plugin. */
   catalog: 'Catalog entry',
+};
+
+/**
+ * The label shown for each hook carrier form (see {@link HookCarrierForm}):
+ * what kind of file a declaration was authored in, which a row states because
+ * one config layer can hold both forms and the vendor loads both.
+ */
+export const HOOK_CARRIER_FORM_TEXT: Readonly<Record<HookCarrierForm, string>> = {
+  /** A file whose whole purpose is hooks, such as a Codex `.codex/hooks.json`. */
+  standalone: 'hook file',
+  /** A hook table inside a file admitted for other content too, such as an inline Codex `[hooks]`. */
+  contained: 'declared inside another file',
 };
 
 /**

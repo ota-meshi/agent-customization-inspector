@@ -308,7 +308,8 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
     // The phase-local half of the registry catalog check: the shipped Claude
     // catalog is the command, instruction, marketplace, MCP carrier,
     // permission-policy, rule-file, settings, skill, and skills-directory
-    // plugin rules, all read-authorizing, plus the one `excluded` row the
+    // plugin rules, the contained-hook rule over the settings files' own
+    // matcher (T863), all read-authorizing, plus the one `excluded` row the
     // plugin phases own. No `relationship-only` Claude row ships — a symlinked
     // skill needs none because links are read through their targets (FR-024),
     // an unsupported instruction location is simply a path no selector reaches
@@ -319,6 +320,7 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
     expect(claudeRules.map((rule) => rule.ruleId)).toEqual([
       'claude.repo.agent',
       'claude.repo.command',
+      'claude.repo.hooks.settings',
       'claude.repo.instructions',
       'claude.repo.marketplace',
       'claude.repo.mcp',
@@ -364,8 +366,11 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     // prompt rules (T537), the two custom-agent rules (T551) — one per
     // documented agents directory, because the Cloud agent reads only
     // `.github/agents/` and a rule's surfaces come from the behaviors it
-    // rests on — the settings rule (T628), and the plugin catalog rule (T803),
-    // all read-authorizing, plus the catalog's five `excluded` records. The
+    // rests on — the settings rule (T628), the plugin catalog rule (T803),
+    // and the three hook rules (T883, T895) — the root hook files every
+    // surface reads, and one rule per settings pair, because the editor's
+    // hook-locations table names the Claude-format pair and not the CLI's own
+    // — all read-authorizing, plus the catalog's five `excluded` records. The
     // eventual complete catalog gate is T913's, not this suite's.
     //
     // Naming the exclusions is what makes them reviewable: rejecting a
@@ -382,6 +387,9 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
       'copilot.repo.agent',
       'copilot.repo.agent.claude',
       'copilot.repo.command',
+      'copilot.repo.hooks',
+      'copilot.repo.hooks.settings',
+      'copilot.repo.hooks.settings.claude',
       'copilot.repo.instructions.agents',
       'copilot.repo.instructions.claude-root',
       'copilot.repo.instructions.gemini-root',
@@ -404,7 +412,7 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
       'copilot.excluded.extra-directories',
       'copilot.excluded.vscode-settings',
     ]);
-    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(22);
+    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(25);
   });
 
   it('gives an exclusion no matcher, no kind, and no strategy (T251)', () => {
@@ -789,13 +797,13 @@ describe('the unified instruction selector matrix (T269)', () => {
 });
 
 describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
-  it('registers the carrier under exactly its two Codex rules across the catalog', () => {
-    // The file is admitted by the two rules whose recognitions it carries —
-    // its `[mcp_servers.*]` tables and the settings document those tables sit
-    // in — and by nothing else. Two rules over one path are one candidate and
-    // one read, because the walk merges plans that match the same file; a
-    // third rule, or one of another vendor, would be a recognition nobody
-    // decided on.
+  it('registers the carrier under exactly its three Codex rules across the catalog', () => {
+    // The file is admitted by the three rules whose recognitions it carries —
+    // its `[mcp_servers.*]` tables, the `[hooks]` table it can also contain
+    // (T839), and the settings document all of them sit in — and by nothing
+    // else. Three rules over one path are one candidate and one read, because
+    // the walk merges plans that match the same file; a fourth rule, or one of
+    // another vendor, would be a recognition nobody decided on.
     const admitting = rules.filter(
       (rule) =>
         rule.matcher !== null &&
@@ -803,6 +811,7 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     );
     expect(admitting.map((rule) => rule.ruleId).toSorted()).toEqual([
       'codex.repo.config',
+      'codex.repo.hooks.inline',
       'codex.repo.settings',
     ]);
     const config = INSPECTION_RULES['codex.repo.config'];
@@ -816,9 +825,15 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     // Admitted for the settings inventory, whose row unit is the file itself.
     expect(settings.kind).toBe('settings/config');
     expect(settings.sourceKinds).toEqual(['repository']);
+    const inlineHooks = INSPECTION_RULES['codex.repo.hooks.inline'];
+    expect(inlineHooks.discoveryClass).toBe('static-candidate');
+    // Admitted for the hook inventory, whose row unit is one declared event.
+    expect(inlineHooks.kind).toBe('hook');
+    expect(inlineHooks.sourceKinds).toEqual(['repository']);
     // The same authored location, not a second spelling of it: a matcher
     // written twice is one that can drift.
     expect(settings.matcher).toBe(config.matcher);
+    expect(inlineHooks.matcher).toBe(config.matcher);
   });
 
   it('keeps the fallback derivation Phase 15’s and adds no other Codex row', () => {
@@ -842,6 +857,8 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'codex.excluded.plugin-files',
       'codex.repo.agent',
       'codex.repo.config',
+      'codex.repo.hooks',
+      'codex.repo.hooks.inline',
       'codex.repo.instructions',
       'codex.repo.marketplace',
       'codex.repo.rules',
@@ -926,7 +943,7 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     }
   });
 
-  it('bases the carrier on its three behaviors and grants the contained hooks no candidate', () => {
+  it('bases the carrier on its three behaviors and its inline hooks on two of them', () => {
     // The reciprocal edges the phase adds, asserted by identity: the edge
     // must hold the record the registry publishes, not an equal-looking copy.
     const relations = RULE_RELATIONS['codex.repo.config'];
@@ -945,10 +962,48 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     for (const strategy of relations.explainedByStrategies) {
       expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
     }
-    // The contained-Hook behavior is recorded — the carrier can hold an
-    // inline `[hooks]` table — while no shipped rule recognizes the hook
-    // kind: recording a documented fact is not authorizing a candidate.
-    expect(rules.filter((rule) => rule.kind === 'hook')).toEqual([]);
+    // The hook recognition of the same file is its own rule's, resting on the
+    // two lookups it spans — the config layer that locates the file, and the
+    // hook lookup that reads a `[hooks]` table out of it — and explained by
+    // the additive composition that keeps it distinct from a standalone
+    // `hooks.json` of the same layer (T839, T850).
+    const inlineHooks = RULE_RELATIONS['codex.repo.hooks.inline'];
+    expect(inlineHooks.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.config',
+      'codex.behavior.repo.hooks',
+    ]);
+    expect(inlineHooks.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.config.precedence',
+      'codex.hooks.additive',
+    ]);
+    // The standalone carrier rests on the hook lookup alone: the User layer's
+    // own `hooks.json` is a different Source boundary this rule may not read.
+    const standaloneHooks = RULE_RELATIONS['codex.repo.hooks'];
+    expect(standaloneHooks.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'codex.behavior.repo.hooks',
+    ]);
+    expect(standaloneHooks.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'codex.hooks.additive',
+    ]);
+    // Exactly the hook rules the shipped catalogs carry: a hook recognition
+    // exists only where a rule produces one. Codex admits a file of its own and
+    // the inline table of its config layer; Claude documents no standalone hook
+    // file at all, and of the owners it does document only the settings files
+    // publish hook rows — a skill's, a subagent's, a plugin manifest's, and a
+    // catalog entry's declarations are part of what those customizations are,
+    // and their own rows publish them (T839, T863). Copilot admits the root
+    // hook files and both settings pairs, one rule each, because a rule's
+    // surfaces are the behaviors it rests on and the editor's hook-locations
+    // table names the Claude-format pair alone; a custom agent's frontmatter
+    // hooks publish no row here for the reason a skill's do not (T883, T895).
+    expect(rules.filter((rule) => rule.kind === 'hook').map((rule) => rule.ruleId)).toEqual([
+      'copilot.repo.hooks',
+      'copilot.repo.hooks.settings',
+      'copilot.repo.hooks.settings.claude',
+      'claude.repo.hooks.settings',
+      'codex.repo.hooks',
+      'codex.repo.hooks.inline',
+    ]);
   });
 });
 

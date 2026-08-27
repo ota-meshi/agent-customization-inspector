@@ -14,7 +14,7 @@
 // the other.
 import { ClaudeCompiledRule } from '../vendor/claude';
 import type { CompiledStaticPermissionsCarrierRule } from './compiled-rule';
-import { ParsedStrictJsonDocument } from '../../parsers/json';
+import { ParsedJsonDocument } from '../../parsers/json';
 import type { DeclaredEntryDto } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
@@ -54,8 +54,12 @@ export class ClaudeCompiledPermissionsCarrierRule
    * boundary turns the throw into the recognition's `failed` state while the
    * file stays an admitted candidate (FR-028).
    */
-  public declaredPolicyOf(sourceText: string): readonly DeclaredEntryDto[] | null {
-    const declared = new ParsedStrictJsonDocument(sourceText).entries;
+  public declaredPolicyOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): readonly DeclaredEntryDto[] | null {
+    const declared = new ParsedJsonDocument(sourceText, { tool: this.tool, sourceRelativePath })
+      .entries;
     // Strict JSON keys are strings, and the parser resolves a key declared
     // twice to its later declaration, so the spelling alone identifies the
     // one possible policy entry.

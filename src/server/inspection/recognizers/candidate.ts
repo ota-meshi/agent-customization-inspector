@@ -51,13 +51,16 @@
 import type {
   CompiledCandidateRule,
   CompiledStaticAgentRule,
+  CompiledStaticHookRule,
   CompiledStaticMcpReadingRule,
   CompiledStaticPermissionsCarrierRule,
   CompiledStaticPluginRule,
+  HookCarrierReading,
   PluginCarrierReading,
   SelectorOrigin,
 } from '../rules/registry';
 import { RecognitionExtraction } from '../parsers/extraction';
+import { emptyHookCarrierReading } from '../rules/hooks/event-map';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
 import type { CompanionFile } from '../companion-census';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
@@ -65,6 +68,7 @@ import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type {
   AgentPresentationDto,
   DeclaredEntryDto,
+  HookEventDeclarationDto,
   McpServerDeclarationDto,
   PluginCarrierKind,
   PluginDeclarationDto,
@@ -237,6 +241,49 @@ export type RecognitionDetails =
        * an admitted candidate (FR-028).
        */
       readonly servers: readonly McpServerDeclarationDto[];
+    }
+  /**
+   * A hook declaration carrier, identified by the lifecycle events it
+   * declares. The kind's inventory unit is one declaration (data-model.md
+   * § Inventory unit), so the carrier's one recognition holds them all and the
+   * session projection splits them into rows — a synthetic per-event candidate
+   * would be a file the repository does not have.
+   *
+   * Two variants, one per documented carrier form
+   * (`api-types.ts` § HookCarrierForm), because a standalone hook file's other
+   * top-level keys are this recognition's to publish while a contained
+   * table's neighbours belong to the settings recognition of the same file.
+   * Which form a carrier is comes from the admitting rule, so it stands even
+   * for a `failed` extraction.
+   */
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'hook';
+      /** Discriminant: the carrier is a file whose whole purpose is hooks. */
+      readonly carrier: 'standalone';
+      /**
+       * Every event the carrier declares, one per declared event in the
+       * parser's resolved order — the events the inventory rows are named by,
+       * and the groups the detail publishes as the file wrote them (FR-007).
+       * Empty when the carrier declares none, and empty for a `failed`
+       * extraction, which publishes nothing while the carrier stays an
+       * admitted candidate (FR-028).
+       */
+      readonly events: readonly HookEventDeclarationDto[];
+      /**
+       * What the carrier declares about itself: every top-level entry beside
+       * its hook map, such as a Codex `hooks.json`'s optional `description`.
+       * Empty for a `failed` extraction, and empty when it declares none.
+       */
+      readonly carrierFields: readonly DeclaredEntryDto[];
+    }
+  | {
+      /** The recognized customization kind. */
+      readonly kind: 'hook';
+      /** Discriminant: the carrier holds the hook table among other content. */
+      readonly carrier: 'contained';
+      /** Every event the table declares; see the standalone variant's `events`. */
+      readonly events: readonly HookEventDeclarationDto[];
     }
   /**
    * A custom-agent definition, identified by the name its admitting product
@@ -440,7 +487,14 @@ export type RecognitionDetails =
       /** The recognized customization kind. */
       readonly kind: Exclude<
         CustomizationKind,
-        'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'plugin' | 'output style'
+        | 'instructions'
+        | 'skill'
+        | 'MCP'
+        | 'agent'
+        | 'prompt/command'
+        | 'hook'
+        | 'plugin'
+        | 'output style'
       >;
     };
 
@@ -744,6 +798,41 @@ export class ToolRecognition {
   }
 
   /**
+   * Builds one hook carrier recognition from a reading the dispatch already
+   * resolved — out of the carrier's own text, or out of an owner's frontmatter
+   * where the owner's own kind has already parsed it. A failed extraction
+   * publishes no event while the carrier stays an admitted candidate (FR-028);
+   * which form the carrier is comes from the admitting rule, so the
+   * recognition keeps its shape either way
+   * ({@link emptyHookCarrierReading}).
+   */
+  public static recognizeHook(
+    sourceRelativePath: string,
+    tool: SupportedTool,
+    reading: HookCarrierReading,
+    status: RecognitionParseStatus,
+    admissions: readonly RecognitionAdmission[],
+  ): ToolRecognition {
+    return ToolRecognition.#assemble(
+      sourceRelativePath,
+      tool,
+      // Narrowed over the reading's own discriminant, so the standalone
+      // variant is the only one that carries the carrier's own keys and the
+      // contained one is never asked for them.
+      reading.carrierForm === 'standalone'
+        ? {
+            kind: 'hook',
+            carrier: 'standalone',
+            events: reading.events,
+            carrierFields: reading.carrierFields,
+          }
+        : { kind: 'hook', carrier: 'contained', events: reading.events },
+      status,
+      admissions,
+    );
+  }
+
+  /**
    * Builds one plugin carrier recognition from the admitting rule's own
    * reading. `plugins` and `catalogFields` are empty for a failed extraction,
    * which publishes nothing while the carrier stays an admitted candidate
@@ -870,7 +959,14 @@ export class ToolRecognition {
     tool: SupportedTool,
     kind: Exclude<
       CustomizationKind,
-      'instructions' | 'skill' | 'MCP' | 'agent' | 'prompt/command' | 'plugin' | 'output style'
+      | 'instructions'
+      | 'skill'
+      | 'MCP'
+      | 'agent'
+      | 'prompt/command'
+      | 'hook'
+      | 'plugin'
+      | 'output style'
     >,
     admissions: readonly RecognitionAdmission[],
   ): ToolRecognition {
@@ -1064,10 +1160,12 @@ class CandidateExtractions {
   readonly #sourceText: string;
 
   /**
-   * The candidate's own Source-relative Path, for the one reading that needs
+   * The candidate's own Source-relative Path, for the two readings that need
    * it: a plugin manifest names neither its plugin nor its root, and where it
    * sits is what answers both
-   * (`rules/plugins/compiled-rule.ts` § CompiledStaticPluginManifestRule).
+   * (`rules/plugins/compiled-rule.ts` § CompiledStaticPluginManifestRule),
+   * while every JSON-family reading resolves its document from the `(tool,
+   * path)` it was read at (`../parsers/json.ts` § ParsedJsonDocument).
    */
   readonly #matchedPath: string;
 
@@ -1082,6 +1180,9 @@ class CandidateExtractions {
 
   /** The per-tool plugin carrier readings, each run on its first request. */
   #plugin = new Map<SupportedTool, RecognitionExtraction<PluginCarrierReading>>();
+
+  /** The per-tool hook carrier readings, each run on its first request. */
+  #hook = new Map<SupportedTool, RecognitionExtraction<HookCarrierReading>>();
 
   /** The per-tool declared-policy readings, each run on its first request. */
   #declaredPolicy = new Map<
@@ -1131,7 +1232,7 @@ class CandidateExtractions {
       return existing;
     }
     const extraction = RecognitionExtraction.run(this.#sourceText, (text) =>
-      carrier.serverDeclarationsOf(text),
+      carrier.serverDeclarationsOf(text, this.#matchedPath),
     );
     this.#mcp.set(carrier.tool, extraction);
     return extraction;
@@ -1153,6 +1254,26 @@ class CandidateExtractions {
       carrier.pluginCarrierReadingOf(text, this.#matchedPath),
     );
     this.#plugin.set(carrier.tool, extraction);
+    return extraction;
+  }
+
+  /**
+   * The hook declaration extraction, read by the admitting carrier rule's own
+   * contract — which key holds the event map, and which format the carrier is
+   * written in — and keyed by the tool for the reason the MCP slot is: one
+   * physical file can be two vendors' carrier, and each publishes its own
+   * vendor's reading. Within one tool the reading still runs once, whichever
+   * of its admissions asks first.
+   */
+  public hook(carrier: CompiledStaticHookRule): RecognitionExtraction<HookCarrierReading> {
+    const existing = this.#hook.get(carrier.tool);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const extraction = RecognitionExtraction.run(this.#sourceText, (text) =>
+      carrier.hookCarrierReadingOf(text, this.#matchedPath),
+    );
+    this.#hook.set(carrier.tool, extraction);
     return extraction;
   }
 
@@ -1193,7 +1314,7 @@ class CandidateExtractions {
       return existing;
     }
     const extraction = RecognitionExtraction.run(this.#sourceText, (text) =>
-      carrier.declaredPolicyOf(text),
+      carrier.declaredPolicyOf(text, this.#matchedPath),
     );
     this.#declaredPolicy.set(carrier.tool, extraction);
     return extraction;
@@ -1387,6 +1508,31 @@ export async function recognizeCandidateForVendors(
                 );
           }
         }
+      }
+      if (kind === 'hook') {
+        // Dispatched the way the MCP reading is, over the `kind` discriminant:
+        // a hook unit owns its vendor's reading of the carrier it admits — a
+        // standalone hook file's strict JSON or the inline table of a TOML
+        // config layer — and a loop rather than `find` because a callback's
+        // narrowing does not reach the caller without a hand-authored
+        // predicate, which would assert rather than prove. Every shipped hook
+        // rule compiles into such a unit, so a group without one cannot be
+        // produced by the shipped catalog and fails loudly here rather than
+        // publishing a recognition with no parse.
+        for (const { compiled } of group) {
+          if (compiled.kind !== 'hook') {
+            continue;
+          }
+          const extraction = extractions.hook(compiled);
+          return ToolRecognition.recognizeHook(
+            input.matchedPath,
+            tool,
+            extraction.extracted ?? emptyHookCarrierReading(compiled.carrierForm),
+            extraction.status,
+            group,
+          );
+        }
+        throw new TypeError('a hook recognition has no rule that can read its declarations');
       }
       if (kind === 'plugin') {
         // Dispatched the way the MCP reading is, over the `kind` discriminant:

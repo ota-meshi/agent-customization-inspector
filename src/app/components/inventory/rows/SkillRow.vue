@@ -48,10 +48,11 @@ import type {
   SerializedDiagnostic,
   SkillInventoryEntryDto,
 } from '../../../../shared/api-types';
+import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
   /** The committed skill entry to render: one resolved name. */
-  entry: SkillInventoryEntryDto;
+  entry: NarrowedInventoryRow<SkillInventoryEntryDto>;
   /**
    * Every published file by its Source-relative Path — the file's identity
    * (FR-030). A definition names its file by path and repeats none of its
@@ -82,10 +83,9 @@ const rowFiles = computed(() => skillRowFiles(props.entry.definitions));
  */
 const comparableEntryPaths = computed(() => {
   const paths: string[] = [];
-  for (const definition of props.entry.definitions) {
-    const path = definition.sourceRelativePath;
+  for (const path of props.entry.rowFilePaths) {
     const file = props.filesByPath.get(path);
-    if (file !== undefined && isReadableFile(file) && !paths.includes(path)) {
+    if (file !== undefined && isReadableFile(file)) {
       paths.push(path);
     }
   }
@@ -99,6 +99,10 @@ const comparableEntryPaths = computed(() => {
  * take over from there: they hold every file of this name, entry points and
  * census companions alike, so the reader switches pairs on the comparison
  * itself instead of composing one here.
+ *
+ * The pair is drawn from the row's own files rather than from the members a
+ * filter left, so the link a reader followed is still there when they come
+ * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
 const compareRoute = computed(() => {
   const [first, second] = comparableEntryPaths.value;

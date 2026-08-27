@@ -22,14 +22,17 @@ import {
   buildCodexPluginFixture,
   buildClaudeRuleFixture,
   buildClaudeAgentFixture,
+  buildClaudeHookFixture,
   buildClaudeSkillFixture,
   buildCodexAgentFixture,
+  buildCodexHookFixture,
   buildCommandFixture,
   buildCodexInstructionFixture,
   buildCodexMcpFixture,
   buildCodexRuleFixture,
   buildCodexSkillFixture,
   buildCopilotAgentFixture,
+  buildCopilotHookFixture,
   buildCopilotPluginFixture,
   buildCopilotCliMcpFixture,
   buildCopilotInstructionFixture,
@@ -37,6 +40,7 @@ import {
   buildCopilotVscodeMcpFixture,
   buildPriorityMcpFixture,
   buildPluginComparisonFixture,
+  buildUnifiedHookFixture,
   buildUnifiedPluginFixture,
 } from '../tests/fixtures/repositories/build-fixtures.ts';
 
@@ -64,6 +68,21 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   'all-skills': buildAllToolSkillFixture,
   'codex-instructions': buildCodexInstructionFixture,
   'codex-permissions': buildCodexRuleFixture,
+  // Both documented Codex hook forms at the one selected layer: the standalone
+  // file and the inline table of the same config document.
+  'codex-hooks': buildCodexHookFixture,
+  // Every documented Claude hook owner, since this vendor declares hooks
+  // nowhere else: settings, a skill, a subagent, a plugin manifest, and a
+  // catalog whose entries declare per plugin.
+  'claude-hooks': buildClaudeHookFixture,
+  // Every documented Copilot Repository hook source: the root hook files
+  // every surface reads, the CLI's settings pair, and the cross-tool
+  // Claude-format document the editor reads as well.
+  'copilot-hooks': buildCopilotHookFixture,
+  // Every documented hook source of all three products in one tree: one
+  // event's row gathers the carriers that declare it whoever reads them, and
+  // the shared settings documents are one read with a recognition per product.
+  'all-hooks': buildUnifiedHookFixture,
   'codex-agents': buildCodexAgentFixture,
   'claude-agents': buildClaudeAgentFixture,
   'copilot-agents': buildCopilotAgentFixture,

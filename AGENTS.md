@@ -225,6 +225,67 @@ correct.
   `h3` with devframe's own — the lockfile is where that coincidence lives, and the
   documents that record the decision say so.
 
+## Release policy
+
+Releases are Changesets'. A pull request carrying a change a user receives — a behavior, a
+surface, a dependency that reaches the published package — adds a `.changeset/` entry, which
+`pnpm exec changeset` writes. A change no user can observe carries none: a specification
+edit, a test, a comment. Nothing gates that distinction, so it is made when the pull request
+is written.
+
+- Publishing is npm trusted publishing, so no npm token exists in this repository or in its
+  secrets. npm trusts `.github/workflows/Release.yml` by name, which makes renaming that file
+  a change to the trusted publisher on npmjs.com as well; until the two agree again, nothing
+  publishes.
+- The workflow is four jobs, because the credential decides the shape. `select-mode` says
+  what a push to main is, `version` opens or updates the release pull request, `pack`
+  builds and packs the tarball, and `publish` uploads it — and `id-token: write`, what npm
+  exchanges for a publish token, is granted to `publish` alone. That is what the
+  `changesets/action` sub-actions exist for, and what the combined action cannot do: one
+  job holds every permission the release needs at once, including while it runs the build
+  and the code of every dependency the build reaches. The other jobs hold only what they do:
+  `version` writes the version commit and the pull request, and `select-mode` and `pack` are
+  granted nothing but their checkout.
+- Renovate automerges every update except two: a major to a runtime dependency, and a
+  minor to a package below 1.0.0. Everything else merges once ci.yml has run the whole
+  suite against it — `minor`, `patch`, `pin`, and `digest` for every package, and every
+  update type, a major among them, for a devDependency, a workflow action, and the
+  devcontainer. The pre-1.0 exception is the one Renovate's own documentation asks for:
+  SemVer permits a breaking change in any `0.x` release, so a minor there is the boundary
+  a caret range stops at, and moving it is a change of the accepted version rather than a
+  bump inside it — the rule sits last in `packageRules`, because a later rule wins. Such a
+  pull request carries no `.changeset/` entry of its own: a bump reaches users with
+  whatever release the next version pull request opens.
+- A release run is superseded rather than queued (`cancel-in-progress: true`): only the
+  newest push to main publishes, so a run whose commit main has moved past cannot reach npm
+  behind the run that replaced it and publish the same content under a second version. The
+  cancellation can land inside the publishing job, between the publish and the tag push,
+  and that is the accepted side of the trade: a missing tag and release are ones a person
+  can still create at the version commit, while a duplicate publish is permanent. The
+  workflow says so at the `concurrency` block, because the line invites the opposite
+  suggestion on sight.
+- Every workflow references its actions by tag rather than by commit SHA. A pinned SHA is
+  only as current as whatever raises it: automating that with a bot places the same trust in
+  the action's owner that the tag already does, and leaving it unattended holds the workflow
+  on a version whose fixes never arrive.
+- The release path re-runs no gate ci.yml owns. A suite a pull request already ran against
+  the same commit gains nothing by running again here, so what the release adds is the two
+  checks that are about the artifact itself: the build that produces the tarball, and the
+  packaged-tree verification over what is about to be packed.
+- `pack` runs `pnpm run build` and then `pnpm run verify:package` before packing, so the
+  job holding the publishing credential runs no build of this repository and uploads
+  bytes another job already gated.
+- `.changeset/config.json` states only what differs from the defaults `@changesets/config`
+  ships: the changelog generator and `access`. A copied default is a value that has stopped
+  tracking the default it was copied from.
+- The `.changeset/README.md` that `changeset init` writes is not kept. It is a link to
+  Changesets' own documentation, and a document in this repository is a document in two
+  languages; what this repository decides about releasing is written here instead.
+- `CHANGELOG.md` is Changesets' output, which the Documentation language policy's exclusion
+  of generated files covers: there is no Japanese companion to write. It stays out of
+  `package.json.files`, so what npm serves is the readme and what GitHub serves is the
+  history.
+
 ## Icon policy
 
 - Icons come from Iconify collections and are compiled into the bundle at build time by

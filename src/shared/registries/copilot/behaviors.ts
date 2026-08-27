@@ -2334,6 +2334,219 @@ export const COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Copilot VS Code workspace hooks: the root `.github/hooks/*.json` files and
+ * the two Claude-format settings documents the editor also reads, which
+ * `copilot.repo.hooks`, `copilot.repo.hooks.settings.claude`, and their
+ * declarations rest on.
+ *
+ * The editor's own settings document is not here, and the omission is the
+ * page's: its hook-locations table names `.github/hooks/*.json` and the
+ * `.claude/settings*.json` pair for the workspace scope, so the CLI's
+ * `.github/copilot/settings.json` is a hook source this surface documents no
+ * read of. `copilot.behavior.cli.hooks` is where that file's inline block
+ * belongs.
+ *
+ * Which of the located hooks then runs, and whether the feature is on at all,
+ * is `copilot.vscode.hooks.composition` and the runtime conditions it retains
+ * (FR-009): this statement is the lookup alone.
+ */
+export const COPILOT_VSCODE_HOOKS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.hooks',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'workspace-root',
+        relativeSelector:
+          '.github/hooks/*.json; .claude/settings.json; .claude/settings.local.json',
+        // The page's table gives fixed workspace locations: a directory whose
+        // `*.json` files are loaded and two named files. The configurable
+        // `chat.hookFilesLocations` entries and the opt-in parent-repository
+        // discovery are runtime inputs this tool never observes.
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['preview'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.hooks',
+          url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Hook file locations', 'Hook configuration format', 'Agent-scoped hooks'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'VS Code loads workspace hooks from .github/hooks/*.json and, in the Claude format, from .claude/settings.json and .claude/settings.local.json; workspace hooks take precedence over user hooks for the same event type. A hook configuration file is JSON with a hooks object holding an array of hook commands per event, the same format Claude Code and Copilot CLI use. A custom agent may add a hooks field to its frontmatter, whose hooks run in addition to the workspace and user hooks for the same event.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot VS Code User hooks: the home hooks directory and the User Claude
+ * settings document. Recorded for maintenance only — the vendor contract's
+ * `copilot.excluded.user-runtime` keeps the surface out of the read
+ * allowlist, and it is what the composition strategy resolves the workspace
+ * hooks against.
+ */
+export const COPILOT_VSCODE_USER_HOOKS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.vscode.user.hooks',
+  tool: 'copilot',
+  surfaces: ['copilot-vscode'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        // The CLI's product home and Claude's home directory, neither of them
+        // the editor's own profile storage.
+        lookupBase: 'profile-data',
+        relativeSelector: '.copilot/hooks/*.json; .claude/settings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['preview'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.hooks',
+          url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Hook file locations'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'The user scope of the hook-locations table names ~/.copilot/hooks and ~/.claude/settings.json, and the default chat.hookFilesLocations value includes the user Claude settings document.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot CLI Repository hooks: the root `.github/hooks/*.json` files and the
+ * inline `hooks` block of each supported repository settings document — the
+ * CLI's own pair and the two cross-tool Claude files it also reads.
+ *
+ * One statement for both spellings because the page presents them as two
+ * sources of one repository-scoped lookup, and both are located from the
+ * repository root. The rules resting on it split by surface rather than by
+ * spelling: what the editor documents no read of stays out of that rule's
+ * behavior references.
+ */
+export const COPILOT_CLI_HOOKS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.hooks',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector:
+          '.github/hooks/*.json; inline hooks in .github/copilot/settings.json, .github/copilot/settings.local.json, .claude/settings.json, .claude/settings.local.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations', 'Hook configuration format'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'Copilot CLI loads repository-level hook files from .github/hooks/*.json in the repository root and an inline hooks block from the top level of .github/copilot/settings.json or .github/copilot/settings.local.json, and it also reads the cross-tool .claude/settings.json and .claude/settings.local.json files in the repository. Hook configuration files are JSON with version 1, where a structural error rejects the whole file while a malformed item inside a directory-loaded file drops only that item, and a malformed item in an inline settings block rejects the whole hooks field.',
+        },
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Repository settings (.github/copilot/settings.json)'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'The repository configuration file supports a top-level hooks object holding the hook definitions scoped to that repository, merged with the user configuration so the repository entry overrides the user one for the same key.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot CLI User hooks: the hooks directory of the configuration home and
+ * the inline block of its `settings.json`. Recorded for maintenance only —
+ * `copilot.excluded.user-runtime` keeps the surface out of the read allowlist.
+ *
+ * The base is the product home rather than a fixed path, because the
+ * documented location moves with `COPILOT_HOME` when it is set.
+ */
+export const COPILOT_CLI_USER_HOOKS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cli.user.hooks',
+  tool: 'copilot',
+  surfaces: ['copilot-cli'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'hooks/*.json; inline hooks in settings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'User-level hook files are the *.json files of the user hooks directory — ~/.copilot/hooks/ by default, or $COPILOT_HOME/hooks/ when that variable is set — and a user-level inline hooks block sits at the top level of ~/.copilot/settings.json.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Copilot cloud-agent hooks: the repository hook files present in the
+ * ephemeral clone, which is the only hook source that environment documents.
+ *
+ * The settings spellings are absent for the same reason the editor's are: the
+ * page names `.github/hooks/*.json` for this surface and nothing else, so a
+ * cloud read of an inline settings block is undocumented rather than implied.
+ */
+export const COPILOT_CLOUD_HOOKS_BEHAVIOR = {
+  behaviorId: 'copilot.behavior.cloud.hooks',
+  tool: 'copilot',
+  surfaces: ['copilot-cloud'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'repository-root',
+        relativeSelector: '.github/hooks/*.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations', 'Cloud agent execution environment'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'Under the Copilot cloud agent, hook configuration is loaded from .github/hooks/*.json files in the cloned repository, hooks run in an ephemeral non-interactive Linux sandbox, a subset of events fires, and only bash or command entries are honored.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Copilot's contribution to the behavior registry, keyed by `behaviorId`. Each
  * surface's statements ship together with the strategy that composes them —
  * an instruction layering consumes every scope of its own surface, User and
@@ -2405,4 +2618,9 @@ export const COPILOT_BEHAVIOR_STATEMENTS: Readonly<
   [COPILOT_CLI_USER_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_SETTINGS_BEHAVIOR,
   [COPILOT_VSCODE_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_SETTINGS_BEHAVIOR,
   [COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_SETTINGS_BEHAVIOR,
+  [COPILOT_VSCODE_HOOKS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_HOOKS_BEHAVIOR,
+  [COPILOT_VSCODE_USER_HOOKS_BEHAVIOR.behaviorId]: COPILOT_VSCODE_USER_HOOKS_BEHAVIOR,
+  [COPILOT_CLI_HOOKS_BEHAVIOR.behaviorId]: COPILOT_CLI_HOOKS_BEHAVIOR,
+  [COPILOT_CLI_USER_HOOKS_BEHAVIOR.behaviorId]: COPILOT_CLI_USER_HOOKS_BEHAVIOR,
+  [COPILOT_CLOUD_HOOKS_BEHAVIOR.behaviorId]: COPILOT_CLOUD_HOOKS_BEHAVIOR,
 };

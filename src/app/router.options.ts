@@ -66,6 +66,7 @@ const INVENTORY_PAGE_KEY = '/';
  */
 let returnPoint: {
   readonly followedHref: string;
+  readonly followedAccessibleName: string | null;
   readonly followedIndex: number;
   readonly viewportTop: number;
 } | null = null;
@@ -86,6 +87,35 @@ let returnPoint: {
  */
 function renderedLinks(followedHref: string): readonly HTMLAnchorElement[] {
   return [...document.querySelectorAll<HTMLAnchorElement>(`a[href=${CSS.escape(followedHref)}]`)];
+}
+
+/**
+ * The links of one route whose accessible name is the followed one's, which is
+ * the population a recorded index counts within.
+ *
+ * The name rather than the href alone, because one file can sit on two rows of
+ * one kind: a skill file declaring another skill's directory name as its own
+ * `name` is invoked by that name by one product and by its directory name by
+ * another, so both rows link its one detail route (T200). Each row's link
+ * names its own row, because links of several rows must not announce
+ * identically (WCAG 2.4.6), and that name is a row fact no filter changes — so
+ * it is what identifies the row a reader followed across a narrowing they left
+ * behind. `aria-label` is read directly: a link that carries none has its path
+ * as its name, and for those kinds the row is the file, so the href already
+ * says which row it is (`null` then matches `null`).
+ *
+ * Falls back to every link of the route when none carries the recorded name,
+ * which is a row whose name changed while the reader was away: a row that is
+ * there beats none.
+ */
+function sameNameLinks(
+  links: readonly HTMLAnchorElement[],
+  followedAccessibleName: string | null,
+): readonly HTMLAnchorElement[] {
+  const named = links.filter(
+    (candidate) => candidate.getAttribute('aria-label') === followedAccessibleName,
+  );
+  return named.length > 0 ? named : links;
 }
 
 /**
@@ -119,9 +149,10 @@ if (typeof document !== 'undefined') {
  *
  * `followedHref` is the full path of the route being navigated to, which is
  * the `href` the row link rendered — both are one `router.resolve` of one
- * authored route string — so the row is identified by what the navigation
+ * authored route string — so the route is identified by what the navigation
  * carries rather than by watching what was clicked, which a browser that does
- * not focus a link on click would not answer.
+ * not focus a link on click would not answer. Which row of that route the
+ * reader followed is the accessible name beside it ({@link sameNameLinks}).
  *
  * A departure matching no rendered link records nothing: every way out of the
  * inventory is one of its own row links today, so this is what a link the page
@@ -140,12 +171,21 @@ export function recordInventoryReturnPoint(followedHref: string): void {
   // which is where this landed before the position was recorded at all.
   const pressedIndex = lastPressedLink === null ? -1 : links.indexOf(lastPressedLink);
   const focusedIndex = links.indexOf(document.activeElement as HTMLAnchorElement);
-  const followedIndex = pressedIndex !== -1 ? pressedIndex : focusedIndex === -1 ? 0 : focusedIndex;
-  const link = links[followedIndex];
-  returnPoint =
-    link === undefined
-      ? null
-      : { followedHref, followedIndex, viewportTop: link.getBoundingClientRect().top };
+  const link = links[pressedIndex !== -1 ? pressedIndex : focusedIndex === -1 ? 0 : focusedIndex];
+  if (link === undefined) {
+    returnPoint = null;
+    return;
+  }
+  // The position is counted among the links of the followed row rather than
+  // among every link of the route, so the two sides of a return count within
+  // one population ({@link sameNameLinks}).
+  const followedAccessibleName = link.getAttribute('aria-label');
+  returnPoint = {
+    followedHref,
+    followedAccessibleName,
+    followedIndex: Math.max(sameNameLinks(links, followedAccessibleName).indexOf(link), 0),
+    viewportTop: link.getBoundingClientRect().top,
+  };
 }
 
 /**
@@ -177,12 +217,13 @@ export default {
     // move either way. vue-router calls this after the DOM update, so the
     // inventory is rendered by now and the followed row can be found in it.
     if (pageKey(to) === INVENTORY_PAGE_KEY && returnPoint !== null) {
-      const { followedHref, followedIndex, viewportTop } = returnPoint;
-      const links = renderedLinks(followedHref);
-      // The same position among the same-href links, or the first when this
-      // render has fewer of them — a filter the reader changed while away can
-      // drop one — because a row that is there is a better answer than none.
-      const link = links[followedIndex] ?? links[0];
+      const { followedHref, followedAccessibleName, followedIndex, viewportTop } = returnPoint;
+      const candidates = sameNameLinks(renderedLinks(followedHref), followedAccessibleName);
+      // The same position among the followed row's links, or the first when
+      // this render has fewer of them — a filter the reader changed while away
+      // can drop one — because a row that is there is a better answer than
+      // none.
+      const link = candidates[followedIndex] ?? candidates[0];
       if (link !== undefined) {
         // The answered target is what places the viewport, so focus must not
         // place it as well: `focus()` scrolls its element into view by

@@ -8,7 +8,8 @@
 // (`server-map.ts`). The admitted file is Codex's project configuration layer
 // and these declarations are one block of it: the document itself is a
 // different recognition of the same file, published as the TOML its author
-// wrote — two rules over one candidate and one read (FR-007).
+// wrote — three rules over one candidate and one read, the third being the
+// `[hooks]` table this layer can also contain (FR-007).
 //
 // The base this unit extends is `../vendor/codex.ts` rather than `../codex.ts`,
 // which holds this vendor's other kinds: both modules extend that base, and a
@@ -33,8 +34,9 @@ import type { InspectionRule } from '../../../../shared/registries/rule-types';
  * The admitted `.codex/config.toml` is Codex's project configuration layer,
  * and these declarations are one block of it. The document itself is a
  * different recognition of the same file, admitted by `codex.repo.settings`
- * and published as the TOML its author wrote — two rules over one candidate
- * and one read, each answering for the row that reaches it (FR-007).
+ * and published as the TOML its author wrote — three rules over one candidate
+ * and one read, the `[hooks]` table this layer can also contain being the
+ * third, each answering for the row that reaches it (FR-007).
  */
 export class CodexCompiledMcpCarrierRule
   extends CodexCompiledRule

@@ -26,7 +26,7 @@ import {
   localPluginRootSegments,
   UNRECOGNIZED_PLUGIN_SOURCE,
 } from './plugin-source';
-import { ParsedStrictJsonDocument } from '../../parsers/json';
+import { ParsedJsonDocument } from '../../parsers/json';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 import type {
   DeclaredEntryDto,
@@ -258,8 +258,12 @@ function claudePluginSourceOf(
  * is one of the files it ships rather than a customization of its own, so an
  * entry answers the directory and names the manifest without admitting it.
  */
-export function claudePluginCatalogReadingOf(sourceText: string): PluginCarrierReading {
-  const entries = new ParsedStrictJsonDocument(sourceText).entries;
+export function claudePluginCatalogReadingOf(
+  sourceText: string,
+  sourceRelativePath: string,
+): PluginCarrierReading {
+  const entries = new ParsedJsonDocument(sourceText, { tool: 'claude', sourceRelativePath })
+    .entries;
   const declared = entries.find(
     (entry) => entry.keyKind === 'string' && entry.key === CLAUDE_CATALOG_PLUGINS_KEY,
   );
@@ -309,7 +313,7 @@ export function claudePluginManifestReadingOf(
   sourceText: string,
   sourceRelativePath: string,
 ): PluginCarrierReading {
-  const fields = new ParsedStrictJsonDocument(sourceText).entries;
+  const fields = new ParsedJsonDocument(sourceText, { tool: 'claude', sourceRelativePath }).entries;
   return {
     // A manifest declares one plugin and nothing about a catalog, so it
     // publishes no catalog fields: its own keys are that plugin's.
@@ -371,8 +375,11 @@ export class ClaudeCompiledPluginCatalogRule
    * What this catalog declares — its own keys, and one declaration per entry
    * (`plugins/claude.ts` § claudePluginCatalogReadingOf).
    */
-  public pluginCarrierReadingOf(sourceText: string): PluginCarrierReading {
-    return claudePluginCatalogReadingOf(sourceText);
+  public pluginCarrierReadingOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): PluginCarrierReading {
+    return claudePluginCatalogReadingOf(sourceText, sourceRelativePath);
   }
 
   /** Compiles one Claude plugin catalog record, rejecting one of another kind. */

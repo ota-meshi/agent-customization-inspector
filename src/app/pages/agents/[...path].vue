@@ -144,9 +144,6 @@ const owner = computed(() =>
 /** The kind's own caption, for the heading and the recognition line. */
 const kindText = CUSTOMIZATION_KIND_TEXT.agent;
 
-/** The inventory link that lands on the custom-agents tab rather than the default. */
-const inventoryRoute = '/?kind=agent';
-
 /**
  * The comparison entries for this file (FR-011, T575): one per row this file
  * is listed under that also holds a readable counterpart — this file beside
@@ -701,7 +698,7 @@ onBeforeUnmount(() => {
     <!-- Returns to the tab this page came from: the inventory's kind is URL
          state, so naming it here is what makes the link land on the
          custom-agents list rather than the kind order's default tab. -->
-    <p><NuxtLink :to="inventoryRoute">Back to the inventory</NuxtLink></p>
+    <p><NuxtLink to="/?kind=agent">Back to the inventory</NuxtLink></p>
 
     <div class="aci-agent-detail__title">
       <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
@@ -744,7 +741,7 @@ onBeforeUnmount(() => {
         the link was made; a rescan that brings the path back will make it resolve again.
       </p>
       <p>
-        <NuxtLink :to="inventoryRoute">Return to the inventory and open it again.</NuxtLink>
+        <NuxtLink to="/?kind=agent">Return to the inventory and open it again.</NuxtLink>
       </p>
     </template>
 

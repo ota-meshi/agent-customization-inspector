@@ -10,8 +10,8 @@ them.
 ## Prerequisites
 
 - Node.js satisfying the exact `package.json` compatibility contract
-  `^24.11.0 || ^26.0.0` (`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`); Node.js
-  24.18.0 is the development/build baseline
+  `^24.11.0 || ^26.0.0` (`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`); the active
+  LTS Node.js is the development/build baseline
 - pnpm satisfying the repository `packageManager` declaration
 - No additional compiler or platform-specific build workspace is required;
   inspected-source access is implemented by packaged Node.js modules
@@ -612,8 +612,9 @@ Verify:
    external request or `blob:` worker.
 8. Direct loads of `/`, `/global-consent`, every kind's comparison route
    (`/skills/compare`, `/instructions/compare`, `/mcp/compare`,
-   `/prompts-and-commands/compare`), and every kind's detail route all boot from
-   the same root-absolute assets served by the devframe host.
+   `/prompts-and-commands/compare`, `/agents/compare`, `/plugins/compare`,
+   `/hooks/compare`), and every kind's detail route all boot from the same
+   root-absolute assets served by the devframe host.
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
    channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,
    greater Global content epoch or non-null disable fence, and a late in-flight response after
@@ -1761,7 +1762,7 @@ manual certified-browser fallback. The documentation gate separately validates a
 repository English/Japanese document pairs without publishing the planning set. The same
 tarball must install, launch, and pass the Node.js filesystem suite in the six exact
 lower-bound OS/architecture certification jobs defined in [research.md](research.md).
-Node.js 24.18.0 is the development/build baseline. These finite samples do not claim that
+The active LTS Node.js is the development/build baseline. These finite samples do not claim
 CI has exhaustively executed every patch release in the declared Node.js 24/26 compatibility
 ranges and do not narrow that runtime contract.
 Finally review the complete diff for untested branches, secret exposure, stale official-path

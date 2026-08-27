@@ -796,6 +796,102 @@ export interface McpDeclarationDto {
   readonly diagnosticIds: readonly string[];
 }
 
+/**
+ * Which of a product's two documented hook forms a declaration is authored in
+ * (contracts/vendors/openai-codex.md § Normative initial-release presentation
+ * allowlist, the `hook` row).
+ *
+ * A published fact rather than something a reader derives from the path: one
+ * layer can hold both forms, the vendor loads both rather than choosing, and
+ * the two are separate recognitions of separate files — so which form a row's
+ * declaration came from is what tells them apart on the row.
+ */
+export type HookCarrierForm =
+  /** A file whose whole purpose is hooks, such as a Codex `.codex/hooks.json`. */
+  | 'standalone'
+  /** A hook table inside a file admitted for other content too, such as an inline Codex `[hooks]`. */
+  | 'contained';
+
+/**
+ * One row of the hook inventory (contracts/http-api.md § get-session
+ * `hooks[]`, data-model.md § Inventory unit): one declared lifecycle event,
+ * listing every declaration that declares it — one per `(carrier, tool)`, the
+ * same grouping an MCP server name gives its declarations — so a second
+ * carrier declaring the same event joins the event's row rather than starting
+ * another.
+ *
+ * The declared matcher groups and handlers are not here: a declaration's
+ * content is served by its carrier's detail, one file at a time (FR-027), and
+ * the carrier's own read outcome, size, and file diagnostics stay on its
+ * `files[]` entry.
+ */
+export interface HookInventoryEntryDto {
+  /**
+   * The declared event name this row is — the key inside the carrier's hook
+   * map, exactly as it was written (FR-007). Null for the one row that closes
+   * the list with the carriers whose emptiness is itself a finding: one whose
+   * hook block could not be read, whose events are unknown rather than absent,
+   * and one whose whole purpose is hooks and that declares none — which each
+   * declaration's own `parseStatus` tells apart (FR-028). A carrier that
+   * merely may contain a hook table and does not is on no row: its file is
+   * published under the rows its own kinds give it.
+   */
+  readonly event: string | null;
+  /**
+   * The declarations of this event, in carrier-path then closed tool order —
+   * or, on the null row, the carriers publishing no event, one entry per
+   * `(carrier, tool)` either way. Non-empty: an event exists because a
+   * declaration made it, and the null row exists only while a carrier belongs
+   * on it.
+   */
+  readonly declarations: readonly HookDeclarationDto[];
+}
+
+/**
+ * One declaration listed under the event it declares — or, on the null row,
+ * one carrier publishing no event (contracts/http-api.md § get-session
+ * `hooks[]`).
+ */
+export interface HookDeclarationDto {
+  /**
+   * The Source-relative Path of the carrier this declaration is authored
+   * in — the file's identity (FR-030), which joins to `files[]` and is the
+   * path half of the declaration's own detail route,
+   * `/hooks/<source-relative path>?event=<name>`.
+   */
+  readonly sourceRelativePath: string;
+  /** The tool whose recognition this declaration is (FR-007). */
+  readonly tool: SupportedTool;
+  /**
+   * Which documented form the declaration is authored in; see
+   * {@link HookCarrierForm}. One layer can hold both, so the row states which
+   * of them this declaration is rather than leaving a reader to infer it.
+   */
+  readonly carrier: HookCarrierForm;
+  /**
+   * The vendor surfaces the declaring recognition rests on — the union over
+   * its admissions, exactly as an MCP declaration publishes them
+   * (contracts/http-api.md § get-session). Naming a surface never claims that
+   * surface ran the hook (FR-009); it says which documented lookup the
+   * admission rests on.
+   */
+  readonly surfaces: readonly VendorSurface[];
+  /**
+   * The owning carrier recognition's extraction state, republished here
+   * because the declaration is that recognition's (FR-028). Always `parsed`
+   * under a named row — a failed carrier publishes no event — and on the null
+   * row it is what tells "the events are unknown" (`failed`) apart from "the
+   * carrier declares none" (`parsed`).
+   */
+  readonly parseStatus: RecognitionParseStatus;
+  /**
+   * The kind's extraction-failure reference (FR-028): one extraction per kind
+   * means one record, which the carrier's `files[]` entry lists once and each
+   * of its declarations republishes as its own parse fact.
+   */
+  readonly diagnosticIds: readonly string[];
+}
+
 /** One tool's same-name resolution on a {@link SkillInventoryEntryDto}. */
 export interface SameNameSkillResolutionDto {
   /** The tool the statement belongs to. */
@@ -1480,6 +1576,96 @@ export interface McpCarrierDetailDto {
 }
 
 /**
+ * One event declaration of a hook carrier, as its detail shows it
+ * (contracts/http-api.md § get-hook-carrier-detail, data-model.md § Inventory
+ * unit): the declared event — the key its inventory row is named by — and the
+ * matcher groups it declares, in the parser's resolved order (FR-007). The
+ * same shape the recognition extracts, so the wire carries what the one
+ * scan-time parse resolved rather than a second reading.
+ */
+export interface HookEventDeclarationDto {
+  /** The event name exactly as the carrier's key declares it (FR-007). */
+  readonly event: string;
+  /**
+   * The matcher groups this event declares, in authored order, each as the
+   * parser resolved it: a group is one item of the event's declared list, and
+   * what it holds — a matcher, the handlers under it, a timeout, a status
+   * message — is the carrier's own literal text, never a resolved environment
+   * value and never a command this product runs (FR-020, FR-026).
+   *
+   * A value, not an entry list, because a group has no key: the event's own
+   * list is what orders them, and an item can be anything the author wrote —
+   * including a scalar a reader needs to see stated as the malformed group it
+   * is rather than silently dropped.
+   */
+  readonly groups: readonly DeclaredValueDto[];
+}
+
+/**
+ * The result of `get-hook-carrier-detail`: one hook carrier's declarations
+ * (contracts/http-api.md § get-hook-carrier-detail) — the file's own facts and
+ * the events it declares, and deliberately no `sourceText` field at all: a
+ * file admitted so its declarations can be published shows those declarations
+ * and never its own bytes (FR-007), which is why this is its own function's
+ * result rather than a {@link FileDetailDto} variant.
+ *
+ * A union rather than one shape with an optional field, because the two
+ * documented forms differ in what the carrier itself declares
+ * ({@link HookCarrierForm}): a standalone file's remaining top-level keys are
+ * this recognition's to publish, while a contained table's neighbours belong to
+ * the settings recognition of the same file, which serves that document whole.
+ */
+export type HookCarrierDetailDto = StandaloneHookCarrierDetailDto | ContainedHookCarrierDetailDto;
+
+/** What a hook carrier's detail carries whichever form it takes. */
+interface HookCarrierDetailBase {
+  /**
+   * The committed carrier's own facts — path, read outcome, size,
+   * diagnostics — without its source text (FR-007).
+   */
+  readonly file: CustomizationFileSummaryDto;
+  /**
+   * The events the carrier declares, one per declared event in the parser's
+   * resolved order — empty when it declares none — or null exactly when
+   * extraction failed all-or-nothing (FR-028): nothing was parsed, the rows
+   * are unknown rather than absent, and the failure's Diagnostic is in
+   * `diagnostics`.
+   */
+  readonly events: readonly HookEventDeclarationDto[] | null;
+  /** The file-scoped Diagnostic records the file's own `diagnosticIds` name (FR-028). */
+  readonly diagnostics: readonly SerializedDiagnostic[];
+}
+
+/**
+ * A file whose whole purpose is hooks: a Codex `.codex/hooks.json` and the
+ * standalone carriers the other vendors document.
+ */
+export interface StandaloneHookCarrierDetailDto extends HookCarrierDetailBase {
+  /** Discriminant: the carrier is a file of its own; see {@link HookCarrierForm}. */
+  readonly carrier: 'standalone';
+  /**
+   * What the carrier declares about itself — every top-level key beside the
+   * hook map, such as a Codex `hooks.json`'s optional `description` — by the
+   * keys the file wrote and in the parser's resolved order (FR-007). Empty
+   * when it declares none, and empty for a failed extraction.
+   *
+   * Published because nothing else publishes it: this file has one
+   * recognition, so a key this response omits is a key no surface shows.
+   */
+  readonly carrierFields: readonly DeclaredEntryDto[];
+}
+
+/**
+ * A hook table inside a file admitted for other content too: an inline Codex
+ * `[hooks]` table in a `.codex/config.toml`, whose other keys are the settings
+ * recognition's own content.
+ */
+export interface ContainedHookCarrierDetailDto extends HookCarrierDetailBase {
+  /** Discriminant: the carrier contains the hook table among other content. */
+  readonly carrier: 'contained';
+}
+
+/**
  * The result of `get-permission-policy-detail`: one declared permission
  * policy, in the form the declaring product spells it
  * (contracts/http-api.md § get-permission-policy-detail).
@@ -1910,6 +2096,13 @@ export interface SessionSnapshot {
    * (data-model.md § Inventory unit).
    */
   readonly permissions: readonly PermissionsInventoryEntryDto[];
+  /**
+   * The hook inventory: one entry per declared lifecycle event, in event
+   * order, each listing the declarations that declare it; the one null-named
+   * entry closes the list with the carriers publishing no event
+   * (data-model.md § Inventory unit).
+   */
+  readonly hooks: readonly HookInventoryEntryDto[];
   /**
    * The plugin inventory: one entry per declared plugin name, in name order,
    * each listing every carrier that resolves it; the one null-named entry

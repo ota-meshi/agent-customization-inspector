@@ -61,6 +61,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
+    "@changesets/changelog-github": "^1.0.0",
+    "@changesets/cli": "^3.0.1",
     "@iconify-json/lucide": "^1.2.124",
     "@iconify-json/simple-icons": "^1.2.93",
     "@nuxt/eslint": "^1.16.0",

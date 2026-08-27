@@ -17,7 +17,7 @@
 // the product owns best-effort startup browser opening through its startup
 // opener (`./browser-opener`, research.md § 3), adds no asset manifest or
 // per-asset re-verification, and its only routes of its own are the
-// `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`,
+// `/skills/**`, `/instructions/**`, `/mcp/**`, `/hooks/**`, `/rules/**`,
 // `/prompts-and-commands/**`, `/permissions/**`, and `/agents/**` shell
 // fallbacks in `createHostApp`,
 // which devframe's static handler cannot serve (Constitution Principle I). An unexpected
@@ -48,6 +48,7 @@ import type {
   FileDetailDto,
   FileOpenTarget,
   InspectionDataResult,
+  HookCarrierDetailDto,
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
@@ -273,6 +274,33 @@ export function createInspectorDevframe(
             // a later commit. A parsed carrier declaring no server is not
             // this case: it holds a recognition and answers with empty
             // servers (contracts/http-api.md § get-mcp-carrier-detail).
+            return { error: { code: 'stale-resource' } };
+          }
+          return { ...context.session.dataEnvelope(), data: detail };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:get-hook-carrier-detail',
+        type: 'query',
+        // The hook carrier's own detail function (contracts/http-api.md
+        // § get-hook-carrier-detail): the lifecycle events the carrier
+        // declares and its content-free file facts, with no `sourceText` field
+        // at all — a file admitted so its declarations can be published shows
+        // those declarations and never its own bytes (FR-007), which is why
+        // its detail is not a `get-file-detail` variant. Publishing a
+        // declaration is not running it: no declared command, handler, or
+        // referenced script is executed, opened, or resolved (FR-020). The
+        // parameter validates by resolution exactly as `get-file-detail`'s
+        // does.
+        handler: (
+          sourceRelativePath: string,
+        ): InspectionDataResult<HookCarrierDetailDto> | DeterministicRejection => {
+          const detail = context.session.hookCarrierDetail(sourceRelativePath);
+          if (detail === null) {
+            // No hook recognition at the path — never scanned, or removed by a
+            // later commit. A parsed carrier declaring no event is not this
+            // case: it holds a recognition and answers with empty events
+            // (contracts/http-api.md § get-hook-carrier-detail).
             return { error: { code: 'stale-resource' } };
           }
           return { ...context.session.dataEnvelope(), data: detail };
@@ -527,6 +555,7 @@ export async function startInspectorHost(
  * last segment — `/skills/<source-relative path>` with `SKILL.md`,
  * `/instructions/<source-relative path>` with `AGENTS.md`,
  * `/mcp/<source-relative path>` with `config.toml`,
+ * `/hooks/<source-relative path>` with `hooks.json`,
  * `/rules/<source-relative path>` with `style.md`,
  * `/prompts-and-commands/<source-relative path>` with `deploy.md`,
  * `/output-styles/<source-relative path>` with `diagrams.md`,
@@ -569,6 +598,7 @@ function createHostApp(): H3 {
   app.use('/skills/**', rewriteToShell);
   app.use('/instructions/**', rewriteToShell);
   app.use('/mcp/**', rewriteToShell);
+  app.use('/hooks/**', rewriteToShell);
   app.use('/rules/**', rewriteToShell);
   app.use('/prompts-and-commands/**', rewriteToShell);
   app.use('/permissions/**', rewriteToShell);

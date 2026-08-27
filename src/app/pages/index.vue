@@ -173,32 +173,38 @@ const matchCount = computed(() => {
  * against published files would read "2 of 3" for an inventory that lost
  * nothing. Each kind answers from its own inventory (data-model.md
  * § Inventory unit).
+ *
+ * A table keyed by the closed kind union rather than a switch with a default
+ * branch: a kind whose inventory ships without an entry here cannot compile,
+ * where a default would have summarized it as "of 0" (AGENTS.md § User-visible
+ * copy policy makes the same argument for a label table).
  */
-const totalRowCount = computed(() => {
-  switch (filters.activeKind.value) {
-    case 'instructions':
-      return snapshot.value?.instructions.length ?? 0;
-    case 'skill':
-      return snapshot.value?.skills.length ?? 0;
-    case 'MCP':
-      return snapshot.value?.mcp.length ?? 0;
-    case 'agent':
-      return snapshot.value?.agents.length ?? 0;
-    case 'prompt/command':
-      return snapshot.value?.prompts.length ?? 0;
-    case 'rule':
-      return snapshot.value?.rules.length ?? 0;
-    case 'permissions':
-      return snapshot.value?.permissions.length ?? 0;
-    case 'plugin':
-      return snapshot.value?.plugins.length ?? 0;
-    case 'output style':
-      return snapshot.value?.outputStyles.length ?? 0;
-    case 'settings/config':
-      return snapshot.value?.settings.length ?? 0;
-    default:
-      return 0;
+const totalRowCount = computed<number>(() => {
+  const kind = filters.activeKind.value;
+  const committed = snapshot.value;
+  if (kind === null || committed === null) {
+    // No kind in view, or nothing committed yet: the summary has no rows to
+    // compare against.
+    return 0;
   }
+  const totals: Readonly<Record<CustomizationKind, number>> = {
+    instructions: committed.instructions.length,
+    skill: committed.skills.length,
+    MCP: committed.mcp.length,
+    agent: committed.agents.length,
+    'prompt/command': committed.prompts.length,
+    rule: committed.rules.length,
+    permissions: committed.permissions.length,
+    hook: committed.hooks.length,
+    plugin: committed.plugins.length,
+    // No inventory of its own: a sibling metadata file belongs to the skill
+    // whose directory holds it, and that skill's row is where it appears
+    // (data-model.md § Inventory unit).
+    'skill metadata': 0,
+    'output style': committed.outputStyles.length,
+    'settings/config': committed.settings.length,
+  };
+  return totals[kind];
 });
 
 /**
@@ -320,6 +326,7 @@ const staleFailureMessage = computed(() =>
         :prompt-rows="filters.promptRows.value"
         :rule-rows="filters.ruleRows.value"
         :permissions-rows="filters.permissionsRows.value"
+        :hook-rows="filters.hookRows.value"
         :plugin-rows="filters.pluginRows.value"
         :output-style-rows="filters.outputStyleRows.value"
         :settings-rows="filters.settingsRows.value"

@@ -26,6 +26,7 @@ import {
   CODEX_REPO_SKILLS_BEHAVIOR,
   CODEX_USER_AGENTS_BEHAVIOR,
   CODEX_USER_CONFIG_BEHAVIOR,
+  CODEX_USER_HOOKS_BEHAVIOR,
   CODEX_USER_INSTRUCTIONS_BEHAVIOR,
   CODEX_USER_PLUGINS_BEHAVIOR,
   CODEX_USER_RULES_BEHAVIOR,
@@ -36,6 +37,8 @@ import {
   CODEX_EXCLUDED_PLUGIN_FILES_RULE,
   CODEX_REPO_AGENT_RULE,
   CODEX_REPO_CONFIG_RULE,
+  CODEX_REPO_HOOKS_RULE,
+  CODEX_REPO_INLINE_HOOKS_RULE,
   CODEX_REPO_INSTRUCTIONS_RULE,
   CODEX_REPO_MARKETPLACE_RULE,
   CODEX_REPO_RULES_RULE,
@@ -45,6 +48,7 @@ import {
 import {
   CODEX_AGENTS_INHERITANCE_STRATEGY,
   CODEX_CONFIG_PRECEDENCE_STRATEGY,
+  CODEX_HOOKS_ADDITIVE_STRATEGY,
   CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   CODEX_MCP_CONFIGURATION_STRATEGY,
   CODEX_PLUGINS_ACTIVATION_STRATEGY,
@@ -80,6 +84,22 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
    */
   [CODEX_CONFIG_PRECEDENCE_STRATEGY.strategyId]: {
     consumesBehaviors: [CODEX_REPO_CONFIG_BEHAVIOR, CODEX_USER_CONFIG_BEHAVIOR],
+  },
+  /**
+   * Additive hook composition composes every documented hook scope: the
+   * project layers this product can read, the User layer it may not, and the
+   * plugin root whose manifest points at the hooks an enabled plugin bundles.
+   * All three are listed because the strategy describes Codex's runtime —
+   * every active source contributes at once, and the User layer keeps
+   * contributing where an untrusted project layer does not, so a composition
+   * over the repository alone would describe a different product.
+   */
+  [CODEX_HOOKS_ADDITIVE_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      CODEX_PLUGIN_MANIFEST_BEHAVIOR,
+      CODEX_REPO_HOOKS_BEHAVIOR,
+      CODEX_USER_HOOKS_BEHAVIOR,
+    ],
   },
   /**
    * Instruction layering composes the project chain and the User fallback.
@@ -197,6 +217,29 @@ export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> 
       CODEX_REPO_MCP_BEHAVIOR,
     ],
     explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_MCP_CONFIGURATION_STRATEGY],
+  },
+  /**
+   * The standalone hook carrier rests on the project hook lookup alone — the
+   * User layer's own `hooks.json` is a different Source boundary this rule may
+   * not read — and is explained by the additive strategy, which owns
+   * everything the row does not state: that a declared hook is trusted,
+   * reviewed, enabled, or reached at all (FR-009).
+   */
+  [CODEX_REPO_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_REPO_HOOKS_BEHAVIOR],
+    explainedByStrategies: [CODEX_HOOKS_ADDITIVE_STRATEGY],
+  },
+  /**
+   * The inline hook recognition of the config carrier rests on both lookups it
+   * spans: the config-layer lookup that locates the file, and the hook lookup
+   * that reads an inline `[hooks]` table out of it. It is explained by the
+   * additive strategy, which owns the same-layer retention that keeps this
+   * recognition and the standalone file's distinct, and by the precedence that
+   * decides which layers are active at all.
+   */
+  [CODEX_REPO_INLINE_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_REPO_CONFIG_BEHAVIOR, CODEX_REPO_HOOKS_BEHAVIOR],
+    explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_HOOKS_ADDITIVE_STRATEGY],
   },
   /**
    * The settings recognition of the same file rests on the config-layer

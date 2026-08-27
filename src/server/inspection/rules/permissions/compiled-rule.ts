@@ -37,7 +37,10 @@ export interface CompiledStaticPermissionsCarrierRule extends CompiledInspection
    * the carrier's format cannot parse; the recognizer's extraction boundary
    * turns the throw into the recognition's `failed` state (FR-028).
    */
-  declaredPolicyOf(sourceText: string): readonly DeclaredEntryDto[] | null;
+  declaredPolicyOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): readonly DeclaredEntryDto[] | null;
 }
 
 /**

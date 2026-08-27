@@ -54,8 +54,8 @@ customization-selected destination、別machineへの調査content送信は禁�
 3. Static byte servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
    `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
    integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
-   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/rules/**`、
-   `/prompts-and-commands/**`、`/permissions/**`、`/agents/**`、
+   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/hooks/**`、
+   `/rules/**`、`/prompts-and-commands/**`、`/permissions/**`、`/agents/**`、
    `/plugins/**`、`/output-styles/**`、`/settings-and-configuration/**`、shipped kind
    detailごとに1 family — だけである: これらのroute familyに入るpathの`GET`/`HEAD`を`/`へ
    書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
@@ -103,6 +103,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
 | `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | Active-generationの`McpCarrierDetail` 1件: MCPを宣言する1 fileの宣言とfileの事実。sourceは決して含まない |
+| `agent-customization-inspector:get-hook-carrier-detail` | read | One active-generation `HookCarrierDetail`: hookを宣言するfile 1件のlifecycle eventとfileの事実。sourceは決して含まない。documentedな2つのcarrier形式は1つのdiscriminated resultである |
 | `agent-customization-inspector:get-plugin-carrier-detail` | read | inventory row 1件についてのActive-generationの`PluginCarrierDetail` 1件: carrierがmanifestなら完全なsource、catalogなら要求されたentryの宣言。catalog自身のbyteは決して含まない |
 | `agent-customization-inspector:get-plugin-file-detail` | read | pluginが同梱するfile 1件をそのpluginのものとして読む: 記述された完全なsourceとそのfile自身のdiagnostic。要求元carrierのそのrow名のofferingが到達したpathに限る |
 | `agent-customization-inspector:get-permission-policy-detail` | read | Active-generationの`PermissionPolicyDetail` 1件: 宣言された1つのpermission policyを、document全体またはblockとして |
@@ -269,7 +270,13 @@ SessionSnapshot
 │       宣言されたserver名1つにつき1行で、その名前を解決する各宣言を
 │       carrier path順、次にtool順で持ち、各宣言はadmissionが依拠するvendor
 │       surfaceをinstruction fileのrecognitionと同じ形で運ぶ。nullの1行が一覧を閉じ、
-│       named宣言を公開していないcarrierを持つ
+│       named宣言を公開しない読み取りを持つ。読めなかった読み取りは、同じfileの
+│       他の読み取りが何を見つけたかに関わらずこの行に載る: そのserverはabsentでは
+│       なくunknownであり、1つのcarrierはproduct毎に1回読まれる — rootの`.mcp.json`は
+│       Copilotのeditor hostにはJSONCで、Claude Codeにはstrict JSONである。parseできて
+│       何も宣言しなかった読み取りは、そのfileのどの読み取りも名前を公開しない間だけ
+│       この行に載る。1つのcarrierに対する2 vendorのschemaの違い — 一方が受け入れる
+│       bare mapと他方が要求するwrapper — はそのfileについてのfindingではない
 ├── agents[]
 │   └── name string | null,
 │       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
@@ -317,6 +324,20 @@ SessionSnapshot
 │       宣言された permission policy 1つにつき1行。宣言する file の path で
 │       名指す。宣言しない carrier は残りを所有する kind として認識され、
 │       ここには row を持たない
+├── hooks[]
+│   └── event string | null,
+│       declarations[] { sourceRelativePath, tool, carrier, surfaces[],
+│       parseStatus, diagnosticIds[] } —
+│       宣言されたlifecycle eventごとに1 rowで、それを宣言する各declarationを
+│       carrier-path順、次にtool順に並べる。MCP rowが宣言をまとめるのと同じ形である。
+│       `carrier`はその宣言が書かれたdocumentedな形式である — 全体がhookのためのfileは
+│       `standalone`、他のcontentと共にadmitされたfile内のhook tableは`contained` — 。
+│       1つのconfig layerが両形式を持ちうえ、vendorはどちらかを選ばず両方をloadするため、
+│       1つのrowが1 layerの2 fileから同じeventの2宣言を並べることがある。唯一のnull rowが
+│       空であること自体がfindingであるcarrierでlistを閉じる: hook blockを読めずeventが
+│       不在ではなく不明であるものと、全体がhookのためのfileでありながら何も宣言しないもので
+│       あり、両者は各declaration自身の`parseStatus`で見分けられる。hook tableを含みうるだけの
+│       fileが含んでいない場合は、どのrowにも載らない
 ├── plugins[]
 │   └── name string または null、
 │       carriers[] { sourceRelativePath, tool, surfaces[], carrier, parseStatus,
@@ -884,6 +905,64 @@ recognitionを保持しない場合 — 一度もscanされていない、また
 別の型の値も同じ形で解決されるため、
 独立したmalformed-argument outcomeは存在しない — は`stale-resource` rejection。Disable
 fenceがnon-nullの間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:get-hook-carrier-detail`
+
+Parameters: commit済みSource-relative Pathを1つ、functionの単一positional argumentとして
+渡す。`get-mcp-carrier-detail`が取るのと同じ形で、宣言するfileのidentityである（FR-030）。
+
+```json
+".codex/hooks.json"
+```
+
+Active-generationのhook carrier detailを1件返す: fileが宣言するlifecycle eventと、file自身の
+事実であり、`sourceText` fieldは意図的に一切存在しない — MCP carrierのdetailと同じruleで、
+理由も同じである（FR-007）。宣言を公開することは宣言を実行することではない: 宣言された
+command、handler、参照されたscriptは実行も開くことも解決もされず、environment referenceが
+代入されることもない（FR-020、FR-026）。他のkindのfileは、内容にどんなhook風のconfigurationを
+綴っていてもここでは決して解決されない。
+
+Resultは`carrier`で判別される2つのshapeのいずれかを取る。documentedな2つの形式は、carrier自身が
+何を宣言するかで異なるからである: 全体がhookのためのfile — Codexの`.codex/hooks.json` — は
+残りのtop-level keyをここで公開する。それらを公開する他のrowを持たないためである。一方、他の
+contentと共にhook tableを含むfile — `.codex/config.toml`内のinlineな`[hooks]`、Claudeのroot
+settings documentの`hooks` object — は隣接するkeyを、それらを所有する同じfileのrecognitionに委ねる。
+
+どのfileがそれに当たるかは各vendorのcontractであり、documentedなhook locationが自動的に該当する
+わけではない: 他のcustomizationが何であるかの一部である宣言 — Claudeのskillやsubagentのfrontmatter
+`hooks`、plugin manifestやcatalog entryのもの — は、どのpathでもここでは解決されない。そのcustomization
+自身のdetailが既にfileの書いたkeyを公開しており、二度目の公開は一度目と食い違いうるからである
+（contracts/vendors/claude-code.md § Normative initial-release presentation allowlist）。
+
+```text
+HookCarrierDetail
+├── carrier — 'standalone' | 'contained'。このcarrierのdocumentedな形式
+├── file — carrierのcontent-free summary。encodingで判別される:
+│   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable textはさらにhadLeadingBomとsizeBytesを持つ — sourceTextは決して持たない
+│   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
+├── events[] — 宣言。parserが解決した順に宣言されたeventごとに1つで、carrierが何も
+│   宣言しなければ空 — またはextractionがall-or-nothingでfailedになった場合に限り
+│   null（FR-028）。そのDiagnosticは下にある:
+│   └── event, groups[] — 宣言されたevent名と、それが宣言するmatcher group。各groupは
+│       そのitemが書いた値そのもので、detail surfaceが描画する共有のdeclared-value shapeを使う
+├── carrierFields[] — 'standalone'のみ: hook mapの傍らにあるtop-level entryすべて。
+│   `presentation.frontmatter`と同じentry shapeを使う
+└── diagnostics[]
+```
+
+このtreeがresponseのshapeである: clientは正確にこれらのfieldだけに依存できる。groupは
+malformedであっても著者が書いたまま公開される — tableでないitemは、落とすのではなく読み手に
+述べるべきgroupである — 一方、値がgroupのlistでないeventは何も宣言せず丸ごと省かれる。hook mapが
+不在の場合と同じ答えである。`get-file-detail`と同じinert-rendering、single-request、
+request-token ruleが適用され、`(clientDataEpoch, sourceRelativePath)`のcaptureも同じである。
+
+Outcomes: `HookCarrierDetail` result — parseされたがeventを宣言しないcarrierは空の`events`を
+持つresultであってrejectionではない。現在のcommitted generationがそのpathにhook recognitionを
+保持しない場合 — 一度もscanされていない、後のcommitで除去された、または宣言が名指すだけの
+pathである。別の型の値も同じ形で解決されるため、独立したmalformed-argument outcomeは存在
+しない — は`stale-resource` rejection。Disable fenceがnon-nullの間は`global-disable-pending`
+conflict rejection。
 
 ### `agent-customization-inspector:get-plugin-carrier-detail`
 
@@ -1586,7 +1665,8 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    validation、lint、synchronization、conversion、formatting、fixingのfieldまたはbehaviorを
    一切admitしない。
 4. 宣言済みparameterはresolutionで検証される: invokeされたfunctionがそのresourceを保持しない
-   `get-file-detail`、`get-mcp-carrier-detail`、`get-permission-policy-detail`のargument —
+   `get-file-detail`、`get-mcp-carrier-detail`、`get-hook-carrier-detail`、
+   `get-permission-policy-detail`のargument —
    別の型の値や、他のfunctionのresourceも含む — は`stale-resource` rejectionであり、余分なpositional argumentは
    readされず何も変えず、unknown function nameは登録されずinvokeできない。Contract testは
    request、file、collection、parser、snapshot、detail、result DTOのいずれも、製品定義の数値
@@ -1602,7 +1682,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    `/global-consent`、各kindのcomparison route（`/skills/compare`、`/instructions/compare`、
    `/mcp/compare`、`/prompts-and-commands/compare`）、各kindのdetail route
    （`/skills/<Source相対パス>`、`/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、
-   `/rules/<Source相対パス>`、`/prompts-and-commands/<Source相対パス>`、
+   `/hooks/<Source相対パス>`、`/rules/<Source相対パス>`、`/prompts-and-commands/<Source相対パス>`、
    `/permissions/<Source相対パス>`、`/agents/<Source相対パス>`、
    `/plugins/<Source相対パス>`、`/output-styles/<Source相対パス>`、
    `/settings-and-configuration/<Source相対パス>`）のclient routeがすべて同じpackaged SPA

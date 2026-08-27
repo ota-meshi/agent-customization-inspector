@@ -31,19 +31,26 @@ import {
   FIXTURE_ENVIRONMENT_REFERENCE,
   FIXTURE_SECRET_LITERAL,
   buildClaudeMcpFixture,
+  buildClaudeHookFixture,
+  buildCodexHookFixture,
   buildCodexMcpFixture,
   buildCopilotCliMcpFixture,
+  buildCopilotHookFixture,
   buildCopilotVscodeMcpFixture,
   createRepositoryFixtureRoot,
   type ClaudeMcpFixture,
+  type ClaudeHookFixture,
+  type CodexHookFixture,
   type CodexMcpFixture,
   type CopilotCliMcpFixture,
+  type CopilotHookFixture,
   type CopilotVscodeMcpFixture,
 } from '../fixtures/repositories/build-fixtures';
 import type {
   DeterministicRejection,
   FileDetailDto,
   InspectionDataResult,
+  HookCarrierDetailDto,
   McpCarrierDetailDto,
 } from '../../src/shared/api-types';
 import { RecordingFileOpener } from '../fixtures/file-opener';
@@ -588,6 +595,12 @@ describe('get-mcp-carrier-detail for the Codex MCP carrier (T295)', () => {
     // than absent, the failure's record is in `diagnostics`, and the
     // carrier's bytes still reach no response (FR-007, FR-028).
     expect(result.data.servers).toBeNull();
+    // One record, this kind's own. The file carries two extracting
+    // recognitions — its `[mcp_servers.*]` tables and the `[hooks]` table it
+    // can also contain (T839) — and a failure is one record per (file, kind)
+    // (FR-028), so the file's own list holds both while this response holds
+    // the one its readings reference: publishing the file's list here would
+    // report the hook row's failure as this row's.
     expect(result.data.diagnostics).toEqual([
       expect.objectContaining({ code: 'recognition-parse-failed' }),
     ]);
@@ -1111,6 +1124,296 @@ describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
   });
 });
 
+async function getHookCarrierDetail(
+  context: InspectorHostContext,
+  sourceRelativePath: string,
+): Promise<InspectionDataResult<HookCarrierDetailDto> | DeterministicRejection> {
+  const fn = registerFunctions(context).get(
+    'agent-customization-inspector:get-hook-carrier-detail',
+  )!;
+  return (await fn.handler(sourceRelativePath as never)) as
+    InspectionDataResult<HookCarrierDetailDto> | DeterministicRejection;
+}
+
+describe('get-hook-carrier-detail for the Codex hook carriers (T847)', () => {
+  /** Boots a session over the hook fixture and runs its first scan. */
+  async function scannedHookFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: CodexHookFixture;
+  }> {
+    const fixture = buildCodexHookFixture('inspector-hook-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('returns the events by the keys the carrier wrote, with the groups as authored', async () => {
+    const { context, fixture } = await scannedHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.standaloneCarrierPath);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    const events = result.data.events;
+    if (events === null) {
+      throw new Error('expected parsed declarations');
+    }
+    // One declaration per declared event, in the parser's resolved order, the
+    // event whose value is not a list of groups omitted whole (FR-007).
+    expect(events.map((event) => event.event)).toEqual([...fixture.expectedStandaloneEvents]);
+    // A group is the item its author wrote: a matcher and the handlers under
+    // it, with the timeouts and status messages the declaration carries. A
+    // malformed group — an item that is not a table — is published as authored
+    // rather than dropped, because a reader needs it stated.
+    const preToolUse = events.find((event) => event.event === 'PreToolUse')!;
+    expect(preToolUse.groups.map((group) => group.kind)).toEqual(['mapping', 'scalar']);
+    // The carrier's own keys, which only this response publishes: such a file
+    // has no other row (FR-007).
+    if (result.data.carrier !== 'standalone') {
+      throw new Error('expected the standalone carrier form');
+    }
+    expect(result.data.carrierFields.map((field) => field.key)).toEqual(['description']);
+  });
+
+  it('answers for the inline table of a config layer as the contained form', async () => {
+    const { context, fixture } = await scannedHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.inlineCarrierPath);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // The same physical file the MCP and settings rows answer for, under its
+    // own kind's function: the events alone, with the document around them
+    // left to the settings row and the `[mcp_servers.*]` tables to the MCP
+    // rows (FR-007).
+    expect(result.data.carrier).toBe('contained');
+    expect(result.data.events?.map((event) => event.event)).toEqual([
+      ...fixture.expectedInlineEvents,
+    ]);
+    expect(JSON.stringify(result)).not.toContain('mcp_servers');
+    expect(JSON.stringify(result)).not.toContain('gpt-5.4-codex');
+  });
+
+  it('serves no file detail for a carrier whose whole purpose is hooks', async () => {
+    const { context, fixture } = await scannedHookFixture();
+    // The hook row's subject is one declared event inside the file, so the
+    // file's own bytes reach no response: `get-file-detail` answers the same
+    // staleness outcome it gives a path no generation holds, rather than
+    // handing back the source the hook detail deliberately omits (FR-007).
+    expect(await getFileDetail(context, fixture.standaloneCarrierPath)).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    // The config layer is its settings document besides, so that row answers
+    // for it — with the complete TOML, `[hooks]` table included, which is the
+    // one document seen under its own row.
+    const settings = await getFileDetail(context, fixture.inlineCarrierPath);
+    if (!('data' in settings) || settings.data.kind !== 'settings/config') {
+      throw new Error('expected the settings document detail');
+    }
+    expect(settings.data.file.encoding).toBe('utf-8');
+  });
+
+  it('serves the carrier with no sourceText field at all', async () => {
+    const { context, fixture } = await scannedHookFixture();
+    for (const carrierPath of [fixture.standaloneCarrierPath, fixture.inlineCarrierPath]) {
+      const result = await getHookCarrierDetail(context, carrierPath);
+      if (!('data' in result)) {
+        throw new Error('expected the carrier detail result');
+      }
+      // A file admitted so its declarations can be published shows those
+      // declarations and never its bytes — absent from the shape rather than
+      // withheld at render time (FR-007).
+      expect(JSON.stringify(result)).not.toContain('sourceText');
+      expect(result.data.file.sourceRelativePath).toBe(carrierPath);
+    }
+  });
+
+  it('keeps a declared credential and environment reference literal', async () => {
+    const { context, fixture } = await scannedHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.standaloneCarrierPath);
+    // The characters the author wrote reach the response: no value is masked,
+    // shortened, or resolved, and no process value is substituted (FR-026).
+    const serialized = JSON.stringify(result);
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+
+  it('rejects a path the current generation holds no hook recognition for', async () => {
+    const { context, fixture } = await scannedHookFixture();
+    // The same staleness outcome every detail request has: a near miss, a
+    // handler script a declaration names, and a path the scan never held are
+    // indistinguishable here and answered alike (contracts/http-api.md
+    // § get-hook-carrier-detail).
+    for (const path of [...fixture.nearMissPaths, 'AGENTS.md', '.codex/hooks/does-not-exist.py']) {
+      expect(await getHookCarrierDetail(context, path), path).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+  });
+
+  it('publishes null events with the failure diagnostic for an unparseable carrier', async () => {
+    const root = createRepositoryFixtureRoot('inspector-hook-detail-malformed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.codex'), { recursive: true });
+    writeFileSync(join(root, '.codex/hooks.json'), '{ "hooks": { "Stop": [ }\n', 'utf8');
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    const result = await getHookCarrierDetail(context, '.codex/hooks.json');
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // Null exactly for the failed extraction: the rows are unknown rather than
+    // absent, the failure's record is in `diagnostics`, and the carrier's bytes
+    // still reach no response (FR-007, FR-028). The carrier form stands either
+    // way, because it is the admitting rule's fact rather than the text's.
+    expect(result.data.events).toBeNull();
+    expect(result.data.carrier).toBe('standalone');
+    expect(result.data.diagnostics).toEqual([
+      expect.objectContaining({ code: 'recognition-parse-failed' }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain('sourceText');
+  });
+});
+
+describe('get-hook-carrier-detail for the Claude owners (T870)', () => {
+  /** Boots a session over the Claude hook fixture and runs its first scan. */
+  async function scannedClaudeHookFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: ClaudeHookFixture;
+  }> {
+    const fixture = buildClaudeHookFixture('inspector-claude-hook-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('answers for the settings owners as the contained form, with their own events', async () => {
+    const { context, fixture } = await scannedClaudeHookFixture();
+    for (const [owner, events] of Object.entries(fixture.expectedEventsByOwner)) {
+      const result = await getHookCarrierDetail(context, owner);
+      if (!('data' in result)) {
+        throw new Error(`expected the carrier detail result for ${owner}`);
+      }
+      // Claude declares hooks nowhere but inside an accepted artifact, so every
+      // owner answers as the contained form — and a contained result carries no
+      // `carrierFields`, because the keys beside the declaration belong to the
+      // owner's other rows (FR-007).
+      expect(result.data.carrier, owner).toBe('contained');
+      expect(
+        result.data.events?.map((event) => event.event),
+        owner,
+      ).toEqual([...events]);
+      expect(JSON.stringify(result), owner).not.toContain('sourceText');
+    }
+  });
+
+  it('answers for no owner whose hooks belong to another customization', async () => {
+    const { context, fixture } = await scannedClaudeHookFixture();
+    // A skill, a subagent, a plugin manifest, and a catalog entry may each
+    // declare hooks, and none of them resolves here: such a declaration is part
+    // of what that customization is, and its own row publishes the keys its
+    // file wrote (contracts/vendors/claude-code.md § Normative initial-release
+    // presentation allowlist, the `hook` row).
+    for (const owner of [
+      fixture.owners.skill,
+      fixture.owners.agent,
+      fixture.owners.pluginManifest,
+      fixture.owners.marketplace,
+    ]) {
+      expect(await getHookCarrierDetail(context, owner), owner).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+  });
+
+  it('keeps a declared credential and environment reference literal', async () => {
+    const { context, fixture } = await scannedClaudeHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.owners.localSettings);
+    const serialized = JSON.stringify(result);
+    expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
+    expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+
+  it('rejects the standalone path Claude documents nowhere', async () => {
+    const { context, fixture } = await scannedClaudeHookFixture();
+    // A fabricated `.claude/hooks.json` is no candidate at all, so its detail
+    // is the same staleness outcome a removed file has — and so is a declared
+    // handler script, and a plugin's own bundled hook file, which is read as
+    // one of that plugin's files and is no hook carrier
+    // (contracts/http-api.md § get-hook-carrier-detail).
+    for (const path of [...fixture.nearMissPaths, ...fixture.pluginBundledHookPaths]) {
+      expect(await getHookCarrierDetail(context, path), path).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+  });
+});
+
 describe('get-file-detail for the Codex settings document (T593)', () => {
   /** One scanned Codex carrier fixture and its host context. */
   async function scannedSettingsFixture(): Promise<{
@@ -1202,6 +1505,233 @@ describe('get-file-detail for the Codex settings document (T593)', () => {
       'globalContentEpoch',
       'globalGeneration',
       'repositoryGeneration',
+    ]);
+  });
+});
+
+describe('get-hook-carrier-detail for the Copilot hook carriers (T891)', () => {
+  /** Boots a session over the Copilot hook fixture and runs its first scan. */
+  async function scannedCopilotHookFixture(): Promise<{
+    readonly context: InspectorHostContext;
+    readonly fixture: CopilotHookFixture;
+  }> {
+    const fixture = buildCopilotHookFixture('inspector-copilot-hook-detail-contract');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return { context, fixture };
+  }
+
+  it('returns a hook file’s events by the keys it wrote, with the keys beside them', async () => {
+    const { context, fixture } = await scannedCopilotHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.owners.standalone);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    const events = result.data.events;
+    if (events === null) {
+      throw new Error('expected parsed declarations');
+    }
+    // One declaration per declared event, in the parser's resolved order, the
+    // event whose value is not a list of groups omitted whole (FR-007). The
+    // CLI's lowerCamelCase spelling is what this file wrote, so it is what the
+    // response carries.
+    expect(events.map((event) => event.event)).toEqual([
+      ...fixture.expectedEventsByOwner[fixture.owners.standalone]!,
+    ]);
+    // The carrier's own keys, which only this response publishes: such a file
+    // has no other row (FR-007).
+    if (result.data.carrier !== 'standalone') {
+      throw new Error('expected the standalone carrier form');
+    }
+    expect(result.data.carrierFields.map((field) => field.key)).toEqual(['version', 'description']);
+    // The declared credential and environment reference reach the response
+    // exactly as written, unresolved and unmasked (FR-026, FR-027).
+    const rendered = JSON.stringify(result.data.events);
+    expect(rendered).toContain(FIXTURE_SECRET_LITERAL);
+    expect(rendered).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
+  });
+
+  it('answers for a settings document as the contained form, events alone', async () => {
+    const { context, fixture } = await scannedCopilotHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.owners.settings);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // The same physical file the settings row answers for, under its own
+    // kind's function: the events alone, with the document around them left to
+    // that row (FR-007).
+    expect(result.data.carrier).toBe('contained');
+    expect(result.data.events?.map((event) => event.event)).toEqual([
+      ...fixture.expectedEventsByOwner[fixture.owners.settings]!,
+    ]);
+    expect(JSON.stringify(result)).not.toContain('companyAnnouncements');
+    expect(JSON.stringify(result)).not.toContain('enabledPlugins');
+  });
+
+  it('serves the cross-tool document once, under each product’s own recognition', async () => {
+    const { context, fixture } = await scannedCopilotHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.owners.claudeSettings);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // One carrier detail for one file: the row unit is the declared event and
+    // the declaration list is where the two products' recognitions differ, so
+    // the carrier's own response states the file's declarations once (FR-007).
+    expect(result.data.carrier).toBe('contained');
+    expect(result.data.events?.map((event) => event.event)).toEqual([
+      ...fixture.expectedEventsByOwner[fixture.owners.claudeSettings]!,
+    ]);
+    const snapshot = context.session.snapshot();
+    const row = snapshot.hooks.find((entry) => entry.event === 'PreToolUse')!;
+    expect(
+      row.declarations
+        .filter((declaration) => declaration.sourceRelativePath === fixture.owners.claudeSettings)
+        .map((declaration) => declaration.tool)
+        .toSorted(),
+    ).toEqual(['claude', 'copilot']);
+  });
+
+  it('rejects a path the current generation holds no Copilot hook recognition for', async () => {
+    const { context, fixture } = await scannedCopilotHookFixture();
+    // A near miss, an accepted file of another kind whose frontmatter declares
+    // hooks, and a path nothing admits all answer the same way: the response
+    // is for a recognition of this generation, and there is none
+    // (contracts/http-api.md § get-hook-carrier-detail).
+    for (const path of [...fixture.nearMissPaths, fixture.owners.agent]) {
+      expect(await getHookCarrierDetail(context, path), path).toEqual({
+        error: { code: 'stale-resource' },
+      });
+    }
+    // A settings document that declares no hooks is not that case: it holds a
+    // recognition, so it answers with empty events — and it still reaches no
+    // inventory row, because a file that merely may carry a hook block and does
+    // not is no finding (contracts/http-api.md § get-hook-carrier-detail).
+    const hookless = await getHookCarrierDetail(context, fixture.owners.localSettings);
+    if (!('data' in hookless)) {
+      throw new Error('expected the carrier detail result');
+    }
+    expect(hookless.data.events).toEqual([]);
+    expect(
+      context.session
+        .snapshot()
+        .hooks.flatMap((entry) => entry.declarations)
+        .map((declaration) => declaration.sourceRelativePath),
+    ).not.toContain(fixture.owners.localSettings);
+  });
+
+  it('states an unreadable hook file as unknown events rather than none', async () => {
+    const { context, fixture } = await scannedCopilotHookFixture();
+    const result = await getHookCarrierDetail(context, fixture.owners.malformed);
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // Extraction failed all-or-nothing, so `events` is null and the failure's
+    // Diagnostic is on the response beside the file's own facts (FR-028).
+    expect(result.data.events).toBeNull();
+    expect(result.data.carrier).toBe('standalone');
+    expect(result.data.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      'recognition-parse-failed',
+    ]);
+  });
+});
+
+describe('get-hook-carrier-detail for one carrier two products read differently (T891)', () => {
+  it('answers with the union of the readings and this kind’s diagnostics alone', async () => {
+    // A `.claude/settings.json` holding a comment: Copilot's editor host takes
+    // this pair through a JSONC reading while Claude Code reads it strictly, so
+    // one carrier holds a reading that parsed beside one that failed
+    // (`parsers/json.ts` § acceptsComments).
+    const root = createRepositoryFixtureRoot('inspector-hook-detail-divergent');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude/settings.json'),
+      [
+        '{',
+        '  // the editor host reads this pair as JSONC',
+        '  "permissions": { "allow": ["Bash(git status)"] },',
+        '  "hooks": {',
+        '    "PreToolUse": [{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "./g.sh" }] }]',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    const result = await getHookCarrierDetail(context, '.claude/settings.json');
+    if (!('data' in result)) {
+      throw new Error('expected the carrier detail result');
+    }
+    // The file-unit response is the union of the parsed readings: the reading
+    // that rejected the text contributes no event, and `events` is null only
+    // when none parsed (FR-028).
+    expect(result.data.carrier).toBe('contained');
+    expect(result.data.events?.map((event) => event.event)).toEqual(['PreToolUse']);
+    // One diagnostic, this kind's own: the same file's permission policy also
+    // failed to parse, and that record belongs to the row whose subject it is.
+    expect(result.data.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: '.claude/settings.json',
+      }),
+    ]);
+    // The inventory states which product read what: the event's row carries the
+    // reading that parsed, and the closing row the one whose events are unknown.
+    const snapshot = session.snapshot();
+    expect(
+      snapshot.hooks.map((entry) => [
+        entry.event,
+        entry.declarations.map((declaration) => `${declaration.tool}/${declaration.parseStatus}`),
+      ]),
+    ).toEqual([
+      ['PreToolUse', ['copilot/parsed']],
+      [null, ['claude/failed']],
     ]);
   });
 });

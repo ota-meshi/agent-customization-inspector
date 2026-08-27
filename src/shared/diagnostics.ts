@@ -129,21 +129,32 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
    * One (file, kind) extraction failed — one record however many tools
    * recognize the kind, because the parse ran once. Extraction is
    * all-or-nothing (FR-028), so the message names the whole of what is
-   * missing rather than one field of it: nothing the parser would have read
-   * out — the declared name and description, the declarations, and the
-   * instructions the block was removed from — reaches the screen, and the
-   * detail surface omits both of its sections. Count-independent wording,
-   * and deliberately no promise about the source: a skill's or instruction
-   * file's source stays displayed beside this record, but a pure MCP
-   * carrier's bytes reach no surface at all (FR-007), so the one shared
-   * sentence claims only what is true for every kind that can carry it.
+   * missing rather than one field of it: nothing that reading would have
+   * read out — the declared name and description, the declarations, and the
+   * instructions the block was removed from — reaches the screen.
+   * Count-independent wording, and deliberately no promise about the source:
+   * a skill's or instruction file's source stays displayed beside this
+   * record, but a pure MCP carrier's bytes reach no surface at all (FR-007),
+   * so the one shared sentence claims only what is true for every kind that
+   * can carry it.
+   *
+   * What is missing is the failed parse's own output rather than everything
+   * the file holds, because the readings of one file do not always fail
+   * together: which JSON format a carrier is read as belongs to the
+   * `(tool, path)` pair, so a `.claude/settings.json` holding a comment parses
+   * for the product whose reader takes it as JSONC and fails for the one that
+   * reads it strictly (`parsers/json.ts` § acceptsComments). This record is
+   * referenced by the failed readings alone, and a file-unit detail publishes
+   * the parsed readings' declarations beside it, so the closing sentence says
+   * the other reading stands — without it, this record would deny the
+   * declarations on the same screen.
    */
   'recognition-parse-failed': {
     ownerKind: 'candidate-file',
     scope: 'file',
     severity: 'warning',
     message:
-      'This file could not be parsed, so none of its declarations or instructions could be read out of it. They are unknown rather than absent; a rescan reports the current state of the file.',
+      'This file could not be parsed, so the declarations and instructions that parse would have produced are unknown rather than absent. A product that reads the same file in another format reads it independently; a rescan reports the current state of the file.',
   },
 };
 

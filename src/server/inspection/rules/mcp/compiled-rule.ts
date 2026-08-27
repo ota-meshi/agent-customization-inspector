@@ -44,8 +44,15 @@ export interface CompiledStaticMcpReadingRule extends CompiledInspectionRule {
    * partially. Throws on text the carrier's format cannot parse; the
    * recognizer's extraction boundary turns the throw into the recognition's
    * `failed` state (FR-028).
+   *
+   * The carrier's own Source-relative Path is what resolves the JSON document
+   * this reading takes (`../../parsers/json.ts` § ParsedJsonDocument); a unit
+   * whose carrier is not JSON declares the first parameter alone.
    */
-  serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[];
+  serverDeclarationsOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): readonly McpServerDeclarationDto[];
 }
 
 /**

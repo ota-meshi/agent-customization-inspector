@@ -30,6 +30,7 @@ import type {
   PromptInventoryEntryDto,
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
+  HookInventoryEntryDto,
   McpInventoryEntryDto,
   PermissionsInventoryEntryDto,
   OutputStyleInventoryEntryDto,
@@ -70,6 +71,43 @@ export interface InventoryFilterSelection {
 }
 
 /**
+ * One inventory row as this page renders it: the row the snapshot published,
+ * narrowed to the members the active filters matched, plus every file path the
+ * row's own members name — the set no filter narrows.
+ *
+ * The second is what a row-owned comparison is built from. A comparison
+ * surface belongs to the row rather than to this narrowed view: its pickers
+ * offer the row's every file (FR-011), so the entry link that opens one names
+ * the row's own first two files. Built from the narrowed members instead, one
+ * row's link would carry a different URL under every narrowing — the inventory
+ * return point matches the followed link by its href, so it would find no link
+ * to restore when the reader comes back through a page's own inventory link,
+ * which lands on the unnarrowed list (T1122) — and a narrowing that leaves one
+ * member matching would hide the entry to a comparison the row can still make.
+ *
+ * Only the kinds whose rows offer a comparison carry it.
+ */
+export type NarrowedInventoryRow<Row> = Row & {
+  /**
+   * Every file path this row's own members name, in the snapshot's published
+   * order and without repetition.
+   */
+  readonly rowFilePaths: readonly string[];
+};
+
+/**
+ * Every file path one row's members name; see
+ * {@link NarrowedInventoryRow.rowFilePaths}. One helper for every kind,
+ * because each kind's member — a declaration, a definition, a carrier, a
+ * file — names its file the same way.
+ */
+function rowFilePathsOf(
+  members: readonly { readonly sourceRelativePath: string }[],
+): readonly string[] {
+  return [...new Set(members.map((member) => member.sourceRelativePath))];
+}
+
+/**
  * What the caller's selection derives from the committed snapshot. The whole
  * derivation pipeline lives in the constructor, so how each published view
  * follows from the snapshot and the selection is readable in one place;
@@ -105,7 +143,9 @@ export class InventoryFilterView {
    * filter keeps the recognizing tools it matches and drops the row only when
    * none is left, so a narrowed row states what still matches.
    */
-  public readonly instructionRows: ComputedRef<readonly InstructionInventoryEntryDto[]>;
+  public readonly instructionRows: ComputedRef<
+    readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[]
+  >;
 
   /**
    * The skill rows that pass every active filter, in snapshot order. A row is
@@ -113,7 +153,7 @@ export class InventoryFilterView {
    * row only when none is left, so a narrowed row states what still matches
    * rather than everything the name has.
    */
-  public readonly skillRows: ComputedRef<readonly SkillInventoryEntryDto[]>;
+  public readonly skillRows: ComputedRef<readonly NarrowedInventoryRow<SkillInventoryEntryDto>[]>;
 
   /**
    * The MCP rows that pass every active filter, in snapshot order. A row is
@@ -123,7 +163,7 @@ export class InventoryFilterView {
    * what still matches rather than everything the name has, exactly as the
    * skill rows do.
    */
-  public readonly mcpRows: ComputedRef<readonly McpInventoryEntryDto[]>;
+  public readonly mcpRows: ComputedRef<readonly NarrowedInventoryRow<McpInventoryEntryDto>[]>;
 
   /**
    * The custom-agent rows that pass every active filter, in snapshot order. A
@@ -133,7 +173,7 @@ export class InventoryFilterView {
    * so a narrowed row states what still matches rather than every file the
    * name has, exactly as the MCP rows do.
    */
-  public readonly agentRows: ComputedRef<readonly AgentInventoryEntryDto[]>;
+  public readonly agentRows: ComputedRef<readonly NarrowedInventoryRow<AgentInventoryEntryDto>[]>;
 
   /**
    * The command rows that pass every active filter, in snapshot order. A row
@@ -142,7 +182,7 @@ export class InventoryFilterView {
    * so a narrowed row states what still matches rather than every file the
    * name has.
    */
-  public readonly promptRows: ComputedRef<readonly PromptInventoryEntryDto[]>;
+  public readonly promptRows: ComputedRef<readonly NarrowedInventoryRow<PromptInventoryEntryDto>[]>;
 
   /**
    * The rule rows that pass every active filter, in snapshot order. A row is
@@ -161,13 +201,19 @@ export class InventoryFilterView {
   public readonly permissionsRows: ComputedRef<readonly PermissionsInventoryEntryDto[]>;
 
   /**
+   * The hook event rows that survive every filter, each reduced to the
+   * declarations that matched.
+   */
+  public readonly hookRows: ComputedRef<readonly NarrowedInventoryRow<HookInventoryEntryDto>[]>;
+
+  /**
    * The plugin rows that pass every active filter, in snapshot order. A row is
    * one declared plugin name (data-model.md § Inventory unit); a filter keeps
    * the carriers it matches and drops the row only when none is left, so a
    * narrowed row states what still matches rather than every carrier the name
    * has, exactly as the MCP rows do.
    */
-  public readonly pluginRows: ComputedRef<readonly PluginInventoryEntryDto[]>;
+  public readonly pluginRows: ComputedRef<readonly NarrowedInventoryRow<PluginInventoryEntryDto>[]>;
 
   /**
    * The output-style rows that pass every active filter, in snapshot order. A
@@ -262,6 +308,9 @@ export class InventoryFilterView {
         ...(snapshot.value?.permissions ?? []).flatMap((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
+        ...(snapshot.value?.hooks ?? []).flatMap((entry) =>
+          entry.declarations.map((declaration) => declaration.tool),
+        ),
         ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
           entry.carriers.map((carrier) => carrier.tool),
         ),
@@ -285,6 +334,7 @@ export class InventoryFilterView {
         ...((snapshot.value?.prompts ?? []).length > 0 ? (['prompt/command'] as const) : []),
         ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
         ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
+        ...((snapshot.value?.hooks ?? []).length > 0 ? (['hook'] as const) : []),
         ...((snapshot.value?.plugins ?? []).length > 0 ? (['plugin'] as const) : []),
         ...((snapshot.value?.outputStyles ?? []).length > 0 ? (['output style'] as const) : []),
         ...((snapshot.value?.settings ?? []).length > 0 ? (['settings/config'] as const) : []),
@@ -361,20 +411,25 @@ export class InventoryFilterView {
      * filter selects a product, and a product's recognition of a file is one
      * fact however many of its surfaces read the file.
      */
-    this.instructionRows = computed<readonly InstructionInventoryEntryDto[]>(() =>
-      (snapshot.value?.instructions ?? []).flatMap((entry) => {
-        const files = entry.files.flatMap((file) => {
-          if (!fileMatches(file.sourceRelativePath)) {
-            return [];
-          }
-          const recognitions =
-            effectiveTool.value === null
-              ? file.recognitions
-              : file.recognitions.filter((recognition) => recognition.tool === effectiveTool.value);
-          return recognitions.length === 0 ? [] : [{ ...file, recognitions }];
-        });
-        return files.length === 0 ? [] : [{ ...entry, files }];
-      }),
+    this.instructionRows = computed<readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[]>(
+      () =>
+        (snapshot.value?.instructions ?? []).flatMap((entry) => {
+          const files = entry.files.flatMap((file) => {
+            if (!fileMatches(file.sourceRelativePath)) {
+              return [];
+            }
+            const recognitions =
+              effectiveTool.value === null
+                ? file.recognitions
+                : file.recognitions.filter(
+                    (recognition) => recognition.tool === effectiveTool.value,
+                  );
+            return recognitions.length === 0 ? [] : [{ ...file, recognitions }];
+          });
+          return files.length === 0
+            ? []
+            : [{ ...entry, files, rowFilePaths: rowFilePathsOf(entry.files) }];
+        }),
     );
 
     /**
@@ -382,7 +437,7 @@ export class InventoryFilterView {
      * definitions that matched. A name with no matching definition is not a row:
      * showing it would claim a match the inventory does not have.
      */
-    this.skillRows = computed<readonly SkillInventoryEntryDto[]>(() => {
+    this.skillRows = computed<readonly NarrowedInventoryRow<SkillInventoryEntryDto>[]>(() => {
       const filtered = (snapshot.value?.skills ?? []).flatMap((entry) => {
         const definitions = entry.definitions.filter(
           (definition) =>
@@ -406,6 +461,7 @@ export class InventoryFilterView {
       return filtered.map(({ entry, definitions }) => ({
         ...entry,
         definitions,
+        rowFilePaths: rowFilePathsOf(entry.definitions),
         sameNameResolutions: entry.sameNameResolutions.filter((resolution) =>
           facesSameNameCollision(collisionGates, resolution.tool, definitions),
         ),
@@ -417,14 +473,16 @@ export class InventoryFilterView {
      * declarations that matched. A name with no matching declaration is not a
      * row: showing it would claim a match the inventory does not have.
      */
-    this.mcpRows = computed<readonly McpInventoryEntryDto[]>(() =>
+    this.mcpRows = computed<readonly NarrowedInventoryRow<McpInventoryEntryDto>[]>(() =>
       (snapshot.value?.mcp ?? []).flatMap((entry) => {
         const declarations = entry.declarations.filter(
           (declaration) =>
             fileMatches(declaration.sourceRelativePath) &&
             (effectiveTool.value === null || declaration.tool === effectiveTool.value),
         );
-        return declarations.length === 0 ? [] : [{ ...entry, declarations }];
+        return declarations.length === 0
+          ? []
+          : [{ ...entry, declarations, rowFilePaths: rowFilePathsOf(entry.declarations) }];
       }),
     );
 
@@ -435,14 +493,16 @@ export class InventoryFilterView {
      * null-named row narrows by the same two questions — it is a row of files
      * like any other, and only its heading differs.
      */
-    this.agentRows = computed<readonly AgentInventoryEntryDto[]>(() =>
+    this.agentRows = computed<readonly NarrowedInventoryRow<AgentInventoryEntryDto>[]>(() =>
       (snapshot.value?.agents ?? []).flatMap((entry) => {
         const definitions = entry.definitions.filter(
           (definition) =>
             fileMatches(definition.sourceRelativePath) &&
             (effectiveTool.value === null || definition.tool === effectiveTool.value),
         );
-        return definitions.length === 0 ? [] : [{ ...entry, definitions }];
+        return definitions.length === 0
+          ? []
+          : [{ ...entry, definitions, rowFilePaths: rowFilePathsOf(entry.definitions) }];
       }),
     );
 
@@ -458,7 +518,9 @@ export class InventoryFilterView {
             fileMatches(definition.sourceRelativePath) &&
             (effectiveTool.value === null || definition.tool === effectiveTool.value),
         );
-        return definitions.length === 0 ? [] : [{ ...entry, definitions }];
+        return definitions.length === 0
+          ? []
+          : [{ ...entry, definitions, rowFilePaths: rowFilePathsOf(entry.definitions) }];
       }),
     );
 
@@ -509,6 +571,26 @@ export class InventoryFilterView {
     );
 
     /**
+     * The hook rows that survive every filter, each reduced to the
+     * declarations that matched, by the two questions every carrier-grouped
+     * row asks: does the file match the path filter, and is its recognizing
+     * tool the selected one. An event with no matching declaration is not a
+     * row: showing it would claim a match the inventory does not have.
+     */
+    this.hookRows = computed(() =>
+      (snapshot.value?.hooks ?? []).flatMap((entry) => {
+        const declarations = entry.declarations.filter(
+          (declaration) =>
+            fileMatches(declaration.sourceRelativePath) &&
+            (effectiveTool.value === null || declaration.tool === effectiveTool.value),
+        );
+        return declarations.length === 0
+          ? []
+          : [{ ...entry, declarations, rowFilePaths: rowFilePathsOf(entry.declarations) }];
+      }),
+    );
+
+    /**
      * The plugin rows that survive every filter, each reduced to the carriers
      * that matched: the same two questions every carrier-grouped row asks —
      * does the file match the path filter, and is its recognizing tool the
@@ -521,7 +603,9 @@ export class InventoryFilterView {
             fileMatches(carrier.sourceRelativePath) &&
             (effectiveTool.value === null || carrier.tool === effectiveTool.value),
         );
-        return carriers.length === 0 ? [] : [{ ...entry, carriers }];
+        return carriers.length === 0
+          ? []
+          : [{ ...entry, carriers, rowFilePaths: rowFilePathsOf(entry.carriers) }];
       }),
     );
 
@@ -588,13 +672,15 @@ export class InventoryFilterView {
                       ? this.ruleRows.value.length
                       : candidate === 'permissions'
                         ? this.permissionsRows.value.length
-                        : candidate === 'plugin'
-                          ? this.pluginRows.value.length
-                          : candidate === 'output style'
-                            ? this.outputStyleRows.value.length
-                            : candidate === 'settings/config'
-                              ? this.settingsRows.value.length
-                              : 0,
+                        : candidate === 'hook'
+                          ? this.hookRows.value.length
+                          : candidate === 'plugin'
+                            ? this.pluginRows.value.length
+                            : candidate === 'output style'
+                              ? this.outputStyleRows.value.length
+                              : candidate === 'settings/config'
+                                ? this.settingsRows.value.length
+                                : 0,
         );
       }
       return counts;
@@ -622,6 +708,9 @@ export class InventoryFilterView {
         ),
         ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
         ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
+        ...(snapshot.value?.hooks ?? []).flatMap((entry) =>
+          entry.declarations.map((declaration) => declaration.sourceRelativePath),
+        ),
         ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
           entry.carriers.map((carrier) => carrier.sourceRelativePath),
         ),

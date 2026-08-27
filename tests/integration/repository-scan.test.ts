@@ -23,6 +23,7 @@ import {
   NUMEROUS_FALLBACK_BASENAMES,
   NUMEROUS_FALLBACK_DECLARATION_COUNT,
   buildAllCustomizationKindFixture,
+  buildClaudeHookFixture,
   buildAllToolSkillFixture,
   buildAllVendorInstructionFixture,
   buildClaudeInstructionFixture,
@@ -45,6 +46,7 @@ import {
   buildClaudePluginFixture,
   buildCodexPluginFixture,
   buildCopilotPluginFixture,
+  buildUnifiedHookFixture,
   buildUnifiedPluginFixture,
 } from '../fixtures/repositories/build-fixtures';
 import { CLAUDE_REPOSITORY_RULES } from '../../src/server/inspection/rules/claude';
@@ -2054,13 +2056,25 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     ]);
     const carrier = snapshot.files.find((file) => file.sourceRelativePath === '.codex/config.toml');
     expect(carrier).toBeDefined();
-    expect(carrier!.diagnosticIds).toHaveLength(1);
+    // Two records for one unparsable file: it carries two extracting
+    // recognitions — its `[mcp_servers.*]` tables and the `[hooks]` table it
+    // can also contain (T839) — and a failure is one record per (file, kind)
+    // (FR-028).
+    expect(carrier!.diagnosticIds).toHaveLength(2);
     expect(snapshot.diagnostics).toEqual([
       expect.objectContaining({
         code: 'recognition-parse-failed',
         sourceRelativePath: '.codex/config.toml',
       }),
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: '.codex/config.toml',
+      }),
     ]);
+    // Each kind's row republishes its own record, never the file's whole
+    // list: the extraction that failed is that recognition's, and one record
+    // per (file, kind) is what makes a `partial` generation able to say which
+    // reading of the file could not be completed (FR-028).
     expect(snapshot.mcp).toEqual([
       {
         name: null,
@@ -2070,16 +2084,42 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
             tool: 'codex',
             surfaces: ['codex-local-clients'],
             parseStatus: 'failed',
-            diagnosticIds: carrier!.diagnosticIds,
+            diagnosticIds: [expect.any(String)],
           },
         ],
       },
     ]);
+    // The hook recognition of the same file states the same failure on its own
+    // kind's row: its events are unknown rather than absent, so the carrier
+    // lands on the no-event row that says so (FR-028).
+    expect(snapshot.hooks).toEqual([
+      {
+        event: null,
+        declarations: [
+          {
+            sourceRelativePath: '.codex/config.toml',
+            tool: 'codex',
+            carrier: 'contained',
+            surfaces: ['codex-local-clients'],
+            parseStatus: 'failed',
+            diagnosticIds: [expect.any(String)],
+          },
+        ],
+      },
+    ]);
+    // Two distinct records, and together they are the file's own list: the
+    // file entry is where both readings' failures are listed once.
+    const mcpDiagnosticIds = snapshot.mcp[0]!.declarations[0]!.diagnosticIds;
+    const hookDiagnosticIds = snapshot.hooks[0]!.declarations[0]!.diagnosticIds;
+    expect(mcpDiagnosticIds).not.toEqual(hookDiagnosticIds);
+    expect([...mcpDiagnosticIds, ...hookDiagnosticIds].toSorted()).toEqual(
+      [...carrier!.diagnosticIds].toSorted(),
+    );
     // The settings row of the same file is untouched by that failure: nothing
     // is read out of the document for it, so nothing can fail to be read and
     // the row carries no diagnostic list at all, while the file entry above
-    // carries the MCP kind's record (FR-028). What the row opens is the bytes
-    // the author wrote, malformed or not.
+    // carries the MCP and hook kinds' records (FR-028). What the row opens is
+    // the bytes the author wrote, malformed or not.
     expect(snapshot.settings).toEqual([
       {
         sourceRelativePath: '.codex/config.toml',
@@ -3491,13 +3531,16 @@ describe('the unified plugin inventory (T821)', () => {
         path,
       ).toHaveLength(1);
     }
-    // Three recognitions come out of that one read of the shared catalog.
+    // Three recognitions come out of that one read of the shared catalog, one
+    // per product's plugin row. A catalog entry may carry hook configuration of
+    // its own, and it stays that entry's declared content: the plugin row
+    // publishes it, and no hook row repeats it (T863).
     expect(
       publication.recognitions
         .filter((recognition) => recognition.sourceRelativePath === fixture.sharedCatalogPath)
-        .map((recognition) => recognition.tool)
+        .map((recognition) => `${recognition.tool}/${recognition.details.kind}`)
         .toSorted(),
-    ).toEqual(['claude', 'codex', 'copilot']);
+    ).toEqual(['claude/plugin', 'codex/plugin', 'copilot/plugin']);
   });
 
   it('keeps an MCP-shaped value inside a plugin file out of every MCP row', async () => {
@@ -4053,14 +4096,39 @@ describe('the unified settings and configuration inventory (T646)', () => {
     }
     const snapshot = context.session.snapshot();
     // Nothing is read out of a settings document, so a document strict JSON
-    // rejects still publishes its row and its source, and the generation is
-    // complete rather than partial: there is no extraction here to fail
+    // rejects still publishes its row and its source. The generation is
+    // partial all the same: the hook recognition of the same file has an
+    // extraction, and it failed all-or-nothing over that unreadable document
     // (FR-028).
-    expect(publication.outcome).toBe('complete');
+    expect(publication.outcome).toBe('partial');
     expect(snapshot.settings.map((entry) => entry.sourceRelativePath)).toEqual([
       '.github/copilot/settings.json',
     ]);
-    expect(snapshot.diagnostics).toEqual([]);
+    // One record per (file, kind): the hooks the parser could not read. The
+    // settings row reads nothing out of the document, so it contributes none.
+    expect(snapshot.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: '.github/copilot/settings.json',
+      }),
+    ]);
+    // The hook row of the same file says its events are unknown rather than
+    // absent, which is the no-event row's own statement.
+    expect(snapshot.hooks).toEqual([
+      {
+        event: null,
+        declarations: [
+          {
+            sourceRelativePath: '.github/copilot/settings.json',
+            tool: 'copilot',
+            carrier: 'contained',
+            surfaces: ['copilot-cli'],
+            parseStatus: 'failed',
+            diagnosticIds: [expect.any(String)],
+          },
+        ],
+      },
+    ]);
     const detail = context.session.fileDetail('.github/copilot/settings.json');
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable settings file detail');
@@ -4159,9 +4227,12 @@ describe('the committed Claude settings inventory (T610)', () => {
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
     }
-    // The permissions extraction failed all-or-nothing, which makes the
+    // The permissions and contained-hook extractions both failed
+    // all-or-nothing over the one unreadable document, which makes the
     // generation partial; the settings row reads nothing out of the document,
-    // so it stands with no diagnostic of its own (FR-028).
+    // so it stands with no diagnostic of its own (FR-028). Both products read
+    // hooks out of this file, and their two recognitions share the file's one
+    // hook-kind record rather than each adding one.
     expect(publication.outcome).toBe('partial');
     const snapshot = context.session.snapshot();
     expect(snapshot.settings).toEqual([
@@ -4173,11 +4244,42 @@ describe('the committed Claude settings inventory (T610)', () => {
         ],
       },
     ]);
+    // One record per (file, kind): the policy the parser could not read, and
+    // the hooks it could not read either (FR-028).
     expect(snapshot.diagnostics).toEqual([
       expect.objectContaining({
         code: 'recognition-parse-failed',
         sourceRelativePath: '.claude/settings.json',
       }),
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: '.claude/settings.json',
+      }),
+    ]);
+    // The hook row of the same file says its events are unknown rather than
+    // absent, which is the no-event row's own statement.
+    expect(snapshot.hooks).toEqual([
+      {
+        event: null,
+        declarations: [
+          {
+            sourceRelativePath: '.claude/settings.json',
+            tool: 'copilot',
+            carrier: 'contained',
+            surfaces: ['copilot-vscode', 'copilot-cli'],
+            parseStatus: 'failed',
+            diagnosticIds: [expect.any(String)],
+          },
+          {
+            sourceRelativePath: '.claude/settings.json',
+            tool: 'claude',
+            carrier: 'contained',
+            surfaces: ['claude-cli-and-ide-clients'],
+            parseStatus: 'failed',
+            diagnosticIds: [expect.any(String)],
+          },
+        ],
+      },
     ]);
     // And the document still reaches its own detail whole, because that row's
     // subject is the file rather than the block a parser rejected.
@@ -4543,7 +4645,7 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
 });
 
 describe('the combined all-kind fixture serves every inventory from one tree (T1099)', () => {
-  it('publishes skills, rules, permissions, instructions, and MCP from one scan', async () => {
+  it('publishes skills, rules, permissions, instructions, MCP, and hooks from one scan', async () => {
     const fixture = buildAllCustomizationKindFixture('inspector-scan-all-kinds');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
@@ -4609,6 +4711,208 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
         (diagnostic) => diagnostic.sourceRelativePath === '.codex/config.toml',
       ),
     ).toBe(false);
+
+    // The hook tree's two carriers in the merged tree: the standalone file
+    // stands as its builder wrote it, and the inline `[hooks]` tables the merge
+    // re-appended to the shared config document are read from the same file the
+    // MCP and settings rows answer for — three recognitions, one read (T833).
+    const hookEvents = snapshot.hooks.map((entry) => entry.event);
+    for (const event of [
+      ...fixture.hookFixture.expectedStandaloneEvents,
+      ...fixture.hookFixture.expectedInlineEvents,
+    ]) {
+      expect(hookEvents, event).toContain(event);
+    }
+    // Both vendors' hooks in the one inventory: Claude declares them nowhere
+    // but inside an accepted owner, so every one of its owners is a carrier of
+    // the same rows (T863).
+    for (const [owner, events] of Object.entries(fixture.claudeHookFixture.expectedEventsByOwner)) {
+      for (const event of events) {
+        const row = snapshot.hooks.find((entry) => entry.event === event);
+        expect(
+          row?.declarations.map((declaration) => declaration.sourceRelativePath),
+          event,
+        ).toContain(owner);
+      }
+    }
+    // The event several carriers declare is one row listing each of them, with
+    // the documented form of every carrier stated beside it: the Codex pair is
+    // a hook file of its own and an inline table, and a Claude owner is always
+    // a contained declaration.
+    const sharedHookRow = snapshot.hooks.find(
+      (entry) => entry.event === fixture.hookFixture.sharedEvent,
+    )!;
+    const sharedCarriers = sharedHookRow.declarations.map((declaration) => [
+      declaration.sourceRelativePath,
+      declaration.carrier,
+    ]);
+    expect(sharedCarriers).toContainEqual([fixture.hookFixture.inlineCarrierPath, 'contained']);
+    expect(sharedCarriers).toContainEqual([
+      fixture.hookFixture.standaloneCarrierPath,
+      'standalone',
+    ]);
+    expect(sharedCarriers).toContainEqual([
+      fixture.claudeHookFixture.owners.localSettings,
+      'contained',
+    ]);
+  });
+});
+
+describe('the committed Claude contained-hook inventory (T860)', () => {
+  it('attaches every declaration to its owner, from one read each, following no path', async () => {
+    const fixture = buildClaudeHookFixture('inspector-scan-claude-hooks');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    vi.clearAllMocks();
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const snapshot = context.session.snapshot();
+
+    // Every owner declares its events on its own path: no synthetic file, and
+    // no standalone hook carrier, because this vendor documents none (T863).
+    for (const [owner, events] of Object.entries(fixture.expectedEventsByOwner)) {
+      const declared = snapshot.hooks
+        .filter((entry) =>
+          entry.declarations.some((declaration) => declaration.sourceRelativePath === owner),
+        )
+        .map((entry) => entry.event);
+      expect(declared.toSorted(), owner).toEqual([...events].toSorted());
+    }
+    // One read per owner, however many recognitions it carries: the settings
+    // document has three, and the skill and the catalog two each.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const owner of Object.values(fixture.owners)) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...owner.split('/'))),
+        owner,
+      ).toHaveLength(1);
+    }
+    // The declared handler scripts, the fabricated standalone file, a plugin's
+    // own bundled hooks, and the User layer are read by nothing: a declared
+    // path gains no read authority (FR-004, FR-020, FR-024).
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened, forbidden).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // A plugin's own bundled hook file is read — it is one of the files the
+    // plugin's root ships, which the census enumerates — and it is a hook
+    // carrier for nobody: a plugin's components belong to the plugin's row.
+    for (const bundled of fixture.pluginBundledHookPaths) {
+      expect(
+        snapshot.files.map((file) => file.sourceRelativePath),
+        bundled,
+      ).toContain(bundled);
+      expect(
+        snapshot.hooks.flatMap((entry) =>
+          entry.declarations.map((declaration) => declaration.sourceRelativePath),
+        ),
+        bundled,
+      ).not.toContain(bundled);
+    }
+    // A malformed declaration is isolated: the settings file's `Stop` value is
+    // not a list of groups, so it declares nothing while its neighbours stand,
+    // and the generation is not partial for it.
+    expect(publication.outcome).toBe('complete');
+    expect(snapshot.hooks.map((entry) => entry.event)).not.toContain('Stop');
+  });
+
+  it('puts a hookless settings document on no row, and a failed one on the closing row', async () => {
+    // A file that merely may contain a hook table is not a finding when it does
+    // not: the row would say "this file declares no hooks" of every repository
+    // that configures anything. A file whose declarations could not be read is
+    // a finding either way, because its events are unknown rather than absent
+    // (FR-028).
+    const root = createRepositoryFixtureRoot('inspector-scan-claude-hooks-empty');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude/settings.json'),
+      '{ "permissions": { "allow": [] } }\n',
+      'utf8',
+    );
+    const clean = bootstrap(root);
+    await scanOnce(clean);
+    expect(clean.session.snapshot().hooks).toEqual([]);
+    // The file itself is published all the same, under the rows its own kinds
+    // give it.
+    expect(clean.session.snapshot().files.map((file) => file.sourceRelativePath)).toContain(
+      '.claude/settings.json',
+    );
+
+    const malformedRoot = createRepositoryFixtureRoot('inspector-scan-claude-hooks-unreadable');
+    cleanups.push(() => rmSync(malformedRoot, { recursive: true, force: true }));
+    mkdirSync(join(malformedRoot, '.claude'), { recursive: true });
+    writeFileSync(join(malformedRoot, '.claude/settings.json'), '{ "hooks": { \n', 'utf8');
+    const failed = bootstrap(malformedRoot);
+    await scanOnce(failed);
+    // Both products read hooks out of this file, so the closing row lists one
+    // declaration each, and both cite the file's one hook-kind record.
+    expect(failed.session.snapshot().hooks).toEqual([
+      {
+        event: null,
+        declarations: [
+          {
+            sourceRelativePath: '.claude/settings.json',
+            tool: 'copilot',
+            carrier: 'contained',
+            surfaces: ['copilot-vscode', 'copilot-cli'],
+            parseStatus: 'failed',
+            diagnosticIds: [expect.any(String)],
+          },
+          {
+            sourceRelativePath: '.claude/settings.json',
+            tool: 'claude',
+            carrier: 'contained',
+            surfaces: ['claude-cli-and-ide-clients'],
+            parseStatus: 'failed',
+            diagnosticIds: [expect.any(String)],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('lists the settings owners alone, whatever else in the tree declares hooks', async () => {
+    const fixture = buildClaudeHookFixture('inspector-scan-claude-hooks-rows');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+
+    // Every declaration on every row is a settings document's, in the contained
+    // form each Claude declaration takes.
+    const carriers = new Set(
+      snapshot.hooks
+        .flatMap((entry) => entry.declarations)
+        .filter((declaration) => declaration.tool === 'claude')
+        .map((declaration) => `${declaration.sourceRelativePath}/${declaration.carrier}`),
+    );
+    expect([...carriers].toSorted()).toEqual([
+      `${fixture.owners.settings}/contained`,
+      `${fixture.owners.localSettings}/contained`,
+    ]);
+    // The skill, the subagent, the plugin manifest, and the catalog all declare
+    // hooks in this tree and reach no hook row: such a declaration is part of
+    // what that customization is, and its own row publishes the keys its file
+    // wrote (T863).
+    const declaringPaths = snapshot.hooks
+      .flatMap((entry) => entry.declarations)
+      .map((declaration) => declaration.sourceRelativePath);
+    for (const owner of [
+      fixture.owners.skill,
+      fixture.owners.agent,
+      fixture.owners.pluginManifest,
+      fixture.owners.marketplace,
+    ]) {
+      expect(declaringPaths, owner).not.toContain(owner);
+      // The file itself is still published, under the row its own kind gives
+      // it: what is absent is a hook row, not the file.
+      expect(
+        snapshot.files.map((file) => file.sourceRelativePath),
+        owner,
+      ).toContain(owner);
+    }
   });
 });
 
@@ -4740,5 +5044,258 @@ describe('the unified custom-agent inventory across all three products (T568)', 
     for (const sibling of siblings) {
       expect(published.has(sibling), sibling).toBe(true);
     }
+  });
+});
+
+describe('the unified hook inventory (T903)', () => {
+  /** Scans the unified hook fixture through a session, returning its snapshot. */
+  async function scanUnifiedHooks(prefix: string) {
+    const fixture = buildUnifiedHookFixture(prefix);
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    return { fixture, context, snapshot: context.session.snapshot() };
+  }
+
+  it('gathers every carrier of one declared event, whoever reads it', async () => {
+    const { fixture, snapshot } = await scanUnifiedHooks('inspector-unified-hook-rows');
+    // The row unit is the declared event, so one event gathers the carriers
+    // that declare it across vendors and across both forms
+    // (data-model.md § Inventory unit). Declarations are listed in
+    // carrier-path then closed tool order.
+    const declarationsOf = (event: string | null): readonly string[] =>
+      (snapshot.hooks.find((entry) => entry.event === event)?.declarations ?? []).map(
+        (declaration) =>
+          `${declaration.tool}/${declaration.sourceRelativePath}/${declaration.carrier}`,
+      );
+    // The cross-vendor event: two products over one shared settings document,
+    // and both Codex forms of one layer, which that vendor loads together
+    // rather than choosing between.
+    expect(declarationsOf(fixture.crossVendorEvent)).toEqual([
+      `copilot/${fixture.carriers.sharedLocalSettings}/contained`,
+      `claude/${fixture.carriers.sharedLocalSettings}/contained`,
+      `codex/${fixture.carriers.codexInline}/contained`,
+      `codex/${fixture.carriers.codexStandalone}/standalone`,
+    ]);
+    // The one-read event: one physical file, one recognition per product.
+    expect(declarationsOf(fixture.sharedFileEvent)).toEqual([
+      `copilot/${fixture.carriers.sharedSettings}/contained`,
+      `claude/${fixture.carriers.sharedSettings}/contained`,
+      `codex/${fixture.carriers.codexStandalone}/standalone`,
+    ]);
+    // Copilot's own event spellings are their own rows: a row is the key its
+    // carrier wrote, and this product folds no two spellings together on a
+    // vendor's behalf (FR-007).
+    expect(declarationsOf('preToolUse')).toEqual([
+      `copilot/${fixture.carriers.copilotSecondStandalone}/standalone`,
+      `copilot/${fixture.carriers.copilotStandalone}/standalone`,
+    ]);
+    expect(declarationsOf('postToolUse')).toEqual([
+      `copilot/${fixture.carriers.copilotSettings}/contained`,
+      `copilot/${fixture.carriers.copilotSecondStandalone}/standalone`,
+    ]);
+    // Every declaring file that publishes no hook row: a skill's, a
+    // subagent's, a custom agent's, a plugin manifest's, and a catalog entry's
+    // declarations are part of what those customizations are (T889).
+    const carrierPaths = new Set(
+      snapshot.hooks.flatMap((entry) =>
+        entry.declarations.map((declaration) => declaration.sourceRelativePath),
+      ),
+    );
+    for (const owner of fixture.nonPublishingOwners) {
+      expect(carrierPaths.has(owner), owner).toBe(false);
+      // They are still published as the files they are.
+      expect(
+        snapshot.files.map((file) => file.sourceRelativePath),
+        owner,
+      ).toContain(owner);
+    }
+    // And nothing was invented: every declaration names a committed file, and
+    // no near miss reached any row.
+    for (const path of carrierPaths) {
+      expect(
+        snapshot.files.map((file) => file.sourceRelativePath),
+        path,
+      ).toContain(path);
+    }
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(carrierPaths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('reads one physical file once, however many products recognize it', async () => {
+    const fixture = buildUnifiedHookFixture('inspector-unified-hook-reads');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    vi.clearAllMocks();
+    const publication = await runSourceScan({
+      sourceId: 'src-unified-hooks',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const path of Object.values(fixture.carriers)) {
+      expect(
+        opened.filter((candidate) => candidate === join(fixture.root, ...path.split('/'))),
+        path,
+      ).toHaveLength(1);
+    }
+    // Five recognitions come out of that one read of the shared settings
+    // document: each product's hook declaration, each product's settings row,
+    // and the Claude permission policy inside it (FR-004, FR-007).
+    expect(
+      publication.recognitions
+        .filter((recognition) => recognition.sourceRelativePath === fixture.carriers.sharedSettings)
+        .map((recognition) => `${recognition.tool}/${recognition.details.kind}`)
+        .toSorted(),
+    ).toEqual([
+      'claude/hook',
+      'claude/permissions',
+      'claude/settings/config',
+      'copilot/hook',
+      'copilot/settings/config',
+    ]);
+    // The handler scripts the declarations name are opened by nothing: read
+    // authority comes from a matcher alone (FR-004, FR-024).
+    for (const nearMiss of fixture.nearMissPaths) {
+      expect(opened, nearMiss).not.toContain(join(fixture.root, ...nearMiss.split('/')));
+    }
+    // A plugin's own bundled hook file is the exception, and not through a
+    // declaration: the catalog names its root, so the census reads that root's
+    // files as the plugin's own — and no hook rule admits one of them.
+    for (const bundled of fixture.pluginBundledHookPaths) {
+      expect(opened, bundled).toContain(join(fixture.root, ...bundled.split('/')));
+      expect(
+        publication.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === bundled && recognition.details.kind === 'hook',
+        ),
+        bundled,
+      ).toBe(false);
+    }
+  });
+
+  it('states an unreadable carrier as unknown events in a partial generation', async () => {
+    const { fixture, snapshot } = await scanUnifiedHooks('inspector-unified-hook-partial');
+    // One carrier's extraction failed all-or-nothing, which makes the
+    // generation partial while every other row stands (FR-028).
+    expect(snapshot.snapshotState).toBe('current');
+    expect(snapshot.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: fixture.carriers.unreadable,
+      }),
+    ]);
+    const closing = snapshot.hooks.at(-1);
+    expect(closing?.event).toBeNull();
+    expect(closing?.declarations).toEqual([
+      {
+        sourceRelativePath: fixture.carriers.unreadable,
+        tool: 'copilot',
+        carrier: 'standalone',
+        surfaces: ['copilot-vscode', 'copilot-cli', 'copilot-cloud'],
+        parseStatus: 'failed',
+        diagnosticIds: [expect.any(String)],
+      },
+    ]);
+    // The named rows are unaffected: a problem confined to one file does not
+    // prevent the others from being published (FR-028).
+    expect(snapshot.hooks.filter((entry) => entry.event !== null)).toHaveLength(5);
+  });
+
+  it('aborts the attempt when a failure is not confined to one file', async () => {
+    const { fixture, context, snapshot } = await scanUnifiedHooks('inspector-unified-hook-abort');
+    expect(snapshot.repositoryGeneration).toBe(1);
+    const sourceId = context.session.repositorySourceId;
+    const admitted = context.coordinator.admitScan(sourceId, {
+      kind: 'request',
+      operationId: 'op-hook-abort',
+    });
+    if (admitted.kind !== 'admitted') {
+      throw new Error('expected admission');
+    }
+    // An enumeration failure is not one file's problem, so it is never turned
+    // into a Diagnostic and no partial result is assembled from the carriers
+    // already found: the attempt fails and the prior commit stands (FR-028,
+    // FR-029).
+    vi.mocked(fsIo.readdir).mockImplementationOnce(() => {
+      throw new Error('injected hook enumeration failure');
+    });
+    await expect(
+      runSourceScan({
+        sourceId,
+        root: fixture.root,
+        rootFailureOwner: `published-source:${sourceId}`,
+      }),
+    ).rejects.toThrow('injected hook enumeration failure');
+    context.coordinator.failScan(admitted.scanRequestId, {
+      kind: 'error',
+      message: 'injected hook enumeration failure',
+    });
+    const after = context.session.snapshot();
+    expect(after.repositoryGeneration).toBe(1);
+    expect(after.hooks).toEqual(snapshot.hooks);
+    expect(after.snapshotState).toBe('stale-after-fatal-rescan');
+  });
+});
+
+describe('one MCP carrier two products read differently (T280)', () => {
+  it('publishes the names one reading found and the other reading’s failure', async () => {
+    // A root `.mcp.json` holding a comment: Copilot's editor host reads this
+    // file as JSONC and Claude Code reads it strictly, so one carrier holds a
+    // reading that published names beside a reading that failed
+    // (`parsers/json.ts` § acceptsComments). Both are the file's facts, and
+    // each belongs to the reading that had it (FR-028).
+    const root = createRepositoryFixtureRoot('inspector-scan-divergent-mcp');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(root, { recursive: true });
+    writeFileSync(
+      join(root, '.mcp.json'),
+      [
+        '{',
+        '  // the editor host reads this file as JSONC',
+        '  "mcpServers": {',
+        '    "docs": { "command": "npx", "args": ["-y", "@upstash/context7-mcp"] }',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const context = bootstrap(root);
+    const { publication } = await scanOnce(context);
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    // The failed reading makes the generation partial while the names the other
+    // reading published stand (FR-028).
+    expect(publication.outcome).toBe('partial');
+    const snapshot = context.session.snapshot();
+    expect(
+      snapshot.mcp.map((entry) => [
+        entry.name,
+        entry.declarations.map((declaration) => `${declaration.tool}/${declaration.parseStatus}`),
+      ]),
+    ).toEqual([
+      ['docs', ['copilot/parsed']],
+      // The failed reading reaches the null row even though the same file
+      // publishes a name: its servers are unknown rather than absent, so a
+      // row that dropped it would state the file as fully read.
+      [null, ['claude/failed']],
+    ]);
+    // The failure belongs to the reading that had it: the parsed declaration
+    // carries no diagnostic, and the failed one carries the file's record.
+    const named = snapshot.mcp.find((entry) => entry.name === 'docs');
+    expect(named?.declarations[0]?.diagnosticIds).toEqual([]);
+    const closing = snapshot.mcp.find((entry) => entry.name === null);
+    expect(closing?.declarations[0]?.diagnosticIds).toEqual([expect.any(String)]);
+    expect(snapshot.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'recognition-parse-failed',
+        sourceRelativePath: '.mcp.json',
+      }),
+    ]);
   });
 });

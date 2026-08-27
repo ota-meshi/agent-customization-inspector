@@ -138,14 +138,21 @@ on-demand load — だけである。Runtime cwd chain上でしか文書化さ�
 | `claude.repo.agent` | Repository | `['.claude', 'agents', ANY_DIRECTORIES, /\.md$/u]` | Rootの固定agents directory内の`recursive-subtree` | `static-candidate` | `claude.behavior.repo.agents` | 文書化されたwalkはworking directoryからGit repository rootへの上方向で、全sessionが共有する唯一のメンバーがselected root。サブディレクトリの`.claude/agents`はこの製品が選択しないruntime-chainメンバーであり、`--add-dir` directoryは別のruntime fact | `anthropic.claude-code.subagents.scope-context` |
 | `claude.repo.settings` | Repository | `['.claude', 'settings.json']`、`['.claude', 'settings.local.json']` | 各selectorを`exact` | `static-candidate` | `claude.behavior.repo.settings.shared`、`claude.behavior.repo.settings.local` | Claudeのexact launch-`cwd` ruleと一致。Parent/descendant setting matcherなし | `anthropic.claude-code.large-codebases.start-directory`、`anthropic.claude-code.settings.scopes-precedence` |
 | `claude.repo.permissions` | Repository | `['.claude', 'settings.json']`、`['.claude', 'settings.local.json']` | 各selectorを`exact`。構成上`claude.repo.settings`と一致する | `static-candidate` | `claude.behavior.repo.settings.shared`、`claude.behavior.repo.settings.local` | 同じ2 fileのpermission policyとしてのcandidacy。`claude.repo.settings`が`settings/config`として認識するのに対し、こちらは`permissions`として認識する: 双方に宣言があるfileは2つのrecognitionを持ち、これはadmit済みのCodex config carrierと同じである。`permissions` objectを宣言しないfileはpermissions rowにならない | `anthropic.claude-code.settings.scopes-precedence` |
+| `claude.repo.hooks.settings` | Repository | `['.claude', 'settings.json']`、`['.claude', 'settings.local.json']` | `claude.repo.permissions`が著すselectorと同じ、各selectorでの`exact`。これらのdocumentが含む`hooks` objectはその1 fileのrecognitionであり、各pathに対する3つのruleは1 candidateを1度読むことになる | `static-candidate` | `claude.behavior.repo.hooks-contained`、`claude.behavior.repo.settings.shared`、`claude.behavior.repo.settings.local` | このreleaseが公開する唯一のClaude hook row。skill・subagent・plugin manifest・catalog entryに含まれる宣言は、そのcustomizationが何であるかの一部であり、そのcustomization自身のrowが公開する | `anthropic.claude-code.hooks.locations-resolution` |
 | `claude.repo.mcp` | Repository | `['.mcp.json']` | `exact` | `static-candidate` | `claude.behavior.repo.mcp` | Source rootがClaudeのproject rootであること、およびtrust/approvalがcondition | `anthropic.claude-code.mcp.scopes-precedence` |
 | `claude.repo.output-style` | Repository | `['.claude', 'output-styles', /\.md$/u]` | Repository rootの`.claude/output-styles/`の`direct-child`。ページはworking directoryとrepository rootの間の各directoryからproject styleを読み込む | `static-candidate` | `claude.behavior.repo.output-style` | Active sessionのancestor layerであることとsettings/session stateによるselectionが必要 | `anthropic.claude-code.output-styles.locations` |
 | `claude.repo.skills-directory-plugin` | Repository | `['.claude', 'skills', ANY_NAME, '.claude-plugin', 'plugin.json']` | Repository rootの`.claude/skills/`の各直下childの下で`exact`。manifestを持つfolderがplugin rootである | `static-candidate` | `claude.behavior.repo.skills-directory-plugin` | Skills directory配下でこのmanifestを持つfolderは、marketplaceもinstall手順もなしに`<folder>@skills-dir`としてloadされる。したがってmanifestがそこに在ること自体がそのfolderをpluginにする。Project scopeは起動`cwd`自身の`.claude/skills/`であり、この解釈でancestor skill directoryは遡らない。workspace trustはruntime条件のままである | `anthropic.claude-code.plugins.components-scopes` |
 | `claude.repo.marketplace` | Repository | `['.claude-plugin', 'marketplace.json']` | `exact`。repository自身のcatalogとして文書化された場所であり、その`./` entryが解決するmarketplace rootでもある | `static-candidate` | `claude.behavior.repo.marketplace` | Catalogはこのrepositoryが持つauthored contentである。configurationまたはcommandによる明示的な登録はruntime条件のままであるため、rowはcatalogが何をofferするかを述べ、pluginが登録・install・有効化されているとは決して述べない | `anthropic.claude-code.marketplaces.catalog-sources` |
 
 内包された`hooks` declarationは、それを運ぶ受理済みcandidateのmetadataであり、別のfilesystem matcherは
-作らない。そのowner集合は文書化されたもの — 受理済みsettings、skill、agent、plugin、marketplace
-file — に従う。MCPにcontained ownerは存在しない: MCP surfaceに合流するのは明示的なcarrierだけで、
+作らない。文書化されたowner集合は受理済みsettings、skill、agent、plugin、marketplace fileである。
+そのうち`hook` rowになるのは2つのsettings documentの宣言だけである。skill・subagent・plugin
+manifest・catalog entryの`hooks`は、そのcustomizationが何であるかの一部であり、そのcustomization
+自身のrowが既にfileの書いたkeyを公開しているため、`hook` rowを作れば1つの事実を、そのcustomizationを
+主題としないページで二度公開することになる。Settings fileのhooksは他のどのcustomizationにも属さない: そのfile自身のrowが公開するのは
+そのfileであるdocumentであり、documentはconfigurationであって、hooksがその定義の一部である
+ようなcustomizationではない。だからこそその hooks は Codex の inline `[hooks]` table と同じく
+hook inventory に載り、同じfileの`settings/config` rowはdocument全体を提供し続ける。MCPにcontained ownerは存在しない: MCP surfaceに合流するのは明示的なcarrierだけで、
 他のkindのfileがinline MCP configurationを綴っても — agentのfrontmatter、settings fileのmap —
 それはそのkind自身の宣言contentとして自身のdetailに見えるだけである。
 
@@ -225,7 +232,8 @@ eligible set、source form、extractor applicability、relationship kindをautho
 
 各rowは網羅的であり、`—`はeligible setが空であることを意味する。Contained Hook declarationは、すでに
 admission済みのowner file上で`hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも
-作らない。MCPにcontained rowは存在しない: MCP surfaceに合流するのは明示的なcarrierだけで、
+作らない。そのrowが存在するのはroot settings documentに対してだけであり、他のownerの`hooks`は、その
+fileにそのkindが与えるrow自身のcontentである。MCPにcontained rowは存在しない: MCP surfaceに合流するのは明示的なcarrierだけで、
 他のkindのfile内のinline MCP configurationはそのkind自身の宣言contentである。Allowlistが記載しないreferenceは、完全な`sourceText`だけに残す。宣言とその公開の間にallowlistは立たない: skillの宣言はfileが書いたkeyであり、authored keyの集合は閉じていない（FR-007）。Relationshipは、そのkindがこの表にあり、かつoriginが
 中央registryの適切なrelationship-only ruleでcoverされる場合だけemitできる。このallowlistはread、connection、execution、
 import、installation、activationのauthorityを一切与えない。
@@ -234,15 +242,15 @@ import、installation、activationのauthorityを一切与えない。
 |---|---|---|
 | `instructions` | — | 受理済み`CLAUDE.md`または`CLAUDE.local.md`。Authored `@path` tokenはsource textであり、抽出されるreferenceではない |
 | `rule` | — | 何も読み出さない: 受理済みの`.claude/rules/**/*.md`はauthorが書いた1つのdocumentとして、frontmatter blockごと公開される。したがってそこから値は読み出さず、宣言された`paths` globも他の行と同じsource textである |
-| `skill` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なfrontmatter value/item occurrence。`hooks` declarationは別のcontained recognitionが所有し、skill frontmatterに所有すべきMCP fieldは存在しない |
-| `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.claude/agents/**/*.md`の正確なfrontmatter value/item occurrence。`hooks` declarationは別のcontained recognitionが所有し、`mcpServers`はagent自身のfrontmatter宣言であってMCP recognitionを所有しない |
+| `skill` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なfrontmatter value/item occurrence。`hooks`はskill自身のfrontmatter宣言であってhook recognitionを所有せず、skill frontmatterに所有すべきMCP fieldは存在しない |
+| `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.claude/agents/**/*.md`の正確なfrontmatter value/item occurrence。`hooks`と`mcpServers`はsubagent自身のfrontmatter宣言であり、hook recognitionもMCP recognitionも所有しない |
 | `prompt/command` | `agent-reference`<br>`context-inheritance` | 受理済みlegacy command Markdown fileの正確なfrontmatter value/item occurrence。Matched pathから導出するnamespaceとinvocation nameはtyped provenanceであり、declared metadataではない |
-| `hook` | `runtime-reference` | 受理済みsettings、skill、agent、plugin、marketplace owner上のcontained `hooks` declarationにあるevent map key、matcher value、handler leaf/item value |
+| `hook` | `runtime-reference` | 受理済みroot settings documentのcontained `hooks` declarationにあるevent map key、matcher value、handler leaf/item value。vendorが文書化する他のowner — skill、subagent、plugin manifest、catalog entry — はそれ自身が何であるかの一部としてhooksを宣言しており、それらのoccurrenceはそのkind自身のrowに属する |
 | `MCP` | `runtime-reference` | Root `.mcp.json` carrierだけにあるserver-name map keyと正確なserver leaf/item occurrence。他のkindのfileが`mcpServers`を綴っても自身の宣言contentとして見えるだけで、MCP recognitionを所有しない |
 | `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Root `.claude/settings.json`または`.claude/settings.local.json`の正確なsupported leaf/item occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを決して所有しない |
 | `permissions` | — | Root `.claude/settings.json`または`.claude/settings.local.json`のtop-level `permissions` objectが持つすべてのleaf/item occurrenceを、authoredなまま。一部のkeyだけをallowlistすると、どのauthored policyを落としたか言えないまま落とすことになるため、object全体を対象とする。`permissions` objectを宣言しないsettings fileはpermission policy recognitionを持たず、それ以外のsettings keyは`settings/config` recognitionに属する。rule文字列はtoolと任意のspecifierを名指すものであり、file・command・domainへ解決することは決してない |
 | `output style` | — | 受理済みdirect-child output-style Markdown fileの正確なfrontmatter value |
-| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/plugin.json`の正確なmetadata/component/dependency leaf/item occurrenceと、entryがplugin名を解決する受理済み`.claude-plugin/marketplace.json`の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる。Inline Hook bodyは別のcontained recognitionだけがprojectし、inline MCP declarationはそのcarrier自身の宣言contentである |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/plugin.json`の正確なmetadata/component/dependency leaf/item occurrenceと、entryがplugin名を解決する受理済み`.claude-plugin/marketplace.json`の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる。Inline Hook bodyもinline MCP declarationも、そのcarrier自身の宣言contentである |
 
 `plugin` rowのderivation記述 — `marketplace.plugin.source`だけがclosed local-manifest derivationを
 seedしうる — は、どのruleも行わないderivationを述べている: catalogのlocal root配下のmanifestは

@@ -98,6 +98,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
     ],
     outputStyles: [],
     permissions: [],
+    hooks: [],
     settings: [],
     agents: [],
     skills: [],
@@ -435,6 +436,50 @@ describe('plugin comparison view (T829)', () => {
       ).toEqual([]);
       state.dispose();
     }
+  });
+
+  it('drops the plugin panel\u2019s own files when another detail route opens', async () => {
+    // Leaving a plugin page for another kind's detail must take the plugin's
+    // authored sources with it: the outgoing page's own close is a no-op by
+    // then — the incoming open already owns the detail state — so the open is
+    // what has to drop them (FR-027).
+    const scripted = scriptedChannel({
+      sessions: [dataResult(snapshotWith())],
+      carrier: ({ sourceRelativePath }) =>
+        dataResult(catalogDetail(sourceRelativePath, [declaration(PLUGIN_NAME, {})])),
+      file: (sourceRelativePath) =>
+        dataResult({
+          file: {
+            sourceId: 'source-repository',
+            sourceRelativePath,
+            encoding: 'utf-8',
+            hadLeadingBom: false,
+            sourceText: `# ${sourceRelativePath}\n`,
+            sizeBytes: 8,
+            diagnosticIds: [],
+          },
+          diagnostics: [],
+        }),
+    });
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openPluginDetail(
+      { sourceRelativePath: LEFT_PATH, tool: 'claude', pluginName: PLUGIN_NAME },
+      'plugins/review-assistant/.claude-plugin/plugin.json',
+      'plugins/review-assistant/README.md',
+    );
+    expect(state.pluginDetail.value).not.toBeNull();
+    expect(state.pluginManifestFile.value).not.toBeNull();
+    expect(state.pluginOpenFile.value).not.toBeNull();
+
+    // Any other detail route: the hook carrier's, which fails here because no
+    // hook function is scripted — the point is what the open drops, not what
+    // it adopts.
+    await state.openHookCarrierDetail('.claude/settings.json');
+    expect(state.pluginDetail.value).toBeNull();
+    expect(state.pluginManifestFile.value).toBeNull();
+    expect(state.pluginOpenFile.value).toBeNull();
+    state.dispose();
   });
 
   it('runs registered content-owner disposers on close, like the sibling surfaces', async () => {

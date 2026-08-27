@@ -815,6 +815,102 @@ describe('Claude command reading (T449)', () => {
   });
 });
 
+describe('Claude hook reading (T868)', () => {
+  const settingsHookRule = CLAUDE_REPOSITORY_RULES.find(
+    (compiled) => compiled.rule.ruleId === 'claude.repo.hooks.settings',
+  )!;
+
+  /** Recognizes one authored owner under one contained-hook admission. */
+  async function recognizeHookOwner(
+    matchedPath: string,
+    compiled: (typeof CLAUDE_REPOSITORY_RULES)[number],
+    sourceText: string,
+  ): Promise<readonly ToolRecognition[]> {
+    mkdirSync(join(root, matchedPath, '..'), { recursive: true });
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['claude'],
+    );
+    return recognitions;
+  }
+
+  it('retains every handler a group declares, in the order the file wrote them', async () => {
+    // Nothing is deduplicated, ordered, or resolved on the file's behalf: two
+    // handlers naming one command are two handlers, and the additional context
+    // one of them declares is retained beside the other's. What a client does
+    // with either is its own composition (FR-009).
+    const recognitions = await recognizeHookOwner(
+      '.claude/settings.json',
+      settingsHookRule,
+      `${JSON.stringify({
+        hooks: {
+          PostToolUse: [
+            {
+              matcher: 'Write|Edit',
+              hooks: [
+                { type: 'command', command: './format.sh', additionalContextLimit: 5000 },
+                { type: 'command', command: './format.sh' },
+                { type: 'prompt', prompt: 'Summarize what changed.' },
+              ],
+            },
+            { matcher: 'Read', hooks: [{ type: 'command', command: './audit.sh' }] },
+          ],
+        },
+      })}\n`,
+    );
+    const details = recognitions[0]!.details;
+    if (details.kind !== 'hook') {
+      throw new Error('expected a hook recognition');
+    }
+    // One event, two groups, in the file's own order.
+    expect(details.events).toHaveLength(1);
+    const [group, second] = details.events[0]!.groups;
+    expect(second?.kind).toBe('mapping');
+    if (group?.kind !== 'mapping') {
+      throw new Error('expected the first group to be a table');
+    }
+    const handlers = group.entries.find((entry) => entry.key === 'hooks');
+    if (handlers?.value.kind !== 'sequence') {
+      throw new Error('expected the group to declare a handler list');
+    }
+    // Three handlers, the repeated command among them: the file wrote it twice
+    // and the reading publishes it twice.
+    expect(handlers.value.items).toHaveLength(3);
+    expect(JSON.stringify(handlers.value.items)).toContain('additionalContextLimit');
+  });
+
+  it('keeps a declared credential and environment reference literal', async () => {
+    const recognitions = await recognizeHookOwner(
+      '.claude/settings.json',
+      settingsHookRule,
+      `${JSON.stringify({
+        hooks: {
+          SessionStart: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: `curl -H "Authorization: Bearer ${CONTENT_FIXTURE_SECRET}" \${SESSION_ENDPOINT}`,
+                },
+              ],
+            },
+          ],
+        },
+      })}\n`,
+    );
+    const serialized = JSON.stringify(recognitions);
+    expect(serialized).toContain(CONTENT_FIXTURE_SECRET);
+    expect(serialized).toContain('${SESSION_ENDPOINT}');
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+});
+
 describe('Claude settings metadata (T613)', () => {
   /** Recognizes one authored settings document at the given admitted layer. */
   async function recognizeSettings(
@@ -1006,6 +1102,7 @@ describe('the Claude MCP declaration reading and the skill negative (T324)', () 
           unrelated: 'kept out',
           mcpServers: { ctx: { command: 'npx' }, 'named-ref': {}, malformed: 'nope' },
         }),
+        '.mcp.json',
       ),
     ).toEqual([
       {
@@ -1027,11 +1124,14 @@ describe('the Claude MCP declaration reading and the skill negative (T324)', () 
     // the classification is structural and total over what strict JSON can
     // author — every key a string, a duplicate key resolved to its later
     // declaration by the parser, so the later container is the one read.
-    expect(carrier.serverDeclarationsOf('{}')).toEqual([]);
-    expect(carrier.serverDeclarationsOf('{ "mcpServers": "enabled" }')).toEqual([]);
-    expect(carrier.serverDeclarationsOf('{ "mcpServers": [] }')).toEqual([]);
+    expect(carrier.serverDeclarationsOf('{}', '.mcp.json')).toEqual([]);
+    expect(carrier.serverDeclarationsOf('{ "mcpServers": "enabled" }', '.mcp.json')).toEqual([]);
+    expect(carrier.serverDeclarationsOf('{ "mcpServers": [] }', '.mcp.json')).toEqual([]);
     expect(
-      carrier.serverDeclarationsOf('{ "mcpServers": "first", "mcpServers": { "late": {} } }'),
+      carrier.serverDeclarationsOf(
+        '{ "mcpServers": "first", "mcpServers": { "late": {} } }',
+        '.mcp.json',
+      ),
     ).toEqual([{ name: 'late', fields: [] }]);
   });
 

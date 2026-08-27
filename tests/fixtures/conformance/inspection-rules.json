@@ -124,6 +124,54 @@
     ]
   },
   {
+    "ruleId": "claude.repo.hooks.settings",
+    "tool": "claude",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.local.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.hooks.locations-resolution",
+        "url": "https://code.claude.com/docs/en/hooks",
+        "officialHost": "code.claude.com",
+        "sections": ["Hook locations"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A hook defined in .claude/settings.json applies to the single project and can be committed to the repository, while one in .claude/settings.local.json applies to the same project without being shared."
+      }
+    ]
+  },
+  {
     "ruleId": "claude.repo.instructions",
     "tool": "claude",
     "discoveryClass": "static-candidate",
@@ -701,6 +749,82 @@
     ]
   },
   {
+    "ruleId": "codex.repo.hooks",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".codex"
+          },
+          {
+            "kind": "literal",
+            "value": "hooks.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.hooks",
+        "url": "https://learn.chatgpt.com/docs/hooks.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex looks for hooks", "Config shape"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Codex discovers hooks next to active config layers as a hooks.json file, <repo>/.codex/hooks.json being the project location, and that file organizes hooks as an event map whose entries are matcher groups holding handlers, beside an optional top-level description."
+      }
+    ]
+  },
+  {
+    "ruleId": "codex.repo.hooks.inline",
+    "tool": "codex",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".codex"
+          },
+          {
+            "kind": "literal",
+            "value": "config.toml"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.hooks",
+        "url": "https://learn.chatgpt.com/docs/hooks.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex looks for hooks", "Config shape"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "An inline [hooks] table inside a layer’s config.toml is one of the two forms Codex discovers hooks in, spelling the same event/matcher/handler levels as the standalone file; a layer holding both has both loaded with a startup warning."
+      }
+    ]
+  },
+  {
     "ruleId": "codex.repo.instructions",
     "tool": "codex",
     "discoveryClass": "static-candidate",
@@ -1199,6 +1323,179 @@
         "sections": ["Commands (alternative skill format)"],
         "reviewedOn": "2026-08-20",
         "establishes": "Commands are an alternative to skills stored as individual .md files in .claude/commands/, the command name is derived from the filename, the format needs no name field, and a same-name skill has higher priority. The section establishes no project anchor and no ancestor or recursive discovery, which is why this rule admits root direct children alone."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.hooks",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "hooks"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/\\.json$/u"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations", "Hook configuration format"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "Repository-level hook files are .github/hooks/*.json in the repository root — the exact location this rule admits — and the cloud agent loads hook configuration from the same files in the cloned repository; such a file is JSON carrying a version and a hooks object."
+      },
+      {
+        "sourceId": "vscode.copilot.hooks",
+        "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Hook file locations"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "The workspace scope of the hook-locations table is .github/hooks/*.json, and the default chat.hookFilesLocations value loads every *.json file of that folder."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.hooks.settings",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "copilot"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".github"
+          },
+          {
+            "kind": "literal",
+            "value": "copilot"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.local.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "An inline hooks block sits at the top level of .github/copilot/settings.json or .github/copilot/settings.local.json — the exact locations this rule admits — and a malformed item there rejects the whole hooks field."
+      },
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Repository settings (.github/copilot/settings.json)", "User-editable files"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "hooks is one of the keys the repository configuration file supports, holding the hook definitions scoped to that repository; the page's JSON-with-comments statement is written of the configuration directory's own settings.json rather than of this repository pair, whose sections fix its keys and not its syntax."
+      }
+    ]
+  },
+  {
+    "ruleId": "copilot.repo.hooks.settings.claude",
+    "tool": "copilot",
+    "discoveryClass": "static-candidate",
+    "kind": "hook",
+    "sourceKinds": ["repository"],
+    "matcher": {
+      "base": {
+        "kind": "repository"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.json"
+          }
+        ],
+        [
+          {
+            "kind": "literal",
+            "value": ".claude"
+          },
+          {
+            "kind": "literal",
+            "value": "settings.local.json"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-003", "FR-004", "FR-005", "FR-024", "QR-001", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.hooks",
+        "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
+        "officialHost": "code.visualstudio.com",
+        "sections": [
+          "Hook file locations",
+          "How does VS Code handle Claude Code hook configurations?"
+        ],
+        "reviewedOn": "2026-08-26",
+        "establishes": "The workspace scope of the hook-locations table names .claude/settings.json and .claude/settings.local.json in the Claude format — the exact locations this rule admits — and VS Code parses the Claude Code hook configuration format found there."
+      },
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "The CLI also reads the cross-tool .claude/settings.json and .claude/settings.local.json files of the repository for their inline hooks block."
       }
     ]
   },

@@ -130,6 +130,21 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 
 - `package.json`の全dependencyはcaret rangeで宣言し、exact pinは使いません。Prerelease（`^2.0.1-rc.22`）も同様です。exactなresolved versionとintegrityはcommit済みlockfileが所有し、manifestにexact specifierを書くと同じpinを2箇所で管理することになります。ある解決が別のpackageの解決と一致しなければならない場合 — `h3`とdevframe自身のh3 — その一致が住む場所はlockfileであり、決定を記録するdocumentはそう書きます。
 
+## リリースの方針
+
+リリースはChangesetsが所有します。userが受け取る変更 — 挙動、surface、publishされるpackageに届くdependency — を運ぶpull requestは`.changeset/`のentryを追加し、それは`pnpm exec changeset`が書きます。userから観測できない変更はentryを持ちません: specificationの編集、test、commentです。この区別をgateする仕組みは無いので、pull requestを書くときに判断します。
+
+- Publishはnpmのtrusted publishingなので、npm tokenはこのrepositoryにもそのsecretにも存在しません。npmは`.github/workflows/Release.yml`をその名前で信頼するため、そのfileのrenameはnpmjs.com側のtrusted publisherの変更でもあります。両者が再び一致するまで、何もpublishされません。
+- workflowは4つのjobで、その形を決めるのはcredentialです。`select-mode`がmainへのpushが何であるかを言い、`version`がrelease pull requestを開くか更新し、`pack`がbuildしてtarballへpackし、`publish`がそれをuploadします。そして`id-token: write` — npmがpublish tokenと交換するcredential — は`publish`だけに与えられます。`changesets/action`のsub-actionはそのために存在し、combined actionにはできないことです: 単一のjobがreleaseに必要なすべての権限を同時に持ち、buildとbuildが到達するdependencyのcodeを走らせる間も持ち続けます。他のjobが持つのは、それぞれが行うことだけです: `version`はversion commitとpull requestを書き、`select-mode`と`pack`はcheckout以外に何も与えられません。
+- Renovateは2つを除くすべての更新を自動mergeします。除くのは、runtime dependencyのmajorと、1.0.0未満のpackageのminorです。それ以外は、すべての依存の`minor`・`patch`・`pin`・`digest`も、devDependency・workflow action・devcontainerのmajorを含むすべての更新typeも、ci.ymlがsuite全体を走らせたうえでmergeされます。pre-1.0の除外はRenovate自身の文書が求めているものです。SemVerは`0.x`のどのreleaseでも破壊的変更を許すため、そこでのminorはcaret rangeが止まる境界であり、それを動かすことはrange内のbumpではなく受け入れversionの変更にあたります。このruleは`packageRules`の最後に置きます。後のruleが勝つためです。そうしたpull request自身は`.changeset/`のentryを持ちません。bumpは、次のversion pull requestが開くreleaseに乗ってuserへ届きます。
+- release runはqueueせず上書きします（`cancel-in-progress: true`）。mainへの最新のpushだけがpublishするため、mainが先へ進んだcommitのrunが、置き換えたrunの後からnpmへ届いて同じ内容を別versionでpublishすることは起きません。この中断はpublishするjobの内部、npm publishとtag pushの間にも起こり得ますが、それは受け入れる側のtrade-offです。欠けたtagとreleaseはversion commitに対して人が後から作れますが、二重publishは取り消せません。この行は見た瞬間に逆の提案を招くため、workflowの`concurrency`blockにその理由を書いてあります。
+- どのworkflowもactionをcommit SHAではなくtagで参照します。pinしたSHAは、それを上げる仕組みと同じ鮮度にしかなりません。botで自動更新すれば、tagが既に置いているのと同じ信頼をaction所有者へ置き直すだけであり、放置すれば修正の届かないversionにworkflowを固定し続けます。
+- release pathはci.ymlが所有するgateを再実行しません。同じcommitに対しpull requestが既に実行したsuiteをここでもう一度走らせても得るものはないため、releaseが足すのはartifact自体についての2つだけです: tarballを生成するbuildと、packされる直前のtreeに対するpackaged-tree verificationです。
+- `pack`はpack前に`pnpm run build`と`pnpm run verify:package`を実行するので、publish credentialを持つjobはこのrepositoryのbuildを一切走らせず、別のjobが既にgateしたbyteをuploadします。
+- `.changeset/config.json`には、`@changesets/config`が出荷するdefaultと異なる値だけを書きます: changelog generatorと`access`です。default値のcopyは、copy元のdefaultを追跡しなくなった値です。
+- `changeset init`が書く`.changeset/README.md`は置きません。Changesets自身のdocumentationへのlinkであり、このrepositoryのdocumentは2言語のdocumentです。リリースについてこのrepositoryが決めたことは、代わりにここに書きます。
+- `CHANGELOG.md`はChangesetsの出力であり、ドキュメントの言語方針が生成fileを除外する対象です。日本語版を書く必要はありません。`package.json.files`には入れないので、npmが配るのはreadme、historyを配るのはGitHubです。
+
 ## Iconの方針
 
 - IconはIconifyのcollectionから取り、`unplugin-icons`がbuild時にbundleへcompileする:

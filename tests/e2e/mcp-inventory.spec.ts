@@ -182,3 +182,54 @@ test.describe('the priority cross-vendor MCP inventory', () => {
     await expect(page).toHaveURL(/\/mcp\//u);
   });
 });
+
+test.describe('one MCP carrier two products read differently', () => {
+  let fixture: string;
+  let host: LaunchedHost;
+
+  test.beforeEach(async () => {
+    fixture = await mkdtemp(join(tmpdir(), 'aci-divergent-mcp-'));
+    // Copilot's editor host reads a root `.mcp.json` as JSONC and Claude Code
+    // reads it strictly, so a comment leaves one carrier with a reading that
+    // published a name and a reading that failed.
+    await writeFile(
+      join(fixture, '.mcp.json'),
+      [
+        '{',
+        '  // the editor host reads this file as JSONC',
+        '  "mcpServers": {',
+        '    "docs": { "command": "npx", "args": ["-y", "@upstash/context7-mcp"] }',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    host = await launchHost(fixture);
+  });
+
+  test.afterEach(async () => {
+    await stopHost(host);
+    await rm(fixture, { recursive: true, force: true });
+  });
+
+  test('states the failure on the reading that had it, not on the named row', async ({ page }) => {
+    await page.goto(host.origin);
+    await page.getByRole('tab', { name: /MCP/u }).click();
+    const panel = page.getByRole('tabpanel');
+    const items = panel.locator('.aci-item');
+    // Two rows: the name the lenient reading published, and the closing row
+    // carrying the strict reading whose servers are unknown (FR-028).
+    await expect(items).toHaveCount(2);
+    const named = items.filter({ hasText: 'docs' }).first();
+    await expect(named).toContainText('GitHub Copilot');
+    // The other product's failure is not this row's: a named row's declaration
+    // was read, so nothing on it reports a parse failure.
+    await expect(named).not.toContainText('could not be parsed');
+    await expect(named).not.toContainText('could not be read');
+    const closing = items.filter({ hasText: 'could not be read' });
+    await expect(closing).toHaveCount(1);
+    await expect(closing).toContainText('Claude Code');
+    await expect(closing).toContainText('.mcp.json');
+  });
+});

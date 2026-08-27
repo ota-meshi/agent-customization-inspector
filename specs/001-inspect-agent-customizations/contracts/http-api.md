@@ -65,8 +65,8 @@ another machine remains prohibited.
    the Nuxt build emitted into the packaged `dist/public`; the product defines no
    static-assets manifest, no per-asset integrity re-verification, and no hand-written
    router. The one product-owned piece in front of it is the closed detail-route
-   rewrite — `/skills/**`, `/instructions/**`, `/mcp/**`, `/rules/**`,
-   `/prompts-and-commands/**`, `/permissions/**`, `/agents/**`,
+   rewrite — `/skills/**`, `/instructions/**`, `/mcp/**`, `/hooks/**`,
+   `/rules/**`, `/prompts-and-commands/**`, `/permissions/**`, `/agents/**`,
    `/plugins/**`, `/output-styles/**`, and `/settings-and-configuration/**`, one
    family per shipped kind detail: a `GET`/`HEAD` whose path enters one of these route families is
    rewritten to `/` and falls
@@ -123,6 +123,7 @@ another machine remains prohibited.
 | `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot, or the control-only `GlobalFenceRecoverySnapshot` while fenced |
 | `agent-customization-inspector:get-file-detail` | read | One active-generation `FileDetail` |
 | `agent-customization-inspector:get-mcp-carrier-detail` | read | One active-generation `McpCarrierDetail`: one MCP-declaring file's declarations and file facts, never its source |
+| `agent-customization-inspector:get-hook-carrier-detail` | read | One active-generation `HookCarrierDetail`: one hook-declaring file's lifecycle events and file facts, never its source; the two documented carrier forms are one discriminated result |
 | `agent-customization-inspector:get-plugin-carrier-detail` | read | One active-generation `PluginCarrierDetail` for one inventory row: the complete source when the carrier is a manifest and, when the carrier is a catalog, the requested entry's declarations, never the catalog's own bytes |
 | `agent-customization-inspector:get-plugin-file-detail` | read | One file a plugin ships, read as that plugin's: the complete authored source and the file's own diagnostics, for a path the requesting carrier's offering of that row's name reached |
 | `agent-customization-inspector:get-permission-policy-detail` | read | One active-generation `PermissionPolicyDetail`: one declared permission policy, whole document or declared block |
@@ -304,8 +305,15 @@ SessionSnapshot
 │       one row per declared server name with each declaration resolving it, in
 │       carrier-path then tool order, each carrying the vendor surfaces its
 │       admissions rest on, exactly as an instruction file's recognitions do;
-│       the one null row closes the list with the
-│       carriers publishing no named declaration
+│       the one null row closes the list with the readings publishing no named
+│       declaration. A reading that could not be read is there whatever another
+│       reading of the same file found: its servers are unknown rather than
+│       absent, and one carrier is read once per product — a root `.mcp.json` is
+│       JSONC to Copilot's editor host and strict JSON to Claude Code. A reading
+│       that parsed and declares none is there only while no reading of its file
+│       publishes a name, because the two vendors' schemas differing over one
+│       carrier — the bare map one accepts and the wrapper the other requires —
+│       is not a finding about the file
 ├── agents[]
 │   └── name string | null,
 │       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
@@ -355,6 +363,23 @@ SessionSnapshot
 │       one row per declared permission policy, named by the path of the
 │       file that declares it; a carrier declaring none is recognized as
 │       whatever owns the rest of it, and is no row here
+├── hooks[]
+│   └── event string | null,
+│       declarations[] { sourceRelativePath, tool, carrier, surfaces[],
+│       parseStatus, diagnosticIds[] } —
+│       one row per declared lifecycle event with each declaration declaring
+│       it, in carrier-path then tool order, exactly as an MCP row groups its
+│       declarations. `carrier` is the documented form the declaration was
+│       authored in — `standalone` for a file whose whole purpose is hooks,
+│       `contained` for a hook table inside a file admitted for other content
+│       too — because one config layer can hold both forms and the vendor
+│       loads both rather than choosing, so a row can list two declarations of
+│       one event from two files of one layer. The one null row closes the
+│       list with the carriers whose emptiness is a finding: one whose hook
+│       block could not be read, whose events are unknown rather than absent,
+│       and one whose whole purpose is hooks and that declares none, which each
+│       declaration's own `parseStatus` tells apart. A carrier that merely may
+│       contain a hook table and does not is on no row at all
 ├── plugins[]
 │   └── name string or null,
 │       carriers[] { sourceRelativePath, tool, surfaces[], carrier, parseStatus,
@@ -1059,6 +1084,70 @@ current committed generation holds an MCP recognition at the path — never scan
 removed by a later commit, and a value
 of another type resolves the same way, so no separate malformed-argument outcome exists;
 the `global-disable-pending` conflict rejection while the disable fence is non-null.
+
+### `agent-customization-inspector:get-hook-carrier-detail`
+
+Parameters: one committed Source-relative Path as the function's single positional
+argument, exactly as `get-mcp-carrier-detail` takes one — the declaring file's identity
+(FR-030).
+
+```json
+".codex/hooks.json"
+```
+
+Returns one active-generation hook carrier detail: the lifecycle events the file declares
+and its own file facts, and deliberately no `sourceText` field at all — the same rule the
+MCP carrier's detail follows, and for the same reason (FR-007). Publishing a declaration is
+not running it: no declared command, handler, or referenced script is executed, opened, or
+resolved, and no environment reference is substituted (FR-020, FR-026). A file of any other
+kind never resolves here, whatever hook-looking configuration its content spells.
+
+The result takes one of two shapes, discriminated by `carrier`, because the two documented
+forms differ in what the carrier itself declares: a file whose whole purpose is hooks —
+a Codex `.codex/hooks.json` — publishes its remaining top-level keys here, since it has no
+other row to publish them; a file that contains a hook table among other content — an
+inline Codex `[hooks]` in a `.codex/config.toml`, the `hooks` object of a Claude root
+settings document — leaves its neighbouring keys to the recognitions of the same file that
+own them.
+
+Which files those are is each vendor's contract, and a documented hook location is not
+automatically one of them: a declaration that is part of what another customization *is* —
+a Claude skill's or subagent's frontmatter `hooks`, a plugin manifest's or a catalog
+entry's — resolves here for no path, because that customization's own detail already
+publishes the keys its file wrote and a second publication could disagree with the first
+(contracts/vendors/claude-code.md § Normative initial-release presentation allowlist).
+
+```text
+HookCarrierDetail
+├── carrier — 'standalone' | 'contained', the documented form of this carrier
+├── file — the carrier's content-free summary, discriminated by encoding:
+│   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable text adds hadLeadingBom and sizeBytes — never sourceText
+│   └── binary adds sizeBytes; unknown adds nothing further
+├── events[] — the declarations, one per declared event in the parser's
+│   resolved order, empty when the carrier declares none — or null exactly
+│   when extraction failed all-or-nothing (FR-028), whose Diagnostic is below:
+│   └── event, groups[] — the declared event name and the matcher groups it
+│       declares, each as the value its item wrote, in the shared declared-value
+│       shape the detail surfaces render
+├── carrierFields[] — 'standalone' only: every top-level entry beside the hook
+│   map, in the entry shape `presentation.frontmatter` uses
+└── diagnostics[]
+```
+
+This tree is the response shape: a client can rely on exactly these fields and no others.
+A group is published as its author wrote it, malformed or not — an item that is not a table
+is a group a reader needs stated rather than dropped — while an event whose value is not a
+list of groups declares nothing and is omitted whole, the same answer an absent hook map
+gives. The same inert-rendering, single-request, and request-token rules as
+`get-file-detail` apply, including the `(clientDataEpoch, sourceRelativePath)` capture.
+
+Outcomes: the `HookCarrierDetail` result — a parsed carrier declaring no event is a result
+with empty `events`, not a rejection; the `stale-resource` rejection when no current
+committed generation holds a hook recognition at the path — never scanned, removed by a
+later commit, or a path only a declaration names, and a value of another type resolves the
+same way, so no separate malformed-argument outcome exists; the `global-disable-pending`
+conflict rejection while the disable fence is non-null.
 
 ### `agent-customization-inspector:get-plugin-carrier-detail`
 
@@ -1859,7 +1948,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    policy/remediation advice, validation, lint, synchronization, conversion, formatting, or
    fixing field or behavior is admitted.
 4. A declared parameter validates by resolution: a `get-file-detail`,
-   `get-mcp-carrier-detail`, or `get-permission-policy-detail` argument whose resource the
+   `get-mcp-carrier-detail`, `get-hook-carrier-detail`, or
+   `get-permission-policy-detail` argument whose resource the
    invoked function does not hold — a value of another type, or another of those
    functions' resource, included — is the
    `stale-resource` rejection, an extra positional argument is never read and changes
@@ -1880,7 +1970,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    (`/skills/compare`, `/instructions/compare`, `/mcp/compare`,
    `/prompts-and-commands/compare`), and each kind's detail route
    (`/skills/<source-relative path>`, `/instructions/<source-relative path>`,
-   `/mcp/<source-relative path>`, `/rules/<source-relative path>`,
+   `/mcp/<source-relative path>`, `/hooks/<source-relative path>`,
+   `/rules/<source-relative path>`,
    `/prompts-and-commands/<source-relative path>`,
    `/permissions/<source-relative path>`, `/agents/<source-relative path>`,
    `/plugins/<source-relative path>`, `/output-styles/<source-relative path>`,

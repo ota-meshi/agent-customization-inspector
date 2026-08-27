@@ -18,6 +18,7 @@ import { ClaudeCompiledPermissionsCarrierRule } from './permissions/claude';
 import { ClaudeCompiledMcpCarrierRule } from './mcp/claude';
 import { ClaudeCompiledPromptRule } from './prompts-and-commands/claude';
 import { ClaudeCompiledInstructionRule } from './instructions/claude';
+import { ClaudeCompiledSettingsHookRule } from './hooks/claude';
 import type { CompiledStaticCandidateRule, CompiledStaticOtherKindRule } from './registry';
 import {
   ClaudeCompiledPluginCatalogRule,
@@ -46,11 +47,12 @@ export class ClaudeCompiledOtherKindRule
     | 'agent'
     | 'prompt/command'
     | 'permissions'
+    | 'hook'
     | 'plugin'
     | 'output style'
   >;
 
-  /** Compiles one Claude record of any kind but the seven with a question of their own. */
+  /** Compiles one Claude record of any kind but the eight with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
@@ -60,6 +62,7 @@ export class ClaudeCompiledOtherKindRule
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
       rule.kind === 'permissions' ||
+      rule.kind === 'hook' ||
       rule.kind === 'output style'
     ) {
       throw new TypeError(`rule ${rule.ruleId} needs a Claude unit that answers for its kind`);
@@ -115,9 +118,11 @@ export const CLAUDE_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = O
                 ? new ClaudeCompiledPermissionsCarrierRule(rule)
                 : rule.kind === 'output style'
                   ? new ClaudeCompiledOutputStyleRule(rule)
-                  : rule.ruleId === 'claude.repo.marketplace'
-                    ? new ClaudeCompiledPluginCatalogRule(rule)
-                    : rule.ruleId === 'claude.repo.skills-directory-plugin'
-                      ? new ClaudeCompiledPluginManifestRule(rule)
-                      : new ClaudeCompiledOtherKindRule(rule),
+                  : rule.kind === 'hook'
+                    ? new ClaudeCompiledSettingsHookRule(rule)
+                    : rule.ruleId === 'claude.repo.marketplace'
+                      ? new ClaudeCompiledPluginCatalogRule(rule)
+                      : rule.ruleId === 'claude.repo.skills-directory-plugin'
+                        ? new ClaudeCompiledPluginManifestRule(rule)
+                        : new ClaudeCompiledOtherKindRule(rule),
   );

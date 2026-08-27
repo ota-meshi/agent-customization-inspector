@@ -43,9 +43,13 @@ describe('closed diagnostic registry', () => {
       // The next step names what the reader can do, not what is wrong with
       // their file: a parse failure is classified where it happened without
       // inspecting its cause, so calling the file incorrect would be a verdict
-      // the scan did not reach (FR-032).
+      // the scan did not reach (FR-032). What is missing is the failed parse's
+      // own output rather than everything the file holds, because a file-unit
+      // detail can publish one product's declarations beside another product's
+      // failure to parse the same bytes
+      // (`diagnostics.ts` § recognition-parse-failed).
       'recognition-parse-failed':
-        'This file could not be parsed, so none of its declarations or instructions could be read out of it. They are unknown rather than absent; a rescan reports the current state of the file.',
+        'This file could not be parsed, so the declarations and instructions that parse would have produced are unknown rather than absent. A product that reads the same file in another format reads it independently; a rescan reports the current state of the file.',
     };
     for (const [code, message] of Object.entries(messages) as [DiagnosticCode, string][]) {
       expect(DIAGNOSTIC_REGISTRY[code].message).toBe(message);

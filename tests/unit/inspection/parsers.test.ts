@@ -15,10 +15,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodeSourceBytes } from '../../../src/shared/entities';
 import { ParsedMarkdownDocument } from '../../../src/server/inspection/parsers/markdown';
-import {
-  ParsedJsoncDocument,
-  ParsedStrictJsonDocument,
-} from '../../../src/server/inspection/parsers/json';
+import { ParsedJsonDocument } from '../../../src/server/inspection/parsers/json';
 import { ParsedTomlDocument } from '../../../src/server/inspection/parsers/toml';
 import type { DeclaredEntryDto } from '../../../src/shared/api-types';
 import {
@@ -204,23 +201,33 @@ describe('frontmatter reading', () => {
   });
 });
 
+/**
+ * A reading whose `(tool, path)` the module's tables do not name, which is
+ * every Claude and Codex carrier and this vendor's own MCP carriers.
+ */
+const STRICT_READING = { tool: 'claude', sourceRelativePath: '.mcp.json' } as const;
+
+/** A reading the tables do name: the VS Code carrier of the Copilot surface. */
+const JSONC_READING = { tool: 'copilot', sourceRelativePath: '.vscode/mcp.json' } as const;
+
 describe('the JSON-family document seams (T371 parsing seam)', () => {
   it('keeps the strict document strict: a comment or trailing comma fails whole', () => {
     // The format is the caller's contract, fixed by which class it names: the
     // root `.mcp.json` reading must fail exactly where the vendor's own
     // strict reader would, and no option exists to relax it (T371's
     // never-for-root rule, enforced by identifier).
-    expect(() => new ParsedStrictJsonDocument('// comment\n{}')).toThrow();
-    expect(() => new ParsedStrictJsonDocument('{ "a": 1, }')).toThrow();
-    expect(() => new ParsedStrictJsonDocument('')).toThrow();
+    expect(() => new ParsedJsonDocument('// comment\n{}', STRICT_READING)).toThrow();
+    expect(() => new ParsedJsonDocument('{ "a": 1, }', STRICT_READING)).toThrow();
+    expect(() => new ParsedJsonDocument('', STRICT_READING)).toThrow();
   });
 
   it('reads JSONC comments and a trailing comma into the same rendered entries', () => {
     // The leniency VS Code's own config files document, with comments as
     // format syntax, never declarations: the comment syntax is blanked and
     // the remainder resolves through the same JSON.parse as strict JSON.
-    const document = new ParsedJsoncDocument(
+    const document = new ParsedJsonDocument(
       ['{', '  // stdio server', '  "a": 1,', '  /* block */ "b": [true, null],', '}'].join('\n'),
+      JSONC_READING,
     );
     expect(document.entries).toEqual([
       { key: 'a', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '1' } },
@@ -239,9 +246,9 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
     // Blanking the comment syntax repairs nothing else: any syntax error in
     // the remainder fails the document whole (FR-028), and an empty document
     // is such an error, as it is for JSON.parse('').
-    expect(() => new ParsedJsoncDocument('{ "a": , }')).toThrow(SyntaxError);
-    expect(() => new ParsedJsoncDocument('{ "a": 1 ')).toThrow(SyntaxError);
-    expect(() => new ParsedJsoncDocument('')).toThrow(SyntaxError);
+    expect(() => new ParsedJsonDocument('{ "a": , }', JSONC_READING)).toThrow(SyntaxError);
+    expect(() => new ParsedJsonDocument('{ "a": 1 ', JSONC_READING)).toThrow(SyntaxError);
+    expect(() => new ParsedJsonDocument('', JSONC_READING)).toThrow(SyntaxError);
   });
 
   it("renders entries in the parser's resolved order, the platform enumeration included", () => {
@@ -253,8 +260,8 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
     // syntax first — so this case pins the accepted behavior for both.
     const source = '{ "10": { "z": 1, "1": 2 }, "2": true }';
     for (const document of [
-      new ParsedStrictJsonDocument(source),
-      new ParsedJsoncDocument(source),
+      new ParsedJsonDocument(source, STRICT_READING),
+      new ParsedJsonDocument(source, JSONC_READING),
     ]) {
       expect(document.entries.map((entry) => entry.key)).toEqual(['2', '10']);
       const nested = document.entries.find((entry) => entry.key === '10');
@@ -273,8 +280,8 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
     // (FR-028).
     const source = '{ "__proto__": { "command": "x" }, "ok": 1 }';
     for (const document of [
-      new ParsedStrictJsonDocument(source),
-      new ParsedJsoncDocument(source),
+      new ParsedJsonDocument(source, STRICT_READING),
+      new ParsedJsonDocument(source, JSONC_READING),
     ]) {
       expect(document.entries.map((entry) => entry.key)).toEqual(['__proto__', 'ok']);
       expect(document.entries[0]!.value).toEqual({
@@ -291,7 +298,7 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
   });
 
   it("keeps JSONC's duplicate-key semantics: later value, earlier place", () => {
-    const document = new ParsedJsoncDocument('{ "a": 1, "b": 2, "a": 3 }');
+    const document = new ParsedJsonDocument('{ "a": 1, "b": 2, "a": 3 }', JSONC_READING);
     expect(document.entries).toEqual([
       { key: 'a', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '3' } },
       { key: 'b', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '2' } },
@@ -299,7 +306,7 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
   });
 
   it("keeps JSON.parse's duplicate-key semantics: later value, earlier place", () => {
-    const document = new ParsedStrictJsonDocument('{ "a": 1, "b": 2, "a": 3 }');
+    const document = new ParsedJsonDocument('{ "a": 1, "b": 2, "a": 3 }', STRICT_READING);
     expect(document.entries).toEqual([
       { key: 'a', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '3' } },
       { key: 'b', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '2' } },
@@ -310,7 +317,7 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
     // `String(-0)` is `"0"`: the renderings publish the platform's own
     // resolution as is, with no signed-zero special case — the same
     // acceptance as the integer-like key enumeration order.
-    expect(new ParsedStrictJsonDocument('{ "n": -0 }').entries).toEqual([
+    expect(new ParsedJsonDocument('{ "n": -0 }', STRICT_READING).entries).toEqual([
       { key: 'n', keyKind: 'string', value: { kind: 'scalar', scalarKind: 'number', text: '0' } },
     ]);
     expect(new ParsedTomlDocument('n = -0.0').entries).toEqual([
@@ -324,9 +331,9 @@ describe('the JSON-family document seams (T371 parsing seam)', () => {
   it('renders no entry for a non-object root, in either format', () => {
     // A root array, scalar, or null declares no key — a rendering fact, not a
     // parse failure — so the entries are empty rather than invented.
-    expect(new ParsedStrictJsonDocument('[1, 2]').entries).toEqual([]);
-    expect(new ParsedStrictJsonDocument('null').entries).toEqual([]);
-    expect(new ParsedJsoncDocument('// just a list\n[1, 2]').entries).toEqual([]);
+    expect(new ParsedJsonDocument('[1, 2]', STRICT_READING).entries).toEqual([]);
+    expect(new ParsedJsonDocument('null', STRICT_READING).entries).toEqual([]);
+    expect(new ParsedJsonDocument('// just a list\n[1, 2]', JSONC_READING).entries).toEqual([]);
   });
 });
 

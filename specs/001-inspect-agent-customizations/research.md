@@ -188,10 +188,20 @@ configuration implementation, review the compatibility decision again, synchroni
 dependency-baseline-bearing English/Japanese research, plan, quickstart, and task artifact,
 and rerun `/speckit.plan` followed by `/speckit.tasks`. A local package/lockfile edit may not
 create a second dependency baseline.
+An update Renovate automerges is outside this gate: which packages this project selects, and
+why each was chosen, do not change. Such an update is not confined to the lockfile —
+`:preserveSemverRanges` is `rangeStrategy: replace`, which rewrites the accepted range in
+`package.json` whenever the new version falls outside it — so what stands behind a bump is
+ci.yml, which runs the whole suite against that pull request before it merges. A version
+recorded in these artifacts is the one its reason was reviewed against. Two updates never
+automerge — a runtime dependency's major, and a minor to a package below 1.0.0, where
+SemVer permits a breaking change in any release — so replacing a package, crossing its
+major, or moving a pre-1.0 caret range still reaches this gate (AGENTS.md § Release
+policy).
 
 | Area | Selected version | Reason |
 |---|---:|---|
-| Node.js | 24.18.0 LTS development/build baseline; engines `^24.11.0 || ^26.0.0` = `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` | Declares runtime compatibility across the Node 24/26 ranges while the release matrix certifies each lower bound and excludes other majors |
+| Node.js | Active LTS development/build baseline; engines `^24.11.0 || ^26.0.0` = `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` | Declares runtime compatibility across the Node 24/26 ranges while the release matrix certifies each lower bound and excludes other majors |
 | TypeScript | 6.0.3 | Newest compiler supported by the current Vue/Volar and typescript-eslint toolchain |
 | Nuxt / Vue | 4.4.8 / 3.5.39 | Current stable releases |
 | Vue Router | 5.2.0 | Current stable release; satisfies Nuxt 4.4.8's declared `^5.1.0` range; no separate router abstraction |
@@ -214,6 +224,7 @@ create a second dependency baseline.
 | Components/DOM | Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers |
 | Browser/a11y | Playwright 1.61.1, `@axe-core/playwright` 4.12.1 | Current stable browser and accessibility tooling |
 | Types | `@types/node` 24.13.3, `vue-tsc` 3.3.7 | Latest compatible types for the Node 24 baseline and Vue |
+| Release | `@changesets/cli` 3.0.1, `@changesets/changelog-github` 1.0.0 | Changesets owns the version bump, the changelog, and the publish: a pull request carrying a change a user receives adds a `.changeset/` entry, and a push to main either opens or updates the release pull request or publishes what that pull request versioned. devDependencies, because the release runs in CI and the published package imports neither. The GitHub changelog generator is selected so each entry links the pull request it came from, and it is one of the two values `.changeset/config.json` states at all — a copied default is a value that has stopped tracking the default it was copied from. `.github/workflows/Release.yml` drives that action's sub-actions rather than the combined action, which is what lets `id-token: write` — what npm trusted publishing exchanges for a publish token — sit on the publishing job alone (AGENTS.md § Release policy) |
 
 **Rationale**: The selected set is the newest stable combination whose published peer and
 builder ranges agree, so the first implementation can be reproduced without forcing
@@ -246,7 +257,8 @@ user data to migrate. T001 must confirm that determination before package/config
 an affected consumer or prior contract invalidates it and requires replanning. Every later
 accepted dependency addition/change or breaking public-contract change must record affected
 consumers, contracts, data, and workflows; required migration and compatibility/support
-steps; and a rollback/support path, or an explicit reasoned no-impact determination. Missing
+steps; and a rollback/support path, or an explicit reasoned no-impact determination — an
+update Renovate automerges being no such change, as the dependency gate above states. Missing
 or stale English/Japanese design evidence in this `**Migration impact**` section and the
 paired `**移行影響**` section, plus the plan's
 `**Dependency and breaking-change migration gate**`/`**Dependencyおよび破壊的変更の移行gate**`
@@ -274,9 +286,9 @@ without binding.
 The production entry does not import `gunshi/agent`, lazy commands, custom plugins, or
 experimental parser combinators. Although Gunshi is one npm-graph leaf, its bundled internal
 argument/plugin/resource code remains part of the audited payload, integrity, license, and
-import-boundary digest. The lockfile-pinned resolved version — upgraded only by an explicit
-`pnpm update`, and bounded by the caret range to the same 0.x minor — plus these tests bound
-its pre-1.0 API-change risk.
+import-boundary digest. The lockfile-pinned resolved version — bounded by the caret
+range to the same 0.x minor, which Renovate does not cross on its own — plus these tests
+bound its pre-1.0 API-change risk.
 
 The audited 0.37.0 registry tarball has 34 text-only JavaScript, declaration, JSON,
 documentation, and license files (239,298 unpacked bytes), no runtime/optional/peer/bundled
@@ -293,21 +305,21 @@ than re-decided per member; the lockfile pins every member by name, version, and
 hash — identical across OSes — so the payload bytes are fixed at dependency review, and
 devframe's own tarball payload is JavaScript/TypeScript text only, so the Node-only package gate holds. devframe is
 pre-1.0: 0.x minors may migrate APIs, so the caret range excludes them, the committed
-lockfile pins the resolved version, and any bump is a § 3 planning-gate change.
+lockfile pins the resolved version, and crossing that minor is a § 3 planning-gate change
+rather than an automerged bump.
 `tests/package/production-graph.test.ts` asserts exactly the eleven approved direct
 dependencies; their versions and integrity stay owned by the lockfile.
 
 ### Finite release-certification matrix
 
-**Decision**: Support the complete declared Node.js 24/26 engine range on the three fixed
-OS/architecture targets. Build one platform-independent tarball on `ubuntu-24.04` x64 with
-the Node.js 24.18.0 development/build baseline, run a separate build/package smoke check,
-then install the identical bytes in the exact six-job lower-bound certification product of
-Node.js `24.11.0` and `26.0.0` with `ubuntu-24.04` x64, `macos-15` arm64, and
-`windows-2025` x64. Record the resolved runner-image identifier and actual Node version for
-each release job. Run the full primary-workflow and accessibility browser suite against the
+**Decision**: Support the complete declared Node.js 24/26 engine range on the three OS
+targets. Build one platform-independent tarball on `ubuntu-latest` with the active LTS
+Node.js development/build baseline, run a separate build/package smoke check, then install
+the identical bytes in the exact six-job lower-bound certification product of Node.js
+`24.11.0` and `26.0.0` with `ubuntu-latest`, `macos-latest`, and `windows-latest`. Record
+the resolved runner-image identifier and actual Node version for each release job. Run the full primary-workflow and accessibility browser suite against the
 exact Chromium, Firefox, and WebKit revisions installed by Playwright 1.61.1 on
-`ubuntu-24.04` x64 with Node.js 24.18.0. Those browser revisions are the reproducible
+`ubuntu-latest` with the active LTS Node.js. Those browser revisions are the reproducible
 automated certification baseline, not an exhaustive user-browser list. The OS helper passes
 the URL to the default handler without selecting or verifying its family/version; helper
 success is not compatibility evidence, and the printed URL plus `--no-open` is the fallback
@@ -321,9 +333,10 @@ revisions provide a finite automated gate without claiming that the OS default h
 selects one of them.
 
 **Alternatives considered**: An unbounded `>=26.0.0` engine range was rejected because it
-silently claims future majors. Mutable `*-latest` runner labels and an unspecified modern-
-browser target were rejected because their release denominator changes without a repository
-change. Chromium-only testing was rejected because the local launcher may open another
+silently claims future majors. Leaving a `*-latest` runner's resolved image unrecorded, and an
+unspecified modern-browser target, were rejected because the release denominator would then
+change without a repository change; the labels themselves stay, with each job recording the
+image identifier and Node version it resolved. Chromium-only testing was rejected because the local launcher may open another
 browser engine and the product uses standard browser APIs intended to work across the three
 Playwright engines.
 
@@ -338,12 +351,12 @@ Primary version evidence is the npm registry for
 [Monaco Editor](https://www.npmjs.com/package/monaco-editor),
 [Vitest](https://www.npmjs.com/package/vitest), and
 [Playwright](https://www.npmjs.com/package/@playwright/test). Node's official
-[release status](https://nodejs.org/en/about/previous-releases) and
-[Node 24.18.0 release](https://nodejs.org/en/blog/release/v24.18.0) establish the LTS baseline
-and exact build release; the [Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)
+[release status](https://nodejs.org/en/about/previous-releases) establishes which line is the
+active LTS the development/build baseline resolves to; the
+[Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)
 establishes the second engine floor. GitHub's official
 [runner-image labels](https://github.com/actions/runner-images#available-images) establish the
-three fixed OS/architecture jobs. Monaco's official
+three OS targets. Monaco's official
 [v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)
 establishes the selected stable editor version.
 Gunshi's official [setup requirements](https://gunshi.dev/guide/introduction/setup) and
@@ -714,10 +727,53 @@ points into a document, and a range beside the value taken with it restates that
 rather than checking it. A document an extractor cannot parse discards the recognition's
 whole extraction rather than inventing a value.
 
+Which JSON format a carrier is read as belongs to the reader and the file together rather
+than to the file alone, and every answer is measured rather than assumed. Copilot's hook
+files, the cross-tool `.claude/settings*.json`, the workspace-root `.mcp.json`, and the
+editor's `.vscode/mcp.json` are read as JSONC; every other JSON carrier this product reads
+is strict, its own repository settings pair included. `.claude/settings.json` fixes the shape across products — Claude Code documents a
+`//` comment in a settings file as a syntax error it reports at the next start, while
+Copilot's editor parses that same file through a JSONC reader, so one physical file has two
+answers and each product's recognition takes its own (FR-004).
+
+Copilot's surfaces can disagree as well, and three of its four JSONC carriers are such a
+case: its CLI rejects a comment in the cross-tool pair, in a hook file, and in the
+workspace-root `.mcp.json`, each measured against the shipped build, while its editor reads
+all three as JSONC. Comments are accepted wherever any one of that product's surfaces accepts
+them. A file carrying no comment reads identically either way, so the choice decides only what
+a commented file shows: read strictly it has no declarations at all and its row states that
+it could not be read, hiding what that surface loads from it, while read as JSONC its
+declarations appear on a row that also names the CLI, which loads none of them. Showing the
+content with its surfaces is the milder error.
+
+Its own repository settings pair is the case that rule does not reach, and the reason it is
+read strictly: no surface of this product reads those two files leniently. The editor's
+settings lookup is excluded and its hook-locations table names the Claude-format pair rather
+than this one, so the CLI is the only reader, and that CLI's two paths differ from each
+other — the one `/settings` displays through accepts a comment, while the load that makes
+settings take effect, and that hook loading goes through, rejects it. A path that displays a
+file without loading it is not a surface to union, and the milder-error argument above has
+nothing to weigh: a commented file here takes effect nowhere, so a lenient reading would put
+declarations on a row whose one product loads none of them and hide nothing in exchange. Answering per surface is not expressible today — a recognition
+names its surfaces and takes one parse — so the divergence is recorded where the decision is
+made rather than published.
+
+The union is Copilot's alone, because its surfaces are built by different providers — an
+editor, a CLI, and a hosted agent — and diverge in measurement. The other products' surfaces
+are one vendor's and reach one binary, so an editor that scans another vendor's session files
+leniently is discovering what that session has rather than loading it, and each of those
+products answers with its own client's reading.
+
+What established each answer — a vendor page, a shipped implementation read as source, or a
+call made against a named build — is recorded with the revision it was taken from, because an
+implementation's behavior is a dated fact rather than a standing one. Every carrier a local
+client reads has been measured against that client; what remains unmeasured is the hosted
+surface, which no local call reaches.
+
 YAML semantic parsing uses the 1.2 core schema: an alias resolves to the value it points at
 and an unresolved tag leaves the scalar it carried, because both are what a product loading
-the file reads and this tool describes rather than validates; JSONC
-extracts known paths from a syntax tree; a decoded value is kept only where the syntax
+the file reads and this tool describes rather than validates; JSONC blanks its comment
+syntax and resolves the remainder through the same strict parse; a decoded value is kept only where the syntax
 resolves a scalar — a string, number, or boolean, reported as the text of the parser's own
 resolution — while a collection resolves to nothing an entry can name; Markdown/frontmatter
 and Claude imports are scanned as text. Parsing runs in-process on the scan path with the bundled
@@ -2083,7 +2139,8 @@ read-only, local, non-executing boundary.
    both interaction thresholds.
 4. Dependency revalidation is a planning gate. Any accepted package or version change synchronizes all
    dependency-baseline-bearing English/Japanese design and task artifacts and reruns planning plus task
-   generation before implementation proceeds.
+   generation before implementation proceeds, excepting the updates Renovate automerges, which
+   ci.yml gates instead.
 5. The SC-002 environment is a checked-in versioned published profile with an objective
    current-request status stop condition; private local-machine identity is not part of the
    contract.
@@ -2094,8 +2151,8 @@ read-only, local, non-executing boundary.
    accessibility, and defined review protocol. Ordinary contributors do not carry those
    obligations.
 8. `engines.node` is the complete Node 24/26 runtime compatibility range; the six exact floor
-   jobs are lower-bound certification samples and Node 24.18.0 is the development/build
-   baseline. The pinned three Playwright revisions are the automated browser-certification
+   jobs are lower-bound certification samples and the active LTS Node.js is the
+   development/build baseline. The pinned three Playwright revisions are the automated browser-certification
    baseline, while the startup helper delegates to an unverified OS default handler and always
    retains the printed/manual-open fallback.
 9. Repository and Global keep independent generation sequences. A successful initial or

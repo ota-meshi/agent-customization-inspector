@@ -300,16 +300,23 @@ export async function assembleScanPublication(
         // comparison-eligible; only the derived metadata/relationships are
         // omitted, and the diagnostic makes the generation partial (FR-028).
         //
-        // One failure is one record per (file, kind): the Markdown kinds
-        // share one extraction across every recognizing tool, and the MCP
-        // kind's per-tool readings share their parser family over the one
-        // decoded text, so a text one reading rejects fails them all
-        // (candidate.ts; data-model.md § ToolRecognition). Minting a record
-        // per recognition would publish one observation as several a reader
-        // cannot tell apart. The file
-        // references it because the outcome is file-confined, and every
-        // failed recognition of the kind shares the same reference, which is
-        // what each inventory definition republishes. A recognizer never sees
+        // One failure is one record per (file, kind): the Markdown kinds share
+        // one extraction across every recognizing tool, and the JSON-family
+        // kinds resolve one decoded text, so the readings that reject it
+        // reject it for the same reason (candidate.ts;
+        // data-model.md § ToolRecognition). Minting a record per recognition
+        // would publish one observation as several a reader cannot tell apart.
+        //
+        // They do not always fail together: which JSON format a carrier is
+        // read as belongs to the `(tool, path)` pair, so one product's reading
+        // of a root `.mcp.json` or a `.claude/settings.json` can parse while
+        // another's rejects the same bytes (`parsers/json.ts` § acceptsComments).
+        // The record is then referenced by the readings that failed and by the
+        // file, and never by a reading that parsed — which is what keeps a
+        // successful detail and a successful inventory row free of another
+        // product's failure. The file references it because the outcome is
+        // file-confined, and every failed recognition of the kind shares the
+        // one reference, which is what each inventory definition republishes. A recognizer never sees
         // the diagnostic ID it will be given, so the ID is attached here
         // rather than inside it.
         const byKind = Map.groupBy(fileRecognitions, (recognition) => recognition.details.kind);

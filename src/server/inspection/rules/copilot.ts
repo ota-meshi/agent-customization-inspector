@@ -24,6 +24,10 @@ import {
   CopilotCompiledPromptFileRule,
 } from './prompts-and-commands/copilot';
 import { CopilotCompiledInstructionRule } from './instructions/copilot';
+import {
+  CopilotCompiledSettingsHookRule,
+  CopilotCompiledStandaloneHookRule,
+} from './hooks/copilot';
 import type { CompiledStaticCandidateRule, CompiledStaticOtherKindRule } from './registry';
 import { CopilotCompiledPluginCatalogRule } from './plugins/copilot';
 import type { CustomizationKind } from '../../../shared/entities';
@@ -49,11 +53,12 @@ export class CopilotCompiledOtherKindRule
     | 'agent'
     | 'prompt/command'
     | 'permissions'
+    | 'hook'
     | 'plugin'
     | 'output style'
   >;
 
-  /** Compiles one Copilot record of any kind but the seven with a question of their own. */
+  /** Compiles one Copilot record of any kind but the eight with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
@@ -63,6 +68,7 @@ export class CopilotCompiledOtherKindRule
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
       rule.kind === 'permissions' ||
+      rule.kind === 'hook' ||
       // No shipped rule of this vendor carries the kind; the exclusion keeps
       // the unit's type in step with the base, whose `kind` an output-style
       // unit answers for (`output-styles/compiled-rule.ts` § CompiledStaticOutputStyleRule).
@@ -130,11 +136,19 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
               : new CopilotCompiledMcpCarrierRule(rule)
           : rule.kind === 'agent'
             ? new CopilotCompiledAgentRule(rule)
-            : rule.kind === 'prompt/command'
-              ? rule.ruleId === 'copilot.repo.prompt'
-                ? new CopilotCompiledPromptFileRule(rule)
-                : new CopilotCompiledPromptRule(rule)
-              : rule.kind === 'plugin'
-                ? new CopilotCompiledPluginCatalogRule(rule)
-                : new CopilotCompiledOtherKindRule(rule),
+            : rule.kind === 'hook'
+              ? // The standalone carrier is one file whose whole purpose is
+                // hooks; the two settings rules share the contained unit,
+                // because what separates them is which surfaces document the
+                // read rather than how the block is written.
+                rule.ruleId === 'copilot.repo.hooks'
+                ? new CopilotCompiledStandaloneHookRule(rule)
+                : new CopilotCompiledSettingsHookRule(rule)
+              : rule.kind === 'prompt/command'
+                ? rule.ruleId === 'copilot.repo.prompt'
+                  ? new CopilotCompiledPromptFileRule(rule)
+                  : new CopilotCompiledPromptRule(rule)
+                : rule.kind === 'plugin'
+                  ? new CopilotCompiledPluginCatalogRule(rule)
+                  : new CopilotCompiledOtherKindRule(rule),
   );

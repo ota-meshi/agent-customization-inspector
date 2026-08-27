@@ -47,6 +47,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
     plugins: [],
     outputStyles: [],
     permissions: [],
+    hooks: [],
     settings: [],
     agents: [],
     skills: [],
@@ -174,6 +175,15 @@ describe('authored file content in the browser', () => {
       // file, never any of its content, in the slot the manifest is shown in.
       'entryDetailError',
       'fileDetailState',
+      // The hook comparison view (FR-011): the hook kind's own two ordinary
+      // carrier-detail loads of declarations alone — a hook carrier's source
+      // reaches no surface (FR-007), so neither side has anything to mask or
+      // reveal.
+      'hookComparison',
+      // One hook carrier's declarations: the events the file declares, with no
+      // source text on the wire at all (FR-007), so there is nothing to mask
+      // and nothing to reveal.
+      'hookDetail',
       // The instruction comparison view (FR-011): the instruction kind's own
       // two ordinary detail loads, with the same guards as the skill one and
       // nothing that masks or reveals either side.
@@ -192,6 +202,9 @@ describe('authored file content in the browser', () => {
       // One declared permission policy's own load: a permissions row names a
       // policy rather than a file, so it is its own function's result and its
       // own slot, with the same guards and nothing that masks or reveals it.
+      // The hook carrier request, the same guarded detail load every other
+      // carrier takes.
+      'openHookCarrierDetail',
       'openPluginDetail',
       'openPolicyDetail',
       // The active route's title subject — a display name the page already

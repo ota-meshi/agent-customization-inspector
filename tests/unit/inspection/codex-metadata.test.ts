@@ -363,6 +363,148 @@ describe('Codex MCP carrier reading (T293)', () => {
   });
 });
 
+describe('Codex hook reading (T844)', () => {
+  const standaloneHookRule = CODEX_REPOSITORY_RULES.find(
+    (compiled) => compiled.rule.ruleId === 'codex.repo.hooks',
+  );
+  const inlineHookRule = CODEX_REPOSITORY_RULES.find(
+    (compiled) => compiled.rule.ruleId === 'codex.repo.hooks.inline',
+  );
+
+  /** Recognizes one authored carrier at the root layer, under one hook admission. */
+  async function recognizeHookCarrier(
+    matchedPath: string,
+    compiled: CompiledCandidateRule,
+    sourceText: string,
+  ): Promise<readonly ToolRecognition[]> {
+    mkdirSync(join(root, '.codex'), { recursive: true });
+    const { recognitions } = await recognizeCandidateForVendors(
+      {
+        matchedPath,
+        absolutePath: join(root, matchedPath),
+        sourceRoot: root,
+        admissions: [{ compiled, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText,
+      },
+      ['codex'],
+    );
+    return recognitions;
+  }
+
+  it('retains a layer’s standalone file and inline table as two separate declarations', async () => {
+    // The documented same-layer case: a layer holding both forms has both
+    // loaded, with a startup warning, so neither representation is a winner
+    // over the other. The two carriers are two files and two recognitions, and
+    // one event declared by both stays two declarations here — the row that
+    // lists them is the session projection's, and merging them into one
+    // reading would state a selection the vendor does not make
+    // (`codex.hooks.additive`).
+    const standalone = await recognizeHookCarrier(
+      '.codex/hooks.json',
+      standaloneHookRule!,
+      `${JSON.stringify({
+        hooks: {
+          SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'file' }] }],
+        },
+      })}\n`,
+    );
+    const inline = await recognizeHookCarrier(
+      '.codex/config.toml',
+      inlineHookRule!,
+      [
+        '[[hooks.SessionStart]]',
+        'matcher = "^compact$"',
+        '',
+        '[[hooks.SessionStart.hooks]]',
+        'type = "command"',
+        'command = "inline"',
+        '',
+      ].join('\n'),
+    );
+    for (const recognitions of [standalone, inline]) {
+      expect(recognitions).toHaveLength(1);
+      expect(recognitions[0]!.details.kind).toBe('hook');
+      expect(recognitions[0]!.parseStatus).toBe('parsed');
+    }
+    // Two paths, two forms, one event name: the declarations are the two files'
+    // own, each keeping the groups its own author wrote.
+    expect(standalone[0]!.sourceRelativePath).toBe('.codex/hooks.json');
+    expect(inline[0]!.sourceRelativePath).toBe('.codex/config.toml');
+    if (standalone[0]!.details.kind !== 'hook' || inline[0]!.details.kind !== 'hook') {
+      throw new Error('expected hook recognitions');
+    }
+    expect(standalone[0]!.details.carrier).toBe('standalone');
+    expect(inline[0]!.details.carrier).toBe('contained');
+    expect(standalone[0]!.details.events.map((event) => event.event)).toEqual(['SessionStart']);
+    expect(inline[0]!.details.events.map((event) => event.event)).toEqual(['SessionStart']);
+    const standaloneJson = JSON.stringify(standalone[0]!.details.events);
+    const inlineJson = JSON.stringify(inline[0]!.details.events);
+    expect(standaloneJson).toContain('file');
+    expect(standaloneJson).not.toContain('inline');
+    expect(inlineJson).toContain('inline');
+    expect(inlineJson).not.toContain('"file"');
+  });
+
+  it('publishes no configuration beside the inline table: the hook admission yields hooks alone', async () => {
+    // The config layer declares plenty beside its hooks — the model, a
+    // fallback list, server tables — and none of it is published here: those
+    // are the settings and MCP recognitions' own subjects, and this admission
+    // publishes the events alone (FR-007).
+    const recognitions = await recognizeHookCarrier(
+      '.codex/config.toml',
+      inlineHookRule!,
+      [
+        'model = "gpt-5.4-codex"',
+        'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]',
+        '',
+        '[mcp_servers.only]',
+        'command = "npx"',
+        '',
+        '[[hooks.Stop]]',
+        '',
+        '[[hooks.Stop.hooks]]',
+        'type = "command"',
+        'command = "true"',
+        '',
+      ].join('\n'),
+    );
+    expect(recognitions).toHaveLength(1);
+    expect(recognitions[0]!.details.kind).toBe('hook');
+    const serialized = JSON.stringify(recognitions);
+    expect(serialized).not.toContain('project_doc_fallback_filenames');
+    expect(serialized).not.toContain('mcp_servers');
+    expect(serialized).not.toContain('gpt-5.4-codex');
+  });
+
+  it('keeps a declared credential and environment reference literal and unresolved', async () => {
+    // The values are the file's own resolved literals: nothing looks up a
+    // variable, nothing runs the command, and no sentinel is substituted
+    // (FR-020, FR-026).
+    const recognitions = await recognizeHookCarrier(
+      '.codex/hooks.json',
+      standaloneHookRule!,
+      `${JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: `curl -H "Authorization: Bearer ${CONTENT_FIXTURE_SECRET}" \${HOOK_ENDPOINT}`,
+                },
+              ],
+            },
+          ],
+        },
+      })}\n`,
+    );
+    const serialized = JSON.stringify(recognitions);
+    expect(serialized).toContain(CONTENT_FIXTURE_SECRET);
+    expect(serialized).toContain('${HOOK_ENDPOINT}');
+    expect(serialized).not.toContain(process.env['HOME'] ?? '\0unset');
+  });
+});
+
 describe('Codex custom-agent reading (T518)', () => {
   /** Recognizes one authored `.codex/agents/*.toml` at the root's own directory. */
   async function recognizeAgent(sourceText: string): Promise<readonly ToolRecognition[]> {

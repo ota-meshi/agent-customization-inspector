@@ -862,16 +862,25 @@ describe('the Copilot settings composition graph (T636)', () => {
     }
   });
 
-  it('defers the Hook family, and keeps the Plugin family the plugin rules own', () => {
-    // The settings documents can carry an inline hook block and a plugin map.
-    // The hook half is the Hook recognition's subject and arrives with its own
-    // phase, so no Copilot hook strategy ships yet. The plugin half does have
-    // its strategies now, one per surface the vendor documents — but they
-    // belong to the catalog rule the plugin phase added, not to the settings
-    // recognition: what a settings file names is registration and enablement,
-    // which is runtime state this product never reads (FR-009).
+  it('keeps the Hook and Plugin families on the rules that own them', () => {
+    // The settings documents can carry an inline hook block and a plugin map,
+    // and both families now have their strategies — one per surface the vendor
+    // documents. Neither belongs to the settings recognition: the hook
+    // compositions are what the hook rules over those same files rest on, and
+    // what a settings file names about plugins is registration and enablement,
+    // which is runtime state this product never reads (FR-009). The settings
+    // rule stays explained by the scope precedence alone (T894).
     const ids = Object.keys(RUNTIME_COMPOSITION_STRATEGIES);
-    expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('hooks'))).toEqual([]);
+    expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('hooks'))).toEqual([
+      'copilot.vscode.hooks.composition',
+      'copilot.cli.hooks.composition',
+      'copilot.cloud.hooks.composition',
+    ]);
+    expect(
+      RULE_RELATIONS['copilot.repo.settings'].explainedByStrategies.map(
+        (strategy) => strategy.strategyId,
+      ),
+    ).toEqual(['copilot.cli.settings.precedence']);
     expect(ids.filter((id) => id.startsWith('copilot.') && id.includes('plugins'))).toEqual([
       'copilot.vscode.plugins.activation',
       'copilot.cli.plugins.activation',
@@ -982,13 +991,97 @@ describe('the Codex settings composition graph (T592)', () => {
     }
   });
 
-  it('adds no Hook composition with the settings row', () => {
-    // An inline `[hooks]` table is part of the document this row publishes and
-    // is no recognition of its own until the Hook phase ships one, so no
-    // strategy composes one here.
+  it('leaves the hook composition to the hook rows (T850)', () => {
+    // An inline `[hooks]` table is part of the document this row publishes,
+    // and it is also its own recognition's subject: the hook composition is
+    // that recognition's, never this row's, so the settings edges above name
+    // no hook strategy while the one shipped hook strategy stands beside them.
     expect(
       Object.keys(RUNTIME_COMPOSITION_STRATEGIES).filter((id) => id.startsWith('codex.hooks')),
-    ).toEqual([]);
+    ).toEqual(['codex.hooks.additive']);
+    const additive = RUNTIME_COMPOSITION_STRATEGIES['codex.hooks.additive'];
+    // Every active source contributes and every matching hook runs — a closer
+    // layer adds rather than replaces (`append`), while which sources are
+    // active at all is the documented filter (`filter`)
+    // (contracts/runtime-composition.md § codex.hooks.additive).
+    expect(additive.operations).toEqual(['filter', 'append']);
+    expect(additive.tool).toBe('codex');
+    expect(additive.documentationStatus).toBe('documented');
+    // Every documented hook scope, because the strategy describes Codex's
+    // runtime: the project layers this product can read, the User layer it may
+    // not — which keeps contributing where an untrusted project layer does
+    // not — and the plugin root whose manifest points at the hooks an enabled
+    // plugin bundles, which the same page lists as a source of its own.
+    expect(
+      STRATEGY_RELATIONS['codex.hooks.additive'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual([
+      'codex.behavior.plugin.manifest',
+      'codex.behavior.repo.hooks',
+      'codex.behavior.user.hooks',
+    ]);
+  });
+});
+
+describe('the Claude hook composition strategy (T871)', () => {
+  it('composes every documented hook source and states no verdict', () => {
+    const additive = RUNTIME_COMPOSITION_STRATEGIES['claude.hooks.additive'];
+    expect(additive.tool).toBe('claude');
+    // Every active source contributes and every applicable hook runs — a closer
+    // settings level adds rather than replaces (`append`) — while which sources
+    // are active is the documented filter (`filter`), and the one composition
+    // over results is the restrictive one an explicit deny wins
+    // (`select-first`) (contracts/runtime-composition.md
+    // § claude.hooks.additive).
+    expect(additive.operations).toEqual(['filter', 'append', 'select-first']);
+    expect(additive.documentationStatus).toBe('documented');
+    // Both scopes of every documented source, because the strategy describes
+    // Claude's runtime: the contained-declaration statement that locates them,
+    // the settings levels that merge, the skill and subagent lookups, and both
+    // plugin scopes.
+    expect(
+      STRATEGY_RELATIONS['claude.hooks.additive'].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual([
+      'claude.behavior.repo.agents',
+      'claude.behavior.repo.hooks-contained',
+      'claude.behavior.repo.plugin',
+      'claude.behavior.repo.settings.local',
+      'claude.behavior.repo.settings.shared',
+      'claude.behavior.repo.skills',
+      'claude.behavior.user.plugins',
+      'claude.behavior.user.settings',
+    ]);
+    // The one contained-hook rule is explained by it, and by nothing else: what
+    // a row does not state — trust, a managed-hooks-only policy, how long a
+    // registration lasts — is this strategy's (FR-009).
+    const settingsHooks = RULE_RELATIONS['claude.repo.hooks.settings'];
+    expect(settingsHooks.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'claude.hooks.additive',
+    ]);
+    // It rests on the contained-declaration statement and on the two settings
+    // lookups that located its owner.
+    expect(settingsHooks.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'claude.behavior.repo.hooks-contained',
+      'claude.behavior.repo.settings.local',
+      'claude.behavior.repo.settings.shared',
+    ]);
+  });
+
+  it('records the contained lookup with no standalone location of its own', () => {
+    const contained = VENDOR_BEHAVIOR_STATEMENTS['claude.behavior.repo.hooks-contained'];
+    expect(contained.tool).toBe('claude');
+    expect(contained.documentationStatus).toBe('documented');
+    // The base is the accepted artifact, and the traversal is none: the client
+    // reads these declarations out of what it already loaded, so the statement
+    // carries no walk of its own.
+    expect(contained.locator?.lookupBase).toBe('active-config-layer');
+    expect(contained.locator?.traversal).toBe('none');
+    // No standalone project hook file is recorded anywhere in this vendor's
+    // locator, which is what the rule table's absence of one means.
+    expect(contained.locator?.relativeSelector).not.toContain('.claude/hooks.json');
   });
 });
 
@@ -1839,5 +1932,109 @@ describe('the Codex plugin activation strategy (T766)', () => {
     ]);
     expect(INSPECTION_RULES['codex.excluded.plugin-files'].matcher).toBeNull();
     expect(INSPECTION_RULES['codex.excluded.plugin-files'].kind).toBeNull();
+  });
+});
+
+describe('the Copilot hook composition graph (T892)', () => {
+  it('gives each surface its own composition, and each hook rule the ones it rests on', () => {
+    // Three strategies rather than one, because the three surfaces compose
+    // differently: the editor resolves an event's workspace and User hooks and
+    // then adds the agent and plugin ones, the CLI appends every active
+    // source's entries in the documented order, and the cloud sandbox has only
+    // the repository files its clone holds.
+    const vscode = RUNTIME_COMPOSITION_STRATEGIES['copilot.vscode.hooks.composition'];
+    const cli = RUNTIME_COMPOSITION_STRATEGIES['copilot.cli.hooks.composition'];
+    const cloud = RUNTIME_COMPOSITION_STRATEGIES['copilot.cloud.hooks.composition'];
+    expect(vscode.operations).toEqual(['filter', 'select-first', 'append']);
+    expect(cli.operations).toEqual(['filter', 'append']);
+    expect(cloud.operations).toEqual(['filter', 'append']);
+    expect([vscode.surfaces, cli.surfaces, cloud.surfaces]).toEqual([
+      ['copilot-vscode'],
+      ['copilot-cli'],
+      ['copilot-cloud'],
+    ]);
+    // The standalone rule rests on all three lookups and is explained by all
+    // three compositions: one location, three documented readers.
+    const hookFiles = RULE_RELATIONS['copilot.repo.hooks'];
+    expect(hookFiles.basedOnBehaviors.map((behavior) => behavior.behaviorId)).toEqual([
+      'copilot.behavior.cli.hooks',
+      'copilot.behavior.cloud.hooks',
+      'copilot.behavior.vscode.hooks',
+    ]);
+    expect(hookFiles.explainedByStrategies.map((strategy) => strategy.strategyId)).toEqual([
+      'copilot.cli.hooks.composition',
+      'copilot.cloud.hooks.composition',
+      'copilot.vscode.hooks.composition',
+    ]);
+    // The CLI's own settings pair rests on the CLI lookup alone: the editor's
+    // hook-locations table does not name it, so attaching that surface here
+    // would claim a read no page documents.
+    expect(
+      RULE_RELATIONS['copilot.repo.hooks.settings'].basedOnBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.cli.hooks']);
+    // The cross-tool pair rests on both lookups that name it.
+    expect(
+      RULE_RELATIONS['copilot.repo.hooks.settings.claude'].basedOnBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.cli.hooks', 'copilot.behavior.vscode.hooks']);
+    // Every edge holds the published record rather than an equal-looking copy.
+    for (const relations of [
+      hookFiles,
+      RULE_RELATIONS['copilot.repo.hooks.settings'],
+      RULE_RELATIONS['copilot.repo.hooks.settings.claude'],
+    ]) {
+      for (const behavior of relations.basedOnBehaviors) {
+        expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId]).toBe(behavior);
+      }
+      for (const strategy of relations.explainedByStrategies) {
+        expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId]).toBe(strategy);
+      }
+    }
+  });
+
+  it('states each contract row reciprocally with the shipped record, in both languages', () => {
+    for (const strategyId of [
+      'copilot.vscode.hooks.composition',
+      'copilot.cli.hooks.composition',
+      'copilot.cloud.hooks.composition',
+    ] as const) {
+      const record = RUNTIME_COMPOSITION_STRATEGIES[strategyId];
+      const consumed = STRATEGY_RELATIONS[strategyId].consumesBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      );
+      const cited = record.evidence.map((citation) => citation.sourceId);
+      expect(cited.length).toBeGreaterThan(0);
+      for (const path of [
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+        'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+      ]) {
+        const row = parseStrategyRow(path, strategyId);
+        expect(row.operations, `${strategyId} in ${path}`).toEqual(record.operations);
+        expect(row.consumesBehaviors, `${strategyId} in ${path}`).toEqual(consumed);
+        expect(row.evidence, `${strategyId} in ${path}`).toEqual(cited);
+      }
+    }
+  });
+
+  it('keeps the User hook scopes statements no rule rests on', () => {
+    // Both User scopes are consumed by their surface's composition and
+    // authorize nothing: FR-015 through FR-018 admit only the two Copilot
+    // Global instruction rules, and `copilot.excluded.user-runtime` is what
+    // records that omission.
+    for (const behaviorId of [
+      'copilot.behavior.vscode.user.hooks',
+      'copilot.behavior.cli.user.hooks',
+    ] as const) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behaviorId].locator?.vendorScope).toBe('user');
+      for (const relations of Object.values(RULE_RELATIONS)) {
+        expect(
+          relations.basedOnBehaviors.some((behavior) => behavior.behaviorId === behaviorId),
+          behaviorId,
+        ).toBe(false);
+      }
+    }
   });
 });

@@ -35,6 +35,11 @@ import type {
   FileRecognitionDto,
   InspectionDataResult,
   InstructionInventoryEntryDto,
+  HookCarrierDetailDto,
+  HookDeclarationDto,
+  HookEventDeclarationDto,
+  RecognitionParseStatus,
+  HookInventoryEntryDto,
   McpCarrierDetailDto,
   McpDeclarationDto,
   McpServerDeclarationDto,
@@ -898,19 +903,33 @@ function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInven
       parseStatus: recognition.parseStatus,
       diagnosticIds: recognition.diagnosticIds,
     };
-    // A parsed reading contributes one declaration per name it declares; a
-    // carrier with no named declaration from any reading — failed, or
-    // declaring none — lands on the null row so its state stays a visible
-    // row rather than a file in no kind (FR-028). A reading that finds no
-    // server in a carrier whose names another reading publishes contributes
-    // nothing: the no-name row is the file's statement, and the file does
-    // publish named declarations.
+    // A parsed reading contributes one declaration per name it declares, and a
+    // reading that publishes none lands on the null row so its state stays a
+    // visible row rather than a file in no kind (FR-028).
+    //
+    // The two ways a reading publishes no name are not the same fact, and only
+    // one of them can be answered by another reading of the same file. A
+    // reading that failed leaves this product's servers *unknown* rather than
+    // absent, so it reaches the null row whatever the file's other readings
+    // found: one carrier can be read strictly by one product and leniently by
+    // another — a root `.mcp.json` is JSONC to Copilot's editor host and strict
+    // JSON to Claude Code — so a file whose names one product publishes is
+    // exactly where the other product's failure has to be stated, and the hook
+    // inventory states its own the same way (contracts/http-api.md
+    // § get-session `mcp[]`).
+    //
+    // A reading that parsed and found no server does contribute nothing there:
+    // the file's statement is the named rows the other reading published, and
+    // the two vendors' schemas differing over one carrier — the bare map the
+    // CLI accepts and the wrapper Claude Code requires — is not a finding about
+    // the file.
     const names =
       recognition.parseStatus === 'parsed' && recognition.details.servers.length > 0
         ? recognition.details.servers.map((server) => server.name)
-        : pathsWithNames.has(recognition.sourceRelativePath)
-          ? []
-          : [null];
+        : recognition.parseStatus === 'failed' ||
+            !pathsWithNames.has(recognition.sourceRelativePath)
+          ? [null]
+          : [];
     for (const name of names) {
       const declarations = byName.get(name);
       if (declarations === undefined) {
@@ -934,6 +953,95 @@ function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInven
       // Named rows in name order, and the one no-name row after them all —
       // nulls-last is the comparator's own rule ({@link compareStrings}).
       .sort((left, right) => compareStrings(left.name, right.name))
+  );
+}
+
+/**
+ * The hook inventory: one row per declared lifecycle event, each listing every
+ * declaration that declares it — one per `(carrier, tool)` — and one closing
+ * row for the carriers publishing no event (contracts/http-api.md
+ * § get-session `hooks[]`, data-model.md § Inventory unit).
+ *
+ * The MCP projection's own rule, over events instead of server names: a second
+ * carrier declaring one event joins that event's row rather than starting
+ * another, and a carrier whose emptiness is a finding lands on the null row so
+ * its state stays a visible row rather than a file in no kind (FR-028).
+ *
+ * A standalone `hooks.json` and the inline `[hooks]` of the same layer are two
+ * files, so both belong on an event's row when both declare it: Codex loads
+ * both rather than choosing (`codex.hooks.additive`), and each declaration says
+ * which form it is.
+ */
+function projectHookInventory(recognitions: readonly ToolRecognition[]): HookInventoryEntryDto[] {
+  const byEvent = new Map<string | null, HookDeclarationDto[]>();
+  for (const recognition of recognitions) {
+    if (recognition.details.kind !== 'hook') {
+      continue;
+    }
+    // The surfaces are the union over the recognition's own admissions,
+    // computed here because this is where they are published — the rule every
+    // other inventory applies.
+    const recognizingSurfaces = new Set<VendorSurface>();
+    for (const provenance of recognition.provenances) {
+      for (const surface of provenance.recognizingSurfaces) {
+        recognizingSurfaces.add(surface);
+      }
+    }
+    const declaration: HookDeclarationDto = {
+      sourceRelativePath: recognition.sourceRelativePath,
+      tool: recognition.tool,
+      carrier: recognition.details.carrier,
+      surfaces: VENDOR_SURFACE_ORDER.filter((surface) => recognizingSurfaces.has(surface)),
+      parseStatus: recognition.parseStatus,
+      diagnosticIds: recognition.diagnosticIds,
+    };
+    // A parsed reading contributes one declaration per event it declares; a
+    // carrier declaring none — failed, or holding no hook map at all — lands on
+    // the null row. Unlike an MCP carrier, one hook carrier is read by one
+    // product's contract per file here, so there is no other reading whose
+    // names could make this file's own emptiness the wrong statement.
+    //
+    // Deduplicated per carrier, because a file can declare one event more than
+    // once and a row lists a carrier once however many of its blocks reach
+    // that event.
+    //
+    // A carrier that declares none reaches the null row only when its emptiness
+    // is a finding: a file whose whole purpose is hooks and holds none is one,
+    // and so is any carrier whose declarations could not be read, where the
+    // events are unknown rather than absent (FR-028). A file that merely *may*
+    // contain a hook table — a settings or config document — and does not is
+    // not: the row would say "this file declares no hooks" of every repository
+    // that configures anything, and put a Hook tab on one with no hook
+    // anywhere.
+    const events: readonly (string | null)[] =
+      recognition.details.events.length > 0
+        ? [...new Set(recognition.details.events.map((event) => event.event))]
+        : recognition.parseStatus === 'failed' || recognition.details.carrier === 'standalone'
+          ? [null]
+          : [];
+    for (const event of events) {
+      const declarations = byEvent.get(event);
+      if (declarations === undefined) {
+        byEvent.set(event, [declaration]);
+      } else {
+        declarations.push(declaration);
+      }
+    }
+  }
+  return (
+    [...byEvent.entries()]
+      .map(([event, declarations]): HookInventoryEntryDto => ({
+        event,
+        declarations: declarations.toSorted((left, right) => {
+          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+          return pathDelta !== 0
+            ? pathDelta
+            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+        }),
+      }))
+      // Named rows in event order, and the one no-event row after them all —
+      // nulls-last is the comparator's own rule ({@link compareStrings}).
+      .sort((left, right) => compareStrings(left.event, right.event))
   );
 }
 
@@ -973,6 +1081,37 @@ function unionOfServerReadings(
     }
   }
   return [...byName.values()];
+}
+
+/**
+ * The union of one hook carrier's parsed readings, one entry per declared
+ * event in the readings' publish order
+ * ({@link InspectionSession.hookCarrierDetail}) — the hook counterpart of
+ * {@link unionOfServerReadings}.
+ *
+ * A shared event is one declaration read twice: two products reading the same
+ * text resolve the same groups, so the first occurrence carries what any later
+ * one would. Two readings that differ do so because one of them rejected the
+ * text, and a rejected reading contributes nothing here.
+ */
+function unionOfHookReadings(
+  readings: readonly {
+    readonly parseStatus: RecognitionParseStatus;
+    readonly details: Extract<ToolRecognition['details'], { readonly kind: 'hook' }>;
+  }[],
+): readonly HookEventDeclarationDto[] {
+  const byEvent = new Map<string, HookEventDeclarationDto>();
+  for (const reading of readings) {
+    if (reading.parseStatus !== 'parsed') {
+      continue;
+    }
+    for (const event of reading.details.events) {
+      if (!byEvent.has(event.event)) {
+        byEvent.set(event.event, event);
+      }
+    }
+  }
+  return [...byEvent.values()];
 }
 
 /**
@@ -1466,6 +1605,42 @@ export class InspectionSession {
       ) {
         return null;
       }
+      // A hook carrier, on the same terms: a hook row's subject is one
+      // declared event inside the file, so its detail is
+      // `hookCarrierDetail`'s own result — the shape with no `sourceText`
+      // field at all (FR-007). Answering here would hand back the bytes that
+      // response deliberately does not carry. A carrier that also holds a
+      // file-subject row was already answered above under it: a
+      // `.codex/config.toml` is its settings document besides, which is why
+      // the settings branch runs first and this one is reached only by a file
+      // whose whole purpose is hooks.
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath &&
+            recognition.details.kind === 'hook',
+        )
+      ) {
+        return null;
+      }
+      // A hook carrier, on the same terms: a hook row's subject is one
+      // declared event inside the file, so its detail is
+      // `hookCarrierDetail`'s own result — the shape with no `sourceText`
+      // field at all (FR-007). Answering here would hand back the bytes that
+      // response deliberately does not carry. A carrier that also holds a
+      // file-subject row was already answered above under it: a
+      // `.codex/config.toml` is its settings document besides, which is why
+      // the settings branch runs first and this one is reached only by a file
+      // whose whole purpose is hooks.
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceRelativePath === sourceRelativePath &&
+            recognition.details.kind === 'hook',
+        )
+      ) {
+        return null;
+      }
       // A declared permission policy, on the same terms: what a permissions
       // row names is a policy rather than a file (data-model.md § Inventory
       // unit), so it is `permissionPolicyDetail`'s resource, and answering
@@ -1739,6 +1914,115 @@ export class InspectionSession {
   }
 
   /**
+   * Resolves one hook carrier's declarations — the lifecycle events it
+   * declares and its own content-free file facts, never its source text
+   * (FR-007; contracts/http-api.md § get-hook-carrier-detail). Only an
+   * admitted hook carrier holds a hook recognition: a file of any other kind
+   * that spells hook-looking configuration never resolves here — its
+   * configuration is that kind's own detail content. Null when the current
+   * committed generations hold no hook recognition at the path, which the
+   * handler answers as the `stale-resource` rejection.
+   *
+   * Every hook recognition at the path answers, not the first: a settings
+   * document is read by each product that documents reading it, and since the
+   * formats can differ — Copilot's editor host takes `.claude/settings.json`
+   * through a JSONC reading while Claude Code reads it strictly — their
+   * readings can differ too. The file-unit response is therefore the union of
+   * the parsed readings, exactly as the MCP carrier's is
+   * ({@link InspectionSession.mcpCarrierDetail}), with `events` null only when
+   * no reading parsed; which product read a given event stays the inventory's
+   * per-declaration fact.
+   */
+  public hookCarrierDetail(sourceRelativePath: string): HookCarrierDetailDto | null {
+    const generations = [
+      this.committedRepositoryGeneration,
+      ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
+    ];
+    for (const generation of generations) {
+      // Every reading of the path, narrowed by the control flow rather than by
+      // a predicate: the loop is what proves the kind, and each reading keeps
+      // the two facts this response needs beside its declarations.
+      const readings: {
+        readonly parseStatus: RecognitionParseStatus;
+        readonly details: Extract<ToolRecognition['details'], { readonly kind: 'hook' }>;
+        readonly diagnosticIds: readonly string[];
+      }[] = [];
+      for (const recognition of generation.recognitions) {
+        if (
+          recognition.sourceRelativePath !== sourceRelativePath ||
+          recognition.details.kind !== 'hook'
+        ) {
+          continue;
+        }
+        readings.push({
+          parseStatus: recognition.parseStatus,
+          details: recognition.details,
+          diagnosticIds: recognition.diagnosticIds,
+        });
+      }
+      const [firstReading] = readings;
+      if (firstReading === undefined) {
+        continue;
+      }
+      {
+        const file = generation.files.find(
+          (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+        );
+        if (file === undefined) {
+          // A recognition exists only for a committed file, so the pair cannot
+          // separate within one generation; failing loudly beats serving a
+          // detail whose file facts this commit does not hold.
+          throw new Error('a hook recognition names a file its generation does not hold');
+        }
+        // The answering readings' own diagnostic references, in the commit's
+        // deterministic order — not the file's whole list, which can also hold
+        // another kind's failure of the same file, and another product's
+        // failure of this kind when only that product's reading rejected the
+        // text (FR-028).
+        const diagnostics = generation.diagnostics.filter((diagnostic) =>
+          readings.some((reading) => reading.diagnosticIds.includes(diagnostic.diagnosticId)),
+        );
+        // Null exactly when no reading parsed: nothing was read, the rows are
+        // unknown rather than absent, and the diagnostics above are those
+        // failures' records (FR-028). Otherwise the union of the parsed
+        // readings, one entry per declared event in their own publish order —
+        // the union rather than the first parsed reading, so the answer states
+        // the rule instead of trusting the order a commit happens to list the
+        // readings in.
+        const events = readings.every((reading) => reading.parseStatus !== 'parsed')
+          ? null
+          : unionOfHookReadings(readings);
+        // The carrier's form is the file's, so the first reading answers for
+        // it: a file is one form whichever product read it.
+        return firstReading.details.carrier === 'standalone'
+          ? {
+              carrier: 'standalone',
+              // The content-free summary: the carrier's facts without its
+              // source text, absent from the shape rather than withheld at
+              // render time (FR-007).
+              file: summarizeFile(file),
+              events,
+              // The keys beside the hook map, which only this response
+              // publishes: such a file has no other row (FR-007). Every
+              // shipped standalone rule is one product's own location —
+              // Codex's `.codex/hooks.json` and Copilot's `.github/hooks/`
+              // files — so there is one reading here to take them from.
+              carrierFields:
+                firstReading.parseStatus === 'parsed' ? firstReading.details.carrierFields : [],
+              diagnostics,
+            }
+          : {
+              carrier: 'contained',
+              file: summarizeFile(file),
+              events,
+              diagnostics,
+            };
+      }
+    }
+    return null;
+  }
+
+  /**
    * Resolves one MCP carrier's declarations — the servers it declares and
    * its own content-free file facts, never its source text (FR-007;
    * contracts/http-api.md § get-mcp-carrier-detail). Only the explicit
@@ -1777,20 +2061,25 @@ export class InspectionSession {
         // detail whose file facts this commit does not hold.
         throw new Error('an MCP recognition names a file its generation does not hold');
       }
-      // The file's own diagnostic references, in the commit's deterministic
-      // order — the same rule `fileDetail` applies (FR-028).
+      // The answering readings' own diagnostic references, in the commit's
+      // deterministic order — not the file's whole list, which can also hold
+      // another kind's failure of the same file, and this kind's failure by a
+      // product whose reading alone rejected the text (FR-028).
       const diagnostics = generation.diagnostics.filter((diagnostic) =>
-        file.diagnosticIds.includes(diagnostic.diagnosticId),
+        mcpRecognitions.some((recognition) =>
+          recognition.diagnosticIds.includes(diagnostic.diagnosticId),
+        ),
       );
       return {
         // The content-free summary: the carrier's facts without its source
         // text, absent from the shape rather than withheld at render time
         // (FR-007).
         file: summarizeFile(file),
-        // Null exactly for a failed extraction: the readings run over the
-        // one source text through the same parser family, so they fail
-        // together, nothing was parsed, the rows are unknown rather than
-        // absent, and the diagnostic above is the failure's record (FR-028).
+        // Null exactly when no reading parsed: a text one product's reading
+        // rejects is not one every product's rejects — a root `.mcp.json` is
+        // JSONC to Copilot's editor host and strict JSON to Claude Code — so
+        // the union stands while any reading parsed, and null means nothing
+        // was read, the rows being unknown rather than absent (FR-028).
         // Otherwise the union of the parsed readings, one entry per declared
         // name in the readings' own publish order: each recognizing tool runs
         // its own documented reading over the one decoded text — the CLI's
@@ -1891,6 +2180,10 @@ export class InspectionSession {
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),
       permissions: projectPermissionsInventory([
+        ...this.committedRepositoryGeneration.recognitions,
+        ...(this.committedGlobalGeneration?.recognitions ?? []),
+      ]),
+      hooks: projectHookInventory([
         ...this.committedRepositoryGeneration.recognitions,
         ...(this.committedGlobalGeneration?.recognitions ?? []),
       ]),

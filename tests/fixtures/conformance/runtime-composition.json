@@ -81,6 +81,40 @@
     ]
   },
   {
+    "strategyId": "claude.hooks.additive",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "operations": ["filter", "append", "select-first"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.hooks.locations-resolution",
+        "url": "https://code.claude.com/docs/en/hooks",
+        "officialHost": "code.claude.com",
+        "sections": ["Hook locations", "Hooks in skills and agents", "PreToolUse"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Hook entries merge across settings levels rather than replacing each other, and hooks from settings, managed policy, and plugins also run inside subagents; an enterprise allowManagedHooksOnly setting blocks user, project, local, and plugin hooks, and disableAllHooks turns them off outside managed settings. A subagent registers its frontmatter hooks only while it runs and a skill from its invocation onward. An explicit deny returned by another hook takes precedence over a hook outcome that would let a tool call proceed."
+      },
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": ["Settings precedence", "Lists merge instead of overriding"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A list-valued settings key is combined across the settings files rather than one file replacing another, which is the merge the hook entries of several levels follow."
+      },
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Hooks", "Plugin manifest schema"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Plugin hooks respond to the same lifecycle events as user-defined hooks and are one of the component types with their own merge rules, contributed while the plugin is enabled."
+      }
+    ]
+  },
+  {
     "strategyId": "claude.instructions.layering",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -311,6 +345,32 @@
     ]
   },
   {
+    "strategyId": "codex.hooks.additive",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "operations": ["filter", "append"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.hooks",
+        "url": "https://learn.chatgpt.com/docs/hooks.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex looks for hooks", "Review and trust hooks"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "If more than one hook source exists Codex loads all matching hooks and higher-precedence layers do not replace lower-precedence hooks; a layer holding both hooks.json and inline [hooks] has both merged with a startup warning; hooks bundled with an enabled plugin load alongside the other sources under the same trust review; project-local hooks load only when the project .codex/ layer is trusted, while user hooks keep loading in an untrusted project; and a non-managed hook must be reviewed and trusted before it can run."
+      },
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-17",
+        "establishes": "The active config layers a hook source belongs to are the User layer and the trusted project .codex/config.toml layers from the project root down to the runtime cwd."
+      }
+    ]
+  },
+  {
     "strategyId": "codex.instructions.layering",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -451,6 +511,32 @@
     ]
   },
   {
+    "strategyId": "copilot.cli.hooks.composition",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "operations": ["filter", "append"],
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Repository settings (.github/copilot/settings.json)"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The repository hooks object is merged with the user one so the repository entry overrides the user entry for the same key, and disableAllHooks is a repository-takes-precedence switch of the same file."
+      },
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations", "Disable all hooks"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "Copilot CLI loads hooks from policy, user, project, and plugin sources in that order and combines them — a plugin declaring its own in hooks.json or hooks/hooks.json inside its installation directory — and when the same event appears in multiple sources all hook entries from all sources are run; policy hooks load before all other hooks, cannot be disabled by disableAllHooks, and are available regardless of folder trust state."
+      }
+    ]
+  },
+  {
     "strategyId": "copilot.cli.instructions.layering",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -578,6 +664,24 @@
     ]
   },
   {
+    "strategyId": "copilot.cloud.hooks.composition",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "operations": ["filter", "append"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations", "Cloud agent execution environment"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "Under the cloud agent, hook configuration is loaded from the .github/hooks/*.json files of the cloned repository, a subset of events fires, only bash or command entries are honored, and policy hooks are not supported there."
+      }
+    ]
+  },
+  {
     "strategyId": "copilot.cloud.instructions.layering",
     "tool": "copilot",
     "surfaces": ["copilot-cloud"],
@@ -696,6 +800,28 @@
         "sections": ["Custom agents settings"],
         "reviewedOn": "2026-08-19",
         "establishes": "Which locations contribute custom agents is setting-controlled, so enablement and any additional configured location stay runtime conditions of this selection."
+      }
+    ]
+  },
+  {
+    "strategyId": "copilot.vscode.hooks.composition",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "operations": ["filter", "select-first", "append"],
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["preview"],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.hooks",
+        "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
+        "officialHost": "code.visualstudio.com",
+        "sections": [
+          "Hook file locations",
+          "Agent-scoped hooks",
+          "How does VS Code handle Claude Code hook configurations?"
+        ],
+        "reviewedOn": "2026-08-26",
+        "establishes": "Workspace hooks take precedence over user hooks for the same event type, agent-scoped hooks run in addition to any workspace or user-level hooks configured for the same event and require the chat.useCustomAgentHooks setting, and a plugin contributes its own hooks.json or hooks/hooks.json. A hook location can be disabled by setting it to false in chat.hookFilesLocations, discovery from a parent repository root is opt-in through chat.useCustomizationsInParentRepositories, and VS Code currently ignores the matcher values of a Claude-format hook configuration so those hooks run on all tool invocations."
       }
     ]
   },

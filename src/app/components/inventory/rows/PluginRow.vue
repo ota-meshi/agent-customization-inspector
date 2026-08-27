@@ -39,10 +39,11 @@ import {
   pathPresentationLabel,
 } from '../../../../shared/entities';
 import type { PluginInventoryEntryDto, SerializedDiagnostic } from '../../../../shared/api-types';
+import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
   /** The committed plugin entry to render: one declared plugin name, or the null row. */
-  entry: PluginInventoryEntryDto;
+  entry: NarrowedInventoryRow<PluginInventoryEntryDto>;
   /** The generation's diagnostics, resolved per carrier by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
@@ -85,15 +86,17 @@ const nameAccessibleText = computed(() =>
  * of the row, so a row whose carriers are all that file offers no comparison:
  * the two sides would be the same document. The no-name row links none: its
  * carriers resolve no plugin a comparison would be about.
+ *
+ * The pair is drawn from the row's own files rather than from the members a
+ * filter left, so the link a reader followed is still there when they come
+ * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
 const compareRoute = computed(() => {
   if (props.entry.name === null) {
     return null;
   }
   const name = props.entry.name;
-  const [first, second] = new Set(
-    props.entry.carriers.map((carrier) => carrier.sourceRelativePath),
-  );
+  const [first, second] = props.entry.rowFilePaths;
   return first !== undefined && second !== undefined
     ? pluginComparisonRouteFor(name, first, second)
     : null;

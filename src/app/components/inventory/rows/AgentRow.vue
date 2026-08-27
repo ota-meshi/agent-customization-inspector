@@ -42,10 +42,11 @@ import type {
   CustomizationFileSummaryDto,
   SerializedDiagnostic,
 } from '../../../../shared/api-types';
+import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
   /** The committed agent entry to render: one resolved name, or the null row. */
-  entry: AgentInventoryEntryDto;
+  entry: NarrowedInventoryRow<AgentInventoryEntryDto>;
   /**
    * Every published file by its Source-relative Path — the file's identity
    * (FR-030). The row states each definition's file by path and repeats none
@@ -122,17 +123,21 @@ const nameAccessibleText = computed(() =>
  * share the absence of a name rather than an identity, so a pair drawn from
  * it would assert a relationship the inventory does not have (FR-011,
  * data-model.md § Inventory unit).
+ *
+ * The pair is drawn from the row's own files rather than from the members a
+ * filter left, so the link a reader followed is still there when they come
+ * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
 const compareRoute = computed(() => {
   const name = props.entry.name;
   if (name === null) {
     return null;
   }
-  const readable = new Set<string>();
-  for (const definition of props.entry.definitions) {
-    const published = props.filesByPath.get(definition.sourceRelativePath);
+  const readable: string[] = [];
+  for (const path of props.entry.rowFilePaths) {
+    const published = props.filesByPath.get(path);
     if (published !== undefined && isReadableFile(published)) {
-      readable.add(definition.sourceRelativePath);
+      readable.push(path);
     }
   }
   const [first, second] = readable;

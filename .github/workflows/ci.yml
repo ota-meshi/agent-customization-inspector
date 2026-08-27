@@ -5,12 +5,14 @@
 # format job gates it — and code style beyond formatting is the lint job.
 #
 # The six lower-bound certification jobs sample Node.js 24.11.0 and 26.0.0
-# on the three fixed OS/architecture targets. They certify the two declared
+# on the three OS targets. They certify the two declared
 # lower bounds of the runtime compatibility contract `^24.11.0 || ^26.0.0`
 # (exactly `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`); the declared Node.js
 # 24/26 engine ranges remain the compatibility contract, and these finite
-# samples do not narrow support to the sampled versions. Node.js 24.18.0 on
-# ubuntu-24.04 x64 is the development/build baseline.
+# samples do not narrow support to the sampled versions. The active LTS
+# Node.js on ubuntu-latest is the development/build baseline: both name what
+# the runner currently ships rather than a pin this repository would have to
+# advance by hand.
 name: CI
 
 on:
@@ -23,32 +25,29 @@ on:
 permissions:
   contents: read
 
-env:
-  NODE_DEV_BASELINE: 24.18.0
-
 jobs:
   format:
     name: Format check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
 
   lint:
     name: Lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run dev:prepare
@@ -56,13 +55,13 @@ jobs:
 
   typecheck:
     name: Type check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run dev:prepare
@@ -72,13 +71,13 @@ jobs:
     # Includes the inspection traversal suite
     # (tests/unit/inspection/**) through the unit project glob (T039).
     name: Unit tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run dev:prepare
@@ -86,13 +85,13 @@ jobs:
 
   contract:
     name: Contract tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run dev:prepare
@@ -103,13 +102,13 @@ jobs:
     # (tests/integration/boundaries/**) through the integration project
     # glob (T039).
     name: Integration tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run dev:prepare
@@ -120,13 +119,13 @@ jobs:
     # (tests/package/node-only-policy.test.ts) through the package project
     # glob (T039).
     name: Package tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
@@ -139,13 +138,13 @@ jobs:
     # Chromium page, so the build and the browser install are prerequisites
     # of this job.
     name: Performance smoke
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
@@ -154,13 +153,13 @@ jobs:
 
   coverage:
     name: Coverage
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run dev:prepare
@@ -178,13 +177,13 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, firefox, webkit]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
@@ -283,14 +282,14 @@ jobs:
           du -xh -d 2 "$GITHUB_WORKSPACE" 2>/dev/null | sort -h | tail -20
 
   build:
-    name: Development/build baseline (Node.js 24.18.0, ubuntu-24.04 x64)
-    runs-on: ubuntu-24.04
+    name: Development/build baseline (Node.js LTS, ubuntu-latest)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_DEV_BASELINE }}
+          node-version: 'lts/*'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
@@ -301,14 +300,14 @@ jobs:
   certify-lower-bounds:
     name: Certify Node.js ${{ matrix.node }} on ${{ matrix.os }}
     # Six jobs: the two declared engine lower bounds crossed with the three
-    # fixed OS/architecture targets (ubuntu-24.04 x64, macos-15 arm64,
-    # windows-2025 x64). See the header note: the declared Node.js 24/26
-    # ranges remain the compatibility contract, not these samples.
+    # OS targets (ubuntu-latest, macos-latest, windows-latest). See the
+    # header note: the declared Node.js 24/26 ranges remain the compatibility
+    # contract, not these samples.
     strategy:
       fail-fast: false
       matrix:
         node: ['24.11.0', '26.0.0']
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5

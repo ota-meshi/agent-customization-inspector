@@ -15,7 +15,7 @@
 import { ClaudeCompiledRule } from '../vendor/claude';
 import type { CompiledStaticMcpReadingRule } from './compiled-rule';
 import { declaredServersIn } from './server-map';
-import { ParsedStrictJsonDocument } from '../../parsers/json';
+import { ParsedJsonDocument } from '../../parsers/json';
 import type { McpServerDeclarationDto } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
@@ -52,8 +52,12 @@ export class ClaudeCompiledMcpCarrierRule
    * boundary turns the throw into the recognition's `failed` state while the
    * carrier stays an admitted candidate (FR-028).
    */
-  public serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[] {
-    const declared = new ParsedStrictJsonDocument(sourceText).entries;
+  public serverDeclarationsOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): readonly McpServerDeclarationDto[] {
+    const declared = new ParsedJsonDocument(sourceText, { tool: this.tool, sourceRelativePath })
+      .entries;
     // Strict JSON keys are strings, and the parser resolves a key declared
     // twice to its later declaration, so the spelling alone identifies the
     // one possible container entry.

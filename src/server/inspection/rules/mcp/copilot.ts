@@ -19,7 +19,7 @@ import type {
   CompiledStaticMcpReadingRule,
 } from './compiled-rule';
 import { declaredServersIn } from './server-map';
-import { ParsedJsoncDocument, ParsedStrictJsonDocument } from '../../parsers/json';
+import { ParsedJsonDocument } from '../../parsers/json';
 import type { McpServerDeclarationDto } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
@@ -57,8 +57,11 @@ export class CopilotCompiledMcpCarrierRule
    * recognizer's extraction boundary turns the throw into the recognition's
    * `failed` state while the carrier stays an admitted candidate (FR-028).
    */
-  public serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[] {
-    const { entries } = new ParsedStrictJsonDocument(sourceText);
+  public serverDeclarationsOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): readonly McpServerDeclarationDto[] {
+    const { entries } = new ParsedJsonDocument(sourceText, { tool: this.tool, sourceRelativePath });
     const wrapper = entries.find((entry) => entry.key === 'mcpServers');
     const declared =
       wrapper !== undefined
@@ -83,8 +86,9 @@ export class CopilotCompiledMcpCarrierRule
  * The VS Code `.vscode/mcp.json` carrier rule compiled for execution. Its own
  * unit beside the CLI's because the two schemas are different vendors' —
  * different surfaces' — contracts: the guide documents a top-level `servers`
- * map in the editor's JSONC configuration format, while the CLI carriers are
- * strict JSON with the `mcpServers` wrapper or the bare map (T361, T371).
+ * map, while the CLI carriers spell the `mcpServers` wrapper or the bare map
+ * (T361, T371). The two formats differ as well, each recorded at its own
+ * reading.
  */
 export class CopilotCompiledVscodeMcpCarrierRule
   extends CopilotCompiledRule
@@ -107,8 +111,11 @@ export class CopilotCompiledVscodeMcpCarrierRule
    * — the guide documents the wrapper alone — and the `inputs` and `sandbox`
    * sections beside it declare no server.
    */
-  public serverDeclarationsOf(sourceText: string): readonly McpServerDeclarationDto[] {
-    const { entries } = new ParsedJsoncDocument(sourceText);
+  public serverDeclarationsOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): readonly McpServerDeclarationDto[] {
+    const { entries } = new ParsedJsonDocument(sourceText, { tool: this.tool, sourceRelativePath });
     const wrapper = entries.find((entry) => entry.key === 'servers');
     const declared = wrapper?.value.kind === 'mapping' ? wrapper.value.entries : [];
     return declaredServersIn(declared);

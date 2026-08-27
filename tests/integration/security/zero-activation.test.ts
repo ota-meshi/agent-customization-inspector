@@ -46,6 +46,9 @@ import {
   buildCopilotAgentFixture,
   buildCopilotPluginFixture,
   buildCodexAgentFixture,
+  buildClaudeHookFixture,
+  buildCopilotHookFixture,
+  buildCodexHookFixture,
   buildCodexMcpFixture,
   buildClaudePermissionsFixture,
   buildCopilotSettingsFixture,
@@ -677,6 +680,242 @@ describe('Codex MCP inspection connects to nothing (T294)', () => {
     // response while nothing connects, resolves, executes, or reads — the
     // declared URL and command are inert values on the wire (FR-022).
     expect(detail?.servers?.map((server) => server.name)).toEqual([...fixture.expectedServerNames]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Codex hook inspection runs nothing (T846)', () => {
+  // A hook declaration is a command a client would run on a lifecycle event.
+  // Inspecting one must prove more than "no network": the command stays
+  // authored text inside the published declaration, the handler script it
+  // names is never opened, and no process, loader, or evaluator is reached —
+  // which is what FR-020 requires of every inspected declaration and what the
+  // hook kind makes most concrete.
+  it('publishes declared commands without spawning, loading, or reading a handler', async () => {
+    const fixture = buildCodexHookFixture('inspector-zero-activation-hooks');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during hook inspection`);
+      };
+    }
+    // The same closed Node surfaces the other cases spy on. A declared hook
+    // command reaches the machine only through one of these, so a scan that
+    // touches none of them executed, spawned, connected, resolved, and probed
+    // nothing.
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'spawnSync'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during hook inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // The handler scripts the declarations name are among the near misses, so
+    // this also proves a declared path opened nothing: read authority comes
+    // from a matcher alone, and an unreferenced script beside them is never
+    // inferred to be a hook either.
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // The two carriers are each read once, however many recognitions they
+    // carry: the config layer holds three.
+    for (const carrier of [fixture.standaloneCarrierPath, fixture.inlineCarrierPath]) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...carrier.split('/'))),
+        carrier,
+      ).toHaveLength(1);
+    }
+  });
+
+  it('assembles the hook carrier detail without any request or read', async () => {
+    const fixture = buildCodexHookFixture('inspector-zero-activation-hooks-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.hookCarrierDetail(fixture.standaloneCarrierPath);
+
+    // Served from the committed generation: the declared events reach the
+    // response while nothing runs, connects, or reads — a declared command is
+    // an inert value on the wire (FR-020, FR-022).
+    expect(detail?.events?.map((event) => event.event)).toEqual([
+      ...fixture.expectedStandaloneEvents,
+    ]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Claude contained-hook inspection runs nothing (T869)', () => {
+  // Claude declares hooks inside artifacts something else already accepted, so
+  // this case proves the same zero-activation claim over a different shape: the
+  // owners are read for their own kinds anyway, and the hook declarations they
+  // carry still run nothing, open no handler, and follow no plugin hook path.
+  it('publishes every owner declaration without spawning, loading, or reading a handler', async () => {
+    const fixture = buildClaudeHookFixture('inspector-zero-activation-claude-hooks');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during hook inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'spawnSync'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during hook inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // The handler scripts the declarations name, the fabricated standalone hook
+    // file, and the User layer are opened by nothing: read authority comes from
+    // a matcher alone (FR-004, FR-020, FR-024).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened, forbidden).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // Each owner is read once, however many recognitions it carries.
+    for (const owner of Object.values(fixture.owners)) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...owner.split('/'))),
+        owner,
+      ).toHaveLength(1);
+    }
+  });
+
+  it('assembles an owner hook detail without any request or read', async () => {
+    const fixture = buildClaudeHookFixture('inspector-zero-activation-claude-hooks-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.hookCarrierDetail(fixture.owners.settings);
+
+    // Served from the committed generation: the declared events reach the
+    // response while nothing runs, connects, or reads — a declared command is
+    // an inert value on the wire (FR-020, FR-022).
+    expect(detail?.events?.map((event) => event.event)).toEqual([
+      ...fixture.expectedEventsByOwner[fixture.owners.settings]!,
+    ]);
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
@@ -2362,6 +2601,122 @@ describe('Copilot custom-agent inspection activates nothing (T558)', () => {
     expect(serialized).toContain(FIXTURE_SECRET_LITERAL);
     expect(serialized).toContain(FIXTURE_ENVIRONMENT_REFERENCE);
     // Nothing connected, executed, or read while the detail was assembled.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
+    expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('Copilot hook inspection runs nothing (T890)', () => {
+  // Copilot documents both forms at once — files of their own and inline blocks
+  // in settings documents — so this case proves the zero-activation claim over
+  // a tree that holds both, plus a custom agent whose frontmatter declares
+  // hooks and a plugin's own bundled hook file: none of them runs, opens a
+  // handler, or follows a component path.
+  it('publishes every declaration without spawning, loading, or reading a handler', async () => {
+    const fixture = buildCopilotHookFixture('inspector-zero-activation-copilot-hooks');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during hook inspection`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'spawnSync'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during hook inspection`);
+      };
+      return { host, name, original } as const;
+    });
+    vi.clearAllMocks();
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-1',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+      });
+      expect(publication.kind).toBe('publishable');
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+    expect(observed).toEqual([]);
+    // The handler scripts the declarations name, the nested file below the hook
+    // directory, the plugin's own bundled hook file, and the User layer are
+    // opened by nothing: read authority comes from a matcher alone (FR-004,
+    // FR-020, FR-024).
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) => String(call[0]));
+    for (const forbidden of fixture.nearMissPaths) {
+      expect(opened, forbidden).not.toContain(join(fixture.root, ...forbidden.split('/')));
+    }
+    // Each owner is read once, however many recognitions and products it carries.
+    for (const owner of Object.values(fixture.owners)) {
+      expect(
+        opened.filter((path) => path === join(fixture.root, ...owner.split('/'))),
+        owner,
+      ).toHaveLength(1);
+    }
+  });
+
+  it('assembles a hook file detail without any request or read', async () => {
+    const fixture = buildCopilotHookFixture('inspector-zero-activation-copilot-hooks-detail');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const session = new InspectionSession({
+      invocationCwd: fixture.root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+
+    vi.clearAllMocks();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const detail = session.hookCarrierDetail(fixture.owners.standalone);
+
+    // Served from the committed generation: the declared events and the keys
+    // beside them reach the response while nothing runs, connects, or reads —
+    // a declared command is an inert value on the wire (FR-020, FR-022).
+    expect(detail?.events?.map((event) => event.event)).toEqual([
+      ...fixture.expectedEventsByOwner[fixture.owners.standalone]!,
+    ]);
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);

@@ -389,6 +389,62 @@ export const CLAUDE_REPO_COMMANDS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
+ * Claude contained hooks: the `hooks` declarations an accepted settings file,
+ * skill, subagent, plugin manifest, or marketplace entry carries. Claude
+ * documents no standalone project hook file, so every declaration this vendor
+ * has is contained in an artifact something else already accepted.
+ *
+ * The lookup base is the accepted artifact rather than a directory: the client
+ * reads these declarations out of what it already loaded, so the record carries
+ * no traversal of its own — which layers and components are active is the
+ * settings precedence's and the plugin activation's own composition.
+ *
+ * `documented`: the locations page lists all five, and the skills-and-agents
+ * section states that frontmatter hooks use the same three-level configuration
+ * format as a settings file's. How long a registration lasts, whether a
+ * workspace is trusted, and whether a managed policy allows a non-managed hook
+ * at all are runtime this tool never observes (FR-009).
+ */
+export const CLAUDE_REPO_CONTAINED_HOOKS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.repo.hooks-contained',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'repository',
+        lookupBase: 'active-config-layer',
+        relativeSelector:
+          'hooks in .claude/settings.json; .claude/settings.local.json; SKILL.md frontmatter; .claude/agents frontmatter; plugin.json; marketplace.json entries',
+        traversal: 'none',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.hooks.locations-resolution',
+          url: 'https://code.claude.com/docs/en/hooks',
+          officialHost: 'code.claude.com',
+          sections: ['Hook locations', 'Hooks in skills and agents', 'The /hooks menu'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'Where a hook is defined decides its scope, and the listed locations are the user and project settings files, managed policy settings, a plugin\u2019s hooks/hooks.json, skill frontmatter, and subagent frontmatter; frontmatter hooks use the same configuration format as settings-based hooks, a subagent\u2019s are registered only while it runs, and a skill\u2019s from its invocation onward. Hook entries merge across settings levels rather than replacing each other.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['Plugin manifest schema', 'File locations reference'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A plugin declares hooks either as config paths or as inline config in its manifest, and a marketplace entry may carry any manifest field, so a plugin can carry hook configuration in either place — content of the plugin the manifest or the entry declares.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
  * Claude project MCP declarations: the exact `.mcp.json` at `<project-root>`
  * as Claude Code determines it, whose named `mcpServers` entries are the
  * project-scope server declarations.
@@ -1336,6 +1392,7 @@ export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   [CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR,
   [CLAUDE_REPO_AGENTS_BEHAVIOR.behaviorId]: CLAUDE_REPO_AGENTS_BEHAVIOR,
   [CLAUDE_REPO_COMMANDS_BEHAVIOR.behaviorId]: CLAUDE_REPO_COMMANDS_BEHAVIOR,
+  [CLAUDE_REPO_CONTAINED_HOOKS_BEHAVIOR.behaviorId]: CLAUDE_REPO_CONTAINED_HOOKS_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR.behaviorId]:
     CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   [CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR.behaviorId]:

@@ -19,6 +19,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ref, shallowRef, type Ref } from 'vue';
 
 import { useInventoryFilters } from '../../../src/app/composables/filters';
+import type { NarrowedInventoryRow } from '../../../src/app/composables/filters';
 import { SessionViewState } from '../../../src/app/session/view-state';
 import type {
   CustomizationFileSummaryDto,
@@ -109,12 +110,29 @@ function instructionFile(
 }
 
 /** One instructions row: an applicability range and the files governing it. */
+/**
+ * One instruction row as the filter view publishes it. `rowFilePaths` is the
+ * row's own files, which no narrowing changes, so an expectation for a
+ * narrowed row states them rather than deriving them from what survived —
+ * that difference is the whole point of the field
+ * (`filters.ts` § NarrowedInventoryRow).
+ */
 function instructionEntry(
   applicabilityRange: string | null,
   files: readonly InstructionInventoryFileDto[],
-): InstructionInventoryEntryDto {
-  return { applicabilityRange, files };
+  rowFilePaths: readonly string[] = files.map((entryFile) => entryFile.sourceRelativePath),
+): NarrowedInventoryRow<InstructionInventoryEntryDto> {
+  return { applicabilityRange, files, rowFilePaths };
 }
+
+/** The `**` row's own files, whichever of them a narrowing leaves. */
+const ROOT_RANGE_FILE_PATHS = [
+  'AGENTS.md',
+  'AGENTS.override.md',
+  'CLAUDE.local.md',
+  'CLAUDE.md',
+  'TEAM_GUIDE.md',
+] as const;
 
 function snapshotWith(
   files: readonly CustomizationFileSummaryDto[],
@@ -133,6 +151,7 @@ function snapshotWith(
     plugins: [],
     outputStyles: [],
     permissions: [],
+    hooks: [],
     settings: [],
     agents: [],
     skills,
@@ -993,7 +1012,7 @@ describe('unified instruction rows across the recognizing tools (T271)', () => {
   // range, a shared physical file carrying one recognition per recognizing
   // product, and the configured fallbacks as ordinary Codex rows beside the
   // static pair (Phase 15 activated them; nothing here is pending).
-  const matrixInstructions: readonly InstructionInventoryEntryDto[] = [
+  const matrixInstructions: readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[] = [
     instructionEntry('**', [
       instructionFile('AGENTS.md', 'copilot', 'codex'),
       instructionFile('AGENTS.override.md', 'codex'),
@@ -1031,20 +1050,25 @@ describe('unified instruction rows across the recognizing tools (T271)', () => {
     // ranges they alone populated.
     tool.value = 'codex';
     expect(view.instructionRows.value).toEqual([
-      instructionEntry('**', [
-        instructionFile('AGENTS.md', 'codex'),
-        instructionFile('AGENTS.override.md', 'codex'),
-        instructionFile('TEAM_GUIDE.md', 'codex'),
-      ]),
+      instructionEntry(
+        '**',
+        [
+          instructionFile('AGENTS.md', 'codex'),
+          instructionFile('AGENTS.override.md', 'codex'),
+          instructionFile('TEAM_GUIDE.md', 'codex'),
+        ],
+        ROOT_RANGE_FILE_PATHS,
+      ),
     ]);
     // Claude keeps the shared root `CLAUDE.md`, its local variant, and the
     // nested row no other product recognizes.
     tool.value = 'claude';
     expect(view.instructionRows.value).toEqual([
-      instructionEntry('**', [
-        instructionFile('CLAUDE.local.md', 'claude'),
-        instructionFile('CLAUDE.md', 'claude'),
-      ]),
+      instructionEntry(
+        '**',
+        [instructionFile('CLAUDE.local.md', 'claude'), instructionFile('CLAUDE.md', 'claude')],
+        ROOT_RANGE_FILE_PATHS,
+      ),
       instructionEntry('packages/api/**', [instructionFile('packages/api/CLAUDE.md', 'claude')]),
     ]);
   });
@@ -1058,7 +1082,11 @@ describe('unified instruction rows across the recognizing tools (T271)', () => {
     // The ranges whose files all miss are not rows, and the no-range row
     // drops with its one file.
     expect(view.instructionRows.value).toEqual([
-      instructionEntry('**', [instructionFile('CLAUDE.md', 'copilot', 'claude')]),
+      instructionEntry(
+        '**',
+        [instructionFile('CLAUDE.md', 'copilot', 'claude')],
+        ROOT_RANGE_FILE_PATHS,
+      ),
       instructionEntry('packages/api/**', [instructionFile('packages/api/CLAUDE.md', 'claude')]),
     ]);
     expect(view.kindCounts.value.get('instructions')).toBe(2);
@@ -1095,7 +1123,15 @@ describe('unified instruction rows across the recognizing tools (T271)', () => {
     // travel with it, so the shape itself is asserted: a field added to the
     // DTO for content would fail this exhaustive key check.
     for (const entry of matrixInstructions) {
-      expect(Object.keys(entry).sort()).toEqual(['applicabilityRange', 'files']);
+      expect(Object.keys(entry).sort()).toEqual([
+        'applicabilityRange',
+        'files',
+        // The browser view's own field on a rendered row — the paths the row
+        // already holds, gathered so a comparison entry link does not depend
+        // on what a filter left (`filters.ts` § NarrowedInventoryRow). It
+        // travels no wire, and it carries no value a file wrote.
+        'rowFilePaths',
+      ]);
       for (const entryFile of entry.files) {
         expect(Object.keys(entryFile).sort()).toEqual(['recognitions', 'sourceRelativePath']);
         for (const recognition of entryFile.recognitions) {

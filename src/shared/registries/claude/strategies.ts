@@ -174,6 +174,65 @@ export const CLAUDE_COMMANDS_SELECTION_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
+ * Claude hook composition: every hook source that is active contributes, and
+ * every applicable matching hook runs — a closer settings level adds to the
+ * broader ones rather than replacing them (`append`), while which sources are
+ * active at all is the documented filter (`filter`): workspace trust, a
+ * managed-hooks-only policy, and the `disableAllHooks` setting each remove
+ * sources, and a plugin's hooks arrive only while that plugin is enabled.
+ *
+ * `select-first` is the one composition the page states over a set of results
+ * rather than over sources: an explicit deny returned by a hook takes
+ * precedence over another hook's outcome, so the restrictive answer is the one
+ * that stands.
+ *
+ * Registration lifetime is retained as a condition rather than composed: a
+ * subagent's frontmatter hooks are registered only while it runs, and a
+ * skill's from its invocation onward — both runtime facts this tool never
+ * observes (FR-009). The Inspector runs no declared handler
+ * (contracts/runtime-composition.md § claude.hooks.additive).
+ */
+export const CLAUDE_HOOKS_ADDITIVE_STRATEGY = {
+  strategyId: 'claude.hooks.additive',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  operations: ['filter', 'append', 'select-first'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.hooks.locations-resolution',
+          url: 'https://code.claude.com/docs/en/hooks',
+          officialHost: 'code.claude.com',
+          sections: ['Hook locations', 'Hooks in skills and agents', 'PreToolUse'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'Hook entries merge across settings levels rather than replacing each other, and hooks from settings, managed policy, and plugins also run inside subagents; an enterprise allowManagedHooksOnly setting blocks user, project, local, and plugin hooks, and disableAllHooks turns them off outside managed settings. A subagent registers its frontmatter hooks only while it runs and a skill from its invocation onward. An explicit deny returned by another hook takes precedence over a hook outcome that would let a tool call proceed.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: ['Settings precedence', 'Lists merge instead of overriding'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'A list-valued settings key is combined across the settings files rather than one file replacing another, which is the merge the hook entries of several levels follow.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['Hooks', 'Plugin manifest schema'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'Plugin hooks respond to the same lifecycle events as user-defined hooks and are one of the component types with their own merge rules, contributed while the plugin is enabled.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Claude instruction layering: the User file, each ancestor directory's
  * files, the launch directory's own, and the lazily discovered descendant
  * ones are all added to context in load order, broadest scope first
@@ -528,6 +587,7 @@ export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   [CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY.strategyId]: CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY,
   [CLAUDE_AGENTS_SELECTION_STRATEGY.strategyId]: CLAUDE_AGENTS_SELECTION_STRATEGY,
   [CLAUDE_COMMANDS_SELECTION_STRATEGY.strategyId]: CLAUDE_COMMANDS_SELECTION_STRATEGY,
+  [CLAUDE_HOOKS_ADDITIVE_STRATEGY.strategyId]: CLAUDE_HOOKS_ADDITIVE_STRATEGY,
   [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   [CLAUDE_MCP_SELECTION_STRATEGY.strategyId]: CLAUDE_MCP_SELECTION_STRATEGY,
   [CLAUDE_RULES_LAYERING_STRATEGY.strategyId]: CLAUDE_RULES_LAYERING_STRATEGY,

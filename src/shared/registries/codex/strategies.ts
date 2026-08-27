@@ -119,6 +119,61 @@ export const CODEX_CONFIG_PRECEDENCE_STRATEGY = {
 } as const satisfies RuntimeCompositionStrategy;
 
 /**
+ * Codex hook composition: every hook source that is active contributes, and
+ * every matching hook runs — a closer layer adds to the broader ones rather
+ * than replacing them (`append`), while which sources are active at all is
+ * the documented filter (`filter`): project hooks require the project
+ * `.codex/` layer to be trusted, the User layer contributes either way, an
+ * enabled plugin's own bundled hooks load beside them under the same trust
+ * review, and a managed-only policy can exclude every non-managed source.
+ *
+ * The one same-layer fact this records is retention, not selection: a layer
+ * holding both a `hooks.json` and an inline `[hooks]` table has both loaded,
+ * with a startup warning, so neither representation is a winner over the
+ * other. That is why the inspector keeps the standalone and the inline
+ * recognitions of one layer distinct rather than merging them into one
+ * reading (contracts/vendors/openai-codex.md § Normative initial-release
+ * presentation allowlist, the `hook` row).
+ *
+ * Trust, review, enablement, and managed policy stay separate condition facts
+ * rather than being composed into a verdict, and inspection never runs a
+ * declared handler: the strategy explains a documented runtime edge and never
+ * creates one (contracts/runtime-composition.md § codex.hooks.additive). Codex
+ * requires a reader to review and trust a hook definition before it can run at
+ * all, which is runtime state this tool never observes (FR-009).
+ */
+export const CODEX_HOOKS_ADDITIVE_STRATEGY = {
+  strategyId: 'codex.hooks.additive',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  operations: ['filter', 'append'],
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.hooks',
+          url: 'https://learn.chatgpt.com/docs/hooks.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Where Codex looks for hooks', 'Review and trust hooks'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'If more than one hook source exists Codex loads all matching hooks and higher-precedence layers do not replace lower-precedence hooks; a layer holding both hooks.json and inline [hooks] has both merged with a startup warning; hooks bundled with an enabled plugin load alongside the other sources under the same trust review; project-local hooks load only when the project .codex/ layer is trusted, while user hooks keep loading in an untrusted project; and a non-managed hook must be reviewed and trusted before it can run.',
+        },
+        {
+          sourceId: 'openai.codex.config-basic',
+          url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Codex configuration file', 'Configuration precedence'],
+          reviewedOn: '2026-08-17',
+          establishes:
+            'The active config layers a hook source belongs to are the User layer and the trusted project .codex/config.toml layers from the project root down to the runtime cwd.',
+        },
+      ]
+    : [],
+} as const satisfies RuntimeCompositionStrategy;
+
+/**
  * Codex instruction layering: select the first non-empty file per documented
  * location — the User fallback first, then each project-root-to-`cwd`
  * directory in the documented filename order (`select-first`) — concatenate
@@ -332,6 +387,7 @@ export const CODEX_COMPOSITION_STRATEGIES: Readonly<
 > = {
   [CODEX_AGENTS_INHERITANCE_STRATEGY.strategyId]: CODEX_AGENTS_INHERITANCE_STRATEGY,
   [CODEX_CONFIG_PRECEDENCE_STRATEGY.strategyId]: CODEX_CONFIG_PRECEDENCE_STRATEGY,
+  [CODEX_HOOKS_ADDITIVE_STRATEGY.strategyId]: CODEX_HOOKS_ADDITIVE_STRATEGY,
   [CODEX_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: CODEX_INSTRUCTIONS_LAYERING_STRATEGY,
   [CODEX_MCP_CONFIGURATION_STRATEGY.strategyId]: CODEX_MCP_CONFIGURATION_STRATEGY,
   [CODEX_PLUGINS_ACTIVATION_STRATEGY.strategyId]: CODEX_PLUGINS_ACTIVATION_STRATEGY,

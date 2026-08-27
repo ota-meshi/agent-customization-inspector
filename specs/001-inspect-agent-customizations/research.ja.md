@@ -151,10 +151,17 @@ implementation前に停止してcompatibility decisionを再reviewし、dependen
 research、plan、quickstart、task artifactをすべて同期して`/speckit.plan`、続いて`/speckit.tasks`を
 再実行する。Localなpackage/lockfile editで
 第2のdependency baselineを作ってはならない。
+Renovateが自動mergeする更新はこのgateの外にある: どのpackageを選ぶか、なぜそれを選んだかは変わらない。
+その更新はlockfileの中だけに収まらない。`:preserveSemverRanges`は`rangeStrategy: replace`であり、
+新しいversionが現在のrangeの外に出れば`package.json`のrangeを書き換える。したがってbumpを裏づけるのは
+ci.ymlであり、mergeの前にそのpull requestに対しsuite全体を走らせる。これらartifactに記録したversionは、
+その理由をreviewした時点のものである。自動mergeされない更新が2つある。runtime dependencyのmajorと、
+1.0.0未満のpackageのminorである（SemVerは`0.x`のどのreleaseでも破壊的変更を許す）。したがってpackageの置換、
+majorの越境、pre-1.0のcaret rangeの移動は今もこのgateに届く（AGENTS.md § Release policy）。
 
 | 領域 | 選択version | 理由 |
 |---|---:|---|
-| Node.js | 24.18.0 LTS development/build基準、engines `^24.11.0 || ^26.0.0` = `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` | Node 24/26 range全体のruntime compatibilityを宣言し、release matrixでは各下限をcertifyして他majorを除外する |
+| Node.js | Active LTS development/build基準、engines `^24.11.0 || ^26.0.0` = `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` | Node 24/26 range全体のruntime compatibilityを宣言し、release matrixでは各下限をcertifyして他majorを除外する |
 | TypeScript | 6.0.3 | 現行Vue/Volarとtypescript-eslint toolchainがsupportする最新compiler |
 | Nuxt / Vue | 4.4.8 / 3.5.39 | 現行stable release |
 | Vue Router | 5.2.0 | Nuxt 4.4.8の宣言range `^5.1.0`を満たす現行stable release。別router abstractionは追加しない |
@@ -177,6 +184,7 @@ research、plan、quickstart、task artifactをすべて同期して`/speckit.pl
 | Component/DOM | Vue Test Utils 2.4.11、happy-dom 20.10.6 | Nuxt Test Utils peerを満たす現行release |
 | Browser/a11y | Playwright 1.61.1、`@axe-core/playwright` 4.12.1 | 現行stable browser/accessibility tooling |
 | Type | `@types/node` 24.13.3、`vue-tsc` 3.3.7 | Node 24基準とVueに対応する最新互換type |
+| Release | `@changesets/cli` 3.0.1、`@changesets/changelog-github` 1.0.0 | version bump、changelog、publishをChangesetsが所有する: userが受け取る変更を運ぶpull requestは`.changeset/`のentryを追加し、mainへのpushはrelease pull requestを開くか更新するか、そのpull requestがversionを付けた内容をpublishする。releaseはCIで走り、公開packageはどちらもimportしないためdevDependencyである。changelog generatorはGitHub版を選んでおり、各entryが由来のpull requestへリンクする。これは`.changeset/config.json`が記述する2つの値のうちの1つでもある — 既定値をコピーしたものは、コピー元の既定値を追跡しなくなった値だからである。`.github/workflows/Release.yml`は結合actionではなくそのsub-actionを駆動し、それによってnpm trusted publishingがpublish tokenと交換する`id-token: write`をpublishするjobだけに置ける（AGENTS.md § Release policy）|
 
 **理由**: 選択した集合は、公開済みpeer rangeとbuilder rangeが一致する最新stableの組み合わせであるため、
 未supportのcompilerまたはbundler overrideを強制せず最初の実装を再現できる。
@@ -203,7 +211,8 @@ Inspector package、public contract、永続profile、user dataが存在しな�
 作業前にこの判断を確認しなければならず、影響を受けるconsumerまたは以前のcontractが見つかった場合は判断を
 無効としてreplanningする。後でacceptするdependency追加・変更または破壊的なpublic-contract変更はすべて、影響を
 受けるconsumer、contract、data、workflow、必要な移行・compatibility/support手順、rollback/support pathを記録するか、
-理由付きの明示的なno-impact判断を記録する。この`**移行影響**` sectionと対応する`**Migration impact**` section、
+理由付きの明示的なno-impact判断を記録する。Renovateが自動mergeする更新はそうした変更ではなく、上の
+dependency gateがそう述べている。この`**移行影響**` sectionと対応する`**Migration impact**` section、
 およびplanの`**Dependency and breaking-change migration gate**`/
 `**Dependencyおよび破壊的変更の移行gate**` sectionの英日design evidenceが欠落またはstaleならT002を
 blockする。Release-validation pairは後で対応するdecision evidenceを記録し、英日validation evidenceが欠落すれば
@@ -224,7 +233,7 @@ validationとそのmessageはGunshiが所有しており、2つ目のrendererは
 duplicated policyになるからである。Built-in help/versionはbindせずreturnする。
 Production entryは`gunshi/agent`、lazy command、custom plugin、experimental parser combinatorをimportしない。
 Gunshiはnpm graph上の1 leafだが、bundle済みinternal argument/plugin/resource codeもpayload、integrity、license、
-import-boundary digestの監査対象とする。Lockfileがpinするresolved version（明示的な`pnpm update`でのみ更新され、caret rangeにより同じ0.x minorに限定される）とこれらのtestによってpre-1.0 API変更riskを有界化する。
+import-boundary digestの監査対象とする。Lockfileがpinするresolved version（caret rangeにより同じ0.x minorに限定され、Renovateはその境界を自分では越えない）とこれらのtestによってpre-1.0 API変更riskを有界化する。
 
 監査した0.37.0のregistry tarballはtext-onlyのJavaScript、declaration、JSON、documentation、license file
 34件（unpacked 239,298 byte）で、runtime/optional/peer/bundled dependency、install lifecycle hook、platform
@@ -238,18 +247,18 @@ member単位のproduct決定として再判断するのではなく、maintain�
 lockfileが全memberをname/version/integrity hashでpinし（OS間で同一）、payload byteはdependency review時に
 固定される。devframe自身のtarball payloadはJavaScript/TypeScript textだけであるためNode-only package gateは維持される。
 devframeはpre-1.0であり、0.x minorがAPIをmigrateし得るため、caret rangeがそれらを除外し、commit済み
-lockfileがresolved versionをpinし、あらゆる
-bumpを§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの11個の
+lockfileがresolved versionをpinし、その
+minorを越えることは自動mergeされるbumpではなく§ 3のplanning-gate changeとして扱う。`tests/package/production-graph.test.ts`は、承認済みの11個の
 direct dependencyであることを正確にassertする。versionとintegrityはlockfileが所有し続ける。
 
 ### 有限なrelease-certification行列
 
-**決定**: 宣言済みNode.js 24/26 engine range全体を3つの固定OS/architecture targetでsupportする。Node.js 24.18.0
-development/build baselineの`ubuntu-24.04` x64で1つのplatform非依存tarballをbuildして別のbuild/package smoke checkを
-実行し、同一byteをNode.js `24.11.0`と`26.0.0`に`ubuntu-24.04` x64、`macos-15` arm64、`windows-2025` x64を
+**決定**: 宣言済みNode.js 24/26 engine range全体を3つのOS targetでsupportする。Active LTS
+Node.jsのdevelopment/build baselineの`ubuntu-latest`で1つのplatform非依存tarballをbuildして別のbuild/package smoke checkを
+実行し、同一byteをNode.js `24.11.0`と`26.0.0`に`ubuntu-latest`、`macos-latest`、`windows-latest`を
 掛け合わせた正確な6つのlower-bound certification jobでinstallする。各release jobで解決されたrunner-image identifierと
 実際のNode versionを記録する。Playwright 1.61.1がinstallする正確なChromium、Firefox、WebKit revisionのそれぞれで、
-primary-workflowとaccessibilityの完全なbrowser suiteをNode.js 24.18.0の`ubuntu-24.04` x64で実行する。これらのbrowser
+primary-workflowとaccessibilityの完全なbrowser suiteをactive LTS Node.jsの`ubuntu-latest`で実行する。これらのbrowser
 revisionはuser browserの網羅的listではなく、再現可能なautomated certification baselineである。OS helperはbrowser
 family/versionを選択・検証せずURLをdefault handlerへ渡す。Helper成功をcompatibility evidenceとせず、表示済みURLと
 `--no-open`をcertified browserのmanual選択fallbackとする。
@@ -260,7 +269,7 @@ family/versionを選択・検証せずURLをdefault handlerへ渡す。Helper成
 automated gateを与える。
 
 **検討した代案**: 無上限の`>=26.0.0` engine rangeは将来のmajorを暗黙に主張するため不採用とした。
-可変な`*-latest` runner labelと特定しないmodern-browser targetは、repository変更なしにrelease denominatorが変化するため不採用とした。
+`*-latest` runnerが解決したimageを記録しないことと、特定しないmodern-browser targetは、repository変更なしにrelease denominatorが変化するため不採用とした。labelそのものは採用し、各jobが解決したimage identifierとNode versionを記録する。
 Chromium-only testは、local launcherが別のbrowser engineを開く可能性があり、productが3つのPlaywright engineで動作することを意図した
 standard browser APIを使用するため不採用とした。
 
@@ -273,10 +282,9 @@ Versionの一次根拠はnpm registryの[Nuxt](https://www.npmjs.com/package/nux
 [Gunshi 0.37.0 registry metadata](https://registry.npmjs.org/gunshi/0.37.0)、
 [Vitest](https://www.npmjs.com/package/vitest)、
 [Playwright](https://www.npmjs.com/package/@playwright/test)である。Node公式の
-[release status](https://nodejs.org/en/about/previous-releases)と
-[Node 24.18.0 release](https://nodejs.org/en/blog/release/v24.18.0)をLTS基準と正確なbuild releaseの根拠にし、
-[Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)を第2のengine floorの根拠にする。GitHub公式の
-[runner-image labels](https://github.com/actions/runner-images#available-images)を3つの固定OS/architecture jobの根拠にする。
+[release status](https://nodejs.org/en/about/previous-releases)を、development/build baselineが解決する
+active LTS lineの根拠にし、[Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)を第2のengine floorの根拠にする。GitHub公式の
+[runner-image labels](https://github.com/actions/runner-images#available-images)を3つのOS targetの根拠にする。
 Monaco公式の[v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)を
 選択stable editor versionの根拠にする。
 Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)と
@@ -569,9 +577,46 @@ labelする。Entryはsource座標を持たない。Documentを指すものが�
 取得元の値の隣に置いたrangeはその値をcheckするのではなく言い換えるだけだからである。
 Parseできなかったdocumentは、値を発明せずrecognitionのextraction全体を破棄する。
 
+CarrierをどのJSON formatで読むかは、fileだけの事実ではなく、読み手とfileの組の事実であり、各回答は
+仮定ではなく計測による。Copilotのhook file、cross-toolの
+`.claude/settings*.json`、workspace rootの`.mcp.json`、およびeditor自身の`.vscode/mcp.json`を
+JSONCとして読む。本productが読む
+その他のJSON carrierは、Copilot自身のrepository settings pairを含めてすべてstrictである。product間の形を決めるのは`.claude/settings.json`である。
+Claude Codeはsettings file中の`//` commentを次回起動時に報告するsyntax errorとして文書化する一方、
+CopilotのeditorはそのfileをJSONC readerでparseする。したがって1つの物理fileに2つの回答があり、
+各productのrecognitionは自身の回答を取る（FR-004）。
+
+Copilotのsurface同士が食い違うこともあり、4つのJSONC carrierのうち3つがその事例である。Copilot CLIは、
+cross-toolのpair、hook file、workspace rootの`.mcp.json`のいずれについても
+commentを拒否する（それぞれ出荷buildに対して計測した）。一方editorは3つともJSONCとして読む。そのproductのsurfaceのうち1つでもcommentを
+受け入れるなら、commentを受け入れる側を取る。commentを含まないfileはどちらでも同じに読めるため、この
+選択が決めるのはcommentを含むfileの見え方だけである。strictに読めばそのfileはdeclarationを1つも持たず、
+行は「読めなかった」と述べ、そのsurfaceが読み込んでいる内容を隠す。JSONCとして読めば、CLIが1つも
+読み込まないdeclarationが、CLIの名も並ぶ行に公開される。内容とsurfaceを見せる後者の方が誤りは軽い。
+
+Copilot自身のrepository settings pairはこの規則が届かない事例であり、strictに読む理由でもある。この2 fileを
+緩く読むsurfaceがこのproductには存在しない。editorのsettings lookupは除外されており、editorの
+hook-locations表が名指すのはClaude形式のpairであってこのpairではないため、読み手はCLIだけである。そのCLIの
+2つの経路は互いに異なる: `/settings`が表示に使う経路はcommentを受け入れるが、設定を有効化しhook loadingが
+通る経路は拒否する。fileをloadせず表示するだけの経路は合併の対象となるsurfaceではなく、上の「誤りが軽い方」の
+比較も成り立たない。ここではcommentを含むfileはどこでも有効にならないため、緩く読めば、どのproductも
+読み込まないdeclarationを行に載せるだけで、その代わりに隠さずに済むものが何も無い。
+surfaceごとに答えることは現状では表現できない — recognitionはsurfaceを名指すが、parseは1つである —
+ため、この食い違いは公開せず、判断を下す位置に記録する。
+
+この合併はCopilotに限る。Copilotのsurfaceはeditor、CLI、hosted agentと提供元が異なり、計測上も食い違う
+からである。他のproductのsurfaceは同一vendorのものであり、いずれも同じbinaryへ至る。したがって、他社の
+session fileをeditorが緩く走査していても、それはそのsessionが何を持つかの発見であって読み込みではなく、
+各productはその製品自身のclientの読み取りで答える。
+
+各回答を確立したもの — vendorのpage、sourceとして読んだ出荷実装、または版を特定したbuildへの呼び出し
+— は、取得した版とともに記録する。実装の挙動は恒常的な事実ではなく日付付きの事実だからである。localな
+clientが読むcarrierはすべてそのclientに対して計測済みであり、未計測として残るのは、localな呼び出しが
+届かないhosted surfaceである。
+
 YAML semantic parseはYAML 1.2 core schemaとする。aliasは指す先の値へ解決し、未解決tagはそれが担っていたscalarを残す。
-どちらもそのfileを読み込む製品が読む値であり、このtoolはvalidateではなく記述するからである。JSONCはsyntax treeからの既知path extractionと
-する。Decoded valueはsyntaxがscalar — string、number、またはboolean — へ解決する場合にだけ、parser自身の
+どちらもそのfileを読み込む製品が読む値であり、このtoolはvalidateではなく記述するからである。JSONCはcomment syntaxを
+空白へ置き換え、残りを同じstrict parseで解決する。Decoded valueはsyntaxがscalar — string、number、またはboolean — へ解決する場合にだけ、parser自身の
 解決結果のtextとして保持し、collectionへ解決するkeyはentryが名づけられる何ものにも解決しない。
 Markdown/frontmatterとClaude importはtext scanとする。Parseはbundleされたparser libraryでscan path上のin-process実行とし、memory、syntax tree、scalarの
 capacityはNode.js、parser library、実行環境に従う。ProductはV8 memory ceilingやparser item/depth/time
@@ -1426,7 +1471,8 @@ manual accessibility check、documentation parity check、release tarball inspec
 3. SC-002はSection 10で定義した標準化filter/item-selection測定を含み、同じ9件以上の各runが両scan thresholdと
    両interaction thresholdのすべてに合格しなければならない。
 4. Dependency再確認はplanning gateとする。Packageまたはversion変更をacceptした場合、dependency baselineを記載する英日両方のdesign/task
-   artifactをすべて同期し、implementation前にplanningとtask generationを再実行する。
+   artifactをすべて同期し、implementation前にplanningとtask generationを再実行する。ただしRenovateが
+   自動mergeする更新は例外であり、それはci.ymlがgateする。
 5. SC-002 environmentはchecked-in version付き公開profileとし、現在のrequestに対する客観的status停止条件を持つ。
    Private local-machine identityはcontractに含めない。
 6. Origin-file-less hosted/runtime inputはスコープ外とする。製品は見つけたカスタマイズファイルを
@@ -1434,7 +1480,7 @@ manual accessibility check、documentation parity check、release tarball inspec
 7. Maintainer teamがinitial-release participant study、funding、support、privacy、accessibility、定義済みreview protocolを担当し、
    通常のcontributorへ義務を負わせない。
 8. `engines.node`をNode 24/26 runtime compatibility range全体とし、正確な6つのfloor jobをlower-bound certification sample、
-   Node 24.18.0をdevelopment/build baselineとする。Pinした3つのPlaywright revisionはautomated browser-certification baselineであり、
+   Active LTS Node.jsをdevelopment/build baselineとする。Pinした3つのPlaywright revisionはautomated browser-certification baselineであり、
    startup helperは未検証のOS default handlerへ委譲して表示済み/manual-open fallbackを常に残す。
 9. RepositoryとGlobalは独立したgeneration sequenceを保持する。InitialまたはretryのGlobal admitted-subset
    batch commitはGlobal sequenceだけを作成または前進させ、自sequenceのviewだけをinvalidateし、

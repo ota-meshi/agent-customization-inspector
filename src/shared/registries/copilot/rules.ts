@@ -1216,11 +1216,72 @@ export const COPILOT_REPO_AGENT_CLAUDE_RULE = {
 } as const satisfies InspectionRule;
 
 /**
+ * The two GitHub Copilot settings documents of the Repository root, whose
+ * inline `hooks` block the CLI reads. Two programs rather than one dynamic
+ * step, so each admission carries which authored filename matched.
+ *
+ * Its own pair rather than the settings rule's four locations, because the
+ * editor's hook-locations table names the Claude-format pair for the workspace
+ * scope and not this one: a hook rule over all four would claim a read no page
+ * documents.
+ *
+ * Root-anchored with no recursive step: the pages name these locations as the
+ * repository's own, and a settings file in a subdirectory is a path the vendor
+ * documents no read of.
+ */
+const COPILOT_REPO_COPILOT_SETTINGS_FILES_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'copilot' },
+      { kind: 'literal', value: 'settings.json' },
+    ],
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'copilot' },
+      { kind: 'literal', value: 'settings.local.json' },
+    ],
+  ],
+};
+
+/**
+ * The two cross-tool Claude-format settings documents of the Repository root,
+ * whose hooks both the CLI and the editor read — the same physical files
+ * Claude Code admits under its own rules.
+ *
+ * Its own pair for the reason the pair above is one: which surfaces document
+ * reading a location is what a rule's provenance rests on, and these two are
+ * the only settings documents the editor's hook-locations table names.
+ *
+ * Root-anchored for the same reason as the pair above: the pages name the
+ * repository's own `.claude/` files.
+ */
+const COPILOT_REPO_CLAUDE_SETTINGS_FILES_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'settings.json' },
+    ],
+    [
+      { kind: 'literal', value: '.claude' },
+      { kind: 'literal', value: 'settings.local.json' },
+    ],
+  ],
+};
+
+/**
  * The `copilot.repo.settings` matcher: the two GitHub Copilot settings
  * documents and the two cross-tool Claude-format ones the CLI reads for the
  * documented shared subset, each an exact Repository-root location. Four
  * programs rather than one dynamic step, so each admission carries which
  * authored filename matched.
+ *
+ * Every location is spelled out here rather than assembled from the two pair
+ * matchers above: which files a matcher selects has to be readable from the
+ * matcher itself. The CLI reads all four as settings documents, while each
+ * hook rule takes the pair its own surfaces document.
  *
  * Root-anchored with no recursive step: the pages name these locations as the
  * repository's own, and a settings file in a subdirectory is a path the vendor
@@ -1501,6 +1562,196 @@ export const COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/**
+ * The `.github/hooks/` directory of the Repository root, whose `*.json` direct
+ * children are hook files. One dynamic step for the filename, because the
+ * documented location is a directory whose JSON files are all loaded rather
+ * than a fixed set of names.
+ *
+ * Root-anchored and direct-child: all three surfaces name the repository or
+ * workspace root's own directory, and a `.github/hooks/` in a subdirectory is
+ * a location no page documents a read of. A nested file below that directory
+ * is a near miss for the same reason — the pages load the directory's `*.json`
+ * files, not a subtree.
+ */
+const COPILOT_REPO_HOOK_FILES_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.github' },
+      { kind: 'literal', value: 'hooks' },
+      { kind: 'regex', pattern: /\.json$/u },
+    ],
+  ],
+};
+
+/**
+ * Copilot standalone hook files: the root `.github/hooks/*.json` documents
+ * whose whole purpose is hooks, recognized as the `hook` kind whose row unit
+ * is one declared lifecycle event.
+ *
+ * All three surfaces read this location — the editor as a workspace hook
+ * source, the CLI as the repository-level one, and the cloud agent as the only
+ * hook source its ephemeral clone has — so one rule carries all three
+ * provenances.
+ *
+ * The keys beside the event map are this recognition's to publish, the
+ * documented `version` among them: such a file has one recognition, so a key
+ * this reading drops is a key no surface shows (FR-007).
+ *
+ * Admitting a file asserts nothing about execution: folder trust, the
+ * `disableAllHooks` switch, a machine-wide policy, and which surface is
+ * running at all are runtime state this tool never observes (FR-009), and no
+ * declared command is run, opened, or resolved (FR-020).
+ */
+export const COPILOT_REPO_HOOKS_RULE = {
+  ruleId: 'copilot.repo.hooks',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_HOOK_FILES_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations', 'Hook configuration format'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'Repository-level hook files are .github/hooks/*.json in the repository root — the exact location this rule admits — and the cloud agent loads hook configuration from the same files in the cloned repository; such a file is JSON carrying a version and a hooks object.',
+        },
+        {
+          sourceId: 'vscode.copilot.hooks',
+          url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Hook file locations'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'The workspace scope of the hook-locations table is .github/hooks/*.json, and the default chat.hookFilesLocations value loads every *.json file of that folder.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `hooks` an accepted Copilot settings document declares: the CLI's own
+ * repository pair, whose top-level `hooks` object holds the hook definitions
+ * scoped to that repository.
+ *
+ * Its own rule over the settings pair's authored matcher, never a second
+ * spelling of that location: a contained declaration is a recognition of the
+ * file that carries it, and a recognition is what a rule produces, so the two
+ * rules over these paths are one candidate read once.
+ *
+ * The CLI alone, because the editor documents no read of this file for hooks:
+ * its hook-locations table names `.github/hooks/*.json` and the Claude-format
+ * settings documents for the workspace scope and stops there. A rule spanning
+ * both settings pairs would report the editor as reading a file no page says
+ * it reads — the same reason `copilot.repo.agent.claude` is its own rule.
+ *
+ * A settings file's hooks belong to no other customization: its own row
+ * publishes the document it is, and that document is configuration rather than
+ * a customization whose definition the hooks are part of. An agent's
+ * frontmatter `hooks` is the other case, and it publishes no hook row: those
+ * declarations are part of what that agent is, and the agent's own row already
+ * publishes the keys its file wrote.
+ */
+export const COPILOT_REPO_SETTINGS_HOOKS_RULE = {
+  ruleId: 'copilot.repo.hooks.settings',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_COPILOT_SETTINGS_FILES_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'An inline hooks block sits at the top level of .github/copilot/settings.json or .github/copilot/settings.local.json — the exact locations this rule admits — and a malformed item there rejects the whole hooks field.',
+        },
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Repository settings (.github/copilot/settings.json)', 'User-editable files'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            "hooks is one of the keys the repository configuration file supports, holding the hook definitions scoped to that repository; the page's JSON-with-comments statement is written of the configuration directory's own settings.json rather than of this repository pair, whose sections fix its keys and not its syntax.",
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `hooks` an accepted Claude-format settings document declares, which both
+ * the CLI and the editor read: the cross-tool pair at the Repository root.
+ *
+ * Its own rule beside `copilot.repo.hooks.settings` because a rule's surfaces
+ * are the behaviors it rests on, and these two files are the only settings
+ * documents the editor's hook-locations table names. The same physical files
+ * carry Claude Code's own hook recognition, and each product's declaration is
+ * its own row of the event it declares (FR-007): one file, one read, one
+ * recognition per product.
+ */
+export const COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE = {
+  ruleId: 'copilot.repo.hooks.settings.claude',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['repository'],
+  matcher: COPILOT_REPO_CLAUDE_SETTINGS_FILES_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'vscode.copilot.hooks',
+          url: 'https://code.visualstudio.com/docs/agent-customization/hooks',
+          officialHost: 'code.visualstudio.com',
+          sections: [
+            'Hook file locations',
+            'How does VS Code handle Claude Code hook configurations?',
+          ],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'The workspace scope of the hook-locations table names .claude/settings.json and .claude/settings.local.json in the Claude format — the exact locations this rule admits — and VS Code parses the Claude Code hook configuration format found there.',
+        },
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations'],
+          reviewedOn: '2026-08-26',
+          establishes:
+            'The CLI also reads the cross-tool .claude/settings.json and .claude/settings.local.json files of the repository for their inline hooks block.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 /** Copilot's contribution to the inspection-rule registry, keyed by `ruleId`. */
 export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, InspectionRule>> = {
   [COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE.ruleId]:
@@ -1512,6 +1763,9 @@ export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, Inspection
   [COPILOT_REPO_AGENT_RULE.ruleId]: COPILOT_REPO_AGENT_RULE,
   [COPILOT_REPO_AGENT_CLAUDE_RULE.ruleId]: COPILOT_REPO_AGENT_CLAUDE_RULE,
   [COPILOT_REPO_COMMAND_RULE.ruleId]: COPILOT_REPO_COMMAND_RULE,
+  [COPILOT_REPO_HOOKS_RULE.ruleId]: COPILOT_REPO_HOOKS_RULE,
+  [COPILOT_REPO_SETTINGS_HOOKS_RULE.ruleId]: COPILOT_REPO_SETTINGS_HOOKS_RULE,
+  [COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE.ruleId]: COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE,
   [COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE,
   [COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE,
   [COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE.ruleId]: COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE,

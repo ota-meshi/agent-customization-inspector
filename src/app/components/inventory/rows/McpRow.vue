@@ -33,23 +33,13 @@ import {
   inlinePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
-import type {
-  CustomizationFileSummaryDto,
-  McpInventoryEntryDto,
-  SerializedDiagnostic,
-} from '../../../../shared/api-types';
+import type { McpInventoryEntryDto, SerializedDiagnostic } from '../../../../shared/api-types';
+import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
   /** The committed MCP entry to render: one declared server name, or the null row. */
-  entry: McpInventoryEntryDto;
-  /**
-   * Every published file by its Source-relative Path — the file's identity
-   * (FR-030). The row states each declaration's carrier by path and repeats
-   * none of the file's own facts, so this one lookup resolves the files it
-   * names.
-   */
-  filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
-  /** The generation's diagnostics, resolved per file by {@link RowDiagnostics}. */
+  entry: NarrowedInventoryRow<McpInventoryEntryDto>;
+  /** The generation's diagnostics, resolved per declaration by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
 
@@ -100,9 +90,11 @@ const nameAccessibleText = computed(() =>
  * no declaration to select; each recognizing product is stated beside the
  * link with the surfaces its admission rests on, exactly as an instruction
  * row states its recognitions. The no-name row's per-carrier state sentence
- * and the carrier file's own diagnostics — where the extraction-failure
- * record lives (FR-028) — are the carrier's, shared by its recognitions,
- * because the extraction ran once per file.
+ * and the carrier's diagnostics come from that carrier's own declarations:
+ * one file is read once, but it is read *per product*, so one carrier can
+ * hold a reading that failed beside one that parsed — a root `.mcp.json` is
+ * JSONC to Copilot's editor host and strict JSON to Claude Code — and the
+ * failure belongs to the reading that had it (FR-028).
  */
 const carrierRows = computed(() => {
   const byCarrier = Map.groupBy(
@@ -129,15 +121,21 @@ const carrierRows = computed(() => {
     // The no-name row's members tell their two states apart (FR-028): a
     // failed extraction leaves the rows unknown, a parsed carrier with no
     // declaration declares none. Null on named rows, whose declarations are
-    // always parsed; the first declaration answers for the carrier because
-    // the extraction ran once per file.
+    // always parsed. Any failed reading of the carrier makes the sentence the
+    // unknown one, because that product's servers are then unknown whatever
+    // another product's reading of the same file found.
     stateText:
       props.entry.name !== null
         ? null
-        : declarations[0]?.parseStatus === 'failed'
+        : declarations.some((declaration) => declaration.parseStatus === 'failed')
           ? 'The declarations in this file could not be read.'
           : 'This file declares no MCP servers.',
-    diagnosticIds: props.filesByPath.get(sourceRelativePath)?.diagnosticIds ?? [],
+    // The MCP recognitions' own records, not the file's whole list: a file can
+    // carry several kinds — a `.codex/config.toml` carries three — and each
+    // failure is one record per (file, kind) (FR-028), so showing the file's
+    // list here would report another row's failure as this one's. Deduplicated
+    // because one carrier's declarations republish the one record.
+    diagnosticIds: [...new Set(declarations.flatMap((declaration) => declaration.diagnosticIds))],
   }));
 });
 
@@ -153,15 +151,17 @@ const carrierRows = computed(() => {
  * reader steps to any other pair on the comparison itself instead of
  * composing one here. The no-name row links none: its carriers publish no
  * declaration a comparison would serialize.
+ *
+ * The pair is drawn from the row's own files rather than from the members a
+ * filter left, so the link a reader followed is still there when they come
+ * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
 const compareRoute = computed(() => {
   if (props.entry.name === null) {
     return null;
   }
   const name = props.entry.name;
-  const [first, second] = new Set(
-    props.entry.declarations.map((declaration) => declaration.sourceRelativePath),
-  );
+  const [first, second] = props.entry.rowFilePaths;
   return first !== undefined && second !== undefined
     ? mcpComparisonRouteFor(name, first, second)
     : null;

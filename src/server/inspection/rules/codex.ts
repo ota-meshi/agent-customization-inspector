@@ -18,9 +18,10 @@
 // walk executes for them. The scan composes each vendor's reader exactly like
 // the rule catalogs, so the logic lives with the vendor it belongs to
 // (contracts/vendors/openai-codex.md § Derived Repository rules). The file is
-// also a candidate of its own, admitted by two rules over one read:
-// `codex.repo.config` for the `[mcp_servers.*]` tables it carries and
-// `codex.repo.settings` for the document those tables sit in. Which detail
+// also a candidate of its own, admitted by three rules over one read:
+// `codex.repo.config` for the `[mcp_servers.*]` tables it carries,
+// `codex.repo.hooks.inline` for the `[hooks]` table it can also contain, and
+// `codex.repo.settings` for the document all of them sit in. Which detail
 // answers for it follows from the row a reader arrives through, never from
 // the file (FR-007): an MCP row's subject is one declaration, so
 // `get-mcp-carrier-detail` publishes declarations and no bytes, while the
@@ -33,6 +34,7 @@ import { CodexCompiledAgentRule } from './agents/codex';
 import { CodexCompiledSkillRule } from './skills/codex';
 import { CodexCompiledPermissionsDocumentRule } from './permissions/codex';
 import { CodexCompiledMcpCarrierRule } from './mcp/codex';
+import { CodexCompiledInlineHookRule, CodexCompiledStandaloneHookRule } from './hooks/codex';
 import { CodexCompiledInstructionRule } from './instructions/codex';
 import type { CompiledStaticCandidateRule, CompiledStaticOtherKindRule } from './registry';
 import type { CustomizationKind } from '../../../shared/entities';
@@ -65,11 +67,12 @@ export class CodexCompiledOtherKindRule
     | 'agent'
     | 'prompt/command'
     | 'permissions'
+    | 'hook'
     | 'plugin'
     | 'output style'
   >;
 
-  /** Compiles one Codex record of any kind but the seven with a question of their own. */
+  /** Compiles one Codex record of any kind but the eight with a question of their own. */
   public constructor(rule: InspectionRule) {
     super(rule);
     if (
@@ -79,6 +82,7 @@ export class CodexCompiledOtherKindRule
       rule.kind === 'agent' ||
       rule.kind === 'prompt/command' ||
       rule.kind === 'permissions' ||
+      rule.kind === 'hook' ||
       // No shipped rule of this vendor carries the kind; the exclusion keeps
       // the unit's type in step with the base, whose `kind` an output-style
       // unit answers for (`output-styles/compiled-rule.ts` § CompiledStaticOutputStyleRule).
@@ -93,9 +97,9 @@ export class CodexCompiledOtherKindRule
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers static instructions, skills, the
- * MCP carrier, the settings document that carrier is, rule files, and custom
- * agents, with the configured instruction fallbacks reaching the same walk
- * through the derived rule below.
+ * MCP carrier, the settings document that carrier is, rule files, custom
+ * agents, and both hook carriers, with the configured instruction fallbacks
+ * reaching the same walk through the derived rule below.
  *
  * The catalog now carries both discovery classes, and each compiles through
  * its own gate: the static rules below feed the traversal, while the derived
@@ -132,7 +136,15 @@ export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Ob
             ? new CodexCompiledAgentRule(rule)
             : rule.kind === 'permissions'
               ? new CodexCompiledPermissionsDocumentRule(rule)
-              : rule.kind === 'plugin'
-                ? new CodexCompiledPluginCatalogRule(rule)
-                : new CodexCompiledOtherKindRule(rule),
+              : rule.kind === 'hook'
+                ? // The two hook carriers are two formats at two locations, so
+                  // the record's own identity selects the reading: the
+                  // standalone strict-JSON file, or the inline table of the
+                  // TOML config layer.
+                  rule.ruleId === 'codex.repo.hooks.inline'
+                  ? new CodexCompiledInlineHookRule(rule)
+                  : new CodexCompiledStandaloneHookRule(rule)
+                : rule.kind === 'plugin'
+                  ? new CodexCompiledPluginCatalogRule(rule)
+                  : new CodexCompiledOtherKindRule(rule),
   );

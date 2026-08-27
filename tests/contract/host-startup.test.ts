@@ -214,6 +214,7 @@ describe('devframe host definition', () => {
       'agent-customization-inspector:get-session',
       'agent-customization-inspector:get-file-detail',
       'agent-customization-inspector:get-mcp-carrier-detail',
+      'agent-customization-inspector:get-hook-carrier-detail',
       'agent-customization-inspector:get-plugin-carrier-detail',
       'agent-customization-inspector:get-plugin-file-detail',
       'agent-customization-inspector:get-permission-policy-detail',

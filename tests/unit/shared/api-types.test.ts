@@ -94,6 +94,7 @@ describe('session snapshot DTO', () => {
       | 'plugins'
       | 'outputStyles'
       | 'permissions'
+      | 'hooks'
       | 'settings'
       | 'agents'
       | 'skills'

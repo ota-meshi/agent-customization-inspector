@@ -63,6 +63,11 @@ import {
   COPILOT_VSCODE_USER_SKILLS_BEHAVIOR,
   COPILOT_VSCODE_PLUGINS_BEHAVIOR,
   COPILOT_VSCODE_USER_PLUGINS_BEHAVIOR,
+  COPILOT_VSCODE_HOOKS_BEHAVIOR,
+  COPILOT_VSCODE_USER_HOOKS_BEHAVIOR,
+  COPILOT_CLI_HOOKS_BEHAVIOR,
+  COPILOT_CLI_USER_HOOKS_BEHAVIOR,
+  COPILOT_CLOUD_HOOKS_BEHAVIOR,
 } from './behaviors';
 import {
   COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
@@ -85,6 +90,9 @@ import {
   COPILOT_REPO_PROMPT_RULE,
   COPILOT_REPO_SETTINGS_RULE,
   COPILOT_REPO_SKILL_RULE,
+  COPILOT_REPO_HOOKS_RULE,
+  COPILOT_REPO_SETTINGS_HOOKS_RULE,
+  COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE,
   COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE,
   COPILOT_REPO_MARKETPLACE_RULE,
 } from './rules';
@@ -106,6 +114,9 @@ import {
   COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY,
   COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY,
   COPILOT_VSCODE_PLUGINS_ACTIVATION_STRATEGY,
+  COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY,
+  COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY,
+  COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY,
 } from './strategies';
 import type { RuleRelations, StrategyRelations } from '../relation-types';
 import type { CopilotRuleId, CopilotStrategyId } from '../identifier-types';
@@ -283,6 +294,44 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
    */
   [COPILOT_CLOUD_PLUGINS_ACTIVATION_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_CLOUD_PLUGINS_BEHAVIOR],
+  },
+  /**
+   * The editor's hook composition consumes both hook scopes it resolves
+   * against each other, and the two lookups whose hooks then run in addition:
+   * a custom agent's frontmatter and an enabled plugin's own configuration.
+   * Leaving either of those out would describe the workspace-over-User
+   * resolution as the whole outcome, which is the one thing the page says it
+   * is not.
+   */
+  [COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      COPILOT_VSCODE_AGENTS_BEHAVIOR,
+      COPILOT_VSCODE_HOOKS_BEHAVIOR,
+      COPILOT_VSCODE_PLUGINS_BEHAVIOR,
+      COPILOT_VSCODE_USER_HOOKS_BEHAVIOR,
+    ],
+  },
+  /**
+   * The CLI's hook composition consumes its two file-and-inline lookups and
+   * the plugin lookup whose roots hold the hooks an installed plugin declares.
+   * The policy directory is the one documented source with no behavior of its
+   * own: a machine-wide policy path is outside every Source this product
+   * selects, so it stays a condition rather than an edge.
+   */
+  [COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY.strategyId]: {
+    consumesBehaviors: [
+      COPILOT_CLI_HOOKS_BEHAVIOR,
+      COPILOT_CLI_PLUGINS_BEHAVIOR,
+      COPILOT_CLI_USER_HOOKS_BEHAVIOR,
+    ],
+  },
+  /**
+   * The cloud composition consumes the one lookup that environment has: the
+   * hook files of the ephemeral clone. A User scope is absent because the
+   * sandbox has no user home to read, not because this record omits it.
+   */
+  [COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY.strategyId]: {
+    consumesBehaviors: [COPILOT_CLOUD_HOOKS_BEHAVIOR],
   },
 };
 
@@ -579,5 +628,47 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
   [COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE.ruleId]: {
     basedOnBehaviors: [COPILOT_CLI_EXTENSIONS_BEHAVIOR],
     explainedByStrategies: [COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY],
+  },
+  /**
+   * The standalone hook rule is based on all three surfaces' hook lookups,
+   * because the location it admits is the one every one of them documents
+   * reading, and is explained by each of their compositions: what happens to a
+   * file's declarations differs by surface — resolved against the User scope
+   * in the editor, appended in the CLI's source order, and reduced to the
+   * subset the cloud sandbox honors — and no row projects any of it (FR-009).
+   */
+  [COPILOT_REPO_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [
+      COPILOT_CLI_HOOKS_BEHAVIOR,
+      COPILOT_CLOUD_HOOKS_BEHAVIOR,
+      COPILOT_VSCODE_HOOKS_BEHAVIOR,
+    ],
+    explainedByStrategies: [
+      COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY,
+      COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY,
+      COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY,
+    ],
+  },
+  /**
+   * The Copilot settings hook rule is based on the CLI lookup alone and
+   * explained by the CLI composition alone: the editor's hook-locations table
+   * does not name this pair, so attaching its surface here would claim a read
+   * no page documents.
+   */
+  [COPILOT_REPO_SETTINGS_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_HOOKS_BEHAVIOR],
+    explainedByStrategies: [COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY],
+  },
+  /**
+   * The Claude-format settings hook rule is based on both lookups that name
+   * that pair — the CLI's cross-tool read and the editor's workspace one — and
+   * is explained by both of their compositions.
+   */
+  [COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [COPILOT_CLI_HOOKS_BEHAVIOR, COPILOT_VSCODE_HOOKS_BEHAVIOR],
+    explainedByStrategies: [
+      COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY,
+      COPILOT_VSCODE_HOOKS_COMPOSITION_STRATEGY,
+    ],
   },
 };

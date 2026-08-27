@@ -182,7 +182,8 @@ const CODEX_REPO_CONFIG_MATCHER: StructuredInspectorMatcher = {
  * MCP detail publishes the declarations by the keys the file wrote rather than
  * the file's bytes, because that detail's subject is one declaration (FR-007).
  * The document those declarations sit in is {@link CODEX_REPO_SETTINGS_RULE}'s
- * recognition of the same file: two rules over one candidate and one read, the
+ * recognition of the same file, beside the inline hook rule's: three rules
+ * over one candidate and one read, the
  * arrangement `.claude/settings.json` already has where one rule admits the
  * permission policy inside it and another the settings around it.
  *
@@ -276,6 +277,122 @@ export const CODEX_REPO_SETTINGS_RULE = {
           reviewedOn: '2026-08-17',
           establishes:
             'Project configuration lives in .codex/config.toml, loaded per trusted layer from the project root down to the runtime cwd — the root layer being the one inside the selected Repository boundary.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `codex.repo.hooks` matcher: the exact `.codex/hooks.json` pair of
+ * literals at the Repository root. Codex reads hooks beside each active config
+ * layer, and the selected root is the project root (FR-001), so exactly one
+ * layer of that chain is in scope; a nested `.codex/hooks.json` belongs to a
+ * runtime working directory this product never selects and stays a near miss
+ * at every later phase, the same standing a nested `AGENTS.md` has.
+ */
+const CODEX_REPO_HOOKS_MATCHER: StructuredInspectorMatcher = {
+  base: { kind: 'repository' },
+  selectors: [
+    [
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'hooks.json' },
+    ],
+  ],
+};
+
+/**
+ * The Codex Repository standalone hook carrier — the root `.codex/hooks.json`,
+ * admitted so the lifecycle events it declares can be published as the hook
+ * inventory's rows, one per declaration (data-model.md § Inventory unit).
+ *
+ * The file's own top-level `description` is a fact about the carrier rather
+ * than about any event, so its detail publishes it beside the events instead
+ * of dropping it: nothing else recognizes this file, so what this recognition
+ * does not publish, no surface shows (FR-007).
+ *
+ * Admitting the carrier asserts nothing about execution. Project hooks load
+ * only when the project `.codex/` layer is trusted, and a non-managed hook
+ * must be reviewed and trusted against its current hash before Codex will run
+ * it — runtime state this tool never observes (FR-009). No declared command,
+ * handler, or referenced script is executed, opened, or resolved (FR-020).
+ */
+export const CODEX_REPO_HOOKS_RULE = {
+  ruleId: 'codex.repo.hooks',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_HOOKS_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.hooks',
+          url: 'https://learn.chatgpt.com/docs/hooks.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Where Codex looks for hooks', 'Config shape'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'Codex discovers hooks next to active config layers as a hooks.json file, <repo>/.codex/hooks.json being the project location, and that file organizes hooks as an event map whose entries are matcher groups holding handlers, beside an optional top-level description.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The Codex Repository inline hook table — the same root `.codex/config.toml`
+ * {@link CODEX_REPO_CONFIG_RULE} and {@link CODEX_REPO_SETTINGS_RULE} admit,
+ * recognized here for the `[hooks]` table it can contain. The vendor contract
+ * is explicit that the single admitted carrier owns separate `MCP`,
+ * `settings/config`, and contained `hook` recognitions
+ * (contracts/vendors/openai-codex.md § Normative initial-release presentation
+ * allowlist), and a recognition is what a rule produces, so each is a rule.
+ * Three rules over one path add no read: the walk merges them into one
+ * candidate with all three provenances.
+ *
+ * The matcher is shared with the carrier rule rather than restated, because it
+ * is the same location and a second spelling of it could drift.
+ *
+ * Its own rule rather than a second selector on {@link CODEX_REPO_HOOKS_RULE},
+ * because the two carriers are read differently: this one's declarations are a
+ * TOML table on a document whose other keys belong to the settings
+ * recognition, while the standalone file is strict JSON whose remaining
+ * top-level keys are the hook carrier's own. One rule would need one reading
+ * for two formats.
+ *
+ * An inline table creates no second candidate and no synthetic file: it is
+ * this one physical file's own recognition, and the events it declares stay
+ * distinct from the standalone file's at the same layer, which Codex loads
+ * together rather than choosing between (`codex.hooks.additive`).
+ */
+export const CODEX_REPO_INLINE_HOOKS_RULE = {
+  ruleId: 'codex.repo.hooks.inline',
+  tool: 'codex',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['repository'],
+  matcher: CODEX_REPO_CONFIG_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.hooks',
+          url: 'https://learn.chatgpt.com/docs/hooks.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Where Codex looks for hooks', 'Config shape'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'An inline [hooks] table inside a layer\u2019s config.toml is one of the two forms Codex discovers hooks in, spelling the same event/matcher/handler levels as the standalone file; a layer holding both has both loaded with a startup warning.',
         },
       ]
     : [],
@@ -657,6 +774,8 @@ export const CODEX_INSPECTION_RULES: Readonly<Record<CodexRuleId, InspectionRule
   [CODEX_EXCLUDED_PLUGIN_FILES_RULE.ruleId]: CODEX_EXCLUDED_PLUGIN_FILES_RULE,
   [CODEX_REPO_AGENT_RULE.ruleId]: CODEX_REPO_AGENT_RULE,
   [CODEX_REPO_CONFIG_RULE.ruleId]: CODEX_REPO_CONFIG_RULE,
+  [CODEX_REPO_HOOKS_RULE.ruleId]: CODEX_REPO_HOOKS_RULE,
+  [CODEX_REPO_INLINE_HOOKS_RULE.ruleId]: CODEX_REPO_INLINE_HOOKS_RULE,
   [CODEX_REPO_INSTRUCTIONS_RULE.ruleId]: CODEX_REPO_INSTRUCTIONS_RULE,
   [CODEX_REPO_MARKETPLACE_RULE.ruleId]: CODEX_REPO_MARKETPLACE_RULE,
   [CODEX_REPO_RULES_RULE.ruleId]: CODEX_REPO_RULES_RULE,

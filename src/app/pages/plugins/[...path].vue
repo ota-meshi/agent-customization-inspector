@@ -673,6 +673,9 @@ const openFileRoleKinds = computed((): readonly CustomizationKind[] => {
       row.definitions.some((definition) => definition.sourceRelativePath === path),
     ),
     permissions: held.permissions.some((row) => row.sourceRelativePath === path),
+    hook: held.hooks.some((row) =>
+      row.declarations.some((declaration) => declaration.sourceRelativePath === path),
+    ),
     'output style': held.outputStyles.some((row) =>
       row.definitions.some((definition) => definition.sourceRelativePath === path),
     ),

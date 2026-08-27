@@ -19,12 +19,17 @@ import {
   buildClaudeMcpFixture,
   buildClaudePermissionsFixture,
   buildCopilotSettingsFixture,
+  buildCopilotHookFixture,
+  buildUnifiedHookFixture,
+  type UnifiedHookFixture,
+  type CopilotHookFixture,
   buildClaudeOutputStyleFixture,
   buildClaudeRuleFixture,
   buildClaudeAgentFixture,
   buildClaudeSkillFixture,
   buildCodexAgentFixture,
   buildCodexInstructionFixture,
+  buildCodexHookFixture,
   buildCodexMcpFixture,
   buildCodexRuleFixture,
   buildCodexSkillFixture,
@@ -44,6 +49,7 @@ import {
   type ClaudeRuleFixture,
   type ClaudeSkillFixture,
   type CodexInstructionFixture,
+  type CodexHookFixture,
   type CodexMcpFixture,
   type CodexRuleFixture,
   type ClaudePermissionsFixture,
@@ -60,13 +66,22 @@ import {
 import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
 import { CODEX_DERIVED_FALLBACK_RULE } from '../../../src/server/inspection/rules/instructions/codex';
 import { CodexCompiledPluginCatalogRule } from '../../../src/server/inspection/rules/plugins/codex';
+import {
+  CodexCompiledInlineHookRule,
+  CodexCompiledStandaloneHookRule,
+} from '../../../src/server/inspection/rules/hooks/codex';
 import { CLAUDE_REPOSITORY_RULES } from '../../../src/server/inspection/rules/claude';
 import {
   ClaudeCompiledPluginCatalogRule,
   ClaudeCompiledPluginManifestRule,
 } from '../../../src/server/inspection/rules/plugins/claude';
+import { ClaudeCompiledSettingsHookRule } from '../../../src/server/inspection/rules/hooks/claude';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
 import { CopilotCompiledPluginCatalogRule } from '../../../src/server/inspection/rules/plugins/copilot';
+import {
+  CopilotCompiledSettingsHookRule,
+  CopilotCompiledStandaloneHookRule,
+} from '../../../src/server/inspection/rules/hooks/copilot';
 import { INSPECTION_RULES } from '../../../src/shared/registries/inspection-rules';
 import { RULE_RELATIONS } from '../../../src/shared/registries/relations';
 import {
@@ -117,7 +132,7 @@ async function scanFixture() {
 
 describe('the shipped codex.repo.skill plan', () => {
   it('compiles the authored program once into the immutable typed plan', () => {
-    expect(CODEX_REPOSITORY_RULES).toHaveLength(7);
+    expect(CODEX_REPOSITORY_RULES).toHaveLength(9);
     const compiled = CODEX_REPOSITORY_RULES.find(
       (candidate) => candidate.rule.ruleId === 'codex.repo.skill',
     )!;
@@ -716,6 +731,8 @@ describe('the shipped codex.repo.instructions plan (T207)', () => {
     expect(CODEX_REPOSITORY_RULES.map((candidate) => candidate.rule.ruleId)).toEqual([
       'codex.repo.agent',
       'codex.repo.config',
+      'codex.repo.hooks',
+      'codex.repo.hooks.inline',
       'codex.repo.instructions',
       'codex.repo.marketplace',
       'codex.repo.rules',
@@ -864,16 +881,17 @@ describe('the anchored Codex MCP carrier inventory (T282)', () => {
     const result = await scanWith(mcpFixture.root, CODEX_REPOSITORY_RULES);
     const carrier = result.files.find((file) => file.publicPath === mcpFixture.carrierPath);
     expect(carrier).toBeDefined();
-    // Two admissions, one candidate: the file is the MCP carrier its
-    // `[mcp_servers.*]` tables make it and the settings document those tables
-    // sit in, and each recognition is a rule's (T584). Two plans matching one
-    // path merge into one candidate, so no duplicate file appears and the walk
+    // Three admissions, one candidate: the file is the MCP carrier its
+    // `[mcp_servers.*]` tables make it, the hook carrier an inline `[hooks]`
+    // table makes it, and the settings document all of them sit in, and each
+    // recognition is a rule's (T584, T839). Three plans matching one path
+    // merge into one candidate, so no duplicate file appears and the walk
     // still reads it exactly once.
     expect(
       resolveAdmittingRules(CODEX_REPOSITORY_RULES, carrier!.admissions)
         .map((admitted) => admitted.rule.ruleId)
         .toSorted(),
-    ).toEqual(['codex.repo.config', 'codex.repo.settings']);
+    ).toEqual(['codex.repo.config', 'codex.repo.hooks.inline', 'codex.repo.settings']);
     const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
       String(call[0])
         .slice(mcpFixture.root.length + 1)
@@ -925,6 +943,166 @@ describe('the anchored Codex MCP carrier inventory (T282)', () => {
     // Scanned alone, the rule admits exactly the root layer and nothing else:
     // no descendant, no spelling variant, no configured target.
     expect(result.files.map((file) => file.publicPath)).toEqual([mcpFixture.carrierPath]);
+  });
+});
+
+describe('the anchored Codex hook carriers (T835)', () => {
+  let hookFixture: CodexHookFixture;
+
+  beforeAll(() => {
+    hookFixture = buildCodexHookFixture('inspector-codex-hooks-rules');
+  });
+
+  afterAll(() => {
+    rmSync(hookFixture.root, { recursive: true, force: true });
+  });
+
+  it('compiles the standalone program at the Repository root and nothing wider', () => {
+    const compiled = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.hooks',
+    )!;
+    expect(compiled.tool).toBe('codex');
+    expect(compiled.kind).toBe('hook');
+    // The unit that owns this vendor's reading of a hook file of its own; the
+    // inline table of a config layer is the other unit's
+    // (`hooks/compiled-rule.ts` § CompiledStaticHookRule).
+    expect(compiled).toBeInstanceOf(CodexCompiledStandaloneHookRule);
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['codex.repo.hooks']!.matcher!),
+    );
+    expect(compiled.plan.selectors).toHaveLength(1);
+    expect(compiled.plan.selectors[0]!.remainder).toEqual([
+      { kind: 'literal', value: '.codex' },
+      { kind: 'literal', value: 'hooks.json' },
+    ]);
+  });
+
+  it('admits the root file alone, leaving a descendant layer and every near miss out', async () => {
+    // Root-anchored for the reason every Codex row is: the selected root is
+    // the project root (FR-001), so a `packages/api/.codex/hooks.json` belongs
+    // to a runtime working directory this product never selects and stays a
+    // near miss. The handler scripts the declarations name are near misses
+    // too — a declared path gains no read authority — and so is the
+    // unreferenced script beside them, which is never inferred to be a hook.
+    const result = await scanWith(hookFixture.root, CODEX_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    expect(paths.has(hookFixture.standaloneCarrierPath)).toBe(true);
+    for (const nearMiss of hookFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('admits the config layer for its inline table as one more recognition of one file', async () => {
+    const result = await scanWith(hookFixture.root, CODEX_REPOSITORY_RULES);
+    const carrier = result.files.find((file) => file.publicPath === hookFixture.inlineCarrierPath);
+    expect(carrier).toBeDefined();
+    // The inline table creates no second candidate and no synthetic file: it
+    // is one more rule over the one physical config layer, which the walk
+    // merges into one candidate read once (T839).
+    expect(
+      resolveAdmittingRules(CODEX_REPOSITORY_RULES, carrier!.admissions)
+        .map((admitted) => admitted.rule.ruleId)
+        .toSorted(),
+    ).toEqual(['codex.repo.config', 'codex.repo.hooks.inline', 'codex.repo.settings']);
+    const inline = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.hooks.inline',
+    )!;
+    expect(inline.kind).toBe('hook');
+    expect(inline).toBeInstanceOf(CodexCompiledInlineHookRule);
+    // The same authored location as the carrier rule's, not a second spelling
+    // of it: a matcher written twice is one that can drift.
+    expect(INSPECTION_RULES['codex.repo.hooks.inline']!.matcher).toBe(
+      INSPECTION_RULES['codex.repo.config']!.matcher,
+    );
+    // Scanned alone, the rule admits exactly the root layer: no descendant, no
+    // spelling variant, and no standalone hook file — that is the other rule's.
+    const alone = await scanWith(hookFixture.root, [inline]);
+    expect(alone.files.map((file) => file.publicPath)).toEqual([hookFixture.inlineCarrierPath]);
+  });
+
+  it('reads each carrier by its own format, and neither reads the other one', () => {
+    const standalone = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.hooks',
+    );
+    const inline = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.hooks.inline',
+    );
+    if (
+      !(standalone instanceof CodexCompiledStandaloneHookRule) ||
+      !(inline instanceof CodexCompiledInlineHookRule)
+    ) {
+      throw new Error('the two hook records compile into their own units');
+    }
+    // The standalone file's events, and the keys beside them: the documented
+    // `description` is the carrier's own field rather than an event, and an
+    // event whose value is not a list of groups declares nothing and is
+    // omitted whole — the same answer an absent hook map gives.
+    const standaloneReading = standalone.hookCarrierReadingOf(
+      JSON.stringify({
+        description: 'Repository lifecycle hooks.',
+        hooks: {
+          SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'true' }] }],
+          Stop: { matcher: '^.*$' },
+        },
+        extra: 'beside the hook map',
+      }),
+      '.codex/hooks.json',
+    );
+    expect(standaloneReading.events.map((event) => event.event)).toEqual(['SessionStart']);
+    if (standaloneReading.carrierForm !== 'standalone') {
+      throw new Error('the standalone unit reads a standalone carrier');
+    }
+    expect(standaloneReading.carrierFields.map((field) => field.key)).toEqual([
+      'description',
+      'extra',
+    ]);
+    // A group is published as authored, malformed or not: a reader inspecting
+    // their own file needs the malformed item stated rather than dropped.
+    const groups = standaloneReading.events[0]!.groups;
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.kind).toBe('mapping');
+    // The inline table's events, over the same three documented levels spelled
+    // in TOML. The other top-level keys are the settings recognition's and
+    // reach no hook row.
+    const inlineReading = inline.hookCarrierReadingOf(
+      [
+        'model = "gpt-5.4-codex"',
+        '',
+        '[[hooks.PreToolUse]]',
+        'matcher = "^Bash$"',
+        '',
+        '[[hooks.PreToolUse.hooks]]',
+        'type = "command"',
+        'command = "true"',
+        '',
+      ].join('\n'),
+    );
+    expect(inlineReading.events.map((event) => event.event)).toEqual(['PreToolUse']);
+    expect(inlineReading.carrierForm).toBe('contained');
+    // Neither reads the other's format: a carrier's text is its own format's,
+    // and text the format cannot parse throws for the recognizer's extraction
+    // boundary to record as the recognition's `failed` state (FR-028).
+    expect(() =>
+      standalone.hookCarrierReadingOf('[[hooks.Stop]]\n', '.codex/hooks.json'),
+    ).toThrow();
+    expect(() => inline.hookCarrierReadingOf('{ "hooks": {} }')).toThrow();
+  });
+
+  it('declares no event for a hook map that is absent or not a map', () => {
+    const standalone = CODEX_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.repo.hooks',
+    );
+    if (!(standalone instanceof CodexCompiledStandaloneHookRule)) {
+      throw new Error('the standalone hook record compiles into its own unit');
+    }
+    // Structural and total: only a map declares events, so a file with no
+    // `hooks` key, one whose `hooks` is a list or a scalar, and one that is not
+    // an object at all all declare none — while the file stays an admitted
+    // candidate whose row says it declares no hooks (FR-028).
+    for (const sourceText of ['{}', '{ "hooks": [] }', '{ "hooks": "none" }', '[]']) {
+      const reading = standalone.hookCarrierReadingOf(sourceText, '.codex/hooks.json');
+      expect(reading.events, sourceText).toEqual([]);
+    }
   });
 });
 
@@ -1192,7 +1370,7 @@ describe('the root-exact Claude MCP inventory (T306)', () => {
       resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, settings!.admissions)
         .map((admission) => admission.rule.ruleId)
         .toSorted(),
-    ).toEqual(['claude.repo.permissions', 'claude.repo.settings']);
+    ).toEqual(['claude.repo.hooks.settings', 'claude.repo.permissions', 'claude.repo.settings']);
     // The mcpServers-spelling skill and the plain skill are admitted — as
     // skills, by the skill rule, and as nothing else: a skill frontmatter
     // spelling `mcpServers` is a field Claude does not document, never a
@@ -1299,7 +1477,7 @@ describe('the shipped Codex plugin plans (T753)', () => {
         'third',
       ],
     });
-    const reading = catalog.pluginCarrierReadingOf(sourceText);
+    const reading = catalog.pluginCarrierReadingOf(sourceText, 'marketplace.json');
     // Each entry is published under the name Codex addresses it by: the
     // entry's own name qualified by this catalog's.
     expect(reading.plugins.map((plugin) => plugin.name)).toEqual([
@@ -1372,7 +1550,7 @@ describe('the shipped Codex plugin plans (T753)', () => {
     // Every entry is still published as a declaration — what a catalog wrote is
     // what the row shows — while none of them names a directory this Source
     // holds, so none ships a file here.
-    const reading = catalog.pluginCarrierReadingOf(sourceText);
+    const reading = catalog.pluginCarrierReadingOf(sourceText, '.claude-plugin/marketplace.json');
     expect(reading.plugins).toHaveLength(15);
     expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual(
       reading.plugins.map(() => null),
@@ -1469,6 +1647,7 @@ describe('the shipped Claude plugin rules (T776)', () => {
           'third',
         ],
       }),
+      '.claude-plugin/marketplace.json',
     );
     expect(reading.plugins.map((plugin) => plugin.name)).toEqual([
       'quality-review@inspector-examples',
@@ -1517,6 +1696,7 @@ describe('the shipped Claude plugin rules (T776)', () => {
           { name: 'boolean', source: true },
         ],
       }),
+      '.claude-plugin/marketplace.json',
     );
     expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
       'unrecognized',
@@ -1542,6 +1722,7 @@ describe('the shipped Claude plugin rules (T776)', () => {
     const rootsFor = (metadata: unknown, source: string): string | null =>
       compiled.pluginCarrierReadingOf(
         JSON.stringify({ name: 'examples', metadata, plugins: [{ name: 'p', source }] }),
+        '.claude-plugin/marketplace.json',
       ).plugins[0]!.pluginRoot;
     expect(rootsFor({ pluginRoot: './plugins' }, 'formatter')).toBe('plugins/formatter/');
     expect(rootsFor({ pluginRoot: 'plugins/' }, 'formatter')).toBe('plugins/formatter/');
@@ -1556,6 +1737,7 @@ describe('the shipped Claude plugin rules (T776)', () => {
     // hold.
     const unrooted = compiled.pluginCarrierReadingOf(
       JSON.stringify({ name: 'examples', plugins: [{ name: 'p', source: 'formatter' }] }),
+      '.claude-plugin/marketplace.json',
     );
     expect(unrooted.plugins[0]!.sourceForm).toBe('unrecognized');
   });
@@ -1594,6 +1776,7 @@ describe('the shipped Claude plugin rules (T776)', () => {
           { name: 'nameless-source' },
         ],
       }),
+      '.claude-plugin/marketplace.json',
     );
     // Every entry is still published as a declaration — what a catalog wrote is
     // what the row shows — while none of them names a directory this Source
@@ -1640,6 +1823,7 @@ describe('an incompletely written plugin source (T1126)', () => {
           { name: 'no-path', source: { source: 'local' } },
         ],
       }),
+      '.agents/plugins/marketplace.json',
     );
     expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
       'git-repository',
@@ -1681,6 +1865,7 @@ describe('the Copilot catalog entry source forms (T1126)', () => {
           { name: 'numeric', source: 7 },
         ],
       }),
+      'marketplace.json',
     );
     expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
       'repository-directory',
@@ -1725,6 +1910,7 @@ describe('the Copilot catalog entry source forms (T1126)', () => {
           metadata: { pluginRoot },
           plugins: [{ name: 'p', source: 'formatter' }],
         }),
+        'marketplace.json',
       ).plugins[0]!.pluginRoot;
     expect(rootFor('./plugins/')).toBe('plugins/formatter/');
     expect(rootFor('plugins/')).toBe('plugins/formatter/');
@@ -1751,6 +1937,7 @@ describe('the Copilot catalog entry source forms (T1126)', () => {
           { name: 'nested', source: 'team-a/formatter' },
         ],
       }),
+      'marketplace.json',
     );
     expect(reading.plugins.map((plugin) => plugin.pluginRoot)).toEqual([
       'plugins/formatter/',
@@ -2465,8 +2652,12 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
     ]);
     expect(admittedIds(priority.githubCarrierPath)).toEqual(['copilot.repo.mcp']);
     expect(admittedIds(priority.vscodeCarrierPath)).toEqual(['copilot.repo.mcp.vscode']);
+    // The Codex config layer carries its vendor's three recognitions of one
+    // file: the MCP carrier, the inline hook carrier, and the settings
+    // document they sit in (T839).
     expect(admittedIds(priority.codexCarrierPath).toSorted()).toEqual([
       'codex.repo.config',
+      'codex.repo.hooks.inline',
       'codex.repo.settings',
     ]);
     // One physical file, one read: the shared root appears once however many
@@ -3397,9 +3588,14 @@ describe('the root Claude permission-policy inventory (T1107)', () => {
       const rules = resolveAdmittingRules(CLAUDE_REPOSITORY_RULES, byPath.get(admitted)!.admissions)
         .map((admission) => admission.rule.ruleId)
         .toSorted();
-      // Two rules over one candidate: the policy block inside the file and
-      // the document around it are two recognitions of one read.
-      expect(rules, admitted).toEqual(['claude.repo.permissions', 'claude.repo.settings']);
+      // Three rules over one candidate: the policy block inside the file, the
+      // `hooks` it may also contain (T863), and the document around both are
+      // three recognitions of one read.
+      expect(rules, admitted).toEqual([
+        'claude.repo.hooks.settings',
+        'claude.repo.permissions',
+        'claude.repo.settings',
+      ]);
     }
     for (const nearMiss of permissionsFixture.nearMissPaths) {
       expect(byPath.has(nearMiss), nearMiss).toBe(false);
@@ -3413,17 +3609,20 @@ describe('the root Claude permission-policy inventory (T1107)', () => {
         recognition.sourceRelativePath === permissionsFixture.declaringCarrierPath &&
         recognition.tool === 'claude',
     );
-    // One recognition per `(file, tool, kind)`: the policy the file declares
-    // and the document it declares it in, each from its own Claude rule.
+    // One recognition per `(file, tool, kind)`: the policy the file declares,
+    // the hooks it may also declare, and the document it declares them in,
+    // each from its own Claude rule.
     expect(declaring.map((recognition) => recognition.details.kind).toSorted()).toEqual([
+      'hook',
       'permissions',
       'settings/config',
     ]);
-    // No Codex rule reaches a Claude settings file. Copilot does reach it, and
-    // as one kind only: the CLI documents reading `.claude/settings*.json` for
-    // the shared cross-tool subset of repository settings, so the file is a
-    // settings row for that product too — one physical file, one read, and one
-    // recognition per `(file, tool, kind)` (T625).
+    // No Codex rule reaches a Claude settings file. Copilot reaches it as two
+    // kinds: the CLI documents reading `.claude/settings*.json` for the shared
+    // cross-tool subset of repository settings, and both it and the editor
+    // document reading the `hooks` block inside — so the file is a settings row
+    // and a hook row for that product too, one physical file, one read, and one
+    // recognition per `(file, tool, kind)` (T625, T895).
     const codex = await scanWith(permissionsFixture.root, CODEX_REPOSITORY_RULES);
     expect(codex.files.map((file) => file.publicPath)).not.toContain(
       permissionsFixture.declaringCarrierPath,
@@ -3434,8 +3633,9 @@ describe('the root Claude permission-policy inventory (T1107)', () => {
     expect(
       all
         .filter((recognition) => recognition.tool === 'copilot')
-        .map((recognition) => recognition.details.kind),
-    ).toEqual(['settings/config']);
+        .map((recognition) => recognition.details.kind)
+        .toSorted(),
+    ).toEqual(['hook', 'settings/config']);
     expect(all.every((recognition) => recognition.tool !== 'codex')).toBe(true);
   });
 
@@ -3449,17 +3649,23 @@ describe('the root Claude permission-policy inventory (T1107)', () => {
       '.claude/settings.json',
       '.claude/settings.local.json',
     ]);
-    // Four recognitions over two files: each document is a settings row for
-    // Claude and for Copilot, which is the shared-physical-file case — the
-    // CLI documents reading `.claude/settings*.json` for the shared cross-tool
-    // subset (T625). None is a permissions row.
+    // Six recognitions over two files: each document is a settings row for
+    // Claude and for Copilot, which is the shared-physical-file case — the CLI
+    // documents reading `.claude/settings*.json` for the shared cross-tool
+    // subset (T625) — and a hook row for each product, because both vendors
+    // document reading the `hooks` block of these two files (T895). None is a
+    // permissions row.
     expect(
       claude.recognitions
         .map((recognition) => `${recognition.tool}/${recognition.details.kind}`)
         .toSorted(),
     ).toEqual([
+      'claude/hook',
+      'claude/hook',
       'claude/settings/config',
       'claude/settings/config',
+      'copilot/hook',
+      'copilot/hook',
       'copilot/settings/config',
       'copilot/settings/config',
     ]);
@@ -3879,7 +4085,8 @@ describe('the root-anchored Copilot custom-agent inventory (T548)', () => {
     );
     // One recognition, of the agent kind: the `mcp-servers` block it declares
     // is this file's own content, and an MCP declaration's home is an explicit
-    // carrier (data-model.md § Inventory unit).
+    // carrier (data-model.md § Inventory unit). No hook row either — this file
+    // is Copilot's own `.github/agents/` profile, which no Claude rule admits.
     expect(spelling.map((recognition) => recognition.details.kind)).toEqual(['agent']);
     expect(
       publication.recognitions.filter((recognition) => recognition.details.kind === 'MCP'),
@@ -4072,6 +4279,250 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
         opened.filter((path) => path === join(allKinds.root, ...sourceRelativePath.split('/'))),
         sourceRelativePath,
       ).toHaveLength(1);
+    }
+  });
+});
+
+describe('the anchored Copilot hook carriers (T880)', () => {
+  let hookFixture: CopilotHookFixture;
+
+  beforeAll(() => {
+    hookFixture = buildCopilotHookFixture('inspector-copilot-hooks-rules');
+  });
+
+  afterAll(() => {
+    rmSync(hookFixture.root, { recursive: true, force: true });
+  });
+
+  it('compiles the hook directory as a root direct-child program and nothing wider', () => {
+    const compiled = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.hooks',
+    )!;
+    expect(compiled.tool).toBe('copilot');
+    expect(compiled.kind).toBe('hook');
+    // The unit that owns this vendor's reading of a hook file of its own; the
+    // inline block of a settings document is the other unit's
+    // (`hooks/compiled-rule.ts` § CompiledStaticHookRule).
+    expect(compiled).toBeInstanceOf(CopilotCompiledStandaloneHookRule);
+    expect(compiled.plan).toEqual(
+      new TraversalPlan(INSPECTION_RULES['copilot.repo.hooks']!.matcher!),
+    );
+    // Two literals then one dynamic name step: the container is exact and the
+    // extension is the vendor's, so the program reaches the directory's own
+    // files and no second level below it. No recursive token appears anywhere.
+    expect(compiled.plan.selectors).toHaveLength(1);
+    const [selector] = compiled.plan.selectors;
+    expect(selector!.remainder.map((step) => step.kind)).toEqual(['literal', 'literal', 'regex']);
+    expect(
+      compiled.plan.selectors.some((candidate) =>
+        candidate.remainder.some((step) => step.kind === 'recursive-directories'),
+      ),
+    ).toBe(false);
+  });
+
+  it('admits the directory’s own files, leaving every near miss out', async () => {
+    // Root-anchored because every surface names the repository or workspace
+    // root's own `.github/hooks/`: a nested file below it, the handler scripts
+    // the declarations name, the User layer spelled inside the repository, and
+    // a plugin's bundled hook file are each a location no page documents a read
+    // of. The unreferenced script beside the named ones is never inferred to be
+    // a hook (FR-034).
+    const result = await scanWith(hookFixture.root, COPILOT_REPOSITORY_RULES);
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    expect(paths.has(hookFixture.owners.standalone)).toBe(true);
+    expect(paths.has(hookFixture.owners.secondStandalone)).toBe(true);
+    expect(paths.has(hookFixture.owners.malformed)).toBe(true);
+    for (const nearMiss of hookFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+    }
+  });
+
+  it('admits each settings pair for its own surfaces, as one more rule over one file', async () => {
+    const result = await scanWith(hookFixture.root, COPILOT_REPOSITORY_RULES);
+    for (const [path, expected] of [
+      // The CLI's own pair: the settings document it is, and the inline block
+      // the CLI reads out of it. The editor's hook-locations table does not
+      // name this pair, so no rule here carries its provenance.
+      [hookFixture.owners.settings, ['copilot.repo.hooks.settings', 'copilot.repo.settings']],
+      // The cross-tool pair, which both Copilot surfaces read for hooks.
+      [
+        hookFixture.owners.claudeSettings,
+        ['copilot.repo.hooks.settings.claude', 'copilot.repo.settings'],
+      ],
+    ] as const) {
+      const carrier = result.files.find((file) => file.publicPath === path);
+      expect(carrier, path).toBeDefined();
+      // Neither rule creates a second candidate or a synthetic file: they are
+      // more rules over one physical document, which the walk merges into one
+      // candidate read once.
+      expect(
+        resolveAdmittingRules(COPILOT_REPOSITORY_RULES, carrier!.admissions)
+          .map((admitted) => admitted.rule.ruleId)
+          .toSorted(),
+        path,
+      ).toEqual(expected);
+    }
+    const settingsHooks = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.hooks.settings',
+    )!;
+    expect(settingsHooks).toBeInstanceOf(CopilotCompiledSettingsHookRule);
+    // Scanned alone, the rule admits exactly the pair its surfaces document —
+    // the personal document included, which declares no hooks and is admitted
+    // all the same: what a file declares is read after it is admitted.
+    const alone = await scanWith(hookFixture.root, [settingsHooks]);
+    expect(alone.files.map((file) => file.publicPath)).toEqual([
+      hookFixture.owners.settings,
+      hookFixture.owners.localSettings,
+    ]);
+  });
+
+  it('reads each carrier by its own form, and neither reads the other one', () => {
+    const standalone = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.hooks',
+    );
+    const contained = COPILOT_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'copilot.repo.hooks.settings.claude',
+    );
+    if (
+      !(standalone instanceof CopilotCompiledStandaloneHookRule) ||
+      !(contained instanceof CopilotCompiledSettingsHookRule)
+    ) {
+      throw new Error('the three hook records compile into their two units');
+    }
+    // The hook file's events, and the keys beside them: the documented
+    // `version` is the carrier's own field rather than an event, and an event
+    // whose value is not a list of groups declares nothing and is omitted whole
+    // — the same answer an absent hook map gives.
+    const file = standalone.hookCarrierReadingOf(
+      JSON.stringify({
+        version: 1,
+        hooks: { preToolUse: [{ type: 'command', bash: './check.sh' }], stop: { type: 'command' } },
+      }),
+      '.github/hooks/security.json',
+    );
+    if (file.carrierForm !== 'standalone') {
+      throw new Error('a hook file reads as the standalone form');
+    }
+    expect(file.events.map((event) => event.event)).toEqual(['preToolUse']);
+    expect(file.carrierFields.map((entry) => entry.key)).toEqual(['version']);
+    // The contained form publishes the events alone: the document around them
+    // is the settings recognition's, which serves it whole (FR-007).
+    const inline = contained.hookCarrierReadingOf(
+      JSON.stringify({ permissions: {}, hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [] }] } }),
+      '.claude/settings.json',
+    );
+    expect(inline.carrierForm).toBe('contained');
+    expect(inline.events.map((event) => event.event)).toEqual(['PreToolUse']);
+    expect(Object.keys(inline)).not.toContain('carrierFields');
+    // Which carriers this vendor reads leniently is the parsing seam's answer
+    // for the `(tool, path)`: its hook files, whose editor reading parses
+    // JSONC, and the cross-tool pair as that same surface parses it.
+    for (const [source, path, expected] of [
+      ['{ // draft\n "hooks": { "preToolUse": [] } }', '.github/hooks/draft.json', ['preToolUse']],
+      ['{ /* shared */ "hooks": { "PreToolUse": [] } }', '.claude/settings.json', ['PreToolUse']],
+    ] as const) {
+      const unit = path.startsWith('.github/hooks/') ? standalone : contained;
+      expect(
+        unit.hookCarrierReadingOf(source, path).events.map((event) => event.event),
+        path,
+      ).toEqual(expected);
+    }
+    // Its own settings pair is not among them: the CLI is the only surface
+    // that reads these two files, and the load that hook loading goes through
+    // rejects a comment, so the reading is strict and the throw is the
+    // recognition's `failed` state (`parsers/json.ts` § acceptsComments).
+    expect(() =>
+      contained.hookCarrierReadingOf(
+        '{ // repository defaults\n "hooks": { "postToolUse": [] } }',
+        '.github/copilot/settings.json',
+      ),
+    ).toThrow(SyntaxError);
+    // The same physical file, read by the product whose own vendor calls a
+    // `//` comment in it a syntax error: strict, and the throw is the
+    // recognition's `failed` state with its diagnostic (FR-028). One path, two
+    // products, two answers — which is why the seam is asked for a
+    // `(tool, path)` and not for a path.
+    const claudeSettingsHooks = CLAUDE_REPOSITORY_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'claude.repo.hooks.settings',
+    );
+    if (!(claudeSettingsHooks instanceof ClaudeCompiledSettingsHookRule)) {
+      throw new Error('the Claude settings hook record compiles into its own unit');
+    }
+    expect(() =>
+      claudeSettingsHooks.hookCarrierReadingOf(
+        '{ /* shared */ "hooks": { "PreToolUse": [] } }',
+        '.claude/settings.json',
+      ),
+    ).toThrow();
+  });
+});
+
+describe('the complete hook matcher set (T901)', () => {
+  let unified: UnifiedHookFixture;
+
+  beforeAll(() => {
+    unified = buildUnifiedHookFixture('inspector-unified-hooks-matchers');
+  });
+
+  afterAll(() => {
+    rmSync(unified.root, { recursive: true, force: true });
+  });
+
+  it('ships one hook rule per documented location, and no standalone Claude one', () => {
+    // The complete shipped set, by the vendor whose documentation each rests
+    // on: Codex's file of its own and the inline table of its config layer,
+    // Claude's two settings documents, and Copilot's hook directory plus each
+    // settings pair its own surfaces name. Claude documents no standalone
+    // project hook file at all, which is what the absence of such a rule means.
+    const hookRules = [
+      ...CODEX_REPOSITORY_RULES,
+      ...CLAUDE_REPOSITORY_RULES,
+      ...COPILOT_REPOSITORY_RULES,
+    ].filter((compiled) => compiled.kind === 'hook');
+    expect(hookRules.map((compiled) => compiled.rule.ruleId).toSorted()).toEqual([
+      'claude.repo.hooks.settings',
+      'codex.repo.hooks',
+      'codex.repo.hooks.inline',
+      'copilot.repo.hooks',
+      'copilot.repo.hooks.settings',
+      'copilot.repo.hooks.settings.claude',
+    ]);
+    // Each program is anchored at the Repository root: no hook rule of any
+    // vendor reaches a descendant layer, which is what keeps a nested
+    // `.codex/hooks.json` or `.github/hooks/nested/deep.json` a near miss.
+    for (const compiled of hookRules) {
+      for (const selector of compiled.plan.selectors) {
+        expect(
+          selector.remainder.some((step) => step.kind === 'recursive-directories'),
+          compiled.rule.ruleId,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('admits every documented carrier of the unified tree and no near miss', async () => {
+    const hookRules = [
+      ...CODEX_REPOSITORY_RULES,
+      ...CLAUDE_REPOSITORY_RULES,
+      ...COPILOT_REPOSITORY_RULES,
+    ].filter((compiled) => compiled.kind === 'hook');
+    const result = await scanWith(unified.root, hookRules);
+    // Exactly the carriers, with the two Codex forms of one layer reaching one
+    // candidate: the same physical file admitted by two rules is read once.
+    expect(result.files.map((file) => file.publicPath).toSorted()).toEqual(
+      [...new Set(Object.values(unified.carriers))].toSorted(),
+    );
+    // Nothing else: the scripts a declaration names, the User layers, the
+    // nested file, the fabricated `.claude/hooks.json` Claude documents
+    // nowhere, and the plugin's own bundled hook file are all outside every
+    // hook rule's program — the plugin file is read by the census when a
+    // catalog names its root, never by a hook rule.
+    const admitted = new Set(result.files.map((file) => file.publicPath));
+    for (const path of [...unified.nearMissPaths, ...unified.pluginBundledHookPaths]) {
+      expect(admitted.has(path), path).toBe(false);
+    }
+    for (const owner of unified.nonPublishingOwners) {
+      expect(admitted.has(owner), owner).toBe(false);
     }
   });
 });

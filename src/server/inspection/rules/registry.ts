@@ -20,6 +20,7 @@ import type {
 } from './instructions/compiled-rule';
 import type { CompiledStaticPluginRule } from './plugins/compiled-rule';
 import type { CompiledStaticMcpRule } from './mcp/compiled-rule';
+import type { CompiledStaticHookRule } from './hooks/compiled-rule';
 import type { CompiledStaticAgentRule } from './agents/compiled-rule';
 import type { CompiledStaticOutputStyleRule } from './output-styles/compiled-rule';
 import type { CompiledStaticSkillRule } from './skills/compiled-rule';
@@ -51,6 +52,7 @@ export type {
   CompiledStaticMcpReadingRule,
   CompiledStaticMcpRule,
 } from './mcp/compiled-rule';
+export type { CompiledStaticHookRule, HookCarrierReading } from './hooks/compiled-rule';
 export type {
   CompiledStaticPermissionsCarrierRule,
   CompiledStaticPermissionsDocumentRule,
@@ -685,7 +687,8 @@ export abstract class CompiledDerivedRule extends CompiledRule {
 /**
  * A compiled static rule of every other kind — neither an instruction rule,
  * whose files govern a range, nor a command, skill, or output-style rule,
- * whose files are invoked or selected by a name, nor an MCP carrier rule, whose files declare servers, nor
+ * whose files are invoked or selected by a name, nor an MCP or hook carrier
+ * rule, whose files declare servers or lifecycle events, nor
  * a custom-agent rule, whose files declare an agent. It answers no per-kind
  * question, which is the whole point: a rule-file rule has no such answer to
  * give — a rule file is published as the one Markdown or Starlark document its
@@ -695,7 +698,7 @@ export abstract class CompiledDerivedRule extends CompiledRule {
 export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
   /**
    * Every recognized kind but `instructions`, `skill`, `MCP`, `agent`,
-   * `prompt/command`, `permissions`, `plugin`, and `output style`.
+   * `prompt/command`, `permissions`, `hook`, `plugin`, and `output style`.
    */
   readonly kind: Exclude<
     CustomizationKind,
@@ -705,6 +708,7 @@ export interface CompiledStaticOtherKindRule extends CompiledInspectionRule {
     | 'agent'
     | 'prompt/command'
     | 'permissions'
+    | 'hook'
     | 'plugin'
     | 'output style'
   >;
@@ -722,6 +726,7 @@ export type CompiledStaticCandidateRule =
   | CompiledStaticAgentRule
   | CompiledStaticPromptRule
   | CompiledStaticPermissionsRule
+  | CompiledStaticHookRule
   | CompiledStaticPluginRule
   | CompiledStaticOutputStyleRule
   | CompiledStaticOtherKindRule;

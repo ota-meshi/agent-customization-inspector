@@ -523,16 +523,21 @@ export const CLAUDE_REPO_OUTPUT_STYLE_RULE = {
 } as const satisfies InspectionRule;
 
 /**
- * The `claude.repo.permissions` matcher, authored in the typed segment form
- * the contract table shows: `['.claude', 'settings.json']` and
+ * The two root settings files, authored in the typed segment form the contract
+ * table shows: `['.claude', 'settings.json']` and
  * `['.claude', 'settings.local.json']`. Two programs rather than one dynamic
  * step, so each admission carries which authored filename matched.
+ *
+ * Named for the location rather than for any one of its rules, because three
+ * of them share it: the permission policy these files declare, the `hooks` they
+ * may also declare, and the settings documents they are. A name taken from one
+ * consumer would read as that rule's own program.
  *
  * Root-anchored with no `ANY_DIRECTORIES`: the page names these two files as
  * the project scope's own, and a `.claude/settings.json` in a subdirectory is
  * a file the vendor documents no read of.
  */
-const CLAUDE_REPO_PERMISSIONS_MATCHER: StructuredInspectorMatcher = {
+const CLAUDE_REPO_SETTINGS_FILES_MATCHER: StructuredInspectorMatcher = {
   base: { kind: 'repository' },
   selectors: [
     [
@@ -580,7 +585,7 @@ export const CLAUDE_REPO_PERMISSIONS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'permissions',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_PERMISSIONS_MATCHER,
+  matcher: CLAUDE_REPO_SETTINGS_FILES_MATCHER,
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-007', 'FR-019', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -649,7 +654,7 @@ export const CLAUDE_REPO_SETTINGS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'settings/config',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_PERMISSIONS_MATCHER,
+  matcher: CLAUDE_REPO_SETTINGS_FILES_MATCHER,
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -722,8 +727,9 @@ const CLAUDE_REPO_AGENT_MATCHER: StructuredInspectorMatcher = {
  * A declared `mcpServers` block is this file's own frontmatter and joins no
  * MCP row: an MCP declaration's home is an explicit carrier, and a file of
  * another kind spelling MCP-looking configuration is that kind's ordinary
- * content (data-model.md § Inventory unit). A declared `hooks` block is the
- * separate contained recognition's, which arrives with the Hook phase.
+ * content (data-model.md § Inventory unit). A declared `hooks` block is this
+ * frontmatter's own too, and joins no hook row: those declarations are part of
+ * what this subagent is, and this row publishes every key its file wrote.
  *
  * Admitting a file is not asserting Claude loads the agent: a managed or
  * session-scope definition of the same name outranks it, the User and plugin
@@ -890,6 +896,64 @@ export const CLAUDE_REPO_MARKETPLACE_RULE = {
 } as const satisfies InspectionRule;
 
 /**
+ * The `hooks` an accepted root settings file declares — the location the
+ * vendor names first, and the one a team commits.
+ *
+ * Its own rule over the owner's authored matcher, never a second spelling of
+ * that location: a contained declaration is a recognition of the file that
+ * carries it, and a recognition is what a rule produces, so the three rules
+ * over this path are one candidate read once.
+ *
+ * The settings files are the only hook owners this product publishes rows for,
+ * though the vendor documents four more. A skill's, a subagent's, a plugin
+ * manifest's, and a catalog entry's `hooks` are part of what that customization
+ * *is*, and its own row already publishes the declaration the file wrote — so a
+ * hook row for one would publish a single fact twice, on a page whose subject
+ * is not that customization. A settings file's hooks belong to no other
+ * customization: its own row publishes the document it is, and that document is
+ * configuration rather than a customization whose definition the hooks are part
+ * of — which is why its hooks reach the hook inventory exactly as an inline
+ * Codex `[hooks]` table does
+ * (contracts/vendors/claude-code.md § Inspector Repository rules).
+ *
+ * The matcher is the settings files' own, shared with the recognitions of the
+ * permission policy and of the settings document itself: three rules over one
+ * path, each answering for the row that reaches it (FR-007).
+ *
+ * Admitting the owner asserts nothing about execution: workspace trust, a
+ * managed-hooks-only policy, and how long a registration lasts are runtime
+ * state this tool never observes (FR-009), and no declared command or handler
+ * is run, opened, or resolved (FR-020).
+ */
+export const CLAUDE_REPO_SETTINGS_HOOKS_RULE = {
+  ruleId: 'claude.repo.hooks.settings',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['repository'],
+  matcher: CLAUDE_REPO_SETTINGS_FILES_MATCHER,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.hooks.locations-resolution',
+          url: 'https://code.claude.com/docs/en/hooks',
+          officialHost: 'code.claude.com',
+          sections: ['Hook locations'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'A hook defined in .claude/settings.json applies to the single project and can be committed to the repository, while one in .claude/settings.local.json applies to the same project without being shared.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
  * `claude.excluded.plugin-files`: the plugin content a manifest or a catalog
  * entry points at — bundled skills, commands, agents, output styles, hook
  * files, MCP configuration, scripts, and assets.
@@ -944,6 +1008,7 @@ export const CLAUDE_EXCLUDED_PLUGIN_FILES_RULE = {
 export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRule>> = {
   [CLAUDE_REPO_AGENT_RULE.ruleId]: CLAUDE_REPO_AGENT_RULE,
   [CLAUDE_REPO_COMMAND_RULE.ruleId]: CLAUDE_REPO_COMMAND_RULE,
+  [CLAUDE_REPO_SETTINGS_HOOKS_RULE.ruleId]: CLAUDE_REPO_SETTINGS_HOOKS_RULE,
   [CLAUDE_REPO_INSTRUCTIONS_RULE.ruleId]: CLAUDE_REPO_INSTRUCTIONS_RULE,
   [CLAUDE_REPO_MARKETPLACE_RULE.ruleId]: CLAUDE_REPO_MARKETPLACE_RULE,
   [CLAUDE_REPO_MCP_RULE.ruleId]: CLAUDE_REPO_MCP_RULE,

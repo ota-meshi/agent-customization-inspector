@@ -23,7 +23,7 @@ import type { DeclaredEntryDto, DeclaredValueDto } from '../../../shared/api-typ
 
 /**
  * One TOML document as the parser resolved it. The class mirrors
- * `ParsedMarkdownDocument` and `ParsedStrictJsonDocument`: the constructor is the
+ * `ParsedMarkdownDocument` and `ParsedJsonDocument`: the constructor is the
  * parse, and the fields are the parser's own answer plus its one rendering —
  * never an extraction, which stays the caller's contract.
  */

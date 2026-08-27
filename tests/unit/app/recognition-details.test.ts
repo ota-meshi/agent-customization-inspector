@@ -104,6 +104,7 @@ function snapshotWith(
     plugins: [],
     outputStyles: [],
     permissions: [],
+    hooks: [],
     settings: [],
     agents: [],
     skills,
@@ -257,6 +258,10 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     expect(view.instructionRows.value).toEqual([
       {
         applicabilityRange: '**',
+        // The row's own files, which the narrowing does not touch: they are
+        // what its comparison entry link is built from
+        // (`filters.ts` § NarrowedInventoryRow).
+        rowFilePaths: ['AGENTS.md'],
         files: [
           {
             sourceRelativePath: 'AGENTS.md',

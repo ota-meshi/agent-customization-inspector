@@ -29,6 +29,7 @@ import { computed } from 'vue';
 import InstructionRow from './rows/InstructionRow.vue';
 import SkillRow from './rows/SkillRow.vue';
 import McpRow from './rows/McpRow.vue';
+import HookRow from './rows/HookRow.vue';
 import AgentRow from './rows/AgentRow.vue';
 import PromptRow from './rows/PromptRow.vue';
 import RuleRow from './rows/RuleRow.vue';
@@ -43,6 +44,7 @@ import type {
   PromptInventoryEntryDto,
   CustomizationFileSummaryDto,
   InstructionInventoryEntryDto,
+  HookInventoryEntryDto,
   McpInventoryEntryDto,
   PermissionsInventoryEntryDto,
   OutputStyleInventoryEntryDto,
@@ -53,26 +55,29 @@ import type {
   SkillInventoryEntryDto,
 } from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
+import type { NarrowedInventoryRow } from '../../composables/filters';
 
 const props = defineProps<{
   /** The kind in view; its inventory below is what this list renders. */
   kind: CustomizationKind | null;
   /** The instruction rows that passed the active filters, in snapshot order. */
-  instructionRows: readonly InstructionInventoryEntryDto[];
+  instructionRows: readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[];
   /** The skill rows that passed the active filters, in snapshot order. */
-  skillRows: readonly SkillInventoryEntryDto[];
+  skillRows: readonly NarrowedInventoryRow<SkillInventoryEntryDto>[];
   /** The MCP name rows that passed the active filters, in snapshot order. */
-  mcpRows: readonly McpInventoryEntryDto[];
+  mcpRows: readonly NarrowedInventoryRow<McpInventoryEntryDto>[];
   /** The custom-agent name rows that passed the active filters, in snapshot order. */
-  agentRows: readonly AgentInventoryEntryDto[];
+  agentRows: readonly NarrowedInventoryRow<AgentInventoryEntryDto>[];
   /** The command rows that passed the active filters, in snapshot order. */
-  promptRows: readonly PromptInventoryEntryDto[];
+  promptRows: readonly NarrowedInventoryRow<PromptInventoryEntryDto>[];
   /** The rule rows that passed the active filters, in snapshot order. */
   ruleRows: readonly RuleInventoryEntryDto[];
   /** The permission-policy rows that passed the active filters, in snapshot order. */
   permissionsRows: readonly PermissionsInventoryEntryDto[];
+  /** The hook event rows that passed the active filters, in snapshot order. */
+  hookRows: readonly NarrowedInventoryRow<HookInventoryEntryDto>[];
   /** The plugin name rows that passed the active filters, in snapshot order. */
-  pluginRows: readonly PluginInventoryEntryDto[];
+  pluginRows: readonly NarrowedInventoryRow<PluginInventoryEntryDto>[];
   /** The output-style name rows that passed the active filters, in snapshot order. */
   outputStyleRows: readonly OutputStyleInventoryEntryDto[];
   /** The settings-and-configuration rows that passed the active filters, in snapshot order. */
@@ -104,13 +109,15 @@ const rowCount = computed(() =>
               ? props.ruleRows.length
               : props.kind === 'permissions'
                 ? props.permissionsRows.length
-                : props.kind === 'plugin'
-                  ? props.pluginRows.length
-                  : props.kind === 'output style'
-                    ? props.outputStyleRows.length
-                    : props.kind === 'settings/config'
-                      ? props.settingsRows.length
-                      : 0,
+                : props.kind === 'hook'
+                  ? props.hookRows.length
+                  : props.kind === 'plugin'
+                    ? props.pluginRows.length
+                    : props.kind === 'output style'
+                      ? props.outputStyleRows.length
+                      : props.kind === 'settings/config'
+                        ? props.settingsRows.length
+                        : 0,
 );
 </script>
 
@@ -158,7 +165,6 @@ const rowCount = computed(() =>
           v-for="entry in mcpRows"
           :key="entry.name === null ? 'carriers' : `name:${entry.name}`"
           :entry="entry"
-          :files-by-path="filesByPath"
           :diagnostics="diagnostics"
         />
       </template>
@@ -200,6 +206,20 @@ const rowCount = computed(() =>
         <PermissionsRow
           v-for="entry in permissionsRows"
           :key="entry.sourceRelativePath"
+          :entry="entry"
+          :diagnostics="diagnostics"
+        />
+      </template>
+      <template v-if="kind === 'hook'">
+        <!-- Keyed by the row's own event — the row unit is the declared
+             lifecycle event, unique in the list by construction — behind an
+             `event:` prefix, so the no-event carriers row's own key can never
+             collide with a declared one: both formats accept `""` as a key, so
+             the empty spelling is a real row of its own (data-model.md
+             § Inventory unit). -->
+        <HookRow
+          v-for="entry in hookRows"
+          :key="entry.event === null ? 'carriers' : `event:${entry.event}`"
           :entry="entry"
           :diagnostics="diagnostics"
         />

@@ -103,7 +103,7 @@ path追跡なしで示す。Codex instruction-byte limitとexcluded non-file inp
 
 ## 技術コンテキスト
 
-**言語・バージョン**: 開発・build基準はNode.js 24.18.0 LTS、package runtime compatibility contractは
+**言語・バージョン**: 開発・build基準はactive LTSのNode.js、package runtime compatibility contractは
 `^24.11.0 || ^26.0.0`、正確には`>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`、TypeScript 6.0.3、
 Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch releaseを列挙するものではなく、
 宣言した2つの下限をcertifyする。各floor未満、Node 25、将来のmajorはcontract外とする。
@@ -126,7 +126,15 @@ framework採用決定（spec Clarifications § Session 2026-07-22）とともに
 packageまたはversionが1つでも変わる場合、configuration作業前にimplementationを停止してcompatibility
 decisionを再reviewし、dependency baselineを記載する英日両方のresearch、plan、quickstart、task artifactを
 すべて同期し、作業再開前に
-`/speckit.plan`、続いて`/speckit.tasks`を再実行する。Configuration、CI、release、package-policy
+`/speckit.plan`、続いて`/speckit.tasks`を再実行する。
+Renovateが自動mergeする更新はこのgateの外にある: どのpackageを選ぶか、なぜそれを選んだかは変わらない。
+その更新はlockfileの中だけに収まらない。`:preserveSemverRanges`は`rangeStrategy: replace`であり、
+新しいversionが現在のrangeの外に出れば`package.json`のrangeを書き換える。したがってbumpを裏づけるのは
+ci.ymlであり、mergeの前にそのpull requestに対しsuite全体を走らせる。これらartifactに記録したversionは、
+その理由をreviewした時点のものである。自動mergeされない更新が2つある。runtime dependencyのmajorと、
+1.0.0未満のpackageのminorである（SemVerは`0.x`のどのreleaseでも破壊的変更を許す）。したがってpackageの置換、
+majorの越境、pre-1.0のcaret rangeの移動は今もこのgateに届く（AGENTS.md § Release policy）。
+Configuration、CI、release、package-policy
 instructionは、その1つの同期済みbaselineだけを使用しなければならない（MUST）。
 
 **Formatting/Linting**: Code formattingはPrettierが所有する — `pnpm run format`が書き換え、
@@ -147,6 +155,7 @@ noneとする。T001はpackageまたはconfiguration作業前に、`research.md`
 その正確な英日section pairをdesign evidenceの記録先とする。影響を受けるconsumerまたは以前のcontractが
 見つかった場合は判断を無効としてimplementationを停止し、replanningする。Acceptする新規・変更dependency
 および破壊的なpublic-contract変更はすべて、理由とmigration impactを記録しなければならない（MUST）。
+Renovateが自動mergeする更新はそうした変更ではない（上のdependency gateを参照）。
 Design evidenceはimplementation前、対応する`validation.md`/`validation.ja.md` evidenceはrelease前に存在しなければ
 ならない（MUST）。各recordには影響を受けるconsumer、contract、data、workflow、必要な移行手順と
 compatibility/support window、rollback/support pathを含めるか、理由付きの明示的なno-impact判断を記載する。
@@ -542,14 +551,14 @@ hello/challenge、safe-ID propagation、initially-empty candidate-launch slot、
 8 long-lived exit witness/reviewer-exit equality、accepted workflow 0〜4件の各crashとmissing rowだけのterminalization、prohibited combination、truncation、corruption、alternate-valid-prefix handoff rewrite、premature stop、stitchを所有する。
 各commandはcomplete expected stateだけで0を返す。Failureはすべてautomatic criticalとし、streamをstitchしない。
 
-**対象platform**: Supported runtime contractは宣言済みNode.js 24/26 engine range全体を`ubuntu-24.04` x64、
-`macos-15` arm64、`windows-2025` x64で使用するものとする。`24.11.0`/`26.0.0`の各floorと3つのOS/architecture targetを
+**対象platform**: Supported runtime contractは宣言済みNode.js 24/26 engine range全体を`ubuntu-latest`、
+`macos-latest`、`windows-latest`で使用するものとする。`24.11.0`/`26.0.0`の各floorと3つのOS/architecture targetを
 掛け合わせた正確な6 jobは、compatibleな全Node minor/patch releaseの一覧ではなく必須のlower-bound release-certification
-sampleである。1つのplatform非依存tarballをNode.js 24.18.0 development/build baselineの`ubuntu-24.04` x64でbuildし、
+sampleである。1つのplatform非依存tarballをactive LTS Node.jsのdevelopment/build baselineの`ubuntu-latest`でbuildし、
 同環境で別のbuild/package smoke checkを実行してから、同一byteを6つのfloor jobすべてでinstallして検証する。各releaseで
 解決されたrunner-image identifierと実際のNode versionを記録する。その他のOS/architecture targetと宣言したengine range外の
 Node versionはunsupportedとする。Browser release certificationでは、Playwright 1.61.1がinstallする正確なChromium、Firefox、
-WebKit revisionについて、Node.js 24.18.0の`ubuntu-24.04` x64で完全なbrowser/accessibility suiteを実行する。これらのrevisionは
+WebKit revisionについて、active LTS Node.jsの`ubuntu-latest`で完全なbrowser/accessibility suiteを実行する。これらのrevisionは
 再現可能で有限なcertification baselineであり、user browserの網羅的listではない。固定OS helperは表示済みURLをuserのdefault
 handlerへ渡すだけでbrowser family/versionを選択または検証せず、helper成功をbrowser compatibility evidenceとしない。Certification
 baseline外のhandler、利用不能なhandler、または識別不能な解決先browserの場合、自動openはbest-effortのままとし、表示済みURLと
@@ -696,13 +705,13 @@ execution environmentによって決まる。
       rollback/support path、または理由付きの明示的なno-impact判断を記録する。英日design evidenceが欠落または
       staleならT002をblockし、英日validation evidenceが欠落すればreleaseをblockする。
 - [x] **完全な検証**: Byte衛生は`.gitattributes`と`.editorconfig`に委ねる。lint、typecheck、automated
-      suiteをlocal、独立CI job、final release edit後に再実行する。Release reviewで見つかったrepository remediationごとに、
+      suiteはlocalと独立CI jobで実行し、release pathはそのどれも再実行しない。同じcommitに対しpull requestが既に実行したsuiteを、publish credentialの隣でもう一度走らせても得るものはない。Release reviewで見つかったrepository remediationごとに、
       complete applicable automated matrixを再実行し、影響するcandidate/profile/fixture/human/manual evidence setを無効化・再生成し、
       concernが0件になるまでcomplete-diff/tarball reviewを反復する。Bilingual Constitution recordをsole planned validation-only editとして
       完了した後、frozen final tree/final candidateへ全applicable automated gateを再実行する。Outcomeはrepository外へcaptureする。
       その後repositoryをeditした場合は結果を無効にし、final sequence前にremediation、digest/evidence再validation、applicable gate再実行、
       complete-diff reviewへ戻る。独立したESLint gateと独立したstrict `typecheck`
-      type-checking gateも各workflowで実行する。
+      type-checking gateはci.yml自身のjobである。
       Unit、contract、integration、security、package、performance、end-to-end、error、
       boundary、accessibility scenario、4つのuser story、公開SC-002 profile/status
       request/generation protocol、通常error方式のfailure model（1 fileに限定されるfailureはFR-028により
@@ -951,7 +960,7 @@ scripts/
 
 .github/workflows/
 ├── ci.yml
-└── release.yml
+└── Release.yml
 
 package.json
 pnpm-lock.yaml
@@ -1065,12 +1074,11 @@ packaged entry-point verifier `scripts/verify-package-files.mjs`を実行し、�
 assertし、locked versionとそのintegrityはcommit済みlockfileが所有し続ける。別のproduction-graph scriptや
 evidence fileは存在しない。`typecheck` scriptは
 `tsconfig.json`で設定したapplication、shared、source、script、test codeへのstrict TypeScript type checkを実行し、
-local verification、独自の独立CI job、releaseで必須のquality gateとする。`study:evidence:inputs`は
+local verificationと独自の独立CI jobで必須のquality gateとする。`study:evidence:inputs`は
 `node scripts/build-usability-study-inputs.mjs`だけを、`study:evidence:capture`は
 `node scripts/run-usability-study-capture.mjs`だけを、`study:evidence:verify`は
 `node scripts/verify-usability-study-evidence.mjs`だけを実行する。いずれもdefault build/start/test chainへ含めず、明示的な
-initial-release study protocolだけが実行できる。CIは`format:check`を独立jobとして実行し、
-releaseはfinal edit後に他のgateとともに再実行する。`check:official-sources`だけをnetwork有効のevidence-drift commandとして文書化する。`src/server/cli.ts`
+initial-release study protocolだけが実行できる。CIは`format:check`を独立jobとして実行する。`check:official-sources`だけをnetwork有効のevidence-drift commandとして文書化する。`src/server/cli.ts`
 entry、`tsdown.config.ts`、assembly script、これらpackage scriptはfoundation prerequisiteであり、存在する前に
 buildまたはpackage quality gateを配置しない。
 したがってSetupでは、package command、tsdown entry、CI quality gateを設定または実行する前にformatterを

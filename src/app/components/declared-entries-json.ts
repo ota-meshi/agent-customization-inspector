@@ -46,6 +46,7 @@
 // the authored null the absent variant serializes.
 import { LEADING_MCP_DECLARATION_KEYS } from './inspection/declaration-order';
 import type {
+  HookEventDeclarationDto,
   DeclaredEntryDto,
   DeclaredScalarKind,
   DeclaredValueDto,
@@ -124,6 +125,27 @@ function objectOf(entries: readonly DeclaredEntryDto[], sortNested: boolean): ob
  */
 export function declaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): string {
   return JSON.stringify(objectOf(fields, false), null, 2);
+}
+
+/**
+ * Serializes one declared lifecycle event to the JSON document the hook
+ * comparison mounts as one Monaco side (FR-011): the event key its carrier
+ * wrote with the groups under it, every nested mapping's keys sorted so both
+ * sides align line by line.
+ *
+ * The event key stays in the document, as it does in the detail's own
+ * rendering: it is what a reader pastes back into a hook map, and it is
+ * identical on both sides of a comparison the row owns. What is inside a
+ * group is never classified — a malformed group is serialized as authored,
+ * because a reader comparing their own files needs it shown rather than
+ * dropped (FR-007, FR-026).
+ */
+export function canonicalHookEventJsonText(event: HookEventDeclarationDto): string {
+  return JSON.stringify(
+    { [event.event]: event.groups.map((group) => jsonValue(group, true)) },
+    null,
+    2,
+  );
 }
 
 /**

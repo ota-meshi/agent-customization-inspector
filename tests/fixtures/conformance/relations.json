@@ -26,6 +26,18 @@
         "claude.behavior.user.skills"
       ]
     },
+    "claude.hooks.additive": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.agents",
+        "claude.behavior.repo.hooks-contained",
+        "claude.behavior.repo.plugin",
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared",
+        "claude.behavior.repo.skills",
+        "claude.behavior.user.plugins",
+        "claude.behavior.user.settings"
+      ]
+    },
     "claude.instructions.layering": {
       "consumesBehaviors": [
         "claude.behavior.repo.instructions.ancestor",
@@ -78,6 +90,13 @@
     "codex.config.precedence": {
       "consumesBehaviors": ["codex.behavior.repo.config", "codex.behavior.user.config"]
     },
+    "codex.hooks.additive": {
+      "consumesBehaviors": [
+        "codex.behavior.plugin.manifest",
+        "codex.behavior.repo.hooks",
+        "codex.behavior.user.hooks"
+      ]
+    },
     "codex.instructions.layering": {
       "consumesBehaviors": ["codex.behavior.repo.instructions", "codex.behavior.user.instructions"]
     },
@@ -99,6 +118,13 @@
     },
     "copilot.cli.agents.selection": {
       "consumesBehaviors": ["copilot.behavior.cli.agents", "copilot.behavior.cli.user.agents"]
+    },
+    "copilot.cli.hooks.composition": {
+      "consumesBehaviors": [
+        "copilot.behavior.cli.hooks",
+        "copilot.behavior.cli.plugins",
+        "copilot.behavior.cli.user.hooks"
+      ]
     },
     "copilot.cli.instructions.layering": {
       "consumesBehaviors": [
@@ -133,6 +159,9 @@
         "copilot.behavior.cloud.organization-agents"
       ]
     },
+    "copilot.cloud.hooks.composition": {
+      "consumesBehaviors": ["copilot.behavior.cloud.hooks"]
+    },
     "copilot.cloud.instructions.layering": {
       "consumesBehaviors": [
         "copilot.behavior.cloud.instructions.agents",
@@ -153,6 +182,14 @@
     },
     "copilot.vscode.agents.selection": {
       "consumesBehaviors": ["copilot.behavior.vscode.agents", "copilot.behavior.vscode.user.agents"]
+    },
+    "copilot.vscode.hooks.composition": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.agents",
+        "copilot.behavior.vscode.hooks",
+        "copilot.behavior.vscode.plugins",
+        "copilot.behavior.vscode.user.hooks"
+      ]
     },
     "copilot.vscode.instructions.layering": {
       "consumesBehaviors": [
@@ -195,6 +232,14 @@
     "claude.repo.command": {
       "basedOnBehaviors": ["claude.behavior.repo.commands"],
       "explainedByStrategies": ["claude.commands.selection"]
+    },
+    "claude.repo.hooks.settings": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.hooks-contained",
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared"
+      ],
+      "explainedByStrategies": ["claude.hooks.additive"]
     },
     "claude.repo.instructions": {
       "basedOnBehaviors": [
@@ -266,6 +311,14 @@
       ],
       "explainedByStrategies": ["codex.config.precedence", "codex.mcp.configuration"]
     },
+    "codex.repo.hooks": {
+      "basedOnBehaviors": ["codex.behavior.repo.hooks"],
+      "explainedByStrategies": ["codex.hooks.additive"]
+    },
+    "codex.repo.hooks.inline": {
+      "basedOnBehaviors": ["codex.behavior.repo.config", "codex.behavior.repo.hooks"],
+      "explainedByStrategies": ["codex.config.precedence", "codex.hooks.additive"]
+    },
     "codex.repo.instructions": {
       "basedOnBehaviors": ["codex.behavior.repo.instructions"],
       "explainedByStrategies": ["codex.instructions.layering"]
@@ -336,6 +389,26 @@
     "copilot.repo.command": {
       "basedOnBehaviors": ["copilot.behavior.cli.commands"],
       "explainedByStrategies": ["copilot.cli.skills.selection"]
+    },
+    "copilot.repo.hooks": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.hooks",
+        "copilot.behavior.cloud.hooks",
+        "copilot.behavior.vscode.hooks"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.hooks.composition",
+        "copilot.cloud.hooks.composition",
+        "copilot.vscode.hooks.composition"
+      ]
+    },
+    "copilot.repo.hooks.settings": {
+      "basedOnBehaviors": ["copilot.behavior.cli.hooks"],
+      "explainedByStrategies": ["copilot.cli.hooks.composition"]
+    },
+    "copilot.repo.hooks.settings.claude": {
+      "basedOnBehaviors": ["copilot.behavior.cli.hooks", "copilot.behavior.vscode.hooks"],
+      "explainedByStrategies": ["copilot.cli.hooks.composition", "copilot.vscode.hooks.composition"]
     },
     "copilot.repo.instructions.agents": {
       "basedOnBehaviors": [

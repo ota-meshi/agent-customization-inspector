@@ -120,12 +120,13 @@ export const CODEX_REPO_CONFIG_BEHAVIOR = {
  * carry a standalone `.codex/hooks.json` and an inline `[hooks]` table in its
  * `.codex/config.toml`, all matching hooks additive across layers.
  *
- * A non-authorizing statement the `codex.repo.config` rule is partly based on:
- * the carrier it admits can contain an inline `[hooks]` table, and recording
- * that documented fact grants no Hook candidate, recognition, or execution
- * authority — the Hook inventory and the standalone `hooks.json` candidacy
- * arrive with their own phase (contracts/vendors/openai-codex.md § Documented
- * Repository behavior).
+ * The statement three rules rest on: `codex.repo.config`, whose carrier can
+ * contain the inline `[hooks]` table, `codex.repo.hooks.inline`, which
+ * recognizes that table, and `codex.repo.hooks`, which admits the standalone
+ * file. Recording the documented fact grants no execution authority of its
+ * own — inspection runs no declared handler (FR-020), and whether a layer is
+ * trusted or a hook reviewed is runtime this tool never observes
+ * (contracts/vendors/openai-codex.md § Documented Repository behavior).
  */
 export const CODEX_REPO_HOOKS_BEHAVIOR = {
   behaviorId: 'codex.behavior.repo.hooks',
@@ -152,7 +153,7 @@ export const CODEX_REPO_HOOKS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/hooks.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Where Codex looks for hooks', 'Config shape'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-25',
           establishes:
             'Each active trusted project layer contributes hooks from its .codex/hooks.json and from an inline [hooks] table in its .codex/config.toml; all matching hooks are additive, and a file and inline table at one layer are both loaded with a warning.',
         },
@@ -164,6 +165,47 @@ export const CODEX_REPO_HOOKS_BEHAVIOR = {
           reviewedOn: '2026-08-17',
           establishes:
             'The active project config layers the hook lookup reads are the trusted .codex/config.toml files from the project root down to the runtime cwd.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex User hooks: the user config layer's own `<CODEX_HOME>/hooks.json` and
+ * the inline `[hooks]` table in `<CODEX_HOME>/config.toml`, which contribute
+ * hooks additively beside every project and plugin source.
+ *
+ * Recorded for maintenance and for the additive strategy that composes it;
+ * it expands no Global inspection, and `codex.excluded.user-runtime` keeps the
+ * surface out of the read allowlist (contracts/vendors/openai-codex.md
+ * § Documented User behavior). The page states this layer keeps contributing
+ * in an untrusted project, where the project layer contributes nothing — a
+ * documented runtime fact that authorizes no read here.
+ */
+export const CODEX_USER_HOOKS_BEHAVIOR = {
+  behaviorId: 'codex.behavior.user.hooks',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'hooks.json; inline [hooks] in config.toml',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.hooks',
+          url: 'https://learn.chatgpt.com/docs/hooks.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Where Codex looks for hooks'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'The user layer contributes hooks from ~/.codex/hooks.json and from an inline [hooks] table in ~/.codex/config.toml, and keeps contributing them in an untrusted project where the project layer does not.',
         },
       ]
     : [],
@@ -730,6 +772,7 @@ export const CODEX_BEHAVIOR_STATEMENTS: Readonly<Record<CodexBehaviorId, VendorB
     [CODEX_REPO_SKILLS_BEHAVIOR.behaviorId]: CODEX_REPO_SKILLS_BEHAVIOR,
     [CODEX_USER_AGENTS_BEHAVIOR.behaviorId]: CODEX_USER_AGENTS_BEHAVIOR,
     [CODEX_USER_CONFIG_BEHAVIOR.behaviorId]: CODEX_USER_CONFIG_BEHAVIOR,
+    [CODEX_USER_HOOKS_BEHAVIOR.behaviorId]: CODEX_USER_HOOKS_BEHAVIOR,
     [CODEX_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_USER_INSTRUCTIONS_BEHAVIOR,
     [CODEX_USER_PLUGINS_BEHAVIOR.behaviorId]: CODEX_USER_PLUGINS_BEHAVIOR,
     [CODEX_USER_RULES_BEHAVIOR.behaviorId]: CODEX_USER_RULES_BEHAVIOR,

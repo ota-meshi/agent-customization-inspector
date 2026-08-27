@@ -22,8 +22,8 @@ import type { CustomizationKind } from '../../shared/entities';
  * prompt or command file, and a custom-agent file each have one page however
  * many products recognize them, a permission policy is addressed by the path
  * of the file that declares it — the identity its inventory row is named by —
- * an MCP carrier's own page is the carrier's, and a settings or configuration
- * file's page is that file's, its row unit being the file. A skill is here
+ * an MCP or hook carrier's own page is the carrier's, and a settings or
+ * configuration file's page is that file's, its row unit being the file. A skill is here
  * too: its row unit is one invocation name, and two products that invoke one
  * `SKILL.md` differently put it on two rows, but both read the same bytes, the
  * same frontmatter, and the same companion directory, so the page is the
@@ -38,6 +38,7 @@ export type PathAddressedDetailKind = Extract<
   | 'prompt/command'
   | 'rule'
   | 'permissions'
+  | 'hook'
   | 'plugin'
   | 'output style'
   | 'settings/config'
@@ -76,6 +77,14 @@ const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = 
   rule: 'rules',
   /** Declared permission policies live under `/permissions/`. */
   permissions: 'permissions',
+  /**
+   * Hook carriers live under `/hooks/`. The row unit is the declared
+   * lifecycle event, but an event is not a locator — one carrier declares
+   * several, and two carriers declare one — so the route is the carrier's own
+   * path with the event as the query coordinate, exactly as an MCP
+   * declaration's is.
+   */
+  hook: 'hooks',
   /** Plugin carriers live under `/plugins/`. */
   plugin: 'plugins',
   /** Output styles live under `/output-styles/`. */

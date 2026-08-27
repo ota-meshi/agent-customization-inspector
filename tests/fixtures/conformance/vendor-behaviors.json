@@ -104,6 +104,37 @@
     ]
   },
   {
+    "behaviorId": "claude.behavior.repo.hooks-contained",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "active-config-layer",
+      "relativeSelector": "hooks in .claude/settings.json; .claude/settings.local.json; SKILL.md frontmatter; .claude/agents frontmatter; plugin.json; marketplace.json entries",
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.hooks.locations-resolution",
+        "url": "https://code.claude.com/docs/en/hooks",
+        "officialHost": "code.claude.com",
+        "sections": ["Hook locations", "Hooks in skills and agents", "The /hooks menu"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Where a hook is defined decides its scope, and the listed locations are the user and project settings files, managed policy settings, a plugin’s hooks/hooks.json, skill frontmatter, and subagent frontmatter; frontmatter hooks use the same configuration format as settings-based hooks, a subagent’s are registered only while it runs, and a skill’s from its invocation onward. Hook entries merge across settings levels rather than replacing each other."
+      },
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Plugin manifest schema", "File locations reference"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A plugin declares hooks either as config paths or as inline config in its manifest, and a marketplace entry may carry any manifest field, so a plugin can carry hook configuration in either place — content of the plugin the manifest or the entry declares."
+      }
+    ]
+  },
+  {
     "behaviorId": "claude.behavior.repo.instructions.ancestor",
     "tool": "claude",
     "surfaces": ["claude-cli-and-ide-clients"],
@@ -825,7 +856,7 @@
         "url": "https://learn.chatgpt.com/docs/hooks.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Where Codex looks for hooks", "Config shape"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-25",
         "establishes": "Each active trusted project layer contributes hooks from its .codex/hooks.json and from an inline [hooks] table in its .codex/config.toml; all matching hooks are additive, and a file and inline table at one layer are both loaded with a warning."
       },
       {
@@ -1013,6 +1044,29 @@
     ]
   },
   {
+    "behaviorId": "codex.behavior.user.hooks",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "hooks.json; inline [hooks] in config.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.hooks",
+        "url": "https://learn.chatgpt.com/docs/hooks.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex looks for hooks"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The user layer contributes hooks from ~/.codex/hooks.json and from an inline [hooks] table in ~/.codex/config.toml, and keeps contributing them in an untrusted project where the project layer does not."
+      }
+    ]
+  },
+  {
     "behaviorId": "codex.behavior.user.instructions",
     "tool": "codex",
     "surfaces": ["codex-local-clients"],
@@ -1170,6 +1224,37 @@
         "sections": ["File locations", "Loading order and precedence"],
         "reviewedOn": "2026-08-25",
         "establishes": "The plugin reference separates a plugin's own components — agents, skills, hooks, MCP and LSP configuration — from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations rather than treating an extension file as a plugin."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/hooks/*.json; inline hooks in .github/copilot/settings.json, .github/copilot/settings.local.json, .claude/settings.json, .claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations", "Hook configuration format"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "Copilot CLI loads repository-level hook files from .github/hooks/*.json in the repository root and an inline hooks block from the top level of .github/copilot/settings.json or .github/copilot/settings.local.json, and it also reads the cross-tool .claude/settings.json and .claude/settings.local.json files in the repository. Hook configuration files are JSON with version 1, where a structural error rejects the whole file while a malformed item inside a directory-loaded file drops only that item, and a malformed item in an inline settings block rejects the whole hooks field."
+      },
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Repository settings (.github/copilot/settings.json)"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The repository configuration file supports a top-level hooks object holding the hook definitions scoped to that repository, merged with the user configuration so the repository entry overrides the user one for the same key."
       }
     ]
   },
@@ -1513,6 +1598,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.cli.user.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "hooks/*.json; inline hooks in settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "User-level hook files are the *.json files of the user hooks directory — ~/.copilot/hooks/ by default, or $COPILOT_HOME/hooks/ when that variable is set — and a user-level inline hooks block sits at the top level of ~/.copilot/settings.json."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.cli.user.instructions.path",
     "tool": "copilot",
     "surfaces": ["copilot-cli"],
@@ -1725,6 +1833,29 @@
         "sections": ["YAML frontmatter properties", "Example agent profile configurations"],
         "reviewedOn": "2026-08-20",
         "establishes": "A repository agent profile is a Markdown file with YAML frontmatter whose description is the one required property and whose name is an optional display name; the configuration file’s own name, minus .md or .agent.md, is what deduplicates a profile between levels so the lowest level wins."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/hooks/*.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations", "Cloud agent execution environment"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "Under the Copilot cloud agent, hook configuration is loaded from .github/hooks/*.json files in the cloned repository, hooks run in an ephemeral non-interactive Linux sandbox, a subset of events fires, and only bash or command entries are honored."
       }
     ]
   },
@@ -2049,6 +2180,29 @@
     ]
   },
   {
+    "behaviorId": "copilot.behavior.vscode.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/hooks/*.json; .claude/settings.json; .claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["preview"],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.hooks",
+        "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Hook file locations", "Hook configuration format", "Agent-scoped hooks"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "VS Code loads workspace hooks from .github/hooks/*.json and, in the Claude format, from .claude/settings.json and .claude/settings.local.json; workspace hooks take precedence over user hooks for the same event type. A hook configuration file is JSON with a hooks object holding an array of hook commands per event, the same format Claude Code and Copilot CLI use. A custom agent may add a hooks field to its frontmatter, whose hooks run in addition to the workspace and user hooks for the same event."
+      }
+    ]
+  },
+  {
     "behaviorId": "copilot.behavior.vscode.instructions.agents",
     "tool": "copilot",
     "surfaces": ["copilot-vscode"],
@@ -2363,6 +2517,29 @@
         "sections": ["Use a CLAUDE.md file"],
         "reviewedOn": "2026-08-19",
         "establishes": "The CLAUDE.md location table names the user-home file as personal instructions across all projects."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/hooks/*.json; .claude/settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["preview"],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.hooks",
+        "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Hook file locations"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "The user scope of the hook-locations table names ~/.copilot/hooks and ~/.claude/settings.json, and the default chat.hookFilesLocations value includes the user Claude settings document."
       }
     ]
   },

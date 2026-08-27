@@ -50,10 +50,11 @@ import type {
   PromptInventoryEntryDto,
   SerializedDiagnostic,
 } from '../../../../shared/api-types';
+import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
   /** The committed command entry to render: one name a reader invokes. */
-  entry: PromptInventoryEntryDto;
+  entry: NarrowedInventoryRow<PromptInventoryEntryDto>;
   /**
    * The generation's files by Source-relative Path, for the read outcome
    * this row's comparison entry depends on: a file with no readable source
@@ -73,13 +74,17 @@ const props = defineProps<{
  * route's own pickers take over from there: they hold this row's files, so a
  * reader steps to another pair on the comparison itself rather than
  * composing one here (T505).
+ *
+ * The pair is drawn from the row's own files rather than from the members a
+ * filter left, so the link a reader followed is still there when they come
+ * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
 const compareRoute = computed(() => {
-  const readable = new Set<string>();
-  for (const definition of props.entry.definitions) {
-    const published = props.filesByPath.get(definition.sourceRelativePath);
+  const readable: string[] = [];
+  for (const path of props.entry.rowFilePaths) {
+    const published = props.filesByPath.get(path);
     if (published !== undefined && isReadableFile(published)) {
-      readable.add(definition.sourceRelativePath);
+      readable.push(path);
     }
   }
   const [first, second] = readable;

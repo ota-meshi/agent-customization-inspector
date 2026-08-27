@@ -22,6 +22,7 @@ import {
   CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR,
   CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR,
+  CLAUDE_REPO_CONTAINED_HOOKS_BEHAVIOR,
   CLAUDE_REPO_MARKETPLACE_BEHAVIOR,
   CLAUDE_REPO_MCP_BEHAVIOR,
   CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR,
@@ -50,6 +51,7 @@ import {
   CLAUDE_REPO_INSTRUCTIONS_RULE,
   CLAUDE_REPO_MARKETPLACE_RULE,
   CLAUDE_REPO_MCP_RULE,
+  CLAUDE_REPO_SETTINGS_HOOKS_RULE,
   CLAUDE_REPO_PERMISSIONS_RULE,
   CLAUDE_REPO_OUTPUT_STYLE_RULE,
   CLAUDE_REPO_RULES_RULE,
@@ -61,6 +63,7 @@ import {
   CLAUDE_AGENTS_SELECTION_STRATEGY,
   CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY,
   CLAUDE_COMMANDS_SELECTION_STRATEGY,
+  CLAUDE_HOOKS_ADDITIVE_STRATEGY,
   CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY,
   CLAUDE_MCP_SELECTION_STRATEGY,
   CLAUDE_PLUGINS_ACTIVATION_STRATEGY,
@@ -136,6 +139,29 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
    * the documented broadest-to-most-specific order as starting at the
    * repository.
    */
+  /**
+   * Additive hook composition consumes every documented source of a hook this
+   * vendor has: the contained-declaration statement that locates them, the two
+   * project settings files and the User settings file whose levels merge, the
+   * skill and subagent lookups whose frontmatter can declare them, and both
+   * plugin scopes, because a plugin contributes its hooks while it is enabled.
+   * The User scopes are listed though this product never reads them: the
+   * strategy describes Claude's runtime, and a composition over the repository
+   * alone would describe a different product.
+   */
+  [CLAUDE_HOOKS_ADDITIVE_STRATEGY.strategyId]: {
+    // Ordered by behavior identifier, as every edge array in this file is.
+    consumesBehaviors: [
+      CLAUDE_REPO_AGENTS_BEHAVIOR,
+      CLAUDE_REPO_CONTAINED_HOOKS_BEHAVIOR,
+      CLAUDE_REPO_PLUGIN_BEHAVIOR,
+      CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
+      CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
+      CLAUDE_REPO_SKILLS_BEHAVIOR,
+      CLAUDE_USER_PLUGINS_BEHAVIOR,
+      CLAUDE_USER_SETTINGS_BEHAVIOR,
+    ],
+  },
   [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
@@ -297,6 +323,23 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
   [CLAUDE_REPO_PERMISSIONS_RULE.ruleId]: {
     basedOnBehaviors: [CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR, CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR],
     explainedByStrategies: [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY],
+  },
+  /**
+   * The contained-hook rule rests on the hook lookup that reads the declaration
+   * and on the two settings lookups that located its owner: the declaration is
+   * the hook behavior's, and that the file is accepted at all is the settings
+   * lookups'. It is explained by the additive composition, which owns
+   * everything a row does not state — whether a workspace is trusted, whether a
+   * managed policy allows a non-managed hook, and how long a registration lasts
+   * (FR-009).
+   */
+  [CLAUDE_REPO_SETTINGS_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [
+      CLAUDE_REPO_CONTAINED_HOOKS_BEHAVIOR,
+      CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR,
+      CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR,
+    ],
+    explainedByStrategies: [CLAUDE_HOOKS_ADDITIVE_STRATEGY],
   },
   /**
    * The settings recognition of the same two files rests on the same two

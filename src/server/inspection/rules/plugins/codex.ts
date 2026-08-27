@@ -21,7 +21,7 @@ import {
   localPluginRootSegments,
   UNRECOGNIZED_PLUGIN_SOURCE,
 } from './plugin-source';
-import { ParsedStrictJsonDocument } from '../../parsers/json';
+import { ParsedJsonDocument } from '../../parsers/json';
 import { toPublicPath } from '../../traversal';
 import type { DeclaredEntryDto, PluginSourceForm } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
@@ -199,8 +199,11 @@ function codexOfferedPluginNameOf(
  * the files it ships rather than a customization of its own, so an entry
  * answers the directory and never a file below it.
  */
-export function codexPluginCatalogReadingOf(sourceText: string): PluginCarrierReading {
-  const entries = new ParsedStrictJsonDocument(sourceText).entries;
+export function codexPluginCatalogReadingOf(
+  sourceText: string,
+  sourceRelativePath: string,
+): PluginCarrierReading {
+  const entries = new ParsedJsonDocument(sourceText, { tool: 'codex', sourceRelativePath }).entries;
   const declared = entries.find(
     (entry) => entry.keyKind === 'string' && entry.key === CODEX_CATALOG_PLUGINS_KEY,
   );
@@ -259,8 +262,11 @@ export class CodexCompiledPluginCatalogRule
    * What this catalog declares — its own keys, and one declaration per entry
    * (`plugins/codex.ts` § codexPluginCatalogReadingOf).
    */
-  public pluginCarrierReadingOf(sourceText: string): PluginCarrierReading {
-    return codexPluginCatalogReadingOf(sourceText);
+  public pluginCarrierReadingOf(
+    sourceText: string,
+    sourceRelativePath: string,
+  ): PluginCarrierReading {
+    return codexPluginCatalogReadingOf(sourceText, sourceRelativePath);
   }
 
   /** Compiles one Codex plugin catalog record, rejecting one of another kind. */
