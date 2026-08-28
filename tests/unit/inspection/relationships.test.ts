@@ -572,6 +572,7 @@ describe('failure propagation through the recognition domain (FR-028/FR-029)', (
         sourceId: 'source-1',
         root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules: [claudeSkillRule!],
         result: {
           kind: 'scanned',
@@ -609,6 +610,7 @@ describe('failure propagation through the recognition domain (FR-028/FR-029)', (
         sourceId: 'source-1',
         root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules: [claudeSkillRule!],
         result: {
           kind: 'scanned',

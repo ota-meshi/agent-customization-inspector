@@ -38,6 +38,29 @@ describe('recognition extraction', () => {
     expect(extraction.extracted).toBeUndefined();
   });
 
+  it('runs the extractor once and inspects nothing about what it threw', () => {
+    // No classification, no retry, no recovered value (FR-029): the runner
+    // records that this file's extraction failed and stops. A second call
+    // would be a retry, and reading the thrown value would be the cause
+    // inspection the failure model forbids — which is also what keeps a
+    // parser message out of every published record.
+    let calls = 0;
+    const thrown = Object.assign(new Error('injected parser failure'), {
+      code: 'EMFILE',
+      cause: new Error('inner'),
+    });
+    const extraction = RecognitionExtraction.run('greet', () => {
+      calls += 1;
+      throw thrown;
+    });
+    expect(calls).toBe(1);
+    expect(extraction.status).toBe('failed');
+    expect(extraction.extracted).toBeUndefined();
+    // The record carries the state and nothing from the failure itself.
+    expect(JSON.stringify(extraction)).not.toContain('injected parser failure');
+    expect(JSON.stringify(extraction)).not.toContain('EMFILE');
+  });
+
   it('imposes no Inspector limit on document size', () => {
     // Capacity is the environment's. A product-defined ceiling would fail a
     // large but perfectly ordinary customization file the vendor would load.

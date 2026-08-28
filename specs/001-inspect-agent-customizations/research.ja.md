@@ -106,7 +106,7 @@ smoke testで証明する。Tarballをisolated fixtureへinstallしてexecutable
 commit済みlockfile — integrity hash付きの各resolved version — が、hashが既に固定したcontentを再scanせず、
 lockfile自身の値をtestで再記述もせずに、初期リリースのproduction closureをstableにし
 payloadをbyte-fixedにする。
-`/skills/<Source相対パス>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
+`/skills/detail/<source>/<Source相対パス>`のようなnested routeにも同じshellを返すためroot-absolute assetが必要で、
 relativeな`./_nuxt/` URLはそのroute配下へ誤ってresolveされる。
 公式[Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)は`baseURL`、
 `buildAssetsDir`、defaultが空の`cdnURL`を定義する。正確な
@@ -387,7 +387,7 @@ walk方向、target file、trust、enablement、selection、installation、produ
 認可しない。
 
 Admitしたtool-home rootはtool別の独立したGlobal Sourceとして表す。Codex、Claude、Copilotごとに最大1つ、
-したがって1 sessionで0から3つのGlobal Sourceとする。各Sourceは正確に1つのrootと1つのSource-relative Path
+したがって1 sessionで0から4つのGlobal Sourceとする。各Sourceは正確に1つのrootと1つのSource-relative Path
 namespaceを所有し、そのroot配下にある異なるcustomization typeのfileは別々のinventory itemとして保つ。
 「repository-relative path」はRepository Sourceだけに使い、inventory-file/normalized-targetのDTO locator field、filter、
 file-scoped diagnostic、cross-source comparisonではSource-relative Pathを使う。Enabled Sourceとconsent previewの
@@ -556,7 +556,7 @@ outcomeとし、別charsetを推測したりretryしたりしない。読み取�
 fileを読み込む製品が得るtextであり、quoteやescapeを含むliteralではその周囲の文字ではなくsyntaxの意味 — として返す。いずれもcredential検出、
 content-based masking、redaction、reveal workflowを使わない。
 調査対象content内の環境変数参照はliteral textのままとし、Inspectorが参照先のprocess値を読み取り、解決、置換する
-契機にしない。文書化済みの`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`COPILOT_HOME` inputは、hostがtool別Global Source
+契機にしない。文書化済みの`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`COPILOT_HOME` inputは、hostがmember Global Source
 rootを特定するためだけに使い、content parseでは使わない。Inspectorはfile-size/file-count validationを適用しない。
 Read、decode、parse、retentionはNode.js、parser library、OS、実行環境が利用可能にするcapacityを使う。
 Error処理はordinaryとする。1つのfileに限定されるfailureはそのfileの
@@ -917,7 +917,7 @@ payloadをsession retrievalごとに繰り返さない。
 ## 9. Atomic generation、rescan、実行環境依存capacity
 
 **決定**: Repository scanは自動開始し、session snapshotでprogressを公開し、以後のRepositoryまたはenabledな
-tool別Global Sourceのscanは明示的user actionだけで行う。自動Repository command前にlegalで空のzero-I/O
+member Global Sourceのscanは明示的user actionだけで行う。自動Repository command前にlegalで空のzero-I/O
 bootstrap generation 0を同期作成する。これには、captureした`process.cwd()`または任意指定の単一`--root`から選択した、
 idleでreadを認可しないRepository Sourceを正確に1つ含め、boundary admissionとworkがqueueされるまではsource progressを
 nullとする。自動または明示的な各scanにopaqueな`scanRequestId`を割り当て、そのSource progressとsuccessfulな
@@ -929,7 +929,7 @@ commit — Global generation 1 — からdisableが破棄するまでの間だ�
 generation 1から再開し、incrementされた`globalContentEpoch`がeraを区別するため、disable前のstaleなGlobal
 referenceがre-enable後のrequestを満たすことはない。
 
-単一coordinatorが全`GlobalEnableOperation`、Repositoryまたはtool別Global Source scan、Global調査を無効にする
+単一coordinatorが全`GlobalEnableOperation`、Repositoryまたはmember Global Source scan、Global調査を無効にする
 transactionをserializeする。Product独自のqueue、slot、concurrency capacityは公開もenforceもしない。通常scanはFIFOで
 実行する。Global disableはpriority security barrierとし、dispatch前にbrowserがfull client-data purgeを実行する。Non-no-op
 barrierの最初のaccept時、command epochと`globalContentEpoch`をatomicにincrementし、non-null
@@ -961,8 +961,8 @@ error messageを参照する（FR-030）。Startupのfailureにはrequest owner�
 ないためprocess top levelへ到達する。Tool別Global rescanのfatal failureはその
 Sourceのconsent、accepted root context、最後にcommitしたgraphをretry/disable用に保持する。
 
-Session-wide consent 1件で3 tool全てを固定し、frozen preview entryごとに`GlobalToolControl`を1つ持ち、selectorは
-持たない。Consent後validationは、missingまたはreadable directoryではないconsent済みrootを、他のtoolを
+Session-wide consent 1件で4 member全てを固定し、frozen preview entryごとに`GlobalToolControl`を1つ持ち、selectorは
+持たない。Consent後validationは、missingまたはreadable directoryではないconsent済みrootを、他のmemberを
 blockせずそのtoolのabsent/failed outcomeとして記録する（FR-014）。1つのtoolのrootに限定されない
 unexpected failureは全transactionをowning request
 boundary経由でabortする。Validationがrootを1つもadmitしない場合、`active-no-job`はretry/disable用controlを保持し、
@@ -1048,7 +1048,7 @@ recursive-directory segment）を拒否し、exact/direct-child/explicit descend
 `ANY_DIRECTORIES` segmentがvendor traversal factをsatisfiedにしないことを証明する。Targeted regression fixtureはCopilotの別々のVS Code/CLI/Cloud lookup表、
 選択した正確なRepository rootだけのClaude project settings、non-recursiveなCodex rule directory、plugin activation対
 authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱う。
-さらに、tool別Global Sourceが0から3つで各tool最大1つ、各Sourceが正確に1つのrootとSource-relative Path
+さらに、member Global Sourceが0から4つで各member最大1つ、各Sourceが正確に1つのrootとSource-relative Path
 namespaceを持つこと、literal credentialのexact表示、reveal controlがないこと、環境変数を置換しないことを
 検証する。Lifecycle fixtureは全4 Sourceの未解決failure共存、Source別clear/replace/removal、自動初回failureの
 current stateを扱う。Browser fixtureはordinaryなrequest rejectionがrequest-localに留まること、transportが報告する
@@ -1413,8 +1413,8 @@ manual accessibility check、documentation parity check、release tarball inspec
 
 **決定**: Phase 0設計を2026-07-17のclarificationと照合し、次のruleを後続の全design artifactへ引き継ぐ。
 
-1. Admitしたtool-home root 1つをtool別Global Source 1つとし、Codex、Claude、Copilotごとに最大1つ、
-   1 sessionで0から3つとする。
+1. Admitしたmember root 1つをmember Global Source 1つとし、Codex、Claude、Copilot、共有agent homeごとに最大1つ、
+   1 sessionで0から4つとする。
 2. 読み取り可能なsource、表示対象の宣言済みmetadata、comparison contentは記述済みliteral valueを維持する。
    Credential maskingとreveal workflowは持たない。調査対象content内の環境変数参照はliteralのまま解決も置換も
    せず、文書化済みの3つのtool-home変数はGlobal rootの特定だけに使う。

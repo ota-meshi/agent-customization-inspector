@@ -317,7 +317,7 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
 
 test('links each definition by its stable tool-and-path identity', async ({ page }) => {
   await page.goto(host.origin);
-  const links = page.locator('.aci-skill-row__file a');
+  const links = page.locator('.aci-source-family-blocks__members > li a');
   await expect(links).toHaveCount(2);
 
   // The link carries the Source-relative path and nothing else — the file's
@@ -329,7 +329,10 @@ test('links each definition by its stable tool-and-path identity', async ({ page
     elements.map((element) => element.getAttribute('href') ?? ''),
   );
   expect(hrefs.toSorted()).toEqual(
-    ['/skills/.agents/skills/greet/SKILL.md', '/skills/.agents/skills/deploy/SKILL.md'].toSorted(),
+    [
+      '/skills/detail/repository/.agents/skills/greet/SKILL.md',
+      '/skills/detail/repository/.agents/skills/deploy/SKILL.md',
+    ].toSorted(),
   );
   // The row itself offers nothing else to act on here: opening the file is
   // the one thing a row leads to, and the comparison entry — a link, never a
@@ -345,13 +348,14 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
 
   // Every control is a native form element, so it is reachable by Tab and
   // has a programmatic name (contracts/accessibility-acceptance.md).
-  for (const id of [
-    'aci-inventory-filters-source',
-    'aci-inventory-filters-tool',
-    'aci-inventory-filters-path',
-  ]) {
+  for (const id of ['aci-inventory-filters-tool', 'aci-inventory-filters-path']) {
     await expect(page.locator(`label[for="${id}"]`)).toHaveCount(1);
   }
+  // The Source control is not among them here: this launch inspects the
+  // selected repository alone, so the filter has one family to offer and is not
+  // rendered at all. Where two are carried it appears and is reached the same
+  // way (`global-codex-admission.spec.ts`).
+  await expect(page.locator('label[for="aci-inventory-filters-source"]')).toHaveCount(0);
   // Kind moved out of the filter form into a tab strip, which carries its own
   // accessible name instead of a `<label>`.
   await expect(page.getByRole('tablist', { name: 'Customization kind' })).toHaveCount(1);
@@ -374,7 +378,6 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
       }),
     );
   }
-  expect(reached).toContain('#aci-inventory-filters-source');
   expect(reached).toContain('#aci-inventory-filters-tool');
   expect(reached).toContain('#aci-inventory-filters-path');
   // The rescan control too: `.focus()` below proves Enter activates it, which

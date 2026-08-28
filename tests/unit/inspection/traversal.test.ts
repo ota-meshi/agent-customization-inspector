@@ -477,7 +477,7 @@ describe('per-file reading (T020)', () => {
 });
 
 describe('global fixed-subtree walks (T019, FR-018)', () => {
-  const COPILOT_PLAN = TraversalPlan.fromPrograms({ kind: 'global', tool: 'copilot' }, [
+  const COPILOT_PLAN = TraversalPlan.fromPrograms({ kind: 'global', member: 'copilot' }, [
     ['copilot-instructions.md'],
     ['instructions', ANY_DIRECTORIES, /\.instructions\.md$/u],
   ]);
@@ -583,7 +583,7 @@ describe('global fixed-subtree walks (T019, FR-018)', () => {
       // A denied parent is not a missing subtree: the failure is not
       // confined to one file and must fail the attempt as an ordinary
       // error instead of silently publishing nothing (FR-030).
-      const plan = TraversalPlan.fromPrograms({ kind: 'global', tool: 'copilot' }, [
+      const plan = TraversalPlan.fromPrograms({ kind: 'global', member: 'copilot' }, [
         ['locked', 'instructions', ANY_DIRECTORIES, /\.instructions\.md$/u],
       ]);
       await expect(runTraversalScan({ root, plans: [plan] })).rejects.toThrow();
@@ -600,7 +600,7 @@ describe('global fixed-subtree walks (T019, FR-018)', () => {
 
 describe('Codex override-empty ordered fallback (T020, FR-035)', () => {
   const CODEX_PLAN = TraversalPlan.fromPrograms(
-    { kind: 'global', tool: 'codex' },
+    { kind: 'global', member: 'codex' },
     [['AGENTS.override.md'], ['AGENTS.md']],
     'codex-global-first-non-empty',
   );

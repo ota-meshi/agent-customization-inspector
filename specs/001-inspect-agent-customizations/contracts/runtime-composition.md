@@ -76,7 +76,7 @@ These are maintenance records about the vendors, not a projection the product ma
 registry record carries a condition key, no response carries one, and no surface states
 what a product would do with a file: the Inspector reports the customization files it
 found and where, and says nothing about that runtime (FR-009). Repository and
-tool-specific Global results are therefore never merged into an “effective configuration”
+member Global results are therefore never merged into an “effective configuration”
 either — there is no configuration to merge, only Sources whose boundaries stay separate.
 
 A documented hosted or runtime input with no originating customization file is out of
@@ -234,7 +234,7 @@ contracts and are not duplicated here.
 
 | Rule ID | Excluded input | Behavior refs | Required retained fact | Policy refs | Evidence |
 |---|---|---|---|---|---|
-| `shared.excluded.managed-remote-state` | Managed, organization, hosted, remote, credential, log, cache, session, runtime-state, plugin-installation, and service-side files or values | `claude.behavior.user.mcp-state`; `claude.behavior.user.plugins`; `claude.behavior.user.settings`; `codex.behavior.user.config`; `codex.behavior.user.plugins`; `copilot.behavior.cloud.mcp`; `copilot.behavior.cloud.organization-agents`; `copilot.behavior.cloud.organization-instructions`; `copilot.behavior.cloud.plugins`; `copilot.behavior.cloud.remote-skills` | Record only the source category and its possible effect on a strategy; never create a local path | FR-009, FR-013, FR-014, FR-018, FR-019, FR-021, FR-022, FR-031, QR-001, QR-003, QR-005 | `anthropic.claude-code.directory.file-reference`, `anthropic.claude-code.mcp.scopes-precedence`, `anthropic.claude-code.plugins.components-scopes`, `anthropic.claude-code.settings.scopes-precedence`, `github.copilot.cli.reference`, `github.copilot.cloud.instructions`, `github.copilot.custom-agents`, `github.copilot.instructions.support`, `github.copilot.plugins`, `github.copilot.skills`, `openai.codex.config-basic`, `openai.codex.mcp`, `openai.codex.plugins`, `vscode.copilot.plugins` |
+| `shared.excluded.managed-remote-state` | Managed, organization, hosted, remote, credential, log, cache, session, runtime-state, plugin-installation, and service-side files or values | `claude.behavior.user.mcp-state`; `claude.behavior.user.plugins`; `codex.behavior.user.plugins`; `copilot.behavior.cloud.mcp`; `copilot.behavior.cloud.organization-agents`; `copilot.behavior.cloud.organization-instructions`; `copilot.behavior.cloud.plugins`; `copilot.behavior.cloud.remote-skills` | Record only the source category and its possible effect on a strategy; never create a local path | FR-009, FR-013, FR-014, FR-018, FR-019, FR-021, FR-022, FR-031, QR-001, QR-003, QR-005 | `anthropic.claude-code.directory.file-reference`, `anthropic.claude-code.mcp.scopes-precedence`, `anthropic.claude-code.plugins.components-scopes`, `anthropic.claude-code.settings.scopes-precedence`, `github.copilot.cli.reference`, `github.copilot.cloud.instructions`, `github.copilot.custom-agents`, `github.copilot.instructions.support`, `github.copilot.plugins`, `github.copilot.skills`, `openai.codex.config-basic`, `openai.codex.mcp`, `openai.codex.plugins`, `vscode.copilot.plugins` |
 
 ## Registry completeness
 

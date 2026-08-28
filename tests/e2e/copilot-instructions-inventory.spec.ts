@@ -116,7 +116,7 @@ test.describe('Copilot instruction rows and their surfaces', () => {
     const entryFor = (path: string) =>
       page
         .getByRole('tabpanel')
-        .locator('.aci-instruction-row__files > li')
+        .locator('.aci-source-family-blocks__members > li')
         .filter({ has: page.getByText(path, { exact: true }) });
 
     // The root repository-wide file: admitted by the root-exact rule and by
@@ -181,7 +181,9 @@ test.describe('Copilot instruction rows and their surfaces', () => {
   test('narrows the rows with the tool and path filters', async ({ page }) => {
     await page.goto(host.origin);
     const items = page.getByRole('tabpanel').locator('.aci-item');
-    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    const fileEntries = page
+      .getByRole('tabpanel')
+      .locator('.aci-source-family-blocks__members > li');
     await expect(items).toHaveCount(3);
     await expect(fileEntries).toHaveCount(7);
 
@@ -242,7 +244,9 @@ test.describe('a Copilot instruction file whose declarations cannot be parsed', 
     page,
   }) => {
     await page.goto(host.origin);
-    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    const fileEntries = page
+      .getByRole('tabpanel')
+      .locator('.aci-source-family-blocks__members > li');
     // Two rows: the repository-wide file's root range, and the no-range row
     // holding the path-specific file whose declarations could not be read — a
     // path-specific file's range is its own declaration or nothing, so an

@@ -179,7 +179,7 @@ test.describe('the priority cross-vendor MCP inventory', () => {
     const firstLink = page.locator('[role="tabpanel"] .aci-item a').first();
     expect(await tabUntilFocused(page, firstLink)).toBe(true);
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/mcp\//u);
+    await expect(page).toHaveURL(/\/mcp\/detail\/repository\//u);
   });
 });
 

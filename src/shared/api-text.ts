@@ -14,12 +14,18 @@
 import type {
   FileDetailDto,
   FileOpenTarget,
+  GlobalMemberId,
+  GlobalRootInputState,
+  GlobalRootOrigin,
+  GlobalToolFailureCode,
+  GlobalToolState,
   HookCarrierForm,
   PluginCarrierKind,
   PluginSourceForm,
   ScanProgressPhase,
+  SourceKind,
 } from './api-types';
-import { CUSTOMIZATION_KIND_TEXT } from './entities';
+import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_ORDER, SUPPORTED_TOOL_TEXT } from './entities';
 
 /**
  * What each application a file can be opened in reads as, in the menu and in
@@ -112,10 +118,13 @@ export const HOOK_CARRIER_FORM_TEXT: Readonly<Record<HookCarrierForm, string>> =
  */
 export const PLUGIN_SOURCE_FORM_TEXT: Readonly<Record<PluginSourceForm, string>> = {
   /**
-   * Read only where the declared path leaves the Source: a directory this
-   * repository holds is named by the path itself, which the surfaces draw.
+   * Read only where the declared path leaves the Source: a directory the
+   * Source holds is named by the path itself, which the surfaces draw. "Local"
+   * rather than "repository", because the same form is the personal Codex
+   * catalog's, whose base is the home directory rather than a repository
+   * (contracts/vendors/openai-codex.md § Derived Repository rules).
    */
-  'repository-directory': 'a directory relative to this repository',
+  'repository-directory': 'a local directory',
   /** A GitHub repository the client clones. */
   'github-repository': 'a GitHub repository',
   /** A Git repository named by its URL. */
@@ -157,4 +166,114 @@ export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], strin
   'settings/config': CUSTOMIZATION_KIND_TEXT['settings/config'],
   /** Caption for a census-listed or otherwise unrecognized file's detail. */
   file: 'No recognized kind',
+};
+
+/**
+ * What each Source family reads as on the inventory's Source filter. The
+ * repository is named by the same word its own summary panel is headed by, and
+ * the consented homes by the phrase the consent page and its panel already use
+ * for them, so one thing has one name across the product.
+ *
+ * The family rather than one option per Source: which tool recognized a file is
+ * the Tool filter beside this one, so a per-tool Source option asked the same
+ * question twice — and a Source ID belongs to one launch, while this selection
+ * rides in the inventory's URL.
+ */
+export const SOURCE_KIND_TEXT: Readonly<Record<SourceKind, string>> = {
+  /** The one Source selected from the invocation Repository boundary. */
+  repository: 'Repository',
+  /** Every consent-gated Global Source: the reader's own configuration directories. */
+  global: 'Your personal setup',
+};
+
+/**
+ * The one contracted member order every Global projection uses: the three
+ * tools in their own fixed order, then the shared agent home
+ * (spec.md § FR-013; contracts/http-api.md § create-global-consent-preview).
+ * The capture reads the environment in this order and the confirmation fixes
+ * `confirmedTools` to the same closed sequence.
+ */
+export const GLOBAL_MEMBER_ORDER: readonly GlobalMemberId[] = [...SUPPORTED_TOOL_ORDER, 'agents'];
+
+/**
+ * What each Global member reads as wherever a preview row, control, or Source
+ * summary names one. The three tools read as themselves — the caption is the
+ * tool's own, spread rather than restated so it cannot drift — and the shared
+ * agent home is named for what it is: the `~/.agents` directory Codex and
+ * Copilot both read (FR-045).
+ */
+export const GLOBAL_MEMBER_TEXT: Readonly<Record<GlobalMemberId, string>> = {
+  ...SUPPORTED_TOOL_TEXT,
+  agents: 'Shared agent home',
+};
+
+/**
+ * What each Global lexical state reads as on the consent page. The states are
+ * decided from the captured string alone, so each sentence says what about the
+ * string decided it — never whether the directory exists, which no preview has
+ * looked at (data-model.md § RootPresentationEncoding and Global lexical
+ * state).
+ */
+export const GLOBAL_ROOT_INPUT_STATE_TEXT: Readonly<Record<GlobalRootInputState, string>> = {
+  /**
+   * Caption for an absolute, well-formed root that consent may admit. Stated as
+   * a fact about the captured string rather than as a promise, because the
+   * table is shown both before a confirmation and after one: a row that has
+   * been read cannot say it is ready to be read once the reader confirms, and
+   * what became of each tool is the consent page's own per-tool outcome.
+   */
+  eligible: 'An absolute path, so this tool can be inspected',
+  /** Caption for an environment variable set to the empty string. */
+  'present-empty': 'Set to an empty value, so nothing can be inspected for this tool',
+  /** Caption for a root that is not absolute on this platform. */
+  relative: 'Not an absolute path, so nothing can be inspected for this tool',
+  /** Caption for a root holding U+0000 or ill-formed UTF-16. */
+  invalid: 'Contains characters a path cannot hold, so nothing can be inspected for this tool',
+};
+
+/**
+ * How each preview row's root was arrived at. The environment wording names
+ * the variable's role rather than its value, because a row whose variable is
+ * empty or relative still says `environment` — an override is used even when
+ * it turns out to be unusable.
+ */
+export const GLOBAL_ROOT_ORIGIN_TEXT: Readonly<Record<GlobalRootOrigin, string>> = {
+  /** Caption for a root derived from the home directory and the tool's suffix. */
+  'default-home': 'Default location in your home directory',
+  /** Caption for a root taken from the tool's own environment variable. */
+  environment: 'From this tool’s environment variable',
+};
+
+/**
+ * What each Global tool failure reads as. Every sentence says what about the
+ * reader's own environment produced the outcome, because that is what they can
+ * act on — and none of them names a path: the code carries no path or
+ * environment value, and the frozen preview is where the exact root is shown
+ * (data-model.md § GlobalToolControl `failureCode`).
+ */
+export const GLOBAL_TOOL_FAILURE_TEXT: Readonly<Record<GlobalToolFailureCode, string>> = {
+  /** The environment variable exists but is empty. */
+  'present-empty': 'This tool’s environment variable is set to an empty value.',
+  /** The captured root is not absolute. */
+  relative: 'This tool’s environment variable is not an absolute path.',
+  /** The captured root cannot be a path. */
+  invalid: 'This tool’s environment variable contains characters a path cannot hold.',
+  /** The consented directory is missing or unreadable. */
+  'root-unreadable': 'That directory does not exist or cannot be read.',
+  /** The tool's own scan failed after its root was admitted. */
+  'scan-failed': 'Reading this tool’s directory failed.',
+};
+
+/**
+ * What each Global tool state reads as. `admitted` is phrased as the waiting
+ * state it is: the root was accepted and nothing has been read from it yet,
+ * which is what a reader sees between an `active-no-job` outcome and a retry.
+ */
+export const GLOBAL_TOOL_STATE_TEXT: Readonly<Record<GlobalToolState, string>> = {
+  /** Label for a deterministically refused tool. */
+  rejected: 'Not inspected',
+  /** Label for an accepted root with nothing published from it yet. */
+  admitted: 'Accepted, not yet read',
+  /** Label for a tool with one published Source. */
+  published: 'Inspected',
 };

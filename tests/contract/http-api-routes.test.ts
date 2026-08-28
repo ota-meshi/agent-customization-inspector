@@ -71,7 +71,10 @@ const ABSENT_OPERATIONS = [
 describe('the registered session RPC catalog', () => {
   it('registers exactly the functions this release ships', () => {
     expect([...registerFunctions().keys()].toSorted()).toEqual([
+      'agent-customization-inspector:create-global-consent-preview',
+      'agent-customization-inspector:enable-global',
       'agent-customization-inspector:get-file-detail',
+      'agent-customization-inspector:get-global-consent-preview',
       'agent-customization-inspector:get-hook-carrier-detail',
       'agent-customization-inspector:get-mcp-carrier-detail',
       'agent-customization-inspector:get-permission-policy-detail',

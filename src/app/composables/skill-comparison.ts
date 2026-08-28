@@ -9,9 +9,10 @@
 // own surface, and nothing here pretends to be it.
 //
 // The comparison selection is the route's:
-// `/skills/compare?name=<row name>&left=<entry path>&right=<entry path>&file=<relative>`
-// names the row and two of its copies by their entry files' Source-relative
-// Paths — the identity the inventory and the detail route use (FR-030) —
+// `/skills/compare/<family>?name=<row name>&leftSource=<selector>&left=<entry path>&rightSource=<selector>&right=<entry path>&file=<relative>`
+// names the row and two of its copies by their entry files' whole identities —
+// each side's own Source and Source-relative Path, the identity the inventory
+// and the detail route use (FR-030) —
 // and the compared file inside them, and the compare page's own switchers
 // are how a reader moves those coordinates. There is no standing
 // pre-selection state: the entry links are built where a name's files are
@@ -33,12 +34,12 @@
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
-import { toJsonStringBody } from '../components/detail-route';
+import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import { shallowRef } from 'vue';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
 import { isReadableFile } from '../../shared/entities';
-import type { FileDetailDto } from '../../shared/api-types';
+import type { FileDetailDto, SourceKind } from '../../shared/api-types';
 
 /**
  * Where the one open comparison stands:
@@ -75,8 +76,10 @@ export type SkillComparisonViewStatus =
 /**
  * The skill comparison route of one compared pair. `name` is the invocation
  * name of the row the pair belongs to, `left` and `right` are the two copies'
- * identities — their entry files' Source-relative Paths, the same identity the
- * inventory's definitions and the detail route use (FR-030) — and
+ * identities — each the entry file's own Source and Source-relative Path, the
+ * same identity the inventory's definitions and the detail route use (FR-030),
+ * each side naming its Source because a consented member publishes skills too
+ * (contracts/http-api.md § Host requirements #5) — and
  * `comparedFile` is the copy-relative path of the file the pair shows, omitted
  * for the entries themselves. The URL carries the comparison model's own
  * coordinates rather than two free file paths, so a pair the model cannot
@@ -94,17 +97,27 @@ export type SkillComparisonViewStatus =
  * A module function beside the state class so every surface that builds the
  * link — the inventory row's and detail page's entry links, and the compare
  * route's own switchers — builds the same URL.
+ *
+ * The family leads the address rather than a Source, because a pair stays
+ * inside one family while a family can hold two consented homes — a reader
+ * compares one home's file against the other's, never a Repository file
+ * against a home's (contracts/http-api.md § Host requirements #5). Stated in
+ * the address rather than derived so the page can refuse a pair outside it
+ * before resolving anything.
  */
 export function skillComparisonRouteFor(
+  family: SourceKind,
   name: string,
-  left: string,
-  right: string,
+  left: ComparisonSide,
+  right: ComparisonSide,
   comparedFile?: string,
 ): {
   readonly path: string;
   readonly query: {
     readonly name: string;
+    readonly leftSource: string;
     readonly left: string;
+    readonly rightSource: string;
     readonly right: string;
     readonly file?: string;
   };
@@ -116,11 +129,13 @@ export function skillComparisonRouteFor(
   // invocation name is authored text — or a directory segment — and takes the
   // same spelling for the same reason.
   return {
-    path: '/skills/compare',
+    path: `/skills/compare/${family}`,
     query: {
       name: toJsonStringBody(name),
-      left: toJsonStringBody(left),
-      right: toJsonStringBody(right),
+      leftSource: left.source,
+      left: toJsonStringBody(left.sourceRelativePath),
+      rightSource: right.source,
+      right: toJsonStringBody(right.sourceRelativePath),
       ...(comparedFile === undefined ? {} : { file: toJsonStringBody(comparedFile) }),
     },
   };
@@ -274,7 +289,7 @@ export class SkillComparisonState {
    * owning the view — a purge, a generation change, a close, a newer open —
    * cannot each grow their own handling.
    */
-  public async open(leftPath: string, rightPath: string): Promise<void> {
+  public async open(left: ComparisonSide, right: ComparisonSide): Promise<void> {
     // The previous pair's content is dropped before anything is requested,
     // so a slow request never leaves one pair's sources on screen under
     // another pair's paths; this also supersedes any open still in flight.
@@ -283,10 +298,12 @@ export class SkillComparisonState {
     const capturedEpoch = this.#clientData.epoch();
     const owns = (): boolean =>
       requested === this.#requestVersion && this.#clientData.epoch() === capturedEpoch;
-    if (leftPath === rightPath) {
+    if (left.source === right.source && left.sourceRelativePath === right.sourceRelativePath) {
       // The same file must not occupy both inputs, however many recognitions
-      // it has (FR-011). A declared outcome, decided here: spending a request
-      // to discover it would ask the host a question the client can answer.
+      // it has (FR-011) — and the identity is the Source-and-path pair, so
+      // one path two Sources hold is two files and a valid pair (FR-030). A
+      // declared outcome, decided here: spending a request to discover it
+      // would ask the host a question the client can answer.
       this.status.value = 'same-path';
       return;
     }
@@ -296,19 +313,19 @@ export class SkillComparisonState {
     // in-flight detail would supersede the first and discard its response
     // (`SessionApiClient` § request tokens). Two loads of committed state a
     // few milliseconds apart cost nothing a user can see.
-    const left = await this.#fetchOwned(leftPath, owns);
-    if (left === null || !owns()) {
+    const leftDetail = await this.#fetchOwned(left, owns);
+    if (leftDetail === null || !owns()) {
       return;
     }
-    const right = await this.#fetchOwned(rightPath, owns);
-    if (right === null || !owns()) {
+    const rightDetail = await this.#fetchOwned(right, owns);
+    if (rightDetail === null || !owns()) {
       return;
     }
     // Adopted together: a comparison with one side is not a comparison, and
     // publishing the pair in one synchronous step means no render can see
     // half of it.
-    this.leftDetail.value = left;
-    this.rightDetail.value = right;
+    this.leftDetail.value = leftDetail;
+    this.rightDetail.value = rightDetail;
     this.status.value = 'ready';
   }
 
@@ -322,21 +339,21 @@ export class SkillComparisonState {
    * snapshot it holds; a path that turns out uncommitted still settles as
    * the ordinary stale outcome.
    */
-  public async openSingle(presentPath: string, presentSide: 'left' | 'right'): Promise<void> {
+  public async openSingle(present: ComparisonSide, presentSide: 'left' | 'right'): Promise<void> {
     this.#dropView();
     const requested = this.#requestVersion;
     const capturedEpoch = this.#clientData.epoch();
     const owns = (): boolean =>
       requested === this.#requestVersion && this.#clientData.epoch() === capturedEpoch;
     this.status.value = 'loading';
-    const present = await this.#fetchOwned(presentPath, owns);
-    if (present === null || !owns()) {
+    const presentDetail = await this.#fetchOwned(present, owns);
+    if (presentDetail === null || !owns()) {
       return;
     }
     if (presentSide === 'left') {
-      this.leftDetail.value = present;
+      this.leftDetail.value = presentDetail;
     } else {
-      this.rightDetail.value = present;
+      this.rightDetail.value = presentDetail;
     }
     this.status.value = 'ready';
   }
@@ -347,11 +364,8 @@ export class SkillComparisonState {
    * ownership check: every write happens behind it, except the fatal report,
    * which is true of the session rather than of this request.
    */
-  async #fetchOwned(
-    sourceRelativePath: string,
-    owns: () => boolean,
-  ): Promise<FileDetailDto | null> {
-    const outcome = await this.#client.fetchFileDetail(sourceRelativePath);
+  async #fetchOwned(side: ComparisonSide, owns: () => boolean): Promise<FileDetailDto | null> {
+    const outcome = await this.#client.fetchFileDetail(side.sourceRelativePath, side.source);
     switch (outcome.kind) {
       case 'adopted':
         if (!owns()) {
@@ -361,7 +375,7 @@ export class SkillComparisonState {
           // Binary input is textless and a failed read has nothing to show:
           // neither is comparison-eligible (FR-025), and the state names
           // the file instead of fabricating an empty side.
-          this.unreadablePath.value = sourceRelativePath;
+          this.unreadablePath.value = side.sourceRelativePath;
           this.status.value = 'not-readable';
           return null;
         }

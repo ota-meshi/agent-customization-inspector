@@ -39,9 +39,10 @@ import type {
   SessionSnapshot,
   SettingsInventoryEntryDto,
   SkillInventoryEntryDto,
-  SourceDto,
+  SourceKind,
 } from '../../shared/api-types';
 import {
+  fileIdentityKey,
   CUSTOMIZATION_KIND_ORDER,
   SUPPORTED_TOOL_ORDER,
   pathPresentationLabel,
@@ -56,8 +57,14 @@ import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-
  * directly, and so the composable's own surface is derivation only.
  */
 export interface InventoryFilterSelection {
-  /** Selected Source, or null for every Source. */
-  readonly sourceId: Ref<string | null>;
+  /**
+   * Selected Source family, or null for every Source. The family rather than
+   * one Source: which tool recognized a file is the tool selection below, so a
+   * per-tool Source choice asked one question twice — and this selection rides
+   * in the inventory's URL, where a Source ID would name nothing after the next
+   * launch (`api-text.ts` § SOURCE_KIND_TEXT).
+   */
+  readonly sourceKind: Ref<SourceKind | null>;
   /** Selected recognizing tool, or null for every tool. */
   readonly tool: Ref<SupportedTool | null>;
   /**
@@ -71,9 +78,58 @@ export interface InventoryFilterSelection {
 }
 
 /**
+ * The instruction rows one applicability range's files are listed under: the
+ * rows sharing that range, one per Source that holds files governed by it.
+ *
+ * A presentation group, not a row unit. A published row is still one range of
+ * one Source (data-model.md § Inventory unit) — each states its own Source
+ * and carries its own files. What the group adds is that a reader looking for
+ * what governs `**` finds one place for it instead of one heading per Source;
+ * the family blocks the list item renders come from the shared grouping every
+ * sibling row uses (`SourceFamilyBlocks.vue`).
+ */
+export interface InstructionRangeGroup {
+  /**
+   * The range every row in the group governs, or null for the group of rows
+   * whose files declare none a row can be keyed by (FR-027).
+   */
+  readonly applicabilityRange: string | null;
+  /**
+   * The rows governing it, in family-major order — the repository's rows
+   * first, then the consented homes' — and within a family in the order the
+   * snapshot publishes its Sources, so the shared family grouping renders the
+   * repository block first.
+   */
+  readonly rows: readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[];
+  /**
+   * Every file identity the group publishes — drawn from the unnarrowed
+   * snapshot in the same family-major order, while `rows` above holds what
+   * the current narrowing left. The group-level counterpart of
+   * {@link NarrowedInventoryRow.rowFileIdentities}, and for the same reason:
+   * the per-block comparison entries are derived from these, so a narrowing
+   * that drops one home's whole row does not hide the entry to a comparison
+   * the block can still make (FR-011).
+   */
+  readonly fileIdentities: readonly InventoryFileIdentity[];
+}
+
+/**
+ * One file's identity inside an inventory grouping: the Source that published
+ * it and its Source-relative Path (FR-030). What a comparison entry pairs —
+ * the instruction blocks' ({@link InstructionRangeGroup.fileIdentities}) and
+ * the name-keyed rows' ({@link NarrowedInventoryRow.rowFileIdentities}) alike.
+ */
+export interface InventoryFileIdentity {
+  /** The publishing Source's opaque ID. */
+  readonly sourceId: string;
+  /** The file's path below that Source's root. */
+  readonly sourceRelativePath: string;
+}
+
+/**
  * One inventory row as this page renders it: the row the snapshot published,
- * narrowed to the members the active filters matched, plus every file path the
- * row's own members name — the set no filter narrows.
+ * narrowed to the members the active filters matched, plus every file identity
+ * the row's own members name — the set no filter narrows.
  *
  * The second is what a row-owned comparison is built from. A comparison
  * surface belongs to the row rather than to this narrowed view: its pickers
@@ -85,26 +141,37 @@ export interface InventoryFilterSelection {
  * which lands on the unnarrowed list (T1122) — and a narrowing that leaves one
  * member matching would hide the entry to a comparison the row can still make.
  *
- * Only the kinds whose rows offer a comparison carry it.
+ * Only the kinds whose rows offer a comparison carry it. For instructions the
+ * entry sits one level up, on the family block
+ * ({@link InstructionRangeGroup.fileIdentities}).
  */
 export type NarrowedInventoryRow<Row> = Row & {
   /**
-   * Every file path this row's own members name, in the snapshot's published
-   * order and without repetition.
+   * Every file identity this row's own members name — Source and path, both
+   * halves because two Sources can hold one spelling (FR-030) — in the
+   * snapshot's published order and without repetition.
    */
-  readonly rowFilePaths: readonly string[];
+  readonly rowFileIdentities: readonly InventoryFileIdentity[];
 };
 
 /**
- * Every file path one row's members name; see
- * {@link NarrowedInventoryRow.rowFilePaths}. One helper for every kind,
- * because each kind's member — a declaration, a definition, a carrier, a
- * file — names its file the same way.
+ * Every file identity one row's members name; see
+ * {@link NarrowedInventoryRow.rowFileIdentities}. One helper for every kind,
+ * because each kind's member — a declaration, a definition, a carrier — names
+ * its file the same way. Deduplicated by the whole identity: a row lists one
+ * member per `(file, tool)`, so one file two products read is one identity.
  */
-function rowFilePathsOf(
-  members: readonly { readonly sourceRelativePath: string }[],
-): readonly string[] {
-  return [...new Set(members.map((member) => member.sourceRelativePath))];
+function rowFileIdentitiesOf(
+  members: readonly { readonly sourceId: string; readonly sourceRelativePath: string }[],
+): readonly InventoryFileIdentity[] {
+  const identities = new Map<string, InventoryFileIdentity>();
+  for (const member of members) {
+    identities.set(fileIdentityKey(member.sourceId, member.sourceRelativePath), {
+      sourceId: member.sourceId,
+      sourceRelativePath: member.sourceRelativePath,
+    });
+  }
+  return [...identities.values()];
 }
 
 /**
@@ -115,7 +182,7 @@ function rowFilePathsOf(
  */
 export class InventoryFilterView {
   /** The Sources the current generation published, in snapshot order. */
-  public readonly availableSources: ComputedRef<readonly SourceDto[]>;
+  public readonly availableSourceKinds: ComputedRef<readonly SourceKind[]>;
 
   /** The tools the current inventory actually recognizes, in the closed tool order. */
   public readonly availableTools: ComputedRef<readonly SupportedTool[]>;
@@ -146,6 +213,24 @@ export class InventoryFilterView {
   public readonly instructionRows: ComputedRef<
     readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[]
   >;
+
+  /**
+   * The instruction rows the list renders, grouped by the range they govern
+   * ({@link InstructionRangeGroup}), in the order the ranges first appear.
+   *
+   * The list's items are these groups, so the counts beside it are group
+   * counts: what "showing 3 of 5" states has to be what a reader can count on
+   * the screen.
+   */
+  public readonly instructionRangeGroups: ComputedRef<readonly InstructionRangeGroup[]>;
+
+  /**
+   * How many groups the committed generation publishes before any filter — the
+   * "of" in the row summary. Derived from the same grouping as
+   * {@link instructionRangeGroups} so the two cannot disagree about what an
+   * item is.
+   */
+  public readonly instructionRangeGroupTotal: ComputedRef<number>;
 
   /**
    * The skill rows that pass every active filter, in snapshot order. A row is
@@ -257,18 +342,26 @@ export class InventoryFilterView {
    * has no `<option>` to render, so a select bound to the raw choice would go
    * blank while the rows were unfiltered.
    */
-  public readonly effectiveSourceId: ComputedRef<string | null>;
+  public readonly effectiveSourceKind: ComputedRef<SourceKind | null>;
 
-  /** The tool selection the rows are actually filtered by; see {@link effectiveSourceId}. */
+  /** The tool selection the rows are actually filtered by; see {@link effectiveSourceKind}. */
   public readonly effectiveTool: ComputedRef<SupportedTool | null>;
 
   /**
-   * Every published file by its Source-relative Path — the file's identity
-   * (FR-030). A kind's row names its files by path and repeats none of their
-   * facts, and a definition's census publishes paths, so this one lookup is
-   * how a row reaches the file behind either.
+   * Every published file by its Source and then its Source-relative Path —
+   * both halves of the file's identity (FR-030). A kind's row names its files
+   * by path and repeats none of their facts, and a definition's census
+   * publishes paths, so this lookup is how a row reaches the file behind
+   * either.
+   *
+   * Two levels rather than one, because a consented Global home and the
+   * selected repository can hold the same Source-relative Path: a single
+   * path-keyed map answers with whichever the snapshot listed first, which is
+   * one file's facts shown under another's row.
    */
-  public readonly filesByPath: ComputedRef<ReadonlyMap<string, CustomizationFileSummaryDto>>;
+  public readonly filesBySource: ComputedRef<
+    ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>
+  >;
 
   /**
    * True while a filter narrows the inventory — drives the "clear" affordance.
@@ -279,12 +372,40 @@ export class InventoryFilterView {
 
   /** Derives every view above from the snapshot and the caller's selection. */
   public constructor(snapshot: Ref<SessionSnapshot | null>, selection: InventoryFilterSelection) {
-    const { sourceId, tool, kind, pathQuery } = selection;
+    const { sourceKind, tool, kind, pathQuery } = selection;
 
-    this.availableSources = computed(() => snapshot.value?.sources ?? []);
-    this.filesByPath = computed(
-      () => new Map((snapshot.value?.files ?? []).map((file) => [file.sourceRelativePath, file])),
+    // In the fixed family order, and only the families this generation
+    // published: the repository is always one, and a Global family exists once a
+    // consented home has committed. The order is written here because this is
+    // its one reader; a family added to `SourceKind` fails to compile at the
+    // label table instead (`api-text.ts` § SOURCE_KIND_TEXT), which is where an
+    // author is sent to name it.
+    this.availableSourceKinds = computed(() =>
+      (['repository', 'global'] as const).filter((candidate) =>
+        (snapshot.value?.sources ?? []).some((source) => source.kind === candidate),
+      ),
     );
+    // Which family each published Source belongs to, so a file's own `sourceId`
+    // resolves to the family the filter is stated in.
+    const sourceKindById = computed(() => {
+      const byId = new Map<string, SourceKind>();
+      for (const source of snapshot.value?.sources ?? []) {
+        byId.set(source.sourceId, source.kind);
+      }
+      return byId;
+    });
+    this.filesBySource = computed(() => {
+      const bySource = new Map<string, Map<string, CustomizationFileSummaryDto>>();
+      for (const file of snapshot.value?.files ?? []) {
+        let byPath = bySource.get(file.sourceId);
+        if (byPath === undefined) {
+          byPath = new Map();
+          bySource.set(file.sourceId, byPath);
+        }
+        byPath.set(file.sourceRelativePath, file);
+      }
+      return bySource;
+    });
     this.availableTools = computed(() => {
       const present = new Set([
         ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
@@ -345,16 +466,15 @@ export class InventoryFilterView {
     // Only a selection the current inventory actually offers is applied. The rows
     // and `isNarrowed` read these rather than the raw fields, so the view never
     // claims to be narrowed by an option the user cannot see.
-    const effectiveSourceId = computed(() =>
-      sourceId.value !== null &&
-      this.availableSources.value.some((source) => source.sourceId === sourceId.value)
-        ? sourceId.value
+    const effectiveSourceKind = computed(() =>
+      sourceKind.value !== null && this.availableSourceKinds.value.includes(sourceKind.value)
+        ? sourceKind.value
         : null,
     );
     const effectiveTool = computed(() =>
       tool.value !== null && this.availableTools.value.includes(tool.value) ? tool.value : null,
     );
-    this.effectiveSourceId = effectiveSourceId;
+    this.effectiveSourceKind = effectiveSourceKind;
     this.effectiveTool = effectiveTool;
     // The kind in view: the chosen tab while it is still offered, otherwise the
     // first available one so the page always shows something rather than an
@@ -379,13 +499,21 @@ export class InventoryFilterView {
      */
     const query = computed(() => pathQuery.value.trim().toLowerCase());
 
-    /** Whether a published file passes the Source and path filters. */
-    const fileMatches = (sourceRelativePath: string): boolean => {
-      const file = this.filesByPath.value.get(sourceRelativePath);
+    /**
+     * Whether a published file passes the Source and path filters, resolved
+     * by the file's whole identity (FR-030): every kind's row member states
+     * its own `sourceId`, because the path alone names no file once two
+     * Sources can hold it.
+     */
+    const fileMatches = (sourceRelativePath: string, sourceId: string): boolean => {
+      const file = this.filesBySource.value.get(sourceId)?.get(sourceRelativePath);
       if (file === undefined) {
         return false;
       }
-      if (effectiveSourceId.value !== null && file.sourceId !== effectiveSourceId.value) {
+      if (
+        effectiveSourceKind.value !== null &&
+        sourceKindById.value.get(file.sourceId) !== effectiveSourceKind.value
+      ) {
         return false;
       }
       // Matched against the same spelling the list renders
@@ -415,7 +543,9 @@ export class InventoryFilterView {
       () =>
         (snapshot.value?.instructions ?? []).flatMap((entry) => {
           const files = entry.files.flatMap((file) => {
-            if (!fileMatches(file.sourceRelativePath)) {
+            // The row's own Source, so a same-path file in the other Source
+            // cannot decide whether this one is shown (FR-030).
+            if (!fileMatches(file.sourceRelativePath, entry.sourceId)) {
               return [];
             }
             const recognitions =
@@ -428,8 +558,91 @@ export class InventoryFilterView {
           });
           return files.length === 0
             ? []
-            : [{ ...entry, files, rowFilePaths: rowFilePathsOf(entry.files) }];
+            : [
+                {
+                  ...entry,
+                  files,
+                  rowFileIdentities: rowFileIdentitiesOf(
+                    entry.files.map((file) => ({
+                      sourceId: entry.sourceId,
+                      sourceRelativePath: file.sourceRelativePath,
+                    })),
+                  ),
+                },
+              ];
         }),
+    );
+
+    /**
+     * The published Source order as a rank, so a group lists the repository
+     * before a consented home. Taken from the snapshot's own `sources` rather
+     * than from the order the rows arrive in: the order a reader is shown is
+     * the order the product states its Sources in, and a projection's emission
+     * order is not that statement.
+     */
+    const sourceRank = computed(() => {
+      const rank = new Map<string, number>();
+      for (const [index, source] of (snapshot.value?.sources ?? []).entries()) {
+        rank.set(source.sourceId, index);
+      }
+      return rank;
+    });
+    /** Which family each published Source belongs to, for the grouping below. */
+    const familyOf = (sourceId: string): SourceKind =>
+      sourceKindById.value.get(sourceId) ?? 'repository';
+    /**
+     * The family-major order every range group publishes its rows and
+     * identities in — the repository's before the consented homes', and
+     * within a family the published Source order — so the shared family
+     * grouping renders the repository block first. The fixed family order is
+     * written here for the reason the Source filter's is
+     * (`availableSourceKinds`).
+     */
+    const familyMajorCompare = (left: string, right: string): number => {
+      const familyRank = (sourceId: string): number =>
+        familyOf(sourceId) === 'repository' ? 0 : 1;
+      return (
+        familyRank(left) - familyRank(right) ||
+        (sourceRank.value.get(left) ?? 0) - (sourceRank.value.get(right) ?? 0)
+      );
+    };
+    /**
+     * Every file identity a range group publishes, from the unnarrowed
+     * snapshot in the family-major order
+     * ({@link InstructionRangeGroup.fileIdentities}).
+     */
+    const groupFileIdentities = (
+      applicabilityRange: string | null,
+    ): readonly InventoryFileIdentity[] =>
+      (snapshot.value?.instructions ?? [])
+        .filter((entry) => entry.applicabilityRange === applicabilityRange)
+        .toSorted((left, right) => familyMajorCompare(left.sourceId, right.sourceId))
+        .flatMap((entry) =>
+          entry.files.map((file) => ({
+            sourceId: entry.sourceId,
+            sourceRelativePath: file.sourceRelativePath,
+          })),
+        );
+    /**
+     * Groups instruction rows by the range they govern, each group's rows in
+     * the family-major order ({@link InstructionRangeGroup}).
+     */
+    const groupRows = (
+      rows: readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[],
+    ): readonly InstructionRangeGroup[] =>
+      [...Map.groupBy(rows, (row) => row.applicabilityRange).entries()].map(
+        ([applicabilityRange, grouped]) => ({
+          applicabilityRange,
+          rows: grouped.toSorted((left, right) =>
+            familyMajorCompare(left.sourceId, right.sourceId),
+          ),
+          fileIdentities: groupFileIdentities(applicabilityRange),
+        }),
+      );
+    this.instructionRangeGroups = computed(() => groupRows(this.instructionRows.value));
+    this.instructionRangeGroupTotal = computed(
+      () =>
+        Map.groupBy(snapshot.value?.instructions ?? [], (entry) => entry.applicabilityRange).size,
     );
 
     /**
@@ -441,7 +654,7 @@ export class InventoryFilterView {
       const filtered = (snapshot.value?.skills ?? []).flatMap((entry) => {
         const definitions = entry.definitions.filter(
           (definition) =>
-            fileMatches(definition.sourceRelativePath) &&
+            fileMatches(definition.sourceRelativePath, definition.sourceId) &&
             (effectiveTool.value === null || definition.tool === effectiveTool.value),
         );
         return definitions.length === 0 ? [] : [{ entry, definitions }];
@@ -461,7 +674,7 @@ export class InventoryFilterView {
       return filtered.map(({ entry, definitions }) => ({
         ...entry,
         definitions,
-        rowFilePaths: rowFilePathsOf(entry.definitions),
+        rowFileIdentities: rowFileIdentitiesOf(entry.definitions),
         sameNameResolutions: entry.sameNameResolutions.filter((resolution) =>
           facesSameNameCollision(collisionGates, resolution.tool, definitions),
         ),
@@ -477,12 +690,18 @@ export class InventoryFilterView {
       (snapshot.value?.mcp ?? []).flatMap((entry) => {
         const declarations = entry.declarations.filter(
           (declaration) =>
-            fileMatches(declaration.sourceRelativePath) &&
+            fileMatches(declaration.sourceRelativePath, declaration.sourceId) &&
             (effectiveTool.value === null || declaration.tool === effectiveTool.value),
         );
         return declarations.length === 0
           ? []
-          : [{ ...entry, declarations, rowFilePaths: rowFilePathsOf(entry.declarations) }];
+          : [
+              {
+                ...entry,
+                declarations,
+                rowFileIdentities: rowFileIdentitiesOf(entry.declarations),
+              },
+            ];
       }),
     );
 
@@ -497,12 +716,12 @@ export class InventoryFilterView {
       (snapshot.value?.agents ?? []).flatMap((entry) => {
         const definitions = entry.definitions.filter(
           (definition) =>
-            fileMatches(definition.sourceRelativePath) &&
+            fileMatches(definition.sourceRelativePath, definition.sourceId) &&
             (effectiveTool.value === null || definition.tool === effectiveTool.value),
         );
         return definitions.length === 0
           ? []
-          : [{ ...entry, definitions, rowFilePaths: rowFilePathsOf(entry.definitions) }];
+          : [{ ...entry, definitions, rowFileIdentities: rowFileIdentitiesOf(entry.definitions) }];
       }),
     );
 
@@ -515,12 +734,12 @@ export class InventoryFilterView {
       (snapshot.value?.prompts ?? []).flatMap((entry) => {
         const definitions = entry.definitions.filter(
           (definition) =>
-            fileMatches(definition.sourceRelativePath) &&
+            fileMatches(definition.sourceRelativePath, definition.sourceId) &&
             (effectiveTool.value === null || definition.tool === effectiveTool.value),
         );
         return definitions.length === 0
           ? []
-          : [{ ...entry, definitions, rowFilePaths: rowFilePathsOf(entry.definitions) }];
+          : [{ ...entry, definitions, rowFileIdentities: rowFileIdentitiesOf(entry.definitions) }];
       }),
     );
 
@@ -536,7 +755,7 @@ export class InventoryFilterView {
      */
     this.ruleRows = computed(() =>
       (snapshot.value?.rules ?? []).flatMap((entry) => {
-        if (!fileMatches(entry.sourceRelativePath)) {
+        if (!fileMatches(entry.sourceRelativePath, entry.sourceId)) {
           return [];
         }
         const recognitions =
@@ -559,7 +778,7 @@ export class InventoryFilterView {
      */
     this.permissionsRows = computed(() =>
       (snapshot.value?.permissions ?? []).flatMap((entry) => {
-        if (!fileMatches(entry.sourceRelativePath)) {
+        if (!fileMatches(entry.sourceRelativePath, entry.sourceId)) {
           return [];
         }
         const recognitions =
@@ -581,12 +800,18 @@ export class InventoryFilterView {
       (snapshot.value?.hooks ?? []).flatMap((entry) => {
         const declarations = entry.declarations.filter(
           (declaration) =>
-            fileMatches(declaration.sourceRelativePath) &&
+            fileMatches(declaration.sourceRelativePath, declaration.sourceId) &&
             (effectiveTool.value === null || declaration.tool === effectiveTool.value),
         );
         return declarations.length === 0
           ? []
-          : [{ ...entry, declarations, rowFilePaths: rowFilePathsOf(entry.declarations) }];
+          : [
+              {
+                ...entry,
+                declarations,
+                rowFileIdentities: rowFileIdentitiesOf(entry.declarations),
+              },
+            ];
       }),
     );
 
@@ -600,12 +825,12 @@ export class InventoryFilterView {
       (snapshot.value?.plugins ?? []).flatMap((entry) => {
         const carriers = entry.carriers.filter(
           (carrier) =>
-            fileMatches(carrier.sourceRelativePath) &&
+            fileMatches(carrier.sourceRelativePath, carrier.sourceId) &&
             (effectiveTool.value === null || carrier.tool === effectiveTool.value),
         );
         return carriers.length === 0
           ? []
-          : [{ ...entry, carriers, rowFilePaths: rowFilePathsOf(entry.carriers) }];
+          : [{ ...entry, carriers, rowFileIdentities: rowFileIdentitiesOf(entry.carriers) }];
       }),
     );
 
@@ -620,7 +845,7 @@ export class InventoryFilterView {
       (snapshot.value?.outputStyles ?? []).flatMap((entry) => {
         const definitions = entry.definitions.filter(
           (definition) =>
-            fileMatches(definition.sourceRelativePath) &&
+            fileMatches(definition.sourceRelativePath, definition.sourceId) &&
             (effectiveTool.value === null || definition.tool === effectiveTool.value),
         );
         return definitions.length === 0 ? [] : [{ ...entry, definitions }];
@@ -640,7 +865,7 @@ export class InventoryFilterView {
      */
     this.settingsRows = computed(() =>
       (snapshot.value?.settings ?? []).flatMap((entry) => {
-        if (!fileMatches(entry.sourceRelativePath)) {
+        if (!fileMatches(entry.sourceRelativePath, entry.sourceId)) {
           return [];
         }
         const recognitions =
@@ -659,7 +884,7 @@ export class InventoryFilterView {
         counts.set(
           candidate,
           candidate === 'instructions'
-            ? this.instructionRows.value.length
+            ? this.instructionRangeGroups.value.length
             : candidate === 'skill'
               ? this.skillRows.value.length
               : candidate === 'MCP'
@@ -687,55 +912,93 @@ export class InventoryFilterView {
     });
 
     this.unrecognizedRows = computed(() => {
-      // The union of every kind's inventory. A kind shipping its own
-      // inventory adds itself here, or its files would be reported as
+      // Paths already listed by a kind, per Source. Keyed by Source because a
+      // path listed in one says nothing about the same path in another: a
+      // repository `AGENTS.md` with an instruction row does not account for a
+      // consented home's binary `AGENTS.md`, which is a published file no kind
+      // lists and whose diagnostic is the only statement a `partial` generation
+      // has about it (FR-028, FR-030).
+      const listed = new Map<string, Set<string>>();
+      const listPath = (sourceId: string, sourceRelativePath: string): void => {
+        let paths = listed.get(sourceId);
+        if (paths === undefined) {
+          paths = new Set();
+          listed.set(sourceId, paths);
+        }
+        paths.add(sourceRelativePath);
+      };
+      // Every kind's row member names the Source that lists it: the
+      // file-unit rows on the row itself, the definition-, declaration-, and
+      // carrier-grouped kinds on each member (FR-030). A kind shipping its
+      // own inventory adds itself here, or its files would be reported as
       // unrecognized while its own tab lists them.
-      const recognized = new Set([
-        ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
-          entry.files.map((file) => file.sourceRelativePath),
-        ),
-        ...(snapshot.value?.skills ?? []).flatMap((entry) =>
-          entry.definitions.map((definition) => definition.sourceRelativePath),
-        ),
-        ...(snapshot.value?.mcp ?? []).flatMap((entry) =>
-          entry.declarations.map((declaration) => declaration.sourceRelativePath),
-        ),
-        ...(snapshot.value?.agents ?? []).flatMap((entry) =>
-          entry.definitions.map((definition) => definition.sourceRelativePath),
-        ),
-        ...(snapshot.value?.prompts ?? []).flatMap((entry) =>
-          entry.definitions.map((definition) => definition.sourceRelativePath),
-        ),
-        ...(snapshot.value?.rules ?? []).map((entry) => entry.sourceRelativePath),
-        ...(snapshot.value?.permissions ?? []).map((entry) => entry.sourceRelativePath),
-        ...(snapshot.value?.hooks ?? []).flatMap((entry) =>
-          entry.declarations.map((declaration) => declaration.sourceRelativePath),
-        ),
-        ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
-          entry.carriers.map((carrier) => carrier.sourceRelativePath),
-        ),
-        ...(snapshot.value?.outputStyles ?? []).flatMap((entry) =>
-          entry.definitions.map((definition) => definition.sourceRelativePath),
-        ),
-        ...(snapshot.value?.settings ?? []).map((entry) => entry.sourceRelativePath),
-      ]);
-      // A companion belongs to the customization whose directory holds it, and
-      // that customization already has a row — so a companion is excluded here
-      // even when it carries a diagnostic. FR-003 is explicit that an
-      // accompanying file acquires no inventory row of its own, and the row it
-      // belongs to states the diagnostic instead: `SkillRow` resolves the
-      // census files' diagnostics beside the definition, which is what keeps a
-      // `partial` generation able to say which file (FR-028).
-      const companions = new Set([
-        ...(snapshot.value?.skills ?? []).flatMap((entry) =>
-          entry.definitions.flatMap((definition) => definition.companionFiles),
-        ),
-        // A plugin's own files belong to the plugin's row, which already has
-        // them: the row is one plugin, and the files it ships are its own.
-        ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
-          entry.carriers.flatMap((carrier) => carrier.files),
-        ),
-      ]);
+      for (const entry of snapshot.value?.instructions ?? []) {
+        for (const file of entry.files) {
+          listPath(entry.sourceId, file.sourceRelativePath);
+        }
+      }
+      for (const entry of snapshot.value?.skills ?? []) {
+        for (const definition of entry.definitions) {
+          listPath(definition.sourceId, definition.sourceRelativePath);
+          // A companion belongs to the customization whose directory holds
+          // it, and that customization already has a row — so a companion is
+          // excluded here even when it carries a diagnostic. FR-003 is
+          // explicit that an accompanying file acquires no inventory row of
+          // its own, and the row it belongs to states the diagnostic instead:
+          // `SkillRow` resolves the census files' diagnostics beside the
+          // definition, which is what keeps a `partial` generation able to
+          // say which file (FR-028). The census is the definition's own
+          // Source's — its paths are relative to the same root.
+          for (const companion of definition.companionFiles) {
+            listPath(definition.sourceId, companion);
+          }
+        }
+      }
+      for (const entry of snapshot.value?.mcp ?? []) {
+        for (const declaration of entry.declarations) {
+          listPath(declaration.sourceId, declaration.sourceRelativePath);
+        }
+      }
+      for (const entry of snapshot.value?.agents ?? []) {
+        for (const definition of entry.definitions) {
+          listPath(definition.sourceId, definition.sourceRelativePath);
+        }
+      }
+      for (const entry of snapshot.value?.hooks ?? []) {
+        for (const declaration of entry.declarations) {
+          listPath(declaration.sourceId, declaration.sourceRelativePath);
+        }
+      }
+      for (const entry of snapshot.value?.plugins ?? []) {
+        for (const carrier of entry.carriers) {
+          listPath(carrier.sourceId, carrier.sourceRelativePath);
+          // A plugin's own files belong to the plugin's row, which already
+          // has them: the row is one plugin, and the files it ships are its
+          // own — paths of the carrier's Source.
+          for (const file of carrier.files) {
+            listPath(carrier.sourceId, file);
+          }
+        }
+      }
+      for (const entry of snapshot.value?.settings ?? []) {
+        listPath(entry.sourceId, entry.sourceRelativePath);
+      }
+      for (const entry of snapshot.value?.prompts ?? []) {
+        for (const definition of entry.definitions) {
+          listPath(definition.sourceId, definition.sourceRelativePath);
+        }
+      }
+      for (const entry of snapshot.value?.rules ?? []) {
+        listPath(entry.sourceId, entry.sourceRelativePath);
+      }
+      for (const entry of snapshot.value?.permissions ?? []) {
+        listPath(entry.sourceId, entry.sourceRelativePath);
+      }
+      for (const entry of snapshot.value?.outputStyles ?? []) {
+        for (const definition of entry.definitions) {
+          listPath(definition.sourceId, definition.sourceRelativePath);
+        }
+      }
       // The tool selection is deliberately not consulted. A file here was
       // recognized by no product, so no tool selection can match it, and
       // emptying the list under one would take the only statement a `partial`
@@ -744,14 +1007,17 @@ export class InventoryFilterView {
       // listing the rows under a tool none of them belongs to.
       return (snapshot.value?.files ?? []).filter(
         (file) =>
-          !recognized.has(file.sourceRelativePath) &&
-          !companions.has(file.sourceRelativePath) &&
-          fileMatches(file.sourceRelativePath),
+          listed.get(file.sourceId)?.has(file.sourceRelativePath) !== true &&
+          // The file's own Source, never the default: a Global file resolved
+          // against the repository's index is a file the list drops entirely,
+          // taking its diagnostic with it (FR-028, FR-030).
+          fileMatches(file.sourceRelativePath, file.sourceId),
       );
     });
 
     this.isNarrowed = computed(
-      () => effectiveSourceId.value !== null || effectiveTool.value !== null || query.value !== '',
+      () =>
+        effectiveSourceKind.value !== null || effectiveTool.value !== null || query.value !== '',
     );
   }
 }

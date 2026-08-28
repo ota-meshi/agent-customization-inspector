@@ -11,7 +11,7 @@
 // in two formats have no byte-for-byte alignment to diff — and each file
 // whole is beside these diffs in its own `SourceViewer`, which is where a
 // comparison surface displays a readable file exactly as written (FR-027,
-// `pages/agents/compare.vue`).
+// `pages/agents/compare/[family].vue`).
 //
 // The component owns one Monaco diff instance's whole lifetime: it mounts on
 // its pair of texts and disposes editor and models together on unmount or
@@ -48,7 +48,7 @@ const props = defineProps<{
    * canonical document, or the instructions taken out of the format that held
    * them — and never the file's own bytes, which two formats give no
    * byte-for-byte alignment to diff. Each file whole is beside these diffs in
-   * its own `SourceViewer` (FR-027, `pages/agents/compare.vue`).
+   * its own `SourceViewer` (FR-027, `pages/agents/compare/[family].vue`).
    */
   readonly originalText: string;
   /** The first side's Source-relative Path: language choice and label. */

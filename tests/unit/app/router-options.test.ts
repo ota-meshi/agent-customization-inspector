@@ -31,7 +31,7 @@ function routeAt(matchedPath: string, fullPath = matchedPath): RouteLocationNorm
 const inventory = routeAt('/');
 
 /** One skill detail, the page a row leads to. */
-const skillDetail = routeAt('/skills/:path(.*)*', '/skills/b');
+const skillDetail = routeAt('/skills/detail/repository/:path(.*)*', '/skills/detail/repository/b');
 
 /** Runs the rule for one navigation, the way the router calls it. */
 function scrollFor(to: RouteLocationNormalized, from: RouteLocationNormalized) {
@@ -61,7 +61,10 @@ beforeEach(() => {
 
 describe('the navigation scroll rule', () => {
   it('leaves a same-page parameter change where the reader put it', () => {
-    const companion = routeAt('/skills/:path(.*)*', '/skills/scripts/run.sh');
+    const companion = routeAt(
+      '/skills/detail/repository/:path(.*)*',
+      '/skills/detail/repository/scripts/run.sh',
+    );
 
     expect(scrollFor(companion, skillDetail)).toBe(false);
   });
@@ -71,37 +74,40 @@ describe('the navigation scroll rule', () => {
   });
 
   it('focuses the followed row and answers it with the offset it was followed from', () => {
-    renderLink('/skills/a', 40);
-    renderLink('/skills/b', 260);
+    renderLink('/skills/detail/repository/a', 40);
+    renderLink('/skills/detail/repository/b', 260);
 
-    recordInventoryReturnPoint('/skills/b');
+    recordInventoryReturnPoint('/skills/detail/repository/b');
 
     // Coming back to a freshly rendered list, where the row now sits somewhere
     // else: the answer names that row and the offset it sat at when it was
     // followed, never where it happens to be now.
     document.body.innerHTML = '';
-    const returned = renderLink('/skills/b', 900);
+    const returned = renderLink('/skills/detail/repository/b', 900);
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ el: returned, top: 260 });
     expect(document.activeElement).toBe(returned);
   });
 
   it('matches a row whose path holds characters a selector would otherwise read', () => {
-    const awkward = renderLink('/rules/.claude/rules/a%5Bb%5D.c%2Bd.md', 120);
+    const awkward = renderLink('/rules/detail/repository/.claude/rules/a%5Bb%5D.c%2Bd.md', 120);
 
-    recordInventoryReturnPoint('/rules/.claude/rules/a%5Bb%5D.c%2Bd.md');
+    recordInventoryReturnPoint('/rules/detail/repository/.claude/rules/a%5Bb%5D.c%2Bd.md');
 
-    expect(scrollFor(inventory, routeAt('/rules/:path(.*)*'))).toEqual({ el: awkward, top: 120 });
+    expect(scrollFor(inventory, routeAt('/rules/detail/repository/:path(.*)*'))).toEqual({
+      el: awkward,
+      top: 120,
+    });
   });
 
   it('starts at the top and moves no focus when the row is no longer listed', () => {
-    renderLink('/skills/b', 260);
-    recordInventoryReturnPoint('/skills/b');
+    renderLink('/skills/detail/repository/b', 260);
+    recordInventoryReturnPoint('/skills/detail/repository/b');
 
     // A generation adopted while the reader was away publishes another row in
     // its place; the ordinary page-change rule then stands whole.
     document.body.innerHTML = '';
-    const other = renderLink('/skills/c', 260);
+    const other = renderLink('/skills/detail/repository/c', 260);
     other.focus();
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ left: 0, top: 0 });
@@ -109,18 +115,18 @@ describe('the navigation scroll rule', () => {
   });
 
   it('records nothing when the departure matches no rendered link', () => {
-    renderLink('/skills/b', 260);
+    renderLink('/skills/detail/repository/b', 260);
 
-    recordInventoryReturnPoint('/skills/never-rendered');
+    recordInventoryReturnPoint('/skills/detail/repository/never-rendered');
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ left: 0, top: 0 });
   });
 
   it('keeps only the last departure, which is the one a return was made from', () => {
-    const first = renderLink('/skills/a', 40);
-    renderLink('/skills/b', 260);
-    recordInventoryReturnPoint('/skills/b');
-    recordInventoryReturnPoint('/skills/a');
+    const first = renderLink('/skills/detail/repository/a', 40);
+    renderLink('/skills/detail/repository/b', 260);
+    recordInventoryReturnPoint('/skills/detail/repository/b');
+    recordInventoryReturnPoint('/skills/detail/repository/a');
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ el: first, top: 40 });
   });

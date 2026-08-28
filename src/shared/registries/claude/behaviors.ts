@@ -53,7 +53,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_LAUNCH_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch.',
         },
@@ -104,7 +104,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['How CLAUDE.md files load'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory.',
         },
@@ -152,7 +152,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_DESCENDANT_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case.',
         },
@@ -199,7 +199,7 @@ export const CLAUDE_USER_COMMANDS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies.',
         },
@@ -248,7 +248,7 @@ export const CLAUDE_USER_INSTRUCTIONS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Choose where to put CLAUDE.md files'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans.',
         },
@@ -257,7 +257,7 @@ export const CLAUDE_USER_INSTRUCTIONS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/env-vars',
           officialHost: 'code.claude.com',
           sections: ['Variables'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names.',
         },
@@ -307,7 +307,7 @@ export const CLAUDE_REPO_AGENTS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Choose the subagent scope'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Project subagents are Markdown files discovered recursively under .claude/agents/ on each layer walked up from the working directory to the repository root, and directories added with --add-dir contribute their agents too; two same-name files under one directory tree load by filesystem read order rather than a documented precedence.',
         },
@@ -371,7 +371,7 @@ export const CLAUDE_REPO_COMMANDS_BEHAVIOR = {
             'Discovery from parent and nested directories',
             'How a skill gets its command name',
           ],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently.',
         },
@@ -436,7 +436,7 @@ export const CLAUDE_REPO_CONTAINED_HOOKS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Plugin manifest schema', 'File locations reference'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'A plugin declares hooks either as config paths or as inline config in its manifest, and a marketplace entry may carry any manifest field, so a plugin can carry hook configuration in either place — content of the plugin the manifest or the entry declares.',
         },
@@ -480,7 +480,7 @@ export const CLAUDE_REPO_MCP_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/mcp',
           officialHost: 'code.claude.com',
           sections: ['MCP installation scopes'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Project-scope MCP servers are declared in a .mcp.json file at the project root, checked into version control as the team-shared scope of the documented installation scopes, while the local and user scopes live in user-level state.',
         },
@@ -537,7 +537,7 @@ export const CLAUDE_REPO_PLUGIN_BEHAVIOR = {
             'Plugin manifest schema',
             'File locations reference',
           ],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'A plugin is installed into a settings scope chosen at installation; its manifest is optional, with components — MCP declarations among them — auto-discovered at default locations under the plugin root or redirected by manifest-declared paths.',
         },
@@ -583,7 +583,7 @@ export const CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Skills-directory plugins', 'File locations reference'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "Any folder under a skills directory that contains a .claude-plugin/plugin.json manifest is loaded as a plugin named <folder>@skills-dir on the next session, with no marketplace and no install step, and is discovered in place rather than copied into the plugin cache; the project-scope skills directory is the launch working directory's own .claude/skills/, which this interpretation does not walk ancestors of, and it loads only after the workspace trust dialog is accepted.",
         },
@@ -669,7 +669,7 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live', 'Discovery from parent and nested directories'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it.',
         },
@@ -727,7 +727,7 @@ export const CLAUDE_USER_MCP_STATE_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/mcp',
           officialHost: 'code.claude.com',
           sections: ['MCP installation scopes'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'User-scope MCP servers — and the local scope private to one project — are stored in user-level state rather than in the project file, two scopes of the documented installation-scope order.',
         },
@@ -736,7 +736,7 @@ export const CLAUDE_USER_MCP_STATE_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/claude-directory',
           officialHost: 'code.claude.com',
           sections: ['File reference'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'The file reference table locates ~/.claude.json global-only at the home directory — beside the ~/.claude configuration directory rather than inside it — holding app state and personal MCP servers.',
         },
@@ -776,7 +776,7 @@ export const CLAUDE_USER_PLUGINS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Plugin installation scopes', 'Plugin caching and file resolution'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Plugin enablement is recorded per installation scope in settings files — the user scope in ~/.claude/settings.json — and marketplace plugins are copied into the local plugin cache at ~/.claude/plugins/cache, which is what makes plugin-provided servers user-side installation state rather than a repository fact.',
         },
@@ -785,7 +785,7 @@ export const CLAUDE_USER_PLUGINS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/env-vars',
           officialHost: 'code.claude.com',
           sections: ['Variables'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names.',
         },
@@ -825,7 +825,7 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across.',
         },
@@ -834,7 +834,7 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/env-vars',
           officialHost: 'code.claude.com',
           sections: ['Variables'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names.',
         },
@@ -898,7 +898,7 @@ export const CLAUDE_REPO_RULES_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against.",
         },
@@ -944,7 +944,7 @@ export const CLAUDE_REPO_SHARED_SETTINGS_BEHAVIOR = {
             'Settings files and who they affect',
             'Compare the scope of each settings file',
           ],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             "A project's shared settings are .claude/settings.json in the project folder, which a team checks into source control; a teammate's clone and a cloud session have the file only once it is committed, as that checkout's own copy rather than as this machine's file being read from elsewhere.",
         },
@@ -1001,7 +1001,7 @@ export const CLAUDE_REPO_LOCAL_SETTINGS_BEHAVIOR = {
             'Compare the scope of each settings file',
             'Where Claude Code keeps the local file in a git repository',
           ],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             "A project's personal settings are .claude/settings.local.json, which is that project's alone and which Claude Code keeps at the git repository root resolved through worktrees — staying in the starting directory outside a repository, when the repository root is the home directory, on Windows, and when the root or its .git or .claude entry is not owned by the user — while a permission rule in it keeps resolving from the directory Claude Code was started in.",
         },
@@ -1039,7 +1039,7 @@ export const CLAUDE_USER_SETTINGS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/settings',
           officialHost: 'code.claude.com',
           sections: ['Compare the scope of each settings file'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'User settings live at ~/.claude/settings.json and apply to every project on the machine, and to nothing on a teammate machine or in a cloud session.',
         },
@@ -1089,7 +1089,7 @@ export const CLAUDE_USER_RULES_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority.',
         },
@@ -1131,7 +1131,7 @@ export const CLAUDE_REPO_AGENT_MEMORY_PROJECT_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Enable persistent memory'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'A subagent whose frontmatter declares memory: project keeps its persistent directory at .claude/agent-memory/<name-of-agent>/, whose MEMORY.md prefix is injected into that subagent’s system prompt when auto memory is enabled.',
         },
@@ -1168,7 +1168,7 @@ export const CLAUDE_REPO_AGENT_MEMORY_LOCAL_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Enable persistent memory'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'A subagent whose frontmatter declares memory: local keeps its persistent directory at .claude/agent-memory-local/<name-of-agent>/, the project-specific scope documented as the one not checked into version control.',
         },
@@ -1208,7 +1208,7 @@ export const CLAUDE_USER_AGENTS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Choose the subagent scope'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'User subagents live at ~/.claude/agents/, are available in every project, are scanned recursively so definitions can be organized into subfolders, and rank below the current project scope when two scopes declare one name.',
         },
@@ -1243,7 +1243,7 @@ export const CLAUDE_USER_AGENT_MEMORY_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Enable persistent memory'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'A subagent whose frontmatter declares memory: user keeps its persistent directory at ~/.claude/agent-memory/<name-of-agent>/, the scope documented for learnings that should apply across all projects.',
         },
@@ -1284,7 +1284,7 @@ export const CLAUDE_USER_AUTO_MEMORY_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Auto memory'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand.',
         },
@@ -1293,7 +1293,7 @@ export const CLAUDE_USER_AUTO_MEMORY_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['What loads at startup', 'Enable persistent memory'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The main conversation’s auto memory is not loaded into a non-fork subagent — a subagent’s own memory field is what gives it persistent memory instead — and turning auto memory off makes that field have no effect at all.',
         },
@@ -1339,7 +1339,7 @@ export const CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/output-styles',
           officialHost: 'code.claude.com',
           sections: ['Create a custom output style', 'How output styles work'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'A custom output style is a Markdown file of frontmatter and instructions saved at the User, project, or managed-policy level; project styles load from every .claude/output-styles/ between the working directory and the repository root, the file name becomes the style name unless the frontmatter sets name, and the instructions are added to the end of the system prompt.',
         },
@@ -1375,9 +1375,128 @@ export const CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/output-styles',
           officialHost: 'code.claude.com',
           sections: ['Create a custom output style'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'A custom output style can be saved at the User level in ~/.claude/output-styles, beside the project and managed-policy levels.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude custom keyboard shortcuts: the one `keybindings.json` in the
+ * configuration directory.
+ *
+ * Non-authorizing, and excluded (`claude.excluded.user-runtime`): the file is
+ * a preference about the terminal user interface, not an input the agent
+ * reads, so it is not a customization this product inspects — the exclusion
+ * names it so the consent flow can say what the home holds beside the
+ * admitted files.
+ */
+export const CLAUDE_USER_KEYBINDINGS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.keybindings',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'keybindings.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.directory.file-reference',
+          url: 'https://code.claude.com/docs/en/claude-directory',
+          officialHost: 'code.claude.com',
+          sections: ['File reference'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The directory reference lists keybindings.json at the global scope as custom keyboard shortcuts — a terminal-UI preference the reader edits, not guidance the agent loads.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude custom color themes: `.json` files under the configuration
+ * directory's `themes/`.
+ *
+ * Non-authorizing, and excluded (`claude.excluded.user-runtime`) for the
+ * reason the keybindings file is: a color theme styles the terminal user
+ * interface and is never an input the agent reads.
+ */
+export const CLAUDE_USER_THEMES_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.themes',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'themes/*.json',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.directory.file-reference',
+          url: 'https://code.claude.com/docs/en/claude-directory',
+          officialHost: 'code.claude.com',
+          sections: ['File reference'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The directory reference lists themes/*.json at the global scope as custom color themes — a terminal-UI preference the reader edits, not guidance the agent loads.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Claude dynamic workflows: `.js` files under a `workflows/` directory at both
+ * the project and the User scope, each becoming a slash command named after
+ * its own filename.
+ *
+ * Non-authorizing at either scope. A workflow file is a script Claude wrote
+ * and the reader saved from the `/workflows` command rather than a
+ * customization the reader authored, and it is executable code — so it is User
+ * runtime state outside this Source (`claude.excluded.user-runtime`) and no
+ * initial-release rule admits it. Only the User scope has a statement of its
+ * own because that is the scope the Global consent exclusions have to name;
+ * the project scope's exclusion needs no locator, since no Repository rule
+ * reaches `.claude/workflows/` in the first place.
+ */
+export const CLAUDE_USER_WORKFLOWS_BEHAVIOR = {
+  behaviorId: 'claude.behavior.user.workflows',
+  tool: 'claude',
+  surfaces: ['claude-cli-and-ide-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'workflows/*.js',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.directory.file-reference',
+          url: 'https://code.claude.com/docs/en/claude-directory',
+          officialHost: 'code.claude.com',
+          sections: ['File reference'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The directory reference lists workflows/*.js at both the project and global scopes, holding dynamic workflow scripts written by Claude and saved from the /workflows command, with each file becoming a /<name> command.',
         },
       ]
     : [],
@@ -1417,4 +1536,7 @@ export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   [CLAUDE_USER_RULES_BEHAVIOR.behaviorId]: CLAUDE_USER_RULES_BEHAVIOR,
   [CLAUDE_USER_SETTINGS_BEHAVIOR.behaviorId]: CLAUDE_USER_SETTINGS_BEHAVIOR,
   [CLAUDE_USER_SKILLS_BEHAVIOR.behaviorId]: CLAUDE_USER_SKILLS_BEHAVIOR,
+  [CLAUDE_USER_KEYBINDINGS_BEHAVIOR.behaviorId]: CLAUDE_USER_KEYBINDINGS_BEHAVIOR,
+  [CLAUDE_USER_THEMES_BEHAVIOR.behaviorId]: CLAUDE_USER_THEMES_BEHAVIOR,
+  [CLAUDE_USER_WORKFLOWS_BEHAVIOR.behaviorId]: CLAUDE_USER_WORKFLOWS_BEHAVIOR,
 };

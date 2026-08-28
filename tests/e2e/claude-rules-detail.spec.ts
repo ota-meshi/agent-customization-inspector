@@ -86,7 +86,7 @@ test.describe('the complete literal Claude rule detail', () => {
       .filter({ hasText: '.claude/rules/api.md' })
       .getByRole('link', { name: '.claude/rules/api.md' })
       .click();
-    await expect(page).toHaveURL(/\/rules\/\.claude\/rules\/api\.md$/u);
+    await expect(page).toHaveURL(/\/rules\/detail\/repository\/\.claude\/rules\/api\.md$/u);
     await expect(page.getByRole('heading', { name: '.claude/rules/api.md' })).toBeVisible();
 
     const main = page.locator('main');
@@ -123,7 +123,9 @@ test.describe('the complete literal Claude rule detail', () => {
     // addressed by the path alone, so `get-file-detail` answers with whichever
     // variant its fixed order reaches first. The rule row still links here, so
     // this page shows the document rather than reporting a failed load.
-    await page.goto(new URL('/rules/.claude/rules/CLAUDE.md', host.origin).toString());
+    await page.goto(
+      new URL('/rules/detail/repository/.claude/rules/CLAUDE.md', host.origin).toString(),
+    );
     const main = page.locator('main');
     await expect(page.getByRole('heading', { name: '.claude/rules/CLAUDE.md' })).toBeVisible();
     await expect(main).toContainText('Claude Code (CLI and IDE clients) · Rule');
@@ -132,7 +134,9 @@ test.describe('the complete literal Claude rule detail', () => {
   });
 
   test('shows a rule with no frontmatter as the document it is', async ({ page }) => {
-    await page.goto(new URL('/rules/.claude/rules/plain.md', host.origin).toString());
+    await page.goto(
+      new URL('/rules/detail/repository/.claude/rules/plain.md', host.origin).toString(),
+    );
     const main = page.locator('main');
     await expect(main).toContainText('# Plain');
     await expect(main).toContainText('No frontmatter.');
@@ -142,7 +146,9 @@ test.describe('the complete literal Claude rule detail', () => {
   });
 
   test('returns to the rule tab it was opened from', async ({ page }) => {
-    await page.goto(new URL('/rules/.claude/rules/plain.md', host.origin).toString());
+    await page.goto(
+      new URL('/rules/detail/repository/.claude/rules/plain.md', host.origin).toString(),
+    );
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
     await expect(page).toHaveURL(/\?kind=rule$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Rule');
@@ -170,7 +176,9 @@ test.describe('a Claude rule whose frontmatter is malformed', () => {
   });
 
   test('shows it like any other rule, with no verdict on its frontmatter', async ({ page }) => {
-    await page.goto(new URL('/rules/.claude/rules/broken.md', host.origin).toString());
+    await page.goto(
+      new URL('/rules/detail/repository/.claude/rules/broken.md', host.origin).toString(),
+    );
     const main = page.locator('main');
     // Nothing is read out of a rule file, so nothing can fail to be read:
     // the document reaches the page whole and this product passes no judgment

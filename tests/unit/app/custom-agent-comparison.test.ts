@@ -52,6 +52,17 @@ import type {
 const LEFT_PATH = '.codex/agents/reviewer.toml';
 const RIGHT_PATH = '.claude/agents/reviewer.md';
 
+/**
+ * One compared side as the route now addresses it: the fixture files are the
+ * repository's, so the Source token is fixed here (FR-030).
+ */
+function routeSide(sourceRelativePath: string): {
+  source: 'repository';
+  sourceRelativePath: string;
+} {
+  return { source: 'repository', sourceRelativePath };
+}
+
 /** The name both files declare, and therefore the row that owns the pair. */
 const SHARED_NAME = 'reviewer';
 
@@ -61,7 +72,14 @@ function definition(
   tool: AgentDefinitionDto['tool'],
   surfaces: AgentDefinitionDto['surfaces'],
 ): AgentDefinitionDto {
-  return { sourceRelativePath, tool, surfaces, parseStatus: 'parsed', diagnosticIds: [] };
+  return {
+    sourceId: 'source-repository',
+    sourceRelativePath,
+    tool,
+    surfaces,
+    parseStatus: 'parsed',
+    diagnosticIds: [],
+  };
 }
 
 /** A committed snapshot holding the two readable files under one name's row. */
@@ -74,7 +92,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'ready',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -213,7 +231,15 @@ function scriptedChannel(options: {
           if (handler === undefined) {
             return Promise.reject(new Error('no detail handler scripted'));
           }
-          return Promise.resolve().then(() => handler(String(args[0])));
+          // `get-file-detail` sends one object naming both halves of the
+          // identity (FR-030); the carrier functions still send a bare path,
+          // and this double answers for whichever arrived.
+          const payload = args[0];
+          const path =
+            typeof payload === 'string'
+              ? payload
+              : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+          return Promise.resolve().then(() => handler(path));
         }
         return Promise.reject(new Error(`unexpected call: ${method}`));
       },
@@ -225,7 +251,14 @@ function scriptedChannel(options: {
 function detailCalls(calls: readonly { method: string; args: readonly unknown[] }[]): string[] {
   return calls
     .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
-    .map((call) => String(call.args[0]));
+    .map((call) => {
+      // `get-file-detail` sends one object naming both halves of the identity
+      // (FR-030); the carrier functions still send a bare path.
+      const payload = call.args[0];
+      return typeof payload === 'string'
+        ? payload
+        : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+    });
 }
 
 /** One comparison side: a detail plus the definitions the inventory attaches. */
@@ -244,7 +277,7 @@ describe('custom-agent comparison view (T573)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.customAgentComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.customAgentComparison.open(routeSide(LEFT_PATH), routeSide(RIGHT_PATH));
     expect(state.customAgentComparison.status.value).toBe('ready');
     expect(state.customAgentComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
     expect(state.customAgentComparison.rightDetail.value?.file.sourceRelativePath).toBe(RIGHT_PATH);
@@ -262,7 +295,7 @@ describe('custom-agent comparison view (T573)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.customAgentComparison.open(LEFT_PATH, LEFT_PATH);
+    await state.customAgentComparison.open(routeSide(LEFT_PATH), routeSide(LEFT_PATH));
     // The same file must not occupy both inputs, however many recognitions it
     // has (FR-011), and the client can answer that without asking the host.
     expect(state.customAgentComparison.status.value).toBe('same-path');
@@ -277,7 +310,7 @@ describe('custom-agent comparison view (T573)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.customAgentComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.customAgentComparison.open(routeSide(LEFT_PATH), routeSide(RIGHT_PATH));
     // A textless side is not comparison-eligible (FR-025), and the state
     // names the file rather than fabricating an empty side.
     expect(state.customAgentComparison.status.value).toBe('not-readable');
@@ -295,7 +328,7 @@ describe('custom-agent comparison view (T573)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.customAgentComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.customAgentComparison.open(routeSide(LEFT_PATH), routeSide(RIGHT_PATH));
     expect(state.customAgentComparison.status.value).toBe('ready');
     await state.refresh();
     // The previous generation's comparison view and its editor-model state go
@@ -311,9 +344,20 @@ describe('custom-agent comparison view (T573)', () => {
     // rows: two files that share more than one name would otherwise settle on
     // whichever of them sorts first, and the compare page's pickers would
     // offer that row's files instead of the row the reader opened from.
-    const route = customAgentComparisonRouteFor(SHARED_NAME, LEFT_PATH, RIGHT_PATH);
-    expect(route.path).toBe('/agents/compare');
-    expect(Object.keys(route.query).toSorted()).toEqual(['left', 'name', 'right']);
+    const route = customAgentComparisonRouteFor(
+      'repository',
+      SHARED_NAME,
+      routeSide(LEFT_PATH),
+      routeSide(RIGHT_PATH),
+    );
+    expect(route.path).toBe('/agents/compare/repository');
+    expect(Object.keys(route.query).toSorted()).toEqual([
+      'left',
+      'leftSource',
+      'name',
+      'right',
+      'rightSource',
+    ]);
     // Each value rides as its JSON string body, the spelling every route in
     // this product uses, so a name holding any character a file name — or an
     // authored agent name — can reaches the comparison as it was published

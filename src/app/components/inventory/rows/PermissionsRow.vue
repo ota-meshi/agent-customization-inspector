@@ -34,7 +34,9 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
+import SourceRootLine from '../SourceRootLine.vue';
 import { detailRoute } from '../../detail-route';
+import { useSessionSources } from '../../../composables/session-sources';
 import {
   SUPPORTED_TOOL_TEXT,
   inlinePresentationLabel,
@@ -53,6 +55,9 @@ const props = defineProps<{
   diagnostics: readonly SerializedDiagnostic[];
 }>();
 
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
+
 /**
  * The declaring file's path through the shared label rule rather than plain
  * escaping ({@link pathPresentationLabel}): a name built only from whitespace
@@ -65,7 +70,13 @@ const pathText = computed(() => pathPresentationLabel(props.entry.sourceRelative
  * The policy's own detail route — one route however many products recognize
  * it, because no per-tool fact distinguishes what the page would show (T417).
  */
-const route = computed(() => detailRoute('permissions', props.entry.sourceRelativePath));
+const route = computed(() =>
+  detailRoute(
+    'permissions',
+    props.entry.sourceRelativePath,
+    sessionSources.selectorOf(props.entry.sourceId),
+  ),
+);
 
 /**
  * What a screen reader announces the path link as; see {@link SettingsRow} for
@@ -111,6 +122,8 @@ const recognitions = computed(() =>
         <span class="aci-permissions-row__surfaces">{{ recognition.surfacesText }}</span></span
       >
     </p>
+
+    <SourceRootLine :source-id="entry.sourceId" />
 
     <!-- Why a row a reader can see publishes nothing: the extraction's own
          record, resolved from the generation's diagnostics (FR-028). -->

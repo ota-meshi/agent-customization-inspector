@@ -24,16 +24,24 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
-import { detailRoute } from '../../detail-route';
+import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
+import SourceRootLine from '../SourceRootLine.vue';
+import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
+import { useSessionSources } from '../../../composables/session-sources';
 import { mcpServerDetailRoute } from '../../mcp-detail-route';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
+  fileIdentityKey,
   SUPPORTED_TOOL_TEXT,
   inlinePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
-import type { McpInventoryEntryDto, SerializedDiagnostic } from '../../../../shared/api-types';
+import type {
+  McpInventoryEntryDto,
+  SerializedDiagnostic,
+  SourceKind,
+} from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
@@ -42,6 +50,9 @@ const props = defineProps<{
   /** The generation's diagnostics, resolved per declaration by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
+
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
 
 /**
  * The row's heading text: the declared name through the shared label rule, so
@@ -97,46 +108,60 @@ const nameAccessibleText = computed(() =>
  * failure belongs to the reading that had it (FR-028).
  */
 const carrierRows = computed(() => {
-  const byCarrier = Map.groupBy(
-    props.entry.declarations,
-    (declaration) => declaration.sourceRelativePath,
+  // Grouped by the carrier's whole identity — Source and Source-relative
+  // Path (FR-030): a consented home's carrier and a same-path carrier
+  // elsewhere are two files however identical their spelling. U+0000 joins
+  // the halves because no Source ID contains it.
+  const byCarrier = Map.groupBy(props.entry.declarations, (declaration) =>
+    fileIdentityKey(declaration.sourceId, declaration.sourceRelativePath),
   );
-  return [...byCarrier.entries()].map(([sourceRelativePath, declarations]) => ({
-    key: sourceRelativePath,
-    carrierText: pathPresentationLabel(sourceRelativePath),
-    // The accessible name goes through the single-line label rule instead:
-    // an accessible name is flattened, so authored whitespace that the drawn
-    // label legitimately renders would collapse and two different carriers
-    // could announce identically (FR-025, {@link inlinePresentationLabel}).
-    carrierAccessibleText: inlinePresentationLabel(sourceRelativePath),
-    recognitions: declarations.map((declaration) => ({
-      tool: declaration.tool,
-      toolText: SUPPORTED_TOOL_TEXT[declaration.tool],
-      surfacesText: declaration.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-    })),
-    detailRoute:
-      props.entry.name === null
-        ? detailRoute('MCP', sourceRelativePath)
-        : mcpServerDetailRoute(sourceRelativePath, props.entry.name),
-    // The no-name row's members tell their two states apart (FR-028): a
-    // failed extraction leaves the rows unknown, a parsed carrier with no
-    // declaration declares none. Null on named rows, whose declarations are
-    // always parsed. Any failed reading of the carrier makes the sentence the
-    // unknown one, because that product's servers are then unknown whatever
-    // another product's reading of the same file found.
-    stateText:
-      props.entry.name !== null
-        ? null
-        : declarations.some((declaration) => declaration.parseStatus === 'failed')
-          ? 'The declarations in this file could not be read.'
-          : 'This file declares no MCP servers.',
-    // The MCP recognitions' own records, not the file's whole list: a file can
-    // carry several kinds — a `.codex/config.toml` carries three — and each
-    // failure is one record per (file, kind) (FR-028), so showing the file's
-    // list here would report another row's failure as this one's. Deduplicated
-    // because one carrier's declarations republish the one record.
-    diagnosticIds: [...new Set(declarations.flatMap((declaration) => declaration.diagnosticIds))],
-  }));
+  return [...byCarrier.values()].map((declarations) => {
+    const { sourceId, sourceRelativePath } = declarations[0]!;
+    return {
+      key: fileIdentityKey(sourceId, sourceRelativePath),
+      /** The member's Source: what the family blocks and its directory line derive from. */
+      sourceId: sourceId,
+      carrierText: pathPresentationLabel(sourceRelativePath),
+      // The accessible name goes through the single-line label rule instead:
+      // an accessible name is flattened, so authored whitespace that the drawn
+      // label legitimately renders would collapse and two different carriers
+      // could announce identically (FR-025, {@link inlinePresentationLabel}).
+      carrierAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      recognitions: declarations.map((declaration) => ({
+        tool: declaration.tool,
+        toolText: SUPPORTED_TOOL_TEXT[declaration.tool],
+        surfacesText: declaration.surfaces
+          .map((surface) => VENDOR_SURFACE_TEXT[surface])
+          .join(', '),
+      })),
+      detailRoute:
+        props.entry.name === null
+          ? detailRoute('MCP', sourceRelativePath, sessionSources.selectorOf(sourceId))
+          : mcpServerDetailRoute(
+              sourceRelativePath,
+              props.entry.name,
+              sessionSources.selectorOf(sourceId),
+            ),
+      // The no-name row's members tell their two states apart (FR-028): a
+      // failed extraction leaves the rows unknown, a parsed carrier with no
+      // declaration declares none. Null on named rows, whose declarations are
+      // always parsed. Any failed reading of the carrier makes the sentence the
+      // unknown one, because that product's servers are then unknown whatever
+      // another product's reading of the same file found.
+      stateText:
+        props.entry.name !== null
+          ? null
+          : declarations.some((declaration) => declaration.parseStatus === 'failed')
+            ? 'The declarations in this file could not be read.'
+            : 'This file declares no MCP servers.',
+      // The MCP recognitions' own records, not the file's whole list: a file can
+      // carry several kinds — a `.codex/config.toml` carries three — and each
+      // failure is one record per (file, kind) (FR-028), so showing the file's
+      // list here would report another row's failure as this one's. Deduplicated
+      // because one carrier's declarations republish the one record.
+      diagnosticIds: [...new Set(declarations.flatMap((declaration) => declaration.diagnosticIds))],
+    };
+  });
 });
 
 /**
@@ -156,15 +181,43 @@ const carrierRows = computed(() => {
  * filter left, so the link a reader followed is still there when they come
  * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
-const compareRoute = computed(() => {
-  if (props.entry.name === null) {
-    return null;
-  }
+/**
+ * The comparable identities of this row as route sides, in the row's own
+ * order — the set no filter narrows
+ * ({@link NarrowedInventoryRow.rowFileIdentities}).
+ */
+const comparableSides = computed<readonly ComparisonSide[]>(() => {
+  // The row's own carrier identities — the set no filter narrows
+  // ({@link NarrowedInventoryRow.rowFileIdentities}), already one entry per
+  // carrier however many products read it, with a same-path carrier in
+  // another Source a distinct one (FR-030).
+  const sides = props.entry.rowFileIdentities.map((identity) => ({
+    source: sessionSources.selectorOf(identity.sourceId),
+    sourceRelativePath: identity.sourceRelativePath,
+  }));
+  return sides;
+});
+
+/**
+ * Each family block's comparison entry — that family's first two comparable
+ * identities, for the blocks that hold a pair (FR-011): a block's comparison
+ * is that family's, and a pair never spans two families
+ * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
+ * hold one member offers no entry — exactly as an instruction range's blocks
+ * do. The comparison surface's own pickers take over from there
+ * (`detail-route.ts` § familyComparisonPairsOf).
+ */
+const blockCompareRoutes = computed(() => {
+  const routes = new Map<SourceKind, ReturnType<typeof mcpComparisonRouteFor>>();
   const name = props.entry.name;
-  const [first, second] = props.entry.rowFilePaths;
-  return first !== undefined && second !== undefined
-    ? mcpComparisonRouteFor(name, first, second)
-    : null;
+  if (name === null) {
+    // The closing no-name row: its carriers share no declared name to pair.
+    return routes;
+  }
+  for (const [kind, [first, second]] of familyComparisonPairsOf(comparableSides.value)) {
+    routes.set(kind, mcpComparisonRouteFor(kind, name, first, second));
+  }
+  return routes;
 });
 </script>
 
@@ -195,8 +248,14 @@ const compareRoute = computed(() => {
          its admission rests on, the way an instruction row states its
          recognitions; naming a surface never claims it loaded the file
          (FR-009). -->
-    <ul class="aci-mcp-row__declarations" role="list">
-      <li v-for="carrier in carrierRows" :key="carrier.key">
+    <!-- One block per Source family (`SourceFamilyBlocks.vue`), each member
+         rendered by this row. -->
+    <SourceFamilyBlocks
+      :members="carrierRows"
+      :member-key="(carrier) => carrier.key"
+      :identities="entry.rowFileIdentities"
+    >
+      <template #member="{ member: carrier }">
         <p class="aci-mcp-row__owner">
           <NuxtLink
             :to="carrier.detailRoute"
@@ -216,22 +275,31 @@ const compareRoute = computed(() => {
             <span class="aci-mcp-row__surfaces">{{ recognition.surfacesText }}</span></span
           >
         </p>
+
+        <SourceRootLine :source-id="carrier.sourceId" />
         <p v-if="carrier.stateText !== null" class="aci-muted">{{ carrier.stateText }}</p>
         <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
-      </li>
-    </ul>
+      </template>
 
-    <p v-if="compareRoute !== null" class="aci-mcp-row__compare">
-      <!-- The accessible name carries the row's declared name after the
-           visible phrase: in a links list every comparable row would
-           otherwise announce identically (WCAG 2.4.6; label-in-name keeps
-           the visible phrase as the prefix). -->
-      <NuxtLink
-        :to="compareRoute"
-        :aria-label="`Compare this name's declarations: ${nameAccessibleText ?? ''}`"
-        >Compare this name's declarations</NuxtLink
-      >
-    </p>
+      <!-- The block's own comparison entry (FR-011): the family is where a
+           pair of this row's members lives, so each block that holds two
+           comparable identities offers its own — the instruction blocks'
+           shape. The accessible name carries the row's identity always, and
+           the family where two blocks each offer one (WCAG 2.4.6). -->
+      <template #entry="{ block }">
+        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-mcp-row__compare">
+          <NuxtLink
+            :to="blockCompareRoutes.get(block.kind)!"
+            :aria-label="`Compare this name's declarations: ${nameAccessibleText ?? ''}${
+              blockCompareRoutes.size > 1 && block.familyText !== null
+                ? ` (${block.familyText})`
+                : ''
+            }`"
+            >Compare this name's declarations</NuxtLink
+          >
+        </p>
+      </template>
+    </SourceFamilyBlocks>
   </li>
 </template>
 
@@ -239,19 +307,6 @@ const compareRoute = computed(() => {
 .aci-mcp-row__name {
   margin: 0;
   font-weight: 600;
-}
-
-/* The declarations of the name, set under it by an indent and a rule,
-   matching how a skill row groups its files under the invocation name. */
-.aci-mcp-row__declarations {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
-}
-
-.aci-mcp-row__declarations > li + li {
-  margin-block-start: 0.4rem;
 }
 
 .aci-mcp-row__owner {

@@ -16,6 +16,7 @@ import type {
 } from './entities';
 import type { VendorSurface } from './registries/behavior-types';
 import type { RejectionCode } from './rejection-codes';
+import type { RuleId } from './registries/identifier-types';
 
 /**
  * One recognition's closed extraction state (data-model.md
@@ -159,9 +160,18 @@ export interface DeclaredEntryDto {
  */
 export interface SkillDefinitionDto {
   /**
+   * The Source holding the `SKILL.md`, and the other half of the file's
+   * identity (FR-030): a consented Global home and another consented home can
+   * hold one `skills/<name>/SKILL.md` path, so the path alone names no file
+   * once a member's skill rule exists. Joins to `files[]` and leads the
+   * detail route's own Source segment.
+   */
+  readonly sourceId: string;
+  /**
    * The Source-relative Path of the `SKILL.md` this definition is authored
-   * in — the file's identity (FR-030), which joins to `files[]` and is the
-   * whole of its detail route, `/skills/<source-relative path>`.
+   * in — with {@link sourceId} the file's identity (FR-030), which joins to
+   * `files[]` and is the path half of its detail route,
+   * `/skills/detail/<source>/<source-relative path>`.
    */
   readonly sourceRelativePath: string;
   /**
@@ -282,11 +292,23 @@ export interface SkillInventoryEntryDto {
  */
 export interface InstructionInventoryEntryDto {
   /**
-   * The glob the row's files govern, relative to the Repository root — `**`
+   * The Source whose root this row's range is relative to, and half of every
+   * listed file's identity (FR-030).
+   *
+   * A row is one range *of one Source*, not one range: the selected
+   * repository's `**` and a consented Codex home's `**` are different scopes
+   * that happen to share a spelling, so one row holding both would say two
+   * things at once — and a same-path file in each would collapse into one
+   * entry the reader could not tell apart.
+   */
+  readonly sourceId: string;
+  /**
+   * The glob the row's files govern, relative to the row's own Source root —
+   * `**`
    * at the root, or the range a file declares for itself (Copilot's
-   * `applyTo`) — and the row's identity. Rows are grouped by exact text
-   * equality of this value: nothing parses it, normalizes its spelling, or
-   * decides whether two ranges overlap.
+   * `applyTo`) — and, with {@link sourceId}, the row's identity. Rows are
+   * grouped by exact text equality of this value: nothing parses it,
+   * normalizes its spelling, or decides whether two ranges overlap.
    *
    * Null for the one row of files whose range is not known: a file whose
    * product reads this filename's range from its declaration alone, and whose
@@ -376,6 +398,13 @@ export interface FileRecognitionDto {
  */
 export interface RuleInventoryEntryDto {
   /**
+   * The Source holding the file, and the other half of the row's identity
+   * (FR-030): the row's unit is the file, and a consented home's rule file
+   * and a same-path file elsewhere are two rows. Joins to `files[]` and
+   * leads the detail route's Source segment.
+   */
+  readonly sourceId: string;
+  /**
    * The Source-relative Path of the rule file — the row's identity (FR-030),
    * which joins to `files[]`.
    */
@@ -394,6 +423,13 @@ export interface RuleInventoryEntryDto {
  * file-scoped diagnostics all stay on {@link CustomizationFileSummaryDto}.
  */
 export interface PromptDefinitionDto {
+  /**
+   * The Source holding the file, and the other half of its identity
+   * (FR-030): a member's command or prompt rule makes a Global home's path
+   * constructible beside a same-path file elsewhere, so the path alone names
+   * no file. Joins to `files[]` and leads the detail route's Source segment.
+   */
+  readonly sourceId: string;
   /**
    * The Source-relative Path of the prompt or command file this definition is
    * authored in — the file's identity (FR-030), which joins to `files[]` and
@@ -484,6 +520,13 @@ export interface PromptInventoryEntryDto {
  */
 export interface OutputStyleDefinitionDto {
   /**
+   * The Source holding the file, and the other half of its identity
+   * (FR-030): a member's output-style rule makes a Global home's path
+   * constructible beside a same-path file elsewhere. Joins to `files[]` and
+   * leads the detail route's Source segment.
+   */
+  readonly sourceId: string;
+  /**
    * The Source-relative Path of the output-style file this definition is
    * authored in — the file's identity (FR-030), which joins to `files[]` and
    * is the detail route `/output-styles/<source-relative path>`.
@@ -560,9 +603,17 @@ export interface OutputStyleInventoryEntryDto {
  */
 export interface AgentDefinitionDto {
   /**
-   * The Source-relative Path of the file this agent is defined in — the
-   * file's identity (FR-030), which joins to `files[]` and is the detail
-   * route `/agents/<source-relative path>`.
+   * The Source holding the file, and the other half of its identity
+   * (FR-030): a member's agent rule makes a Global home's `agents/…` path
+   * constructible beside a same-path file elsewhere, so the path alone names
+   * no file. Joins to `files[]` and leads the detail route's Source segment.
+   */
+  readonly sourceId: string;
+  /**
+   * The Source-relative Path of the file this agent is defined in — with
+   * {@link sourceId} the file's identity (FR-030), which joins to `files[]`
+   * and is the path half of the detail route
+   * `/agents/detail/<source>/<source-relative path>`.
    */
   readonly sourceRelativePath: string;
   /**
@@ -661,6 +712,13 @@ export interface AgentInventoryEntryDto {
  */
 export interface PermissionsInventoryEntryDto {
   /**
+   * The Source holding the declaring file, and the other half of the row's
+   * identity (FR-030): a member's permissions rule makes a Global home's
+   * path constructible beside a same-path declaration elsewhere. Joins to
+   * `files[]` and leads the detail route's Source segment.
+   */
+  readonly sourceId: string;
+  /**
    * The Source-relative Path of the file that declares the policy — the row's
    * identity (FR-030), which joins to `files[]`.
    */
@@ -713,8 +771,15 @@ export interface PermissionsInventoryEntryDto {
  */
 export interface SettingsInventoryEntryDto {
   /**
-   * The Source-relative Path of the settings or configuration file — the
-   * row's identity (FR-030), which joins to `files[]`.
+   * The Source holding the file, and the other half of the row's identity
+   * (FR-030): the row's unit is the file, and a consented home's
+   * `settings.json` and another Source's same-path document are two rows.
+   * Joins to `files[]` and leads the detail route's Source segment.
+   */
+  readonly sourceId: string;
+  /**
+   * The Source-relative Path of the settings or configuration file — with
+   * {@link sourceId} the row's identity (FR-030), which joins to `files[]`.
    */
   readonly sourceRelativePath: string;
   /**
@@ -763,10 +828,18 @@ export interface McpInventoryEntryDto {
  */
 export interface McpDeclarationDto {
   /**
+   * The Source holding the carrier, and the other half of the file's
+   * identity (FR-030): a member's MCP rule makes a Global home's carrier path
+   * constructible beside a same-path carrier elsewhere, so the path alone
+   * names no file. Joins to `files[]` and leads the detail route's Source
+   * segment.
+   */
+  readonly sourceId: string;
+  /**
    * The Source-relative Path of the carrier this declaration is authored
-   * in — the file's identity (FR-030), which joins to `files[]` and is the
-   * path half of the declaration's own detail route,
-   * `/mcp/<source-relative path>?server=<name>`.
+   * in — with {@link sourceId} the file's identity (FR-030), which joins to
+   * `files[]` and is the path half of the declaration's own detail route,
+   * `/mcp/detail/<source>/<source-relative path>?server=<name>`.
    */
   readonly sourceRelativePath: string;
   /** The tool whose recognition this declaration is (FR-007). */
@@ -854,10 +927,18 @@ export interface HookInventoryEntryDto {
  */
 export interface HookDeclarationDto {
   /**
+   * The Source holding the carrier, and the other half of the file's
+   * identity (FR-030): a member's hook rule makes a Global home's carrier
+   * path constructible beside a same-path carrier elsewhere, so the path
+   * alone names no file. Joins to `files[]` and leads the detail route's
+   * Source segment.
+   */
+  readonly sourceId: string;
+  /**
    * The Source-relative Path of the carrier this declaration is authored
-   * in — the file's identity (FR-030), which joins to `files[]` and is the
-   * path half of the declaration's own detail route,
-   * `/hooks/<source-relative path>?event=<name>`.
+   * in — with {@link sourceId} the file's identity (FR-030), which joins to
+   * `files[]` and is the path half of the declaration's own detail route,
+   * `/hooks/detail/<source>/<source-relative path>?event=<name>`.
    */
   readonly sourceRelativePath: string;
   /** The tool whose recognition this declaration is (FR-007). */
@@ -1121,11 +1202,12 @@ export type PluginCarrierKind =
  */
 export type PluginSourceForm =
   /**
-   * A directory of this repository: a `./` path relative to the marketplace
-   * root, or a bare name resolved under the catalog's own declared root where
-   * a vendor documents that spelling. {@link PluginDeclarationDto.pluginRoot}
-   * carries the directory, and is null when the declared path does not stay
-   * inside the Source.
+   * A local directory: a `./` path relative to the catalog's documented
+   * base — the Repository root for a repository catalog, the home directory
+   * for the personal Codex catalog — or a bare name resolved under the
+   * catalog's own declared root where a vendor documents that spelling.
+   * {@link PluginDeclarationDto.pluginRoot} carries the directory, and is
+   * null when the declared path does not stay inside the Source.
    */
   | 'repository-directory'
   /** A GitHub repository the client clones. */
@@ -1233,9 +1315,18 @@ export interface PluginDeclarationDto {
  */
 export interface PluginCarrierDto {
   /**
+   * The Source holding the file, and the other half of its identity
+   * (FR-030): the shared agent home's `plugins/marketplace.json` makes a
+   * Global carrier path constructible beside a same-path carrier elsewhere,
+   * so the path alone names no file. Joins to `files[]` and leads the detail
+   * route's Source segment; the carrier's `files` are paths of this same
+   * Source.
+   */
+  readonly sourceId: string;
+  /**
    * The Source-relative Path of the file this declaration is authored in —
-   * the file's identity (FR-030), which joins to `files[]` and is the path
-   * half of the carrier's own detail route.
+   * with {@link sourceId} the file's identity (FR-030), which joins to
+   * `files[]` and is the path half of the carrier's own detail route.
    */
   readonly sourceRelativePath: string;
   /** The tool whose recognition this carrier is (FR-007). */
@@ -1303,6 +1394,8 @@ export type PluginCarrierDetailDto = PluginManifestDetailDto | PluginCatalogDeta
  * other plugin's declaration to a page about one of them.
  */
 export interface PluginCarrierDetailParams {
+  /** Which Source holds the carrier — with the path its identity (FR-030). */
+  readonly source: SourceSelector;
   /** The Source-relative Path of the carrier file; the file's identity (FR-030). */
   readonly sourceRelativePath: string;
   /**
@@ -1338,6 +1431,8 @@ export interface PluginCarrierDetailParams {
  * census).
  */
 export interface PluginFileDetailParams {
+  /** Which Source holds the carrier — with the path its identity (FR-030). */
+  readonly source: SourceSelector;
   /** The Source-relative Path of the carrier that declares the plugin (FR-030). */
   readonly sourceRelativePath: string;
   /** The product whose reading of that carrier reached the file; see {@link PluginCarrierDetailParams.tool}. */
@@ -1909,17 +2004,30 @@ export interface ScanProgressDto {
 export type SourceKind =
   /** The one Source selected from the invocation Repository boundary. */
   | 'repository'
-  /** One consent-gated tool-specific Global Source. */
+  /** One consent-gated member Global Source. */
   | 'global';
 
-/** One Source's public projection (spec.md § Key Entities · Source). */
-export interface SourceDto {
+/**
+ * One Global member: the three tool homes and the shared agent home
+ * (spec.md § FR-013, FR-045). A member is what one preview entry, one control,
+ * and at most one Global Source are about; `agents` is `~/.agents`, the
+ * directory Codex and Copilot document for personal skills and the personal
+ * plugin marketplace, which no setting relocates. Every `…Tools`-spelled
+ * control and batch field carries these member ids
+ * (contracts/http-api.md § create-global-consent-preview).
+ */
+export type GlobalMemberId = SupportedTool | 'agents';
+
+/**
+ * What every Source's projection carries, whatever its family. The `kind`
+ * and `member` discriminants live on the two variants, because they move
+ * together: a Repository Source has no member and a Global Source always has
+ * one, so declaring them independently would let the combinations that are
+ * not constructible type-check ({@link SourceDto}).
+ */
+export interface SourceDtoBase {
   /** Opaque stable Source identity; the Repository's survives every commit. */
   readonly sourceId: string;
-  /** Which boundary family the Source belongs to. */
-  readonly kind: SourceKind;
-  /** Owning tool of a Global Source; null for the Repository Source. */
-  readonly tool: SupportedTool | null;
   /** Whether the Source currently participates in scans. */
   readonly enabled: boolean;
   /** Operational overlay status; see {@link SourceStatus}. */
@@ -1947,6 +2055,30 @@ export interface SourceDto {
   /** Source-scoped diagnostics, e.g. `root-unreadable` (FR-002). */
   readonly diagnosticIds: readonly string[];
 }
+
+/**
+ * One Source's public projection (spec.md § Key Entities · Source), as the
+ * discriminated union of its two families: the discriminant is `kind`, and
+ * `member` narrows with it, so a Repository Source carrying a member — or a
+ * Global Source carrying none — does not type-check (tasks.md T1001). The
+ * union exists because a second Source kind is constructible: the type is
+ * where the impossible combinations have to stop.
+ */
+export type SourceDto =
+  /** The one Source selected from the invocation Repository boundary. */
+  | (SourceDtoBase & {
+      /** Selects the Repository family. */
+      readonly kind: 'repository';
+      /** A Repository Source is no member's; the field stays for one-shape reads. */
+      readonly member: null;
+    })
+  /** One consent-gated member Global Source (FR-013, FR-045). */
+  | (SourceDtoBase & {
+      /** Selects the Global family. */
+      readonly kind: 'global';
+      /** The member whose consented root this Source is. */
+      readonly member: GlobalMemberId;
+    });
 
 /**
  * What explains a stale entry: a deterministic Diagnostic or the failed
@@ -2017,6 +2149,25 @@ export type FileOpenTarget =
    * of them.
    */
   | 'containing-folder';
+
+/**
+ * The parameter of `open-file`: which committed file to hand over, and to
+ * which application (contracts/http-api.md § open-file).
+ *
+ * The file is named by its whole identity, exactly as `get-file-detail` names
+ * one ({@link FileDetailParams}): a consented Global home and the selected
+ * repository can hold the same Source-relative Path, and each Source has its
+ * own root, so a path alone would hand the reader a different file than the
+ * page they clicked on is showing (FR-030).
+ */
+export interface FileOpenParams {
+  /** The file's Source-relative Path, exactly as the inventory published it. */
+  readonly sourceRelativePath: string;
+  /** Which Source holds it; see {@link SourceSelector}. */
+  readonly source: SourceSelector;
+  /** The application to hand it to; see {@link FileOpenTarget}. */
+  readonly target: FileOpenTarget;
+}
 
 /**
  * The complete public session state served over the session API —
@@ -2138,11 +2289,11 @@ export interface SessionSnapshot {
   readonly snapshotState: SnapshotState;
   /** Per-Source stale overlays from failed explicit rescans (FR-030). */
   readonly staleFailures: readonly StaleSourceFailure[];
-  /** Global consent/control projection (null scaffold until the Global tasks). */
-  readonly globalControl: null;
-  /** Global enable-operation projection (null scaffold until the Global tasks). */
-  readonly globalEnableInProgress: null;
-  /** Global disable-barrier projection (null scaffold until the Global tasks). */
+  /** Global consent/control projection; null while no consent or control state exists. */
+  readonly globalControl: GlobalControlViewDto | null;
+  /** The registered enable operation, or null; see {@link GlobalEnableInProgressDto}. */
+  readonly globalEnableInProgress: GlobalEnableInProgressDto | null;
+  /** Global disable-barrier projection (null scaffold until the disable phase). */
   readonly globalDisableInProgress: null;
   /** Increments on the disable purge so clients purge before rendering (FR-042). */
   readonly globalContentEpoch: number;
@@ -2216,9 +2367,297 @@ export interface DeterministicRejection {
 }
 
 /**
+ * What the ordered Global lexical-state algorithm assigned to one captured
+ * root string, before any filesystem operation
+ * (data-model.md § RootPresentationEncoding and Global lexical state). Only
+ * `eligible` may become a boundary after consent; the other three are
+ * rejections the preview states up front, and each one's control is a
+ * path-free rejected control after confirmation.
+ */
+export type GlobalRootInputState =
+  /**
+   * The captured string is absolute and well formed. Its exact spelling is
+   * frozen into the preview and still carries no read authority: whether the
+   * root is usable is decided only by post-consent readable-directory
+   * admission.
+   */
+  | 'eligible'
+  /**
+   * The tool's environment property is set to the empty string. Only a present
+   * override can be empty — an absent property selects the documented default
+   * — so this state never applies to a default home.
+   */
+  | 'present-empty'
+  /** Active-platform `node:path.isAbsolute` returned false for the string. */
+  | 'relative'
+  /**
+   * The string holds U+0000, or its UTF-16 is not well formed: a high
+   * surrogate not followed by a low one, or a low surrogate not preceded by a
+   * high one. Such a value is escaped and displayed, never normalized into an
+   * authorized path.
+   */
+  | 'invalid';
+
+/**
+ * Where one preview entry's root came from
+ * (data-model.md § GlobalConsentPreview `entries[].origin`). An environment
+ * entry is used even when its state rejects it: an empty, relative, or invalid
+ * override never falls back to the documented default.
+ */
+export type GlobalRootOrigin =
+  /** `node:path.join` of the captured home directory and the tool's fixed suffix. */
+  | 'default-home'
+  /** The tool's own environment property, which was present. */
+  | 'environment';
+
+/**
+ * One member's row of the consent preview
+ * (data-model.md § GlobalConsentPreview). It carries no `lexicalRoot`: the
+ * exact captured string stays in the server-retained record, and what crosses
+ * the channel is the one-way escaped presentation of it.
+ */
+export interface GlobalPreviewEntryDto {
+  /** The member this row is about; the four rows are in the contracted order. */
+  readonly member: GlobalMemberId;
+  /** Where the root came from; see {@link GlobalRootOrigin}. */
+  readonly origin: GlobalRootOrigin;
+  /**
+   * `RootPresentationEncoding` of the captured root: display-only, never
+   * decoded, and never a `SourceRelativePath`, inventory-item locator,
+   * canonicalization claim, or read authority.
+   */
+  readonly displayRoot: string;
+  /** The state the ordered algorithm assigned; see {@link GlobalRootInputState}. */
+  readonly inputState: GlobalRootInputState;
+}
+
+/**
+ * How a request and a detail route name the Source half of a file's identity
+ * (FR-030): the repository's own token, or `global-` and the member whose
+ * consented home it is.
+ *
+ * Never the opaque Source ID, which is minted per launch — a link or a stored
+ * request carrying one would stop resolving the moment the inspector
+ * restarted. These survive a restart and a reader can read them. At most one
+ * Global Source exists per member (contracts/http-api.md § enable-global), so
+ * the member identifies one Source unambiguously.
+ */
+export type SourceSelector = 'repository' | `global-${GlobalMemberId}`;
+
+/**
+ * What one `get-file-detail` request names: both halves of the file's identity
+ * (contracts/http-api.md § get-file-detail).
+ *
+ * Both, because both are needed: a consented Global home and the selected
+ * repository can hold the same Source-relative Path, and a request naming the
+ * path alone is answered by whichever the session lists first — one file's
+ * contents under the other's row.
+ */
+export interface FileDetailParams {
+  /** The file's Source-relative Path, exactly as the inventory published it. */
+  readonly sourceRelativePath: string;
+  /** Which Source holds it; see {@link SourceSelector}. */
+  readonly source: SourceSelector;
+}
+
+/**
+ * How far one Global member has got under the active consent
+ * (data-model.md § GlobalToolControl `state`).
+ *
+ * `unvalidated` is deliberately absent: it exists only inside an
+ * operation-local transaction, and the invariant forbids it in any serialized
+ * view — a control a client can see has already reached an outcome.
+ */
+export type GlobalToolState =
+  /** Deterministically refused; {@link GlobalToolControlDto.failureCode} says why. */
+  | 'rejected'
+  /** The root passed admission but no Source has been published for it yet. */
+  | 'admitted'
+  /** Exactly one Source exists for this member. */
+  | 'published';
+
+/**
+ * Why one Global member has no published Source
+ * (data-model.md § GlobalToolControl `failureCode`). None of these carries a
+ * path or an environment value: the code is the failure, and the client
+ * renders the sentence it names.
+ */
+export type GlobalToolFailureCode =
+  /** The member's environment property was set to the empty string. */
+  | 'present-empty'
+  /** The captured root is not absolute on this platform. */
+  | 'relative'
+  /** The captured root holds U+0000 or ill-formed UTF-16. */
+  | 'invalid'
+  /** The consented root is missing or is not a readable directory. */
+  | 'root-unreadable'
+  /** The member's own scan of an admitted root failed deterministically. */
+  | 'scan-failed';
+
+/**
+ * Whether the same consent can be retried for one rejected member
+ * (data-model.md § GlobalToolControl `retryDisposition`).
+ */
+export type GlobalRetryDisposition =
+  /** The frozen preview still applies; retry may re-admit this tool. */
+  | 'same-preview'
+  /** The rejection is lexical, so a different root — and a new preview — is required. */
+  | 'new-preview-required';
+
+/** One Global member's public control projection (data-model.md § GlobalToolControl). */
+export interface GlobalToolControlDto {
+  /** The member this control is about; one exists per evaluated member while consent is active. */
+  readonly member: GlobalMemberId;
+  /** How far this tool has got; see {@link GlobalToolState}. */
+  readonly state: GlobalToolState;
+  /** Non-null exactly while this tool has failed and has no published Source. */
+  readonly failureCode: GlobalToolFailureCode | null;
+  /** Null unless `rejected`; see {@link GlobalRetryDisposition}. */
+  readonly retryDisposition: GlobalRetryDisposition | null;
+}
+
+/**
+ * The coarse phase of one accepted Global batch
+ * (data-model.md § GlobalControlView `GlobalBatchStatus`).
+ */
+export type GlobalBatchPhase =
+  /** Queued and not yet started. */
+  | 'waiting'
+  /** Reading each vendor's configuration before enumerating. */
+  | 'deriving'
+  /** Walking the admitted roots' named targets. */
+  | 'enumerating'
+  /** Reading admitted candidate files. */
+  | 'reading'
+  /** Attaching each tool's recognition to what was read. */
+  | 'recognizing'
+  /** Terminal failure; `failureRef` says what happened. */
+  | 'failed';
+
+/**
+ * Why one accepted Global batch failed
+ * (data-model.md § GlobalControlView). A deterministic failure is always
+ * attributed to at least one exact tool, whose own control carries the reason;
+ * anything else is the failed request's error, recorded once for the batch.
+ */
+export type GlobalBatchFailureRef =
+  | {
+      /** One or more members failed deterministically. */
+      readonly kind: 'tool-failures';
+      /** The non-empty fixed-order members this batch failed; reasons live on their controls. */
+      readonly failedTools: readonly GlobalMemberId[];
+    }
+  | {
+      /** The batch ended with a failure not confined to one tool's files. */
+      readonly kind: 'error';
+      /** The failed request's own error message, as it arrived. */
+      readonly message: string;
+    };
+
+/** One accepted Global batch's status (data-model.md § GlobalControlView). */
+export interface GlobalBatchStatusDto {
+  /** The one request ID this batch and its committed generation share. */
+  readonly scanRequestId: string;
+  /** The non-empty fixed-order admitted member subset this batch scans. */
+  readonly tools: readonly GlobalMemberId[];
+  /** Coarse phase; see {@link GlobalBatchPhase}. */
+  readonly phase: GlobalBatchPhase;
+  /** Null except in `failed`; see {@link GlobalBatchFailureRef}. */
+  readonly failureRef: GlobalBatchFailureRef | null;
+}
+
+/**
+ * The Global consent and control projection, returned in every snapshot while
+ * consent or retained control state is active (data-model.md
+ * § GlobalControlView). It carries no admitted root and no source content: the
+ * separately fetched frozen preview supplies the exact displayed roots.
+ */
+export interface GlobalControlViewDto {
+  /** `disabling` from barrier acceptance until the field becomes null. */
+  readonly state: 'active' | 'disabling';
+  /** The active frozen preview's opaque ID; neither a path nor an authority. */
+  readonly previewId: string;
+  /** The fixed all-members consent set; never client-selected. */
+  readonly confirmedTools: readonly GlobalMemberId[];
+  /** One control per evaluated member, in the fixed member order. */
+  readonly controls: readonly GlobalToolControlDto[];
+  /** Admitted members owned by one accepted batch, sorted; empty otherwise. */
+  readonly pendingTools: readonly GlobalMemberId[];
+  /** Non-null from accepted queueing through terminal success or failure. */
+  readonly batchStatus: GlobalBatchStatusDto | null;
+  /** The exact server-derived retryable member subset, sorted; empty while `disabling`. */
+  readonly retryableTools: readonly GlobalMemberId[];
+}
+
+/**
+ * The authority-free projection of a registered enable operation
+ * (data-model.md § GlobalEnableOperation). It exposes no tool outcome, root,
+ * context, Source, job, or authority — only that one is running, which is what
+ * makes a duplicate enable a conflict rather than a second transaction.
+ */
+export interface GlobalEnableInProgressDto {
+  /** Which lifecycle is registered. */
+  readonly kind: 'initial-enable' | 'retry';
+  /** The coordinator's opaque command ID. */
+  readonly operationId: string;
+  /** The frozen preview the whole operation is bound to. */
+  readonly previewId: string;
+}
+
+/**
+ * What one accepted `enable-global` invocation returns
+ * (contracts/http-api.md § enable-global).
+ */
+export interface GlobalEnableResultDto {
+  /** `queued` when at least one root was admitted; otherwise `active-no-job`. */
+  readonly state: 'queued' | 'active-no-job';
+  /** The one shared batch request ID, or null for `active-no-job`. */
+  readonly scanRequestId: string | null;
+  /** The members this transaction admitted, in fixed member order. */
+  readonly acceptedTools: readonly GlobalMemberId[];
+  /** The members this transaction refused, in fixed member order; disjoint from accepted. */
+  readonly rejectedTools: readonly GlobalMemberId[];
+}
+
+/**
+ * The no-I/O preview a reader confirms before any User-Global path is
+ * authorized (contracts/http-api.md § create-global-consent-preview). Creating
+ * or returning it performs no filesystem operation under any proposed Global
+ * root.
+ *
+ * It carries no per-pattern path display: what is read below an admitted root
+ * is fixed by the shipped traversal plan the
+ * `allowlistVersion`/`traversalPlanVersion` pair identifies, and the consent
+ * copy explains that scope in plain language.
+ */
+export interface GlobalConsentPreviewDto {
+  /**
+   * Opaque lookup reference for the server-retained record: the canonical
+   * unpadded base64url encoding of an independent 32-byte CSPRNG draw. It is
+   * neither a filesystem path nor any grant of authority, and the later enable
+   * request names it so the server acts on its own stored record.
+   */
+  readonly previewId: string;
+  /** The shipped presentation-allowlist contract version this preview binds. */
+  readonly allowlistVersion: string;
+  /** The shipped compiled traversal-plan set version this preview binds. */
+  readonly traversalPlanVersion: string;
+  /** Exactly four rows: Copilot, Claude, Codex, then the shared agent home. */
+  readonly entries: readonly GlobalPreviewEntryDto[];
+  /**
+   * The excluded rules' IDs, sorted, which drive the displayed exclusions. A
+   * surface renders each through its registry record rather than the ID, and
+   * the field is typed as the closed union rather than as `string` so the
+   * lookup that finds that record cannot miss (AGENTS.md § User-visible copy
+   * policy).
+   */
+  readonly excludedRuleIds: readonly RuleId[];
+}
+
+/**
  * Re-exported so API consumers resolve every wire type from one module.
  * `SourceStatus` is declared in `entities.ts` beside its display text, the
  * same split `FileEncoding` already uses: the closed vocabulary lives with
  * the entities, the DTO that carries it lives here.
  */
-export type { RejectionCode, SerializedDiagnostic, SourceStatus };
+export type { RejectionCode, RuleId, SerializedDiagnostic, SourceStatus };

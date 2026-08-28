@@ -16,7 +16,7 @@
 // Claude Code discovers nested skill directories that Copilot's and Codex's
 // anchored lookups never reach, and each product's own lookup base stays a
 // runtime condition the Inspector does not observe (FR-009).
-import { escapeControlCharacters } from '../../../../shared/entities';
+import { fileIdentityKey, escapeControlCharacters } from '../../../../shared/entities';
 import type { SkillDefinitionDto } from '../../../../shared/api-types';
 
 /** One file of a skill row, with the definitions that recognize it. */
@@ -37,9 +37,18 @@ export class SkillRowFile {
   }
 
   /**
-   * The file's Source-relative Path — its identity (FR-030), used as the
-   * render key and never as display text. Derived from the first definition,
-   * whose file every definition of the group shares.
+   * The Source holding the file — with {@link sourceRelativePath} its
+   * identity (FR-030). Derived from the first definition, whose file every
+   * definition of the group shares.
+   */
+  public get sourceId(): string {
+    return this.definitions[0].sourceId;
+  }
+
+  /**
+   * The file's Source-relative Path — with {@link sourceId} its identity
+   * (FR-030), used in the render key and never as display text. Derived from
+   * the first definition, whose file every definition of the group shares.
    */
   public get sourceRelativePath(): string {
     return this.definitions[0].sourceRelativePath;
@@ -90,14 +99,20 @@ export class SkillRowFile {
  * appearance of a path fixes where its group sits.
  */
 export function skillRowFiles(definitions: readonly SkillDefinitionDto[]): readonly SkillRowFile[] {
-  const byPath = new Map<string, [SkillDefinitionDto, ...SkillDefinitionDto[]]>();
+  // Grouped by the file's whole identity — Source and Source-relative Path
+  // (FR-030): two consented homes can hold one `skills/<name>/SKILL.md` path,
+  // and those are two files however identical their spelling.
+  const byFile = new Map<string, [SkillDefinitionDto, ...SkillDefinitionDto[]]>();
   for (const definition of definitions) {
-    const group = byPath.get(definition.sourceRelativePath);
+    // U+0000 joins the halves: no Source ID contains it, so two identities
+    // never collide by concatenation.
+    const key = fileIdentityKey(definition.sourceId, definition.sourceRelativePath);
+    const group = byFile.get(key);
     if (group === undefined) {
-      byPath.set(definition.sourceRelativePath, [definition]);
+      byFile.set(key, [definition]);
     } else {
       group.push(definition);
     }
   }
-  return [...byPath.values()].map((group) => new SkillRowFile(group));
+  return [...byFile.values()].map((group) => new SkillRowFile(group));
 }

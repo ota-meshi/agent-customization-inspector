@@ -7,7 +7,7 @@
 // addresses the carrier itself: the view a carrier with no declaration keeps,
 // and the file-unit facts every declaration of the carrier shares. Both
 // survive rescans and resolve against whatever the current scan holds.
-import { detailRoute, toJsonStringBody } from './detail-route';
+import { detailRoute, toJsonStringBody, type SourceSelector } from './detail-route';
 
 /**
  * The detail route for one event declaration: the carrier's route selecting
@@ -23,8 +23,12 @@ import { detailRoute, toJsonStringBody } from './detail-route';
  * {@link fromJsonStringBody}, so every declared event round-trips to its own
  * selection.
  */
-export function hookEventDetailRoute(sourceRelativePath: string, event: string): string {
-  return `${detailRoute('hook', sourceRelativePath)}?event=${encodeURIComponent(
+export function hookEventDetailRoute(
+  sourceRelativePath: string,
+  event: string,
+  source: SourceSelector = 'repository',
+): string {
+  return `${detailRoute('hook', sourceRelativePath, source)}?event=${encodeURIComponent(
     toJsonStringBody(event),
   )}`;
 }

@@ -31,8 +31,21 @@ export interface LaunchedHost {
  * launch line. The process is started from an unrelated working directory so
  * the run also proves the packaged shell is served from the package, not from
  * the inspected repository.
+ *
+ * `environment` is merged over this process's own, for the one input the CLI
+ * takes that is not an argument: the three Global home properties the consent
+ * preview captures. Passing them through the spawn rather than mutating
+ * `process.env` keeps one worker's launch from deciding another's.
+ *
+ * `extraArguments` are appended to the fixed four, for a case about an option
+ * itself — `--inspect-personal-setup`, whose whole behavior is what the launch
+ * has already done by the time the origin is printed.
  */
-export async function launchHost(fixture: string): Promise<LaunchedHost> {
+export async function launchHost(
+  fixture: string,
+  environment?: Readonly<Record<string, string>>,
+  extraArguments: readonly string[] = [],
+): Promise<LaunchedHost> {
   // `--port 0` has devframe select a free port instead of reusing its fixed
   // default, so a suite run never takes the port the machine's owner reserved
   // for their own use (AGENTS.md § Agent-started process policy). No test
@@ -40,10 +53,11 @@ export async function launchHost(fixture: string): Promise<LaunchedHost> {
   // launch line.
   const child = spawn(
     process.execPath,
-    [CLI_ENTRY, '--no-open', '--port', '0', '--root', fixture],
+    [CLI_ENTRY, '--no-open', '--port', '0', '--root', fixture, ...extraArguments],
     {
       cwd: tmpdir(),
       stdio: ['ignore', 'pipe', 'pipe'],
+      ...(environment === undefined ? {} : { env: { ...process.env, ...environment } }),
     },
   );
   child.stdout.setEncoding('utf8');

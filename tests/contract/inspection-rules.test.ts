@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { INSPECTION_RULES } from '../../src/shared/registries/inspection-rules';
+import type { RuleId } from '../../src/shared/registries/identifier-types';
 import { RULE_RELATIONS, STRATEGY_RELATIONS } from '../../src/shared/registries/relations';
 import { RUNTIME_COMPOSITION_STRATEGIES } from '../../src/shared/registries/runtime-composition';
 import { VENDOR_BEHAVIOR_STATEMENTS } from '../../src/shared/registries/vendor-behaviors';
@@ -304,18 +305,20 @@ describe('traversal-plan compilation', () => {
 });
 
 describe('the Claude skill slice of the reference graph (T130, T133)', () => {
-  it('ships the read-authorizing Claude records and the one plugin exclusion', () => {
+  it('ships the read-authorizing Claude records and its two exclusions', () => {
     // The phase-local half of the registry catalog check: the shipped Claude
-    // catalog is the command, instruction, marketplace, MCP carrier,
-    // permission-policy, rule-file, settings, skill, and skills-directory
-    // plugin rules, the contained-hook rule over the settings files' own
-    // matcher (T863), all read-authorizing, plus the one `excluded` row the
-    // plugin phases own. No `relationship-only` Claude row ships — a symlinked
+    // catalog is the Repository set — command, instruction, marketplace, MCP
+    // carrier, permission-policy, rule-file, settings, skill, and
+    // skills-directory plugin rules, and the contained-hook rule over the
+    // settings files' own matcher (T863) — the widened Global member set
+    // (T970, T1125), all read-authorizing, plus the two `excluded` rows: the
+    // one the plugin phases own and the User-runtime one the consent boundary
+    // owns. No `relationship-only` Claude row ships — a symlinked
     // skill needs none because links are read through their targets (FR-024),
     // an unsupported instruction location is simply a path no selector reaches
     // (T232), and a standalone `.claude/prompts` directory is another one
-    // (FR-034, T445) — and the eventual complete catalog gate is T913's, not
-    // this suite's.
+    // (FR-034, T445) — and the complete catalog gate is the eighty-one-rule
+    // case (T992), not this suite's.
     const claudeRules = rules.filter((rule) => rule.tool === 'claude');
     expect(claudeRules.map((rule) => rule.ruleId)).toEqual([
       'claude.repo.agent',
@@ -331,10 +334,20 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
       'claude.repo.skill',
       'claude.repo.skills-directory-plugin',
       'claude.excluded.plugin-files',
+      'claude.excluded.user-runtime',
+      'claude.global.agent',
+      'claude.global.command',
+      'claude.global.hooks.settings',
+      'claude.global.instructions',
+      'claude.global.output-style',
+      'claude.global.permissions',
+      'claude.global.rules',
+      'claude.global.settings',
+      'claude.global.skill',
     ]);
     for (const rule of claudeRules) {
       expect(rule.discoveryClass, rule.ruleId).toBe(
-        rule.ruleId === 'claude.excluded.plugin-files' ? 'excluded' : 'static-candidate',
+        rule.ruleId.startsWith('claude.excluded.') ? 'excluded' : 'static-candidate',
       );
     }
   });
@@ -359,7 +372,7 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
 });
 
 describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
-  it('ships every read-authorizing Copilot candidate and exactly five exclusions', () => {
+  it('ships every read-authorizing Copilot candidate and exactly six exclusions', () => {
     // The phase-local half of the registry catalog check: the shipped Copilot
     // catalog is the skill rule, the CLI MCP carrier rule (T339), the two
     // VS Code MCP rules (T359), the seven instruction rules, the command and
@@ -370,8 +383,9 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     // and the three hook rules (T883, T895) — the root hook files every
     // surface reads, and one rule per settings pair, because the editor's
     // hook-locations table names the Claude-format pair and not the CLI's own
-    // — all read-authorizing, plus the catalog's five `excluded` records. The
-    // eventual complete catalog gate is T913's, not this suite's.
+    // — all read-authorizing, plus the nine Global rules of the consented
+    // member boundaries (FR-015, FR-045) and the catalog's six `excluded`
+    // records. The eventual complete catalog gate is T913's, not this suite's.
     //
     // Naming the exclusions is what makes them reviewable: rejecting a
     // configured root, a general editor settings file, or a language-server
@@ -384,6 +398,15 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
         .filter((rule) => rule.tool === 'copilot' && rule.discoveryClass === discoveryClass)
         .map((rule) => rule.ruleId);
     expect(byClass('static-candidate')).toEqual([
+      'copilot.global.agent',
+      'copilot.global.agents-home.skill',
+      'copilot.global.hooks',
+      'copilot.global.hooks.inline',
+      'copilot.global.instructions.path',
+      'copilot.global.instructions.root',
+      'copilot.global.mcp',
+      'copilot.global.settings',
+      'copilot.global.skill',
       'copilot.repo.agent',
       'copilot.repo.agent.claude',
       'copilot.repo.command',
@@ -410,9 +433,10 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
       'copilot.excluded.cli-extensions',
       'copilot.excluded.cli-lsp',
       'copilot.excluded.extra-directories',
+      'copilot.excluded.user-runtime',
       'copilot.excluded.vscode-settings',
     ]);
-    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(25);
+    expect(rules.filter((rule) => rule.tool === 'copilot')).toHaveLength(35);
   });
 
   it('gives an exclusion no matcher, no kind, and no strategy (T251)', () => {
@@ -498,7 +522,13 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     // The origin-file-less instruction fact: it names no local path, so no
     // rule may rest on it and nothing about it can create a candidate. Its
     // only owner is the Cloud layering that composes it.
-    for (const edges of Object.values(RULE_RELATIONS)) {
+    for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
+      if (INSPECTION_RULES[ruleId as RuleId].discoveryClass === 'excluded') {
+        // The shared managed-remote exclusion names this surface as scope it
+        // declines — a non-read record that grants nothing — so the guard is
+        // about the rules that could: no candidate may rest on it.
+        continue;
+      }
       expect(edges.basedOnBehaviors.map((behavior) => behavior.behaviorId)).not.toContain(
         'copilot.behavior.cloud.organization-instructions',
       );
@@ -650,10 +680,14 @@ describe('the unified SKILL selector matrix (T179)', () => {
   // integration suite's (tests/integration/repository-scan.test.ts).
   const skillRules = rules.filter((rule) => rule.kind === 'skill');
 
-  it('ships exactly the three vendors’ read-authorizing skill rules', () => {
+  it('ships exactly the seven read-authorizing skill rules', () => {
     expect(skillRules.map((rule) => rule.ruleId).sort()).toEqual([
+      'claude.global.skill',
       'claude.repo.skill',
+      'codex.global.agents-home.skill',
       'codex.repo.skill',
+      'copilot.global.agents-home.skill',
+      'copilot.global.skill',
       'copilot.repo.skill',
     ]);
     for (const rule of skillRules) {
@@ -703,10 +737,19 @@ describe('the unified instruction selector matrix (T269)', () => {
     (rule) => rule.discoveryClass === 'static-candidate',
   );
 
-  it('ships exactly the nine static instruction selectors of the three vendors', () => {
+  it('ships exactly the thirteen static instruction selectors of the three vendors', () => {
+    // Nine Repository selectors plus the two Global selectors consent
+    // authorizes. They are in this list rather than a Global one of their own
+    // because the matrix is about the instruction kind: a selector's base is a
+    // field of it, and the Global-scope assertions below are what separate the
+    // two.
     expect(staticInstructionRules.map((rule) => rule.ruleId).sort()).toEqual([
+      'claude.global.instructions',
       'claude.repo.instructions',
+      'codex.global.instructions',
       'codex.repo.instructions',
+      'copilot.global.instructions.path',
+      'copilot.global.instructions.root',
       'copilot.repo.instructions.agents',
       'copilot.repo.instructions.claude-root',
       'copilot.repo.instructions.gemini-root',
@@ -735,17 +778,22 @@ describe('the unified instruction selector matrix (T269)', () => {
 
   it('keeps every shipped exclusion non-authorizing', () => {
     // The shipped exclusions are the five Copilot ones (T251 owns the four
-    // instruction/settings shapes) and the two plugin-content records, and an exclusion authorizes
+    // instruction/settings shapes), the two plugin-content records, and the two
+    // User-runtime records consent is measured against; an exclusion authorizes
     // nothing: no matcher to admit by and no kind to recognize as.
     const exclusions = rules.filter((rule) => rule.discoveryClass === 'excluded');
     expect(exclusions.map((rule) => rule.ruleId).toSorted()).toEqual([
       'claude.excluded.plugin-files',
+      'claude.excluded.user-runtime',
       'codex.excluded.plugin-files',
+      'codex.excluded.user-runtime',
       'copilot.excluded.additional-standard-locations',
       'copilot.excluded.cli-extensions',
       'copilot.excluded.cli-lsp',
       'copilot.excluded.extra-directories',
+      'copilot.excluded.user-runtime',
       'copilot.excluded.vscode-settings',
+      'shared.excluded.managed-remote-state',
     ]);
     for (const rule of exclusions) {
       expect(rule.matcher, rule.ruleId).toBeNull();
@@ -830,10 +878,12 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     // Admitted for the hook inventory, whose row unit is one declared event.
     expect(inlineHooks.kind).toBe('hook');
     expect(inlineHooks.sourceKinds).toEqual(['repository']);
-    // The same authored location, not a second spelling of it: a matcher
-    // written twice is one that can drift.
-    expect(settings.matcher).toBe(config.matcher);
-    expect(inlineHooks.matcher).toBe(config.matcher);
+    // Deliberately the same authored location written three times — each
+    // record spells its matcher inline (AGENTS.md § Implementation simplicity
+    // policy) — so value equality is the drift gate: it fails exactly when one
+    // spelling changes without the others being decided too.
+    expect(settings.matcher).toStrictEqual(config.matcher);
+    expect(inlineHooks.matcher).toStrictEqual(config.matcher);
   });
 
   it('keeps the fallback derivation Phase 15’s and adds no other Codex row', () => {
@@ -855,6 +905,17 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     expect(codexRules.map((rule) => rule.ruleId)).toEqual([
       'codex.derived.fallback-basename',
       'codex.excluded.plugin-files',
+      'codex.excluded.user-runtime',
+      'codex.global.agent',
+      'codex.global.agents-home.marketplace',
+      'codex.global.agents-home.skill',
+      'codex.global.config',
+      'codex.global.hooks',
+      'codex.global.hooks.inline',
+      'codex.global.instructions',
+      'codex.global.prompts',
+      'codex.global.rules',
+      'codex.global.settings',
       'codex.repo.agent',
       'codex.repo.config',
       'codex.repo.hooks',
@@ -865,8 +926,26 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'codex.repo.settings',
       'codex.repo.skill',
     ]);
+    // Every Codex rule but the Global set reads at the Repository scope. The
+    // set is named rather than skipped, so a Repository rule that quietly
+    // acquired a Global scope still fails here.
+    const codexGlobalRuleIds = new Set([
+      'codex.excluded.user-runtime',
+      'codex.global.agent',
+      'codex.global.agents-home.marketplace',
+      'codex.global.agents-home.skill',
+      'codex.global.config',
+      'codex.global.hooks',
+      'codex.global.hooks.inline',
+      'codex.global.instructions',
+      'codex.global.prompts',
+      'codex.global.rules',
+      'codex.global.settings',
+    ]);
     for (const rule of codexRules) {
-      expect(rule.sourceKinds, rule.ruleId).toEqual(['repository']);
+      expect(rule.sourceKinds, rule.ruleId).toEqual(
+        codexGlobalRuleIds.has(rule.ruleId) ? ['global'] : ['repository'],
+      );
     }
   });
 
@@ -906,11 +985,17 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     // not what this case is about.
     expect(mcpRules.map((rule) => rule.ruleId).toSorted()).toEqual([
       'claude.repo.mcp',
+      'codex.global.config',
       'codex.repo.config',
+      'copilot.global.mcp',
       'copilot.repo.mcp',
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
     ]);
+    // The matrix is about the Repository scope: a Global carrier's selector
+    // is authored against its consented member boundary, so running it
+    // against a Repository-relative path would test a base it never has.
+    const repositoryMcpRules = mcpRules.filter((rule) => rule.sourceKinds.includes('repository'));
     const MCP_MATRIX: readonly (readonly [string, readonly string[]])[] = [
       ['.codex/config.toml', ['codex']],
       // A subdirectory carrier is a runtime-chain member no product's rule
@@ -939,7 +1024,7 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       ['.codex/hooks.json', []],
     ];
     for (const [path, expected] of MCP_MATRIX) {
-      expect(admittingTools(mcpRules, path), path).toEqual(expected);
+      expect(admittingTools(repositoryMcpRules, path), path).toEqual(expected);
     }
   });
 
@@ -997,10 +1082,15 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
     // table names the Claude-format pair alone; a custom agent's frontmatter
     // hooks publish no row here for the reason a skill's do not (T883, T895).
     expect(rules.filter((rule) => rule.kind === 'hook').map((rule) => rule.ruleId)).toEqual([
+      'copilot.global.hooks',
+      'copilot.global.hooks.inline',
       'copilot.repo.hooks',
       'copilot.repo.hooks.settings',
       'copilot.repo.hooks.settings.claude',
       'claude.repo.hooks.settings',
+      'claude.global.hooks.settings',
+      'codex.global.hooks',
+      'codex.global.hooks.inline',
       'codex.repo.hooks',
       'codex.repo.hooks.inline',
     ]);
@@ -1039,6 +1129,246 @@ describe('structure-only projection vocabulary', () => {
     ]).toLowerCase();
     for (const word of FORBIDDEN) {
       expect(serialized).not.toContain(word);
+    }
+  });
+});
+
+describe('the registry this release owns (T913)', () => {
+  it('ships eighty-one rules: forty-nine Repository and thirty-two Global (T992)', () => {
+    // The phase gate: not a per-family list — each family's own case above
+    // owns that — but the total this release is allowed to read by, split by
+    // the scope each rule reads at. A rule added without a phase that owns it
+    // fails here, which is the point of freezing the numbers rather than
+    // deriving them.
+    expect(rules).toHaveLength(81);
+    const repository = rules.filter((rule) => rule.sourceKinds.includes('repository'));
+    const global = rules.filter((rule) => rule.sourceKinds.includes('global'));
+    expect(repository).toHaveLength(49);
+    expect(repository.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(
+      41,
+    );
+    expect(
+      repository.filter((rule) => rule.discoveryClass === 'bounded-derived-candidate'),
+    ).toHaveLength(1);
+    expect(repository.filter((rule) => rule.discoveryClass === 'excluded')).toHaveLength(7);
+    // The complete Global scope (T992): twenty-eight static read-authorizing
+    // rules across the four members, the three vendor exclusions, and the
+    // shared managed-remote-state record. Naming the set is what keeps a new
+    // rule from arriving without the phase that owns it.
+    expect(global.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(28);
+    expect(global.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'claude.excluded.user-runtime',
+      'claude.global.agent',
+      'claude.global.command',
+      'claude.global.hooks.settings',
+      'claude.global.instructions',
+      'claude.global.output-style',
+      'claude.global.permissions',
+      'claude.global.rules',
+      'claude.global.settings',
+      'claude.global.skill',
+      'codex.excluded.user-runtime',
+      'codex.global.agent',
+      'codex.global.agents-home.marketplace',
+      'codex.global.agents-home.skill',
+      'codex.global.config',
+      'codex.global.hooks',
+      'codex.global.hooks.inline',
+      'codex.global.instructions',
+      'codex.global.prompts',
+      'codex.global.rules',
+      'codex.global.settings',
+      'copilot.excluded.user-runtime',
+      'copilot.global.agent',
+      'copilot.global.agents-home.skill',
+      'copilot.global.hooks',
+      'copilot.global.hooks.inline',
+      'copilot.global.instructions.path',
+      'copilot.global.instructions.root',
+      'copilot.global.mcp',
+      'copilot.global.settings',
+      'copilot.global.skill',
+      'shared.excluded.managed-remote-state',
+    ]);
+    // No rule reads at both scopes. A Global selector is authored against a
+    // consented vendor home and a Repository one against the selected root, so
+    // a rule claiming both would be one record for two boundaries.
+    for (const rule of rules) {
+      expect(rule.sourceKinds.length, rule.ruleId).toBe(1);
+    }
+  });
+
+  it('gives the merged root `.mcp.json` one recognition per product and two Copilot provenances', () => {
+    // One physical file, one read, one recognition per product (FR-004) — and
+    // on the Copilot side two rules admit it, because the CLI's own lookup and
+    // the editor host's workspace-root discovery are separate documented
+    // behaviors over one path. Two provenances on one recognition is what that
+    // means; a second candidate for the same path would be a second read.
+    const admitting = rules.filter(
+      (rule) => rule.matcher !== null && admittingTools([rule], '.mcp.json').length > 0,
+    );
+    expect(admitting.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'claude.repo.mcp',
+      'copilot.repo.mcp',
+      'copilot.repo.mcp.vscode-root',
+    ]);
+    // The two Copilot rules rest on different behaviors — that difference is
+    // the provenance, and a shared behavior list would make them one record
+    // written twice.
+    const cli = RULE_RELATIONS['copilot.repo.mcp'].basedOnBehaviors.map((b) => b.behaviorId);
+    const editor = RULE_RELATIONS['copilot.repo.mcp.vscode-root'].basedOnBehaviors.map(
+      (b) => b.behaviorId,
+    );
+    expect(cli).not.toEqual(editor);
+    for (const behaviorId of [...cli, ...editor]) {
+      expect(VENDOR_BEHAVIOR_STATEMENTS[behaviorId]).toBeDefined();
+    }
+  });
+
+  it('adds no rule for a contained MCP declaration and one for each contained hook location', () => {
+    // A contained MCP declaration is the carrying file's own content: the MCP
+    // kind ships exactly the seven explicit carriers, so a settings document,
+    // an agent file, or a plugin manifest that spells MCP configuration adds
+    // no rule and no candidate (data-model.md § Inventory unit).
+    const mcpMatchers = rules.filter((rule) => rule.kind === 'MCP' && rule.matcher !== null);
+    expect(mcpMatchers).toHaveLength(7);
+    for (const path of [
+      '.claude/settings.json',
+      '.github/copilot/settings.json',
+      '.claude/agents/reviewer.md',
+      '.claude-plugin/plugin.json',
+    ]) {
+      expect(admittingTools(mcpMatchers, path), path).toEqual([]);
+    }
+
+    // A contained hook declaration is the opposite case, and for the reason
+    // the amendment states: a recognition is what a rule produces, so a
+    // product reading hooks out of a document it also reads for other content
+    // needs its own rule over that document. Those rules therefore share
+    // their paths with another kind's rule — one file, one read, two
+    // recognitions — which is what distinguishes them from a standalone hook
+    // file's rule.
+    const hookRules = rules.filter((rule) => rule.kind === 'hook' && rule.matcher !== null);
+    const containedHookPaths = [
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+      '.github/copilot/settings.json',
+      '.github/copilot/settings.local.json',
+      '.codex/config.toml',
+    ];
+    // The rules of every other kind, which is where the owner each contained
+    // hook rule shares its one read with must appear.
+    const otherKindRules = rules.filter(
+      (rule) => rule.kind !== null && rule.kind !== 'hook' && rule.matcher !== null,
+    );
+    for (const path of containedHookPaths) {
+      expect(admittingTools(hookRules, path), path).not.toEqual([]);
+      expect(admittingTools(otherKindRules, path), path).not.toEqual([]);
+    }
+  });
+
+  it('creates no candidate without a selector to create it from', () => {
+    // No synthetic file: a candidate exists because a matcher selected a path
+    // the walk found, or because a configuration read named one. Nothing else
+    // may produce a candidate, so a static rule without a matcher — a rule
+    // that would admit by name alone — is what this rejects.
+    for (const rule of rules) {
+      if (rule.discoveryClass === 'static-candidate') {
+        expect(rule.matcher, rule.ruleId).not.toBeNull();
+      } else {
+        expect(rule.matcher, rule.ruleId).toBeNull();
+      }
+    }
+  });
+});
+
+describe('the Repository subgraph as one graph (T920)', () => {
+  it('resolves every rule edge to the shipped record it names, by identity', () => {
+    // The graph holds records rather than identifiers, so an edge that
+    // resolved to an equal-looking copy would still be a second record: the
+    // registry's acyclicity is what makes holding the reference possible at
+    // all, and identity is what proves it was held.
+    for (const rule of rules) {
+      const relations = RULE_RELATIONS[rule.ruleId];
+      expect(relations, rule.ruleId).toBeDefined();
+      for (const behavior of relations.basedOnBehaviors) {
+        expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId], rule.ruleId).toBe(behavior);
+      }
+      for (const strategy of relations.explainedByStrategies) {
+        expect(RUNTIME_COMPOSITION_STRATEGIES[strategy.strategyId], rule.ruleId).toBe(strategy);
+      }
+    }
+  });
+
+  it('leaves no behavior nothing reaches, and no strategy composing nothing', () => {
+    // A behavior no rule rests on and no strategy composes is maintenance data
+    // with no consumer: either the rule that was to rest on it never shipped,
+    // or the record outlived it. Both are findings.
+    //
+    // A strategy, by contrast, may legitimately be named by no rule — a User
+    // or Cloud scope this release admits nothing from is still composed, and
+    // its statement is what says the Inspector deliberately reads none of
+    // it — so what is asserted of a strategy is that it composes something.
+    const reachedBehaviors = new Set<string>();
+    for (const rule of rules) {
+      for (const behavior of RULE_RELATIONS[rule.ruleId].basedOnBehaviors) {
+        reachedBehaviors.add(behavior.behaviorId);
+      }
+    }
+    for (const strategy of Object.values(RUNTIME_COMPOSITION_STRATEGIES)) {
+      const consumed = STRATEGY_RELATIONS[strategy.strategyId].consumesBehaviors;
+      expect(consumed.length, strategy.strategyId).toBeGreaterThan(0);
+      for (const behavior of consumed) {
+        expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId], strategy.strategyId).toBe(behavior);
+        reachedBehaviors.add(behavior.behaviorId);
+      }
+    }
+    // Every behavior is reached: the three vendor User exclusions and the
+    // shared managed-remote record now name every surface no Global rule
+    // admits, so a behavior nothing reaches would be a record with no owner —
+    // a finding rather than a silent addition.
+    expect(
+      Object.keys(VENDOR_BEHAVIOR_STATEMENTS)
+        .filter((id) => !reachedBehaviors.has(id))
+        .toSorted(),
+    ).toEqual([]);
+  });
+
+  it('ships no relationship-only rule, so no recognition emits an edge', () => {
+    // A relationship may be emitted only when a relationship-only rule covers
+    // its origin (contracts/runtime-composition.md § Normative
+    // relationship-only registry). This release ships none, so no recognition
+    // can produce an edge and no presentation-allowlist row is consumed by
+    // one: the allowlist permits kinds, and permission is not emission.
+    expect(rules.filter((rule) => rule.discoveryClass === 'relationship-only')).toEqual([]);
+    // Every shipped rule is a read decision — a candidate class or an
+    // exclusion — which is what leaves the allowlist unconsumed.
+    expect([...new Set(rules.map((rule) => rule.discoveryClass))].toSorted()).toEqual([
+      'bounded-derived-candidate',
+      'excluded',
+      'static-candidate',
+    ]);
+  });
+
+  it('names a documented source for every claim it records', () => {
+    // Maintenance data only: a rule's evidence cites the page that
+    // establishes it, and a citation with no source, no URL, or no reviewed
+    // date is a claim with nothing behind it. What each page establishes is
+    // `vendor-behaviors.test.ts`'s to check against the official-sources
+    // rows; what this asserts is that the rule side carries one at all.
+    for (const rule of rules) {
+      if (rule.discoveryClass === 'excluded') {
+        // An exclusion records the behavior it deliberately does not
+        // authorize, and its basis is that behavior's own citation.
+        continue;
+      }
+      expect(rule.evidence.length, rule.ruleId).toBeGreaterThan(0);
+      for (const citation of rule.evidence) {
+        expect(citation.sourceId.length, rule.ruleId).toBeGreaterThan(0);
+        expect(citation.url.startsWith('https://'), `${rule.ruleId} ${citation.url}`).toBe(true);
+        expect(citation.reviewedOn, rule.ruleId).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
+        expect(citation.establishes.length, rule.ruleId).toBeGreaterThan(0);
+      }
     }
   });
 });

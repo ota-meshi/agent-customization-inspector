@@ -79,17 +79,70 @@ export class ClaudeCompiledOtherKindRule
  * `.claude/settings*.json` is both the permission policy's carrier and a
  * settings document of its own (FR-007).
  *
- * The selection is by declared class, as the Codex list's is: the catalog now
- * carries an `excluded` row — `claude.excluded.plugin-files`, which authorizes
- * no traversal by definition — so the static candidates are taken and every one
- * of them is compiled. A static record that still cannot be executed fails the
+ * The selection is by declared class and by scope, as the Codex list's is: the
+ * catalog carries `excluded` rows — `claude.excluded.plugin-files` and
+ * `claude.excluded.user-runtime`, which authorize no traversal by definition —
+ * and one Global rule, so the Repository static candidates are taken and every
+ * one of them is compiled. A static record that still cannot be executed fails the
  * build that ships it through the {@link ClaudeCompiledRule} constructor's
  * guard rather than disappearing from the scan.
  */
+/**
+ * The Claude rules a consented Global scan executes: the one instruction rule
+ * whose `CLAUDE.md` sits directly below the admitted `<claude-config-dir>`
+ * (contracts/vendors/claude-code.md § Global accepted matcher).
+ *
+ * Separate from the Repository catalog rather than filtered out of it at call
+ * time, because the two are executed against different roots: a scan is given
+ * the catalog for the Source it is scanning, and there is no call site that
+ * should have to decide which rules of a mixed list apply to the root it holds.
+ *
+ * It compiles through the same instruction unit as its Repository siblings, so
+ * what an admitted Global instruction file governs is answered by the same code
+ * path — the applicability range of a file below a vendor home is still a fact
+ * about an instruction file, and for a file at the root of that home the unit's
+ * own derivation answers `**`. The unit's constructor is also what refuses a
+ * Global Claude record of any other kind, at module load rather than at scan
+ * time.
+ */
+export const CLAUDE_GLOBAL_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
+  CLAUDE_INSPECTION_RULES,
+)
+  .filter(
+    (rule) => rule.discoveryClass === 'static-candidate' && rule.sourceKinds.includes('global'),
+  )
+  // Each record compiles into the unit that answers its kind's question — the
+  // same dispatch the Repository catalog uses, minus the plugin branches
+  // whose rule IDs only exist at the Repository scope — because the consented
+  // home's rule is the same vendor's reading at another boundary.
+  .map((rule) =>
+    rule.kind === 'instructions'
+      ? new ClaudeCompiledInstructionRule(rule)
+      : rule.kind === 'skill'
+        ? new ClaudeCompiledSkillRule(rule)
+        : rule.kind === 'agent'
+          ? new ClaudeCompiledAgentRule(rule)
+          : rule.kind === 'prompt/command'
+            ? new ClaudeCompiledPromptRule(rule)
+            : rule.kind === 'permissions'
+              ? new ClaudeCompiledPermissionsCarrierRule(rule)
+              : rule.kind === 'output style'
+                ? new ClaudeCompiledOutputStyleRule(rule)
+                : rule.kind === 'hook'
+                  ? new ClaudeCompiledSettingsHookRule(rule)
+                  : new ClaudeCompiledOtherKindRule(rule),
+  );
+
 export const CLAUDE_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
   CLAUDE_INSPECTION_RULES,
 )
-  .filter((rule) => rule.discoveryClass === 'static-candidate')
+  // Selected by scope as well as by class. A Global rule's base is a consented
+  // vendor home, so executing one here would run a Global selector against the
+  // Repository root — a read nobody consented to, of a path that means
+  // something else. {@link CLAUDE_GLOBAL_RULES} above is where they go.
+  .filter(
+    (rule) => rule.discoveryClass === 'static-candidate' && rule.sourceKinds.includes('repository'),
+  )
   .map((rule) =>
     // Each record compiles into the unit that can answer its kind's question:
     // an instruction record what its files govern, a command record the name its

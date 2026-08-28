@@ -70,6 +70,8 @@ export type ClaudeBehaviorId =
   | 'claude.behavior.user.commands'
   /** Claude User instructions at `<claude-config-dir>/CLAUDE.md`. */
   | 'claude.behavior.user.instructions'
+  /** Claude User keyboard shortcuts at `<claude-config-dir>/keybindings.json`; a terminal-UI preference, never an agent input. */
+  | 'claude.behavior.user.keybindings'
   /** Claude User output styles under `<claude-config-dir>/output-styles/`; a non-authorizing fact. */
   | 'claude.behavior.user.output-style'
   /** Claude User and per-project local MCP state at `<home>/.claude.json`; a non-authorizing fact. */
@@ -81,7 +83,11 @@ export type ClaudeBehaviorId =
   /** Claude User settings at `<claude-config-dir>/settings.json`; a non-authorizing fact. */
   | 'claude.behavior.user.settings'
   /** Claude User skill discovery under `<claude-config-dir>/skills/<skill-name>/SKILL.md`. */
-  | 'claude.behavior.user.skills';
+  | 'claude.behavior.user.skills'
+  /** Claude User color themes under `<claude-config-dir>/themes/*.json`; a terminal-UI preference, never an agent input. */
+  | 'claude.behavior.user.themes'
+  /** Claude User dynamic workflow scripts under `<claude-config-dir>/workflows/*.js`; a non-authorizing fact. */
+  | 'claude.behavior.user.workflows';
 
 /**
  * OpenAI Codex behavior statements
@@ -115,8 +121,12 @@ export type CodexBehaviorId =
   | 'codex.behavior.user.hooks'
   /** Codex User instruction fallback at `<CODEX_HOME>/AGENTS.override.md` then `AGENTS.md`. */
   | 'codex.behavior.user.instructions'
+  /** Codex local memory files under `<CODEX_HOME>/memories/`; generated state and a non-authorizing fact. */
+  | 'codex.behavior.user.memories'
   /** Codex personal marketplace at `$HOME/.agents/plugins/marketplace.json` and its installed/cache copies; a non-authorizing fact. */
   | 'codex.behavior.user.plugins'
+  /** Codex deprecated custom prompts at `<CODEX_HOME>/prompts/*.md`; a non-authorizing fact. */
+  | 'codex.behavior.user.prompts'
   /** Codex User rule files at `<CODEX_HOME>/rules/*.rules`; a non-authorizing fact. */
   | 'codex.behavior.user.rules'
   /** Codex User skill discovery under `$HOME/.agents/skills/<name>/SKILL.md`. */
@@ -311,10 +321,14 @@ export type OpenAiSourceId =
   | 'openai.codex.agents-md'
   /** The basic configuration page: the config file locations and their precedence. */
   | 'openai.codex.config-basic'
+  /** The deprecated custom-prompts page: where a prompt file lives and how it is invoked. */
+  | 'openai.codex.custom-prompts'
   /** The Codex hooks page: where hooks live, their config shape, and their review gate. */
   | 'openai.codex.hooks'
   /** The Codex MCP page: how MCP servers are declared and connected. */
   | 'openai.codex.mcp'
+  /** The local-memories page: where generated memory files live and how the feature is turned on. */
+  | 'openai.codex.memories'
   /** The Codex plugins page: local marketplace catalogs, their entry sources, and the plugin manifest and its bundled components. */
   | 'openai.codex.plugins'
   /** The Codex rules page: where rule files live and what a `prefix_rule()` declares. */
@@ -530,7 +544,27 @@ export type ClaudeRuleId =
   /** The manifest that makes a skills-directory folder a plugin; read-authorizing `static-candidate`. */
   | 'claude.repo.skills-directory-plugin'
   /** The plugin component paths no rule admits; non-read `excluded`. */
-  | 'claude.excluded.plugin-files';
+  | 'claude.excluded.plugin-files'
+  /** Every Claude User surface but the consented instruction file, on record as excluded and admitted by nothing. */
+  | 'claude.excluded.user-runtime'
+  /** Personal Claude subagents, recursive Markdown under the consented boundary's `agents/`; read-authorizing `static-candidate`. */
+  | 'claude.global.agent'
+  /** Personal Claude command files, recursive Markdown under the consented boundary's `commands/`; read-authorizing `static-candidate`. */
+  | 'claude.global.command'
+  /** The `hooks` the consented user settings document contains; read-authorizing `static-candidate`. */
+  | 'claude.global.hooks.settings'
+  /** The consented Claude Global `CLAUDE.md` under `<claude-config-dir>`; read-authorizing `static-candidate`. */
+  | 'claude.global.instructions'
+  /** Personal Claude output styles `output-styles/*.md` below the consented Claude boundary; read-authorizing `static-candidate`. */
+  | 'claude.global.output-style'
+  /** The permission policy the consented user settings document declares; read-authorizing `static-candidate`. */
+  | 'claude.global.permissions'
+  /** Personal Claude rule files `rules/*.md` below the consented Claude boundary; read-authorizing `static-candidate`. */
+  | 'claude.global.rules'
+  /** The consented user `settings.json` read as the settings document; read-authorizing `static-candidate`. */
+  | 'claude.global.settings'
+  /** Personal Claude skills `skills/<name>/SKILL.md` below the consented Claude boundary; read-authorizing `static-candidate`. */
+  | 'claude.global.skill';
 
 /**
  * OpenAI Codex inspection rules
@@ -542,6 +576,28 @@ export type CodexRuleId =
   | 'codex.derived.fallback-basename'
   /** The plugin content a manifest or a catalog points at, on record as excluded and admitted by nothing. */
   | 'codex.excluded.plugin-files'
+  /** Every Codex User surface no Global rule admits, on record as excluded and admitted by nothing. */
+  | 'codex.excluded.user-runtime'
+  /** Personal Codex custom agents as direct-child TOML of the consented boundary's `agents/`; read-authorizing `static-candidate`. */
+  | 'codex.global.agent'
+  /** The personal plugin marketplace `plugins/marketplace.json` below the consented shared agent home (FR-045); read-authorizing `static-candidate`. */
+  | 'codex.global.agents-home.marketplace'
+  /** Personal skills `skills/<name>/SKILL.md` below the consented shared agent home (FR-045); read-authorizing `static-candidate`. */
+  | 'codex.global.agents-home.skill'
+  /** The consented-boundary-exact `config.toml` MCP carrier; read-authorizing `static-candidate`. */
+  | 'codex.global.config'
+  /** The consented-boundary-exact `hooks.json` standalone hook carrier; read-authorizing `static-candidate`. */
+  | 'codex.global.hooks'
+  /** The consented-boundary-exact `config.toml` read for the inline `[hooks]` table it contains; read-authorizing `static-candidate`. */
+  | 'codex.global.hooks.inline'
+  /** The consented Codex Global instruction fallback under `<CODEX_HOME>`; read-authorizing `static-candidate`. */
+  | 'codex.global.instructions'
+  /** Personal deprecated Codex prompts `prompts/*.md` below the consented boundary; read-authorizing `static-candidate`. */
+  | 'codex.global.prompts'
+  /** Personal Codex rule files `rules/*.rules` below the consented boundary, recognized as `permissions`; read-authorizing `static-candidate`. */
+  | 'codex.global.rules'
+  /** The consented-boundary-exact `config.toml` read as the user settings document; read-authorizing `static-candidate`. */
+  | 'codex.global.settings'
   /** Repository Codex custom agents as direct-child TOML of the root's `.codex/agents/`; read-authorizing `static-candidate`. */
   | 'codex.repo.agent'
   /** The root-exact `.codex/config.toml` MCP carrier; read-authorizing `static-candidate`. */
@@ -583,6 +639,26 @@ export type CopilotRuleId =
   | 'copilot.excluded.extra-directories'
   /** VS Code's general workspace `.vscode/settings.json`, left out of this release's read allowlist. */
   | 'copilot.excluded.vscode-settings'
+  /** The Copilot user surfaces no Global rule admits — profile files, another tool's home, installed state — on record as excluded. */
+  | 'copilot.excluded.user-runtime'
+  /** Personal custom agents `agents/*.agent.md` below the consented `COPILOT_HOME`; read-authorizing `static-candidate`. */
+  | 'copilot.global.agent'
+  /** Personal skills `skills/<name>/SKILL.md` below the consented shared agent home (FR-045); read-authorizing `static-candidate`. */
+  | 'copilot.global.agents-home.skill'
+  /** User-level hook files `hooks/*.json` below the consented `COPILOT_HOME`; read-authorizing `static-candidate`. */
+  | 'copilot.global.hooks'
+  /** The inline `hooks` field of the consented user `settings.json`; read-authorizing `static-candidate`. */
+  | 'copilot.global.hooks.inline'
+  /** The consented `<COPILOT_HOME>/copilot-instructions.md`; read-authorizing `static-candidate`. */
+  | 'copilot.global.instructions.root'
+  /** Files ending `.instructions.md` at any depth below the consented `COPILOT_HOME` `instructions/` directory; read-authorizing `static-candidate`. */
+  | 'copilot.global.instructions.path'
+  /** The user-level MCP carrier `mcp-config.json` below the consented `COPILOT_HOME`; read-authorizing `static-candidate`. */
+  | 'copilot.global.mcp'
+  /** The consented user `settings.json`, the user layer of the documented settings cascade; read-authorizing `static-candidate`. */
+  | 'copilot.global.settings'
+  /** Personal skills `skills/<name>/SKILL.md` below the consented `COPILOT_HOME`; read-authorizing `static-candidate`. */
+  | 'copilot.global.skill'
   /** Root direct-child Copilot CLI command files under `.claude/commands/`; read-authorizing `static-candidate`. */
   | 'copilot.repo.command'
   /** Root direct-child Copilot VS Code prompt files under `.github/prompts/`; read-authorizing `static-candidate`. */
@@ -619,8 +695,18 @@ export type CopilotRuleId =
   | 'copilot.repo.hooks.settings.claude';
 
 /**
+ * Cross-vendor inspection rules: policy no single vendor owns. Exactly one
+ * exists — the shared non-read exclusion over managed, organization, hosted,
+ * and remote state (contracts/runtime-composition.md § Shared non-read
+ * exclusions).
+ */
+export type SharedRuleId =
+  /** Managed, organization, hosted, remote, and state surfaces across vendors, on record as excluded and admitted by nothing. */
+  'shared.excluded.managed-remote-state';
+
+/**
  * Every Inspector policy rule. Each vendor's sub-union joins here, and the
  * rule registry is keyed by it. This union is therefore the complete list of
  * rules that can authorize a read.
  */
-export type RuleId = ClaudeRuleId | CodexRuleId | CopilotRuleId;
+export type RuleId = ClaudeRuleId | CodexRuleId | CopilotRuleId | SharedRuleId;

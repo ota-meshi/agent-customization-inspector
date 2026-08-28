@@ -144,6 +144,7 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
         sourceId: 'src-1',
         root: tree.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules: AGENTS_RULES,
         result,
       });
@@ -224,6 +225,7 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
         sourceId: 'src-1',
         root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules,
         result,
       });
@@ -265,6 +267,7 @@ describe('file-confined outcomes publish a partial generation (FR-028)', () => {
         sourceId: 'src-1',
         root: tree.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules,
         result,
       });
@@ -308,6 +311,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         sourceId: 'src-1',
         root: root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules: AGENTS_RULES,
         result,
         recognize: async ({ matchedPath }) => ({
@@ -381,6 +385,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
         sourceId: 'src-1',
         root: root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules: AGENTS_RULES,
         result,
         recognize: async ({ matchedPath }) => ({
@@ -461,6 +466,7 @@ describe('unreadable root fails the Source attempt (FR-002)', () => {
       sourceId: 'src-1',
       root: missingRoot,
       rootFailureOwner: 'repository',
+      scope: 'repository',
       rules: AGENTS_RULES,
       result,
     });
@@ -486,6 +492,7 @@ describe('unreadable root fails the Source attempt (FR-002)', () => {
       sourceId,
       root: missingRoot,
       rootFailureOwner: 'repository',
+      scope: 'repository',
       rules: AGENTS_RULES,
       result,
     });
@@ -716,7 +723,7 @@ describe('scan progress counters', () => {
         root,
         plans: [
           TraversalPlan.fromPrograms(
-            { kind: 'global', tool: 'codex' },
+            { kind: 'global', member: 'codex' },
             [['AGENTS.override.md'], ['AGENTS.md']],
             'codex-global-first-non-empty',
           ),
@@ -819,6 +826,7 @@ describe('late results after revocation are discarded (FR-029)', () => {
         sourceId,
         root: tree.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
         rules: AGENTS_RULES,
         result,
       });
@@ -840,6 +848,140 @@ describe('late results after revocation are discarded (FR-029)', () => {
     } finally {
       tree.restore();
       rmSync(tree.root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('entries no selector names are never classified (FR-018, FR-024)', () => {
+  it('walks past a self-referential link beside an admitted file', async () => {
+    // A neighbour the plan does not name decides nothing, so its type is not
+    // resolved: without that, the `stat` on `ignored.txt → ignored.txt` threw
+    // `ELOOP`, which is not file-confined and aborted the whole attempt — a
+    // reader's one broken link beside their hook files failed their entire
+    // scan. The walk alone is the subject: a kind with a companion census
+    // lists such a neighbour and reports its own read failure per file, but an
+    // enumerated directory of a census-free kind — a hook directory — has only
+    // this walk between the link and the whole attempt.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-self-link-'));
+    try {
+      mkdirSync(join(root, 'siblings'), { recursive: true });
+      writeFileSync(join(root, 'siblings', 'first.md'), 'first\n');
+      try {
+        symlinkSync('ignored.txt', join(root, 'siblings', 'ignored.txt'));
+      } catch {
+        // A filesystem without symbolic links cannot build the case.
+        return;
+      }
+      const plan = TraversalPlan.fromPrograms({ kind: 'repository' }, [['siblings', /\.md$/u]]);
+      const result = await runTraversalScan({ root, plans: [plan] });
+      if (result.kind !== 'scanned') {
+        throw new Error('expected a completed traversal');
+      }
+      expect(
+        result.files.map((candidate) => [candidate.publicPath, candidate.outcome.kind]),
+      ).toEqual([['siblings/first.md', 'readable']]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("the admitted root string stays the operating system's to resolve (FR-024)", () => {
+  it('reads children under a root spelled through a link and `..`', async () => {
+    // `join` collapses `..` lexically while the operating system resolves it
+    // through the link, so for a root spelled `<base>/lnk/../real` the two
+    // disagree ({@link pathUnderRoot}). The walk must read the directory
+    // admission checked — the OS-resolved one — not the lexical collapse.
+    const base = mkdtempSync(join(tmpdir(), 'inspector-link-root-'));
+    try {
+      mkdirSync(join(base, 'deep', 'inner'), { recursive: true });
+      mkdirSync(join(base, 'deep', 'real', 'siblings'), { recursive: true });
+      writeFileSync(join(base, 'deep', 'real', 'siblings', 'first.md'), 'first\n');
+      try {
+        symlinkSync(join(base, 'deep', 'inner'), join(base, 'lnk'));
+      } catch {
+        return;
+      }
+      // OS resolution: lnk → deep/inner, so lnk/.. is deep and the root is
+      // deep/real. The lexical collapse would be <base>/real, which does not
+      // exist.
+      const root = `${base}/lnk/../real`;
+      const rules = [
+        codexSkillRule(
+          TraversalPlan.fromPrograms({ kind: 'repository' }, [['siblings', /\.md$/u]]),
+        ),
+      ];
+      const result = await runTraversalScan({ root, plans: rules.map((rule) => rule.plan) });
+      const publication = await assembleScanPublication({
+        sourceId: 'src-1',
+        root,
+        rootFailureOwner: 'repository',
+        scope: 'repository',
+        rules,
+        result,
+      });
+      if (publication.kind !== 'publishable') {
+        throw new Error('expected a publishable outcome');
+      }
+      expect(publication.files.map((file) => file.sourceRelativePath)).toEqual([
+        'siblings/first.md',
+      ]);
+      const [file] = publication.files;
+      if (file?.encoding !== 'utf-8') {
+        throw new Error('expected the readable variant');
+      }
+      expect(file.sourceText).toBe('first\n');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a fixed-prefix scan never lists the root itself (Global least privilege)', () => {
+  it('walks and censuses a discovered skill without a root readdir', async () => {
+    // A Global member's plans probe exact targets and walk fixed subtrees, so
+    // the consented home itself is never enumerated
+    // (contracts/inspection-path-allowlist.md § Global least privilege). The
+    // census's spelling verification re-lists every ancestor of a census
+    // root — the Source root included — so it runs for Repository scans
+    // alone, whose walk enumerates the root anyway; a Global scan must not
+    // bring the root listing back through it.
+    const root = mkdtempSync(join(tmpdir(), 'inspector-no-root-list-'));
+    try {
+      mkdirSync(join(root, 'skills', 'demo'), { recursive: true });
+      writeFileSync(join(root, 'skills', 'demo', 'SKILL.md'), '---\nname: demo\n---\nbody\n');
+      writeFileSync(join(root, 'skills', 'demo', 'notes.md'), 'companion\n');
+      // A neighbour at the root: its name must never be read out of a listing.
+      writeFileSync(join(root, 'credentials.txt'), 'secret\n');
+      const rules = [
+        codexSkillRule(
+          TraversalPlan.fromPrograms({ kind: 'global', member: 'copilot' }, [
+            ['skills', /(?:)/u, 'SKILL.md'],
+          ]),
+        ),
+      ];
+      vi.mocked(fsIo.readdir).mockClear();
+      const result = await runTraversalScan({ root, plans: rules.map((rule) => rule.plan) });
+      const publication = await assembleScanPublication({
+        sourceId: 'src-1',
+        root,
+        rootFailureOwner: 'global:copilot',
+        scope: 'global',
+        rules,
+        result,
+      });
+      if (publication.kind !== 'publishable') {
+        throw new Error('expected a publishable outcome');
+      }
+      // The census still ran: the companion beside the entry point published.
+      expect(publication.files.map((file) => file.sourceRelativePath)).toEqual([
+        'skills/demo/SKILL.md',
+        'skills/demo/notes.md',
+      ]);
+      const listed = vi.mocked(fsIo.readdir).mock.calls.map(([path]) => String(path));
+      expect(listed).not.toContain(root);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

@@ -27,6 +27,7 @@ import type { CompiledStaticSkillRule } from './skills/compiled-rule';
 import type { CompiledStaticPermissionsRule } from './permissions/compiled-rule';
 import type { CompiledStaticPromptRule } from './prompts-and-commands/compiled-rule';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
+import type { GlobalMemberId } from '../../../shared/api-types';
 import { VENDOR_SURFACE_ORDER } from '../../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type { InspectionRule } from '../../../shared/registries/rule-types';
@@ -282,12 +283,12 @@ export type MatcherBase =
       /** Selects the Repository boundary. */
       readonly kind: 'repository';
     }
-  /** One consented tool-specific Global boundary. */
+  /** One consented member Global boundary. */
   | {
       /** Selects a Global boundary. */
       readonly kind: 'global';
-      /** The supported tool whose Global root owns the matcher. */
-      readonly tool: SupportedTool;
+      /** The member whose consented Global root owns the matcher (FR-045). */
+      readonly member: GlobalMemberId;
     };
 
 /**
@@ -640,8 +641,18 @@ export abstract class CompiledInspectionRule extends CompiledRule {
   /** The immutable plan compiled from the rule's structured matcher. */
   public readonly plan: TraversalPlan;
 
-  /** Compiles one shipped record, rejecting any that cannot authorize a traversal. */
-  protected constructor(rule: InspectionRule) {
+  /**
+   * Compiles one shipped record, rejecting any that cannot authorize a
+   * traversal.
+   *
+   * `selectionPolicy` defaults to `all-matches`, which is what every match-all
+   * rule is. A content-dependent policy is one rule's own fact, so the unit
+   * that compiles that rule passes it rather than this constructor deciding by
+   * identity: a `switch` on rule IDs here would put one vendor's selection
+   * semantics in the base every vendor shares (AGENTS.md § Class and interface
+   * policy).
+   */
+  protected constructor(rule: InspectionRule, selectionPolicy: SelectionPolicy = 'all-matches') {
     if (rule.discoveryClass !== 'static-candidate') {
       throw new TypeError(
         `rule ${rule.ruleId} is not a static candidate and authorizes no traversal`,
@@ -651,7 +662,7 @@ export abstract class CompiledInspectionRule extends CompiledRule {
       throw new TypeError(`rule ${rule.ruleId} admits candidates but carries no matcher`);
     }
     super(rule);
-    this.plan = new TraversalPlan(rule.matcher);
+    this.plan = new TraversalPlan(rule.matcher, selectionPolicy);
   }
 }
 

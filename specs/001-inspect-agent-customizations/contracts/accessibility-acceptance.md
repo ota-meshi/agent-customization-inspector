@@ -143,7 +143,7 @@ Every `MANUAL-*` ID is executed over the Cartesian product of the following clos
   removed comparison after a compared file's owning sequence commits its replacement
   generation, plus a comparison that stays valid when a sequence owning neither compared
   file commits; `S7` Global disabled, selector-free
-  fixed-three-tool session-wide consent pending, one-batch admitted-subset scan complete with
+  fixed-four-member session-wide consent pending, one-batch admitted-subset scan complete with
   exactly one atomic Global generation, whole-transaction abort on an unexpected failure, and
   explicit disable covering the pre-request full client-data purge, greater content epoch,
   non-null all-inspection-data fence, control-only draining/failed/retry/join state, restart

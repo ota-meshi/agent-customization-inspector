@@ -2,9 +2,9 @@
 
 [English](claude-code.md)
 
-**契約バージョン**: 2026-07-20
+**契約バージョン**: 2026-08-27
 
-**公式ソース再確認日**: 2026-07-15
+**公式ソース再確認日**: 2026-08-27
 
 **ベンダー**: Anthropic Claude Code
 
@@ -50,6 +50,7 @@ canonical valueは`documentationStatus: documented`、`lifecycleQualifiers: []`�
 | `claude.behavior.repo.instructions.descendant` | `partially-documented` | `[]` | Lazy descendant discoveryは`.claude/CLAUDE.md` variantを確立しない |
 | `claude.behavior.repo.rules` | `partially-documented` | `[]` | Nested rules directoryのon-demand load triggerとancestor-layer `paths` baseが不完全 |
 | `claude.behavior.user.rules` | `partially-documented` | `[]` | 再帰の記述はprojectの`.claude/rules/`について書かれている。User-level節はdirectoryとload順を述べ、平坦な2 fileを例示するだけで、nested subdirectoryの探索は記載されない |
+| `claude.global.rules` | `partially-documented` | `[]` | User rule directoryのnested-subdirectory discoveryは記述がないため、ruleは文書化された直下の子だけをadmitする |
 | `claude.behavior.repo.commands` | `partially-documented` | `[]` | 完全なskill相当ancestor/lazy-descendant traversalは独立に記載されない |
 | `claude.behavior.repo.agents` | `partially-documented` | `[]` | 同一directory tree内のduplicate-name selectionに文書化済みstable winnerがない |
 | `claude.behavior.repo.settings.local` | `partially-documented` | `[]` | 個人用fileをどのdirectoryが保持するかは、sessionのrepository・host・fileの所有者に依存し、いずれもこのtoolは観測しない |
@@ -165,26 +166,37 @@ hook inventory に載り、同じfileの`settings/config` rowはdocument全体�
 | Behavior ID | Surface | Base | Relative locator | Traversal / composition reference | Inspector status | Evidence |
 |---|---|---|---|---|---|---|
 | `claude.behavior.user.instructions` | Shared core | `<claude-config-dir>` | `./CLAUDE.md` | User instruction scope。`claude.instructions.layering` | 下記の`claude.global.instructions`だけでaccepted | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.env-vars` |
-| `claude.behavior.user.rules` | Shared core | `<claude-config-dir>` | `./rules/*.md` | User rule directoryの直下の子。自身の節が示す深さである。`claude.rules.layering` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.memory.locations-load` |
-| `claude.behavior.user.skills` | CLIはfull、IDEはsubset | `<claude-config-dir>` | `./skills/<skill-name>/SKILL.md` | User skill scope。`claude.skills.selection` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.env-vars` |
-| `claude.behavior.user.commands` | CLIはfull、IDEはsubset | `<claude-config-dir>` | `./commands/**/*.md` | Recursive legacy command scope。`claude.commands.selection` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting` |
-| `claude.behavior.user.agents` | Subagentを利用できるClaude Code runtime | `<claude-config-dir>` | `./agents/**/*.md` | Recursive user agent scope。`claude.agents.selection` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.subagents.scope-context` |
-| `claude.behavior.user.settings` | Shared core | `<claude-config-dir>` | `./settings.json` | User settings scope。`claude.settings.precedence` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.settings.scopes-precedence` |
-| `claude.behavior.user.output-style` | CLIはdocumented、IDE availabilityはconditional | `<claude-config-dir>` | `./output-styles/*.md` | Direct style file。`claude.output-style.selection` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.output-styles.locations` |
+| `claude.behavior.user.rules` | Shared core | `<claude-config-dir>` | `./rules/*.md` | User rule directoryの直下の子。自身の節が示す深さである。`claude.rules.layering` | 下記の`claude.global.rules`でaccepted | `anthropic.claude-code.memory.locations-load` |
+| `claude.behavior.user.skills` | CLIはfull、IDEはsubset | `<claude-config-dir>` | `./skills/<skill-name>/SKILL.md` | User skill scope。`claude.skills.selection` | 下記の`claude.global.skill`でaccepted。予約された`skills/synced/` download treeはそのselectorの外に留まる | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.env-vars` |
+| `claude.behavior.user.commands` | CLIはfull、IDEはsubset | `<claude-config-dir>` | `./commands/**/*.md` | Recursive legacy command scope。`claude.commands.selection` | 下記の`claude.global.command`でaccepted | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting` |
+| `claude.behavior.user.agents` | Subagentを利用できるClaude Code runtime | `<claude-config-dir>` | `./agents/**/*.md` | Recursive user agent scope。`claude.agents.selection` | 下記の`claude.global.agent`でaccepted | `anthropic.claude-code.subagents.scope-context` |
+| `claude.behavior.user.settings` | Shared core | `<claude-config-dir>` | `./settings.json` | User settings scope。`claude.settings.precedence` | 下記の`claude.global.settings`、`claude.global.permissions`、`claude.global.hooks.settings`でaccepted | `anthropic.claude-code.settings.scopes-precedence` |
+| `claude.behavior.user.output-style` | CLIはdocumented、IDE availabilityはconditional | `<claude-config-dir>` | `./output-styles/*.md` | Direct style file。`claude.output-style.selection` | 下記の`claude.global.output-style`でaccepted | `anthropic.claude-code.output-styles.locations` |
 | `claude.behavior.user.mcp-state` | CLIはfull、VS Codeはpartial | `<home>` | `./.claude.json` | User MCPとper-project local MCP state。`claude.mcp.selection` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.directory.file-reference` |
 | `claude.behavior.user.plugins` | CLIで管理。SupportされるIDEはshared configurationを利用 | `<claude-config-dir>` | `./plugins/`と`./settings.json`内のplugin enablement | Installed/cache/runtime-managed plugin data。`claude.plugins.activation` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.env-vars` |
 | `claude.behavior.user.agent-memory` | Subagent runtime | `<claude-config-dir>` | `./agent-memory/<agent-name>/` | Agent frontmatterがmemory scopeを1つ選択。`claude.agent-context.composition` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.subagents.scope-context` |
 | `claude.behavior.user.auto-memory` | Auto memory有効時のshared runtime | `<claude-config-dir>` | `./projects/<project-key>/memory/MEMORY.md` | Startup prefixとon-demand topic file。`claude.agent-context.composition` | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.memory.locations-load` |
 | `claude.behavior.user.workflows` | 現在のClaude Code runtime | `<claude-config-dir>` | `./workflows/*.js` | Dynamic workflow file | FR-016とFR-018による`claude.excluded.user-runtime`。Initial-release candidate ruleなし | `anthropic.claude-code.directory.file-reference` |
+| `claude.behavior.user.keybindings` | Shared core | `<claude-config-dir>` | `./keybindings.json` | Customキーボードショートカット。Terminal user interfaceについてのpreferenceであり、agentが読む入力ではない | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.directory.file-reference` |
+| `claude.behavior.user.themes` | Shared core | `<claude-config-dir>` | `./themes/*.json` | Custom color theme。Terminal user interfaceについてのpreferenceであり、agentが読む入力ではない | FR-016とFR-018による`claude.excluded.user-runtime` | `anthropic.claude-code.directory.file-reference` |
 
 ## Globalで受理するmatcher
 
-FR-016とFR-018が許可するのは、下記のuser instruction fileだけである。他のUser fileをvendorが
-supportしていても、このconsent boundaryは拡張しない。
+FR-016とFR-018は、下記の文書化済みuserカスタマイズfileをadmitし、それ以外を一切admitしない。
+これらのrowがadmitしないsurfaceをvendorがsupportしていても、このconsent boundaryは拡張されず、
+すべてのselectorは唯一のconsent済みClaude boundary相対である。
 
 | Rule ID | Global base | Selector program | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
 | `claude.global.instructions` | 正確なconsent済みcapture済み`CLAUDE_CONFIG_DIR`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.claude`を`node:path.join`した値 | `['CLAUDE.md']` | `exact`。Global selectorはRepository rootを基点にしない | `static-candidate` | `claude.behavior.user.instructions` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。隣接する全User configuration/stateはFR-018によりexcluded | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.directory.file-reference` |
+| `claude.global.rules` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['rules', /\.md$/u]` | boundaryの`rules/`の`direct-child` — user節自身の例が示す深さ。User layerのnested-subdirectory discoveryは記述がないため、recursive stepを持たない | `static-candidate` | `claude.behavior.user.rules` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.memory.locations-load` |
+| `claude.global.skill` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['skills', ANY_NAME, 'SKILL.md']` | `direct-child`の後に`exact`。skill名は正確に直下1階層である。予約された`skills/synced/<name>/SKILL.md` download treeはこのprogramが届く深さより1階層深く、それがFR-018の求める境界である: synced skillはauthorしたものではなくdownloadされたcopyであり、予約名でauthorしたskillはClaude自身がskipする | `static-candidate` | `claude.behavior.user.skills` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.env-vars` |
+| `claude.global.command` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['commands', ANY_DIRECTORIES, /\.md$/u]` | boundaryの`commands/`内の`recursive-subtree`。SubdirectoryはCommand namespaceを形成する | `static-candidate` | `claude.behavior.user.commands` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting` |
+| `claude.global.agent` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['agents', ANY_DIRECTORIES, /\.md$/u]` | boundaryの`agents/`内の`recursive-subtree` | `static-candidate` | `claude.behavior.user.agents` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。重複名のselectionはRepository scopeと同じく文書化されていないまま | `anthropic.claude-code.subagents.scope-context` |
+| `claude.global.settings` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['settings.json']` | `exact`。Userの`settings.local.json`は文書化されていない | `static-candidate` | `claude.behavior.user.settings` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.settings.scopes-precedence` |
+| `claude.global.permissions` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['settings.json']` | `exact`。構成上`claude.global.settings`と一致する — Repositoryのpairが一致するのと同じである | `static-candidate` | `claude.behavior.user.settings` | FR-013、FR-014、FR-016、FR-018、QR-005 | `permissions` objectを宣言しないuser settings documentはpermissions rowを持たない | `anthropic.claude-code.settings.scopes-precedence` |
+| `claude.global.hooks.settings` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['settings.json']` | `exact`。`claude.global.settings`がauthorするselectorの上にあり、1つのpathに対する3つのruleは1回readされる1つのcandidateである | `static-candidate` | `claude.behavior.user.settings` | FR-013、FR-014、FR-016、FR-018、QR-005 | User settings documentのcontained `hooks`宣言であり、Repositoryのsettings pairとまったく同じようにrecognizeされる | `anthropic.claude-code.hooks.locations-resolution`、`anthropic.claude-code.settings.scopes-precedence` |
+| `claude.global.output-style` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['output-styles', /\.md$/u]` | boundaryの`output-styles/`の`direct-child` | `static-candidate` | `claude.behavior.user.output-style` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.output-styles.locations` |
 
 Environment validation、consent、canonicalization、およびabsentな`CLAUDE_CONFIG_DIR`とinvalid valueの
 扱いは、親allowlistで定義するInspector方針であり、Claude Codeのvendor lookup claimではない。
@@ -193,7 +205,7 @@ Environment validation、consent、canonicalization、およびabsentな`CLAUDE_
 
 | Rule ID | Class | Closed derivation meaning | Behavior refs | Strategy refs | Status | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
-| `claude.excluded.user-runtime` | `excluded` | `CLAUDE.md`以外の全User rowを除外する。Settings/state、rule、skill、command、agent、output style、MCP state、plugin/cache、agent memory、auto memory、workflowを含む | `claude.behavior.user.rules`、`claude.behavior.user.skills`、`claude.behavior.user.commands`、`claude.behavior.user.agents`、`claude.behavior.user.settings`、`claude.behavior.user.output-style`、`claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.agent-memory`、`claude.behavior.user.auto-memory`、`claude.behavior.user.workflows` | — | FR-016とFR-018の要件。除外はvendor supportを否定しない | FR-013、FR-014、FR-016、FR-018、QR-001、QR-005 | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting`、`anthropic.claude-code.subagents.scope-context`、`anthropic.claude-code.settings.scopes-precedence`、`anthropic.claude-code.output-styles.locations`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.plugins.components-scopes` |
+| `claude.excluded.user-runtime` | `excluded` | どのGlobal ruleもadmitしない上記User rowを除外する: 別fileである`~/.claude.json`のMCP/state file、install済みpluginとそのcache、agent memory、auto memory、dynamic workflow script、keybindingsとthemeのfile | `claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.agent-memory`、`claude.behavior.user.auto-memory`、`claude.behavior.user.workflows`、`claude.behavior.user.keybindings`、`claude.behavior.user.themes` | — | FR-016とFR-018が要求する。除外はvendor supportの否定ではない | FR-013、FR-014、FR-016、FR-018、QR-001、QR-005 | `anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.subagents.scope-context`、`anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.env-vars` |
 | `claude.excluded.plugin-files` | `excluded` | Skill、command、agent、output style、hook、MCP/LSP declaration、monitor、theme、channel、settings、script、assetなどのplugin component bodyを除外し、declarationはrelationshipとして保持 | `claude.behavior.repo.plugin`、`claude.behavior.repo.marketplace` | `claude.plugins.activation` | Initial-release boundary。Plugin manifest/catalog inventoryはcomponent activationではない | FR-003、FR-004、FR-020、FR-021、FR-022、FR-024、QR-001、QR-005 | `anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.directory.file-reference` |
 
 このvendorが参照するrelationship-only rule、すなわち`claude.relationship.component`、
@@ -232,7 +244,7 @@ eligible set、source form、extractor applicability、relationship kindをautho
 
 各rowは網羅的であり、`—`はeligible setが空であることを意味する。Contained Hook declarationは、すでに
 admission済みのowner file上で`hook` rowを使う。Ownerの別recognitionからfieldを取得せず、synthetic fileも
-作らない。そのrowが存在するのはroot settings documentに対してだけであり、他のownerの`hooks`は、その
+作らない。そのrowが存在するのはsettings document — Repositoryのroot pairとconsent済みuser `settings.json` — に対してだけであり、他のownerの`hooks`は、その
 fileにそのkindが与えるrow自身のcontentである。MCPにcontained rowは存在しない: MCP surfaceに合流するのは明示的なcarrierだけで、
 他のkindのfile内のinline MCP configurationはそのkind自身の宣言contentである。Allowlistが記載しないreferenceは、完全な`sourceText`だけに残す。宣言とその公開の間にallowlistは立たない: skillの宣言はfileが書いたkeyであり、authored keyの集合は閉じていない（FR-007）。Relationshipは、そのkindがこの表にあり、かつoriginが
 中央registryの適切なrelationship-only ruleでcoverされる場合だけemitできる。このallowlistはread、connection、execution、
@@ -241,14 +253,14 @@ import、installation、activationのauthorityを一切与えない。
 | `ToolRecognition.kind` | Eligibleな`Relationship.kind` value | Initial-release source form |
 |---|---|---|
 | `instructions` | — | 受理済み`CLAUDE.md`または`CLAUDE.local.md`。Authored `@path` tokenはsource textであり、抽出されるreferenceではない |
-| `rule` | — | 何も読み出さない: 受理済みの`.claude/rules/**/*.md`はauthorが書いた1つのdocumentとして、frontmatter blockごと公開される。したがってそこから値は読み出さず、宣言された`paths` globも他の行と同じsource textである |
+| `rule` | — | 何も読み出さない: 受理済みのrules Markdown file — Repositoryの`.claude/rules/**/*.md`またはconsent済みuserの`rules/*.md` — はauthorが書いた1つのdocumentとして、frontmatter blockごと公開される。したがってそこから値は読み出さず、宣言された`paths` globも他の行と同じsource textである |
 | `skill` | `skill-resource`<br>`agent-reference`<br>`context-inheritance` | 受理済み`SKILL.md`の正確なfrontmatter value/item occurrence。`hooks`はskill自身のfrontmatter宣言であってhook recognitionを所有せず、skill frontmatterに所有すべきMCP fieldは存在しない |
-| `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.claude/agents/**/*.md`の正確なfrontmatter value/item occurrence。`hooks`と`mcpServers`はsubagent自身のfrontmatter宣言であり、hook recognitionもMCP recognitionも所有しない |
+| `agent` | `agent-reference`<br>`context-inheritance`<br>`runtime-reference` | 受理済みagents Markdown file — Repositoryの`.claude/agents/**/*.md`またはconsent済みuserの`agents/**/*.md` — の正確なfrontmatter value/item occurrence。`hooks`と`mcpServers`はsubagent自身のfrontmatter宣言であり、hook recognitionもMCP recognitionも所有しない |
 | `prompt/command` | `agent-reference`<br>`context-inheritance` | 受理済みlegacy command Markdown fileの正確なfrontmatter value/item occurrence。Matched pathから導出するnamespaceとinvocation nameはtyped provenanceであり、declared metadataではない |
-| `hook` | `runtime-reference` | 受理済みroot settings documentのcontained `hooks` declarationにあるevent map key、matcher value、handler leaf/item value。vendorが文書化する他のowner — skill、subagent、plugin manifest、catalog entry — はそれ自身が何であるかの一部としてhooksを宣言しており、それらのoccurrenceはそのkind自身のrowに属する |
+| `hook` | `runtime-reference` | 受理済みsettings document — Repositoryの2つのroot documentまたはconsent済みuserの`settings.json` — のcontained `hooks` declarationにあるevent map key、matcher value、handler leaf/item value。vendorが文書化する他のowner — skill、subagent、plugin manifest、catalog entry — はそれ自身が何であるかの一部としてhooksを宣言しており、それらのoccurrenceはそのkind自身のrowに属する |
 | `MCP` | `runtime-reference` | Root `.mcp.json` carrierだけにあるserver-name map keyと正確なserver leaf/item occurrence。他のkindのfileが`mcpServers`を綴っても自身の宣言contentとして見えるだけで、MCP recognitionを所有しない |
-| `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Root `.claude/settings.json`または`.claude/settings.local.json`の正確なsupported leaf/item occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを決して所有しない |
-| `permissions` | — | Root `.claude/settings.json`または`.claude/settings.local.json`のtop-level `permissions` objectが持つすべてのleaf/item occurrenceを、authoredなまま。一部のkeyだけをallowlistすると、どのauthored policyを落としたか言えないまま落とすことになるため、object全体を対象とする。`permissions` objectを宣言しないsettings fileはpermission policy recognitionを持たず、それ以外のsettings keyは`settings/config` recognitionに属する。rule文字列はtoolと任意のspecifierを名指すものであり、file・command・domainへ解決することは決してない |
+| `settings/config` | `agent-reference`<br>`declared-component`<br>`runtime-reference` | Root `.claude/settings.json`、root `.claude/settings.local.json`、またはconsent済みuserの`settings.json`の正確なsupported leaf/item occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを決して所有しない |
+| `permissions` | — | Root `.claude/settings.json`、root `.claude/settings.local.json`、またはconsent済みuserの`settings.json`のtop-level `permissions` objectが持つすべてのleaf/item occurrenceを、authoredなまま。一部のkeyだけをallowlistすると、どのauthored policyを落としたか言えないまま落とすことになるため、object全体を対象とする。`permissions` objectを宣言しないsettings fileはpermission policy recognitionを持たず、それ以外のsettings keyは`settings/config` recognitionに属する。rule文字列はtoolと任意のspecifierを名指すものであり、file・command・domainへ解決することは決してない |
 | `output style` | — | 受理済みdirect-child output-style Markdown fileの正確なfrontmatter value |
 | `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済み`.claude-plugin/plugin.json`の正確なmetadata/component/dependency leaf/item occurrenceと、entryがplugin名を解決する受理済み`.claude-plugin/marketplace.json`の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる。Inline Hook bodyもinline MCP declarationも、そのcarrier自身の宣言contentである |
 

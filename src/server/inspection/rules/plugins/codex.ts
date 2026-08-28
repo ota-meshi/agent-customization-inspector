@@ -126,7 +126,41 @@ function codexPluginNameOf(fields: readonly DeclaredEntryDto[]): string | null {
  * and the repository half of that rule is the root
  * (contracts/vendors/openai-codex.md § Derived Repository rules).
  */
-function codexPluginSourceOf(entryFields: readonly DeclaredEntryDto[]): DeclaredPluginSource {
+/**
+ * Whose census a Codex catalog's `./` local sources feed: the repository
+ * catalog's resolve against the Repository root and their directories are
+ * enumerated, while the personal catalog at `~/.agents/plugins/marketplace.json`
+ * publishes its declarations alone — no plugin directory below the shared
+ * agent home is admitted, however the source spells it (FR-018, FR-045;
+ * contracts/http-api.md § get-plugin-carrier-detail;
+ * contracts/vendors/openai-codex.md § Inspector Global rule: "the plugins it
+ * names … stay excluded exactly as Repository plugin bodies are").
+ */
+type CodexCatalogScope = 'repository' | 'agents-home';
+
+/**
+ * The Source-relative segments a validated local source occupies inside this
+ * Source, or null when it occupies nothing here.
+ *
+ * For a repository catalog the validated segments are the plugin root the
+ * census then enumerates. For the personal catalog the answer is always
+ * null: the contracted read below the shared agent home is the catalog file
+ * itself, so a declared source — whatever directory it names — reaches no
+ * enumeration and no read ({@link CodexCatalogScope}). Returning null is
+ * what `pluginRoot: null` already means on every out-of-Source declaration:
+ * the offering stands, and it occupies nothing here.
+ */
+function codexLocalRootInSource(
+  scope: CodexCatalogScope,
+  declaredPath: string | null,
+): readonly string[] | null {
+  return scope === 'repository' ? localPluginRootSegments(declaredPath) : null;
+}
+
+function codexPluginSourceOf(
+  scope: CodexCatalogScope,
+  entryFields: readonly DeclaredEntryDto[],
+): DeclaredPluginSource {
   const declared = declaredValueUnder(entryFields, CODEX_PLUGIN_SOURCE_KEY);
   if (declared === null) {
     return UNRECOGNIZED_PLUGIN_SOURCE;
@@ -135,7 +169,7 @@ function codexPluginSourceOf(entryFields: readonly DeclaredEntryDto[]): Declared
     // A declared string and nothing else: the page documents the plain
     // spelling as a path string, and a number's rendering is not one.
     return declared.scalarKind === 'string' && declared.text.startsWith('./')
-      ? { form: 'repository-directory', rootSegments: localPluginRootSegments(declared.text) }
+      ? { form: 'repository-directory', rootSegments: codexLocalRootInSource(scope, declared.text) }
       : UNRECOGNIZED_PLUGIN_SOURCE;
   }
   if (declared.kind !== 'mapping') {
@@ -151,7 +185,7 @@ function codexPluginSourceOf(entryFields: readonly DeclaredEntryDto[]): Declared
       form: 'repository-directory',
       rootSegments:
         path !== null && path.kind === 'scalar' && path.scalarKind === 'string'
-          ? localPluginRootSegments(path.text)
+          ? codexLocalRootInSource(scope, path.text)
           : null,
     };
   }
@@ -202,6 +236,7 @@ function codexOfferedPluginNameOf(
 export function codexPluginCatalogReadingOf(
   sourceText: string,
   sourceRelativePath: string,
+  scope: CodexCatalogScope,
 ): PluginCarrierReading {
   const entries = new ParsedJsonDocument(sourceText, { tool: 'codex', sourceRelativePath }).entries;
   const declared = entries.find(
@@ -221,7 +256,7 @@ export function codexPluginCatalogReadingOf(
       if (item.kind !== 'mapping') {
         return [];
       }
-      const source = codexPluginSourceOf(item.entries);
+      const source = codexPluginSourceOf(scope, item.entries);
       // A Git, npm, absolute, home, or root-escaping source names no
       // directory this Source holds: the offering stands and occupies
       // nothing here, and there is no manifest of its own to open either.
@@ -259,6 +294,14 @@ export class CodexCompiledPluginCatalogRule
   public readonly pluginCarrier: 'catalog';
 
   /**
+   * Which boundary this catalog's `./` sources resolve against, derived from
+   * the record's own matcher base: the one Codex catalog rule with a global
+   * base is the personal `~/.agents` marketplace, whose documented base is
+   * the home directory ({@link CodexCatalogScope}).
+   */
+  readonly #catalogScope: CodexCatalogScope;
+
+  /**
    * What this catalog declares — its own keys, and one declaration per entry
    * (`plugins/codex.ts` § codexPluginCatalogReadingOf).
    */
@@ -266,7 +309,7 @@ export class CodexCompiledPluginCatalogRule
     sourceText: string,
     sourceRelativePath: string,
   ): PluginCarrierReading {
-    return codexPluginCatalogReadingOf(sourceText, sourceRelativePath);
+    return codexPluginCatalogReadingOf(sourceText, sourceRelativePath, this.#catalogScope);
   }
 
   /** Compiles one Codex plugin catalog record, rejecting one of another kind. */
@@ -276,5 +319,6 @@ export class CodexCompiledPluginCatalogRule
       throw new TypeError(`rule ${rule.ruleId} is not a Codex plugin rule`);
     }
     this.pluginCarrier = 'catalog';
+    this.#catalogScope = rule.matcher?.base.kind === 'global' ? 'agents-home' : 'repository';
   }
 }

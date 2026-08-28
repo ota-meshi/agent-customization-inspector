@@ -87,7 +87,9 @@ async function openSkill(page: import('@playwright/test').Page, path: string): P
   await page.goto(host.origin);
   // The path is the link, and the route is the file's own, so a file listed
   // under more than one row opens the same page from any of them.
-  const links = page.locator('.aci-skill-row__file').locator(`a[href$="/${path}"]`);
+  const links = page
+    .locator('.aci-source-family-blocks__members > li')
+    .locator(`a[href$="/${path}"]`);
   await links.first().waitFor();
   await links.first().click();
 }
@@ -432,7 +434,7 @@ test('names the skill in the address and the file it is showing in the query', a
   // reader was on rather than the one they moved to.
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
   const companionUrl = page.url();
-  expect(companionUrl).toContain('/skills/.agents/skills/greet/SKILL.md?');
+  expect(companionUrl).toContain('/skills/detail/repository/.agents/skills/greet/SKILL.md?');
   expect(companionUrl).toContain('file=');
 
   await page.goto(companionUrl);
@@ -510,7 +512,9 @@ test('is operable from the keyboard alone', async ({ page }) => {
   // link demoted to `tabindex="-1"` fails here where a bare `.focus()`
   // would still land on it.
   const skillLink = page
-    .locator('.aci-skill-row__file', { hasText: '.agents/skills/greet/SKILL.md' })
+    .locator('.aci-source-family-blocks__members > li', {
+      hasText: '.agents/skills/greet/SKILL.md',
+    })
     .locator('.aci-skill-row__owner a')
     .first();
   expect(await tabUntilFocused(page, skillLink)).toBe(true);
@@ -565,7 +569,7 @@ test('reports a link whose path the current scan does not hold', async ({ page }
   await openSkill(page, '.agents/skills/greet/SKILL.md');
   // The click routes client-side; the URL is captured only once the detail
   // route owns the page, or a slow navigation would bookmark the inventory.
-  await page.waitForURL(/\/skills\//u);
+  await page.waitForURL(/\/skills\/detail\/repository\//u);
   const bookmarkedUrl = page.url();
   // The same URL with the file's own name swapped names a path this
   // generation does not hold, and the page says so instead of guessing at a

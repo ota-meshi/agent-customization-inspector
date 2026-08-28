@@ -87,10 +87,12 @@ test.describe('Copilot prompt files in the prompts-and-commands inventory', () =
       '.claude/commands/deploy.md',
       '.github/prompts/deploy.prompt.md',
     ]);
-    await expect(shared.locator('.aci-prompt-row__definitions > li')).toHaveCount(2);
+    await expect(shared.locator('.aci-source-family-blocks__members > li')).toHaveCount(2);
     await expect(shared.locator('.aci-prompt-row__tool')).toHaveCount(3);
-    await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
-    await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('GitHub Copilot');
+    await expect(shared.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
+    await expect(shared.locator('.aci-source-family-blocks__members')).toContainText(
+      'GitHub Copilot',
+    );
 
     const text = await page.locator('main').innerText();
     expect(text).not.toContain('.github/prompts/notes.md');
@@ -110,7 +112,7 @@ test.describe('Copilot prompt files in the prompts-and-commands inventory', () =
     // The fallback row is named by the file, minus the whole `.prompt.md`.
     const fallback = items.filter({ hasText: 'review' });
     await expect(fallback.locator('.aci-path')).toHaveText(['.github/prompts/review.prompt.md']);
-    await expect(fallback.locator('.aci-prompt-row__definitions')).toContainText('VS Code');
+    await expect(fallback.locator('.aci-source-family-blocks__members')).toContainText('VS Code');
   });
 
   test('narrows to Copilot without dropping the row a command shares', async ({ page }) => {
@@ -137,6 +139,8 @@ test.describe('Copilot prompt files in the prompts-and-commands inventory', () =
       '.claude/commands/deploy.md',
       '.github/prompts/deploy.prompt.md',
     ]);
-    await expect(shared.locator('.aci-prompt-row__definitions')).not.toContainText('Claude Code');
+    await expect(shared.locator('.aci-source-family-blocks__members')).not.toContainText(
+      'Claude Code',
+    );
   });
 });

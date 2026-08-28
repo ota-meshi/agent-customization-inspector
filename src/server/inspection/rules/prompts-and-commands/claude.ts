@@ -39,10 +39,14 @@ export class ClaudeCompiledPromptRule
    * identity of its own and the path is the only thing a row could be keyed by
    * (data-model.md § Inventory unit).
    *
-   * The slicing is exact rather than defensive: this unit compiles only the
-   * `claude.repo.command` record, whose one selector is
-   * `['.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]`, so an admitted path
-   * always has the two container segments in front and always ends in `.md`.
+   * The slicing is exact rather than defensive: this unit compiles the
+   * `claude.repo.command` and `claude.global.command` records, whose one
+   * selector each opens with the literal container segments —
+   * `['.claude', 'commands', ...]` at the Repository root, `['commands', ...]`
+   * below the consented home — so an admitted path always has exactly the
+   * container segments the rule's own matcher names in front
+   * ({@link ClaudeCompiledPromptRule.#containerDepth}) and always ends in
+   * `.md`.
    *
    * The colon join is the documented transformation carried through: the
    * changelog turns `.claude/commands/frontend/component.md` into
@@ -70,12 +74,21 @@ export class ClaudeCompiledPromptRule
    */
   public invocationNameOf(sourceRelativePath: string): string {
     const segments = sourceRelativePath.split('/');
-    const directory = segments.slice(2, -1);
+    const directory = segments.slice(this.#containerDepth, -1);
     if (directory.length > 0 && /^skill\.md$/iu.test(segments.at(-1)!)) {
       return directory.join(':');
     }
-    return segments.slice(2).join(':').slice(0, -'.md'.length);
+    return segments.slice(this.#containerDepth).join(':').slice(0, -'.md'.length);
   }
+
+  /**
+   * How many leading path segments are the commands container rather than the
+   * name: the count of leading literal steps in the rule's own selector, so
+   * the namespace starts exactly below the directory the matcher names — two
+   * segments for the Repository `.claude/commands/`, one for the consented
+   * home's `commands/`.
+   */
+  readonly #containerDepth: number;
 
   /** Compiles one Claude command record, rejecting one of another kind. */
   public constructor(rule: InspectionRule) {
@@ -83,5 +96,11 @@ export class ClaudeCompiledPromptRule
     if (rule.kind !== 'prompt/command') {
       throw new TypeError(`rule ${rule.ruleId} is not a Claude command rule`);
     }
+    const selector = rule.matcher?.selectors[0] ?? [];
+    let depth = 0;
+    while (selector[depth]?.kind === 'literal') {
+      depth += 1;
+    }
+    this.#containerDepth = depth;
   }
 }

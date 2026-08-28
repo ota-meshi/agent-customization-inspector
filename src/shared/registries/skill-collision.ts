@@ -19,6 +19,7 @@
 // Platform-neutral by design — only Web APIs, no node: imports — so the
 // client build can import it.
 import { skillDirectoryOf } from './skill-directory';
+import { fileIdentityKey } from '../entities';
 import type { SkillDefinitionDto } from '../api-types';
 
 /**
@@ -29,27 +30,32 @@ import type { SkillDefinitionDto } from '../api-types';
 export abstract class SkillCollisionPolicy {
   /**
    * A per-view gate for the collision this tool's documented same-name rule
-   * answers, built once from every `SKILL.md` path the tool defines in the
-   * view and then asked with one row's paths at a time (FR-007).
+   * answers, built once from every definition the tool holds in the view and
+   * then asked with one row's evidence at a time (FR-007).
    *
    * The population is the whole view rather than one row because a clash can
    * span rows: Claude Code's does, since its nested prefixing puts the sides
    * of one directory clash on different rows. A vendor whose clash is
-   * row-internal ignores the view-wide paths ({@link rowInternalCollisionGate}).
+   * row-internal ignores the view-wide definitions
+   * ({@link rowInternalCollisionGate}). Definitions rather than bare paths,
+   * because a clash is scoped to one Source: the repository's `deploy` and a
+   * consented home's `deploy` are two different places' skills, and a rule
+   * quoted about one root must not be attached on the strength of the other
+   * (FR-030; spec.md § FR-007 — "of the same generation").
    */
   public abstract collisionGate(
-    viewPaths: readonly string[],
-  ): (rowPaths: readonly string[]) => boolean;
+    viewDefinitions: readonly SameNameCollisionDefinition[],
+  ): (rowEvidence: readonly SameNameCollisionDefinition[]) => boolean;
 
   /**
-   * The paths of one row's definitions that evidence this tool's same-name
-   * collision (FR-007) — which is not always every definition the row holds,
-   * because a definition can sit on a row for a reason the vendor's rule does
-   * not recognize as a clash ({@link parsedDefinitionPaths}).
+   * The definitions of one row that evidence this tool's same-name collision
+   * (FR-007) — which is not always every definition the row holds, because a
+   * definition can sit on a row for a reason the vendor's rule does not
+   * recognize as a clash ({@link parsedDefinitions}).
    */
-  public abstract collisionEvidencePaths(
+  public abstract collisionEvidence(
     rowDefinitions: readonly SameNameCollisionDefinition[],
-  ): readonly string[];
+  ): readonly SameNameCollisionDefinition[];
 }
 
 /**
@@ -58,41 +64,56 @@ export abstract class SkillCollisionPolicy {
  * outside the row bears on it. Exported for the vendor policies that answer
  * this way; no surface calls it directly.
  */
-export function rowInternalCollisionGate(): (rowPaths: readonly string[]) => boolean {
-  return (rowPaths) => rowPaths.length >= 2;
+export function rowInternalCollisionGate(): (
+  rowEvidence: readonly SameNameCollisionDefinition[],
+) => boolean {
+  return (rowEvidence) => rowEvidence.length >= 2;
 }
 
 /**
- * The evidence paths for a vendor that invokes the authored name: every
- * definition of the row except one whose extraction failed. Such a definition
- * fell back to the skill directory, so counting it would let this product's
- * provisional grouping stand in for a name the tool never resolved (FR-028).
- * Exported for the vendor policies that invoke the authored name.
+ * The evidence for a vendor that invokes the authored name: every definition
+ * of the row except one whose extraction failed. Such a definition fell back
+ * to the skill directory, so counting it would let this product's provisional
+ * grouping stand in for a name the tool never resolved (FR-028). Exported for
+ * the vendor policies that invoke the authored name.
  */
-export function parsedDefinitionPaths(
+export function parsedDefinitions(
   rowDefinitions: readonly SameNameCollisionDefinition[],
-): readonly string[] {
-  return rowDefinitions
-    .filter((definition) => definition.parseStatus !== 'failed')
-    .map((definition) => definition.sourceRelativePath);
+): readonly SameNameCollisionDefinition[] {
+  return rowDefinitions.filter((definition) => definition.parseStatus !== 'failed');
 }
 
 /**
- * The skill directory names two or more of these `SKILL.md` paths share — the
- * clash of unqualified commands. Exported for the vendor whose documented
- * rule answers that clash; no surface renders it.
+ * The `(Source, skill directory)` identities two or more of these definitions
+ * share a directory name within — the clash of unqualified commands, scoped
+ * to one Source: a same-named directory in another Source is another place's
+ * skill, not a clash this rule answers (FR-030). Keys are
+ * {@link skillDirectoryIdentityOf}'s. Exported for the vendor whose
+ * documented rule answers that clash; no surface renders it.
  */
-export function clashingSkillDirectories(paths: readonly string[]): ReadonlySet<string> {
+export function clashingSkillDirectories(
+  definitions: readonly SameNameCollisionDefinition[],
+): ReadonlySet<string> {
   const seen = new Set<string>();
   const clashing = new Set<string>();
-  for (const path of paths) {
-    const directory = skillDirectoryOf(path);
-    if (seen.has(directory)) {
-      clashing.add(directory);
+  for (const definition of definitions) {
+    const identity = skillDirectoryIdentityOf(definition);
+    if (seen.has(identity)) {
+      clashing.add(identity);
     }
-    seen.add(directory);
+    seen.add(identity);
   }
   return clashing;
+}
+
+/**
+ * One definition's `(Source, skill directory)` key — both halves, because two
+ * Sources can hold one directory spelling (FR-030). Exported beside
+ * {@link clashingSkillDirectories} so the gate that builds the set and the
+ * check that asks it spell one key.
+ */
+export function skillDirectoryIdentityOf(definition: SameNameCollisionDefinition): string {
+  return fileIdentityKey(definition.sourceId, skillDirectoryOf(definition.sourceRelativePath));
 }
 
 /**
@@ -103,5 +124,5 @@ export function clashingSkillDirectories(paths: readonly string[]): ReadonlySet<
  */
 export type SameNameCollisionDefinition = Pick<
   SkillDefinitionDto,
-  'tool' | 'sourceRelativePath' | 'parseStatus'
+  'tool' | 'sourceId' | 'sourceRelativePath' | 'parseStatus'
 >;

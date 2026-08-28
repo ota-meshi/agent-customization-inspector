@@ -71,7 +71,7 @@ test.describe('the complete literal Copilot VS Code MCP file detail', () => {
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /MCP/u }).click();
     await page.getByRole('link', { name: '.vscode/mcp.json: vs-local' }).click();
-    await expect(page).toHaveURL(/\/mcp\/.*\?server=vs-local/u);
+    await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=vs-local/u);
     await expect(page.getByRole('heading', { name: 'vs-local' })).toBeVisible();
     // The record's identity: the recognizing product with the VS Code
     // surface its admission rests on, and the owner-carrier line.

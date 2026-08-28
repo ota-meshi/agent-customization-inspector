@@ -90,7 +90,7 @@ test.afterEach(async () => {
 /** The comparison URL for a hand-written pair, encoded per query value. */
 function compareUrl(left: string, right: string): string {
   return new URL(
-    `/prompts-and-commands/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`,
+    `/prompts-and-commands/compare/repository?leftSource=repository&left=${encodeURIComponent(left)}&rightSource=repository&right=${encodeURIComponent(right)}`,
     host.origin,
   ).toString();
 }
@@ -106,7 +106,7 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
     .filter({ hasText: 'deploy' })
     .getByRole('link', { name: /Compare this name's files: deploy/u })
     .click();
-  await page.waitForURL(/\/prompts-and-commands\/compare\?/u);
+  await page.waitForURL(/\/prompts-and-commands\/compare\/repository\?/u);
   await expect(
     page.getByRole('heading', { name: 'Compare prompt and command files' }),
   ).toBeVisible();
@@ -235,7 +235,7 @@ test('reports a pair the model does not express instead of comparing it', async 
     'No invocation name in the current scan holds both of this link’s files.',
   );
   // No pair at all.
-  await page.goto(new URL('/prompts-and-commands/compare', host.origin).toString());
+  await page.goto(new URL('/prompts-and-commands/compare/repository', host.origin).toString());
   await expect(page.locator('main')).toContainText(
     'This link names no pair of prompt or command files.',
   );
@@ -251,10 +251,13 @@ test('offers no comparison for a name only one file resolves', async ({ page }) 
 
 test('enters from the detail page and returns to the kind’s own tab', async ({ page }) => {
   await page.goto(
-    new URL('/prompts-and-commands/.github/prompts/deploy.prompt.md', host.origin).toString(),
+    new URL(
+      '/prompts-and-commands/detail/repository/.github/prompts/deploy.prompt.md',
+      host.origin,
+    ).toString(),
   );
   await page.getByRole('link', { name: 'Compare this file' }).click();
-  await page.waitForURL(/\/prompts-and-commands\/compare\?/u);
+  await page.waitForURL(/\/prompts-and-commands\/compare\/repository\?/u);
   await expect(
     page.getByRole('heading', { name: 'Compare prompt and command files' }),
   ).toBeVisible();

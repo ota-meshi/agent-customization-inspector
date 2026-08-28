@@ -17,7 +17,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["Enable persistent memory"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "A subagent whose frontmatter declares memory: local keeps its persistent directory at .claude/agent-memory-local/<name-of-agent>/, the project-specific scope documented as the one not checked into version control."
       }
     ]
@@ -40,7 +40,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["Enable persistent memory"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "A subagent whose frontmatter declares memory: project keeps its persistent directory at .claude/agent-memory/<name-of-agent>/, whose MEMORY.md prefix is injected into that subagent’s system prompt when auto memory is enabled."
       }
     ]
@@ -63,7 +63,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["Choose the subagent scope"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Project subagents are Markdown files discovered recursively under .claude/agents/ on each layer walked up from the working directory to the repository root, and directories added with --add-dir contribute their agents too; two same-name files under one directory tree load by filesystem read order rather than a documented precedence."
       }
     ]
@@ -90,7 +90,7 @@
           "Discovery from parent and nested directories",
           "How a skill gets its command name"
         ],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently."
       },
       {
@@ -129,7 +129,7 @@
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Plugin manifest schema", "File locations reference"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "A plugin declares hooks either as config paths or as inline config in its manifest, and a marketplace entry may carry any manifest field, so a plugin can carry hook configuration in either place — content of the plugin the manifest or the entry declares."
       }
     ]
@@ -152,7 +152,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory."
       },
       {
@@ -183,7 +183,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case."
       },
       {
@@ -214,7 +214,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch."
       },
       {
@@ -268,7 +268,7 @@
         "url": "https://code.claude.com/docs/en/mcp",
         "officialHost": "code.claude.com",
         "sections": ["MCP installation scopes"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Project-scope MCP servers are declared in a .mcp.json file at the project root, checked into version control as the team-shared scope of the documented installation scopes, while the local and user scopes live in user-level state."
       },
       {
@@ -299,7 +299,7 @@
         "url": "https://code.claude.com/docs/en/output-styles",
         "officialHost": "code.claude.com",
         "sections": ["Create a custom output style", "How output styles work"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "A custom output style is a Markdown file of frontmatter and instructions saved at the User, project, or managed-policy level; project styles load from every .claude/output-styles/ between the working directory and the repository root, the file name becomes the style name unless the frontmatter sets name, and the instructions are added to the end of the system prompt."
       }
     ]
@@ -326,7 +326,7 @@
           "Plugin manifest schema",
           "File locations reference"
         ],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "A plugin is installed into a settings scope chosen at installation; its manifest is optional, with components — MCP declarations among them — auto-discovered at default locations under the plugin root or redirected by manifest-declared paths."
       }
     ]
@@ -349,7 +349,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against."
       }
     ]
@@ -375,7 +375,7 @@
           "Compare the scope of each settings file",
           "Where Claude Code keeps the local file in a git repository"
         ],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "A project's personal settings are .claude/settings.local.json, which is that project's alone and which Claude Code keeps at the git repository root resolved through worktrees — staying in the starting directory outside a repository, when the repository root is the home directory, on Windows, and when the root or its .git or .claude entry is not owned by the user — while a permission rule in it keeps resolving from the directory Claude Code was started in."
       }
     ]
@@ -401,7 +401,7 @@
           "Settings files and who they affect",
           "Compare the scope of each settings file"
         ],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "A project's shared settings are .claude/settings.json in the project folder, which a team checks into source control; a teammate's clone and a cloud session have the file only once it is committed, as that checkout's own copy rather than as this machine's file being read from elsewhere."
       }
     ]
@@ -424,7 +424,7 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live", "Discovery from parent and nested directories"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it."
       },
       {
@@ -463,7 +463,7 @@
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Skills-directory plugins", "File locations reference"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Any folder under a skills directory that contains a .claude-plugin/plugin.json manifest is loaded as a plugin named <folder>@skills-dir on the next session, with no marketplace and no install step, and is discovered in place rather than copied into the plugin cache; the project-scope skills directory is the launch working directory's own .claude/skills/, which this interpretation does not walk ancestors of, and it loads only after the workspace trust dialog is accepted."
       }
     ]
@@ -486,7 +486,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["Enable persistent memory"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "A subagent whose frontmatter declares memory: user keeps its persistent directory at ~/.claude/agent-memory/<name-of-agent>/, the scope documented for learnings that should apply across all projects."
       }
     ]
@@ -509,7 +509,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["Choose the subagent scope"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "User subagents live at ~/.claude/agents/, are available in every project, are scanned recursively so definitions can be organized into subfolders, and rank below the current project scope when two scopes declare one name."
       }
     ]
@@ -532,7 +532,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Auto memory"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand."
       },
       {
@@ -540,7 +540,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["What loads at startup", "Enable persistent memory"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "The main conversation’s auto memory is not loaded into a non-fork subagent — a subagent’s own memory field is what gives it persistent memory instead — and turning auto memory off makes that field have no effect at all."
       }
     ]
@@ -563,7 +563,7 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live", "How a skill gets its command name"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies."
       },
       {
@@ -594,7 +594,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Choose where to put CLAUDE.md files"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans."
       },
       {
@@ -602,8 +602,31 @@
         "url": "https://code.claude.com/docs/en/env-vars",
         "officialHost": "code.claude.com",
         "sections": ["Variables"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.keybindings",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "keybindings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.directory.file-reference",
+        "url": "https://code.claude.com/docs/en/claude-directory",
+        "officialHost": "code.claude.com",
+        "sections": ["File reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The directory reference lists keybindings.json at the global scope as custom keyboard shortcuts — a terminal-UI preference the reader edits, not guidance the agent loads."
       }
     ]
   },
@@ -625,7 +648,7 @@
         "url": "https://code.claude.com/docs/en/mcp",
         "officialHost": "code.claude.com",
         "sections": ["MCP installation scopes"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "User-scope MCP servers — and the local scope private to one project — are stored in user-level state rather than in the project file, two scopes of the documented installation-scope order."
       },
       {
@@ -633,7 +656,7 @@
         "url": "https://code.claude.com/docs/en/claude-directory",
         "officialHost": "code.claude.com",
         "sections": ["File reference"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "The file reference table locates ~/.claude.json global-only at the home directory — beside the ~/.claude configuration directory rather than inside it — holding app state and personal MCP servers."
       }
     ]
@@ -656,7 +679,7 @@
         "url": "https://code.claude.com/docs/en/output-styles",
         "officialHost": "code.claude.com",
         "sections": ["Create a custom output style"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "A custom output style can be saved at the User level in ~/.claude/output-styles, beside the project and managed-policy levels."
       }
     ]
@@ -679,7 +702,7 @@
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Plugin installation scopes", "Plugin caching and file resolution"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Plugin enablement is recorded per installation scope in settings files — the user scope in ~/.claude/settings.json — and marketplace plugins are copied into the local plugin cache at ~/.claude/plugins/cache, which is what makes plugin-provided servers user-side installation state rather than a repository fact."
       },
       {
@@ -687,7 +710,7 @@
         "url": "https://code.claude.com/docs/en/env-vars",
         "officialHost": "code.claude.com",
         "sections": ["Variables"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
       }
     ]
@@ -710,7 +733,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority."
       }
     ]
@@ -733,7 +756,7 @@
         "url": "https://code.claude.com/docs/en/settings",
         "officialHost": "code.claude.com",
         "sections": ["Compare the scope of each settings file"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "User settings live at ~/.claude/settings.json and apply to every project on the machine, and to nothing on a teammate machine or in a cloud session."
       }
     ]
@@ -756,7 +779,7 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across."
       },
       {
@@ -764,8 +787,54 @@
         "url": "https://code.claude.com/docs/en/env-vars",
         "officialHost": "code.claude.com",
         "sections": ["Variables"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.themes",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "themes/*.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.directory.file-reference",
+        "url": "https://code.claude.com/docs/en/claude-directory",
+        "officialHost": "code.claude.com",
+        "sections": ["File reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The directory reference lists themes/*.json at the global scope as custom color themes — a terminal-UI preference the reader edits, not guidance the agent loads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.workflows",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "workflows/*.js",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.directory.file-reference",
+        "url": "https://code.claude.com/docs/en/claude-directory",
+        "officialHost": "code.claude.com",
+        "sections": ["File reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The directory reference lists workflows/*.js at both the project and global scopes, holding dynamic workflow scripts written by Claude and saved from the /workflows command, with each file becoming a /<name> command."
       }
     ]
   },
@@ -787,7 +856,7 @@
         "url": "https://developers.openai.com/plugins/build/plugins.md",
         "officialHost": "developers.openai.com",
         "sections": ["Plugin structure", "Manifest fields"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Every plugin has its required entry point at .codex-plugin/plugin.json, whose name, version, and description identify the plugin and whose skills, mcpServers, apps, and hooks fields point at bundled components relative to the plugin root; only plugin.json belongs in .codex-plugin/."
       }
     ]
@@ -810,7 +879,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Custom agents", "Custom agent file schema"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Project-scoped custom agents are standalone TOML files under .codex/agents/, each defining one agent that Codex loads as a configuration layer for spawned sessions, with name, description, and developer_instructions required and other supported config.toml keys permitted; the page names the project directory without stating which directories of a project are searched."
       }
     ]
@@ -833,7 +902,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "Local clients load every trusted project .codex/config.toml layer from the project root down to the runtime cwd, and the closest applicable value wins for the same key; marking a project untrusted skips its project-scoped layers entirely."
       }
     ]
@@ -856,7 +925,7 @@
         "url": "https://learn.chatgpt.com/docs/hooks.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Where Codex looks for hooks", "Config shape"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Each active trusted project layer contributes hooks from its .codex/hooks.json and from an inline [hooks] table in its .codex/config.toml; all matching hooks are additive, and a file and inline table at one layer are both loaded with a warning."
       },
       {
@@ -864,7 +933,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "The active project config layers the hook lookup reads are the trusted .codex/config.toml files from the project root down to the runtime cwd."
       }
     ]
@@ -887,7 +956,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["How Codex discovers guidance", "Customize fallback filenames"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "Local Codex clients build the instruction chain once at session start, walking the project root down to the runtime cwd and stopping there — without a detectable project root only the current directory is checked — selecting at most one file per directory: AGENTS.override.md, then AGENTS.md, then the configured fallback basenames. Those basenames and the project-document byte budget are themselves configuration values, declared as project_doc_fallback_filenames and project_doc_max_bytes, so which names the walk accepts depends on configuration outside the instruction files themselves."
       }
     ]
@@ -915,7 +984,7 @@
           "Build your own curated plugin list",
           "Add a marketplace from the CLI"
         ],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "The ChatGPT desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible one at $REPO_ROOT/.claude-plugin/marketplace.json, each a JSON catalog whose plugins[] entries name the plugins it exposes, each entry writing its source as a local object with a path kept relative to the marketplace root and started with ./, as that path string alone, or as a url, git-subdir, or npm object, and shows each catalog as a selectable source in the Plugins Directory; the Codex CLI adds, lists, refreshes, and removes marketplace sources and prints the ones Codex is considering, including local defaults, while directing installation and testing back to the desktop app. The personal ~/.agents/plugins/marketplace.json named beside them is a different Source boundary this statement does not reach, and installation and per-plugin enablement are separate state."
       }
     ]
@@ -938,7 +1007,7 @@
         "url": "https://learn.chatgpt.com/docs/extend/mcp.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Connect Codex to an MCP server"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "MCP servers are declared as named [mcp_servers.*] tables in the Codex configuration file, one table per server."
       },
       {
@@ -946,7 +1015,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "MCP declarations follow the same config-layer resolution as every other configuration value, and project-scoped layers apply only when the project is trusted."
       }
     ]
@@ -969,7 +1038,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Rules", "Create a rules file"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "The page's own preamble states the feature is experimental and may change. Codex scans rules/ under every active config layer at startup, a project layer's rules under <repo>/.codex/rules/ loading only when that .codex/ layer is trusted; the page names the layer's own rules/ directory and establishes no nested-subdirectory recursion."
       }
     ]
@@ -992,7 +1061,7 @@
         "url": "https://learn.chatgpt.com/docs/build-skills.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Where Codex loads local skills"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Local Codex clients discover repository skills at .agents/skills/<name>/SKILL.md, scanning each directory on the chain from the runtime working directory to the repository root, and do not merge same-name skills."
       }
     ]
@@ -1015,7 +1084,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Custom agents"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Personal custom agents are standalone TOML files under ~/.codex/agents/, and a custom agent whose name matches a built-in agent such as explorer takes precedence over it."
       }
     ]
@@ -1038,7 +1107,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "User configuration lives at the Codex home directory's config.toml (~/.codex/config.toml by default), the CLI and IDE extension share those configuration layers, and its values resolve through the same precedence as the trusted project layers."
       }
     ]
@@ -1061,7 +1130,7 @@
         "url": "https://learn.chatgpt.com/docs/hooks.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Where Codex looks for hooks"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "The user layer contributes hooks from ~/.codex/hooks.json and from an inline [hooks] table in ~/.codex/config.toml, and keeps contributing them in an untrusted project where the project layer does not."
       }
     ]
@@ -1084,8 +1153,35 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["How Codex discovers guidance"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "Local Codex clients read a global instruction fallback at <CODEX_HOME>/AGENTS.override.md, otherwise <CODEX_HOME>/AGENTS.md, and the first non-empty global candidate precedes the project chain."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.memories",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "memories/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.memories",
+        "url": "https://learn.chatgpt.com/docs/customization/memories.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": [
+          "How local Codex memories work",
+          "Local memory storage",
+          "Configure local memories"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Codex stores memories under the Codex home directory, which defaults to ~/.codex and is relocated by CODEX_HOME; the main memory files live under ~/.codex/memories/ and hold summaries, durable entries, recent inputs, and supporting evidence from prior chats. They are generated state rather than a hand-edited control surface. The feature is off by default and is turned on either in the ChatGPT desktop app or by a [features] memories flag in config.toml."
       }
     ]
   },
@@ -1107,8 +1203,31 @@
         "url": "https://developers.openai.com/plugins/build/plugins.md",
         "officialHost": "developers.openai.com",
         "sections": ["How local marketplaces work", "Marketplace metadata"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "A personal marketplace lives at ~/.agents/plugins/marketplace.json, which the ChatGPT desktop app reads beside the repository ones; ChatGPT installs plugins into ~/.codex/plugins/cache/$MARKETPLACE_NAME/$PLUGIN_NAME/$VERSION/ and loads the installed copy from that cache rather than from the marketplace entry, and stores each plugin's on or off state in ~/.codex/config.toml."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.prompts",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "prompts/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["deprecated"],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.custom-prompts",
+        "url": "https://learn.chatgpt.com/docs/custom-prompts.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Custom Prompts"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The page states in its own notice that custom prompts are deprecated in favor of skills. A prompt is a Markdown file in the local Codex home directory — the page creates ~/.codex/prompts and writes ~/.codex/prompts/draftpr.md — carrying description and argument-hint frontmatter, invoked as a slash command in the Codex CLI and the Codex IDE extension after a restart. It requires explicit invocation and is not shared through the repository."
       }
     ]
   },
@@ -1130,7 +1249,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Rules", "Create a rules file"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "The page's own preamble states the feature is experimental and may change. The user layer at ~/.codex/rules/ is one of the active config layers the startup scan reads, and the TUI allow-list flow writes to ~/.codex/rules/default.rules."
       }
     ]
@@ -1153,7 +1272,7 @@
         "url": "https://learn.chatgpt.com/docs/build-skills.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Where Codex loads local skills"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Local Codex clients additionally discover user skills at $HOME/.agents/skills/<name>/SKILL.md, alongside repository, admin, and system scopes."
       }
     ]
@@ -1176,7 +1295,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Custom agent locations"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Project-scoped agents are loaded by walking upward from the working directory to the Git root, taking each ancestor level’s .github/agents/ and .claude/agents/ directories; every such directory is loaded, the deepest takes highest priority, and .github/agents/ takes precedence over .claude/agents/ at the same level."
       }
     ]
@@ -1199,7 +1318,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Commands (alternative skill format)"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot CLI documents .claude/commands/*.md as an alternative skill format that a same-name skill outranks, without establishing a complete project anchor or ancestor traversal."
       }
     ]
@@ -1222,7 +1341,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
         "officialHost": "docs.github.com",
         "sections": ["File locations", "Loading order and precedence"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "The plugin reference separates a plugin's own components — agents, skills, hooks, MCP and LSP configuration — from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations rather than treating an extension file as a plugin."
       }
     ]
@@ -1245,7 +1364,7 @@
         "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
         "officialHost": "docs.github.com",
         "sections": ["Hooks locations", "Hook configuration format"],
-        "reviewedOn": "2026-08-26",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot CLI loads repository-level hook files from .github/hooks/*.json in the repository root and an inline hooks block from the top level of .github/copilot/settings.json or .github/copilot/settings.local.json, and it also reads the cross-tool .claude/settings.json and .claude/settings.local.json files in the repository. Hook configuration files are JSON with version 1, where a structural error rejects the whole file while a malformed item inside a directory-loaded file drops only that item, and a malformed item in an inline settings block rejects the whole hooks field."
       },
       {
@@ -1253,7 +1372,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
         "officialHost": "docs.github.com",
         "sections": ["Repository settings (.github/copilot/settings.json)"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "The repository configuration file supports a top-level hooks object holding the hook definitions scoped to that repository, merged with the user configuration so the repository entry overrides the user one for the same key."
       }
     ]
@@ -1276,7 +1395,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "AGENTS.md is an agent-instruction file Copilot CLI discovers in its standard locations."
       },
       {
@@ -1284,7 +1403,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists agent instructions via AGENTS.md among the types the Copilot CLI surface reads."
       }
     ]
@@ -1307,7 +1426,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "CLAUDE.md is an agent-instruction file Copilot CLI discovers in its standard locations, and the CLI also uses .claude/CLAUDE.md."
       },
       {
@@ -1315,7 +1434,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists agent instructions via CLAUDE.md among the types the Copilot CLI surface reads."
       }
     ]
@@ -1338,7 +1457,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "GEMINI.md is an agent-instruction file Copilot CLI discovers in its standard locations."
       },
       {
@@ -1346,7 +1465,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists agent instructions via GEMINI.md among the types the Copilot CLI surface reads."
       }
     ]
@@ -1373,7 +1492,7 @@
           "Creating path-specific custom instructions",
           "How multiple instruction files interact"
         ],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "Modular instruction files live below .github/instructions — discovered in the standard locations but not the intermediate directories — are created with an applyTo frontmatter pattern, optionally organized into subdirectories, and are included only when that pattern matches a file the session is working with."
       },
       {
@@ -1381,7 +1500,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists path-specific instructions among the types the Copilot CLI surface reads."
       }
     ]
@@ -1407,7 +1526,7 @@
           "Types of custom instructions",
           "Creating repository-wide custom instructions"
         ],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot CLI discovers the repository-wide .github/copilot-instructions.md in its standard locations — the repository root, the current working directory, the directories between them, and directories on the path of a file it is working on — and the how-to creates the file at the repository root."
       },
       {
@@ -1415,7 +1534,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists repository-wide instructions among the types the Copilot CLI surface reads."
       }
     ]
@@ -1461,7 +1580,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["MCP server configuration"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Workspace MCP servers are .mcp.json and .github/mcp.json files loaded from the working directory upward to the Git root, require the folder to be trusted, and sit below session-additional and plugin-provided servers and above the user configuration in the documented loading priority."
       },
       {
@@ -1469,7 +1588,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers",
         "officialHost": "docs.github.com",
         "sections": ["Adding per-repository MCP servers"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "A project-level file declares its servers in either of two schemas — the top-level mcpServers object, or the bare top-level format where each key is an MCP server name — which is why the CLI carrier reading accepts both forms."
       }
     ]
@@ -1492,7 +1611,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
         "officialHost": "docs.github.com",
         "sections": ["File locations", "marketplace.json", "Plugin source types", "CLI commands"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins. A catalog entry writes its own source as a relative path string — the page catalog example writes ./plugins/<name> — or as an object describing a GitHub repository or a Git URL through its source key, github or url, with optional ref, sha, and path; the owner/repo shorthand belongs to the marketplace add command rather than to an entry source."
       }
     ]
@@ -1515,7 +1634,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
         "officialHost": "docs.github.com",
         "sections": ["Configuration file settings"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "Settings apply in the order built-in defaults, MDM managed settings, user settings, repository .github/copilot/settings.json, local .github/copilot/settings.local.json, environment variables, then command-line flags; and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset of repository settings such as companyAnnouncements, disableAllHooks, enabledPlugins, extraKnownMarketplaces, and hooks."
       }
     ]
@@ -1538,7 +1657,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot CLI loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project, inherits parent-directory .github/skills layers for monorepos, and resolves a duplicate name to the first found in its documented source order."
       },
       {
@@ -1546,7 +1665,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
         "officialHost": "docs.github.com",
         "sections": ["Creating and adding a skill"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-27",
         "establishes": "The create-a-skill how-to documents the authored shape — a named skill directory carrying its own SKILL.md — in the same three project directories, .github/skills, .claude/skills, and .agents/skills."
       }
     ]
@@ -1569,7 +1688,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Custom agent locations"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "User agents live at ~/.copilot/agents/ and plugin agents rank lowest; this page states that user-level agents have lower priority than project-level ones, which is one side of the retained project-versus-User conflict."
       }
     ]
@@ -1615,7 +1734,7 @@
         "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
         "officialHost": "docs.github.com",
         "sections": ["Hooks locations"],
-        "reviewedOn": "2026-08-26",
+        "reviewedOn": "2026-08-27",
         "establishes": "User-level hook files are the *.json files of the user hooks directory — ~/.copilot/hooks/ by default, or $COPILOT_HOME/hooks/ when that variable is set — and a user-level inline hooks block sits at the top level of ~/.copilot/settings.json."
       }
     ]
@@ -1638,7 +1757,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions", "How multiple instruction files interact"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "Modular user-level instructions live below the Copilot home instructions directory and are included only when their applyTo pattern matches a file the session is working with."
       },
       {
@@ -1646,7 +1765,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix records personal path-specific instructions among the Copilot CLI instruction sources."
       }
     ]
@@ -1669,7 +1788,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
         "officialHost": "docs.github.com",
         "sections": ["Types of custom instructions", "How multiple instruction files interact"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "One copilot-instructions.md inside the Copilot home directory holds user-level instructions that apply across repositories, combined with the applicable repository files, with duplicate copies of identical files removed and no general precedence order defined."
       },
       {
@@ -1677,7 +1796,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix records personal instructions at ~/.copilot as a Copilot CLI instruction source separate from the repository ones."
       }
     ]
@@ -1723,7 +1842,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["MCP server configuration", "Environment variables"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Persistent user servers are configured in ~/.copilot/mcp-config.json — the file the copilot mcp add subcommand writes — and that source is the lowest priority of the documented loading order; COPILOT_HOME overrides the configuration and state directory whose default is $HOME/.copilot, which is the relocation the <COPILOT_HOME> spelling names."
       }
     ]
@@ -1746,7 +1865,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
         "officialHost": "docs.github.com",
         "sections": ["File locations"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Installed plugins live under ~/.copilot/installed-plugins, by marketplace and plugin name for a marketplace install and under a direct-source directory otherwise."
       },
       {
@@ -1777,7 +1896,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
         "officialHost": "docs.github.com",
         "sections": ["Configuration file settings"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "User settings live at ~/.copilot/settings.json — relocatable through COPILOT_HOME — and sit below the repository and local layers in the documented cascade."
       }
     ]
@@ -1800,7 +1919,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot CLI additionally discovers personal skills in user-home locations, placed below project and inherited skills and above later sources in the documented first-found order."
       },
       {
@@ -1808,7 +1927,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
         "officialHost": "docs.github.com",
         "sections": ["Adding a skill that someone else has created"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-27",
         "establishes": "A skill copied into a personal location is the same authored directory shape as a repository skill; only its scope differs."
       }
     ]
@@ -1854,7 +1973,7 @@
         "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
         "officialHost": "docs.github.com",
         "sections": ["Hooks locations", "Cloud agent execution environment"],
-        "reviewedOn": "2026-08-26",
+        "reviewedOn": "2026-08-27",
         "establishes": "Under the Copilot cloud agent, hook configuration is loaded from .github/hooks/*.json files in the cloned repository, hooks run in an ephemeral non-interactive Linux sandbox, a subset of events fires, and only bash or command entries are honored."
       }
     ]
@@ -1885,7 +2004,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["GitHub.com"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists agent instructions via AGENTS.md among the types the Copilot cloud agent reads."
       }
     ]
@@ -1916,7 +2035,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["GitHub.com"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists agent instructions via CLAUDE.md and GEMINI.md among the types the Copilot cloud agent reads."
       }
     ]
@@ -1947,7 +2066,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["GitHub.com"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists path-specific instructions among the types the Copilot cloud agent reads."
       }
     ]
@@ -1981,7 +2100,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["GitHub.com"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists repository-wide instructions among the types the Copilot cloud agent reads."
       }
     ]
@@ -2058,7 +2177,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["GitHub.com"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix records organization instructions as a layer of the GitHub.com surface distinct from the repository files."
       }
     ]
@@ -2112,7 +2231,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Organization- or enterprise-hosted skills are projected into a session via the AHP relay with content fetched on demand, from no repository or user filesystem location; the last-in-order placement and name-based priority it documents are the CLI surface’s, leaving Cloud collision behavior unestablished."
       }
     ]
@@ -2135,7 +2254,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
         "officialHost": "docs.github.com",
         "sections": ["Creating and adding a skill", "How Copilot uses agent skills"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot cloud agent discovers repository skills in the three fixed root directories and loads a relevant skill progressively; how local personal skills project into the hosted surface is not established."
       }
     ]
@@ -2236,7 +2355,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Visual Studio Code"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists agent instructions via AGENTS.md among the instruction types the Visual Studio Code surface reads, separately from the repository-wide and path-specific types."
       }
     ]

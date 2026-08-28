@@ -3,7 +3,9 @@
 // exactly once, validates the optional `--root`, bootstraps the session
 // synchronously with zero filesystem I/O — the session's own constructor
 // resolves the root lexically from those two facts — completes the Phase 3
-// automatic Repository scan, and starts the loopback devframe host. This file
+// automatic Repository scan, confirms the personal-setup consent when
+// `--inspect-personal-setup` asked for it, and starts the loopback devframe
+// host. This file
 // is the direct `package.json.bin` target: tsdown preserves the shebang in
 // the bundled `dist/cli.mjs`. A repeated `--root` follows Gunshi's
 // deterministic last-wins; the product adds no duplicate-option check
@@ -30,8 +32,9 @@
 // this module can exercise the same runner without launching it at import.
 import { cli, define } from 'gunshi';
 import packageJson from '../../package.json' with { type: 'json' };
-import { executeRepositoryScan, startInspectorHost } from './host/devframe-app';
+import { executeRepositoryScan, runGlobalEnable, startInspectorHost } from './host/devframe-app';
 import { DetectedFileOpener } from './host/file-opener';
+import { GlobalConsentDomain } from './host/global-consent';
 import { InspectionSession, SessionCoordinator } from './session/session';
 
 // The one capture of the invocation working directory (FR-001), taken at
@@ -79,6 +82,12 @@ const command = define({
       type: 'number',
       description:
         'Preferred local port; 0 selects a free one automatically (default: devframe selects)',
+    },
+    'inspect-personal-setup': {
+      type: 'boolean',
+      default: false,
+      description:
+        'Also inspect your personal setup: the customization files each tool documents in its own configuration directory — instructions, skills, agents, hooks, settings, and MCP declarations — plus the shared ~/.agents directory (this flag is the confirmation the consent page otherwise asks for)',
     },
   },
   async run(ctx) {
@@ -131,6 +140,29 @@ const command = define({
     // the process top level before a loopback listener is created
     // (spec.md Clarifications § Session 2026-07-22).
     await executeRepositoryScan(context, admission.scanRequestId, repositorySourceId, 'repository');
+    // The consent state the Global functions serve. Created here rather than
+    // inside the host definition because the flag below confirms a preview
+    // before the host exists, and the consent page has to show that
+    // confirmation rather than a second capture nobody made (FR-013).
+    const consent = new GlobalConsentDomain();
+    if (ctx.values['inspect-personal-setup']) {
+      // The flag is the confirmation. It states, in the command the reader
+      // typed, the same thing the consent page's checkbox states: read the
+      // customization files the allowlist names below the four member
+      // directories, and nothing else in them (FR-013, FR-015 through
+      // FR-018, FR-045). The preview is captured first and confirmed as
+      // captured, so what is read is decided by the same three environment
+      // properties, the same derived shared agent home, and the same
+      // allowlist a reader would have reviewed on screen.
+      //
+      // Awaited, for the reason the Repository scan above is: the launch line
+      // then prints with both generations committed, so the SPA's one initial
+      // fetch already carries the Global Source. A member nothing could admit
+      // is its control's own `failureCode`, which the consent page states —
+      // the flag reports nothing itself, because the terminal output is the
+      // one launch line (contracts/http-api.md § Host requirements #5).
+      await runGlobalEnable(context, consent.capture(), { waitForBatch: true });
+    }
     // Install shutdown handling before the launch line becomes observable.
     // The host calls `onReady` before its `open` browser helper and returns
     // the server handle afterwards, so an interrupt in that small interval is
@@ -162,6 +194,9 @@ const command = define({
       // a default of its own nor range-checks a value devframe already
       // resolves against what the machine has free.
       preferredPort: ctx.values.port,
+      // The same domain the flag above confirmed, so the consent page shows the
+      // active consent instead of offering to work the directories out again.
+      consent,
       onReady: ({ origin }) => {
         // The one launch line (FR-001, contracts/http-api.md § Host
         // requirements #4): the host invokes this after binding and before

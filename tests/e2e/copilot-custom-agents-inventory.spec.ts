@@ -174,7 +174,7 @@ test.describe('agent profiles in the two documented directories', () => {
     // The two spellings of one name are two definitions of one row, in path
     // order, with no winner stated anywhere on the page.
     const duplicate = items.filter({ hasText: 'reviewer' }).first();
-    await expect(duplicate.locator('.aci-agent-row__definitions .aci-path')).toHaveText([
+    await expect(duplicate.locator('.aci-source-family-blocks__members .aci-path')).toHaveText([
       '.github/agents/reviewer.agent.md',
       '.github/agents/reviewer.md',
     ]);
@@ -195,7 +195,9 @@ test.describe('agent profiles in the two documented directories', () => {
     // The `.github/agents/` rule rests on all three surface behaviors, so the
     // row names each of them beside the product — never a claim that any of
     // them loaded the agent (FR-009).
-    await expect(planner.locator('.aci-agent-row__definitions')).toContainText('GitHub Copilot');
+    await expect(planner.locator('.aci-source-family-blocks__members')).toContainText(
+      'GitHub Copilot',
+    );
     await expect(planner.locator('.aci-agent-row__surfaces')).toHaveText([
       'VS Code, CLI, Cloud agent',
     ]);
@@ -222,13 +224,17 @@ test.describe('agent profiles in the two documented directories', () => {
     await page.getByRole('tab', { name: /Agent/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
     const copilotRow = items.filter({ hasText: 'shared' }).first();
-    await expect(copilotRow.locator('.aci-agent-row__definitions')).toContainText('GitHub Copilot');
-    await expect(copilotRow.locator('.aci-agent-row__definitions .aci-path')).toHaveText([
+    await expect(copilotRow.locator('.aci-source-family-blocks__members')).toContainText(
+      'GitHub Copilot',
+    );
+    await expect(copilotRow.locator('.aci-source-family-blocks__members .aci-path')).toHaveText([
       '.claude/agents/shared.md',
     ]);
     const claudeRow = items.filter({ hasText: 'shared-reviewer' });
-    await expect(claudeRow.locator('.aci-agent-row__definitions')).toContainText('Claude Code');
-    await expect(claudeRow.locator('.aci-agent-row__definitions .aci-path')).toHaveText([
+    await expect(claudeRow.locator('.aci-source-family-blocks__members')).toContainText(
+      'Claude Code',
+    );
+    await expect(claudeRow.locator('.aci-source-family-blocks__members .aci-path')).toHaveText([
       '.claude/agents/shared.md',
     ]);
   });

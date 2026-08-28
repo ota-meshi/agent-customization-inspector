@@ -157,9 +157,9 @@ function rowOf(page: import('@playwright/test').Page, path: string) {
 function compareUrl(name: string, left: string, right: string, file?: string): string {
   const fileQuery = file === undefined ? '' : `&file=${encodeURIComponent(file)}`;
   return new URL(
-    `/skills/compare?name=${encodeURIComponent(name)}&left=${encodeURIComponent(
+    `/skills/compare/repository?name=${encodeURIComponent(name)}&leftSource=repository&left=${encodeURIComponent(
       left,
-    )}&right=${encodeURIComponent(right)}${fileQuery}`,
+    )}&rightSource=repository&right=${encodeURIComponent(right)}${fileQuery}`,
     host.origin,
   ).toString();
 }
@@ -168,7 +168,7 @@ function compareUrl(name: string, left: string, right: string, file?: string): s
 async function openComparison(page: import('@playwright/test').Page): Promise<void> {
   await page.goto(host.origin);
   await rowOf(page, CLAUDE_PATH).getByRole('link', { name: "Compare this skill's files" }).click();
-  await page.waitForURL(/\/skills\/compare\?/u);
+  await page.waitForURL(/\/skills\/compare\/repository\?/u);
 }
 
 test('compares the name’s two files from the row’s own link, with no selection step', async ({
@@ -179,7 +179,7 @@ test('compares the name’s two files from the row’s own link, with no selecti
   // share the name: the row's entry link pairs files within its one name.
   await expect(page.getByRole('button', { name: 'Select for comparison' })).toHaveCount(0);
   await rowOf(page, CLAUDE_PATH).getByRole('link', { name: "Compare this skill's files" }).click();
-  await page.waitForURL(/\/skills\/compare\?/u);
+  await page.waitForURL(/\/skills\/compare\/repository\?/u);
   await expect(page.locator('.aci-skill-compare h2')).toHaveText('Compare skill files');
   // Both complete sources are on the one surface, their literal credential
   // difference included — the diff editor holds both sides' lines.
@@ -451,7 +451,7 @@ test('is operable from the keyboard alone', async ({ page }) => {
   });
   expect(await tabUntilFocused(page, compareLink)).toBe(true);
   await page.keyboard.press('Enter');
-  await page.waitForURL(/\/skills\/compare\?/u);
+  await page.waitForURL(/\/skills\/compare\/repository\?/u);
   // Arriving places focus on the page's own heading, the landmark every
   // state keeps (WCAG 2.4.3).
   await expect(page.locator('.aci-skill-compare h2')).toBeFocused();

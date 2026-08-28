@@ -98,7 +98,7 @@ describe('get-session returns the inspection-data success envelope', () => {
     expect(data.sources).toHaveLength(1);
     expect(data.sources[0]).toMatchObject({
       kind: 'repository',
-      tool: null,
+      member: null,
       enabled: true,
       status: 'idle',
       generation: 0,
@@ -268,5 +268,206 @@ describe('the ordinary request-owned failure lifecycle (FR-030)', () => {
     expect(snapshot.staleFailures).toEqual([]);
     expect(snapshot.snapshotState).toBe('current');
     expect(snapshot.repositoryFailureDiagnosticId).toBe('diag-1');
+  });
+});
+
+describe('the Repository session envelope this release publishes (T916)', () => {
+  /** One publishable outcome with nothing in it, for a commit that only has to happen. */
+  const emptyPublication = {
+    kind: 'publishable',
+    outcome: 'complete',
+    visitedEntries: 0,
+    candidateFiles: 0,
+    readBytes: 0,
+    files: [],
+    recognitions: [],
+    diagnostics: [],
+  } as const;
+
+  /** Every inventory a Repository snapshot carries, one per published kind. */
+  const INVENTORY_FIELDS = [
+    'agents',
+    'hooks',
+    'instructions',
+    'mcp',
+    'outputStyles',
+    'permissions',
+    'plugins',
+    'prompts',
+    'rules',
+    'settings',
+    'skills',
+  ] as const;
+
+  it('carries one inventory per kind, all empty before any scan, and reads nothing to say so', async () => {
+    vi.mocked(runSourceScan).mockClear();
+    const context = hostContext();
+    const { data } = await getSession(context);
+    // Generation 0 is answered from the bootstrap state alone: no scan has
+    // run, so nothing has read the Source and every inventory is empty rather
+    // than absent (contracts/http-api.md § get-session).
+    expect(vi.mocked(runSourceScan)).not.toHaveBeenCalled();
+    for (const field of INVENTORY_FIELDS) {
+      expect(data[field], field).toEqual([]);
+    }
+    // The strict envelope: exactly these members, so a later field cannot
+    // arrive unnoticed and a client can rely on the set.
+    expect(Object.keys(data).toSorted()).toEqual(
+      [
+        'createdAt',
+        'diagnostics',
+        'fileOpenTargets',
+        'files',
+        'globalContentEpoch',
+        'globalControl',
+        'globalDisableInProgress',
+        'globalEnableInProgress',
+        'globalGeneration',
+        'repositoryFailureDiagnosticId',
+        'repositoryGeneration',
+        'sessionDiagnosticIds',
+        'sessionId',
+        'snapshotState',
+        'sources',
+        'staleFailures',
+        ...INVENTORY_FIELDS,
+      ].toSorted(),
+    );
+  });
+
+  it('keeps the Source identity stable across a commit', async () => {
+    vi.mocked(runSourceScan).mockResolvedValue(emptyPublication);
+    const context = hostContext();
+    const before = await getSession(context);
+    const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
+    await fn.handler();
+    await setImmediate();
+    const after = await getSession(context);
+    // The Repository Source survives every commit: a client holding its ID
+    // from generation 0 still names the same Source afterwards.
+    expect(after.data.sources[0]!.sourceId).toBe(before.data.sources[0]!.sourceId);
+    expect(after.data.sessionId).toBe(before.data.sessionId);
+    expect(after.data.repositoryGeneration).toBe(1);
+  });
+
+  it('replaces the inventory whole rather than merging into it', async () => {
+    const file = (sourceRelativePath: string) => ({
+      sourceId: 'src-1',
+      sourceRelativePath,
+      diagnosticIds: [],
+      encoding: 'utf-8' as const,
+      hadLeadingBom: false,
+      sizeBytes: 1,
+      sourceText: 'x',
+    });
+    const context = hostContext();
+    const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
+    vi.mocked(runSourceScan).mockResolvedValue({
+      ...emptyPublication,
+      files: [file('AGENTS.md'), file('CLAUDE.md')],
+    });
+    await fn.handler();
+    await setImmediate();
+    expect((await getSession(context)).data.files.map((entry) => entry.sourceRelativePath)).toEqual(
+      ['AGENTS.md', 'CLAUDE.md'],
+    );
+
+    // The second commit publishes a tree the first file is gone from. A
+    // generation is the whole state as of that commit, so the replaced file
+    // must not survive it (FR-030).
+    vi.mocked(runSourceScan).mockResolvedValue({ ...emptyPublication, files: [file('CLAUDE.md')] });
+    await fn.handler();
+    await setImmediate();
+    const after = await getSession(context);
+    expect(after.data.files.map((entry) => entry.sourceRelativePath)).toEqual(['CLAUDE.md']);
+    expect(after.data.repositoryGeneration).toBe(2);
+  });
+
+  it('clears the stale overlay only when a replacement succeeds', async () => {
+    const context = hostContext();
+    const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
+    vi.mocked(runSourceScan).mockResolvedValue(emptyPublication);
+    await fn.handler();
+    await setImmediate();
+
+    // An accepted explicit rescan that terminates fatally is the one operation
+    // that creates the overlay, and it carries that request's own message.
+    vi.mocked(runSourceScan).mockRejectedValue(new Error('injected rescan failure'));
+    await fn.handler();
+    await setImmediate();
+    const stale = context.session.snapshot();
+    expect(stale.snapshotState).toBe('stale-after-fatal-rescan');
+    // The overlay names the failed attempt's own message and the generation it
+    // was measured against; the request that failed is the Source's own
+    // `scanRequestId` at that moment.
+    expect(stale.staleFailures).toEqual([
+      expect.objectContaining({
+        sourceId: context.session.repositorySourceId,
+        failureRef: { kind: 'error', message: 'injected rescan failure' },
+        baseGeneration: 1,
+      }),
+    ]);
+    // The committed generation is untouched by the failure.
+    expect(stale.repositoryGeneration).toBe(1);
+
+    // Nothing but a successful replacement clears it.
+    vi.mocked(runSourceScan).mockResolvedValue(emptyPublication);
+    await fn.handler();
+    await setImmediate();
+    const recovered = context.session.snapshot();
+    expect(recovered.staleFailures).toEqual([]);
+    expect(recovered.snapshotState).toBe('current');
+    expect(recovered.repositoryGeneration).toBe(2);
+  });
+
+  it('answers a stale request ID with nothing at all', async () => {
+    vi.mocked(runSourceScan).mockResolvedValue(emptyPublication);
+    const context = hostContext();
+    const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
+    const admitted = (await fn.handler()) as CommandResult<ScanAdmission>;
+    await setImmediate();
+    const committed = context.session.snapshot();
+
+    // The request is terminal: a second completion for that ID — a duplicated
+    // result, a retried publish — commits nothing, because the attempt it
+    // named is gone rather than merely finished.
+    await context.coordinator.completeScan(admitted.data.scanRequestId, {
+      files: [],
+      recognitions: [],
+      diagnostics: [],
+      outcome: 'complete',
+      visitedEntries: 0,
+      candidateFiles: 0,
+      readBytes: 0,
+    });
+    expect(context.session.snapshot().repositoryGeneration).toBe(committed.repositoryGeneration);
+  });
+
+  it('states what it found and never what it thinks of it', async () => {
+    vi.mocked(runSourceScan).mockResolvedValue(emptyPublication);
+    const context = hostContext();
+    const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
+    await fn.handler();
+    await setImmediate();
+    // The published envelope carries identities, states, and counts. A
+    // judgement about a reader's own files — a score, a severity ranking, a
+    // validity claim — has no field to travel in (QR-001, FR-032).
+    const payload = JSON.stringify((await getSession(context)).data).toLowerCase();
+    for (const word of [
+      'valid',
+      'invalid',
+      'correct',
+      'compliance',
+      'effective',
+      'quality',
+      'lint',
+      'remediat',
+      'score',
+      'rank',
+      'recommend',
+      'severity',
+    ]) {
+      expect(payload, word).not.toContain(word);
+    }
   });
 });

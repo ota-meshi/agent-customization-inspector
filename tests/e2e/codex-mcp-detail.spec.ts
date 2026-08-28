@@ -76,7 +76,7 @@ test.describe('the complete literal MCP carrier detail', () => {
     // labelled by its owner carrier, with the row's name completing the
     // accessible name — is the link to that declaration's own detail (T302).
     await page.getByRole('link', { name: '.codex/config.toml: context7' }).click();
-    await expect(page).toHaveURL(/\/mcp\/.*\?server=context7/u);
+    await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=context7/u);
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     // The record's identity restated: the recognition line and the
     // owner-carrier line, which links to the carrier's file-unit view.
@@ -149,7 +149,12 @@ test.describe('the complete literal MCP carrier detail', () => {
     // A retained link to a renamed declaration: the carrier resolves, the
     // name does not, and the page states that rather than showing another
     // record's content.
-    await page.goto(new URL('/mcp/.codex/config.toml?server=renamed-away', host.origin).toString());
+    await page.goto(
+      new URL(
+        '/mcp/detail/repository/.codex/config.toml?server=renamed-away',
+        host.origin,
+      ).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       'No declaration named this way is published for this file in the current scan.',
     );
@@ -198,9 +203,11 @@ test.describe('a carrier a configured fallback also recognizes', () => {
     // Which detail a link opens follows from the row it is on (FR-007): the
     // instruction row's subject is the file, so it links to the file's own
     // detail exactly as the sibling AGENTS.md does.
-    await expect(panel.locator('a[href="/instructions/AGENTS.md"]').first()).toBeVisible();
-    await panel.locator('a[href="/instructions/.mcp.json"]').first().click();
-    await expect(page).toHaveURL(/\/instructions\//u);
+    await expect(
+      panel.locator('a[href="/instructions/detail/repository/AGENTS.md"]').first(),
+    ).toBeVisible();
+    await panel.locator('a[href="/instructions/detail/repository/.mcp.json"]').first().click();
+    await expect(page).toHaveURL(/\/instructions\/detail\/repository\//u);
     await expect(page.getByRole('heading', { name: '.mcp.json' })).toBeVisible();
     await expect(page.locator('main')).toContainText('"mcpServers"');
 
@@ -208,8 +215,12 @@ test.describe('a carrier a configured fallback also recognizes', () => {
     // carries none of the document's bytes.
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /^MCP/u }).click();
-    await page.getByRole('tabpanel').locator('a[href^="/mcp/.mcp.json"]').first().click();
-    await expect(page).toHaveURL(/\/mcp\//u);
+    await page
+      .getByRole('tabpanel')
+      .locator('a[href^="/mcp/detail/repository/.mcp.json"]')
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/mcp\/detail\/repository\//u);
     await expect(page.getByRole('heading', { name: 'shared' })).toBeVisible();
     await expect(page.locator('main')).toContainText('Readable text');
   });

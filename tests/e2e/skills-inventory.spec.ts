@@ -64,7 +64,7 @@ test('lists one unified skill inventory with each file’s recognition badges', 
       .locator('[role="tabpanel"] .aci-item', {
         has: page.locator('.aci-skill-row__name', { hasText: new RegExp(`^${row}$`, 'u') }),
       })
-      .locator('.aci-skill-row__file', { hasText: path });
+      .locator('.aci-source-family-blocks__members > li', { hasText: path });
     await expect(group.locator('.aci-skill-row__tool')).toHaveText([...tools]);
   };
   await expectTools('orbit', '.agents/skills/orbit/SKILL.md', [
@@ -88,7 +88,7 @@ test('lists one unified skill inventory with each file’s recognition badges', 
   await expect(page.getByRole('tab', { name: /skill/iu })).toHaveAttribute('aria-selected', 'true');
 });
 
-test('narrows the one population with the source, tool, and path filters', async ({ page }) => {
+test('narrows the one population with the tool and path filters', async ({ page }) => {
   await page.goto(host.origin);
   await expect(skillRows(page)).toHaveCount(expectedRowCount());
 
@@ -106,9 +106,11 @@ test('narrows the one population with the source, tool, and path filters', async
   await expect(skillRows(page)).toHaveCount(1);
   await expect(skillRows(page).first()).toContainText('.agents/skills/alpha-a/SKILL.md');
 
-  // Source: the one Repository Source is offered and keeps the same rows.
-  await page.getByLabel('Source', { exact: true }).selectOption({ label: 'Repository' });
-  await expect(skillRows(page)).toHaveCount(1);
+  // No Source control to compose with: this launch inspects the selected
+  // repository alone, so the filter would offer one family and is not rendered
+  // (`InventoryFilters.vue`). Where two are carried it appears and narrows the
+  // rows (`global-codex-admission.spec.ts`).
+  await expect(page.getByLabel('Source', { exact: true })).toHaveCount(0);
 
   // The summary states the narrowed count for the kind in view. The page has
   // a second live region — the session-status announcer — so the summary is
@@ -147,7 +149,7 @@ test('operates the filters and their clear control from the keyboard', async ({ 
   const firstLink = page.locator('[role="tabpanel"] .aci-item a').first();
   expect(await tabUntilFocused(page, firstLink)).toBe(true);
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/skills\//u);
+  await expect(page).toHaveURL(/\/skills\/detail\/repository\//u);
 });
 
 test('exposes no authored content or fixture secret from the inventory surface', async ({

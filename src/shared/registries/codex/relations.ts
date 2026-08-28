@@ -28,13 +28,26 @@ import {
   CODEX_USER_CONFIG_BEHAVIOR,
   CODEX_USER_HOOKS_BEHAVIOR,
   CODEX_USER_INSTRUCTIONS_BEHAVIOR,
+  CODEX_USER_MEMORIES_BEHAVIOR,
   CODEX_USER_PLUGINS_BEHAVIOR,
+  CODEX_USER_PROMPTS_BEHAVIOR,
   CODEX_USER_RULES_BEHAVIOR,
   CODEX_USER_SKILLS_BEHAVIOR,
 } from './behaviors';
 import {
+  CODEX_AGENTS_HOME_MARKETPLACE_RULE,
+  CODEX_AGENTS_HOME_SKILL_RULE,
   CODEX_DERIVED_FALLBACK_BASENAME_RULE,
   CODEX_EXCLUDED_PLUGIN_FILES_RULE,
+  CODEX_EXCLUDED_USER_RUNTIME_RULE,
+  CODEX_GLOBAL_AGENT_RULE,
+  CODEX_GLOBAL_CONFIG_RULE,
+  CODEX_GLOBAL_HOOKS_RULE,
+  CODEX_GLOBAL_INLINE_HOOKS_RULE,
+  CODEX_GLOBAL_INSTRUCTIONS_RULE,
+  CODEX_GLOBAL_PROMPTS_RULE,
+  CODEX_GLOBAL_RULES_RULE,
+  CODEX_GLOBAL_SETTINGS_RULE,
   CODEX_REPO_AGENT_RULE,
   CODEX_REPO_CONFIG_RULE,
   CODEX_REPO_HOOKS_RULE,
@@ -296,5 +309,90 @@ export const CODEX_RULE_RELATIONS: Readonly<Record<CodexRuleId, RuleRelations>> 
   [CODEX_REPO_SKILL_RULE.ruleId]: {
     basedOnBehaviors: [CODEX_REPO_SKILLS_BEHAVIOR],
     explainedByStrategies: [CODEX_SKILLS_DISCOVERY_STRATEGY],
+  },
+  /**
+   * The Global instruction rule is based on the User instruction fallback
+   * alone — the Repository chain is a different Source boundary this rule may
+   * not read — and is explained by the layering strategy, which is where the
+   * global-precedes-project order lives.
+   */
+  [CODEX_GLOBAL_INSTRUCTIONS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_INSTRUCTIONS_BEHAVIOR],
+    explainedByStrategies: [CODEX_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
+  /**
+   * Each widened Global rule mirrors its Repository sibling's relations at
+   * the user scope: the config carrier rests on the config lookup and the
+   * MCP declarations it ships, the settings recognition on the config lookup
+   * alone, the inline hooks on the config and hook lookups it spans, and the
+   * rest each on the one User behavior they accept — explained by the same
+   * strategies, because the vendor composes the user and project layers by
+   * one documented rule (contracts/vendors/openai-codex.md § Inspector
+   * Global rule).
+   */
+  [CODEX_GLOBAL_CONFIG_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_CONFIG_BEHAVIOR],
+    explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_MCP_CONFIGURATION_STRATEGY],
+  },
+  [CODEX_GLOBAL_SETTINGS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_CONFIG_BEHAVIOR],
+    explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY],
+  },
+  [CODEX_GLOBAL_INLINE_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_CONFIG_BEHAVIOR, CODEX_USER_HOOKS_BEHAVIOR],
+    explainedByStrategies: [CODEX_CONFIG_PRECEDENCE_STRATEGY, CODEX_HOOKS_ADDITIVE_STRATEGY],
+  },
+  [CODEX_GLOBAL_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_HOOKS_BEHAVIOR],
+    explainedByStrategies: [CODEX_HOOKS_ADDITIVE_STRATEGY],
+  },
+  [CODEX_GLOBAL_AGENT_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_AGENTS_BEHAVIOR],
+    explainedByStrategies: [CODEX_AGENTS_INHERITANCE_STRATEGY],
+  },
+  [CODEX_GLOBAL_RULES_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_RULES_BEHAVIOR],
+    explainedByStrategies: [CODEX_RULES_RESOLUTION_STRATEGY],
+  },
+  [CODEX_GLOBAL_PROMPTS_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_PROMPTS_BEHAVIOR],
+    explainedByStrategies: [],
+  },
+  /**
+   * The shared-agent-home skill rule is based on the User skill lookup alone
+   * (FR-045) and is explained by the discovery strategy, exactly as the
+   * Repository skill rule is: the scopes the strategy spans stay conditional
+   * on runtime inputs this tool never observes.
+   */
+  [CODEX_AGENTS_HOME_SKILL_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_SKILLS_BEHAVIOR],
+    explainedByStrategies: [CODEX_SKILLS_DISCOVERY_STRATEGY],
+  },
+  /**
+   * The personal marketplace rule is based on the User plugin behavior's
+   * catalog half; the same behavior's installed copies stay named by the User
+   * exclusion below, because a catalog names where a plugin comes from while
+   * an installed copy is state nothing here may read.
+   */
+  [CODEX_AGENTS_HOME_MARKETPLACE_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_PLUGINS_BEHAVIOR],
+    explainedByStrategies: [CODEX_PLUGINS_ACTIVATION_STRATEGY],
+  },
+  /**
+   * The User exclusion is based on every Codex User surface it declines to
+   * authorize. The instruction fallback and the personal skills are
+   * deliberately absent: `codex.global.instructions` and
+   * `codex.global.agents-home.skill` admit those surfaces, and an exclusion
+   * naming one would contradict the rule beside it. The plugin behavior stays,
+   * because only its catalog half is admitted: the installed copies it also
+   * documents remain excluded state.
+   *
+   * It is explained by no strategy. A strategy says how a runtime composes
+   * what it found; an exclusion says this product never looks, so there is no
+   * composition for one to describe.
+   */
+  [CODEX_EXCLUDED_USER_RUNTIME_RULE.ruleId]: {
+    basedOnBehaviors: [CODEX_USER_MEMORIES_BEHAVIOR, CODEX_USER_PLUGINS_BEHAVIOR],
+    explainedByStrategies: [],
   },
 };

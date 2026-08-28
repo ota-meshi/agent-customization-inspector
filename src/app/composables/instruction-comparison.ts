@@ -11,13 +11,19 @@
 // compared whole rather than file by corresponding file.
 //
 // The comparison selection is the route's:
-// `/instructions/compare?left=<path>&right=<path>` names the two files by
-// their Source-relative Paths — the identity the inventory and the detail
-// route use (FR-030); the owning range row is derived from them, because a
-// file governs exactly one range — and the compare page's own pickers are
-// how a reader moves those coordinates within the row. There is no standing
-// pre-selection state, and a pair the model does not express is reported by
-// the page, never opened (FR-011).
+// `/instructions/compare/<family>?leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>`
+// names the two files by their whole identity — the Source that holds each and
+// its Source-relative Path, the identity the inventory and the detail route use
+// (FR-030) — and the family they are both of. The owning range is derived from
+// them, because a file governs exactly one range, and the compare page's own
+// pickers are how a reader moves those coordinates within the block.
+//
+// The family is the boundary a pair stays inside, and each side carries its own
+// Source because a family can hold more than one: a reader with two consented
+// homes compares what each of them says, while the repository is a different
+// kind of place and a pair spanning the two is a pair no block holds. There is
+// no standing pre-selection state, and a pair the model does not express is
+// reported by the page, never opened (FR-011).
 //
 // What this class holds is the open view: the two ordinary `get-file-detail`
 // loads of files the client already lists. There is no compare API, because
@@ -30,12 +36,12 @@
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
-import { toJsonStringBody } from '../components/detail-route';
+import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import { shallowRef } from 'vue';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
 import { isReadableFile } from '../../shared/entities';
-import type { FileDetailDto } from '../../shared/api-types';
+import type { FileDetailDto, SourceKind } from '../../shared/api-types';
 
 /**
  * Where the one open comparison stands:
@@ -67,28 +73,48 @@ export type InstructionComparisonViewStatus =
   | 'failed';
 
 /**
- * The instruction comparison route of one compared pair. `left` and `right`
- * are the two files' Source-relative Paths — the identity the inventory rows
- * and the detail route use (FR-030); the applicability-range row that owns
- * the pair is derived from them rather than carried, because a file governs
- * exactly one range. A module function beside the state class so every
- * surface that builds the link — the inventory row's and detail page's
- * entry links, and the compare route's own pickers — builds the same URL.
+ * The instruction comparison route of one compared pair: the family both files
+ * are of leads the address, and each side carries its own Source and
+ * Source-relative Path — together the identity the inventory blocks and the
+ * detail route use (FR-030). The applicability range that owns the pair is
+ * derived from the sides rather than carried, because a file governs exactly one
+ * range within its Source.
+ *
+ * The family leads rather than a Source, because a family is what a pair stays
+ * inside and can hold two of them: a reader with two consented homes compares
+ * one home's file against the other's. It is stated in the address rather than
+ * derived so the page can refuse a pair spanning two families before resolving
+ * anything.
+ *
+ * A module function beside the state class so every surface that builds the
+ * link — the inventory block's and detail page's entry links, and the compare
+ * route's own pickers — builds the same URL.
  */
 export function instructionComparisonRouteFor(
-  left: string,
-  right: string,
+  family: SourceKind,
+  left: ComparisonSide,
+  right: ComparisonSide,
 ): {
   readonly path: string;
-  readonly query: { readonly left: string; readonly right: string };
+  readonly query: {
+    readonly leftSource: string;
+    readonly left: string;
+    readonly rightSource: string;
+    readonly right: string;
+  };
 } {
   // Each path rides as its JSON string body, the spelling every route in this
   // product uses: a raw entry name can hold a lone surrogate (data-model.md
   // § SourceRelativePath), which the router's own query encoding rejects with
   // a `URIError` while the row's link renders (`detail-route.ts`).
   return {
-    path: '/instructions/compare',
-    query: { left: toJsonStringBody(left), right: toJsonStringBody(right) },
+    path: `/instructions/compare/${family}`,
+    query: {
+      leftSource: left.source,
+      left: toJsonStringBody(left.sourceRelativePath),
+      rightSource: right.source,
+      right: toJsonStringBody(right.sourceRelativePath),
+    },
   };
 }
 
@@ -234,8 +260,14 @@ export class InstructionComparisonState {
    * (FR-011). Every write happens behind one ownership check, so the ways an
    * invocation stops owning the view — a purge, a generation change, a
    * close, a newer open — cannot each grow their own handling.
+   *
+   * Each side is resolved in its own Source: a path alone names a file in every
+   * Source that holds it, so asking without the Source would compare whichever
+   * the session lists first (FR-030). The two may be different Sources of one
+   * family — that is what a reader with two consented homes compares — and the
+   * page is what refuses a pair no block holds.
    */
-  public async open(leftPath: string, rightPath: string): Promise<void> {
+  public async open(left: ComparisonSide, right: ComparisonSide): Promise<void> {
     // The previous pair's content is dropped before anything is requested,
     // so a slow request never leaves one pair's sources on screen under
     // another pair's paths; this also supersedes any open still in flight.
@@ -244,10 +276,13 @@ export class InstructionComparisonState {
     const capturedEpoch = this.#clientData.epoch();
     const owns = (): boolean =>
       requested === this.#requestVersion && this.#clientData.epoch() === capturedEpoch;
-    if (leftPath === rightPath) {
-      // The same file must not occupy both inputs, however many recognitions
-      // it has (FR-011). A declared outcome, decided here: spending a request
-      // to discover it would ask the host a question the client can answer.
+    if (left.source === right.source && left.sourceRelativePath === right.sourceRelativePath) {
+      // The same file must not occupy both inputs, however many recognitions it
+      // has (FR-011). The whole identity decides it, not the path: one path in
+      // two Sources is two files, and comparing them is the case a family of
+      // two consented homes exists for. A declared outcome, decided here:
+      // spending a request to discover it would ask the host a question the
+      // client can answer.
       this.status.value = 'same-path';
       return;
     }
@@ -257,33 +292,31 @@ export class InstructionComparisonState {
     // in-flight detail would supersede the first and discard its response
     // (`SessionApiClient` § request tokens). Two loads of committed state a
     // few milliseconds apart cost nothing a user can see.
-    const left = await this.#fetchOwned(leftPath, owns);
-    if (left === null || !owns()) {
+    const leftDetail = await this.#fetchOwned(left, owns);
+    if (leftDetail === null || !owns()) {
       return;
     }
-    const right = await this.#fetchOwned(rightPath, owns);
-    if (right === null || !owns()) {
+    const rightDetail = await this.#fetchOwned(right, owns);
+    if (rightDetail === null || !owns()) {
       return;
     }
     // Adopted together: a comparison with one side is not a comparison, and
     // publishing the pair in one synchronous step means no render can see
     // half of it.
-    this.leftDetail.value = left;
-    this.rightDetail.value = right;
+    this.leftDetail.value = leftDetail;
+    this.rightDetail.value = rightDetail;
     this.status.value = 'ready';
   }
 
   /**
    * Fetches one side and settles every non-adopted outcome, so no two call
-   * sites can drift into different handling. `owns` is the calling open's
-   * ownership check: every write happens behind it, except the fatal report,
-   * which is true of the session rather than of this request.
+   * sites can drift into different handling. The side is addressed by its whole
+   * identity — its own Source and its path (FR-030). `owns` is the calling
+   * open's ownership check: every write happens behind it, except the fatal
+   * report, which is true of the session rather than of this request.
    */
-  async #fetchOwned(
-    sourceRelativePath: string,
-    owns: () => boolean,
-  ): Promise<FileDetailDto | null> {
-    const outcome = await this.#client.fetchFileDetail(sourceRelativePath);
+  async #fetchOwned(side: ComparisonSide, owns: () => boolean): Promise<FileDetailDto | null> {
+    const outcome = await this.#client.fetchFileDetail(side.sourceRelativePath, side.source);
     switch (outcome.kind) {
       case 'adopted':
         if (!owns()) {
@@ -293,7 +326,7 @@ export class InstructionComparisonState {
           // Binary input is textless and a failed read has nothing to show:
           // neither is comparison-eligible (FR-025), and the state names
           // the file instead of fabricating an empty side.
-          this.unreadablePath.value = sourceRelativePath;
+          this.unreadablePath.value = side.sourceRelativePath;
           this.status.value = 'not-readable';
           return null;
         }

@@ -491,3 +491,83 @@ describe('the inert TOML seam a Codex custom agent reads through (T517)', () => 
     ]);
   });
 });
+
+describe('the four-parser decoding matrix (T921)', () => {
+  /** One document per admitted source form, in the parser each is read by. */
+  const FORMS = [
+    { form: 'frontmatter', text: '---\nname: greet\n---\n\nBody.\n' },
+    { form: 'json', text: '{ "mcpServers": { "db": { "command": "npx" } } }\n' },
+    { form: 'toml', text: '[mcp_servers.db]\ncommand = "npx"\n' },
+    { form: 'markdown', text: '# Heading\n\nOrdinary prose.\n' },
+  ] as const;
+
+  it('decodes every form once, with no charset fallback and nothing sampled away', () => {
+    for (const { form, text } of FORMS) {
+      const decoded = decodeSourceBytes(encoder.encode(text));
+      if (decoded.encoding === 'binary') {
+        throw new Error(`${form} decoded as binary`);
+      }
+      // The whole document, byte for byte as text: no second decode under
+      // another charset, no prefix sample standing in for the file, and no
+      // truncation at any size (FR-024, FR-029 — capacity is the
+      // environment's).
+      expect(decoded.encoding, form).toBe('utf-8');
+      expect(decoded.sourceText, form).toBe(text);
+      expect(decoded.hadLeadingBom, form).toBe(false);
+    }
+  });
+
+  it('classifies by NUL alone, whatever else the bytes are', () => {
+    // A NUL makes a file binary — diagnostic-only, no text (FR-025) — while
+    // bytes that are merely not valid UTF-8 stay readable text with the
+    // replacement character the decoder inserted. Nothing else decides it:
+    // no extension, no sniffing, no heuristic about what the file looks like.
+    for (const { form, text } of FORMS) {
+      const withNul = decodeSourceBytes(encoder.encode(`${text}\u0000`));
+      expect(withNul.encoding, form).toBe('binary');
+      const invalid = decodeSourceBytes(
+        Uint8Array.from([...encoder.encode(text), 0xff, 0xfe, 0x0a]),
+      );
+      expect(invalid.encoding, form).toBe('utf-8-replaced');
+      expect(
+        invalid.encoding === 'utf-8-replaced' && invalid.sourceText.includes('\uFFFD'),
+        form,
+      ).toBe(true);
+    }
+  });
+
+  it('removes one leading BOM per form and records that it did', () => {
+    for (const { form, text } of FORMS) {
+      const decoded = decodeSourceBytes(encoder.encode(`\uFEFF${text}`));
+      if (decoded.encoding === 'binary') {
+        throw new Error(`${form} decoded as binary`);
+      }
+      expect(decoded.hadLeadingBom, form).toBe(true);
+      // Exactly one: a second BOM is content the file wrote, and removing it
+      // would change what the reader authored.
+      expect(decoded.sourceText, form).toBe(text);
+      const twice = decodeSourceBytes(encoder.encode(`\uFEFF\uFEFF${text}`));
+      if (twice.encoding === 'binary') {
+        throw new Error(`${form} decoded as binary`);
+      }
+      expect(twice.sourceText.startsWith('\uFEFF'), form).toBe(true);
+    }
+  });
+
+  it('parses replaced text like any other text, in every form that has a parser', () => {
+    // A retained U+FFFD is content, not a failure: the document still parses,
+    // its declarations still resolve, and nothing about the file becomes
+    // partial for having one (FR-028 is about extraction failures, and this
+    // is not one).
+    const replaced = '\uFFFD';
+    const frontmatter = new ParsedMarkdownDocument(`---\nname: gre${replaced}t\n---\n\nBody.\n`);
+    expect(frontmatter.frontmatterEntries.map((entry) => entry.key)).toEqual(['name']);
+    const json = new ParsedJsonDocument(`{ "name": "gre${replaced}t" }`, {
+      tool: 'claude',
+      sourceRelativePath: '.mcp.json',
+    });
+    expect(json.entries.map((entry) => entry.key)).toEqual(['name']);
+    const toml = new ParsedTomlDocument(`name = "gre${replaced}t"\n`);
+    expect(toml.entries.map((entry) => entry.key)).toEqual(['name']);
+  });
+});

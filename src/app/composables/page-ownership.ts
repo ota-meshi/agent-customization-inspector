@@ -12,7 +12,7 @@
 // wraps `InventoryFilterView`.
 import { inject, onUnmounted } from 'vue';
 import { SESSION_VIEW_STATE, type SessionViewState } from '../session/view-state';
-import type { PluginCarrierDetailParams } from '../../shared/api-types';
+import type { PluginCarrierDetailParams, SourceSelector } from '../../shared/api-types';
 
 /**
  * One page instance's handle on the route-owned view state — the open detail
@@ -44,24 +44,34 @@ export class PageOwnership {
    * Opens one customization's file detail as this page's own request
    * ({@link SessionViewState.openFileDetail}).
    */
-  public async openFileDetail(entryPath: string, openPath: string): Promise<void> {
-    await this.#viewState.openFileDetail(entryPath, openPath, this.#owner);
+  public async openFileDetail(
+    entryPath: string,
+    openPath: string,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
+    await this.#viewState.openFileDetail(entryPath, openPath, this.#owner, source);
   }
 
   /**
    * Opens one MCP carrier's declarations as this page's own request
    * ({@link SessionViewState.openCarrierDetail}).
    */
-  public async openCarrierDetail(sourceRelativePath: string): Promise<void> {
-    await this.#viewState.openCarrierDetail(sourceRelativePath, this.#owner);
+  public async openCarrierDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
+    await this.#viewState.openCarrierDetail(sourceRelativePath, this.#owner, source);
   }
 
   /**
    * Opens one hook carrier's declarations as this page's own request
    * ({@link SessionViewState.openHookCarrierDetail}).
    */
-  public async openHookCarrierDetail(sourceRelativePath: string): Promise<void> {
-    await this.#viewState.openHookCarrierDetail(sourceRelativePath, this.#owner);
+  public async openHookCarrierDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
+    await this.#viewState.openHookCarrierDetail(sourceRelativePath, this.#owner, source);
   }
 
   /**
@@ -81,8 +91,11 @@ export class PageOwnership {
    * Opens one declared permission policy as this page's own request
    * ({@link SessionViewState.openPolicyDetail}).
    */
-  public async openPolicyDetail(sourceRelativePath: string): Promise<void> {
-    await this.#viewState.openPolicyDetail(sourceRelativePath, this.#owner);
+  public async openPolicyDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
+    await this.#viewState.openPolicyDetail(sourceRelativePath, this.#owner, source);
   }
 
   /**

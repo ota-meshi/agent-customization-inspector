@@ -103,7 +103,9 @@ test.describe('Copilot hook detail', () => {
     // The carrier's own page — the same coordinate without an event — is where
     // the keys beside the event map are, because no other row publishes them
     // (FR-007).
-    await page.goto(new URL('/hooks/.github%2Fhooks%2Fsecurity.json', host.origin).href);
+    await page.goto(
+      new URL('/hooks/detail/repository/.github%2Fhooks%2Fsecurity.json', host.origin).href,
+    );
     await expect(page.locator('.aci-hook-detail')).toContainText('version');
     await expect(page.locator('.aci-hook-detail')).toContainText('Repository policy hooks.');
   });
@@ -138,7 +140,9 @@ test.describe('Copilot hook detail', () => {
   test('reports a hook coordinate the current scan does not hold', async ({ page }) => {
     // A nested file under the hook directory is admitted by nothing, so its
     // hook page is a dead coordinate whatever a reader types (FR-030).
-    await page.goto(new URL('/hooks/.github%2Fhooks%2Fnested%2Fdeep.json', host.origin).href);
+    await page.goto(
+      new URL('/hooks/detail/repository/.github%2Fhooks%2Fnested%2Fdeep.json', host.origin).href,
+    );
     await expect(page.locator('.aci-error')).toContainText('current scan');
     await page.getByRole('link', { name: /Return to the inventory/u }).click();
     await expect(page.getByRole('tab', { name: /Hook/u })).toHaveAttribute('aria-selected', 'true');

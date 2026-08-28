@@ -89,7 +89,7 @@ test.describe('the complete literal Copilot prompt detail', () => {
       .getByRole('link', { name: '.github/prompts/scaffold.prompt.md' })
       .click();
     await expect(page).toHaveURL(
-      /\/prompts-and-commands\/\.github\/prompts\/scaffold\.prompt\.md$/u,
+      /\/prompts-and-commands\/detail\/repository\/\.github\/prompts\/scaffold\.prompt\.md$/u,
     );
 
     const main = page.locator('main');
@@ -116,7 +116,10 @@ test.describe('the complete literal Copilot prompt detail', () => {
 
   test('serves the complete authored file beside the parse', async ({ page }) => {
     await page.goto(
-      new URL('/prompts-and-commands/.github/prompts/scaffold.prompt.md', host.origin).toString(),
+      new URL(
+        '/prompts-and-commands/detail/repository/.github/prompts/scaffold.prompt.md',
+        host.origin,
+      ).toString(),
     );
     await page.getByRole('tab', { name: 'File' }).click();
     const main = page.locator('main');
@@ -128,7 +131,10 @@ test.describe('the complete literal Copilot prompt detail', () => {
 
   test('names a prompt whose declarations could not be read by its file name', async ({ page }) => {
     await page.goto(
-      new URL('/prompts-and-commands/.github/prompts/broken.prompt.md', host.origin).toString(),
+      new URL(
+        '/prompts-and-commands/detail/repository/.github/prompts/broken.prompt.md',
+        host.origin,
+      ).toString(),
     );
     const main = page.locator('main');
     // The extraction failed, so nothing parsed is shown and the file is the

@@ -26,6 +26,8 @@
 // rather than the one running. The finding is that nothing was recognized;
 // which products and locations the release covers is documentation.
 import { computed } from 'vue';
+
+import SourceFamilySections from './SourceFamilySections.vue';
 import InstructionRow from './rows/InstructionRow.vue';
 import SkillRow from './rows/SkillRow.vue';
 import McpRow from './rows/McpRow.vue';
@@ -38,12 +40,11 @@ import PluginRow from './rows/PluginRow.vue';
 import OutputStyleRow from './rows/OutputStyleRow.vue';
 import SettingsRow from './rows/SettingsRow.vue';
 import { inventoryPanelId, inventoryTabId } from './panel-ids';
-import { CUSTOMIZATION_KIND_PLURAL_TEXT } from '../../../shared/entities';
+import { CUSTOMIZATION_KIND_PLURAL_TEXT, fileIdentityKey } from '../../../shared/entities';
 import type {
   AgentInventoryEntryDto,
   PromptInventoryEntryDto,
   CustomizationFileSummaryDto,
-  InstructionInventoryEntryDto,
   HookInventoryEntryDto,
   McpInventoryEntryDto,
   PermissionsInventoryEntryDto,
@@ -55,13 +56,13 @@ import type {
   SkillInventoryEntryDto,
 } from '../../../shared/api-types';
 import type { CustomizationKind } from '../../../shared/entities';
-import type { NarrowedInventoryRow } from '../../composables/filters';
+import type { InstructionRangeGroup, NarrowedInventoryRow } from '../../composables/filters';
 
 const props = defineProps<{
   /** The kind in view; its inventory below is what this list renders. */
   kind: CustomizationKind | null;
   /** The instruction rows that passed the active filters, in snapshot order. */
-  instructionRows: readonly NarrowedInventoryRow<InstructionInventoryEntryDto>[];
+  instructionRangeGroups: readonly InstructionRangeGroup[];
   /** The skill rows that passed the active filters, in snapshot order. */
   skillRows: readonly NarrowedInventoryRow<SkillInventoryEntryDto>[];
   /** The MCP name rows that passed the active filters, in snapshot order. */
@@ -82,8 +83,12 @@ const props = defineProps<{
   outputStyleRows: readonly OutputStyleInventoryEntryDto[];
   /** The settings-and-configuration rows that passed the active filters, in snapshot order. */
   settingsRows: readonly SettingsInventoryEntryDto[];
-  /** Every published file by path, so a row can resolve the files it names. */
-  filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
+  /**
+   * Every published file by its Source and then its path, so a row resolves
+   * the files it names under its own Source: a same-path file in the other
+   * Source is a different file (FR-030).
+   */
+  filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
   /** How many rows the committed generation published before filtering. */
   totalCount: number;
   /** The generation's diagnostics, resolved per row. */
@@ -96,7 +101,7 @@ const props = defineProps<{
  */
 const rowCount = computed(() =>
   props.kind === 'instructions'
-    ? props.instructionRows.length
+    ? props.instructionRangeGroups.length
     : props.kind === 'skill'
       ? props.skillRows.length
       : props.kind === 'MCP'
@@ -133,15 +138,15 @@ const rowCount = computed(() =>
   >
     <ul v-if="rowCount > 0" class="aci-list aci-inventory" role="list">
       <template v-if="kind === 'instructions'">
-        <!-- Keyed by the range with the no-range row spelled as an empty key:
-             at most one row has a null range, and no glob key is empty — a
-             range always ends in its pattern — so the spelling collides with
-             nothing. -->
+        <!-- Keyed by the range itself — the row unit is one applicability
+             range, unique in the list by construction — with the no-range
+             group spelled as an empty one: no glob key is empty, and there is
+             at most one such group (data-model.md § Inventory unit). -->
         <InstructionRow
-          v-for="entry in instructionRows"
-          :key="entry.applicabilityRange ?? ''"
-          :entry="entry"
-          :files-by-path="filesByPath"
+          v-for="group in instructionRangeGroups"
+          :key="group.applicabilityRange ?? ''"
+          :group="group"
+          :files-by-source="filesBySource"
           :diagnostics="diagnostics"
         />
       </template>
@@ -150,7 +155,7 @@ const rowCount = computed(() =>
           v-for="entry in skillRows"
           :key="entry.name"
           :entry="entry"
-          :files-by-path="filesByPath"
+          :files-by-source="filesBySource"
           :diagnostics="diagnostics"
         />
       </template>
@@ -178,7 +183,7 @@ const rowCount = computed(() =>
           v-for="entry in agentRows"
           :key="entry.name === null ? 'unnamed' : `name:${entry.name}`"
           :entry="entry"
-          :files-by-path="filesByPath"
+          :files-by-source="filesBySource"
           :diagnostics="diagnostics"
         />
       </template>
@@ -190,25 +195,36 @@ const rowCount = computed(() =>
           v-for="entry in promptRows"
           :key="entry.name"
           :entry="entry"
-          :files-by-path="filesByPath"
+          :files-by-source="filesBySource"
           :diagnostics="diagnostics"
         />
       </template>
       <template v-if="kind === 'rule'">
-        <!-- Keyed by the row's own path: the unit is the file, and a path is
-             unique within a Source (FR-030). -->
-        <RuleRow v-for="entry in ruleRows" :key="entry.sourceRelativePath" :entry="entry" />
+        <!-- One section per Source family, because this kind's unit is one
+             file of one Source (FR-030); rows are keyed by their own
+             identity, the file (data-model.md § Inventory unit). -->
+        <SourceFamilySections
+          :members="ruleRows"
+          :member-key="(entry) => fileIdentityKey(entry.sourceId, entry.sourceRelativePath)"
+        >
+          <template #member="{ member }">
+            <RuleRow :entry="member" />
+          </template>
+        </SourceFamilySections>
       </template>
       <template v-if="kind === 'permissions'">
-        <!-- Its own row component rather than the rules one: a permissions row
-             is a declared policy, keyed by the path of the file that declares
-             it (data-model.md § Inventory unit). -->
-        <PermissionsRow
-          v-for="entry in permissionsRows"
-          :key="entry.sourceRelativePath"
-          :entry="entry"
-          :diagnostics="diagnostics"
-        />
+        <!-- One section per Source family, exactly as the rules list — and
+             its own row component rather than the rules one: a permissions
+             row is a declared policy, keyed by the identity of the file that
+             declares it (data-model.md § Inventory unit). -->
+        <SourceFamilySections
+          :members="permissionsRows"
+          :member-key="(entry) => fileIdentityKey(entry.sourceId, entry.sourceRelativePath)"
+        >
+          <template #member="{ member }">
+            <PermissionsRow :entry="member" :diagnostics="diagnostics" />
+          </template>
+        </SourceFamilySections>
       </template>
       <template v-if="kind === 'hook'">
         <!-- Keyed by the row's own event — the row unit is the declared
@@ -248,10 +264,18 @@ const rowCount = computed(() =>
         />
       </template>
       <template v-if="kind === 'settings/config'">
-        <!-- Its own row component again: this row is the file a product reads
-             its settings from, keyed by that file's path (data-model.md
+        <!-- One section per Source family, exactly as the rules list — and
+             its own row component again: this row is the file a product reads
+             its settings from, keyed by that file's identity (data-model.md
              § Inventory unit). -->
-        <SettingsRow v-for="entry in settingsRows" :key="entry.sourceRelativePath" :entry="entry" />
+        <SourceFamilySections
+          :members="settingsRows"
+          :member-key="(entry) => fileIdentityKey(entry.sourceId, entry.sourceRelativePath)"
+        >
+          <template #member="{ member }">
+            <SettingsRow :entry="member" />
+          </template>
+        </SourceFamilySections>
       </template>
     </ul>
     <!-- Nothing was recognized as this kind at all — a different finding from

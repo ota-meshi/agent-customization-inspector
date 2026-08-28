@@ -118,6 +118,18 @@ bindされたportを述べる場所はprintされたURLだけである。誰か�
 奪ってはならない起動には`--port 0`を使う。suiteも同じ理由でその形で起動する
 （AGENTS.md § Agent-started process policy）。
 
+`--inspect-personal-setup`は、4つのmember root — 各tool自身の設定ディレクトリと共有agent home — に
+ある文書化済みカスタマイズfileもinspectする。consent pageのcheckboxが認可するのと同じreadを、commandで述べる形である。この
+flagそのものがconfirmationである。CLIは3つの環境プロパティと常にderiveされる共有agent homeからpreviewをcaptureし、captureした
+とおりに確認し、readのcommitを待つ。したがってprintされたURLが現れる時点で、Global Sourceは
+既にinventoryに載っている。各toolがどう終わったか、何が除外されたままかは、これまでどおり
+consent pageにある。flagなしのlaunchは選択されたrepositoryの外を一切readせず、pageは
+ディレクトリの割り出しを申し出る。
+
+```bash
+pnpm start --no-open --inspect-personal-setup
+```
+
 決定論的なfixture repository — suiteがassertする対象と同一の、
 `tests/fixtures/repositories/build-fixtures.ts`のbuilderが書き出すtree — に対してinspectorを
 確認するには、1つのscriptが指名されたfixtureをgit-ignoredな`.tmp/fixtures/` treeの下に
@@ -128,7 +140,9 @@ pnpm run start:fixture all-instructions --no-open
 ```
 
 第1引数はfixture名（省略時は`all`。これはすべての`all-*` treeを1つのrootに構築し、1回のlaunchで3つのinventory全部を配信する。未知の名前は利用可能な一覧を表示する）で、それ以降は
-すべてCLIへそのまま渡す。Launchごとにそのfixtureの前回treeを置き換えるため、閲覧中の手編集が
+すべてCLIへそのまま渡す。CLI自身のoptionの前でも名前は省略可能である。`-`で始まる引数は
+そのoptionであるため、`pnpm run start:fixture --inspect-personal-setup`はその名前のfixtureを
+探すのではなく、defaultのtreeをそのoptionつきで配信する。Launchごとにそのfixtureの前回treeを置き換えるため、閲覧中の手編集が
 次回へ漏れることはなく、treeはその後もinspection用にdisk上へ残る。Launcherは`--root`でrootを
 選択する。呼び出し`cwd`によるselectionを確認するには、launchが残したtreeへ移動してそこから
 CLIを起動する。
@@ -223,6 +237,7 @@ pnpm run typecheck
 pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
+pnpm run test:security
 pnpm run test:package
 pnpm run test:performance
 pnpm run test:coverage
@@ -269,12 +284,16 @@ pnpm run test:e2e
   `devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
-- Performance suiteはpackaged CLI（先にbuildする）に対してT183のSC-002 smoke passを実行する。
-  Harness integrityはgateされる — check-in済みfixture manifest、そのcanonical SHA-256、
-  reference profileが相互にbindし、構築した100,000-entry/500-file fixtureがrun前後で
-  manifestのdigestと一致しなければならない — 一方、記録されるstatus/inventory/interaction
-  timingはprofile IDとmanifest digestとともにgatingなしでpublishされる。正確な10-run
-  9-of-10 release protocolはT918が所有する。
+- Performance suiteはpackaged CLI（先にbuildする）に対してSC-002 release protocolを実行する。
+  変更しない1つのmanifest-bound 100,000-entry/500-file fixtureに対して、正確に10回の測定runを
+  行う。各runはfresh processであり、automatic scanはtimingの外で落ち着かせ、1回の明示的な
+  rescanをrendered page上で測定する。fixtureとmanifestのdigestは最初のrunの直前と毎runの後に
+  再計算する。各runは、自身のadmissionのrequest IDを、測定したstatusとcommitしたgenerationの
+  両方に持たねばならない（automatic baselineの1つ先であり、baseline自身ではない）。10 runのうち
+  少なくとも9 runが、1秒のstatus、10秒のinventory、100 ms未満の2つのinteractionをすべて満たす
+  ことを要求する。この閾値規則は、check-in済みprofileが宣言するhost上ではassertし、それ以外では
+  記録する。別のmachineで測った同じ数値はそのmachineの測定だからである。いずれの場合も、各runの
+  request ID、generation、timing、profile ID、manifest digestをpublishする。
 - Browser、contract、manual evidenceが4 user storyすべてを扱い、
   [SC-008の55行matrix](contracts/accessibility-acceptance.ja.md)のApplicableな全行とNot-applicable再確認を満たす。
   Axeのseverity結果だけではpassにならない。
@@ -384,6 +403,11 @@ source checkでnetworkを使えるのはこのcommandだけとする。
 
 ### 1. Repository customizationの発見
 
+```bash
+pnpm exec playwright test tests/e2e/discovery.spec.ts
+pnpm exec playwright test tests/e2e/repository-complete-inventory.spec.ts
+```
+
 確認項目:
 
 1. OptionなしではRepository Sourceがcapture済みchild-process `process.cwd()`のexact valueと等しい。Relative/absolute
@@ -411,10 +435,13 @@ source checkでnetworkを使えるのはこのcommandだけとする。
 
 ```bash
 pnpm exec playwright test tests/e2e/boot.spec.ts
+pnpm exec playwright test tests/e2e/inspection-safety.spec.ts
+pnpm exec playwright test tests/e2e/repository-complete-detail.spec.ts
 pnpm exec vitest run --project unit \
   tests/unit/app/api-client.test.ts \
   tests/unit/app/session-view-state.test.ts \
   tests/unit/app/client-data.test.ts
+pnpm run test:security
 ```
 
 確認項目:
@@ -475,6 +502,11 @@ pnpm exec vitest run --project unit \
 
 ### 3. 2 fileの比較
 
+```bash
+pnpm exec playwright test tests/e2e/comparison.spec.ts
+pnpm exec playwright test tests/e2e/repository-complete-comparison.spec.ts
+```
+
 確認項目:
 
 1. Repository comparison flowでは、2つ以上のreadableなentry fileを持つskill名がそのrowとdetail画面に比較エントリを
@@ -486,8 +518,10 @@ pnpm exec vitest run --project unit \
 2. Read-only Monaco source modelがmasking/環境置換なしで記述された完全なtextを保持し、link/editingを無効にし、
    filesystem pathではなくopaqueなin-memory URIを使う。
 3. Monacoがsemantic ranking、merge、lint、validation、format、convert、fix suggestionなしでliteral
-   source差を表示する。Recognition metadataは区別可能なまま、JSONへserializeせずVueでtyped fieldを
-   比較する。
+   source差を表示する。宣言済みmetadataはsideごとに1つのcanonical serialized documentとして比較し、
+   各surfaceがVueで描画するtypedなrecognition rowの横でMonacoがdiffする。このserializationはFR-012が
+   定めるparseの提示であり — 異なるsyntaxで書かれた2つのsideを共に読める唯一のspellingである —
+   どちらのfileの変換でもない。
 4. Monacoとbrowserのcapacityはbrowser engineと実行環境から継承する。Recoverableなeditor computation failureは
    記述された完全なread-only side-by-side sourceを削除せず、actionable diagnosticを示す。
 5. Rescan、removal、Global disable、route closeがstale selectionと表示済みdetail stateをclearし、関連する
@@ -496,9 +530,10 @@ pnpm exec vitest run --project unit \
    diffへ入り、navigateし、抜けられる。
 7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
    発生させない。
-8. `/`、`/global-consent`、各kindのcomparison route（`/skills/compare`、`/instructions/compare`、
-   `/mcp/compare`、`/prompts-and-commands/compare`、`/agents/compare`、`/plugins/compare`、
-   `/hooks/compare`）、各kindのdetail routeのdirect loadが、
+8. `/`、`/global-consent`、各kindの`compare`先頭のcomparison route（`/skills/compare/<family>`、
+   `/instructions/compare/<family>`、`/mcp/compare/<family>`、
+   `/prompts-and-commands/compare/<family>`、`/agents/compare/<family>`、
+   `/plugins/compare/<family>`、`/hooks/compare/<family>`）、各kindのdetail routeのdirect loadが、
    devframe hostが配信する同じroot-absolute assetからbootする。
 9. Session-loss/response-guard testは、devframe transportが報告するchannel loss、currentかつnon-supersededなRPCの
    現在の非supersededなRPCでのchannel lossまたは解釈できないprotocol、session-ID mismatch、greater Global content epochまたはnon-null disable fence、
@@ -535,17 +570,34 @@ pnpm exec vitest run --project unit \
 
 ### 4. Global inspectionへのopt-in
 
+preview と、確認のうち Codex と Claude の member が現時点で出荷されている部分です。Copilot と
+共有 agent home の member port、retry、disable は、それらを bind する各 phase とともに到着します。
+したがって、ここでの確認は Codex と Claude の slot を評価します。
+
+```bash
+pnpm exec playwright test tests/e2e/global-consent-preview.spec.ts
+pnpm exec playwright test tests/e2e/global-codex-admission.spec.ts
+pnpm exec playwright test tests/e2e/global-claude-admission.spec.ts
+pnpm exec vitest run --project unit tests/unit/host/global-consent.test.ts
+pnpm exec vitest run --project unit tests/unit/session/coordinator.test.ts
+pnpm exec vitest run --project contract tests/contract/http-api-global.test.ts
+pnpm exec vitest run --project integration tests/integration/global-boundaries.test.ts
+```
+
 Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対にinspectしない。確認項目:
 
 1. Consent前にGlobal pathへ一切touchせず、previewを`stat`、`realpath`、enumeration、file readなしでlexicalに
    派生する。Instrumented captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に1回ずつcaptureし、
    `undefined`だけをabsentとし、いずれかがabsentの場合だけ`node:os.homedir()`を正確に1回callし、active-platform
    `node:path.join`が対応する固定suffixだけを適用することを証明する。`HOME`/`USERPROFILE`の直接選択もexistence checkも行わない。
-2. Consent viewが正確なCopilot/Claude/Codex lexical root、input state、除外、
-   contract version `2026-07-20`を表示し、read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。Frozen internal previewは各exact raw `lexicalRoot` stringを別に保持する。
+2. Consent viewが正確なCopilot/Claude/Codex lexical root、input state、除外を表示し、
+   read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。previewが束縛する2つのversionは
+   どちらも表示しない。読み手はどちらに対しても行動できず、参照先もなく、それらが守るversion不一致は
+   previewが画面にある間には起こりえない — 値はbuildの定数であり、異なるbuildは確認できるpreviewを
+   持たないためである。確認は`allowlistVersion`を送信し、hostは一致しないものを拒否する。対はそこに属する。Frozen internal previewは各exact raw `lexicalRoot` stringを別に保持する。
    `displayRoot`はone-way escaped stringで、decodeしてread authorityにしない。
    Preview constructionのthrow/rejectionは、`scanRequestId`もauthorityも与えずreal errorを返す。
-3. Opt-in後は文書化instruction candidateだけが0から3つの別識別tool-specific Global Sourceに表示される。
+3. Opt-in後は文書化されたmember candidateだけが0から4つの別識別member Global Sourceに表示される。
    Copilot、Claude、Codexごとに最大1つで、各Sourceは正確に1つのrootを持つ。Initial/retry transactionでadmitされた
    全Sourceは、観測可能なper-tool commitなしに1つのatomicなGlobal generationへ一緒に現れる — enable commitは
    Repositoryのviewとstateに触れずにGlobal sequenceをgeneration 1で作成する。ReadableなRepository file 1つとGlobal file
@@ -622,7 +674,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    Same-preview rejected/non-pending unpublished admitted controlをretryableとして表示してよいが、全pending work完了まではretryを
    disabledとして固定の`global-enable-in-progress` conflictを返す。その後はexact nonempty `retryableTools` projectionを使用して成功済みSourceを
    保持する。Lexicalな`new-preview-required` controlにはdisable/new previewを要求し、disableは直ちに利用できる。
-10. Initial activationで3 toolすべてがlexicalまたはconsent後root validationでdeterministicallyにrejectされた場合、enableはempty
+10. Initial activationで4 memberすべてがlexicalまたはconsent後root validationでdeterministicallyにrejectされた場合、enableはempty
     `acceptedTools`、3つすべての`rejectedTools`、Source/job/generation/stale entryなしの`active-no-job`を返す。
     `globalControl`はsame-preview rejected controlだけをretryableとしてactiveのままとし、lexicalな`new-preview-required` controlを
     除外する。したがってall-lexically-invalid previewの`retryableTools`はemptyでdisable/new previewを必要とする。Preview routeは

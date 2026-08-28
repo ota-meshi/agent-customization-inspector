@@ -12,7 +12,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["How CLAUDE.md files load", "Auto memory"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "The CLAUDE.md hierarchy a subagent inherits is the one the main conversation loads, and auto memory is the separate per-project store a session maintains under the Claude configuration directory."
       },
       {
@@ -27,7 +27,7 @@
           "Enable persistent memory",
           "Let subagents spawn their own subagents"
         ],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "A non-fork subagent starts with a fresh isolated context holding its own system prompt, the delegation message, every level of the CLAUDE.md hierarchy, a git-status snapshot, and the full content of each preloaded skill, with Explore and Plan omitting the instruction and git inputs and the main conversation’s auto memory never loaded; a fork inherits the parent conversation instead; the tools field decides the inherited tool set, an mcpServers entry is either an inline definition scoped to that subagent or a name referencing the parent session’s connection, the memory field selects one persistent directory whose MEMORY.md prefix joins the system prompt, and at the nested-spawn depth limit the Agent tool is withheld."
       }
     ]
@@ -45,7 +45,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["Choose the subagent scope"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "When several subagents share one name the higher-priority location wins, in managed, --agents session, project, User, then plugin order; across nested project directories the definition closest to the working directory wins, while two files under one .claude/agents/ tree load by filesystem read order rather than a documented precedence."
       }
     ]
@@ -75,7 +75,7 @@
           "Discovery from parent and nested directories",
           "How a skill gets its command name"
         ],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Command files in .claude/commands/ share the skill command namespace and work the same way, and when a skill and a command share a name the skill takes precedence — with both .claude/commands/deploy.md and .claude/skills/deploy/SKILL.md present, /deploy runs the skill. A command is invoked by its file name without the extension. The nested-directory discovery sentence is written about .claude/skills/ alone, so which layers contribute commands is not stated independently."
       }
     ]
@@ -101,7 +101,7 @@
         "url": "https://code.claude.com/docs/en/settings",
         "officialHost": "code.claude.com",
         "sections": ["Settings precedence", "Lists merge instead of overriding"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "A list-valued settings key is combined across the settings files rather than one file replacing another, which is the merge the hook entries of several levels follow."
       },
       {
@@ -109,7 +109,7 @@
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Hooks", "Plugin manifest schema"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Plugin hooks respond to the same lifecycle events as user-defined hooks and are one of the component types with their own merge rules, contributed while the plugin is enabled."
       }
     ]
@@ -127,7 +127,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md."
       },
       {
@@ -165,7 +165,7 @@
           "Scope hierarchy and precedence",
           "Plugin-provided MCP servers"
         ],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "A duplicate is resolved by source order as a whole entry — local, project, user, plugin-provided, then connectors, with no field merging across sources — and what makes a duplicate differs by source: the three scopes match by name, while plugins and connectors match by endpoint, treating one that points at the same URL or command as a server above it as the duplicate."
       },
       {
@@ -173,7 +173,7 @@
         "url": "https://code.claude.com/docs/en/sub-agents",
         "officialHost": "code.claude.com",
         "sections": ["Available tools", "Scope MCP servers to a subagent"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Subagents inherit the built-in and MCP tools available in the main conversation, narrowed by the documented filters, with the tools and disallowedTools fields restricting the set — the inherit-then-filter step this pipeline records; servers declared inline on an agent are connected when the subagent starts and disconnected when it finishes, while string entries reference servers already configured in the session."
       }
     ]
@@ -191,7 +191,7 @@
         "url": "https://code.claude.com/docs/en/output-styles",
         "officialHost": "code.claude.com",
         "sections": ["Create a custom output style", "How output styles work"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "A custom style is saved at one of three levels — User, project, and the managed settings directory — and project output styles load from every .claude/output-styles/ between the working directory and the repository root, where a style name more than one of those nested directories defines resolves to the directory closest to the working directory; no order between the three levels is stated. A style is applied by the outputStyle setting or the session picker, taking effect after /clear or the next session, plugins can ship styles in an output-styles/ directory, and a plugin style with force-for-plugin applies whenever the plugin is enabled and overrides the user setting, with the first such plugin loaded winning."
       },
       {
@@ -217,7 +217,7 @@
         "url": "https://code.claude.com/docs/en/plugins-reference",
         "officialHost": "code.claude.com",
         "sections": ["Skills-directory plugins", "Plugin installation scopes"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "A skills-directory folder carrying .claude-plugin/plugin.json loads as <folder>@skills-dir on the next session with no marketplace and no install step, and a project-scope one — from the launch working directory's own .claude/skills/, without walking ancestors — loads only after the workspace trust dialog is accepted, with its MCP servers still going through per-server approval and its monitors not loading at all; an installed plugin instead belongs to the settings scope chosen at installation."
       },
       {
@@ -243,7 +243,7 @@
         "url": "https://code.claude.com/docs/en/memory",
         "officialHost": "code.claude.com",
         "sections": ["Organize rules with .claude/rules/"],
-        "reviewedOn": "2026-08-18",
+        "reviewedOn": "2026-08-27",
         "establishes": "Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules so project rules take the higher priority."
       }
     ]
@@ -261,7 +261,7 @@
         "url": "https://code.claude.com/docs/en/settings",
         "officialHost": "code.claude.com",
         "sections": ["Settings precedence", "Lists merge instead of overriding"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Settings are read highest precedence first as managed settings, command line arguments, local project settings, shared project settings, then user settings; a key set at a higher level overrides the same key, a list key such as permissions.allow is combined across files instead of one replacing another — fallbackModel and availableModels excepted — and for a few security-sensitive keys a stricter lower-level value is honored over a managed one."
       }
     ]
@@ -279,7 +279,7 @@
         "url": "https://code.claude.com/docs/en/skills",
         "officialHost": "code.claude.com",
         "sections": ["Where skills live", "How a skill gets its command name"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Within one root, a nested skill sharing a name with another stays available under a directory-qualified command and Claude picks the variant matching the files it is working on; invoking the unqualified name loads the project-root skill and appends the directory-qualified variants with an instruction to also invoke any whose directory holds those files. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one."
       },
       {
@@ -313,7 +313,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "The settings a custom agent file may override are the same configuration keys the layer precedence resolves, which is what makes an agent file a configuration layer rather than a manifest of its own."
       },
       {
@@ -321,7 +321,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Custom agents", "Approvals and sandbox controls"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "A custom agent whose name matches a built-in agent such as explorer takes precedence over it, and Codex loads the selected agent file as a configuration layer for the spawned session: a model or reasoning effort the file sets takes precedence over the value resolved from an explicit spawn request, the [agents] defaults, and the parent, while sandbox_mode, mcp_servers, and skills.config inherit from the parent when the file omits them; the parent turn’s live sandbox and approval overrides are reapplied over the file’s own defaults. The page names the personal and project locations without establishing an order between them."
       }
     ]
@@ -339,7 +339,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "Codex resolves CLI overrides, trusted project layers from root to cwd, profile files, User config, and system config in that fixed order, using the closest applicable value for the same key."
       }
     ]
@@ -357,7 +357,7 @@
         "url": "https://learn.chatgpt.com/docs/hooks.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Where Codex looks for hooks", "Review and trust hooks"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "If more than one hook source exists Codex loads all matching hooks and higher-precedence layers do not replace lower-precedence hooks; a layer holding both hooks.json and inline [hooks] has both merged with a startup warning; hooks bundled with an enabled plugin load alongside the other sources under the same trust review; project-local hooks load only when the project .codex/ layer is trusted, while user hooks keep loading in an untrusted project; and a non-managed hook must be reviewed and trusted before it can run."
       },
       {
@@ -365,7 +365,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "The active config layers a hook source belongs to are the User layer and the trusted project .codex/config.toml layers from the project root down to the runtime cwd."
       }
     ]
@@ -383,7 +383,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["How Codex discovers guidance", "Customize fallback filenames"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "Codex selects at most one non-empty instruction file per directory in the documented filename order and concatenates the selections broad to narrow, from the global fallback through the project chain toward the runtime cwd, stopping at the project_doc_max_bytes budget; that budget and the fallback filenames are configuration values resolved outside the instruction files themselves."
       }
     ]
@@ -401,7 +401,7 @@
         "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Codex configuration file", "Configuration precedence"],
-        "reviewedOn": "2026-08-17",
+        "reviewedOn": "2026-08-27",
         "establishes": "MCP declarations resolve through the ordinary config-layer precedence: the active layers merge per key and the closest applicable declaration wins, with project layers applying only when the project is trusted."
       },
       {
@@ -409,7 +409,7 @@
         "url": "https://learn.chatgpt.com/docs/extend/mcp.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Connect Codex to an MCP server"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Servers are declared as named [mcp_servers.*] tables in the configuration file — the map whose keys the per-value layer resolution operates over."
       }
     ]
@@ -427,7 +427,7 @@
         "url": "https://developers.openai.com/plugins/build/plugins.md",
         "officialHost": "developers.openai.com",
         "sections": ["How local marketplaces work", "Marketplace metadata", "Plugin structure"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "The ChatGPT desktop app reads the repo, legacy-compatible, and personal catalogs, Codex skips an entry whose source it cannot resolve instead of failing the catalog, ChatGPT installs a plugin into ~/.codex/plugins/cache and loads the installed copy from there rather than from the entry, ChatGPT stores each plugin's on or off state in ~/.codex/config.toml, and every plugin requires the .codex-plugin/plugin.json manifest at the plugin root it establishes."
       }
     ]
@@ -445,7 +445,7 @@
         "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Create a rules file", "Understand rule fields"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-08-27",
         "establishes": "Rule files are read from every active config layer at startup — the user layer, Team Config locations, and project layers whose .codex/ is trusted — and when more than one rule matches a command Codex applies the most restrictive decision, forbidden over prompt over allow; no precedence among the layers themselves is established."
       }
     ]
@@ -463,7 +463,7 @@
         "url": "https://learn.chatgpt.com/docs/build-skills.md",
         "officialHost": "learn.chatgpt.com",
         "sections": ["Where Codex loads local skills"],
-        "reviewedOn": "2026-07-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Skills that share a name across discovery scopes are not merged and both remain available in skill selectors; the section lists the repository, user, admin, and system locations without establishing any precedence or ordering among them."
       }
     ]
@@ -481,7 +481,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
         "officialHost": "docs.github.com",
         "sections": ["User-editable files"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "The personal agents directory is ~/.copilot/agents/, and this page states that project-level agents in .github/agents/ take precedence over personal agents of the same name — one of the two sides of the retained conflict."
       },
       {
@@ -489,7 +489,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli",
         "officialHost": "docs.github.com",
         "sections": ["Creating a custom agent", "Using a custom agent"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-27",
         "establishes": "A profile is created in the project .github/agents/ or the user ~/.copilot/agents/ location, and this page states that a same-name agent in the home directory is used rather than the repository one — the opposite side of the retained conflict; selection itself is a runtime act, by slash command, explicit instruction, or inference from the description."
       },
       {
@@ -497,7 +497,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
         "officialHost": "docs.github.com",
         "sections": ["Loading order and precedence"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "Agents use first-found-wins precedence and a plugin agent never overrides a project-level or personal one, so plugin agents are the lowest documented source; an agent is deduplicated by an ID derived from its file name, so reviewer.agent.md is the agent reviewer."
       },
       {
@@ -505,7 +505,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Custom agent locations"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Every .github/agents/ directory on the walk is loaded with the deepest taking highest priority, .github/agents/ takes precedence over .claude/agents/ at the same level, and plugin agents are lowest; this page places user agents below project agents, which the retained conflict records against the opposite assertion elsewhere."
       }
     ]
@@ -523,7 +523,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
         "officialHost": "docs.github.com",
         "sections": ["Repository settings (.github/copilot/settings.json)"],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "The repository hooks object is merged with the user one so the repository entry overrides the user entry for the same key, and disableAllHooks is a repository-takes-precedence switch of the same file."
       },
       {
@@ -531,7 +531,7 @@
         "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
         "officialHost": "docs.github.com",
         "sections": ["Hooks locations", "Disable all hooks"],
-        "reviewedOn": "2026-08-26",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot CLI loads hooks from policy, user, project, and plugin sources in that order and combines them — a plugin declaring its own in hooks.json or hooks/hooks.json inside its installation directory — and when the same event appears in multiple sources all hook entries from all sources are run; policy hooks load before all other hooks, cannot be disabled by disableAllHooks, and are available regardless of folder trust state."
       }
     ]
@@ -549,7 +549,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
         "officialHost": "docs.github.com",
         "sections": ["How multiple instruction files interact", "Types of custom instructions"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot CLI combines the applicable user-level and repository instruction files, removes duplicate copies of identical user-level copilot-instructions.md, repository-wide, and agent instruction files — path-specific files are not in that deduplication list — defines no general precedence order, includes path-specific files only when their applyTo matches a file it is working with, and skips a file disabled with the /instructions command."
       },
       {
@@ -557,7 +557,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["Copilot CLI"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix names the repository and personal instruction types this surface draws on, which is the input set the pipeline filters and combines."
       }
     ]
@@ -575,7 +575,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["MCP server configuration"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Servers from different sources merge in priority order — the --additional-mcp-config option, plugin-provided servers, workspace files, then ~/.copilot/mcp-config.json — and when servers share a name the higher-priority source takes precedence as a whole entry."
       },
       {
@@ -583,7 +583,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers",
         "officialHost": "docs.github.com",
         "sections": ["Adding per-repository MCP servers"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Among the project-level files, same-name definitions in files closer to the working directory take precedence, .mcp.json takes precedence over .github/mcp.json in the same directory, and project-level definitions take precedence over ~/.copilot/mcp-config.json."
       }
     ]
@@ -601,7 +601,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
         "officialHost": "docs.github.com",
         "sections": ["File locations", "Loading order and precedence", "CLI commands"],
-        "reviewedOn": "2026-08-25",
+        "reviewedOn": "2026-08-27",
         "establishes": "A plugin manifest and a marketplace manifest are each checked at four documented locations in a fixed order; a plugin is installed by naming a marketplace plugin, a repository, a subdirectory, a Git URL, or a local path, and its components then compose with the rest — agents and skills are first-found-wins so a plugin's lose to a project's, MCP servers are last-wins so a plugin's takes precedence, and built-ins can be overridden by neither."
       }
     ]
@@ -622,7 +622,7 @@
           "Configuration file settings",
           "Repository settings (.github/copilot/settings.json)"
         ],
-        "reviewedOn": "2026-08-23",
+        "reviewedOn": "2026-08-27",
         "establishes": "Settings are applied in the order built-in defaults, MDM managed settings, user settings, repository settings, local settings, environment variables, then command-line flags, with a later source overriding an earlier one; each key the repository layer supports carries its own merge behavior, listed as replaced by the repository, merged so the repository overrides the user for the same key, a union to which the repository can add entries and never remove them, or tighten-only, which the repository can enable and never disable; an MDM value of disable for permissions.disableBypassPermissionsMode always wins over a closer layer, and the repository model, effortLevel, and contextTier overrides apply only when the working directory is trusted."
       }
     ]
@@ -640,7 +640,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations", "Commands (alternative skill format)"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "The CLI resolves a duplicate skill name to the first found in its documented source order, and a same-name skill has higher priority than a legacy command."
       }
     ]
@@ -676,7 +676,7 @@
         "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
         "officialHost": "docs.github.com",
         "sections": ["Hooks locations", "Cloud agent execution environment"],
-        "reviewedOn": "2026-08-26",
+        "reviewedOn": "2026-08-27",
         "establishes": "Under the cloud agent, hook configuration is loaded from the .github/hooks/*.json files of the cloned repository, a subset of events fires, only bash or command entries are honored, and policy hooks are not supported there."
       }
     ]
@@ -702,7 +702,7 @@
         "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
         "officialHost": "docs.github.com",
         "sections": ["GitHub.com"],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-08-27",
         "establishes": "The support matrix lists personal instructions for Copilot Chat and not for the cloud agent, which is why no hosted personal layer is projected into this pipeline."
       }
     ]
@@ -756,7 +756,7 @@
         "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
         "officialHost": "docs.github.com",
         "sections": ["Skill locations"],
-        "reviewedOn": "2026-08-20",
+        "reviewedOn": "2026-08-27",
         "establishes": "Remote skills are projected alongside local skills via the AHP relay and sit last in the documented source order; that order and its name-based priority are the CLI surface’s, so how the Cloud surface itself resolves a collision stays unestablished."
       },
       {
@@ -764,7 +764,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
         "officialHost": "docs.github.com",
         "sections": ["How Copilot uses agent skills"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-27",
         "establishes": "The cloud agent decides from the prompt and a skill’s description when to load a repository skill, the progressive-selection step this pipeline records; its reviewed sections say nothing about relayed remote skills."
       }
     ]
@@ -930,7 +930,7 @@
         "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
         "officialHost": "docs.github.com",
         "sections": ["How Copilot uses agent skills"],
-        "reviewedOn": "2026-07-15",
+        "reviewedOn": "2026-08-27",
         "establishes": "Copilot loads a skill progressively when it judges the skill relevant to the task, which is the selection step this pipeline records."
       },
       {

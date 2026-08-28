@@ -119,6 +119,18 @@ h2 {
   font-size: 0.875rem;
 }
 
+/* A Source-family heading inside an inventory grouping: weighted below the
+   row's own name above it and above the paths under it, so the three read as
+   a name, a family, and its members. A utility because several components
+   render the line — the shared family blocks, the instruction family block,
+   and the list-level family sections — and one look must not be written once
+   per component. */
+.aci-family-heading {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .aci-list {
   /* Markerless, so every such list carries `role="list"`: WebKit drops list
      semantics from a list with no marker, and VoiceOver stops announcing the

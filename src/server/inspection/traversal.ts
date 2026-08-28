@@ -21,7 +21,7 @@
 // not atomic snapshots, so concurrent external writes may interleave, which
 // the trusted-workspace model accepts.
 import { lstat, readFile, readdir, realpath, stat } from './fs-io';
-import { join, sep } from 'node:path';
+import { sep } from 'node:path';
 import { decodeSourceBytes, type ReadableFileEncoding } from '../../shared/entities';
 import {
   assertLoadableTraversalPlan,
@@ -381,13 +381,26 @@ async function walkDirectory(
     if (VCS_INTERNALS.has(entry.name)) {
       continue;
     }
-    const entryPath = join(absoluteDir, entry.name);
+    // Appended, never `join`ed: the walk's base descends from the admitted
+    // root, whose own `..` spelling must keep the operating system's
+    // resolution ({@link pathUnderRoot}).
+    const entryPath = pathUnderRoot(absoluteDir, [entry.name]);
     const entrySegments = [...rawSegments, entry.name];
 
     // Which selectors accept this raw name as their terminal regular file,
     // and which programs continue below it as a directory step.
     const fileAdmissions = level.admissionsForFile(entry.name);
     const descendStates = level.statesForDirectory(entry.name);
+
+    // An entry no selector admits and no program descends into decides
+    // nothing, so its type is never resolved. Classifying it anyway is what
+    // let a neighbour the plan does not name — a self-referential symlink
+    // beside an admitted hook file, an entry whose `stat` fails for any
+    // non-file-confined reason — abort the whole attempt from a path the
+    // scan had no business asking about.
+    if (fileAdmissions.length === 0 && descendStates.length === 0) {
+      continue;
+    }
 
     // Classify the entry, following links transparently (FR-024).
     let isFile = entry.isFile();
@@ -516,16 +529,56 @@ export async function statThroughLink(
   return { isFile: info.isFile(), isDirectory: info.isDirectory() };
 }
 
+/**
+ * The path of `segments` below `root`, appended without normalizing either.
+ *
+ * `node:path.join` is deliberately not used. It collapses `..` lexically,
+ * while the operating system resolves it after following whatever the previous
+ * component was — so for a root ending in `link/..` the two disagree, and the
+ * scan would read a directory other than the one admission checked. Measured:
+ * with `link` a symbolic link, `stat(root)` reaches the link target's parent
+ * while `join(root, 'AGENTS.md')` reaches the link's own parent, and the two
+ * hold different files.
+ *
+ * Appending keeps the platform's own path handling in charge of the whole
+ * string, which is what the root's resolution semantics surviving to the read
+ * means — and what the consent preview promises by freezing the captured
+ * string without normalizing it (spec.md § Clarifications, FR-002).
+ *
+ * Exported because the session builds the same absolute path when it hands a
+ * committed file to an application on the reader's machine
+ * (`session.ts` § openCommittedFile): a second construction there would let a
+ * launch reach a file the scan never read, which is this rule's whole subject.
+ */
+export function pathUnderRoot(root: string, segments: readonly string[]): string {
+  // A root that already ends in a separator would otherwise produce a doubled
+  // one. `/` and `C:\` become the empty string and `C:`, which is what makes
+  // the append below reach `/name` and `C:\name`.
+  const base = root.endsWith(sep) ? root.slice(0, -sep.length) : root;
+  return [base, ...segments].join(sep);
+}
+
 // Probes one Global exact target below the admitted root without enumerating
 // the root (contracts/inspection-path-allowlist.md § Global least
 // privilege): only a missing entry is absent; an existing but unreachable
 // entry is a candidate whose read failure surfaces per file (FR-024).
+//
+// The selection is the operating system's own name resolution, not a
+// comparison against an enumerated entry name — there is no enumeration to
+// compare against. Measured on macOS/APFS: `lstat` of `AGENTS.override.md`
+// succeeds for a file stored as `agents.override.md`, and the candidate is
+// published under the selector's literal. That is the contracted meaning of an
+// exact-target row rather than a gap: a vendor asking the same filesystem for
+// the same literal opens the same file, so the row states what that vendor
+// reads. `realpath` would recover the stored name, and is deliberately not
+// used for it: it resolves symbolic links too, so a linked target would be
+// published under a name outside the Source.
 async function probeExactTarget(
   root: string,
   fixedPrefix: readonly string[],
   origin: SelectorOrigin,
 ): Promise<PendingCandidate | null> {
-  const absolutePath = join(root, ...fixedPrefix);
+  const absolutePath = pathUnderRoot(root, fixedPrefix);
   const pending = (knownUnreadable: boolean): PendingCandidate => ({
     rawSegments: [...fixedPrefix],
     knownUnreadable,
@@ -824,7 +877,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   }
 
   for (const subtree of subtreeWalks) {
-    const subtreeRoot = join(input.root, ...subtree.fixedPrefix);
+    const subtreeRoot = pathUnderRoot(input.root, subtree.fixedPrefix);
     let subtreeReal: string;
     try {
       subtreeReal = await realpath(subtreeRoot);
@@ -916,7 +969,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     }
     const outcome = knownUnreadable
       ? ({ kind: 'unreadable' } as const)
-      : await readCandidate(join(input.root, ...rawSegments));
+      : await readCandidate(pathUnderRoot(input.root, rawSegments));
     outcomes.set(key, outcome);
     readBytes += 'sizeBytes' in outcome ? outcome.sizeBytes : 0;
     input.onProgress?.({
@@ -1005,7 +1058,15 @@ function isMissingOrNotDirectory(error: unknown, path: string): boolean {
   return failure.path === path && (failure.code === 'ENOENT' || failure.code === 'ENOTDIR');
 }
 
-function isRootEnumerationFailure(error: unknown, root: string): boolean {
+/**
+ * Whether `error` says this exact root cannot be read as a directory (FR-002).
+ *
+ * Exported for the Global admission boundary, which asks the same question
+ * about a proposed vendor home before any batch exists: the two must classify
+ * a root identically, and a second copy of this list would be the place they
+ * drift. Every other failure is not confined to one root and propagates.
+ */
+export function isRootEnumerationFailure(error: unknown, root: string): boolean {
   if (typeof error !== 'object' || error === null) {
     return false;
   }

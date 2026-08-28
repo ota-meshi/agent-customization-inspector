@@ -28,6 +28,7 @@ import type {
   SessionSnapshot,
   SkillInventoryEntryDto,
   SourceDto,
+  SourceKind,
 } from '../../../src/shared/api-types';
 import { SUPPORTED_TOOL_ORDER } from '../../../src/shared/entities';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
@@ -35,7 +36,7 @@ import type { CustomizationKind, SupportedTool } from '../../../src/shared/entit
 const REPOSITORY_SOURCE: SourceDto = {
   sourceId: 'src-repo',
   kind: 'repository',
-  tool: null,
+  member: null,
   enabled: true,
   status: 'ready',
   boundary: { displayRoot: '/tmp/my\\u0020repo', origin: 'process-cwd' },
@@ -75,6 +76,7 @@ function skillWithCompanions(
   return {
     name,
     definitions: paths.map((path) => ({
+      sourceId: 'src-repo',
       sourceRelativePath: path,
       tool: 'codex' as const,
       surfaces: [],
@@ -111,8 +113,8 @@ function instructionFile(
 
 /** One instructions row: an applicability range and the files governing it. */
 /**
- * One instruction row as the filter view publishes it. `rowFilePaths` is the
- * row's own files, which no narrowing changes, so an expectation for a
+ * One instruction row as the filter view publishes it. `rowFileIdentities` is
+ * the row's own files, which no narrowing changes, so an expectation for a
  * narrowed row states them rather than deriving them from what survived —
  * that difference is the whole point of the field
  * (`filters.ts` § NarrowedInventoryRow).
@@ -122,7 +124,17 @@ function instructionEntry(
   files: readonly InstructionInventoryFileDto[],
   rowFilePaths: readonly string[] = files.map((entryFile) => entryFile.sourceRelativePath),
 ): NarrowedInventoryRow<InstructionInventoryEntryDto> {
-  return { applicabilityRange, files, rowFilePaths };
+  // One Source in these cases, named so the row carries the identity the DTO
+  // requires: a row is one range of one Source (FR-030).
+  return {
+    sourceId: 'src-repo',
+    applicabilityRange,
+    files,
+    rowFileIdentities: rowFilePaths.map((sourceRelativePath) => ({
+      sourceId: 'src-repo',
+      sourceRelativePath,
+    })),
+  };
 }
 
 /** The `**` row's own files, whichever of them a narrowing leaves. */
@@ -175,13 +187,13 @@ function snapshotWith(
 // does and passes it in; the composable returns only what it derives.
 function withSelection(snapshot: Ref<SessionSnapshot | null>) {
   const selection = {
-    sourceId: ref<string | null>(null),
+    sourceKind: ref<SourceKind | null>(null),
     tool: ref<SupportedTool | null>(null),
     kind: ref<CustomizationKind | null>(null),
     pathQuery: ref(''),
   };
   const clear = (): void => {
-    selection.sourceId.value = null;
+    selection.sourceKind.value = null;
     selection.tool.value = null;
     selection.kind.value = null;
     selection.pathQuery.value = '';
@@ -200,7 +212,11 @@ describe('inventory filters over the committed snapshot', () => {
     const filters = withSelection(snapshot);
     expect(filters.view.availableTools.value).toEqual(['codex']);
     expect(filters.view.availableKinds.value).toEqual(['skill']);
-    expect(filters.view.availableSources.value).toEqual([REPOSITORY_SOURCE]);
+    // The Source axis is the family, not one option per Source: the tool axis
+    // beside it already answers which product recognized a file, and this
+    // selection rides in the inventory's URL where a Source ID would name
+    // nothing after the next launch (`api-text.ts` § SOURCE_KIND_TEXT).
+    expect(filters.view.availableSourceKinds.value).toEqual(['repository']);
   });
 
   it('leaves a skill\u2019s own supporting files out of the unrecognized list', () => {
@@ -275,7 +291,8 @@ describe('inventory filters over the committed snapshot', () => {
     // The file is still reachable by path, which is how the skill's row states
     // its census diagnostics.
     expect(
-      filters.view.filesByPath.value.get('.agents/skills/greet/notes.md')?.diagnosticIds,
+      filters.view.filesBySource.value.get('src-repo')?.get('.agents/skills/greet/notes.md')
+        ?.diagnosticIds,
     ).toEqual(['diag-unreadable']);
   });
 
@@ -335,17 +352,228 @@ describe('inventory filters over the committed snapshot', () => {
     filters.pathQuery.value = '';
     filters.tool.value = 'codex';
     expect(filters.view.skillRows.value).toHaveLength(2);
-    // The one published Source keeps every recognized row; a Source the
+    // The one published family keeps every recognized row; a family the
     // snapshot does not publish is not an option the dropdown offers, so it is
     // ignored rather than silently emptying the list.
-    filters.sourceId.value = 'src-repo';
+    filters.sourceKind.value = 'repository';
     expect(filters.view.skillRows.value).toHaveLength(2);
-    filters.sourceId.value = 'src-other';
+    filters.sourceKind.value = 'global';
     expect(filters.view.skillRows.value).toHaveLength(2);
 
     filters.clear();
     expect(filters.view.isNarrowed.value).toBe(false);
     expect(filters.view.skillRows.value).toHaveLength(2);
+  });
+
+  it('groups one range’s rows across Sources, keeping each Source its own row', () => {
+    // The reader looking for what governs `**` finds one heading for it, with
+    // the repository's files and the consented home's under it as two rows —
+    // each with its own Source, its own files, and its own comparison, because
+    // no comparison pairs files across Sources (FR-011, FR-030).
+    const globalSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-codex',
+      kind: 'global',
+      member: 'codex',
+      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          file('AGENTS.md'),
+          file('docs/AGENTS.md'),
+          { ...file('AGENTS.md'), sourceId: 'src-global-codex' },
+        ],
+        [],
+        {
+          sources: [REPOSITORY_SOURCE, globalSource],
+          instructions: [
+            // The home's row first in the snapshot, so the group's order is the
+            // published Source order rather than the order the rows arrive in.
+            {
+              ...instructionEntry('**', [instructionFile('AGENTS.md', 'codex')]),
+              sourceId: 'src-global-codex',
+            },
+            instructionEntry('**', [instructionFile('AGENTS.md', 'codex')]),
+            instructionEntry('docs/**', [instructionFile('docs/AGENTS.md', 'codex')]),
+          ],
+        },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    // One heading per range, its rows in family-major order — the
+    // repository's row before the home's — so the shared family grouping
+    // renders the repository block first (`SourceFamilyBlocks.vue`).
+    expect(
+      filters.view.instructionRangeGroups.value.map((group) => [
+        group.applicabilityRange,
+        group.rows.map((row) => row.sourceId),
+      ]),
+    ).toEqual([
+      ['**', ['src-repo', 'src-global-codex']],
+      ['docs/**', ['src-repo']],
+    ]);
+    // Two ranges are two list items, and the counts beside the list say two —
+    // the rows under them are three.
+    expect(filters.view.instructionRangeGroupTotal.value).toBe(2);
+    expect(filters.view.kindCounts.value.get('instructions')).toBe(2);
+    expect(filters.view.instructionRows.value).toHaveLength(3);
+
+    // A Source filter leaves the range standing with the rows it kept.
+    filters.sourceKind.value = 'global';
+    expect(
+      filters.view.instructionRangeGroups.value.map((group) => [
+        group.applicabilityRange,
+        group.rows.map((row) => row.sourceId),
+      ]),
+    ).toEqual([['**', ['src-global-codex']]]);
+  });
+
+  it('keeps a family block’s comparison identities when a narrowing drops one home’s row', () => {
+    // Two consented homes govern `**`, each with a file only its own tool
+    // recognizes. Narrowing to Codex drops the Claude home's row from the
+    // rendered block — but the block can still make that comparison, so its
+    // published identities keep both files, exactly as a row's own
+    // `rowFileIdentities` keeps a narrowed-out member (FR-011, FR-030).
+    const claudeSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-claude',
+      kind: 'global',
+      member: 'claude',
+      boundary: { displayRoot: '/home/reader/.claude', origin: 'environment' },
+    };
+    const codexSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-codex',
+      kind: 'global',
+      member: 'codex',
+      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          { ...file('CLAUDE.md'), sourceId: 'src-global-claude' },
+          { ...file('AGENTS.override.md'), sourceId: 'src-global-codex' },
+        ],
+        [],
+        {
+          sources: [REPOSITORY_SOURCE, claudeSource, codexSource],
+          instructions: [
+            {
+              ...instructionEntry('**', [instructionFile('CLAUDE.md', 'claude')]),
+              sourceId: 'src-global-claude',
+            },
+            {
+              ...instructionEntry('**', [instructionFile('AGENTS.override.md', 'codex')]),
+              sourceId: 'src-global-codex',
+            },
+          ],
+        },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    filters.tool.value = 'codex';
+    const groups = filters.view.instructionRangeGroups.value;
+    // The rendered block narrowed to the Codex home's row alone…
+    expect(
+      groups.map((group) => [group.applicabilityRange, group.rows.map((row) => row.sourceId)]),
+    ).toEqual([['**', ['src-global-codex']]]);
+    // …while the group's comparison identities still pair both homes' files,
+    // in the family-major order.
+    expect(groups[0]?.fileIdentities).toEqual([
+      { sourceId: 'src-global-claude', sourceRelativePath: 'CLAUDE.md' },
+      { sourceId: 'src-global-codex', sourceRelativePath: 'AGENTS.override.md' },
+    ]);
+  });
+
+  it('lists a Global file no kind holds, at a path a repository row does hold', () => {
+    // A consented home's `AGENTS.md` whose bytes were never accepted: it is a
+    // published file with a diagnostic and no recognition, so no kind lists it
+    // and this list is the only place it can be stated (FR-028). The
+    // repository's own `AGENTS.md` has an instruction row, and keying by path
+    // alone would let that row account for the home's file — dropping it, and
+    // its diagnostic, from the page entirely (FR-030).
+    const globalSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-codex',
+      kind: 'global',
+      member: 'codex',
+      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          file('AGENTS.md'),
+          {
+            sourceId: 'src-global-codex',
+            sourceRelativePath: 'AGENTS.md',
+            diagnosticIds: ['diag-binary'],
+            encoding: 'binary',
+            sizeBytes: 3,
+          },
+        ],
+        [],
+        {
+          sources: [REPOSITORY_SOURCE, globalSource],
+          instructions: [instructionEntry('**', [instructionFile('AGENTS.md', 'codex')])],
+        },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    expect(
+      filters.view.unrecognizedRows.value.map((row) => [row.sourceId, row.sourceRelativePath]),
+    ).toEqual([['src-global-codex', 'AGENTS.md']]);
+
+    // And the Source families narrow it the way they narrow every other row.
+    filters.sourceKind.value = 'repository';
+    expect(filters.view.unrecognizedRows.value).toHaveLength(0);
+    filters.sourceKind.value = 'global';
+    expect(filters.view.unrecognizedRows.value).toHaveLength(1);
+  });
+
+  it('narrows to one Source family, keeping the same path in the other out', () => {
+    // Two Sources holding one path — the case the family axis exists for. The
+    // repository's `AGENTS.md` and the consented home's are different files
+    // (FR-030), and choosing a family is how a reader sees one set or the
+    // other.
+    const globalSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-codex',
+      kind: 'global',
+      member: 'codex',
+      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [file('AGENTS.md'), { ...file('AGENTS.md'), sourceId: 'src-global-codex' }],
+        [],
+        {
+          sources: [REPOSITORY_SOURCE, globalSource],
+          instructions: [
+            instructionEntry('**', [instructionFile('AGENTS.md', 'codex')]),
+            {
+              ...instructionEntry('**', [instructionFile('AGENTS.md', 'codex')]),
+              sourceId: 'src-global-codex',
+            },
+          ],
+        },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    // Both families are offered, in the fixed order.
+    expect(filters.view.availableSourceKinds.value).toEqual(['repository', 'global']);
+    expect(filters.view.instructionRows.value).toHaveLength(2);
+
+    filters.sourceKind.value = 'global';
+    expect(filters.view.instructionRows.value.map((row) => row.sourceId)).toEqual([
+      'src-global-codex',
+    ]);
+    filters.sourceKind.value = 'repository';
+    expect(filters.view.instructionRows.value.map((row) => row.sourceId)).toEqual(['src-repo']);
+    expect(filters.view.isNarrowed.value).toBe(true);
+
+    filters.clear();
+    expect(filters.view.instructionRows.value).toHaveLength(2);
   });
 
   it('matches the path filter case-insensitively without treating it as a locator', () => {
@@ -420,6 +648,7 @@ describe('inventory filters over the committed snapshot', () => {
 describe('settings and configuration rows in the filtered view (T588)', () => {
   /** The one shipped settings row: the Codex carrier, named by its path. */
   const CODEX_CONFIG = {
+    sourceId: 'src-repo',
     sourceRelativePath: '.codex/config.toml',
     recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
   } as const;
@@ -429,6 +658,7 @@ describe('settings and configuration rows in the filtered view (T588)', () => {
     name: 'greet',
     definitions: [
       {
+        sourceId: 'src-repo',
         sourceRelativePath: '.claude/skills/greet/SKILL.md',
         tool: 'claude',
         surfaces: [],
@@ -473,6 +703,7 @@ describe('settings and configuration rows in the filtered view (T588)', () => {
     // tool filter narrows the row rather than removing it — the same rule the
     // instruction rows follow.
     const shared = {
+      sourceId: 'src-repo',
       sourceRelativePath: '.claude/settings.json',
       recognitions: [
         { tool: 'copilot', surfaces: ['copilot-cli'] },
@@ -541,6 +772,7 @@ describe('same-name resolutions in the filtered view', () => {
     const entry: SkillInventoryEntryDto = {
       name: 'wave',
       definitions: paths.map((path) => ({
+        sourceId: 'src-repo',
         sourceRelativePath: path,
         tool: 'claude' as const,
         surfaces: [],
@@ -578,6 +810,7 @@ describe('same-name resolutions in the filtered view', () => {
       name,
       definitions: [
         {
+          sourceId: 'src-repo',
           sourceRelativePath: path,
           tool: 'claude' as const,
           surfaces: [],
@@ -808,6 +1041,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
       tool: SupportedTool,
       path: string,
     ): SkillInventoryEntryDto['definitions'][number] => ({
+      sourceId: 'src-repo',
       sourceRelativePath: path,
       tool,
       surfaces: [],
@@ -986,7 +1220,9 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
       snapshot: snapshot.value,
       rows: filters.view.skillRows.value,
       unrecognized: filters.view.unrecognizedRows.value,
-      files: [...filters.view.filesByPath.value.values()],
+      files: [...filters.view.filesBySource.value.values()].flatMap((byPath) => [
+        ...byPath.values(),
+      ]),
     });
     // The derivations introduce no `sourceText`-shaped field of their own.
     expect(serialized).not.toContain('sourceText');
@@ -998,6 +1234,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
           'companionFiles',
           'diagnosticIds',
           'parseStatus',
+          'sourceId',
           'sourceRelativePath',
           'surfaces',
           'tool',
@@ -1126,11 +1363,15 @@ describe('unified instruction rows across the recognizing tools (T271)', () => {
       expect(Object.keys(entry).sort()).toEqual([
         'applicabilityRange',
         'files',
-        // The browser view's own field on a rendered row — the paths the row
-        // already holds, gathered so a comparison entry link does not depend
-        // on what a filter left (`filters.ts` § NarrowedInventoryRow). It
-        // travels no wire, and it carries no value a file wrote.
-        'rowFilePaths',
+        // The browser view's own field on a rendered row — the file
+        // identities the row already holds, gathered so a comparison entry
+        // link does not depend on what a filter left (`filters.ts`
+        // § NarrowedInventoryRow). It travels no wire, and it carries no
+        // value a file wrote.
+        'rowFileIdentities',
+        // The Source the row's range is relative to, and half of every listed
+        // file's identity (FR-030). It is an opaque ID, not authored text.
+        'sourceId',
       ]);
       for (const entryFile of entry.files) {
         expect(Object.keys(entryFile).sort()).toEqual(['recognitions', 'sourceRelativePath']);

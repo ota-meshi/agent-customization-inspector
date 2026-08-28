@@ -62,7 +62,7 @@ test.afterEach(async () => {
 
 /** Opens one style's detail route directly by its stable identity. */
 async function openStyle(page: import('@playwright/test').Page, path: string): Promise<void> {
-  await page.goto(new URL(`/output-styles/${path}`, host.origin).href);
+  await page.goto(new URL(`/output-styles/detail/repository/${path}`, host.origin).href);
 }
 
 test('opens a style from its row and heads the page by the file', async ({ page }) => {
@@ -73,7 +73,8 @@ test('opens a style from its row and heads the page by the file', async ({ page 
     .filter({ hasText: 'deploy-notes.md' })
     .click();
   await expect(page).toHaveURL(
-    new URL('/output-styles/.claude/output-styles/deploy-notes.md', host.origin).href,
+    new URL('/output-styles/detail/repository/.claude/output-styles/deploy-notes.md', host.origin)
+      .href,
   );
   // The file is the subject, so the path heads the page; the style name the
   // row is listed under is stated beneath it.

@@ -57,6 +57,7 @@ import {
   buildCodexSkillFixture,
   buildCopilotCliMcpFixture,
   buildCopilotVscodeMcpFixture,
+  buildAllCustomizationKindFixture,
 } from '../../fixtures/repositories/build-fixtures';
 import {
   READ_ONLY_FS_SURFACE,
@@ -221,6 +222,7 @@ describe('a Codex SKILL scan issues no product request and mutates nothing', () 
       sourceId: 'src-1',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     expect(publication.kind).toBe('publishable');
 
@@ -287,6 +289,7 @@ describe('a Codex SKILL scan issues no product request and mutates nothing', () 
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -311,6 +314,7 @@ describe('a Codex SKILL scan issues no product request and mutates nothing', () 
       sourceId: 'src-1',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
 
     // Without this the loop below is vacuous: deleting candidate reading
@@ -333,7 +337,12 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     vi.clearAllMocks();
 
-    await runSourceScan({ sourceId: 'src-1', root: fixture.root, rootFailureOwner: 'repository' });
+    await runSourceScan({
+      sourceId: 'src-1',
+      root: fixture.root,
+      rootFailureOwner: 'repository',
+      scope: 'repository',
+    });
 
     const reads = vi
       .mocked(fsIo.readFile)
@@ -385,6 +394,7 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
         sourceId: 'src-1',
         root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
     } finally {
       process.env = realEnv;
@@ -453,6 +463,7 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
       sourceId: 'src-plugins',
       root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable scan');
@@ -491,6 +502,7 @@ describe('parsing, extraction, and detail activate nothing (T085)', () => {
       sourceId: 'src-1',
       root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable scan');
@@ -620,6 +632,7 @@ describe('Codex MCP inspection connects to nothing (T294)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -739,6 +752,7 @@ describe('Codex hook inspection runs nothing (T846)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -855,6 +869,7 @@ describe('Claude contained-hook inspection runs nothing (T869)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -967,6 +982,7 @@ describe('Claude rule inspection evaluates no glob (T430)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1099,6 +1115,7 @@ describe('Claude command inspection runs nothing (T450)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1159,6 +1176,7 @@ describe('Claude command inspection runs nothing (T450)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
     } finally {
       for (const [name, value] of originals) {
@@ -1212,6 +1230,7 @@ describe('Claude command inspection runs nothing (T450)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
     } finally {
       for (const [name, value] of originals) {
@@ -1342,6 +1361,7 @@ describe('Codex rule inspection enforces nothing (T412)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1410,6 +1430,7 @@ describe('Codex rule inspection enforces nothing (T412)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1540,6 +1561,7 @@ describe('Claude MCP inspection connects to nothing (T315, T326)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1665,6 +1687,7 @@ describe('Copilot CLI MCP inspection connects to nothing (T345)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1783,6 +1806,7 @@ describe('Copilot VS Code MCP inspection connects to nothing (T365)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1865,6 +1889,7 @@ describe('MCP-spelling files of other kinds activate nothing (T376)', () => {
         sourceId: 'src-1',
         root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       if (publication.kind !== 'publishable') {
         throw new Error('expected a publishable outcome');
@@ -2123,6 +2148,7 @@ describe('Codex custom-agent inspection activates nothing (T519)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -2246,6 +2272,7 @@ describe('Claude subagent inspection activates nothing (T539)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -2363,6 +2390,7 @@ describe('Copilot plugin inspection activates nothing (T810)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -2444,6 +2472,7 @@ describe('Claude plugin inspection activates nothing (T788)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -2536,6 +2565,7 @@ describe('Copilot custom-agent inspection activates nothing (T558)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -2655,6 +2685,7 @@ describe('Copilot hook inspection runs nothing (T890)', () => {
         sourceId: 'src-1',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -2720,5 +2751,84 @@ describe('Copilot hook inspection runs nothing (T890)', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(vi.mocked(fsIo.readFile).mock.calls).toEqual([]);
     expect(vi.mocked(fsIo.readdir).mock.calls).toEqual([]);
+  });
+});
+
+describe('the whole Repository inventory activates nothing (T925)', () => {
+  it('scans every family in one tree without a request, a subprocess, or a mutation', async () => {
+    // The per-family cases above each pin their own kind; this one closes the
+    // set. The all-supported tree holds every kind this release publishes —
+    // instructions, skills, MCP, agents, prompts and commands, rules,
+    // permissions, hooks, plugins, output styles, and settings — so a family
+    // whose own case does not exist is still scanned here, with the same
+    // surfaces watched (FR-020, FR-022).
+    const fixture = buildAllCustomizationKindFixture('inspector-zero-activation-complete');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+
+    const before = snapshotTreeState(fixture.root);
+    const observed: string[] = [];
+    const globalScope = globalThis as Record<string, unknown>;
+    const originals = new Map<string, unknown>();
+    for (const name of ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'open']) {
+      originals.set(name, globalScope[name]);
+      globalScope[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during a scan`);
+      };
+    }
+    const nodeSurfaces: [Record<string, unknown>, string][] = [
+      [net as unknown as Record<string, unknown>, 'createConnection'],
+      [net as unknown as Record<string, unknown>, 'connect'],
+      [tls as unknown as Record<string, unknown>, 'connect'],
+      [dns as unknown as Record<string, unknown>, 'lookup'],
+      [dns as unknown as Record<string, unknown>, 'resolve'],
+      [childProcess as unknown as Record<string, unknown>, 'spawn'],
+      [childProcess as unknown as Record<string, unknown>, 'exec'],
+      [childProcess as unknown as Record<string, unknown>, 'execFile'],
+      [childProcess as unknown as Record<string, unknown>, 'fork'],
+      [http as unknown as Record<string, unknown>, 'request'],
+      [https as unknown as Record<string, unknown>, 'request'],
+      [dgram as unknown as Record<string, unknown>, 'createSocket'],
+    ];
+    const nodeOriginals = nodeSurfaces.map(([host, name]) => {
+      const original = host[name];
+      host[name] = (...args: unknown[]) => {
+        observed.push(`${name}(${String(args[0] ?? '')})`);
+        throw new Error(`${name} must not be called during a scan`);
+      };
+      return { host, name, original } as const;
+    });
+
+    let publicationKind: string;
+    let publishedFiles: number;
+    try {
+      const publication = await runSourceScan({
+        sourceId: 'src-complete',
+        root: fixture.root,
+        rootFailureOwner: 'repository',
+        scope: 'repository',
+      });
+      publicationKind = publication.kind;
+      publishedFiles = publication.kind === 'publishable' ? publication.files.length : 0;
+    } finally {
+      for (const [name, value] of originals) {
+        globalScope[name] = value;
+      }
+      for (const { host, name, original } of nodeOriginals) {
+        host[name] = original;
+      }
+    }
+
+    // Without these the assertions below would pass on a scan that did
+    // nothing: the tree is the whole release's worth of files, and reading it
+    // is what the rest of this case is about.
+    expect(publicationKind).toBe('publishable');
+    expect(publishedFiles).toBeGreaterThan(50);
+    expect(observed).toEqual([]);
+
+    const after = snapshotTreeState(fixture.root);
+    expect(after.entries).toEqual(before.entries);
+    expect(Object.keys(after.atimes).sort()).toEqual(Object.keys(before.atimes).sort());
+    expect(collectFsMutationViolations(fsIo as unknown as Record<string, unknown>)).toEqual([]);
   });
 });

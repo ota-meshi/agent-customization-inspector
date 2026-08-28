@@ -117,7 +117,9 @@ test.afterEach(async () => {
  */
 async function openSkill(page: import('@playwright/test').Page, path: string): Promise<void> {
   await page.goto(host.origin);
-  const links = page.locator('.aci-skill-row__file').locator(`a[href$="/${path}"]`);
+  const links = page
+    .locator('.aci-source-family-blocks__members > li')
+    .locator(`a[href$="/${path}"]`);
   // The rows render together once the snapshot arrives, so waiting for any
   // link is waiting for all of them; clicking before that found nothing.
   await links.first().waitFor();
@@ -364,7 +366,7 @@ test('reports a link whose path the current scan does not hold', async ({ page }
   await openSkill(page, '.claude/skills/greet/SKILL.md');
   // The click routes client-side; the URL is captured only once the detail
   // route owns the page, or a slow navigation would bookmark the inventory.
-  await page.waitForURL(/\/skills\//u);
+  await page.waitForURL(/\/skills\/detail\/repository\//u);
   const bookmarkedUrl = page.url();
   // The same URL with the file's own name swapped names a path this
   // generation does not hold, and the page says so instead of guessing at a

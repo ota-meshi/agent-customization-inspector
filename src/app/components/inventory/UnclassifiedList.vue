@@ -13,6 +13,7 @@
 // when there is something to list, because a heading that says nothing could
 // not be read is a finding, not a placeholder.
 import UnclassifiedRow from './rows/UnclassifiedRow.vue';
+import { fileIdentityKey } from '../../../shared/entities';
 import type { CustomizationFileSummaryDto, SerializedDiagnostic } from '../../../shared/api-types';
 
 defineProps<{
@@ -25,9 +26,17 @@ defineProps<{
 
 <template>
   <ul class="aci-list aci-inventory" role="list">
+    <!-- Keyed by the whole identity, because a row is one file and a file is
+         its Source and its Source-relative Path (FR-030): the repository's
+         unreadable `AGENTS.override.md` and a consented home's are two rows,
+         and the path alone would key them the same. Vue's duplicate-key report
+         is a development-build warning and the packaged app is a production
+         build, so nothing observes this from the outside — it is the framework's
+         own contract, which a list of items patched on every filter change has
+         no reason to break. -->
     <UnclassifiedRow
       v-for="file in files"
-      :key="file.sourceRelativePath"
+      :key="fileIdentityKey(file.sourceId, file.sourceRelativePath)"
       :file="file"
       :diagnostics="diagnostics"
     />

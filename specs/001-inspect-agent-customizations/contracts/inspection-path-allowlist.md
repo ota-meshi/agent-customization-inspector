@@ -2,9 +2,9 @@
 
 [日本語](inspection-path-allowlist.ja.md)
 
-**Contract version**: 2026-07-20
+**Contract version**: 2026-08-27
 
-**Inspection-path decision revalidation**: 2026-07-20
+**Inspection-path decision revalidation**: 2026-08-27
 
 **Normative for**: Rule classes, matcher notation, source-boundary interpretation, read
 authorization, and cross-vendor conformance
@@ -85,23 +85,26 @@ runtime-composition contracts and never changes this boundary.
 
 Global inspection is disabled in every new session and requires consent bound to the
 current contract version and exact no-I/O preview. Consent is one selector-free action for
-the fixed Copilot/Claude/Codex entries. One transaction evaluates all three; deterministic
+the fixed member entries — Copilot, Claude, Codex, and the shared agent home. One
+transaction evaluates all four; deterministic
 rejections do not block admitted siblings, and one batch publishes all resulting Sources in
-one atomic generation. Every accepted vendor-home root becomes
-its own tool-specific Global Source, separately identified as Copilot, Claude, or Codex.
-Each tool maps to its own Source, and each Source is bound to exactly one root. These
+one atomic generation. Every accepted member root becomes
+its own Global Source, separately identified as Copilot, Claude, Codex, or the shared
+agent home.
+Each member maps to its own Source, and each Source is bound to exactly one root. These
 Sources are not Repository children, are never merged with one another, and are never
 merged into the Repository Source.
 
 Every displayed or serialized candidate path is a Source-relative Path computed from the
 single root of its owning Source. It is repository-relative only for the Repository Source;
-each Global Source uses its own admitted tool-home root.
+each Global Source uses its own admitted member root.
 
 Vendor contracts may record additional documented User behavior for maintenance and
-future review. Such a record grants no read authority. Under FR-015 through FR-018, only
-the explicitly contracted Global instruction rules may classify a Global candidate;
-additional User settings, agents, skills, hooks, MCP configuration, plugins, state, and
-neighboring directories remain excluded until the specification changes.
+future review. Such a record grants no read authority. Under FR-015 through FR-018 and
+FR-045, only the explicitly contracted Global rules may classify a Global candidate;
+vendor-managed and runtime state, credentials, caches, session data, installed plugin
+copies, documented surfaces the closed kind set does not publish, and neighboring
+directories remain excluded until the specification changes.
 
 ## Structured Inspector matcher notation
 
@@ -109,7 +112,7 @@ Every static Inspector rule separates these fields:
 
 | Field | Meaning |
 |---|---|
-| **Base** | One exact enabled boundary: `Repository` or one named consented `Global` vendor boundary |
+| **Base** | One exact enabled boundary: `Repository` or one named consented `Global` member boundary |
 | **Selector programs** | A non-empty ordered list of authored typed segment programs, each relative to the Source root; a program cannot represent an absolute path, environment expansion, home expansion, URI, or implicit ancestor search |
 
 Each selector program has a non-empty ordered sequence of segment tokens from this closed union:
@@ -310,12 +313,12 @@ offering stands with no files of its own rather than failing the scan.
 
 ### Global selector requirements
 
-A Global rule names one exact consented vendor boundary as Base and gives a selector
+A Global rule names one exact consented member boundary as Base and gives a selector
 relative to that boundary. Environment/default-home resolution belongs to boundary
-creation, not to the selector. A Global selector is authored against its consented vendor
+creation, not to the selector. A Global selector is authored against its consented member
 boundary, never against the Repository root,
-does not authorize another vendor boundary, and cannot expand the paths permitted by
-FR-015 through FR-018.
+does not authorize another member boundary, and cannot expand the paths permitted by
+FR-015 through FR-018 and FR-045.
 
 ### Traversal-plan compilation and Global least privilege
 
@@ -327,9 +330,21 @@ Repository plan may perform only the broad traversal explicitly described by its
 programs and exclusions. Entry, depth, time, and work capacity and completion behavior
 come from Node.js, the filesystem, and the execution environment.
 
-A Global plan is narrower and never starts by enumerating the vendor-home root. An exact
+A Global plan is narrower and never starts by enumerating the member root. An exact
 Global target rule reads only its named file below the admitted root and does not
-enumerate the root. An explicitly fixed subtree rule, such as the contracted Copilot
+enumerate the root.
+
+An exact target is therefore selected by the operating system's own name resolution rather
+than by comparing the selector's literal against an enumerated entry name. On a
+case-insensitive filesystem that means a file whose stored name differs from the literal
+only in case satisfies the target, and the published Source-relative Path is the selector's
+literal — the name the product asked the filesystem for — rather than the stored name. That
+is deliberate and is what the row means: a vendor asking the same filesystem for the same
+literal opens the same file, so the row states what that vendor reads. Comparing
+case-sensitively instead would require the enumeration this rule exists to avoid, and would
+hide a file the vendor does read. An enumerated path — every Repository program, and a
+Global fixed subtree below its literal prefix — publishes the stored entry names, because
+enumeration is where those names come from. An explicitly fixed subtree rule, such as the contracted Copilot
 `instructions/` subtree, enumerates only that subtree and the descendants permitted by its
 segment program. Neither rule lists, opens, or reads a neighboring path that the plan does
 not reach. Missing permitted paths do not broaden the plan or trigger sibling discovery.
@@ -346,7 +361,7 @@ non-whitespace. An unreadable or binary override ends the branch with its file D
 (`file-unreadable` or `file-content-binary`) and no fallback. The
 policy publishes the selected non-empty file and never publishes both selectors.
 
-The no-I/O Global preview names each tool's resolved root and lexical state only; it
+The no-I/O Global preview names each member's resolved root and lexical state only; it
 carries no per-pattern display, and what is read below an admitted root is fixed by the
 shipped plan the retained `allowlistVersion`/`traversalPlanVersion` pair identifies, so
 there is no separately maintained
@@ -593,7 +608,7 @@ Contract and fixture validation must prove all of the following:
    absent or safely-read empty override, that an unreadable or binary override ends the
    branch with its file Diagnostic and no fallback, and that the two selectors are never
    both published.
-   Global-consent fixtures reject selector-shaped input, evaluate all three frozen entries,
+   Global-consent fixtures reject selector-shaped input, evaluate all four frozen entries,
    partition missing or unreadable roots from admitted readable ones, publish all admitted
    one-root Sources in one batch
    generation, and prove that an unexpected failure aborts the whole provisional subset
@@ -605,7 +620,7 @@ Contract and fixture validation must prove all of the following:
    no read for a rejected target.
 6. Relationship-only and excluded fixtures prove zero read authority even when a target
    exists or matches a generic filename. User behavior recorded outside FR-015 through
-   FR-018 never becomes a Global candidate.
+   FR-018 and FR-045 never becomes a Global candidate.
 7. One physical file admitted by multiple rules within one Source is read once per Source
    scan attempt and retains each independent provenance — the rule that authorized the
    read and the path it matched — with no admission collapsed into a recognition-level

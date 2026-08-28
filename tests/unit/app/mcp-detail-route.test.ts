@@ -17,12 +17,16 @@ import { mcpServerDetailRoute } from '../../../src/app/components/mcp-detail-rou
 
 describe('the MCP detail routes', () => {
   it('percent-encodes each path segment and the declared name', () => {
-    expect(detailRoute('MCP', '.mcp.json')).toBe('/mcp/.mcp.json');
-    expect(detailRoute('MCP', 'packages/a b/#x.json')).toBe('/mcp/packages/a%20b/%23x.json');
-    expect(mcpServerDetailRoute('.mcp.json', 'context7')).toBe('/mcp/.mcp.json?server=context7');
+    expect(detailRoute('MCP', '.mcp.json')).toBe('/mcp/detail/repository/.mcp.json');
+    expect(detailRoute('MCP', 'packages/a b/#x.json')).toBe(
+      '/mcp/detail/repository/packages/a%20b/%23x.json',
+    );
+    expect(mcpServerDetailRoute('.mcp.json', 'context7')).toBe(
+      '/mcp/detail/repository/.mcp.json?server=context7',
+    );
     // Separators and query characters in a declared name are authored text.
     expect(mcpServerDetailRoute('.mcp.json', 'a/b&c=d')).toBe(
-      '/mcp/.mcp.json?server=a%2Fb%26c%3Dd',
+      '/mcp/detail/repository/.mcp.json?server=a%2Fb%26c%3Dd',
     );
   });
 
@@ -50,7 +54,7 @@ describe('the MCP detail routes', () => {
     // A well-formed name with no backslash keeps its plain spelling, so the
     // ordinary link is unchanged by the escape layer.
     expect(mcpServerDetailRoute('.mcp.json', '\u{1F600}')).toBe(
-      `/mcp/.mcp.json?server=${encodeURIComponent('\u{1F600}')}`,
+      `/mcp/detail/repository/.mcp.json?server=${encodeURIComponent('\u{1F600}')}`,
     );
   });
 });

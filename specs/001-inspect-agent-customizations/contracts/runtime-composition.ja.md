@@ -71,7 +71,7 @@ Required condition factが利用不能なら、本contractはそのcomposition�
 これらはvendorについての維持管理recordであり、製品が行うprojectionではない。Condition keyはregistry record
 もresponseも運ばず、製品がそのfileをどう扱うかを述べるsurfaceも無い。Inspectorが報告するのは見つけた
 カスタマイズファイルとその場所であり、そのruntimeについては何も述べない（FR-009）。したがってRepository
-resultとtool固有Global resultを“effective configuration”へmergeすることも無い。mergeすべきconfiguration
+resultとmember Global resultを“effective configuration”へmergeすることも無い。mergeすべきconfiguration
 は存在せず、boundaryが別々のままのSourceがあるだけである。
 
 Originating customization fileを持たない文書化済みhosted/runtime inputはスコープ外とする。製品が報告するのは
@@ -223,7 +223,7 @@ Vendor固有excluded ruleは各vendor contractで規範定義し、ここでは�
 
 | Rule ID | Excluded input | Behavior refs | Required retained fact | Policy refs | Evidence |
 |---|---|---|---|---|---|
-| `shared.excluded.managed-remote-state` | Managed、organization、hosted、remote、credential、log、cache、session、runtime-state、plugin-installation、service-side file/value | `claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`claude.behavior.user.settings`、`codex.behavior.user.config`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | Source categoryとstrategyへのpossible effectだけ記録し、local pathを作らない | FR-009、FR-013、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、QR-001、QR-003、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
+| `shared.excluded.managed-remote-state` | Managed、organization、hosted、remote、credential、log、cache、session、runtime-state、plugin-installation、service-side file/value | `claude.behavior.user.mcp-state`、`claude.behavior.user.plugins`、`codex.behavior.user.plugins`、`copilot.behavior.cloud.mcp`、`copilot.behavior.cloud.organization-agents`、`copilot.behavior.cloud.organization-instructions`、`copilot.behavior.cloud.plugins`、`copilot.behavior.cloud.remote-skills` | Source categoryとstrategyへのpossible effectだけ記録し、local pathを作らない | FR-009、FR-013、FR-014、FR-018、FR-019、FR-021、FR-022、FR-031、QR-001、QR-003、QR-005 | `anthropic.claude-code.directory.file-reference`、`anthropic.claude-code.mcp.scopes-precedence`、`anthropic.claude-code.plugins.components-scopes`、`anthropic.claude-code.settings.scopes-precedence`、`github.copilot.cli.reference`、`github.copilot.cloud.instructions`、`github.copilot.custom-agents`、`github.copilot.instructions.support`、`github.copilot.plugins`、`github.copilot.skills`、`openai.codex.config-basic`、`openai.codex.mcp`、`openai.codex.plugins`、`vscode.copilot.plugins` |
 
 ## Registry completeness
 

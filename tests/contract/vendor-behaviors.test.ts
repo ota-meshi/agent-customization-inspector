@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { INSPECTION_RULES } from '../../src/shared/registries/inspection-rules';
+import type { RuleId } from '../../src/shared/registries/identifier-types';
 import { RUNTIME_COMPOSITION_STRATEGIES } from '../../src/shared/registries/runtime-composition';
 import { VENDOR_BEHAVIOR_STATEMENTS } from '../../src/shared/registries/vendor-behaviors';
 import { RULE_RELATIONS, STRATEGY_RELATIONS } from '../../src/shared/registries/relations';
@@ -386,12 +387,18 @@ describe('registry composition', () => {
       // vendor's same-name collision policy, composed by
       // `src/shared/skill-collision.ts` (FR-007) — so it sits beside the
       // catalogs without joining the per-record aggregate checks below.
+      //
+      // `shared` is the cross-vendor slice rather than a vendor: behaviors,
+      // strategies, and a collision policy are vendor facts, so it holds only
+      // the one shared rule catalog and its relations.
       expect(readdirSync(`src/shared/registries/${vendor}`).sort()).toEqual(
-        [
-          ...CATALOG_FILES.map((catalog) => catalog.file),
-          'relations.ts',
-          'skill-collision.ts',
-        ].sort(),
+        vendor === 'shared'
+          ? ['relations.ts', 'rules.ts']
+          : [
+              ...CATALOG_FILES.map((catalog) => catalog.file),
+              'relations.ts',
+              'skill-collision.ts',
+            ].sort(),
       );
     }
   });
@@ -401,6 +408,11 @@ describe('registry composition', () => {
     ({ file, aggregate, idField }) => {
       let published = 0;
       for (const vendor of vendorDirectories) {
+        if (vendor === 'shared' && (file === 'behaviors.ts' || file === 'strategies.ts')) {
+          // The cross-vendor slice holds no behavior or strategy catalog; its
+          // one rule catalog joins the aggregate exactly as a vendor's does.
+          continue;
+        }
         const specifier = `../../src/shared/registries/${vendor}/${file}`;
         const catalogModule = CATALOG_MODULES[specifier];
         expect(catalogModule, `${vendor}/${file} was not loaded`).toBeDefined();
@@ -621,9 +633,13 @@ describe('the Copilot skill behaviors and strategies (T158)', () => {
       relativeSelector: null,
       traversal: 'none',
     });
-    // No rule rests on the hosted fact: read authority comes only from the
-    // three Repository surface behaviors.
-    for (const edges of Object.values(RULE_RELATIONS)) {
+    // No rule that could authorize a read rests on the hosted fact: read
+    // authority comes only from the three Repository surface behaviors, and
+    // the shared managed-remote exclusion names it as scope it declines.
+    for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
+      if (INSPECTION_RULES[ruleId as RuleId].discoveryClass === 'excluded') {
+        continue;
+      }
       expect(edges.basedOnBehaviors.map((behavior) => behavior.behaviorId)).not.toContain(
         'copilot.behavior.cloud.remote-skills',
       );
@@ -665,12 +681,12 @@ describe('the Copilot skill behaviors and strategies (T158)', () => {
 });
 
 describe('the Copilot Cloud MCP behavior (T378)', () => {
-  it('ships as an origin-file-less fact no rule or exclusion references yet', () => {
+  it('ships as an origin-file-less fact only the shared exclusion references', () => {
     // The behavior records hosted sources — out-of-box, custom-agent, and
-    // repository-settings MCP — so its locator names no file, and nothing in
-    // the shipped rule catalog is based on it: the future
-    // `shared.excluded.managed-remote-state` exclusion arrives with the
-    // Global phase that owns it and must find this record already here.
+    // repository-settings MCP — so its locator names no file, and the one
+    // record based on it is `shared.excluded.managed-remote-state`, the
+    // non-read exclusion whose scope statement it is: no rule that could
+    // authorize a read rests on it.
     const behavior = VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cloud.mcp'];
     expect(behavior.locator?.relativeSelector).toBeNull();
     expect(behavior.locator?.lookupBase).toBe('hosted-state');
@@ -678,8 +694,191 @@ describe('the Copilot Cloud MCP behavior (T378)', () => {
     expect(behavior.evidence.map((citation) => citation.sourceId)).toEqual([
       'github.copilot.custom-agents',
     ]);
-    for (const relations of Object.values(RULE_RELATIONS)) {
-      expect(relations.basedOnBehaviors).not.toContain(behavior);
+    for (const [ruleId, relations] of Object.entries(RULE_RELATIONS)) {
+      if (INSPECTION_RULES[ruleId as RuleId].discoveryClass === 'excluded') {
+        continue;
+      }
+      expect(relations.basedOnBehaviors, ruleId).not.toContain(behavior);
+    }
+  });
+});
+
+describe('the pure User-only facts the consent exclusions need (T931)', () => {
+  /**
+   * The facts owned here, each with the official-sources row its citation must
+   * resolve to: the User surfaces no Global rule admits, which the Global
+   * exclusions have to name. The widened members took the rest — Codex's
+   * deprecated prompts are admitted by `codex.global.prompts` (T1126), so the
+   * remaining pure facts are the generated and UI-preference surfaces alone.
+   */
+  const PURE_USER_FACTS = [
+    ['claude.behavior.user.keybindings', 'anthropic.claude-code.directory.file-reference'],
+    ['claude.behavior.user.themes', 'anthropic.claude-code.directory.file-reference'],
+    ['claude.behavior.user.workflows', 'anthropic.claude-code.directory.file-reference'],
+    ['codex.behavior.user.memories', 'openai.codex.memories'],
+  ] as const;
+
+  it('states the User home locator each one is documented at', () => {
+    // A User fact whose locator named another base would be describing a
+    // surface the exclusion does not cover: all four are the product home's
+    // own directories, which is what `tool-home` says.
+    const selectors = new Map<string, string | null>();
+    for (const [behaviorId] of PURE_USER_FACTS) {
+      const behavior = VENDOR_BEHAVIOR_STATEMENTS[behaviorId];
+      expect(behavior.locator?.vendorScope, behaviorId).toBe('user');
+      expect(behavior.locator?.lookupBase, behaviorId).toBe('tool-home');
+      expect(behavior.locator?.traversal, behaviorId).toBe('exact');
+      selectors.set(behaviorId, behavior.locator?.relativeSelector ?? null);
+    }
+    expect([...selectors]).toEqual([
+      ['claude.behavior.user.keybindings', 'keybindings.json'],
+      ['claude.behavior.user.themes', 'themes/*.json'],
+      ['claude.behavior.user.workflows', 'workflows/*.js'],
+      ['codex.behavior.user.memories', 'memories/'],
+    ]);
+  });
+
+  it('cites an official-sources row the contract already owned', () => {
+    // The reciprocal half of the backlink: each fact rests on a page the
+    // normative source registry already carries a row for, so this phase
+    // reviews three pages rather than introducing three. A source ID with no
+    // row would be evidence nobody reviewed — the generic gate above resolves
+    // every citation to its row, and what this asserts is that these three
+    // rows are the ones the contract was authored with, each cited exactly
+    // once from the fact it establishes.
+    const contract = readFileSync(
+      'specs/001-inspect-agent-customizations/contracts/official-sources.md',
+      'utf8',
+    );
+    for (const [behaviorId, sourceId] of PURE_USER_FACTS) {
+      const behavior = VENDOR_BEHAVIOR_STATEMENTS[behaviorId];
+      expect(
+        behavior.evidence.map((citation) => citation.sourceId),
+        behaviorId,
+      ).toEqual([sourceId]);
+      expect(contract, sourceId).toContain(`| \`${sourceId}\` | <`);
+    }
+  });
+
+  it('keeps every one of them non-authorizing wherever its exclusion has not shipped', () => {
+    // An exclusion rests on a behavior without authorizing it, so being
+    // reached by one is not becoming readable: what this asserts is that no
+    // *candidate* rule and no strategy reaches any of them. All four are
+    // named by their tool's own User exclusion — Codex's memories by
+    // `codex.excluded.user-runtime` and Claude's three by
+    // `claude.excluded.user-runtime` (T970, T1125) — and the frozen
+    // eighty-one-rule list in `inspection-rules.test.ts` is the other half of
+    // that statement.
+    for (const [behaviorId] of PURE_USER_FACTS) {
+      for (const [ruleId, relations] of Object.entries(RULE_RELATIONS)) {
+        if (
+          INSPECTION_RULES[ruleId as keyof typeof INSPECTION_RULES].discoveryClass === 'excluded'
+        ) {
+          continue;
+        }
+        expect(
+          relations.basedOnBehaviors.map((behavior) => behavior.behaviorId),
+          `${ruleId} rests on ${behaviorId}`,
+        ).not.toContain(behaviorId);
+      }
+      for (const [strategyId, relations] of Object.entries(STRATEGY_RELATIONS)) {
+        expect(
+          relations.consumesBehaviors.map((behavior) => behavior.behaviorId),
+          `${strategyId} composes ${behaviorId}`,
+        ).not.toContain(behaviorId);
+      }
+    }
+  });
+
+  it('partitions the Claude User set between the Global rules and the exclusion (T966, T1125)', () => {
+    // The consent boundary is measured against the frozen behavior set: the
+    // nine Global rules accept their surfaces and
+    // `claude.excluded.user-runtime` declines the rest, and neither side is
+    // allowed to have introduced a behavior of its own. The set is frozen
+    // here so a record added to make an exclusion look complete fails rather
+    // than passes; the widening adds exactly the keybindings and themes
+    // records the contract carries (T1125).
+    const claudeUserBehaviors = Object.keys(VENDOR_BEHAVIOR_STATEMENTS)
+      .filter((behaviorId) => behaviorId.startsWith('claude.behavior.user.'))
+      .toSorted();
+    expect(claudeUserBehaviors).toEqual([
+      'claude.behavior.user.agent-memory',
+      'claude.behavior.user.agents',
+      'claude.behavior.user.auto-memory',
+      'claude.behavior.user.commands',
+      'claude.behavior.user.instructions',
+      'claude.behavior.user.keybindings',
+      'claude.behavior.user.mcp-state',
+      'claude.behavior.user.output-style',
+      'claude.behavior.user.plugins',
+      'claude.behavior.user.rules',
+      'claude.behavior.user.settings',
+      'claude.behavior.user.skills',
+      'claude.behavior.user.themes',
+      'claude.behavior.user.workflows',
+    ]);
+
+    // Every admitted surface is claimed by a Global rule and the exclusion
+    // names every other one — the two sides partition the set, so a surface
+    // can be neither forgotten nor claimed twice. The three settings rules
+    // deliberately share one behavior: one file, three recognitions.
+    const claudeGlobalRuleIds = [
+      'claude.global.agent',
+      'claude.global.command',
+      'claude.global.hooks.settings',
+      'claude.global.instructions',
+      'claude.global.output-style',
+      'claude.global.permissions',
+      'claude.global.rules',
+      'claude.global.settings',
+      'claude.global.skill',
+    ] as const;
+    const admitted = [
+      ...new Set(
+        claudeGlobalRuleIds.flatMap((ruleId) =>
+          RULE_RELATIONS[ruleId].basedOnBehaviors.map((behavior) => behavior.behaviorId),
+        ),
+      ),
+    ];
+    const excluded = RULE_RELATIONS['claude.excluded.user-runtime'].basedOnBehaviors.map(
+      (behavior) => behavior.behaviorId,
+    );
+    expect(admitted.toSorted()).toEqual([
+      'claude.behavior.user.agents',
+      'claude.behavior.user.commands',
+      'claude.behavior.user.instructions',
+      'claude.behavior.user.output-style',
+      'claude.behavior.user.rules',
+      'claude.behavior.user.settings',
+      'claude.behavior.user.skills',
+    ]);
+    expect([...admitted, ...excluded].toSorted()).toEqual(claudeUserBehaviors);
+    // Each edge holds the record the registry publishes rather than an
+    // equal-looking copy.
+    for (const ruleId of [...claudeGlobalRuleIds, 'claude.excluded.user-runtime'] as const) {
+      for (const behavior of RULE_RELATIONS[ruleId].basedOnBehaviors) {
+        expect(behavior, `${ruleId} carries ${behavior.behaviorId}`).toBe(
+          VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId],
+        );
+      }
+    }
+  });
+
+  it('records the deprecation the custom-prompt page states, and nothing else', () => {
+    // The one qualifier among the three: the prompts page opens with its own
+    // deprecation notice, so the record carries it. The other two pages state
+    // no lifecycle claim, and a qualifier invented for them would be this
+    // registry asserting something no page says.
+    expect(VENDOR_BEHAVIOR_STATEMENTS['codex.behavior.user.prompts'].lifecycleQualifiers).toEqual([
+      'deprecated',
+    ]);
+    for (const behaviorId of [
+      'claude.behavior.user.workflows',
+      'codex.behavior.user.memories',
+    ] as const) {
+      const behavior = VENDOR_BEHAVIOR_STATEMENTS[behaviorId];
+      expect(behavior.lifecycleQualifiers, behaviorId).toEqual([]);
+      expect(behavior.documentationStatus, behaviorId).toBe('documented');
     }
   });
 });

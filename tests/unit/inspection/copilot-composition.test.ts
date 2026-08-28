@@ -175,16 +175,25 @@ describe('no surface derives a general winner from the shipped strategies', () =
         expect(behavior.behaviorId, rule.ruleId).not.toContain('settings');
       }
     }
-    // Exactly one Copilot rule recognizes the settings kind, and it is the one
-    // that rests on the CLI settings lookup — nothing else acquired a settings
-    // basis on the way here.
+    // Exactly two Copilot rules recognize the settings kind — the Repository
+    // documents and the consented user document — and each rests on its own
+    // scope's settings lookup: nothing else acquired a settings basis on the
+    // way here.
     expect(
-      copilotRules.filter((rule) => rule.kind === 'settings/config').map((rule) => rule.ruleId),
-    ).toEqual(['copilot.repo.settings']);
+      copilotRules
+        .filter((rule) => rule.kind === 'settings/config')
+        .map((rule) => rule.ruleId)
+        .toSorted(),
+    ).toEqual(['copilot.global.settings', 'copilot.repo.settings']);
     expect(
       RULE_RELATIONS['copilot.repo.settings'].basedOnBehaviors.map(
         (behavior) => behavior.behaviorId,
       ),
     ).toEqual(['copilot.behavior.cli.settings']);
+    expect(
+      RULE_RELATIONS['copilot.global.settings'].basedOnBehaviors.map(
+        (behavior) => behavior.behaviorId,
+      ),
+    ).toEqual(['copilot.behavior.cli.user.settings']);
   });
 });

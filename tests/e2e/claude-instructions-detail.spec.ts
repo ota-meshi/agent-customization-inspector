@@ -100,7 +100,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   // applicability range, so one row lists several files and only the entry
   // holding this path offers this file's links.
   await page
-    .locator('.aci-instruction-row__files > li', { hasText: path })
+    .locator('.aci-source-family-blocks__members > li', { hasText: path })
     .locator('.aci-instruction-row__owner a')
     .first()
     .click();
@@ -237,7 +237,7 @@ test('drops the content when the route leaves the file', async ({ page }) => {
 });
 
 test('reports a Claude link whose path the current scan does not hold', async ({ page }) => {
-  await page.goto(`${host.origin}instructions/packages/api/CLAUDE.local.md`);
+  await page.goto(`${host.origin}instructions/detail/repository/packages/api/CLAUDE.local.md`);
   await expect(page.locator('.aci-instruction-detail')).toContainText(
     'Nothing in the current scan sits at this link',
   );

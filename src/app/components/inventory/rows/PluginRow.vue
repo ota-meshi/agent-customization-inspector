@@ -29,16 +29,25 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
+import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
+import SourceRootLine from '../SourceRootLine.vue';
 import { pluginCarrierDetailRoute } from '../../plugin-detail-route';
+import { familyComparisonPairsOf, type ComparisonSide } from '../../detail-route';
+import { useSessionSources } from '../../../composables/session-sources';
 import { pluginComparisonRouteFor } from '../../../composables/plugin-comparison';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import { PLUGIN_CARRIER_TEXT } from '../../../../shared/api-text';
 import {
+  fileIdentityKey,
   SUPPORTED_TOOL_TEXT,
   inlinePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
-import type { PluginInventoryEntryDto, SerializedDiagnostic } from '../../../../shared/api-types';
+import type {
+  PluginInventoryEntryDto,
+  SerializedDiagnostic,
+  SourceKind,
+} from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
 
 const props = defineProps<{
@@ -47,6 +56,9 @@ const props = defineProps<{
   /** The generation's diagnostics, resolved per carrier by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
+
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
 
 /**
  * The row's heading text: the declared name through the shared label rule, so
@@ -91,15 +103,43 @@ const nameAccessibleText = computed(() =>
  * filter left, so the link a reader followed is still there when they come
  * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
-const compareRoute = computed(() => {
-  if (props.entry.name === null) {
-    return null;
-  }
+/**
+ * The comparable identities of this row as route sides, in the row's own
+ * order — the set no filter narrows
+ * ({@link NarrowedInventoryRow.rowFileIdentities}).
+ */
+const comparableSides = computed<readonly ComparisonSide[]>(() => {
+  // The row's own carrier identities — the set no filter narrows
+  // ({@link NarrowedInventoryRow.rowFileIdentities}), already one entry per
+  // carrier however many products recognize it, with a same-path carrier in
+  // another Source a distinct one (FR-030).
+  const sides = props.entry.rowFileIdentities.map((identity) => ({
+    source: sessionSources.selectorOf(identity.sourceId),
+    sourceRelativePath: identity.sourceRelativePath,
+  }));
+  return sides;
+});
+
+/**
+ * Each family block's comparison entry — that family's first two comparable
+ * identities, for the blocks that hold a pair (FR-011): a block's comparison
+ * is that family's, and a pair never spans two families
+ * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
+ * hold one member offers no entry — exactly as an instruction range's blocks
+ * do. The comparison surface's own pickers take over from there
+ * (`detail-route.ts` § familyComparisonPairsOf).
+ */
+const blockCompareRoutes = computed(() => {
+  const routes = new Map<SourceKind, ReturnType<typeof pluginComparisonRouteFor>>();
   const name = props.entry.name;
-  const [first, second] = props.entry.rowFilePaths;
-  return first !== undefined && second !== undefined
-    ? pluginComparisonRouteFor(name, first, second)
-    : null;
+  if (name === null) {
+    // The closing no-name row: its carriers resolve no shared name to pair.
+    return routes;
+  }
+  for (const [kind, [first, second]] of familyComparisonPairsOf(comparableSides.value)) {
+    routes.set(kind, pluginComparisonRouteFor(kind, name, first, second));
+  }
+  return routes;
 });
 
 /**
@@ -117,10 +157,13 @@ const carrierRows = computed(() =>
   props.entry.carriers.map((carrier) => ({
     /**
      * The tool leads the key so the pair cannot collide: a tool is a closed
-     * enum with no space in it, so one space after it separates the two halves
-     * whatever the path contains.
+     * enum with no space or U+0000 in it, and the carrier's Source joins the
+     * halves because a consented home's carrier and a same-path carrier
+     * elsewhere are two files (FR-030).
      */
-    key: `${carrier.tool} ${carrier.sourceRelativePath}`,
+    key: carrier.tool + '\u0000' + fileIdentityKey(carrier.sourceId, carrier.sourceRelativePath),
+    /** The member's Source: what the family blocks and its directory line derive from. */
+    sourceId: carrier.sourceId,
     /**
      * The carrier's path through the shared label rule rather than plain
      * escaping ({@link pathPresentationLabel}): a name built only from
@@ -144,6 +187,8 @@ const carrierRows = computed(() =>
       carrier.sourceRelativePath,
       carrier.tool,
       props.entry.name,
+      null,
+      sessionSources.selectorOf(carrier.sourceId),
     ),
     /** The kind's extraction diagnostics for this file (FR-028). */
     diagnosticIds: carrier.diagnosticIds,
@@ -176,8 +221,14 @@ const carrierRows = computed(() =>
          as the prefix). What the file is to the plugin, which product
          recognizes it, and the surfaces that recognition rests on follow the
          link; naming a surface never claims it loaded the file (FR-009). -->
-    <ul class="aci-plugin-row__carriers" role="list">
-      <li v-for="carrier in carrierRows" :key="carrier.key">
+    <!-- One block per Source family (`SourceFamilyBlocks.vue`), each member
+         rendered by this row. -->
+    <SourceFamilyBlocks
+      :members="carrierRows"
+      :member-key="(carrier) => carrier.key"
+      :identities="entry.rowFileIdentities"
+    >
+      <template #member="{ member: carrier }">
         <p class="aci-plugin-row__owner">
           <NuxtLink
             :to="carrier.detailRoute"
@@ -195,9 +246,30 @@ const carrierRows = computed(() =>
             <span class="aci-plugin-row__surfaces">{{ carrier.surfacesText }}</span></span
           >
         </p>
+
+        <SourceRootLine :source-id="carrier.sourceId" />
         <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
-      </li>
-    </ul>
+      </template>
+
+      <!-- The block's own comparison entry (FR-011): the family is where a
+           pair of this row's members lives, so each block that holds two
+           comparable identities offers its own — the instruction blocks'
+           shape. The accessible name carries the row's identity always, and
+           the family where two blocks each offer one (WCAG 2.4.6). -->
+      <template #entry="{ block }">
+        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-plugin-row__compare">
+          <NuxtLink
+            :to="blockCompareRoutes.get(block.kind)!"
+            :aria-label="`Compare this plugin with another copy: ${nameAccessibleText ?? ''}${
+              blockCompareRoutes.size > 1 && block.familyText !== null
+                ? ` (${block.familyText})`
+                : ''
+            }`"
+            >Compare this plugin</NuxtLink
+          >
+        </p>
+      </template>
+    </SourceFamilyBlocks>
 
     <!-- What the plugin ships, stated as a count rather than listed: the files
          are the plugin's content, and the offering's own detail is where they
@@ -205,18 +277,6 @@ const carrierRows = computed(() =>
          scan read is a file the reader can account for. -->
     <p v-if="shippedFileCount > 0" class="aci-note">
       {{ shippedFileCount }} file(s) in this plugin
-    </p>
-
-    <p v-if="compareRoute !== null" class="aci-plugin-row__compare">
-      <!-- The accessible name carries the row's plugin name after the visible
-           phrase: in a links list every comparable row would otherwise
-           announce identically (WCAG 2.4.6; label-in-name keeps the visible
-           phrase as the prefix). -->
-      <NuxtLink
-        :to="compareRoute"
-        :aria-label="`Compare this plugin with another copy: ${nameAccessibleText ?? ''}`"
-        >Compare this plugin</NuxtLink
-      >
     </p>
   </li>
 </template>
@@ -232,23 +292,6 @@ const carrierRows = computed(() =>
    looks for, and the carriers that resolve it follow underneath. */
 .aci-plugin-row__name {
   font-weight: 600;
-  margin: 0;
-}
-
-/* The carriers, set under the name by an indent and a rule, matching how the
-   MCP and command rows group their own. */
-.aci-plugin-row__carriers {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
-}
-
-.aci-plugin-row__carriers > li + li {
-  margin-block-start: 0.35rem;
-}
-
-.aci-plugin-row__carriers p {
   margin: 0;
 }
 

@@ -114,6 +114,22 @@ jobs:
       - run: pnpm run dev:prepare
       - run: pnpm run test:integration
 
+  security:
+    # The Global zero-activation suite (tests/security/**) through the
+    # security project glob (T996).
+    name: Security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:security
+
   package:
     # Includes the Node.js-only package-policy suite
     # (tests/package/node-only-policy.test.ts) through the package project

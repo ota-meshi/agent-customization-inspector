@@ -133,7 +133,7 @@ production closure stable and its payloads byte-fixed for the first release with
 re-scanning content the hashes already fix and without a test that restates the lockfile's
 own values.
 Root-absolute assets are necessary because the same shell is returned for nested routes
-such as `/skills/<source-relative path>`; a relative `./_nuxt/` URL would resolve beneath that route.
+such as `/skills/detail/<source>/<source-relative path>`; a relative `./_nuxt/` URL would resolve beneath that route.
 The official [Nuxt 4 configuration reference](https://nuxt.com/docs/4.x/api/nuxt-config#baseurl)
 defines `baseURL`, `buildAssetsDir`, and the empty-by-default `cdnURL`. The exact
 [Nuxt output-directory documentation](https://nuxt.com/docs/4.x/directory-structure/output)
@@ -486,9 +486,9 @@ surface are independent behavior/strategy facts rather than implications of a ma
 file existence. A behavior record, source record, strategy, relationship, or excluded rule
 never authorizes a read.
 
-Every admitted tool-home root is represented by its own tool-specific Global Source: at
-most one each for Codex, Claude, and Copilot, and therefore zero to three Global Sources in
-one session. Each Source owns exactly one root and one Source-relative Path namespace.
+Every admitted member root is represented by its own member Global Source: at
+most one each for Codex, Claude, Copilot, and the shared agent home, and therefore zero to
+four Global Sources in one session. Each Source owns exactly one root and one Source-relative Path namespace.
 Files of different customization types below that root remain separate inventory items.
 The term repository-relative path is reserved for the Repository Source; inventoried-file
 and normalized-target DTO locator fields, filters, file-scoped diagnostics, and cross-source
@@ -698,7 +698,7 @@ what the syntax means rather than the characters around it. None of them is subj
 masking, redaction, or a reveal workflow. Environment-variable references inside inspected content remain literal
 text and never cause the Inspector to read, resolve, or substitute the referenced process
 value. The documented `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `COPILOT_HOME` inputs are used
-only by the host to locate tool-specific Global Source roots, not by content parsing.
+only by the host to locate member Global Source roots, not by content parsing.
 The Inspector applies no file-size or file-count validation. Reading, decoding, parsing, and
 retention use the capacity available from Node.js, the parser libraries, the operating
 system, and the execution environment. Error handling is ordinary: a failure confined to
@@ -1156,7 +1156,7 @@ the separate preview avoids repeating a potentially large display payload in eve
 ## 9. Atomic generations, rescan, and environment-dependent capacity
 
 **Decision**: Start the Repository scan automatically, expose progress through the session
-snapshot, and perform later Repository or enabled tool-specific Global Source scans only on
+snapshot, and perform later Repository or enabled member Global Source scans only on
 explicit user action. Create a legal empty zero-I/O bootstrap generation 0 synchronously
 before the automatic Repository command, containing exactly one idle, non-authorizing
 Repository Source selected from captured `process.cwd()` or the optional single `--root`,
@@ -1216,11 +1216,11 @@ explicit rescan's fatal failure discards all uncommitted output. The last succes
 stays visible with a Source-keyed stale-failure entry referencing the actionable
 `root-unreadable` diagnostic when the root itself cannot be read, or the failed request's
 error message for an unexpected failure (FR-030). A
-startup failure has no request owner and reaches the process top level. A fatal tool-specific Global rescan
+startup failure has no request owner and reaches the process top level. A fatal member Global rescan
 retains that Source's consent, accepted root context, and last committed graph for retry or
 disable.
 
-One session-wide consent fixes all three tools, with one `GlobalToolControl` per frozen
+One session-wide consent fixes all four members, with one `GlobalToolControl` per frozen
 preview entry and no selector. Post-consent validation records a consented root that is
 missing or not a readable directory as that tool's absent or failed outcome without
 blocking the other tools (FR-014); an unexpected failure outside one tool's root aborts
@@ -1327,8 +1327,8 @@ a vendor traversal fact.
 Targeted regression fixtures cover Copilot's separate VS Code/CLI/Cloud lookup tables,
 Claude project settings only at the exact selected Repository root, non-recursive Codex rule directories,
 plugin activation versus authored manifest inventory, and zero Global reads beyond
-FR-015 through FR-018. They also verify zero to three tool-specific Global Sources, at most
-one per tool, exactly one root and Source-relative Path namespace per Source, exact literal
+FR-015 through FR-018 and FR-045. They also verify zero to four member Global Sources, at
+most one per member, exactly one root and Source-relative Path namespace per Source, exact literal
 credential display, no reveal controls, and no environment-variable substitution.
 Lifecycle fixtures cover concurrent unresolved failures for all four Sources, per-Source
 clear/replace/removal, and automatic-first-failure current state. Browser fixtures cover
@@ -2062,8 +2062,9 @@ repeatable versioned-profile-specific performance measurement.
 **Decision**: Revalidate the Phase 0 design against the 2026-07-17 clarifications and carry
 the following rules into every later design artifact:
 
-1. One admitted tool-home root equals one tool-specific Global Source, with at most one
-   Source each for Codex, Claude, and Copilot and zero to three in a session.
+1. One admitted member root equals one member Global Source, with at most one
+   Source each for Codex, Claude, Copilot, and the shared agent home and zero to four in a
+   session.
 2. Readable source, displayed declared metadata, and comparison content preserve authored
    literal values. There is no credential masking or reveal workflow. Environment-variable
    references in inspected content remain literal and are not resolved or substituted;
@@ -2279,7 +2280,7 @@ platform guarantee, weaken integrity, or confuse presentation with API authoriza
    option resolves to the parser's last value. Generation 0 synchronously contains the
    stable, non-authorizing Repository Source.
 2. Global consent is one selector-free all-tools action. Initial processing always evaluates
-   all three frozen preview entries; retry derives the complete current server-side
+   all four frozen preview entries; retry derives the complete current server-side
    `retryableTools` set: non-pending unpublished `admitted` controls plus `rejected` controls
    whose `retryDisposition` is `same-preview`, excluding lexical `new-preview-required`. A
    deterministic rejected entry does not block siblings. All admitted roots are scanned as

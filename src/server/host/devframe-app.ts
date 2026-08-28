@@ -34,19 +34,36 @@ import { fileURLToPath } from 'node:url';
 import { H3, defineHandler } from 'h3/node';
 import { createDevServer, type CreateDevServerOptions } from 'devframe/adapters/dev';
 import { openStartupBrowser } from './browser-opener';
+import {
+  GlobalConsentDomain,
+  PRODUCTION_GLOBAL_MEMBER_PORTS,
+  resolveGlobalMembers,
+  type GlobalConsentPreview,
+} from './global-consent';
 // The package manifest is the single source of these values. The bundler
 // tree-shakes the JSON module down to the referenced fields, so the
 // packaged CLI never reads package.json at runtime.
 import packageJson from '../../../package.json' with { type: 'json' };
 import type { DevframeDefinition } from 'devframe';
 import { createOpaqueId } from '../../shared/entities';
-import type { LifecycleOwnerKey } from '../../shared/diagnostics';
+import type { LifecycleOwnerKey, SerializedDiagnostic } from '../../shared/diagnostics';
 import { runSourceScan } from '../inspection/scan';
+import { CLAUDE_GLOBAL_RULES } from '../inspection/rules/claude';
+import { CODEX_AGENTS_HOME_RULES, CODEX_GLOBAL_RULES } from '../inspection/rules/codex';
+import { COPILOT_AGENTS_HOME_RULES, COPILOT_GLOBAL_RULES } from '../inspection/rules/copilot';
+import type { CompiledStaticCandidateRule } from '../inspection/rules/registry';
+import type { ToolRecognition } from '../inspection/recognizers/candidate';
+
 import type {
+  GlobalMemberId,
   CommandResult,
+  CustomizationFileDto,
   DeterministicRejection,
   FileDetailDto,
-  FileOpenTarget,
+  FileDetailParams,
+  GlobalConsentPreviewDto,
+  GlobalEnableResultDto,
+  FileOpenParams,
   InspectionDataResult,
   HookCarrierDetailDto,
   McpCarrierDetailDto,
@@ -59,6 +76,25 @@ import type {
   SessionSnapshot,
 } from '../../shared/api-types';
 import type { InspectionSession, SessionCoordinator } from '../session/session';
+
+/**
+ * Which compiled rules a consented Global scan executes for each member. A
+ * member's catalog is authored here — beside the ports that admit the roots —
+ * because which rules run below which consented boundary is the host's
+ * binding, not a fact a record's own fields carry
+ * (contracts/inspection-path-allowlist.md § Global selector requirements). The
+ * shared agent home's catalog is every vendor's rules over that boundary, so
+ * one admitted file there carries each documenting vendor's recognition
+ * (FR-045).
+ */
+const GLOBAL_RULES_BY_MEMBER: Readonly<
+  Record<GlobalMemberId, readonly CompiledStaticCandidateRule[]>
+> = {
+  copilot: COPILOT_GLOBAL_RULES,
+  claude: CLAUDE_GLOBAL_RULES,
+  codex: CODEX_GLOBAL_RULES,
+  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES],
+};
 
 /** The one session and its coordinator the RPC functions operate on. */
 export interface InspectorHostContext {
@@ -110,6 +146,10 @@ export async function executeRepositoryScan(
     // (FR-001/FR-002).
     root: context.session.selectedRepositoryRoot,
     rootFailureOwner,
+    // Repository scope whatever the diagnostic owner is: an explicit rescan's
+    // owner is `published-source:<sourceId>`, and the scope is what decides
+    // the ancestor entry-name verification (scan.ts § ScanPublicationInput).
+    scope: 'repository',
     // A refresh during a long scan shows where the attempt is rather than the
     // zeros it was admitted with. The coordinator ignores a report for a
     // revoked or settled attempt, so a superseded scan cannot speak for the
@@ -140,6 +180,170 @@ export async function executeRepositoryScan(
 }
 
 /**
+ * Executes one accepted Global batch: scan every admitted member's consented
+ * root and commit all of their results together in the batch's one atomic
+ * generation (T957, FR-014).
+ *
+ * One commit for the whole subset, so no refresh can observe a per-member
+ * publication. Each member runs its own Source scan against its own admitted
+ * root with that member's Global rule catalog — the roots never merge, and a
+ * member's own root failure is that member's `scan-failed` control rather than
+ * the batch's — while a failure not confined to one member's files aborts the
+ * batch and is retained once as the failed request's error.
+ */
+export async function executeGlobalBatch(
+  context: InspectorHostContext,
+  scanRequestId: string,
+  members: readonly {
+    readonly member: GlobalMemberId;
+    readonly sourceId: string;
+    readonly root: string;
+  }[],
+): Promise<void> {
+  const results: {
+    member: GlobalMemberId;
+    files: readonly CustomizationFileDto[];
+    recognitions: readonly ToolRecognition[];
+    diagnostics: readonly SerializedDiagnostic[];
+    outcome: 'complete' | 'partial';
+  }[] = [];
+  const failures: { member: GlobalMemberId; failureCode: 'root-unreadable' }[] = [];
+  try {
+    for (const member of members) {
+      const publication = await runSourceScan({
+        sourceId: member.sourceId,
+        // The exact admitted raw root the control retained, never a display
+        // label: the escaped presentation grants no read authority and is
+        // never decoded back into a path (FR-002).
+        root: member.root,
+        rootFailureOwner: `global:${member.member}`,
+        scope: 'global',
+        rules: GLOBAL_RULES_BY_MEMBER[member.member],
+        // No configuration reader, stated rather than inherited: naming a
+        // catalog already closes the default, and saying so here is what makes
+        // the boundary visible at the call that depends on it (FR-016 through
+        // FR-018).
+        configurationReaders: [],
+      });
+      if (publication.kind !== 'publishable') {
+        // The admitted root cannot be read: it was removed between admission
+        // and the scan, or `stat` admitted a directory whose entries this
+        // process may not list. Either way it is this member's own failure and
+        // leaves the other members free to commit (FR-014).
+        failures.push({ member: member.member, failureCode: 'root-unreadable' });
+        continue;
+      }
+      results.push({
+        member: member.member,
+        files: publication.files,
+        recognitions: publication.recognitions,
+        diagnostics: publication.diagnostics,
+        outcome: publication.outcome,
+      });
+    }
+  } catch (cause: unknown) {
+    // Not confined to one member's files: the whole batch ends, the error is
+    // retained once on the failed status, and no subset commits
+    // (contracts/http-api.md § enable-global).
+    context.coordinator.failGlobalBatch(
+      scanRequestId,
+      cause instanceof Error ? cause.message : String(cause),
+    );
+    throw cause;
+  }
+  context.coordinator.completeGlobalBatch(scanRequestId, results, failures);
+}
+
+/**
+ * Turns one confirmed preview into read authority and runs the batch it
+ * accepts: registers the operation, admits every member the production ports
+ * resolve, settles the disposition, and — when a batch was queued — scans each
+ * admitted root and commits the Global generation
+ * (contracts/http-api.md § enable-global).
+ *
+ * One function for the two confirmations this product accepts, because they
+ * differ only in whether they wait. `enable-global` answers the reader as soon
+ * as the batch is accepted and lets it run behind the response, so a lost
+ * response loses no batch — a fresh poll recovers it from `batchStatus`. The
+ * CLI's `--inspect-personal-setup` has nobody to answer and awaits it, so its
+ * launch line prints with the Global generation already committed, exactly as
+ * the automatic Repository scan completes before the host starts.
+ *
+ * A conflicting registration is the caller's to report; every other outcome is
+ * the settled disposition, `active-no-job` included — a confirmation nothing
+ * could be admitted for is accepted, and what went wrong is each control's own
+ * `failureCode`.
+ */
+export async function runGlobalEnable(
+  context: InspectorHostContext,
+  preview: GlobalConsentPreview,
+  options: { readonly waitForBatch: boolean },
+): Promise<GlobalEnableResultDto | DeterministicRejection> {
+  // A confirmation over an active consent is the same-preview retry
+  // (contracts/http-api.md § enable-global): the server derives the exact
+  // retryable subset — unpublished non-pending admitted controls and
+  // same-preview rejected controls — and an empty subset is the declared
+  // conflict, so a consent with nothing to retry is never silently replaced.
+  const activeConsent = context.session.globalConsent;
+  if (activeConsent !== null && activeConsent.pendingTools.length > 0) {
+    // A batch is still in flight: retry is offered only while `pendingTools`
+    // is empty, and during a non-failed active batch the retryable tools are
+    // informational only (contracts/http-api.md § enable-global) — settling a
+    // second batch here would replace the running one's `batchStatus` and
+    // discard its commit as a late result.
+    return { error: { code: 'global-enable-in-progress' } };
+  }
+  const retryableTools = activeConsent?.retryableTools() ?? null;
+  if (retryableTools !== null && retryableTools.length === 0) {
+    return { error: { code: 'no-retryable-global-tool' } };
+  }
+  const registered = context.coordinator.registerGlobalEnable(
+    preview.previewId,
+    retryableTools === null ? 'initial-enable' : 'retry',
+  );
+  if (registered.kind === 'conflict') {
+    return { error: { code: 'global-enable-in-progress' } };
+  }
+  let resolved;
+  try {
+    // Every admission runs before any disposition, so a throw here has
+    // activated no consent, no control, and no job — and a retry's throw has
+    // replaced none of the existing controls.
+    resolved = await resolveGlobalMembers(
+      preview,
+      PRODUCTION_GLOBAL_MEMBER_PORTS,
+      retryableTools ?? undefined,
+    );
+  } catch (cause: unknown) {
+    context.coordinator.abandonGlobalEnable(registered.operationId);
+    throw cause;
+  }
+  const result = context.coordinator.settleGlobalEnable(
+    registered.operationId,
+    preview.previewId,
+    resolved,
+  );
+  if (result.state !== 'queued' || result.scanRequestId === null) {
+    return result;
+  }
+  const members = result.acceptedTools.map((member) => {
+    const control = context.session.globalConsent!.controls.get(member)!;
+    return { member, sourceId: control.sourceId!, root: control.root! };
+  });
+  const batch = executeGlobalBatch(context, result.scanRequestId, members);
+  if (options.waitForBatch) {
+    await batch;
+    return result;
+  }
+  void batch.catch(() => {
+    // The job's own failure is already retained on the failed `batchStatus` by
+    // `executeGlobalBatch`; this catch exists so an accepted batch's rejection
+    // does not become an unhandled rejection at the process top level.
+  });
+  return result;
+}
+
+/**
  * Builds the devframe application definition: product identity, the
  * unauthenticated loopback CLI host serving the packaged SPA, and the
  * session RPC functions registered under the
@@ -158,6 +362,7 @@ export async function executeRepositoryScan(
 export function createInspectorDevframe(
   context: InspectorHostContext,
   preferredPort?: number,
+  consent: GlobalConsentDomain = new GlobalConsentDomain(),
 ): DevframeDefinition {
   // devframe 0.7.5 declares `defineDevframe` in its types but does not
   // export it at runtime; the helper is an identity function, so the typed
@@ -236,9 +441,12 @@ export function createInspectorDevframe(
         // another type included — resolves nowhere and takes the same
         // `stale-resource` rejection below.
         handler: (
-          sourceRelativePath: string,
+          request: FileDetailParams,
         ): InspectionDataResult<FileDetailDto> | DeterministicRejection => {
-          const detail = context.session.fileDetail(sourceRelativePath);
+          const detail = context.session.fileDetail(
+            request?.sourceRelativePath,
+            request?.source ?? 'repository',
+          );
           if (detail === null) {
             // The current committed generations hold no detail of this
             // function's at the path — never scanned, removed by the commit
@@ -263,12 +471,17 @@ export function createInspectorDevframe(
         // its content-free file facts, with no `sourceText` field at all — a
         // file admitted so its declarations can be published shows those
         // declarations and never its own bytes (FR-007), which is why its
-        // detail is not a `get-file-detail` variant. The parameter validates
-        // by resolution exactly as `get-file-detail`'s does.
+        // detail is not a `get-file-detail` variant. The parameter is the
+        // file's whole identity — the Source-and-path pair `get-file-detail`
+        // takes, because a Global member publishes MCP carriers too — and it
+        // validates by resolution exactly as that function's does.
         handler: (
-          sourceRelativePath: string,
+          request: FileDetailParams,
         ): InspectionDataResult<McpCarrierDetailDto> | DeterministicRejection => {
-          const detail = context.session.mcpCarrierDetail(sourceRelativePath);
+          const detail = context.session.mcpCarrierDetail(
+            request?.sourceRelativePath,
+            request?.source ?? 'repository',
+          );
           if (detail === null) {
             // No MCP recognition at the path — never scanned, or removed by
             // a later commit. A parsed carrier declaring no server is not
@@ -290,12 +503,16 @@ export function createInspectorDevframe(
         // its detail is not a `get-file-detail` variant. Publishing a
         // declaration is not running it: no declared command, handler, or
         // referenced script is executed, opened, or resolved (FR-020). The
-        // parameter validates by resolution exactly as `get-file-detail`'s
-        // does.
+        // parameter is the file's whole identity — the Source-and-path pair
+        // `get-file-detail` takes — and it validates by resolution exactly as
+        // that function's does.
         handler: (
-          sourceRelativePath: string,
+          request: FileDetailParams,
         ): InspectionDataResult<HookCarrierDetailDto> | DeterministicRejection => {
-          const detail = context.session.hookCarrierDetail(sourceRelativePath);
+          const detail = context.session.hookCarrierDetail(
+            request?.sourceRelativePath,
+            request?.source ?? 'repository',
+          );
           if (detail === null) {
             // No hook recognition at the path — never scanned, or removed by a
             // later commit. A parsed carrier declaring no event is not this
@@ -378,12 +595,16 @@ export function createInspectorDevframe(
         // document of its own, and another declares it inside a settings file
         // whose remaining keys are a different recognition's content, so one
         // file-shaped result would have to answer for a file it is not about.
-        // The parameter validates by resolution exactly as `get-file-detail`'s
-        // does.
+        // The parameter is the declaring file's whole identity — the
+        // Source-and-path pair `get-file-detail` takes — and it validates by
+        // resolution exactly as that function's does.
         handler: (
-          sourceRelativePath: string,
+          request: FileDetailParams,
         ): InspectionDataResult<PermissionPolicyDetailDto> | DeterministicRejection => {
-          const detail = context.session.permissionPolicyDetail(sourceRelativePath);
+          const detail = context.session.permissionPolicyDetail(
+            request?.sourceRelativePath,
+            request?.source ?? 'repository',
+          );
           if (detail === null) {
             // No permissions recognition at the path — never scanned, or
             // removed by a later commit (contracts/http-api.md
@@ -442,6 +663,137 @@ export function createInspectorDevframe(
         },
       });
       ctx.rpc.register({
+        name: 'agent-customization-inspector:get-global-consent-preview',
+        type: 'query',
+        // The non-mutating half of the strict pair
+        // (contracts/http-api.md § get-global-consent-preview): it returns
+        // only the already-current process-memory preview and never captures
+        // environment values, creates, replaces, or invalidates one. That is
+        // what lets a fresh client redisplay the exact consent a previous
+        // client was shown — recapturing here would hand the reader a
+        // different preview than the one a later enable is bound to.
+        //
+        // It needs no freeze check of its own: capture is the only operation
+        // that replaces the record, so while consent is active this returns
+        // the exact preview that consent was given for.
+        handler: (): CommandResult<GlobalConsentPreviewDto> | DeterministicRejection => {
+          const preview = consent.current();
+          if (preview === null) {
+            // Neither a current unconsented preview nor a frozen one: the
+            // fixed rejection, which is a declared functional outcome rather
+            // than an error.
+            return { error: { code: 'consent-preview-missing' } };
+          }
+          return {
+            globalContentEpoch: context.session.snapshot().globalContentEpoch,
+            data: preview.toDto(),
+          };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:create-global-consent-preview',
+        type: 'command',
+        // The state-changing half: the only operation that reads the three
+        // environment properties, and the only one that creates or replaces a
+        // preview (contracts/http-api.md § create-global-consent-preview).
+        //
+        // It takes no parameters, so there is no selector a client could use
+        // to narrow the three tools or to propose a root of its own: the roots
+        // come from the environment this process was started with, and all
+        // three are always evaluated.
+        //
+        // A throw during capture, classification, escaping, or serialization
+        // is deliberately not caught here. It reaches this pre-acceptance RPC
+        // boundary, devframe serializes it as-is, and no preview, job,
+        // `scanRequestId`, retention, or path authority exists as a result.
+        handler: (): CommandResult<GlobalConsentPreviewDto> | DeterministicRejection => {
+          // The two states that freeze the preview. Replacing it under either
+          // would strand what depends on it: an active consent names its
+          // preview by ID, and the recovery path for a fresh client is to
+          // retrieve that exact record — a replacement makes it unretrievable
+          // and the reader can no longer see what they authorized. A
+          // registered enable is bound to the object it froze, so replacing it
+          // mid-operation would leave the enable committing authority for a
+          // preview nobody can reach (contracts/http-api.md
+          // § create-global-consent-preview).
+          if (context.session.globalEnableInProgress !== null) {
+            return { error: { code: 'global-enable-in-progress' } };
+          }
+          if (context.session.globalConsent !== null) {
+            return { error: { code: 'consent-preview-frozen' } };
+          }
+          const preview = consent.capture();
+          return {
+            globalContentEpoch: context.session.snapshot().globalContentEpoch,
+            data: preview.toDto(),
+          };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:enable-global',
+        type: 'command',
+        // The function that turns a reviewed preview into read authority for a
+        // reader confirming on the consent surface
+        // (contracts/http-api.md § enable-global). The other confirmation this
+        // product accepts is the launch command's own
+        // `--inspect-personal-setup`, which runs the same sequence through
+        // {@link runGlobalEnable} before this host exists (FR-013).
+        //
+        // Its parameters carry no tool selector, and that absence is the
+        // position: consent is for all three tools, so a client that could
+        // name a subset could consent to something other than what it showed
+        // the reader. The server derives the set from the frozen preview and
+        // evaluates every slot it has a port for.
+        //
+        // Validation is by resolution against the stored record, exactly as
+        // the detail functions validate a path: the submitted `previewId` and
+        // `allowlistVersion` are compared with what the host holds, and an
+        // extra key is ignored rather than rejected — a body this product did
+        // not ship cannot name anything the server acts on. `confirmed` must
+        // be exactly `true`, because a confirmation is the one field a reader's
+        // own action produces.
+        handler: async (
+          request: unknown,
+        ): Promise<CommandResult<GlobalEnableResultDto> | DeterministicRejection> => {
+          const body = (request ?? {}) as {
+            confirmed?: unknown;
+            allowlistVersion?: unknown;
+            previewId?: unknown;
+          };
+          const preview = consent.current();
+          if (preview === null) {
+            return { error: { code: 'consent-preview-missing' } };
+          }
+          if (body.confirmed !== true) {
+            // Not a confirmation. The reader has to have confirmed the exact
+            // preview they were shown, and `false` is the same as absent.
+            return { error: { code: 'consent-required' } };
+          }
+          if (body.allowlistVersion !== preview.allowlistVersion) {
+            // The read scope moved under the reader: what they reviewed is not
+            // what would now be read, so the confirmation is refused and a
+            // fresh preview is taken.
+            return { error: { code: 'allowlist-version-mismatch' } };
+          }
+          if (body.previewId !== preview.previewId) {
+            // A stale, replayed, or cross-session preview ID. Only the one
+            // record this host holds may be confirmed.
+            return { error: { code: 'consent-preview-mismatch' } };
+          }
+          // The batch runs behind the response, so a lost response loses no
+          // batch: a fresh poll recovers it from `batchStatus` (data-model.md
+          // § GlobalEnableOperation).
+          const result = await runGlobalEnable(context, preview, { waitForBatch: false });
+          if ('error' in result) {
+            return result;
+          }
+          return {
+            globalContentEpoch: context.session.snapshot().globalContentEpoch,
+            data: result,
+          };
+        },
+      });
+      ctx.rpc.register({
         name: 'agent-customization-inspector:open-file',
         type: 'action',
         // The reader's own request to open the file a detail page is showing,
@@ -449,24 +801,29 @@ export function createInspectorDevframe(
         // (contracts/http-api.md § open-file). The host performs it because
         // the absolute path is the host's, and the page never holds one.
         //
-        // Both parameters validate by resolution, with no shape guard in front
-        // of them (contracts/http-api.md § Host requirements 6): the path is
-        // compared against committed paths and never used as a filesystem
-        // operand, so a value they do not hold takes the `stale-resource`
-        // rejection below, and the target is compared against the launchers
-        // the host resolved for this machine, so a value outside the closed
-        // set reaches none and throws there. A guard here would be the same
-        // closed set written twice, free to fall behind the set it copies.
+        // Every parameter validates by resolution, with no shape guard in front
+        // of it (contracts/http-api.md § Host requirements 6): the Source and
+        // path are compared against committed identities and never used as a
+        // filesystem operand, so values they do not hold take the
+        // `stale-resource` rejection below, and the target is compared against
+        // the launchers the host resolved for this machine, so a value outside
+        // the closed set reaches none and throws there. A guard here would be
+        // the same closed set written twice, free to fall behind the set it
+        // copies.
         handler: async (
-          sourceRelativePath: string,
-          target: FileOpenTarget,
+          request: FileOpenParams,
         ): Promise<CommandResult<null> | DeterministicRejection> => {
-          const opened = await context.session.openCommittedFile(sourceRelativePath, target);
+          const opened = await context.session.openCommittedFile(
+            request?.sourceRelativePath,
+            request?.source ?? 'repository',
+            request?.target,
+          );
           if (!opened) {
-            // The committed generations hold no file at the path — never
-            // scanned, or removed by the commit that replaced the snapshot the
-            // page was rendered from, which are indistinguishable and answered
-            // alike (contracts/http-api.md § open-file).
+            // No committed generation of the named Source holds the path —
+            // never scanned, removed by the commit that replaced the snapshot
+            // the page was rendered from, or a Source this session does not
+            // carry, which are indistinguishable and answered alike
+            // (contracts/http-api.md § open-file).
             return { error: { code: 'stale-resource' } };
           }
           // The launch carries no payload: what a machine does with a file it
@@ -503,6 +860,15 @@ export interface StartInspectorHostOptions {
   readonly preferredPort?: number | undefined;
   /** Called after loopback bind and before the host's startup opener. */
   readonly onReady?: CreateDevServerOptions['onReady'];
+  /**
+   * The consent state the Global functions serve, when the caller holds one
+   * already. The CLI's `--inspect-personal-setup` captures and confirms a
+   * preview before the host exists, and the consent page must show that
+   * confirmation rather than a second, unconsented capture — so the domain the
+   * flag used is the domain the handlers get. Omitted, the definition creates
+   * its own empty one, which is what a session with no such flag has (FR-013).
+   */
+  readonly consent?: GlobalConsentDomain;
 }
 
 /**
@@ -544,7 +910,7 @@ export async function startInspectorHost(
     },
   };
   return createDevServer(
-    createInspectorDevframe(options.context, options.preferredPort),
+    createInspectorDevframe(options.context, options.preferredPort, options.consent),
     serverOptions,
   );
 }

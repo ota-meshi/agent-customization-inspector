@@ -29,7 +29,9 @@
 // (FR-028).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import SourceRootLine from '../SourceRootLine.vue';
 import { detailRoute } from '../../detail-route';
+import { useSessionSources } from '../../../composables/session-sources';
 import {
   SUPPORTED_TOOL_TEXT,
   inlinePresentationLabel,
@@ -43,6 +45,9 @@ const props = defineProps<{
   entry: RuleInventoryEntryDto;
 }>();
 
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
+
 /**
  * The file's path through the shared label rule rather than plain escaping
  * ({@link pathPresentationLabel}): a name built only from whitespace or
@@ -55,7 +60,13 @@ const pathText = computed(() => pathPresentationLabel(props.entry.sourceRelative
  * The file's own detail route — one route however many products recognize it,
  * because no per-tool fact distinguishes what the page would show (T417).
  */
-const route = computed(() => detailRoute('rule', props.entry.sourceRelativePath));
+const route = computed(() =>
+  detailRoute(
+    'rule',
+    props.entry.sourceRelativePath,
+    sessionSources.selectorOf(props.entry.sourceId),
+  ),
+);
 
 /**
  * What a screen reader announces the path link as: a reader walking the page's
@@ -104,6 +115,8 @@ const recognitions = computed(() =>
         <span class="aci-rule-row__surfaces">{{ recognition.surfacesText }}</span></span
       >
     </p>
+
+    <SourceRootLine :source-id="entry.sourceId" />
   </li>
 </template>
 

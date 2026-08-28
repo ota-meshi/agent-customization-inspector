@@ -99,7 +99,9 @@ test.afterEach(async () => {
 /** The comparison URL for a hand-written pair, encoded per query value. */
 function compareUrl(left: string, right: string): string {
   return new URL(
-    `/instructions/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`,
+    `/instructions/compare/repository?leftSource=repository&left=${encodeURIComponent(
+      left,
+    )}&rightSource=repository&right=${encodeURIComponent(right)}`,
     host.origin,
   ).toString();
 }
@@ -113,7 +115,7 @@ test('opens from an instruction row and shows the complete literal diff', async 
     .getByRole('link', { name: "Compare this range's files", exact: false })
     .first()
     .click();
-  await page.waitForURL(/\/instructions\/compare\?/u);
+  await page.waitForURL(/\/instructions\/compare\/repository\?/u);
   await expect(page.getByRole('heading', { name: 'Compare instruction files' })).toBeVisible();
   // The row's link lands on its first two readable files in path order —
   // the repository-wide Copilot file beside `AGENTS.md` — and the pickers
@@ -242,11 +244,15 @@ test('states the typed layering and fallback differences per side', async ({ pag
 
 test('moves the pair with the pickers among the owning row’s files', async ({ page }) => {
   await page.goto(compareUrl('AGENTS.md', 'CLAUDE.md'));
-  await expect(page.getByLabel('First instruction file')).toHaveValue('AGENTS.md');
+  // An option stands for one whole identity — a Source and a path — so its
+  // value is the offered position and its text is what a reader reads. With one
+  // Source in the family the text is the path alone; a family holding two homes
+  // adds each file's own directory.
+  await expect(page.getByLabel('First instruction file')).toHaveValue('1');
 
-  // The pickers offer the owning `**` row's readable files alone: a file of
-  // another range row is outside the pair the row owns, so stepping to
-  // another range goes through that row's own entry link.
+  // The pickers offer the owning `**` block's readable files alone: a file of
+  // another range, or of another family, is outside the pair the block owns, so
+  // stepping there goes through that block's own entry link.
   const offered = await page
     .getByLabel('Second instruction file')
     .locator('option')
@@ -260,7 +266,7 @@ test('moves the pair with the pickers among the owning row’s files', async ({ 
 
   // A pick replaces the coordinate; vue-router keeps `/` unencoded in query
   // values.
-  await page.getByLabel('Second instruction file').selectOption('TEAM_GUIDE.md');
+  await page.getByLabel('Second instruction file').selectOption({ label: 'TEAM_GUIDE.md' });
   await expect(page).toHaveURL(/right=TEAM_GUIDE\.md/u);
   await expect(page.locator('.aci-instruction-compare__files')).toContainText('TEAM_GUIDE.md');
 
@@ -294,7 +300,7 @@ test('reports a pair the model does not express instead of comparing it', async 
     'No applicability range in the current scan holds both of this link’s files.',
   );
   // No pair at all.
-  await page.goto(new URL('/instructions/compare', host.origin).toString());
+  await page.goto(new URL('/instructions/compare/repository', host.origin).toString());
   await expect(page.locator('main')).toContainText('This link names no pair of instruction files.');
 });
 
@@ -304,9 +310,9 @@ test('enters from the detail page and returns to the instructions tab', async ({
   // there: an instruction detail is addressed by the path alone, so the path
   // is what the row links.
   await page.getByRole('tabpanel').locator('.aci-item a.aci-path').first().click();
-  await expect(page).toHaveURL(/\/instructions\//u);
+  await expect(page).toHaveURL(/\/instructions\/detail\/repository\//u);
   await page.getByRole('link', { name: 'Compare this instruction file' }).click();
-  await page.waitForURL(/\/instructions\/compare\?/u);
+  await page.waitForURL(/\/instructions\/compare\/repository\?/u);
   await expect(page.getByRole('heading', { name: 'Compare instruction files' })).toBeVisible();
   // Back to the inventory's instructions tab, not the kind order's default.
   await page.getByRole('link', { name: 'Back to the inventory' }).click();

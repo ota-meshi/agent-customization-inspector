@@ -9,4 +9,5 @@
 // inspection-io-boundary rule keeps `node:fs` imports out of every
 // production module outside `src/server/inspection/`, so no
 // mutation-capable filesystem API is reachable against inspected sources.
-export { lstat, readFile, readdir, realpath, stat } from 'node:fs/promises';
+export { access, lstat, readFile, readdir, realpath, stat } from 'node:fs/promises';
+export { constants as fsConstants } from 'node:fs';

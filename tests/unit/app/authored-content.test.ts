@@ -162,8 +162,23 @@ describe('authored file content in the browser', () => {
     ];
     expect(surface.toSorted()).toEqual([
       'activeScanRequestId',
+      // The consent preview's capture: it reads the three environment
+      // properties and nothing on disk, so it uncovers nothing — a preview
+      // exists precisely so a reader can decide before anything is read.
+      'captureConsentPreview',
       'carrierDetail',
       'closeFileDetail',
+      // The confirmation. It sends the preview's own two identities and no tool
+      // list, so it can neither narrow the consent nor name a file; what it
+      // authorizes is which directories may be read at all.
+      'confirmGlobalConsent',
+      // The preview the consent route renders, and the three fields that say
+      // what it is showing. None of them carries authored content: a preview
+      // names directories, not files, and no file has been opened yet.
+      'consentPreview',
+      'consentPreviewError',
+      'consentPreviewRejection',
+      'consentPreviewState',
       // The custom-agent comparison view (FR-011): the agent kind's own two
       // ordinary detail loads, with the same guards as the skill one and
       // nothing that masks or reveals either side.
@@ -175,6 +190,11 @@ describe('authored file content in the browser', () => {
       // file, never any of its content, in the slot the manifest is shown in.
       'entryDetailError',
       'fileDetailState',
+      // What the confirmation returned, and whether one is in flight. The
+      // result names tools rather than files, so it carries no authored
+      // content: consent is about which directories may be read at all.
+      'globalEnableResult',
+      'globalEnableState',
       // The hook comparison view (FR-011): the hook kind's own two ordinary
       // carrier-detail loads of declarations alone — a hook carrier's source
       // reaches no surface (FR-007), so neither side has anything to mask or
@@ -188,6 +208,9 @@ describe('authored file content in the browser', () => {
       // two ordinary detail loads, with the same guards as the skill one and
       // nothing that masks or reveals either side.
       'instructionComparison',
+      // Reads whatever consent preview the host already holds. It captures
+      // nothing, so arriving on the consent route is not itself an act.
+      'loadConsentPreview',
       // The MCP comparison view (FR-011): two ordinary carrier-detail loads
       // of declarations alone — no carrier source exists to reveal (FR-007).
       'mcpComparison',

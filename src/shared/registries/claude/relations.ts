@@ -37,15 +37,28 @@ import {
   CLAUDE_USER_AUTO_MEMORY_BEHAVIOR,
   CLAUDE_USER_COMMANDS_BEHAVIOR,
   CLAUDE_USER_INSTRUCTIONS_BEHAVIOR,
+  CLAUDE_USER_KEYBINDINGS_BEHAVIOR,
   CLAUDE_USER_MCP_STATE_BEHAVIOR,
   CLAUDE_USER_PLUGINS_BEHAVIOR,
   CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR,
   CLAUDE_USER_RULES_BEHAVIOR,
   CLAUDE_USER_SETTINGS_BEHAVIOR,
   CLAUDE_USER_SKILLS_BEHAVIOR,
+  CLAUDE_USER_THEMES_BEHAVIOR,
+  CLAUDE_USER_WORKFLOWS_BEHAVIOR,
 } from './behaviors';
 import {
   CLAUDE_EXCLUDED_PLUGIN_FILES_RULE,
+  CLAUDE_EXCLUDED_USER_RUNTIME_RULE,
+  CLAUDE_GLOBAL_AGENT_RULE,
+  CLAUDE_GLOBAL_COMMAND_RULE,
+  CLAUDE_GLOBAL_INSTRUCTIONS_RULE,
+  CLAUDE_GLOBAL_OUTPUT_STYLE_RULE,
+  CLAUDE_GLOBAL_PERMISSIONS_RULE,
+  CLAUDE_GLOBAL_RULES_RULE,
+  CLAUDE_GLOBAL_SETTINGS_HOOKS_RULE,
+  CLAUDE_GLOBAL_SETTINGS_RULE,
+  CLAUDE_GLOBAL_SKILL_RULE,
   CLAUDE_REPO_AGENT_RULE,
   CLAUDE_REPO_COMMAND_RULE,
   CLAUDE_REPO_INSTRUCTIONS_RULE,
@@ -415,5 +428,85 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
   [CLAUDE_EXCLUDED_PLUGIN_FILES_RULE.ruleId]: {
     basedOnBehaviors: [CLAUDE_REPO_MARKETPLACE_BEHAVIOR, CLAUDE_REPO_PLUGIN_BEHAVIOR],
     explainedByStrategies: [CLAUDE_PLUGINS_ACTIVATION_STRATEGY],
+  },
+  /**
+   * The Global instruction rule is based on the User instruction file alone —
+   * the Repository chain is a different Source boundary this rule may not
+   * read — and is explained by the layering strategy, which is where the
+   * additive load order of the documented scopes lives.
+   */
+  [CLAUDE_GLOBAL_INSTRUCTIONS_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_INSTRUCTIONS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY],
+  },
+  /**
+   * Each widened Global rule is based on the one User behavior it accepts and
+   * explained by the same strategy its Repository sibling is: the vendor
+   * composes the user layer and the project layers by one documented rule,
+   * so the strategy that explains one scope explains the other
+   * (contracts/vendors/claude-code.md § Global accepted matcher).
+   */
+  [CLAUDE_GLOBAL_RULES_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_RULES_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_RULES_LAYERING_STRATEGY],
+  },
+  [CLAUDE_GLOBAL_SKILL_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_SKILLS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_SKILLS_SELECTION_STRATEGY],
+  },
+  [CLAUDE_GLOBAL_COMMAND_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_COMMANDS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_COMMANDS_SELECTION_STRATEGY],
+  },
+  [CLAUDE_GLOBAL_AGENT_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_AGENTS_BEHAVIOR],
+    explainedByStrategies: [
+      CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY,
+      CLAUDE_AGENTS_SELECTION_STRATEGY,
+    ],
+  },
+  [CLAUDE_GLOBAL_SETTINGS_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_SETTINGS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY],
+  },
+  [CLAUDE_GLOBAL_PERMISSIONS_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_SETTINGS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY],
+  },
+  /**
+   * The contained-hooks rule rests on the settings behavior alone, because
+   * that is the behavior whose file carries the declaration
+   * (contracts/vendors/claude-code.md § Global accepted matcher); the additive
+   * strategy explains how the user layer's hooks compose with the others.
+   */
+  [CLAUDE_GLOBAL_SETTINGS_HOOKS_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_SETTINGS_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_HOOKS_ADDITIVE_STRATEGY],
+  },
+  [CLAUDE_GLOBAL_OUTPUT_STYLE_RULE.ruleId]: {
+    basedOnBehaviors: [CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR],
+    explainedByStrategies: [CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY],
+  },
+  /**
+   * The User exclusion is based on every Claude User surface it declines to
+   * authorize. The instruction file is deliberately absent: that one surface is
+   * what `claude.global.instructions` admits, and an exclusion naming it would
+   * contradict the rule beside it.
+   *
+   * It is explained by no strategy. A strategy says how a runtime composes what
+   * it found; an exclusion says this product never looks, so there is no
+   * composition for one to describe.
+   */
+  [CLAUDE_EXCLUDED_USER_RUNTIME_RULE.ruleId]: {
+    basedOnBehaviors: [
+      CLAUDE_USER_AGENT_MEMORY_BEHAVIOR,
+      CLAUDE_USER_AUTO_MEMORY_BEHAVIOR,
+      CLAUDE_USER_KEYBINDINGS_BEHAVIOR,
+      CLAUDE_USER_MCP_STATE_BEHAVIOR,
+      CLAUDE_USER_PLUGINS_BEHAVIOR,
+      CLAUDE_USER_THEMES_BEHAVIOR,
+      CLAUDE_USER_WORKFLOWS_BEHAVIOR,
+    ],
+    explainedByStrategies: [],
   },
 };

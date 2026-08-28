@@ -40,9 +40,16 @@
 // do was make every file take two interactions to read. The detail route says
 // what it is showing instead.
 import { computed, shallowRef, type InjectionKey } from 'vue';
-import { SessionApiClient, type FileOpenOutcome, type SessionRpcChannel } from './api-client';
+import {
+  SessionApiClient,
+  type ConsentPreviewOutcome,
+  type FileOpenOutcome,
+  type SessionRpcChannel,
+  type ScanSequence,
+} from './api-client';
 import { ClientDataPurge } from './client-data';
 import { clearInventoryReturnPoint } from '../router.options';
+import { sourceIdOf } from '../components/detail-route';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
 import { HookComparisonState } from '../composables/hook-comparison';
 import { McpComparisonState } from '../composables/mcp-comparison';
@@ -53,7 +60,10 @@ import { SkillComparisonState } from '../composables/skill-comparison';
 import type {
   FileDetailDto,
   FileOpenTarget,
+  GlobalConsentPreviewDto,
+  GlobalEnableResultDto,
   HookCarrierDetailDto,
+  SourceSelector,
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
@@ -410,6 +420,48 @@ export class SessionViewState {
    * Reports the active route's title subject as the calling page instance's
    * own, so a later release by a page that no longer owns it is a no-op.
    */
+  /**
+   * The Global consent preview the consent route renders, or null when none
+   * has been read yet. Held here rather than in the page because the client it
+   * comes from is this state's, and because a purge must clear it: a preview
+   * captured in one host session names nothing in another.
+   */
+  public readonly consentPreview = shallowRef<GlobalConsentPreviewDto | null>(null);
+
+  /**
+   * What the consent route is showing:
+   *  - 'idle'       nothing requested yet
+   *  - 'loading'    a read or capture is in flight
+   *  - 'ready'      {@link consentPreview} holds a preview to review
+   *  - 'missing'    the host holds none, so the reader is offered a capture
+   *  - 'failed'     the call failed; {@link consentPreviewError} says how
+   */
+  public readonly consentPreviewState = shallowRef<
+    'idle' | 'loading' | 'ready' | 'missing' | 'failed'
+  >('idle');
+
+  /** The failed preview call's own error message, or null. */
+  public readonly consentPreviewError = shallowRef<string | null>(null);
+
+  /**
+   * The closed rejection code a refused preview call returned, or null. Kept
+   * beside {@link consentPreviewError} rather than turned into a sentence here:
+   * the words a code stands for are written where they are rendered, as the
+   * scan status's own refusal copy is (AGENTS.md § User-visible copy policy).
+   */
+  public readonly consentPreviewRejection = shallowRef<RejectionCode | null>(null);
+
+  /**
+   * What the last confirmation did, or null before one. It is the acceptance
+   * result rather than a derived summary: which tools were admitted and which
+   * refused is what the page states, and the controls in the next snapshot are
+   * where each refusal's reason comes from.
+   */
+  public readonly globalEnableResult = shallowRef<GlobalEnableResultDto | null>(null);
+
+  /** Whether a confirmation is in flight, so the control cannot be pressed twice. */
+  public readonly globalEnableState = shallowRef<'idle' | 'submitting'>('idle');
+
   public reportPageSubject(value: string | null, owner?: symbol): void {
     this.#pageSubjectOwner = owner ?? null;
     this.pageSubject.value = value;
@@ -438,6 +490,18 @@ export class SessionViewState {
    * covers the route.
    */
   #detailRequestVersion = 0;
+
+  /**
+   * The identity of the customization whose detail is open, as the page last
+   * asked for it — the Source and the entry point's Source-relative Path
+   * (FR-030), or null while nothing is open.
+   *
+   * Held so {@link openFileDetail} can tell a change of selection inside one
+   * customization from a move to another: the first keeps the entry point on
+   * screen, and the second must drop it. The requested address rather than the
+   * response's, so the comparison is between two things the page asked for.
+   */
+  #openDetailAddress: { readonly source: SourceSelector; readonly entryPath: string } | null = null;
 
   /**
    * The token of the page instance whose open call the detail state currently
@@ -520,6 +584,17 @@ export class SessionViewState {
       this.rescanState.value = 'idle';
       this.activeScanRequestId.value = null;
       this.rescanRejection.value = null;
+      // The consent preview is the purged session's too: its `previewId` is a
+      // lookup key into that host session's memory, so a fresh session must be
+      // asked again rather than shown a preview it never captured.
+      this.consentPreview.value = null;
+      this.consentPreviewState.value = 'idle';
+      this.consentPreviewError.value = null;
+      this.consentPreviewRejection.value = null;
+      // The confirmation belonged to the purged session too: its accepted
+      // tools name Sources a different host session never created.
+      this.globalEnableResult.value = null;
+      this.globalEnableState.value = 'idle';
       // 'ended' is set by its own reporter and must survive the purge it runs:
       // a dead channel is not something a refetch recovers from.
       if (this.view.value !== 'ended') {
@@ -663,14 +738,48 @@ export class SessionViewState {
         // open comparison goes with it: FR-030 invalidates the previous
         // generation's comparison view and editor-model state together.
         if (outcome.advancedSequences.length > 0) {
-          this.closeFileDetail();
-          this.skillComparison.close();
-          this.instructionComparison.close();
-          this.mcpComparison.close();
-          this.hookComparison.close();
-          this.pluginComparison.close();
-          this.promptComparison.close();
-          this.customAgentComparison.close();
+          // A commit invalidates only its own sequence's views (FR-030,
+          // spec.md § Clarifications Session 2026-07-22): the open detail and
+          // each open comparison drop only when the sequence that produced
+          // them advanced, so a Global enable in another tab leaves a
+          // repository page's held detail and editor state alone. Families
+          // resolve against the snapshot being replaced — the one the open
+          // views were read from — and a view whose family cannot be resolved
+          // (still loading, or its Source gone) drops, exactly as the
+          // unscoped close did.
+          const advanced = new Set<ScanSequence>(outcome.advancedSequences);
+          const drops = (sourceId: string | undefined): boolean => {
+            const held = (this.snapshot.value?.sources ?? []).find(
+              (source) => source.sourceId === sourceId,
+            );
+            return held === undefined || advanced.has(held.kind);
+          };
+          if (
+            drops(
+              (
+                this.entryDetail.value ??
+                this.pluginDetail.value ??
+                this.carrierDetail.value ??
+                this.hookDetail.value ??
+                this.policyDetail.value
+              )?.file.sourceId,
+            )
+          ) {
+            this.closeFileDetail();
+          }
+          for (const comparison of [
+            this.skillComparison,
+            this.instructionComparison,
+            this.mcpComparison,
+            this.hookComparison,
+            this.pluginComparison,
+            this.promptComparison,
+            this.customAgentComparison,
+          ] as const) {
+            if (drops(comparison.leftDetail.value?.file.sourceId)) {
+              comparison.close();
+            }
+          }
         }
         this.snapshot.value = outcome.snapshot;
         // A refresh success answers session-level failures only: a retained
@@ -726,6 +835,115 @@ export class SessionViewState {
    * failure ended the session, a discard means a newer command superseded
    * this one).
    */
+  /**
+   * Reads the host's current consent preview, without capturing one
+   * (contracts/http-api.md § get-global-consent-preview). A host that holds
+   * none answers `missing`, which the consent route renders as an offer to
+   * capture rather than as something that went wrong.
+   */
+  public loadConsentPreview(): Promise<void> {
+    return this.#consentPreviewRequest(() => this.#client.fetchGlobalConsentPreview());
+  }
+
+  /**
+   * Captures the three proposed Global roots and replaces the host's
+   * unconsented preview (contracts/http-api.md
+   * § create-global-consent-preview). It submits no confirmation: what comes
+   * back is what the reader is then asked to review, and enabling Global
+   * inspection is a separate operation this state does not have.
+   */
+  public captureConsentPreview(): Promise<void> {
+    return this.#consentPreviewRequest(() => this.#client.createGlobalConsentPreview());
+  }
+
+  /**
+   * The request both preview calls share, with the one guard that applies: a
+   * purge between dispatch and settlement means the preview belongs to a
+   * session this page has dropped, so the settlement writes nothing.
+   */
+  async #consentPreviewRequest(issue: () => Promise<ConsentPreviewOutcome>): Promise<void> {
+    this.consentPreviewState.value = 'loading';
+    this.consentPreviewError.value = null;
+    this.consentPreviewRejection.value = null;
+    const capturedEpoch = this.#clientData.epoch();
+    const outcome = await issue();
+    if (this.#clientData.epoch() !== capturedEpoch) {
+      return;
+    }
+    switch (outcome.kind) {
+      case 'ready':
+        this.consentPreview.value = outcome.preview;
+        this.consentPreviewState.value = 'ready';
+        return;
+      case 'missing':
+        this.consentPreview.value = null;
+        this.consentPreviewState.value = 'missing';
+        return;
+      case 'rejected':
+        // A conflict rejection the preview pair can take once the enable and
+        // disable operations exist: consent has frozen the preview, or one of
+        // those operations holds it. The code travels as itself so the page can
+        // state the conflict rather than a generic failure.
+        this.consentPreview.value = null;
+        this.consentPreviewState.value = 'failed';
+        this.consentPreviewRejection.value = outcome.code;
+        return;
+      case 'failed':
+        this.consentPreview.value = null;
+        this.consentPreviewState.value = 'failed';
+        // The failed request's own error, reported as it arrived: there is no
+        // envelope and no cause classification (FR-040/FR-041 removed).
+        this.consentPreviewError.value = outcome.error.message;
+        if (outcome.fatal) {
+          this.view.value = 'ended';
+        }
+        return;
+    }
+  }
+
+  /**
+   * Confirms the preview currently on screen (contracts/http-api.md
+   * § enable-global), then refreshes so the accepted batch's Sources and
+   * controls are what the page renders next.
+   *
+   * It sends the preview's own two identities and no tool list: what the
+   * reader confirmed is the whole preview, and a client-side subset would be a
+   * consent narrower than the one they were shown.
+   */
+  public async confirmGlobalConsent(): Promise<void> {
+    const preview = this.consentPreview.value;
+    if (preview === null || this.globalEnableState.value === 'submitting') {
+      return;
+    }
+    this.globalEnableState.value = 'submitting';
+    this.consentPreviewRejection.value = null;
+    this.consentPreviewError.value = null;
+    const capturedEpoch = this.#clientData.epoch();
+    const outcome = await this.#client.enableGlobal(preview.previewId, preview.allowlistVersion);
+    if (this.#clientData.epoch() !== capturedEpoch) {
+      return;
+    }
+    this.globalEnableState.value = 'idle';
+    switch (outcome.kind) {
+      case 'accepted':
+        this.globalEnableResult.value = outcome.result;
+        // The batch commits after the acceptance, so the snapshot that carries
+        // its Sources is the one fetched now — and a refresh is how a queued
+        // batch's later commit reaches the page at all.
+        await this.#refreshFreshly();
+        return;
+      case 'rejected':
+        this.consentPreviewRejection.value = outcome.code;
+        return;
+      case 'failed':
+        this.consentPreviewError.value = outcome.error.message;
+        if (outcome.fatal) {
+          this.view.value = 'ended';
+        }
+        return;
+    }
+  }
+
   public async requestRescan(): Promise<void> {
     // One command at a time. A second dispatch while one is in flight would
     // supersede the first's token and lose the request ID it was admitted
@@ -863,9 +1081,10 @@ export class SessionViewState {
    */
   public async openFile(
     sourceRelativePath: string,
+    source: SourceSelector,
     target: FileOpenTarget,
   ): Promise<FileOpenOutcome> {
-    const outcome = await this.#client.openFile(sourceRelativePath, target);
+    const outcome = await this.#client.openFile(sourceRelativePath, source, target);
     if (outcome.kind === 'failed' && outcome.fatal) {
       this.#sessionError.value = outcome.error.message;
       this.view.value = 'ended';
@@ -933,8 +1152,9 @@ export class SessionViewState {
     sourceRelativePath: string,
     owns: () => boolean,
     slot: FileDetailSlot,
+    source: SourceSelector,
   ): Promise<FileDetailDto | null> {
-    const outcome = await this.#client.fetchFileDetail(sourceRelativePath);
+    const outcome = await this.#client.fetchFileDetail(sourceRelativePath, source);
     switch (outcome.kind) {
       case 'adopted':
         return owns() ? outcome.detail : null;
@@ -1066,7 +1286,12 @@ export class SessionViewState {
    * a purge cleared it, `closeFileDetail` left it, a newer `openFileDetail` superseded
    * it — cannot each grow their own handling.
    */
-  public async openFileDetail(entryPath: string, openPath: string, owner?: symbol): Promise<void> {
+  public async openFileDetail(
+    entryPath: string,
+    openPath: string,
+    owner?: symbol,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
     const requested = this.#detailRequestVersion;
@@ -1090,8 +1315,23 @@ export class SessionViewState {
     // change to the source alone: clearing it would take the page through its
     // loading state, unmounting the tree the reader is using — and the link
     // they just activated with it, dropping keyboard focus to the document.
+    // "The customization has not changed" is the whole address staying the
+    // same, never the path alone: the repository and a consented home can hold
+    // one Source-relative Path, so a step between their two details keeps a
+    // path that is identical and a file that is not (FR-030). Compared against
+    // the address this state last requested rather than against the response,
+    // because that is what "unchanged" is about — and holding the other
+    // Source's detail here would leave it on screen, in the ready state, under
+    // the address the reader just opened.
+    const openAddress = this.#openDetailAddress;
     const held =
-      this.entryDetail.value?.file.sourceRelativePath === entryPath ? this.entryDetail.value : null;
+      openAddress !== null &&
+      openAddress.source === source &&
+      openAddress.entryPath === entryPath &&
+      this.entryDetail.value !== null
+        ? this.entryDetail.value
+        : null;
+    this.#openDetailAddress = { source, entryPath };
     if (held !== null && this.fileDetailState.value === 'companion-failed') {
       // A retry — or another file selected — from the failed pane: the entry
       // stays, and the pane returns to its in-flight state so the failed
@@ -1110,7 +1350,7 @@ export class SessionViewState {
       // outgoing page's ownership-guarded close.
       this.#dropOpenDetails();
     }
-    const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page'));
+    const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page', source));
     if (entry === null || !owns()) {
       return;
     }
@@ -1131,7 +1371,7 @@ export class SessionViewState {
     const companion =
       openPath === entryPath
         ? null
-        : (heldCompanion ?? (await this.#fetchOwnedFileDetail(openPath, owns, 'pane')));
+        : (heldCompanion ?? (await this.#fetchOwnedFileDetail(openPath, owns, 'pane', source)));
     if ((openPath !== entryPath && companion === null) || !owns()) {
       return;
     }
@@ -1152,7 +1392,11 @@ export class SessionViewState {
    * half: the declarations arrive in the one response, and an owner's own
    * source is the skill route's business, not this request's.
    */
-  public async openCarrierDetail(sourceRelativePath: string, owner?: symbol): Promise<void> {
+  public async openCarrierDetail(
+    sourceRelativePath: string,
+    owner?: symbol,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
     const requested = this.#detailRequestVersion;
@@ -1164,7 +1408,15 @@ export class SessionViewState {
     // step between two declarations of one carrier changes which record the
     // page heads itself with, not the response it renders from, so the held
     // detail answers without a second fetch.
-    if (this.carrierDetail.value?.file.sourceRelativePath === sourceRelativePath) {
+    // Both halves of the identity, because two Sources can hold one spelling
+    // (FR-030): the Claude and Copilot homes both hold a `settings.json`, so
+    // a path-only match would answer one Source's request with the other's
+    // held detail — and its retry with the same skip.
+    if (
+      this.carrierDetail.value?.file.sourceRelativePath === sourceRelativePath &&
+      this.carrierDetail.value.file.sourceId ===
+        sourceIdOf(this.snapshot.value?.sources ?? [], source)
+    ) {
       this.fileDetailState.value = 'ready';
       return;
     }
@@ -1173,7 +1425,7 @@ export class SessionViewState {
     // asked for, so a slow request never leaves one file's content on screen
     // under another customization's heading.
     this.#dropOpenDetails();
-    const outcome = await this.#client.fetchMcpCarrierDetail(sourceRelativePath);
+    const outcome = await this.#client.fetchMcpCarrierDetail(sourceRelativePath, source);
     switch (outcome.kind) {
       case 'adopted':
         if (owns()) {
@@ -1498,7 +1750,11 @@ export class SessionViewState {
    * capture, and state machine, because the detail functions serve the one
    * open detail (contracts/http-api.md § get-hook-carrier-detail).
    */
-  public async openHookCarrierDetail(sourceRelativePath: string, owner?: symbol): Promise<void> {
+  public async openHookCarrierDetail(
+    sourceRelativePath: string,
+    owner?: symbol,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
     const requested = this.#detailRequestVersion;
@@ -1511,7 +1767,14 @@ export class SessionViewState {
     // heads itself with, not the response it renders from, so the held detail
     // answers without a second fetch — the rule {@link openCarrierDetail}
     // applies to a step between two servers.
-    if (this.hookDetail.value?.file.sourceRelativePath === sourceRelativePath) {
+    // Both halves of the identity, because two Sources can hold one spelling
+    // (FR-030): the Claude and Copilot homes both hold a `settings.json`, so
+    // a path-only match would answer one Source's request with the other's
+    // held detail — and its retry with the same skip.
+    if (
+      this.hookDetail.value?.file.sourceRelativePath === sourceRelativePath &&
+      this.hookDetail.value.file.sourceId === sourceIdOf(this.snapshot.value?.sources ?? [], source)
+    ) {
       this.fileDetailState.value = 'ready';
       return;
     }
@@ -1520,7 +1783,7 @@ export class SessionViewState {
     // asked for, so a slow request never leaves one file's content on screen
     // under another customization's heading.
     this.#dropOpenDetails();
-    const outcome = await this.#client.fetchHookCarrierDetail(sourceRelativePath);
+    const outcome = await this.#client.fetchHookCarrierDetail(sourceRelativePath, source);
     switch (outcome.kind) {
       case 'adopted':
         if (owns()) {
@@ -1574,7 +1837,11 @@ export class SessionViewState {
    * (contracts/http-api.md § get-permission-policy-detail). There is no
    * companion half: a policy is one response.
    */
-  public async openPolicyDetail(sourceRelativePath: string, owner?: symbol): Promise<void> {
+  public async openPolicyDetail(
+    sourceRelativePath: string,
+    owner?: symbol,
+    source: SourceSelector = 'repository',
+  ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
     const requested = this.#detailRequestVersion;
@@ -1582,7 +1849,15 @@ export class SessionViewState {
     const capturedEpoch = this.#clientData.epoch();
     const owns = (): boolean =>
       requested === this.#detailRequestVersion && this.#clientData.epoch() === capturedEpoch;
-    if (this.policyDetail.value?.file.sourceRelativePath === sourceRelativePath) {
+    // Both halves of the identity, because two Sources can hold one spelling
+    // (FR-030): the Claude and Copilot homes both hold a `settings.json`, so
+    // a path-only match would answer one Source's request with the other's
+    // held detail — and its retry with the same skip.
+    if (
+      this.policyDetail.value?.file.sourceRelativePath === sourceRelativePath &&
+      this.policyDetail.value.file.sourceId ===
+        sourceIdOf(this.snapshot.value?.sources ?? [], source)
+    ) {
       // Already the open policy: a re-entry under the same generation asks
       // for what is on screen, so nothing is refetched.
       this.fileDetailState.value = 'ready';
@@ -1598,7 +1873,7 @@ export class SessionViewState {
     this.hookDetail.value = null;
     this.pluginDetail.value = null;
     this.policyDetail.value = null;
-    const outcome = await this.#client.fetchPermissionPolicyDetail(sourceRelativePath);
+    const outcome = await this.#client.fetchPermissionPolicyDetail(sourceRelativePath, source);
     switch (outcome.kind) {
       case 'adopted':
         if (owns()) {

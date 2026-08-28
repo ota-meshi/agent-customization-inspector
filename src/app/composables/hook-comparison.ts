@@ -21,7 +21,7 @@
 // because no such value exists on any row (FR-009).
 //
 // The comparison selection is the route's:
-// `/hooks/compare?event=<declared event>&left=<path>&right=<path>` — the
+// `/hooks/compare/<family>?event=<declared event>&left=<path>&right=<path>` — the
 // row's event in the carriers' own spelling and the two carriers by their
 // Source-relative Paths, the identities the inventory and the detail route
 // use (FR-030) — and a selection the model does not express is reported by
@@ -41,10 +41,10 @@
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
 import { shallowRef } from 'vue';
-import { toJsonStringBody } from '../components/detail-route';
+import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
-import type { HookCarrierDetailDto } from '../../shared/api-types';
+import type { HookCarrierDetailDto, SourceKind } from '../../shared/api-types';
 
 /**
  * Where the one open comparison stands:
@@ -91,21 +91,37 @@ export type HookComparisonViewStatus =
  * one, which would surface inside the row computed that builds these links.
  * The compare route decodes with `fromJsonStringBody`, so every declared
  * event and every entry name round-trips.
+ *
+ * The family leads the address rather than a Source, because a pair stays
+ * inside one family while a family can hold two consented homes — a reader
+ * compares one home's file against the other's, never a Repository file
+ * against a home's (contracts/http-api.md § Host requirements #5). Stated in
+ * the address rather than derived so the page can refuse a pair outside it
+ * before resolving anything.
  */
 export function hookComparisonRouteFor(
+  family: SourceKind,
   event: string,
-  left: string,
-  right: string,
+  left: ComparisonSide,
+  right: ComparisonSide,
 ): {
   readonly path: string;
-  readonly query: { readonly event: string; readonly left: string; readonly right: string };
+  readonly query: {
+    readonly event: string;
+    readonly leftSource: string;
+    readonly left: string;
+    readonly rightSource: string;
+    readonly right: string;
+  };
 } {
   return {
-    path: '/hooks/compare',
+    path: `/hooks/compare/${family}`,
     query: {
       event: toJsonStringBody(event),
-      left: toJsonStringBody(left),
-      right: toJsonStringBody(right),
+      leftSource: left.source,
+      left: toJsonStringBody(left.sourceRelativePath),
+      rightSource: right.source,
+      right: toJsonStringBody(right.sourceRelativePath),
     },
   };
 }
@@ -241,7 +257,7 @@ export class HookComparisonState {
    * invocation stops owning the view — a purge, a generation change, a
    * close, a newer open — cannot each grow their own handling.
    */
-  public async open(leftPath: string, rightPath: string): Promise<void> {
+  public async open(left: ComparisonSide, right: ComparisonSide): Promise<void> {
     // The previous pair's content is dropped before anything is requested,
     // so a slow request never leaves one pair's declarations on screen under
     // another pair's paths; this also supersedes any open still in flight.
@@ -255,19 +271,19 @@ export class HookComparisonState {
     // detail settlements through one request-token family: a second
     // in-flight detail would supersede the first and discard its response
     // (`SessionApiClient` § request tokens).
-    const left = await this.#fetchOwned(leftPath, owns);
-    if (left === null || !owns()) {
+    const leftDetail = await this.#fetchOwned(left, owns);
+    if (leftDetail === null || !owns()) {
       return;
     }
-    const right = await this.#fetchOwned(rightPath, owns);
-    if (right === null || !owns()) {
+    const rightDetail = await this.#fetchOwned(right, owns);
+    if (rightDetail === null || !owns()) {
       return;
     }
     // Adopted together: a comparison with one side is not a comparison, and
     // publishing the pair in one synchronous step means no render can see
     // half of it.
-    this.leftDetail.value = left;
-    this.rightDetail.value = right;
+    this.leftDetail.value = leftDetail;
+    this.rightDetail.value = rightDetail;
     this.status.value = 'ready';
   }
 
@@ -278,10 +294,10 @@ export class HookComparisonState {
    * which is true of the session rather than of this request.
    */
   async #fetchOwned(
-    sourceRelativePath: string,
+    side: ComparisonSide,
     owns: () => boolean,
   ): Promise<HookCarrierDetailDto | null> {
-    const outcome = await this.#client.fetchHookCarrierDetail(sourceRelativePath);
+    const outcome = await this.#client.fetchHookCarrierDetail(side.sourceRelativePath, side.source);
     switch (outcome.kind) {
       case 'adopted':
         return owns() ? outcome.detail : null;

@@ -37,7 +37,7 @@ function bootstrapSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSna
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'idle',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -381,6 +381,64 @@ describe('session view state — detail ownership across page instances', () => 
     await replacementOpen;
     expect(state.fileDetailState.value).toBe('ready');
     expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-2'));
+  });
+
+  it('re-requests the same path under another Source instead of holding the open detail', async () => {
+    // A step between two Sources' details at one path — the repository's
+    // `AGENTS.md` and a consented home's. The path is identical, so nothing
+    // about it says the file changed; the Source is the half that does
+    // (FR-030). Holding the entry here would leave one Source's authored
+    // content on screen, in the ready state, under the other's address.
+    const scripted = {
+      calls: [] as { method: SessionRpcFunctionName; args: readonly unknown[] }[],
+      channel: {
+        call: (method: SessionRpcFunctionName, ...args: readonly unknown[]) => {
+          scripted.calls.push({ method, args });
+          if (method === SESSION_RPC_FUNCTIONS.getSession) {
+            return Promise.resolve(sessionResult(bootstrapSnapshot()));
+          }
+          const request = args[0] as { sourceRelativePath: string; source: string };
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            repositoryGeneration: 0,
+            globalGeneration: null,
+            data: {
+              kind: 'file',
+              file: {
+                // The Source the request named is the Source that answers.
+                sourceId: request.source === 'repository' ? 'source-repository' : 'source-global',
+                sourceRelativePath: request.sourceRelativePath,
+                encoding: 'utf-8',
+                hadLeadingBom: false,
+                sourceText: `# ${request.source}\n`,
+                sizeBytes: 8,
+                diagnosticIds: [],
+              },
+              diagnostics: [],
+            },
+          });
+        },
+      },
+    };
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+
+    await state.openFileDetail('AGENTS.md', 'AGENTS.md', undefined, 'repository');
+    expect(state.entryDetail.value?.file.sourceId).toBe('source-repository');
+
+    await state.openFileDetail('AGENTS.md', 'AGENTS.md', undefined, 'global-codex');
+    // Two detail requests, the second naming the other Source, and the state
+    // now holds that Source's file.
+    expect(
+      scripted.calls
+        .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
+        .map((call) => call.args[0]),
+    ).toEqual([
+      { sourceRelativePath: 'AGENTS.md', source: 'repository' },
+      { sourceRelativePath: 'AGENTS.md', source: 'global-codex' },
+    ]);
+    expect(state.entryDetail.value?.file.sourceId).toBe('source-global');
+    state.dispose();
   });
 
   it('still closes for the owning page, and unconditionally for the view state itself', async () => {

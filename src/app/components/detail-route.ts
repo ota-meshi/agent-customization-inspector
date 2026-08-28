@@ -1,5 +1,6 @@
-// The detail routes addressed by a file's Source-relative Path alone, and the
-// one encoding every detail route uses (FR-030).
+// The detail routes addressed by a file's whole identity — the Source that
+// holds it and its Source-relative Path — and the one encoding every detail
+// route uses (FR-030).
 //
 // One module rather than one per kind, because the route is the same
 // construction for all of them: the kind's own URL segment, then the path
@@ -14,7 +15,16 @@
 // coordinate one kind has keeps its own module and builds on these — an MCP
 // declaration's route names the declared server (`mcp-detail-route.ts`), and a
 // plugin carrier's names the row (`plugin-detail-route.ts`).
+import { fileIdentityKey } from '../../shared/entities';
 import type { CustomizationKind } from '../../shared/entities';
+import { GLOBAL_MEMBER_ORDER } from '../../shared/api-text';
+import type { SourceDto, SourceKind, SourceSelector } from '../../shared/api-types';
+
+/**
+ * Re-exported so a component naming a route's Source imports it from the module
+ * that builds the route, rather than reaching past it into the wire types.
+ */
+export type { SourceSelector };
 
 /**
  * The kinds whose detail is rooted at a Source-relative Path. A kind is here
@@ -159,12 +169,145 @@ export function decodeDetailRoutePath(segments: readonly string[]): string {
 }
 
 /**
- * The detail route for one file of `kind`. The path is the file's identity on
- * the wire too (FR-030), so the route survives rescans and server launches and
- * resolves against whatever the current scan holds at it.
+ * Every token a detail route's leading segment may be, in the closed member
+ * order with the repository first — the shared agent home's `global-agents`
+ * included (FR-045). A leading segment outside this list is not an address
+ * this product issues.
  */
-export function detailRoute(kind: PathAddressedDetailKind, sourceRelativePath: string): string {
-  return `/${DETAIL_ROUTE_SEGMENT[kind]}/${encodeDetailRoutePath(sourceRelativePath)}`;
+const SOURCE_SELECTORS: readonly SourceSelector[] = [
+  'repository',
+  ...GLOBAL_MEMBER_ORDER.map((member) => `global-${member}` as const),
+];
+
+/**
+ * One compared file as a comparison route addresses it: the Source that holds
+ * it and its Source-relative Path, which together are the file's identity
+ * (FR-030). Every comparison surface carries its pair this way — each side
+ * names its own Source in the query — because a Global member may publish the
+ * compared kind too, so a pair may hold a consented home's file beside the
+ * repository's (contracts/http-api.md § Host requirements #5).
+ */
+export interface ComparisonSide {
+  /** Which Source holds it; see {@link SourceSelector}. */
+  readonly source: SourceSelector;
+  /** Its Source-relative Path, exactly as the inventory published it. */
+  readonly sourceRelativePath: string;
+}
+
+/**
+ * One file's detail route: the kind's segment, the Source that holds the file,
+ * then its Source-relative Path.
+ *
+ * Both halves of the identity are in the address because both are needed: a
+ * consented Global home and the selected repository can hold the same
+ * Source-relative Path, and a route naming the path alone resolves to
+ * whichever the session lists first — silently showing one file's contents
+ * under the other's row (FR-030, contracts/http-api.md § get-file-detail).
+ *
+ * The Source leads the path rather than riding beside it in a query, so the
+ * address reads as the identity it is and the router splits it: `[source]` is
+ * its own parameter, and the catch-all below it holds the path alone.
+ */
+export function detailRoute(
+  kind: PathAddressedDetailKind,
+  sourceRelativePath: string,
+  source: SourceSelector = 'repository',
+): string {
+  // The reserved `detail` segment names the page the way the comparison
+  // routes' `compare` segment does, so the two page families own disjoint
+  // address spaces whatever a Source-relative Path spells
+  // (contracts/http-api.md § Host requirements #5).
+  return `/${DETAIL_ROUTE_SEGMENT[kind]}/detail/${source}/${encodeDetailRoutePath(sourceRelativePath)}`;
+}
+
+/**
+ * The stable route token for one published Source: the repository's own token,
+ * or the tool whose consented home the Source is.
+ *
+ * The token rather than the Source ID, because an ID belongs to the launch that
+ * minted it while a link a reader keeps has to outlive that launch. Total over
+ * the union by construction: a Global Source always names its member
+ * (api-types.ts § SourceDto).
+ */
+export function sourceSelectorOf(source: SourceDto): SourceSelector {
+  return source.kind === 'global' ? `global-${source.member}` : 'repository';
+}
+
+/**
+ * The Source ID one route token names, or null when the snapshot lists no
+ * Source answering to it — a hand-written address, or a link made while a
+ * Global Source this session no longer carries was published.
+ *
+ * Callers scope a snapshot's rows and files by the returned ID: a row of
+ * another Source is a different file however identical its path (FR-030).
+ */
+export function sourceIdOf(sources: readonly SourceDto[], selector: SourceSelector): string | null {
+  for (const source of sources) {
+    if (sourceSelectorOf(source) === selector) {
+      return source.sourceId;
+    }
+  }
+  return null;
+}
+
+/**
+ * The Source a detail route's own `[source]` parameter names, or null when the
+ * value is not one of the tokens this product issues — a hand-written URL, or a
+ * link from before the token existed.
+ *
+ * A null resolves nothing, and the page reports what it already reports for a
+ * path the current scan does not hold. Reading an unknown token as a path
+ * segment instead would bring back the ambiguity the parameter exists to
+ * remove.
+ */
+export function asSourceSelector(value: unknown): SourceSelector | null {
+  return SOURCE_SELECTORS.find((candidate) => candidate === value) ?? null;
+}
+
+/**
+ * One compared side as a comparison route's query names it: its own Source
+ * token under `sourceName` and its JSON-string-body path under `pathName`, or
+ * null when either is missing or the token is not one this product issues
+ * ({@link ComparisonSide}). One reading for every comparison page, so the
+ * query spelling the route builders write is decoded exactly one way.
+ *
+ * A repeated parameter arrives as an array; these routes' are not repeated,
+ * so the array form folds to its first value rather than being a case.
+ */
+export function querySideOf(
+  query: Readonly<Record<string, unknown>>,
+  sourceName: string,
+  pathName: string,
+): ComparisonSide | null {
+  const single = (value: unknown): string | null => {
+    if (typeof value === 'string') {
+      return value;
+    }
+    return Array.isArray(value) && typeof value[0] === 'string' ? value[0] : null;
+  };
+  const selector = asSourceSelector(single(query[sourceName]));
+  const raw = single(query[pathName]);
+  const sourceRelativePath = raw === null ? '' : fromJsonStringBody(raw);
+  return selector === null || sourceRelativePath === ''
+    ? null
+    : { source: selector, sourceRelativePath };
+}
+
+/**
+ * The identity key one side resolves to against the published Sources, or
+ * null while its token names no committed Source — a link kept across a
+ * Global disable, which a comparison page's pair fault reports
+ * (`entities.ts` § fileIdentityKey).
+ */
+export function sideIdentityKeyOf(
+  sources: readonly SourceDto[],
+  side: ComparisonSide | null,
+): string | null {
+  if (side === null) {
+    return null;
+  }
+  const sourceId = sourceIdOf(sources, side.source);
+  return sourceId === null ? null : fileIdentityKey(sourceId, side.sourceRelativePath);
 }
 
 /**
@@ -200,4 +343,51 @@ export function selectedFileQuery(
  */
 export function selectedFileOf(parameter: unknown): string | null {
   return typeof parameter === 'string' ? fromJsonStringBody(parameter) : null;
+}
+
+/**
+ * The Source family one comparison address names, or null for a segment
+ * outside the two this product issues. Every comparison route leads with the
+ * family — `/<kind>/compare/<family>` (contracts/http-api.md § Host
+ * requirements #5) — because a pair stays inside one family while a family
+ * can hold two consented homes; a null resolves nothing, and the page reports
+ * the link instead of comparing.
+ */
+export function comparisonFamilyOf(segment: unknown): SourceKind | null {
+  for (const candidate of ['repository', 'global'] as const) {
+    if (candidate === segment) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+/**
+ * The Source family one side's selector addresses: the repository token is
+ * the Repository family's, and every other token names a consented home
+ * ({@link SourceSelector}). Resolved from the address alone, so a page can
+ * refuse a pair outside its family segment before resolving anything.
+ */
+export function sideFamilyOf(side: ComparisonSide): SourceKind {
+  return side.source === 'repository' ? 'repository' : 'global';
+}
+
+/**
+ * Each family's comparison pair among the offered sides — the family's first
+ * two, for the families that hold two. What a row's per-block comparison
+ * entries pair (FR-011): a block's comparison is that family's, so a family
+ * with one comparable side offers none, exactly as the instruction blocks do
+ * (contracts/http-api.md § Host requirements #5).
+ */
+export function familyComparisonPairsOf(
+  sides: readonly ComparisonSide[],
+): ReadonlyMap<SourceKind, readonly [ComparisonSide, ComparisonSide]> {
+  const pairs = new Map<SourceKind, readonly [ComparisonSide, ComparisonSide]>();
+  for (const [family, familySides] of Map.groupBy(sides, sideFamilyOf)) {
+    const [first, second] = familySides;
+    if (first !== undefined && second !== undefined) {
+      pairs.set(family, [first, second]);
+    }
+  }
+  return pairs;
 }

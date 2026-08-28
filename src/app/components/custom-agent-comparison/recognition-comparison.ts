@@ -242,7 +242,7 @@ export class CustomAgentRecognitionComparison {
    * below instead (FR-027). Split out, both sides are the
    * instructions themselves, which is the comparison a reader opened the pair
    * for — and it is the same split the detail shows, so the comparison and the
-   * detail read alike (`pages/agents/[...path].vue`).
+   * detail read alike (`pages/agents/[source]/[...path].vue`).
    */
   public readonly instructionsDiff: {
     /** The first side's instructions, as its rule resolved them. */

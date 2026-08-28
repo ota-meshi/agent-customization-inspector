@@ -84,7 +84,9 @@ test.describe('the complete literal Copilot command detail', () => {
       .filter({ hasText: '.claude/commands/deploy.md' })
       .getByRole('link', { name: '.claude/commands/deploy.md' })
       .click();
-    await expect(page).toHaveURL(/\/prompts-and-commands\/\.claude\/commands\/deploy\.md$/u);
+    await expect(page).toHaveURL(
+      /\/prompts-and-commands\/detail\/repository\/\.claude\/commands\/deploy\.md$/u,
+    );
 
     const main = page.locator('main');
     // Both products recognize the file, and the page states both beside the
@@ -116,7 +118,10 @@ test.describe('the complete literal Copilot command detail', () => {
 
   test('serves the complete authored file beside the parse', async ({ page }) => {
     await page.goto(
-      new URL('/prompts-and-commands/.claude/commands/deploy.md', host.origin).toString(),
+      new URL(
+        '/prompts-and-commands/detail/repository/.claude/commands/deploy.md',
+        host.origin,
+      ).toString(),
     );
     await page.getByRole('tab', { name: 'File' }).click();
     const main = page.locator('main');

@@ -51,7 +51,7 @@ ContractRegistry (immutable, contract-versioned)
 SessionSnapshot
 ├── Source (exactly one Repository)
 │   ├── SourceBoundary (exactly one)
-├── Source (zero to three Global; at most one per supported tool)
+├── Source (zero to four Global; at most one per member)
 │   ├── SourceBoundary (exactly one admitted tool home) → owning GlobalToolControl
 ├── ScanAttempt (zero or more queued; at most one running; never public before commit)
 ├── RepositoryScanGeneration (exactly one last committed; the Repository sequence exists from bootstrap)
@@ -89,7 +89,7 @@ BrowserState
 |---|---|---|---|
 | `sessionId` | opaque string | DTO | Random per process; non-authorizing session identity only, never an access-control secret |
 | `createdAt` | `UtcTimestamp` | DTO | Process start time |
-| `sources` | `Source[]` | DTO | Exactly one Repository; zero to three Global, with at most one for each of Copilot, Claude, and Codex |
+| `sources` | `Source[]` | DTO | Exactly one Repository; zero to four Global, with at most one for each member — Copilot, Claude, Codex, and the shared agent home (FR-045) |
 | `repositoryGeneration` | `GenerationNumber` | DTO | Identifies the Repository sequence's last committed snapshot; monotonically increases only on a successful complete or partial Repository-sequence commit |
 | `globalGeneration` | `GenerationNumber \| null` | DTO | Identifies the Global sequence's last committed snapshot; null exactly while no Global sequence exists (Global inspection disabled or never enabled); monotonically increases within one sequence, and a fresh sequence created after disable restarts at `1` under the incremented `globalContentEpoch` |
 | `snapshotState` | `current \| stale-after-fatal-rescan` | DTO | Derived from `staleFailures`; stale exactly while one or more explicit-rescan failures remain unresolved |
@@ -205,7 +205,7 @@ are closed by `GlobalDisableOperation`; no other command may copy that exception
 | Field | Type | Rules |
 |---|---|---|
 | `sourceId` | opaque ASCII string | Server-generated and stable for the process lifetime |
-| `kind` | `repository \| global` | Exactly one Repository source; zero to three Global Sources |
+| `kind` | `repository \| global` | Exactly one Repository source; zero to four Global Sources |
 | `tool` | `copilot \| claude \| codex \| null` | Repository pairs with null; each Global Source pairs with exactly one supported tool, and no two Global Sources share a tool |
 | `enabled` | boolean | Repository and every published Global Source are true; absence means only that no Source is published for that tool, while `globalControl` distinguishes disabled, pending, and retryable control states; a disabling source remains true until atomic removal |
 | `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; public `partial` denotes only a generation committed after complete traversal in which one or more files have file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
@@ -297,11 +297,12 @@ but never treats build output as an inspected-source fallback.
 ### GlobalRootInputCapture
 
 Each request that creates a new unconsented preview creates one operation-local capture.
-The host reads the three environment properties exactly once in the fixed order
+The host reads the three environment properties exactly once in the fixed order,
+always derives the shared agent home from the one `homedir()` capture,
 `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`. Only a captured JavaScript `undefined`
-means absent; every string, including `''`, is a present override. If at least one property
-is absent, the host calls the already imported `node:os.homedir()` exactly once for that
-request and retains its exact returned string as `capturedHomedir`. It does not read or
+means absent; every string, including `''`, is a present override. The host calls the
+already imported `node:os.homedir()` exactly once for that request — the shared agent
+home always derives from it — and retains its exact returned string as `capturedHomedir`. It does not read or
 choose `HOME`, `USERPROFILE`, or another platform home input itself; the Node.js API owns
 that platform behavior.
 
@@ -317,7 +318,7 @@ presentation encoding, or preview serialization throws/rejects or
 cannot produce the required string, the operation-local capture is discarded and the session API
 request fails ordinarily with that error before acceptance. It creates no preview,
 `scanRequestId`, consent, root, Source, or authority. A successful preview owns the capture
-and freezes its three exact roots; active consent retrieval never repeats it.
+and freezes its four exact roots; active consent retrieval never repeats it.
 
 ### GlobalConsentPreview
 
@@ -331,8 +332,8 @@ performs no filesystem operation under any proposed Global root.
 | `previewEpoch` | non-negative safe integer | Internal and never serialized; increments with every newly captured preview and binds replacement/revalidation without using an opaque ID as an order value |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `traversalPlanVersion` | date string | Version of the shipped typed traversal-plan set; with `allowlistVersion` this record-level pair identifies the closed selection policy and canonical selector programs the preview binds |
-| `entries` | exactly three tool entries | Fixed Copilot, Claude, and Codex order |
-| `entries[].tool` | tool enum | Closed value |
+| `entries` | exactly four member entries | Fixed Copilot, Claude, Codex, shared-agent-home order |
+| `entries[].member` | member enum (`copilot \| claude \| codex \| agents`) | Closed value; `agents` is the shared agent home (FR-045) |
 | `entries[].origin` | `default-home \| environment` | An environment entry is used even when invalid; no silent fallback |
 | `entries[].lexicalRoot` | exact raw string | Internal only; preserves the pre-escape environment/default value; never logged or serialized |
 | `entries[].displayRoot` | ASCII `RootPresentationEncoding` string | Exact deterministic encoding of `lexicalRoot`; originates before an owning Source exists, and is never a `SourceRelativePath`, inventory-item locator, canonicalization claim, or read authority |
@@ -359,7 +360,7 @@ opaque `previewId`; neither root field is nullable, and no encoding step relies 
 reversing an escape or on Unicode normalization. An invalid environment value is
 escaped and displayed but is not normalized into an authorized path. Present-empty,
 relative, and invalid entries use only fixed preview presentation and create no retained
-`Diagnostic`. After confirmation all three entries receive a `GlobalToolControl`; only an
+`Diagnostic`. After confirmation all four entries receive a `GlobalToolControl`; only an
 `eligible` entry may enter post-consent admission and later produce a tool failure
 Diagnostic. A lexical-ineligible control is a path-free rejected control whose fixed
 reason remains visible through the frozen preview. Every absolute spelling is `eligible`
@@ -385,14 +386,14 @@ in-flight enable from committing authority for an unreachable preview.
 |---|---|---|
 | `allowlistVersion` | date string | Must equal the displayed current contract |
 | `previewId` | opaque string | Must match the current in-memory preview exactly |
-| `confirmedTools` | exact `[copilot, claude, codex]` | Server-derived fixed set matching all three frozen entries; the request contains no selector and cannot narrow it |
+| `confirmedTools` | exact `[copilot, claude, codex, agents]` | Server-derived fixed member set matching all four frozen entries; the request contains no selector and cannot narrow it |
 | `confirmedAt` | `UtcTimestamp` | Memory only |
-| `active` | boolean | Cleared when Global inspection is disabled and all tool-specific Global Sources are removed |
+| `active` | boolean | Cleared when Global inspection is disabled and all member Global Sources are removed |
 
 Consent authorizes only the paths shown in the allowlist contract. It does not authorize
 neighboring settings, credentials, state, skills, plugins, or arbitrary env paths.
-The confirmation command contains no tool list: after verifying the frozen preview, the
-server derives all three tools in closed order, including entries already known lexically
+The confirmation command contains no member list: after verifying the frozen preview, the
+server derives all four members in closed order, including entries already known lexically
 invalid. On retry, the server derives the work set only from controls projected in
 `retryableTools`—non-pending unpublished admitted controls and rejected controls whose
 `retryDisposition` is `same-preview`. Lexical `new-preview-required` controls remain
@@ -420,7 +421,7 @@ generation, its IDs, and its views are untouched. A different preview or root re
 Global inspection first; a request with no retryable tool is rejected as closed conflict
 `no-retryable-global-tool`.
 
-Post-consent root admission can admit zero to three tools. The serialized coordinator
+Post-consent root admission can admit zero to four members. The serialized coordinator
 activates consent and creates at most one provisional batch scan for the entire admitted
 subset. A lexical-invalid entry or a root that is missing or not a readable directory
 affects only that tool. Any unexpected throw/rejection propagates to the session API boundary,
@@ -438,7 +439,7 @@ root or making a lexical-ineligible control eligible requires disable and a new 
 |---|---|---|
 | `tool` | tool enum | Exactly one of each supported tool exists while consent is active |
 | `previewId` | opaque string | References the active frozen preview and cannot be changed in place |
-| `state` | `unvalidated \| rejected \| admitted \| published` | All three provisional operation-local controls begin `unvalidated`, but that state is never serialized in an active `GlobalControlView`; lexical-ineligible entries become rejected without filesystem I/O, `admitted` has passed readable-directory admission but has no published Source, and `published` has exactly one Source |
+| `state` | `unvalidated \| rejected \| admitted \| published` | All four provisional operation-local controls begin `unvalidated`, but that state is never serialized in an active `GlobalControlView`; lexical-ineligible entries become rejected without filesystem I/O, `admitted` has passed readable-directory admission but has no published Source, and `published` has exactly one Source |
 | `sourceId` | opaque ID or null | Allocated only after successful root admission; remains internal until a Source commit and is discarded if admission must be repeated |
 | `failureCode` | closed reason code or null | Non-null exactly while this tool has failed and has no published Source. Lexical rejection reasons are exactly `present-empty \| relative \| invalid`, a root that is missing or not a readable directory is exactly `root-unreadable`, and a deterministic post-consent scan failure carries its own reason; none contains a path or environment value. It is the failure — the client renders the sentence the code names, and no Diagnostic restates it |
 | `retryDisposition` | `same-preview \| new-preview-required \| null` | Null unless `rejected`; lexical reasons are exactly `new-preview-required`, while every deterministic post-consent admission/initial-scan reason is `same-preview` |
@@ -470,7 +471,7 @@ No DTO can create or mutate this authority.
 |---|---|---|
 | `state` | `active \| disabling` | `disabling` begins when the priority barrier is accepted and lasts until the field becomes null at its single commit |
 | `previewId` | exact 43-character base64url string | Equals the active 256-bit `GlobalConsentPreview.previewId`; an opaque lookup reference that is neither a filesystem path nor any grant of authority |
-| `confirmedTools` | exact `[copilot, claude, codex]` | Fixed all-tools consent set; never client-selected |
+| `confirmedTools` | exact `[copilot, claude, codex, agents]` | Fixed all-members consent set; never client-selected |
 | `pendingTools` | sorted tool enum[] | Admitted tools owned by one accepted subset scan only after atomic batch acceptance; initial and retry validation/admission are operation-local and unobservable; empty with null `batchStatus` while `disabling` after cancellation begins |
 | `batchStatus` | `GlobalBatchStatus \| null` | Non-null from accepted admitted-subset queueing through terminal success/failure; preserves the promoted `scanRequestId` for fresh-snapshot and lost-acceptance-response recovery |
 | `retryableTools` | sorted tool enum[] | While `active`, exactly each non-pending unpublished `admitted` control and each `rejected` control whose `retryDisposition` is `same-preview`; it retains the exact pre-operation projection during operation-local retry validation, lexical `new-preview-required` controls are excluded, `unvalidated` exists only in non-serialized operation-local work, and the array is empty while `disabling` |
@@ -541,16 +542,16 @@ attributed to its exact accepted request.
 | `commandEpoch` | non-negative integer | Captured from the coordinator when accepted; every asynchronous continuation must still match it |
 | `previewId` | opaque string | Must equal the frozen consent preview for the whole operation |
 | `previewEpoch` | non-negative safe integer | Captured from the exact preview object at registration and revalidated with object identity after every asynchronous boundary and before terminal commit |
-| `tools` | non-empty sorted tool enum[] | Exact fixed three-tool set for initial enable, or complete server-derived `retryableTools` subset for retry; never supplied or narrowed by the client |
+| `tools` | non-empty sorted member enum[] | Exact fixed four-member set for initial enable, or complete server-derived `retryableTools` subset for retry; never supplied or narrowed by the client |
 | `scanRequestId` | opaque ASCII string or null | Allocated once only when at least one root is admitted and the single subset scan is accepted; shared by that batch and its one committed Global generation |
 | `status` | `waiting \| validating \| admitting \| queueing-batch \| draining \| cancelled \| complete` | `draining` begins when disable aborts the operation; no new authority or job may be published afterward |
 | `responseDisposition` | `unset \| queued \| active-no-job \| global-disable-pending` | Chosen exactly once at the coordinator linearization point; `queued` describes one atomic admitted-subset job |
 
 Initial enable registers this command and freezes the exact current preview object/epoch
-under the same coordinator lock while keeping the provisional consent, three controls,
+under the same coordinator lock while keeping the provisional consent, four controls,
 candidate IDs, and all admission outcomes operation-local and unobservable; it
 does not create `globalControl` or mutate `pendingTools` before deterministic validation of
-all three entries finishes. While registered, only the authority-free
+all four entries finishes. While registered, only the authority-free
 `globalEnableInProgress { kind: 'initial-enable', operationId, previewId }` coordinator
 projection is visible; it disappears when the operation unregisters or atomically creates
 `globalControl`, and never exposes partial tool outcomes. Retry registers the command against the existing active consent
@@ -574,7 +575,7 @@ restores its exact pre-operation snapshot; neither commits a partial admitted su
 every owned tool reaches a deterministic validation outcome, the coordinator performs the
 general pre-acceptance response transaction under its lock. It first validates the current
 operation ID/command epoch/preview object/preview epoch/signal and prepares, without publication, either the initial consent plus
-three controls or the retry partition, a candidate batch/`scanRequestId` and
+four controls or the retry partition, a candidate batch/`scanRequestId` and
 `queued`, or no job/null ID and `active-no-job`. The
 coordinator then revalidates the same operation ID/command epoch/preview object/preview epoch/
 signal and barrier state under the same lock and only then atomically activates/applies the
@@ -806,7 +807,7 @@ target, or merge the Inspector's Repository and Global sources.
 
 | Field | Type | Rules |
 |---|---|---|
-| `base` | one exact Source-boundary descriptor | Repository or the named consented tool-specific Global boundary; never inferred from a selector |
+| `base` | one exact Source-boundary descriptor | Repository or the named consented member Global boundary; never inferred from a selector |
 | `selectors` | non-empty ordered unique selector programs (`MatcherSegment[][]`) | Alternatives owned by one static rule, each a closed ordered program relative to the Source root; the final token denotes a regular file |
 | `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`, `{ kind: 'regex', pattern: RegExp }`, or `{ kind: 'recursive-directories' }`; no executable glob, implicit discriminator, or extra field |
 
@@ -970,7 +971,7 @@ state. Both generation entities share these fields:
 |---|---|---|
 | `generation` | `GenerationNumber` | Unique and monotonic within its own sequence; `0` exists only in the Repository sequence and is reserved for bootstrap, and the commit that creates a Global sequence is exactly `1` — a Global sequence has no generation 0 |
 | `baseGeneration` | `GenerationNumber` | The same sequence's last committed generation from which the serialized transaction started; `0` for bootstrap and for the sequence-creating Global enable commit |
-| `scannedSourceIds` | sorted opaque source ID[] | One for a Repository/per-Source Global rescan, one to three for an initial/retry Global batch, and empty for bootstrap |
+| `scannedSourceIds` | sorted opaque source ID[] | One for a Repository/per-Source Global rescan, one to four for an initial/retry Global batch, and empty for bootstrap |
 | `startedAt` / `finishedAt` | `UtcTimestamp` | Both present on every committed generation; in-flight timing belongs to `ScanAttempt`/`ScanProgress` |
 | `outcome` | `complete \| partial` | `partial` means only the file-confined outcome of the Closed Scan Publication Outcomes table: traversal completed and one or more files have only file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete; `utf-8-replaced` is complete, and a thrown/rejected attempt is never a generation |
 | `files` | `CustomizationFile[]` | All enabled Sources of the owning sequence; the published snapshot projection establishes the deterministic source, Source-relative Path, then ID order in the one place a reader receives the list, so the retained assembly order carries no contract of its own |
@@ -1074,7 +1075,7 @@ disable success; it preserves the same `operationId`, `scanRequestId`, trigger o
 Source, and queue order, returns the existing command to `waiting`, creates no new
 admission or interim success status, and remains held while disable is failed. An interrupted Global
 command is not requeued. A second disable while that barrier is draining/committing joins the same completion and creates no
-additional transaction. If there is no tool-specific Global Source or graph, active consent
+additional transaction. If there is no member Global Source or graph, active consent
 record, running/queued Global scan/enable command, or
 retained disable failure, disable is an immediate no-op
 regardless of unrelated Repository work. A scan transaction
@@ -1091,7 +1092,7 @@ scanned Source, carries every unrelated Source's entry and failure forward, and 
 sequence's generation-scoped comparison/editor state. A commit never modifies or
 invalidates the other sequence's generation or client state. A `remove-active-state`
 Global disable is not a scan transaction: its terminal commit discards the entire Global
-sequence — its committed generation, every tool-specific Global graph, and each
+sequence — its committed generation, every member Global graph, and each
 stale-failure entry/diagnostic pair — without filesystem I/O and commits no generation in
 either sequence; an unrelated Repository pair remains. A `cleanup-only` disable removes only
 operation-local/frozen control state, changes no committed state, and
@@ -1238,7 +1239,7 @@ shipped kinds do not agree on one:
 |---|---|
 | `skill` | One invocation name as one tool resolves it (FR-007): the name that tool's own documentation invokes the file by, which the admitting rule answers — the authored frontmatter `name` for Codex and Copilot, or the skill directory name when the file declares none; the skill directory whatever the frontmatter declares for Claude Code, prefixed root-relative when nested. A definition is one recognition — one per `(file, tool)` — so several files one tool invokes by one name are one entry listing each recognition as a definition, and one file whose tools invoke it by different names defines on each name's entry. Being a recognition, a definition states the surfaces of the documented behaviors its admitting rules rest on, exactly as a path-identified row's recognitions do (FR-009) |
 | `MCP` | One declared server name: every `[mcp_servers.*]`-style declaration resolving that name — one per `(carrier, tool)` — is listed inside the name's row, so one `.codex/config.toml` contributes one declaration per server it declares, and a second carrier declaring the same name joins that name's row. A declaration's home is an explicit carrier and nothing else: a file of any other kind that spells MCP-looking configuration — a skill's or an agent's frontmatter, a settings file's inline map — is that kind's ordinary content, visible in its own detail, and joins no MCP row. Each declaration names its own file. The one row whose name is null closes the list with the carriers currently publishing no named declaration — an unreadable declaration block, whose rows are unknown, or a carrier declaring none |
-| `instructions` | One applicability range: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from |
+| `instructions` | One applicability range of one Source: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from. The Source is half the row's identity, so the repository's `**` and a consented home's `**` are two rows; the list shows them under one heading for that range, grouped into one block per Source family — the selected repository, and the reader's own configuration directories. A comparison is a pair of one block's files, so it may pair two consented homes and never spans two families (FR-011, FR-030). A block names its family only where the session carries more than one Source, and a file names the directory it was in only where its family holds more than one: with one, either would repeat the page's only answer |
 | `rule` | The file itself: a rule file is modular instructions a product loads into context, and it declares no name a row could be keyed by nor governs a range it could be grouped under, so its Source-relative Path is the row's identity, and two products recognizing one file are two recognitions on one row, each naming its product and the surfaces of the documented behaviors its admitting rules rest on |
 | `permissions` | The file that declares the policy, on the same terms as a `rule` row. A separate kind because the subject differs: a permission policy decides which commands or tools a product may run, where a rule is guidance the product reads. Codex spells its policy in `.codex/rules/*.rules` and Claude calls its own modular instructions `rules` too, so grouping by the vendors' shared word would put two unrelated subjects in one list. A file whose whole content is the policy and a file carrying the policy in one block of a larger document are one row each: what differs is what the detail publishes, not what the row is. A carrier that declares no policy is no row at all — the rest of the document is the recognition that owns it, and a row would state a policy its author never wrote |
 | `prompt/command` | One name a reader invokes, on the same terms as a `skill` row: every recognition resolving that name — one per `(file, tool)` — is a definition listed inside the name's row, so a file two products invoke by one name is two definitions of that row and a file they name differently defines on each name's row. Which name that is belongs to the rule that admitted the file, because this kind's two locations answer differently. A command file's name is never authored — both products ignore a `name` key in one — so each product's own admitting rule derives it from the path: Claude Code takes the file's path below its command directory and turns every separator into a `:`, so `frontend/component.md` is `frontend:component` and `team/review/security.md` is `team:review:security`; a leaf whose stem is `skill` in any letter case takes its directory’s name instead of its own, which the product does and no page documents — the stem is compared without case while the `.md` extension is the one the matcher admits, so a `SKILL.MD` is not a command file here at all. The Copilot CLI takes the file name alone, having documented no namespace and reaching no subdirectory. The two therefore agree exactly at a root direct child, which is why such a file is one row naming both products while a nested one is a row of Claude's alone. A VS Code prompt file names itself instead: the documented `name` is what a reader types after the `/`, and the file's own name stands in when it declares none — so a prompt declaring the name a command resolves to is a definition on that command's row, the way two files of one skill name share theirs. A row states no same-name resolution, unlike a skill's. Two prompt files can now reach one name, and VS Code documents no outcome for that, so a row that answered would be answering a question no page asks — the definitions stand side by side and the reader sees both (FR-009) |
@@ -1249,8 +1250,12 @@ shipped kinds do not agree on one:
 | `settings/config` | The file itself, on the same terms as a `rule` row: a settings or configuration file declares no name a row could be keyed by and governs no range it could be grouped under, so its Source-relative Path is the row's identity, and two products recognizing one file are two recognitions on one row. A separate kind because the subject differs: what a product reads its settings from, where a rule is guidance it loads into context and a permission policy decides what it may run. One physical file can hold this row and another kind's — Codex's `.codex/config.toml` has one MCP row per server it declares and one row here for the document those declarations sit in — and which detail a link opens follows from the row it is on rather than from the file (FR-007) |
 
 A CustomizationFile therefore publishes its own facts once — Source-relative Path, read
-outcome, size, diagnostics — and each kind's inventory refers to it by `sourceRelativePath`
-rather than repeating them. A companion is never a row of its own, whatever it carries (FR-003), so a
+outcome, size, diagnostics — and each kind's inventory refers to it by its identity — the
+Source that holds it and its Source-relative Path (FR-030) — rather than repeating them.
+Every kind's row member — a skill definition, an MCP or hook declaration, an agent or
+prompt or output-style definition, a rule, permissions, or settings row, a plugin
+carrier — states its `sourceId` beside the path, because a Global member publishes every
+kind and two Sources can hold one path (FR-015 through FR-018, FR-030). A companion is never a row of its own, whatever it carries (FR-003), so a
 row states the diagnostics of the files in its own census beside the definition that owns
 them, each named by its path: a read that failed inside a customization's directory is one
 of the files that made the generation partial, and the row of the customization holding it
@@ -1568,7 +1573,7 @@ order, read off the rows that hold the file (contracts/http-api.md § get-sessio
 `skills[]`) rather than republished on the detail. A definition is one tool's
 recognition, and one file two tools invoke differently is a definition of each name's
 row; the page shows the file its URL selects — a detail URL is
-`/skills/<the SKILL.md's source-relative path>`, the skill's own identity, with the file
+`/skills/detail/<source>/<the SKILL.md's source-relative path>`, the skill's own identity, with the file
 being read named in a `file` query beside it — so which document the page shows is the
 link's identity rather than a preference. The skill is the address and the file is the
 selection, because the page's subject is the skill: a companion has no page of its own to
@@ -1844,13 +1849,15 @@ This state is not authoritative and is never persisted.
   different facts, so a file declaring another's directory name as its own `name`
   puts both on both rows — and a derived row would be whichever the generation
   published first, dropping a third copy of the row the reader opened from out of the
-  route's own switchers. The instruction route names two
-  files' `sourceRelativePath` identities that one applicability-range row of the
-  current generation holds — the row-owned pair the skill precedent establishes, the
-  range row standing where the skill name's row stands, and derived from the two
-  identities because a file governs exactly one range — resolved into zero or two
-  readable files: an instruction file is complete in itself, so no side can be a
-  stated absence, and a pair no single row holds is reported rather than compared. The
+  route's own switchers. The instruction route names the
+  Source family it leads with and, per side, a Source and a `sourceRelativePath`
+  identity (FR-030). The pair's owner is the block one applicability range holds for
+  that family — the block the skill precedent's row becomes here, its range derived
+  from the identities because a file governs exactly one range — so a pair may hold
+  two consented homes' files and never spans two families. It resolves into zero or
+  two readable files: an instruction file is complete in itself, so no side can be a
+  stated absence, and a pair the owning block does not hold is reported rather than
+  compared. The
   MCP route names one declared server name — the kind's row unit — and two carriers'
   `sourceRelativePath` identities that name's row of the current generation holds; a
   selection outside the named row, a name no current row is included, is reported
@@ -3613,7 +3620,7 @@ initial enable only -- disable --> cleanup-only barrier --> inactive / 0 Sources
 ```
 
 Enabling requires a matching `GlobalConsent`. Disabling executes the coordinator barrier
-and discards the entire Global sequence: all tool-specific Global files, generation
+and discards the entire Global sequence: all member Global files, generation
 diagnostics, control-owned lifecycle diagnostics, comparisons, and source text.
 `remove-active-state` commits no generation and never touches the Repository sequence, its
 generation, or its IDs; operation-local `cleanup-only` changes no committed state. A later
@@ -3660,9 +3667,10 @@ old file records in place.
    selected Repository root: the exact captured invocation `process.cwd()` by default or
    the single `--root` value resolved against it. It is not required to be a Git root, and
    its label grants no read authority.
-3. Global is disabled in every new process. A session has zero to three Global Sources,
-   at most one each for Copilot, Claude, and Codex; every Source owns exactly one boundary
-   confirmed for that same tool by the current allowlist consent.
+3. Global is disabled in every new process. A session has zero to four Global Sources,
+   at most one each for Copilot, Claude, Codex, and the shared agent home; every Source
+   owns exactly one boundary confirmed for that same member by the current allowlist
+   consent.
 4. Every accepted file path is admitted by a shipped static or typed derived rule below
    its Source root. A parsed value admits a candidate only when
    it satisfies that exact derivation rule; relationships and excluded rules never do.

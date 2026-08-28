@@ -276,8 +276,9 @@ test.describe('the plugin comparison surface', () => {
     // and hiding the content would leave the panel with nothing to show.
     await page.goto(
       new URL(
-        '/plugins/compare?name=shared-tool%40acme-tools' +
-          '&left=.agents%2Fplugins%2Fmarketplace.json&right=.claude-plugin%2Fmarketplace.json',
+        '/plugins/compare/repository?name=shared-tool%40acme-tools' +
+          '&leftSource=repository&left=.agents%2Fplugins%2Fmarketplace.json' +
+          '&rightSource=repository&right=.claude-plugin%2Fmarketplace.json',
         host.origin,
       ).href,
     );
@@ -309,8 +310,9 @@ test.describe('the plugin comparison surface', () => {
     // rather than opened (FR-011).
     await page.goto(
       new URL(
-        '/plugins/compare?name=review-assistant%40acme-tools' +
-          '&left=.claude-plugin%2Fmarketplace.json&right=.claude-plugin%2Fmarketplace.json',
+        '/plugins/compare/repository?name=review-assistant%40acme-tools' +
+          '&leftSource=repository&left=.claude-plugin%2Fmarketplace.json' +
+          '&rightSource=repository&right=.claude-plugin%2Fmarketplace.json',
         host.origin,
       ).href,
     );

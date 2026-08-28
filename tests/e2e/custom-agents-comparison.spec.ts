@@ -122,9 +122,9 @@ test.afterEach(async () => {
  */
 function compareUrl(name: string, left: string, right: string): string {
   return new URL(
-    `/agents/compare?name=${encodeURIComponent(name)}&left=${encodeURIComponent(
+    `/agents/compare/repository?name=${encodeURIComponent(name)}&leftSource=repository&left=${encodeURIComponent(
       left,
-    )}&right=${encodeURIComponent(right)}`,
+    )}&rightSource=repository&right=${encodeURIComponent(right)}`,
     host.origin,
   ).toString();
 }
@@ -140,7 +140,7 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
     .filter({ hasText: 'reviewer' })
     .getByRole('link', { name: /Compare this name's files: reviewer/u })
     .click();
-  await page.waitForURL(/\/agents\/compare\?/u);
+  await page.waitForURL(/\/agents\/compare\/repository\?/u);
   await expect(page.getByRole('heading', { name: 'Compare custom-agent files' })).toBeVisible();
 
   // Two diffs — the declarations and the instructions — and no diff of the
@@ -277,7 +277,9 @@ test('owns no MCP surface for either compared agent', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Compare custom-agent files' })).toBeVisible();
   // And neither agent's detail resolves as an MCP carrier: the declared block
   // is the file's own content on the surface of its own kind.
-  await page.goto(new URL('/mcp/.codex/agents/reviewer.toml', host.origin).toString());
+  await page.goto(
+    new URL('/mcp/detail/repository/.codex/agents/reviewer.toml', host.origin).toString(),
+  );
   await expect(page.locator('main')).toContainText(
     "Nothing in the current scan sits at this link's path.",
   );
@@ -329,7 +331,7 @@ test('reports a pair the model does not express instead of comparing it', async 
     'No agent name in the current scan holds both of this link’s files.',
   );
   // No pair at all.
-  await page.goto(new URL('/agents/compare', host.origin).toString());
+  await page.goto(new URL('/agents/compare/repository', host.origin).toString());
   await expect(page.locator('main')).toContainText(
     'This link names no pair of custom-agent files.',
   );
@@ -344,9 +346,11 @@ test('offers no comparison for a name only one file resolves', async ({ page }) 
 });
 
 test('enters from the detail page and returns to the kind’s own tab', async ({ page }) => {
-  await page.goto(new URL('/agents/.claude/agents/reviewer.md', host.origin).toString());
+  await page.goto(
+    new URL('/agents/detail/repository/.claude/agents/reviewer.md', host.origin).toString(),
+  );
   await page.getByRole('link', { name: 'Compare this file' }).click();
-  await page.waitForURL(/\/agents\/compare\?/u);
+  await page.waitForURL(/\/agents\/compare\/repository\?/u);
   await expect(page.getByRole('heading', { name: 'Compare custom-agent files' })).toBeVisible();
   // Back to the inventory's own tab, not the kind order's default.
   await page.getByRole('link', { name: 'Back to the inventory' }).click();

@@ -1,23 +1,18 @@
 <!--
 Sync Impact Report
-- Version change: 4.4.0 → 5.0.0
-- Modified principles: Quality and Safety Standards — two changes land together.
-  Intentional display of complete authored content in the loopback-local inspection UI
-  is direct: no acknowledgement step or standing sensitive-content notice may precede
-  or accompany it, because those controls protect no additional boundary while adding
-  interaction cost and visual noise; inert rendering, session-only lifetime, no
-  persistence or remote egress, and the prohibition on incidental exposure remain
-  mandatory. Code formatting is owned by Prettier and checked as a required gate
-  (`format:check` locally and in CI); byte-level hygiene (`.gitattributes`,
-  `.editorconfig`) remains declarative, and hand-fixing formatting was error-prone
-  busywork a rewriting formatter solves at the root.
+- Version change: 5.2.0 → 5.3.0
+- Modified principles: Readable, Maintainable, Intention-Revealing Code — the
+  deviation rule is stated in its general form so it transfers beyond any one
+  scenario: a deviation, wherever it lives, exists only together with a stated reason
+  that still holds; the change that erases the reason converts the deviation in the
+  same change; the rule binds what a pattern was first derived from as it binds every
+  later case; and conformance is judged by what a reader meets, never by whether an
+  implementation is shared.
 - Templates and guidance updated:
-  - ✅ plan/spec/tasks templates — constitution checks and generated requirements
-    require direct, notice-free presentation with the retained handling safeguards
-  - ✅ active feature documents in both languages — spec Clarifications and QR-004,
-    the accessibility acceptance matrix, affected tasks, plan § Formatting/Linting,
-    research § 3, T003, quickstart gates, AGENTS.md/AGENTS.ja.md Formatting policy,
-    and the CI `format` job
+  - ✅ AGENTS.md/AGENTS.ja.md Implementation simplicity policy — the general deviation
+    rule with its two operational checks, the instruction-row case kept as one example
+  - ✅ plan/spec/tasks templates — no template names a code idiom, so none required
+    changes
 -->
 # Agent Customization Inspector Constitution
 
@@ -49,8 +44,8 @@ languages rather than implemented as written.
 
 ### II. Readable, Maintainable, Intention-Revealing Code
 
-Code MUST use clear names, cohesive modules, explicit control flow, and small units with
-well-defined responsibilities. Non-obvious decisions, invariants, security assumptions,
+Code MUST use clear names, cohesive modules, explicit control flow, small units with
+well-defined responsibilities, and consistent idioms. Non-obvious decisions, invariants, security assumptions,
 trade-offs, and compatibility constraints MUST be documented close to the affected code,
 with comments explaining why the design exists rather than restating syntax. Exported
 declarations are documented where they are declared: every exported type, interface, and
@@ -60,7 +55,19 @@ where one exists, its governing contract; and every class member — fields and
 methods, including the constructor and private members — MUST carry one stating what it
 holds or does. Stale,
 redundant, or misleading comments MUST be corrected or removed in the same change.
-Complexity and new abstractions MUST be justified by a concrete current need. Reviewers
+Complexity and new abstractions MUST be justified by a concrete current need.
+Consistency is a readability property in its own right: same-looking code MUST be the
+same, so that a difference always means something. A pattern therefore holds for its
+whole family or not at all, and a change of idiom MUST convert every member in the same
+change; a partial conversion is an unfinished change, not a compromise. A deviation —
+whatever departs from the pattern around it, in code, tests, fixtures, or documents —
+exists only together with the stated reason that distinguishes its case, and the reason
+is checked against the present, not against the change that introduced it: a change that
+erases the reason MUST convert the deviation in the same change, because a deviation
+whose reason is gone is a defect, not a grandfathered decision. This binds what a
+pattern was first derived from exactly as it binds every later case, and conformance is
+judged by what a reader meets — names, shapes, and every consuming site — never by
+whether an implementation is shared underneath. Reviewers
 MUST be able to understand the change and its rationale without reverse-engineering the
 author's intent.
 
@@ -187,4 +194,4 @@ Known violations MUST be resolved before approval; urgency, generated code, and 
 automation do not waive compliance. Reviewers are responsible for examining the complete
 change and recording any residual uncertainty that requires further investigation.
 
-**Version**: 5.0.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-07-29
+**Version**: 5.3.0 | **Ratified**: 2026-07-15 | **Last Amended**: 2026-08-28

@@ -16,7 +16,7 @@
 // pair the kind's row unit makes possible (tasks.md T503/T505).
 //
 // The comparison selection is the route's:
-// `/prompts-and-commands/compare?left=<path>&right=<path>` names the two
+// `/prompts-and-commands/compare/<family>?left=<path>&right=<path>` names the two
 // files by their Source-relative Paths — the identity the inventory and the
 // detail route use (FR-030); the owning name row is derived from them, the
 // way the skill and instruction routes derive theirs, because no shipped
@@ -36,12 +36,12 @@
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
-import { toJsonStringBody } from '../components/detail-route';
+import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import { shallowRef } from 'vue';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
 import { isReadableFile } from '../../shared/entities';
-import type { FileDetailDto } from '../../shared/api-types';
+import type { FileDetailDto, SourceKind } from '../../shared/api-types';
 
 /**
  * Where the one open comparison stands:
@@ -74,28 +74,49 @@ export type PromptComparisonViewStatus =
 
 /**
  * The prompt-and-command comparison route of one compared pair. `left` and
- * `right` are the two files' Source-relative Paths — the identity the
- * inventory rows and the detail route use (FR-030); the invocation-name row
- * that owns the pair is derived from them rather than carried, because no
- * shipped rule lets one file resolve two names. A module function beside the
+ * `right` are the two files' identities — each its own Source and
+ * Source-relative Path, the identity the inventory rows and the detail route
+ * use (FR-030), each side naming its Source because a consented member
+ * publishes prompt and command files too (contracts/http-api.md § Host
+ * requirements #5); the invocation-name row that owns the pair is derived
+ * from them rather than carried, because no shipped rule lets one file
+ * resolve two names. A module function beside the
  * state class so every surface that builds the link — the inventory row's
  * and detail page's entry links, and the compare route's own pickers —
  * builds the same URL.
+ *
+ * The family leads the address rather than a Source, because a pair stays
+ * inside one family while a family can hold two consented homes — a reader
+ * compares one home's file against the other's, never a Repository file
+ * against a home's (contracts/http-api.md § Host requirements #5). Stated in
+ * the address rather than derived so the page can refuse a pair outside it
+ * before resolving anything.
  */
 export function promptComparisonRouteFor(
-  left: string,
-  right: string,
+  family: SourceKind,
+  left: ComparisonSide,
+  right: ComparisonSide,
 ): {
   readonly path: string;
-  readonly query: { readonly left: string; readonly right: string };
+  readonly query: {
+    readonly leftSource: string;
+    readonly left: string;
+    readonly rightSource: string;
+    readonly right: string;
+  };
 } {
   // Each path rides as its JSON string body, the spelling every route in this
   // product uses: a raw entry name can hold a lone surrogate (data-model.md
   // § SourceRelativePath), which the router's own query encoding rejects with
   // a `URIError` while the row's link renders (`detail-route.ts`).
   return {
-    path: '/prompts-and-commands/compare',
-    query: { left: toJsonStringBody(left), right: toJsonStringBody(right) },
+    path: `/prompts-and-commands/compare/${family}`,
+    query: {
+      leftSource: left.source,
+      left: toJsonStringBody(left.sourceRelativePath),
+      rightSource: right.source,
+      right: toJsonStringBody(right.sourceRelativePath),
+    },
   };
 }
 
@@ -242,7 +263,7 @@ export class PromptComparisonState {
    * invocation stops owning the view — a purge, a generation change, a
    * close, a newer open — cannot each grow their own handling.
    */
-  public async open(leftPath: string, rightPath: string): Promise<void> {
+  public async open(left: ComparisonSide, right: ComparisonSide): Promise<void> {
     // The previous pair's content is dropped before anything is requested,
     // so a slow request never leaves one pair's sources on screen under
     // another pair's paths; this also supersedes any open still in flight.
@@ -251,10 +272,12 @@ export class PromptComparisonState {
     const capturedEpoch = this.#clientData.epoch();
     const owns = (): boolean =>
       requested === this.#requestVersion && this.#clientData.epoch() === capturedEpoch;
-    if (leftPath === rightPath) {
+    if (left.source === right.source && left.sourceRelativePath === right.sourceRelativePath) {
       // The same file must not occupy both inputs, however many recognitions
-      // it has (FR-011). A declared outcome, decided here: spending a request
-      // to discover it would ask the host a question the client can answer.
+      // it has (FR-011) — and the identity is the Source-and-path pair, so
+      // one path two Sources hold is two files and a valid pair (FR-030). A
+      // declared outcome, decided here: spending a request to discover it
+      // would ask the host a question the client can answer.
       this.status.value = 'same-path';
       return;
     }
@@ -264,19 +287,19 @@ export class PromptComparisonState {
     // in-flight detail would supersede the first and discard its response
     // (`SessionApiClient` § request tokens). Two loads of committed state a
     // few milliseconds apart cost nothing a user can see.
-    const left = await this.#fetchOwned(leftPath, owns);
-    if (left === null || !owns()) {
+    const leftDetail = await this.#fetchOwned(left, owns);
+    if (leftDetail === null || !owns()) {
       return;
     }
-    const right = await this.#fetchOwned(rightPath, owns);
-    if (right === null || !owns()) {
+    const rightDetail = await this.#fetchOwned(right, owns);
+    if (rightDetail === null || !owns()) {
       return;
     }
     // Adopted together: a comparison with one side is not a comparison, and
     // publishing the pair in one synchronous step means no render can see
     // half of it.
-    this.leftDetail.value = left;
-    this.rightDetail.value = right;
+    this.leftDetail.value = leftDetail;
+    this.rightDetail.value = rightDetail;
     this.status.value = 'ready';
   }
 
@@ -286,11 +309,8 @@ export class PromptComparisonState {
    * ownership check: every write happens behind it, except the fatal report,
    * which is true of the session rather than of this request.
    */
-  async #fetchOwned(
-    sourceRelativePath: string,
-    owns: () => boolean,
-  ): Promise<FileDetailDto | null> {
-    const outcome = await this.#client.fetchFileDetail(sourceRelativePath);
+  async #fetchOwned(side: ComparisonSide, owns: () => boolean): Promise<FileDetailDto | null> {
+    const outcome = await this.#client.fetchFileDetail(side.sourceRelativePath, side.source);
     switch (outcome.kind) {
       case 'adopted':
         if (!owns()) {
@@ -300,7 +320,7 @@ export class PromptComparisonState {
           // Binary input is textless and a failed read has nothing to show:
           // neither is comparison-eligible (FR-025), and the state names
           // the file instead of fabricating an empty side.
-          this.unreadablePath.value = sourceRelativePath;
+          this.unreadablePath.value = side.sourceRelativePath;
           this.status.value = 'not-readable';
           return null;
         }

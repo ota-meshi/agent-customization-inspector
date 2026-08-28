@@ -54,7 +54,7 @@ export const CLAUDE_AGENTS_SELECTION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Choose the subagent scope'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'When several subagents share one name the higher-priority location wins, in managed, --agents session, project, User, then plugin order; across nested project directories the definition closest to the working directory wins, while two files under one .claude/agents/ tree load by filesystem read order rather than a documented precedence.',
         },
@@ -96,7 +96,7 @@ export const CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['How CLAUDE.md files load', 'Auto memory'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'The CLAUDE.md hierarchy a subagent inherits is the one the main conversation loads, and auto memory is the separate per-project store a session maintains under the Claude configuration directory.',
         },
@@ -112,7 +112,7 @@ export const CLAUDE_AGENT_CONTEXT_COMPOSITION_STRATEGY = {
             'Enable persistent memory',
             'Let subagents spawn their own subagents',
           ],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'A non-fork subagent starts with a fresh isolated context holding its own system prompt, the delegation message, every level of the CLAUDE.md hierarchy, a git-status snapshot, and the full content of each preloaded skill, with Explore and Plan omitting the instruction and git inputs and the main conversation’s auto memory never loaded; a fork inherits the parent conversation instead; the tools field decides the inherited tool set, an mcpServers entry is either an inline definition scoped to that subagent or a name referencing the parent session’s connection, the memory field selects one persistent directory whose MEMORY.md prefix joins the system prompt, and at the nested-spawn depth limit the Agent tool is withheld.',
         },
@@ -165,7 +165,7 @@ export const CLAUDE_COMMANDS_SELECTION_STRATEGY = {
             'Discovery from parent and nested directories',
             'How a skill gets its command name',
           ],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Command files in .claude/commands/ share the skill command namespace and work the same way, and when a skill and a command share a name the skill takes precedence — with both .claude/commands/deploy.md and .claude/skills/deploy/SKILL.md present, /deploy runs the skill. A command is invoked by its file name without the extension. The nested-directory discovery sentence is written about .claude/skills/ alone, so which layers contribute commands is not stated independently.',
         },
@@ -215,7 +215,7 @@ export const CLAUDE_HOOKS_ADDITIVE_STRATEGY = {
           url: 'https://code.claude.com/docs/en/settings',
           officialHost: 'code.claude.com',
           sections: ['Settings precedence', 'Lists merge instead of overriding'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'A list-valued settings key is combined across the settings files rather than one file replacing another, which is the merge the hook entries of several levels follow.',
         },
@@ -224,7 +224,7 @@ export const CLAUDE_HOOKS_ADDITIVE_STRATEGY = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Hooks', 'Plugin manifest schema'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Plugin hooks respond to the same lifecycle events as user-defined hooks and are one of the component types with their own merge rules, contributed while the plugin is enabled.',
         },
@@ -259,7 +259,7 @@ export const CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'The documented scopes load from broadest to most specific, all discovered files are concatenated into context rather than overriding each other, content is ordered from the filesystem root down to the working directory, and within one directory CLAUDE.local.md is appended after CLAUDE.md.',
         },
@@ -306,7 +306,7 @@ export const CLAUDE_SKILLS_SELECTION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live', 'How a skill gets its command name'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Within one root, a nested skill sharing a name with another stays available under a directory-qualified command and Claude picks the variant matching the files it is working on; invoking the unqualified name loads the project-root skill and appends the directory-qualified variants with an instruction to also invoke any whose directory holds those files. The name field of a personal or project skill sets only the display label, and the enterprise-over-personal-over-project precedence is a rule between levels, not within one.',
         },
@@ -380,7 +380,7 @@ export const CLAUDE_MCP_SELECTION_STRATEGY = {
             'Scope hierarchy and precedence',
             'Plugin-provided MCP servers',
           ],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'A duplicate is resolved by source order as a whole entry — local, project, user, plugin-provided, then connectors, with no field merging across sources — and what makes a duplicate differs by source: the three scopes match by name, while plugins and connectors match by endpoint, treating one that points at the same URL or command as a server above it as the duplicate.',
         },
@@ -389,7 +389,7 @@ export const CLAUDE_MCP_SELECTION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Available tools', 'Scope MCP servers to a subagent'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Subagents inherit the built-in and MCP tools available in the main conversation, narrowed by the documented filters, with the tools and disallowedTools fields restricting the set — the inherit-then-filter step this pipeline records; servers declared inline on an agent are connected when the subagent starts and disconnected when it finishes, while string entries reference servers already configured in the session.',
         },
@@ -428,7 +428,7 @@ export const CLAUDE_PLUGINS_ACTIVATION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Skills-directory plugins', 'Plugin installation scopes'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "A skills-directory folder carrying .claude-plugin/plugin.json loads as <folder>@skills-dir on the next session with no marketplace and no install step, and a project-scope one — from the launch working directory's own .claude/skills/, without walking ancestors — loads only after the workspace trust dialog is accepted, with its MCP servers still going through per-server approval and its monitors not loading at all; an installed plugin instead belongs to the settings scope chosen at installation.",
         },
@@ -474,7 +474,7 @@ export const CLAUDE_RULES_LAYERING_STRATEGY = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'Rules without paths frontmatter load at launch with the same priority as .claude/CLAUDE.md, path-scoped rules trigger when Claude reads a file matching one of their patterns rather than on every tool use, and user-level rules load before project rules so project rules take the higher priority.',
         },
@@ -513,7 +513,7 @@ export const CLAUDE_SETTINGS_PRECEDENCE_STRATEGY = {
           url: 'https://code.claude.com/docs/en/settings',
           officialHost: 'code.claude.com',
           sections: ['Settings precedence', 'Lists merge instead of overriding'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Settings are read highest precedence first as managed settings, command line arguments, local project settings, shared project settings, then user settings; a key set at a higher level overrides the same key, a list key such as permissions.allow is combined across files instead of one replacing another — fallbackModel and availableModels excepted — and for a few security-sensitive keys a stricter lower-level value is honored over a managed one.',
         },
@@ -564,7 +564,7 @@ export const CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY = {
           url: 'https://code.claude.com/docs/en/output-styles',
           officialHost: 'code.claude.com',
           sections: ['Create a custom output style', 'How output styles work'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'A custom style is saved at one of three levels — User, project, and the managed settings directory — and project output styles load from every .claude/output-styles/ between the working directory and the repository root, where a style name more than one of those nested directories defines resolves to the directory closest to the working directory; no order between the three levels is stated. A style is applied by the outputStyle setting or the session picker, taking effect after /clear or the next session, plugins can ship styles in an output-styles/ directory, and a plugin style with force-for-plugin applies whenever the plugin is enabled and overrides the user setting, with the first such plugin loaded winning.',
         },

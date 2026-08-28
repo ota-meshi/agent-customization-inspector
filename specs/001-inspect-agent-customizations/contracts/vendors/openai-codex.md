@@ -2,8 +2,8 @@
 
 [日本語](openai-codex.ja.md)
 
-**Contract version**: 2026-07-20
-**Official-source review**: 2026-07-15
+**Contract version**: 2026-08-27
+**Official-source review**: 2026-08-27
 
 This contract separates documented Codex lookup behavior from the Inspector's read
 allowlist. The common matcher grammar and source-boundary rules are defined in
@@ -46,6 +46,8 @@ columns are rationale or Inspector-scope state, not serialized status scalars.
 | `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursion is unspecified and the rules feature is experimental |
 | `codex.behavior.user.rules` | `partially-documented` | `[experimental]` | One sentence describes the startup scan of `rules/` for the user layer and the project layers alike, so nested recursion is unspecified for both, and the rules feature is experimental |
 | `codex.behavior.user.prompts` | `documented` | `[deprecated]` | The documented custom-prompt surface is deprecated |
+| `codex.global.rules` | `documented` | `[experimental]` | The Inspector rule admits only documented direct children of the user rules directory, and the rules feature is experimental |
+| `codex.global.prompts` | `documented` | `[deprecated]` | The documented custom-prompt surface is deprecated |
 | `codex.repo.agent` | `partially-documented` | `[]` | The root's `.codex/agents/` is documented, but the complete project directory search is not fully specified |
 | `codex.repo.rules` | `documented` | `[experimental]` | The Inspector rule admits only documented direct children and excludes unestablished nesting |
 
@@ -183,23 +185,34 @@ the table below.
 | Behavior ID | User behavior | User locator | Strategy / composition | Inspector status | Evidence |
 |---|---|---|---|---|---|
 | `codex.behavior.user.instructions` | Instruction fallback | `<CODEX_HOME>/AGENTS.override.md`, otherwise `<CODEX_HOME>/AGENTS.md` | `codex.instructions.layering`; first non-empty global candidate precedes the project chain | Accepted only through `codex.global.instructions` below | `openai.codex.agents-md` |
-| `codex.behavior.user.config` | User configuration and MCP | `<CODEX_HOME>/config.toml`; profile files in `<CODEX_HOME>` | `codex.config.precedence`, `codex.mcp.configuration`; local clients share the host configuration | `codex.excluded.user-runtime` | `openai.codex.config-basic`, `openai.codex.mcp` |
-| `codex.behavior.user.agents` | Personal custom agents | `<CODEX_HOME>/agents/*.toml` | `codex.agents.inheritance`; custom names override built-in names and omitted fields inherit from the parent session | `codex.excluded.user-runtime` | `openai.codex.subagents` |
-| `codex.behavior.user.skills` | User skills | `$HOME/.agents/skills/<name>/SKILL.md` | `codex.skills.discovery`; available in addition to repository/admin/system skills and same-name skills are not merged | `codex.excluded.user-runtime` | `openai.codex.skills` |
-| `codex.behavior.user.hooks` | User hooks | `<CODEX_HOME>/hooks.json` and inline hooks in `<CODEX_HOME>/config.toml` | `codex.hooks.additive`; additive with project and plugin hooks | `codex.excluded.user-runtime` | `openai.codex.hooks` |
-| `codex.behavior.user.rules` | User rules | `<CODEX_HOME>/rules/*.rules` | `codex.rules.resolution`; scanned as an active user config layer | `codex.excluded.user-runtime` | `openai.codex.rules` |
-| `codex.behavior.user.plugins` | Personal marketplace and plugins | `$HOME/.agents/plugins/marketplace.json`; installed/cache paths under Codex state | `codex.plugins.activation`; catalog, installation, enablement, and cached copy are separate states | `codex.excluded.user-runtime` | `openai.codex.plugins` |
-| `codex.behavior.user.prompts` | Deprecated custom prompts | `<CODEX_HOME>/prompts/*.md` | Explicit invocation only; deprecated in favor of skills | `codex.excluded.user-runtime` | `openai.codex.custom-prompts` |
+| `codex.behavior.user.config` | User configuration and MCP | `<CODEX_HOME>/config.toml`; profile files in `<CODEX_HOME>` | `codex.config.precedence`, `codex.mcp.configuration`; local clients share the host configuration | Accepted by `codex.global.config`, `codex.global.settings`, and `codex.global.hooks.inline` below | `openai.codex.config-basic`, `openai.codex.mcp` |
+| `codex.behavior.user.agents` | Personal custom agents | `<CODEX_HOME>/agents/*.toml` | `codex.agents.inheritance`; custom names override built-in names and omitted fields inherit from the parent session | Accepted by `codex.global.agent` below | `openai.codex.subagents` |
+| `codex.behavior.user.skills` | User skills | `$HOME/.agents/skills/<name>/SKILL.md` | `codex.skills.discovery`; available in addition to repository/admin/system skills and same-name skills are not merged | Accepted by `codex.global.agents-home.skill` below, at the consented shared agent home (FR-045) | `openai.codex.skills` |
+| `codex.behavior.user.hooks` | User hooks | `<CODEX_HOME>/hooks.json` and inline hooks in `<CODEX_HOME>/config.toml` | `codex.hooks.additive`; additive with project and plugin hooks | Accepted by `codex.global.hooks` and `codex.global.hooks.inline` below | `openai.codex.hooks` |
+| `codex.behavior.user.rules` | User rules | `<CODEX_HOME>/rules/*.rules` | `codex.rules.resolution`; scanned as an active user config layer | Accepted by `codex.global.rules` below | `openai.codex.rules` |
+| `codex.behavior.user.plugins` | Personal marketplace and plugins | `$HOME/.agents/plugins/marketplace.json`; installed copies under `<CODEX_HOME>/plugins/` | `codex.plugins.activation`; catalog, installation, enablement, and cached copy are separate states | The personal marketplace is accepted by `codex.global.agents-home.marketplace` below (FR-045); installed copies stay `codex.excluded.user-runtime` | `openai.codex.plugins` |
+| `codex.behavior.user.prompts` | Deprecated custom prompts | `<CODEX_HOME>/prompts/*.md` | Explicit invocation only; deprecated in favor of skills | Accepted by `codex.global.prompts` below; the surface stays deprecated | `openai.codex.custom-prompts` |
 | `codex.behavior.user.memories` | Local memories | `<CODEX_HOME>/memories/` and related local state | Local-client memory controls; not a repository customization file | `codex.excluded.user-runtime` | `openai.codex.memories` |
 
 ## Inspector Global rule
 
 Global inspection is disabled at session start. After the exact consent flow required by
-FR-013 through FR-018, Codex may read only this rule:
+FR-013 through FR-018 and FR-045, Codex may read only these rules — the rows below the
+consented `CODEX_HOME` boundary, and the rows below the consented shared agent home that
+FR-045 names:
 
 | Rule ID | Boundary base | Selector program and selection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
 | `codex.global.instructions` | Exact consented captured `CODEX_HOME`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.codex` | `['AGENTS.override.md']`, then `['AGENTS.md']` | `exact`; first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | `openai.codex.agents-md` |
+| `codex.global.config` | The same exact consented `CODEX_HOME` boundary | `['config.toml']` | `exact` at the boundary | `static-candidate` | `codex.behavior.user.config` | FR-013, FR-014, FR-017, FR-018, QR-005 | The user config carrier's `MCP` recognition; three rules admit the one file and the walk merges them into one candidate read once, exactly as the Repository trio does | `openai.codex.config-basic`, `openai.codex.mcp` |
+| `codex.global.settings` | The same exact consented `CODEX_HOME` boundary | `['config.toml']` | `exact`, over the selector `codex.global.config` authors | `static-candidate` | `codex.behavior.user.config` | FR-013, FR-014, FR-017, FR-018, QR-005 | The same carrier's `settings/config` recognition | `openai.codex.config-basic` |
+| `codex.global.hooks.inline` | The same exact consented `CODEX_HOME` boundary | `['config.toml']` | `exact`, over the selector `codex.global.config` authors; the carrier's inline `[hooks]` table is a `hook` recognition of that one file | `static-candidate` | `codex.behavior.user.config`, `codex.behavior.user.hooks` | FR-013, FR-014, FR-017, FR-018, QR-005 | Same-layer standalone and inline hook occurrences remain distinct provenances | `openai.codex.hooks` |
+| `codex.global.hooks` | The same exact consented `CODEX_HOME` boundary | `['hooks.json']` | `exact` at the boundary | `static-candidate` | `codex.behavior.user.hooks` | FR-013, FR-014, FR-017, FR-018, QR-005 | The user layer's standalone hook file | `openai.codex.hooks` |
+| `codex.global.agent` | The same exact consented `CODEX_HOME` boundary | `['agents', /\.toml$/u]` | `direct-child` of the boundary's `agents/`; the page names `~/.codex/agents/` for personal agents and documents no nested search | `static-candidate` | `codex.behavior.user.agents` | FR-013, FR-014, FR-017, FR-018, QR-005 | Custom names override built-in names; omitted fields inherit from the parent session | `openai.codex.subagents` |
+| `codex.global.rules` | The same exact consented `CODEX_HOME` boundary | `['rules', /\.rules$/u]` | `direct-child` of the boundary's `rules/`; recognized as `permissions` exactly as the Repository rule is, because the file decides which commands may run outside the sandbox | `static-candidate` | `codex.behavior.user.rules` | FR-013, FR-014, FR-017, FR-018, QR-005 | The startup scan of the user layer's `rules/`; nested recursion stays unspecified, so no recursive step | `openai.codex.rules` |
+| `codex.global.prompts` | The same exact consented `CODEX_HOME` boundary | `['prompts', /\.md$/u]` | `direct-child` of the boundary's `prompts/`; explicit invocation only | `static-candidate` | `codex.behavior.user.prompts` | FR-013, FR-014, FR-017, FR-018, QR-005 | The documented surface is deprecated in favor of skills, and a deprecated surface a tool still reads is one this product still shows | `openai.codex.custom-prompts` |
+| `codex.global.agents-home.skill` | The consented shared agent home: `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.agents`, which no documented setting relocates (FR-045) | `['skills', ANY_NAME, 'SKILL.md']` | `direct-child` then `exact`; the skill name is exactly one direct child | `static-candidate` | `codex.behavior.user.skills` | FR-013, FR-014, FR-018, FR-045, QR-005 | The documented `$HOME/.agents/skills` personal location; Copilot documents the same path, so an admitted file carries both tools' recognitions | `openai.codex.skills` |
+| `codex.global.agents-home.marketplace` | The consented shared agent home: `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.agents`, which no documented setting relocates (FR-045) | `['plugins', 'marketplace.json']` | `exact` below the shared home | `static-candidate` | `codex.behavior.user.plugins` | FR-013, FR-014, FR-018, FR-045, QR-005 | The documented personal marketplace catalog; the plugins it names, and installed copies under `<CODEX_HOME>/plugins/`, stay excluded exactly as Repository plugin bodies are | `openai.codex.plugins` |
 
 The immutable plan uses the closed `codex-global-first-non-empty` policy with those two
 exact selectors in that order. A safely established non-empty override short-circuits; only
@@ -224,9 +237,8 @@ publishes the selected non-empty file, never both.
 A present empty or relative `CODEX_HOME` override, or a root that is missing or not a
 readable directory, does not fall back silently; the tool is recorded absent or failed
 (FR-014). An unexpected failure during root selection or admission fails the attempt as
-an ordinary error. User config, agents, skills, hooks, rules, MCP, plugins, prompts,
-memories, credentials, logs, sessions, and caches remain excluded even when they are under
-the same directory.
+an ordinary error. User memories, credentials, logs, sessions, caches, and installed plugin copies remain
+excluded even when they are under the same directory.
 
 ## Relationship-only and excluded groups
 
@@ -237,13 +249,13 @@ component declarations, hook commands, server-provided MCP instructions, and par
 custom-agent context. They never authorize a target read.
 
 For the grouped User exclusion, the rule's own assessment is `documented` with no
-lifecycle claim. Each referenced experimental rule and deprecated prompt keeps its own
+lifecycle claim. Each referenced subject keeps its own
 maintenance record with its own qualifiers; nothing flattens them into the exclusion rule
 or a union, and no assessment array exists to carry them together.
 
 | Rule ID | Class | Excluded group | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.excluded.user-runtime` | `excluded` | Every User surface above except the consented instruction fallback; managed/system configuration and local state | `codex.behavior.user.agents`, `codex.behavior.user.config`, `codex.behavior.user.hooks`, `codex.behavior.user.memories`, `codex.behavior.user.plugins`, `codex.behavior.user.prompts`, `codex.behavior.user.rules`, `codex.behavior.user.skills` | FR-013, FR-014, FR-017, FR-018, QR-001, QR-004, QR-005 | `codex.agents.inheritance`, `codex.config.precedence`, `codex.hooks.additive`, `codex.mcp.configuration`, `codex.plugins.activation`, `codex.rules.resolution`, `codex.skills.discovery` | `documented` | `openai.codex.config-basic`, `openai.codex.custom-prompts`, `openai.codex.hooks`, `openai.codex.mcp`, `openai.codex.memories`, `openai.codex.plugins`, `openai.codex.rules`, `openai.codex.skills`, `openai.codex.subagents` |
+| `codex.excluded.user-runtime` | `excluded` | The User surfaces above that no Global rule admits: local memory state, installed plugin copies under `<CODEX_HOME>/plugins/`, and managed/system configuration and local state | `codex.behavior.user.memories`, `codex.behavior.user.plugins` | FR-013, FR-014, FR-017, FR-018, QR-001, QR-004, QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.memories`, `openai.codex.plugins` |
 | `codex.excluded.plugin-files` | `excluded` | Plugin skills, MCP, apps, hooks, assets, scripts, and installed/cache copies | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace`, `codex.behavior.user.plugins` | FR-003, FR-004, FR-024, QR-001, QR-004, QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
 
 ## Normative initial-release presentation allowlist
@@ -288,11 +300,12 @@ authority.
 | `instructions` | — | An accepted static, configured-fallback, or Global instruction file; an authored reference-looking token is source text, never an extracted reference. Path-derived scope/order and byte-budget facts are typed state, not metadata |
 | `permissions` | `runtime-reference` | Exact argument/value/item occurrences in accepted direct-child `.rules` files; comments and unlisted Starlark expressions remain source text only |
 | `skill` | `skill-resource`<br>`runtime-reference` | Exact `name` and `description` frontmatter values in an accepted `SKILL.md`; resource/script/reference targets can be relationships but are never read through those edges |
-| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported TOML value/item/map-key occurrences in an accepted `.codex/agents/*.toml`; MCP remains an inherited/carrier relationship and never becomes an agent-owned MCP recognition |
+| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported TOML value/item/map-key occurrences in an accepted agents TOML file — repository `.codex/agents/*.toml` or consented user `agents/*.toml`; MCP remains an inherited/carrier relationship and never becomes an agent-owned MCP recognition |
+| `prompt/command` | — | Exact frontmatter value/item occurrences in an accepted consented user `prompts/*.md`; the invocation name derived from the file's own name remains typed provenance, not declared metadata |
 | `hook` | `runtime-reference` | Event map keys, matcher values, and handler leaves in accepted standalone `hooks.json` or inline `[hooks]`; same-layer standalone and inline occurrences remain distinct provenances |
 | `MCP` | `runtime-reference` | Server/table names and exact supported leaf/item occurrences under `[mcp_servers.*]` on an admitted config carrier; no process environment value is substituted |
 | `settings/config` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Exact supported TOML value/item/map-key occurrences on the admitted config carrier; MCP and Hook declarations belong only to their separate recognition rows, and configured target paths never gain read authority |
-| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact metadata and component/presentation leaf/item occurrences in an accepted `.codex-plugin/plugin.json`, and exact catalog/plugin-entry leaf/item occurrences in an accepted Repository-root marketplace file, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone may seed the closed local-manifest derivation; an omitted `hooks` field may emit only the registry-defined documented-default component relationship |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact metadata and component/presentation leaf/item occurrences in an accepted `.codex-plugin/plugin.json`, and exact catalog/plugin-entry leaf/item occurrences in an accepted marketplace file — a Repository-root catalog or the consented shared agent home's `plugins/marketplace.json` — which carries the plugin names its entries resolve; `marketplace.plugin.source` alone may seed the closed local-manifest derivation; an omitted `hooks` field may emit only the registry-defined documented-default component relationship |
 | `skill metadata` | `skill-resource`<br>`runtime-reference` | Exact supported YAML leaf/item occurrences in a derived `agents/openai.yaml`; seed provenance is typed state and the file never inherits the owning `SKILL.md` metadata identity |
 
 The `plugin` row's manifest clauses — occurrences in an accepted `.codex-plugin/plugin.json`,
@@ -303,8 +316,9 @@ below is, and changing either is a digest-recorded change under the official-sou
 contract's stop-and-regenerate rule. What the row governs today is its other half: the
 catalog entry's own occurrences.
 
-No Codex recognition uses the shared `prompt/command` or `output style` kind in the
-initial release. No initial-release recognition uses the `skill metadata` kind either:
+No Codex recognition uses the shared `output style` kind in the initial release; the
+`prompt/command` kind belongs to the consented user `prompts/*.md` recognition alone.
+No initial-release recognition uses the `skill metadata` kind either:
 the sibling `agents/openai.yaml` is published as its owning skill's census companion
 rather than admitted as a candidate (§ Derived Repository rules), so the `skill metadata`
 row above is frozen, digest-recorded design input with no consumer. Consuming or removing

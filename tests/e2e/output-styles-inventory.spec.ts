@@ -126,7 +126,7 @@ test.describe('output styles under the project .claude/output-styles directory',
     const paths = await page.getByRole('tabpanel').locator('.aci-item .aci-path').allInnerTexts();
     expect(paths).toEqual(['.claude/CLAUDE.md']);
     const instructionsText = await page.getByRole('tabpanel').innerText();
-    expect(instructionsText).not.toContain('/output-styles/');
+    expect(instructionsText).not.toContain('/output-styles/detail/repository/');
   });
 
   test('narrows the output-style rows with the tool and path filters', async ({ page }) => {

@@ -131,7 +131,7 @@ checkをすべて再実行する。
   Monaco accessible diff、narrow inline alternative、`S6` comparison対象fileのowning sequenceが
   replacement generationをcommitした後のstale/removed comparison、およびどちらのcomparison対象fileも
   所有しないsequenceのcommit後もvalidのままのcomparison、
-  `S7` Global disabled、selectorを持たないfixed 3-toolのsession-wide consent pending、admit済みsubsetを1 batchでscanして
+  `S7` Global disabled、selectorを持たないfixed 4-memberのsession-wide consent pending、admit済みsubsetを1 batchでscanして
   正確に1つのatomic Global generationとしてcompleteする状態、予期しないfailureによるtransaction全体abort、およびrequest前
   full client-data purge、greater content epoch、non-nullな全inspection-data fence、control-onlyのdraining/failed/retry/join state、
   unconfirmed cleanupのrestart next step、terminal recovery、Repository generationをunchangedのままGlobal sequence全体を

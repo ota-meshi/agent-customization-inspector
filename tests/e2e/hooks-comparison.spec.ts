@@ -177,7 +177,7 @@ test.describe('the hook declaration comparison', () => {
     await page
       .getByRole('link', { name: `Compare this event's declarations: ${SHARED_EVENT}` })
       .click();
-    await expect(page).toHaveURL(/\/hooks\/compare\?/u);
+    await expect(page).toHaveURL(/\/hooks\/compare\/repository\?/u);
     await expect(page).toHaveURL(new RegExp(`event=${SHARED_EVENT}`, 'u'));
     await expect(page.getByRole('heading', { name: 'Compare hook declarations' })).toBeFocused();
 
@@ -234,7 +234,7 @@ test.describe('the hook declaration comparison', () => {
     // through that event's own entry link.
     await page.goto(
       new URL(
-        `/hooks/compare?event=${SHARED_EVENT}&left=.claude%2Fsettings.json&right=.codex%2Fhooks.json`,
+        `/hooks/compare/repository?event=${SHARED_EVENT}&leftSource=repository&left=.claude%2Fsettings.json&rightSource=repository&right=.codex%2Fhooks.json`,
         host.origin,
       ).toString(),
     );
@@ -260,10 +260,12 @@ test.describe('the hook declaration comparison', () => {
     );
     // The other side's own file is unselectable — the two sides would hold one
     // file (FR-011).
+    // The pickers key their options by offered position rather than by path
+    // (an identity is two values), so the option is found by its label.
     await expect(
       page
         .getByLabel('First hook file', { exact: true })
-        .locator('option[value=".claude/settings.local.json"]'),
+        .locator('option', { hasText: '.claude/settings.local.json' }),
     ).toBeDisabled();
   });
 
@@ -272,7 +274,7 @@ test.describe('the hook declaration comparison', () => {
     // its own row, not this one (FR-011).
     await page.goto(
       new URL(
-        `/hooks/compare?event=${SHARED_EVENT}&left=.codex%2Fhooks.json&right=.github%2Fhooks%2Fformat.json`,
+        `/hooks/compare/repository?event=${SHARED_EVENT}&leftSource=repository&left=.codex%2Fhooks.json&rightSource=repository&right=.github%2Fhooks%2Fformat.json`,
         host.origin,
       ).toString(),
     );
@@ -286,7 +288,7 @@ test.describe('the hook declaration comparison', () => {
     // no hook comparison can name it.
     await page.goto(
       new URL(
-        `/hooks/compare?event=${SHARED_EVENT}&left=.codex%2Fhooks.json&right=.claude%2Fagents%2Freviewer.md`,
+        `/hooks/compare/repository?event=${SHARED_EVENT}&leftSource=repository&left=.codex%2Fhooks.json&rightSource=repository&right=.claude%2Fagents%2Freviewer.md`,
         host.origin,
       ).toString(),
     );
@@ -301,7 +303,7 @@ test.describe('the hook declaration comparison', () => {
     // (FR-009).
     await page.goto(
       new URL(
-        `/hooks/compare?event=${SHARED_EVENT}&left=.claude%2Fsettings.json&right=.claude%2Fhooks%2Fannounce.sh`,
+        `/hooks/compare/repository?event=${SHARED_EVENT}&leftSource=repository&left=.claude%2Fsettings.json&rightSource=repository&right=.claude%2Fhooks%2Fannounce.sh`,
         host.origin,
       ).toString(),
     );
@@ -314,7 +316,7 @@ test.describe('the hook declaration comparison', () => {
   test('rejects an event no current row is, and a link with no event', async ({ page }) => {
     await page.goto(
       new URL(
-        '/hooks/compare?event=NoSuchEvent&left=.codex%2Fhooks.json&right=.claude%2Fsettings.json',
+        '/hooks/compare/repository?event=NoSuchEvent&leftSource=repository&left=.codex%2Fhooks.json&rightSource=repository&right=.claude%2Fsettings.json',
         host.origin,
       ).toString(),
     );
@@ -324,7 +326,7 @@ test.describe('the hook declaration comparison', () => {
 
     await page.goto(
       new URL(
-        '/hooks/compare?left=.codex%2Fhooks.json&right=.claude%2Fsettings.json',
+        '/hooks/compare/repository?leftSource=repository&left=.codex%2Fhooks.json&rightSource=repository&right=.claude%2Fsettings.json',
         host.origin,
       ).toString(),
     );
@@ -334,7 +336,7 @@ test.describe('the hook declaration comparison', () => {
   test('rejects the same carrier on both sides', async ({ page }) => {
     await page.goto(
       new URL(
-        `/hooks/compare?event=${SHARED_EVENT}&left=.claude%2Fsettings.json&right=.claude%2Fsettings.json`,
+        `/hooks/compare/repository?event=${SHARED_EVENT}&leftSource=repository&left=.claude%2Fsettings.json&rightSource=repository&right=.claude%2Fsettings.json`,
         host.origin,
       ).toString(),
     );
@@ -346,7 +348,7 @@ test.describe('the hook declaration comparison', () => {
   test('reaches the comparison from a carrier’s own detail page', async ({ page }) => {
     // The carrier view carries one entry link per declared event whose row
     // holds a counterpart; the event declared by one carrier alone has none.
-    await page.goto(new URL('/hooks/.codex/hooks.json', host.origin).toString());
+    await page.goto(new URL('/hooks/detail/repository/.codex/hooks.json', host.origin).toString());
     await expect(page.getByRole('heading', { name: '.codex/hooks.json' })).toBeVisible();
     await expect(
       page.getByRole('link', { name: "Compare this event's declarations: SessionStart" }),
@@ -354,7 +356,7 @@ test.describe('the hook declaration comparison', () => {
     await page
       .getByRole('link', { name: `Compare this event's declarations: ${SHARED_EVENT}` })
       .click();
-    await expect(page).toHaveURL(/\/hooks\/compare\?/u);
+    await expect(page).toHaveURL(/\/hooks\/compare\/repository\?/u);
     await expect(page).toHaveURL(new RegExp(`event=${SHARED_EVENT}`, 'u'));
     await expect(page.locator('main')).toContainText('Repository · Hook · hook file');
   });

@@ -51,6 +51,14 @@ import type {
 const LEFT_PATH = '.claude/commands/deploy.md';
 const RIGHT_PATH = '.github/prompts/deploy.prompt.md';
 
+/**
+ * One compared side as the route now addresses it: the fixture files are the
+ * repository's, so the Source token is fixed here (FR-030).
+ */
+function side(sourceRelativePath: string): { source: 'repository'; sourceRelativePath: string } {
+  return { source: 'repository', sourceRelativePath };
+}
+
 /** The name both files resolve, and therefore the row that owns the pair. */
 const SHARED_NAME = 'deploy';
 
@@ -64,7 +72,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'ready',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -123,7 +131,13 @@ function definition(
   tool: PromptDefinitionDto['tool'],
   surfaces: PromptDefinitionDto['surfaces'],
 ): PromptDefinitionDto {
-  return { sourceRelativePath, tool, surfaces, diagnosticIds: [] };
+  return {
+    sourceId: 'source-repository',
+    sourceRelativePath,
+    tool,
+    surfaces,
+    diagnosticIds: [],
+  };
 }
 
 /** Wraps a payload in the inspection-data success envelope. */
@@ -207,7 +221,15 @@ function scriptedChannel(options: {
           if (handler === undefined) {
             return Promise.reject(new Error('no detail handler scripted'));
           }
-          return Promise.resolve().then(() => handler(String(args[0])));
+          // `get-file-detail` sends one object naming both halves of the
+          // identity (FR-030); the carrier functions still send a bare path,
+          // and this double answers for whichever arrived.
+          const payload = args[0];
+          const path =
+            typeof payload === 'string'
+              ? payload
+              : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+          return Promise.resolve().then(() => handler(path));
         }
         return Promise.reject(new Error(`unexpected call: ${method}`));
       },
@@ -219,7 +241,14 @@ function scriptedChannel(options: {
 function detailCalls(calls: readonly { method: string; args: readonly unknown[] }[]): string[] {
   return calls
     .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
-    .map((call) => String(call.args[0]));
+    .map((call) => {
+      // `get-file-detail` sends one object naming both halves of the identity
+      // (FR-030); the carrier functions still send a bare path.
+      const payload = call.args[0];
+      return typeof payload === 'string'
+        ? payload
+        : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+    });
 }
 
 describe('prompt and command comparison view (T503)', () => {
@@ -230,7 +259,7 @@ describe('prompt and command comparison view (T503)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.promptComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.promptComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.promptComparison.status.value).toBe('ready');
     expect(state.promptComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
     expect(state.promptComparison.rightDetail.value?.file.sourceRelativePath).toBe(RIGHT_PATH);
@@ -248,7 +277,7 @@ describe('prompt and command comparison view (T503)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.promptComparison.open(LEFT_PATH, LEFT_PATH);
+    await state.promptComparison.open(side(LEFT_PATH), side(LEFT_PATH));
     expect(state.promptComparison.status.value).toBe('same-path');
     expect(detailCalls(scripted.calls)).toEqual([]);
     state.dispose();
@@ -261,7 +290,7 @@ describe('prompt and command comparison view (T503)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.promptComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.promptComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.promptComparison.status.value).toBe('not-readable');
     expect(state.promptComparison.unreadablePath.value).toBe(RIGHT_PATH);
     // Neither side renders: a comparison with one side is not a comparison.
@@ -280,7 +309,7 @@ describe('prompt and command comparison view (T503)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.promptComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.promptComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.promptComparison.status.value).toBe('ready');
     // A component holding the pair's content registers its disposer; the
     // adoption of a newer generation must run it synchronously with the drop
@@ -309,24 +338,29 @@ describe('prompt and command comparison view (T503)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.promptComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.promptComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.promptComparison.status.value).toBe('failed');
     expect(state.promptComparison.errorMessage.value).toContain('detail request lost');
     // The retry is the same open with the same coordinates.
-    await state.promptComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.promptComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.promptComparison.status.value).toBe('ready');
     state.dispose();
   });
 
-  it('addresses the pair by the two paths alone, each as its JSON string body', () => {
+  it('addresses the pair by the two identities alone, each path as its JSON string body', () => {
     // The kind's surface is its own route, and the pair is its whole
-    // identity: the owning name is derived from the paths, so it is not a
-    // coordinate (FR-030). Each path rides as its JSON string body — the
-    // spelling that survives a lone surrogate, which the router's own query
-    // encoding rejects (`detail-route.ts`).
-    expect(promptComparisonRouteFor(LEFT_PATH, '\udbff/x.md')).toEqual({
-      path: '/prompts-and-commands/compare',
-      query: { left: LEFT_PATH, right: '\\udbff/x.md' },
+    // identity: each side's Source and path, the owning name derived from
+    // them rather than carried (FR-030). Each path rides as its JSON string
+    // body — the spelling that survives a lone surrogate, which the router's
+    // own query encoding rejects (`detail-route.ts`).
+    expect(promptComparisonRouteFor('repository', side(LEFT_PATH), side('\udbff/x.md'))).toEqual({
+      path: '/prompts-and-commands/compare/repository',
+      query: {
+        leftSource: 'repository',
+        left: LEFT_PATH,
+        rightSource: 'repository',
+        right: '\\udbff/x.md',
+      },
     });
   });
 });

@@ -33,7 +33,7 @@ ContractRegistry（immutable、contract-versioned）
 SessionSnapshot
 ├── Source（Repositoryを正確に1つ）
 │   ├── SourceBoundary（正確に1つ）
-├── Source（Globalを0から3つ。support対象toolごとに最大1つ）
+├── Source（Globalを0から4つ。memberごとに最大1つ）
 │   ├── SourceBoundary（admit済みtool homeを正確に1つ） → owning GlobalToolControl
 ├── ScanAttempt（queuedを0以上、runningを最大1つ。commit前は非公開）
 ├── RepositoryScanGeneration（最後にcommit済みのものを正確に1つ。Repository sequenceはbootstrapから存在）
@@ -71,7 +71,7 @@ BrowserState
 |---|---|---|---|
 | `sessionId` | opaque string | DTO | Processごとにrandom。Non-authorizingなsession identityのみで、access-control secretではない |
 | `createdAt` | `UtcTimestamp` | DTO | Process開始時刻 |
-| `sources` | `Source[]` | DTO | Repositoryを正確に1つ、Globalを0から3つ。Copilot、Claude、Codexごとに最大1つ |
+| `sources` | `Source[]` | DTO | Repositoryを正確に1つ、Globalを0から4つ。member — Copilot、Claude、Codex、共有agent home（FR-045） — ごとに最大1つ |
 | `repositoryGeneration` | `GenerationNumber` | DTO | Repository sequenceの最後にcommit済みsnapshotを識別し、Repository sequenceのcompleteまたはpartialの正常commit時だけ単調増加 |
 | `globalGeneration` | `GenerationNumber \| null` | DTO | Global sequenceの最後にcommit済みsnapshotを識別する。Global sequenceが存在しない間（Global inspectionがdisabledまたは未enable）はちょうどnull。1つのsequence内で単調増加し、disable後に新規作成したsequenceはincrement済み`globalContentEpoch`のもとで`1`から再開する |
 | `snapshotState` | `current \| stale-after-fatal-rescan` | DTO | `staleFailures`から派生し、未解決の明示rescan失敗が1件以上ある間だけstale |
@@ -161,7 +161,7 @@ Global disableだけは、asynchronous drain完了前にbarrier acceptanceがpub
 | Field | Type | Rule |
 |---|---|---|
 | `sourceId` | opaque ASCII string | Server生成でprocess lifetime中はstable |
-| `kind` | `repository \| global` | Repository Sourceを正確に1つ、Global Sourceを0から3つ |
+| `kind` | `repository \| global` | Repository Sourceを正確に1つ、Global Sourceを0から4つ |
 | `tool` | `copilot \| claude \| codex \| null` | Repositoryはnullと組み合わせる。各Global Sourceはsupport対象toolを正確に1つ持ち、2つのGlobal Sourceが同じtoolを共有しない |
 | `enabled` | boolean | Repositoryとpublishedな全Global Sourceはtrue。AbsenceはそのtoolにSource未公開であることだけを表し、disabled/pending/retryable control stateは`globalControl`で区別する。Disabling sourceはatomic removalまでtrue |
 | `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | 後述transitionに従う。Publicな`partial`は、traversal完了後に1つ以上のfileがfile-confined outcome（unreadable、admit済みcandidateのbinary content、parse failure — censusが列挙したcompanionのbinary bytesはその通常の事実であり、何もconfineしない。FR-025）だけを持ち、影響のない全fileがcompleteであるgenerationのcommitだけを示す。`failed`は最新attemptが失敗し、最後のcommit済みsnapshotが利用可能であることを示す。Fatalな明示rescanだけがsnapshotをstaleにする |
@@ -234,8 +234,8 @@ package所有fileのreadに使えるが、build outputをinspected-source fallba
 
 New unconsented previewを作るrequestごとに、operation-local captureを1つ作る。Hostはenvironment propertyを
 `COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`の固定順で正確に1回ずつreadする。CaptureしたJavaScript
-`undefined`だけをabsentとし、`''`を含む全stringをpresent overrideとする。1 property以上がabsentなら、そのrequestでimport済み
-`node:os.homedir()`を正確に1回callし、そのexact return stringを`capturedHomedir`として保持する。Host自身は`HOME`、
+`undefined`だけをabsentとし、`''`を含む全stringをpresent overrideとする。そのrequestでimport済み
+`node:os.homedir()`を正確に1回callし — 共有agent homeは常にそこからderiveされる — 、そのexact return stringを`capturedHomedir`として保持する。Host自身は`HOME`、
 `USERPROFILE`その他のplatform home inputをread/選択せず、そのplatform behaviorはNode.js APIが所有する。
 
 Fixed mappingは、Copilot → `COPILOT_HOME`または`node:path.join(capturedHomedir, '.copilot')`、Claude →
@@ -245,7 +245,7 @@ Fixed mappingは、Copilot → `COPILOT_HOME`または`node:path.join(capturedHo
 resultもstringのままclosed lexical input stateを受け、別fallbackを行わない。Environment access、`homedir()`、join、retention、
 presentation encoding、preview serializationがthrow/rejectするかrequired stringを作れない場合、
 operation-local captureをdiscardし、session API requestはacceptance前にそのerrorで通常どおり失敗する。Preview、`scanRequestId`、
-consent、root、Source、authorityを作らない。正常previewがcaptureと3 exact rootをfreezeし、active consent retrievalでは繰り返さない。
+consent、root、Source、authorityを作らない。正常previewがcaptureと4 exact rootをfreezeし、active consent retrievalでは繰り返さない。
 
 ### GlobalConsentPreview
 
@@ -258,8 +258,8 @@ Session APIのconsent routeは、正確に1つの`GlobalRootInputCapture`からl
 | `previewEpoch` | non-negative safe integer | Internalでserializeしない。New captured previewごとにincrementし、opaque IDをorder valueにせずreplacement/revalidationをbindする |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `traversalPlanVersion` | date string | 同梱typed traversal-plan setのversion。`allowlistVersion`とのこのrecordレベルのpairが、previewがbindするclosed selection policyとcanonical selector programを特定する |
-| `entries` | 正確に3 tool entry | Copilot、Claude、Codexの固定順 |
-| `entries[].tool` | tool enum | Closed value |
+| `entries` | 正確に4 member entry | Copilot、Claude、Codex、共有agent homeの固定順 |
+| `entries[].member` | member enum（`copilot \| claude \| codex \| agents`） | Closed value。`agents`は共有agent home（FR-045） |
 | `entries[].origin` | `default-home \| environment` | Invalidでもenvironment entryを使い、暗黙fallbackしない |
 | `entries[].lexicalRoot` | exact raw string | Internalのみ。Escape前のenvironment/default valueを保持し、log/serializeしない |
 | `entries[].displayRoot` | ASCII `RootPresentationEncoding` string | `lexicalRoot`のexact deterministic encoding。Owning Sourceが存在する前にoriginを持ち、`SourceRelativePath`、inventory-item locator、canonicalization claim、read authorityではない |
@@ -280,7 +280,7 @@ canonicalization、root creation、readなしでそのrequestを通常どおり�
 escapeの逆変換やUnicode normalizationには依存しない。
 Invalid environment valueはescapeして
 表示するが、許可pathにnormalizeしない。Present-empty、relative、invalid entryは固定preview表示だけを使い、retained `Diagnostic`を
-作らない。Confirmation後は3 entryすべてが`GlobalToolControl`を受け取る。`eligible` entryだけがconsent後admissionへ進み、
+作らない。Confirmation後は4 entryすべてが`GlobalToolControl`を受け取る。`eligible` entryだけがconsent後admissionへ進み、
 後でtool failure Diagnosticを作り得る。Lexical-ineligible controlはpath-free rejected controlとなり、固定reasonは
 frozen previewから表示する。
 Absolute spellingは通常のhome外でもすべて`eligible`とし、その場所だけを理由にrejectしたりconsent前I/Oを許可したり
@@ -300,13 +300,13 @@ consent表示を復元する唯一のpathであり、in-flight enableが到達�
 |---|---|---|
 | `allowlistVersion` | date string | 表示したcurrent contractと一致すること |
 | `previewId` | opaque string | Current in-memory previewと完全一致すること |
-| `confirmedTools` | exact `[copilot, claude, codex]` | 凍結済み3 entryすべてと一致するserver-derived固定set。Requestはselectorを持たずnarrowできない |
+| `confirmedTools` | exact `[copilot, claude, codex, agents]` | 凍結済み4 entryすべてと一致するserver-derived固定member set。Requestはselectorを持たずnarrowできない |
 | `confirmedAt` | `UtcTimestamp` | Memoryのみ |
-| `active` | boolean | Global inspection disable時にclearし、tool固有Global Sourceをすべて除去 |
+| `active` | boolean | Global inspection disable時にclearし、member Global Sourceをすべて除去 |
 
 Consentはallowlist contractに表示したpathだけを許可する。隣接settings、credential、state、skill、
 plugin、任意env pathは許可しない。
-Confirmation commandはtool listを持たず、serverはfrozen previewを検証後、lexicalにinvalidと判明済みのentryも含む3 tool
+Confirmation commandはmember listを持たず、serverはfrozen previewを検証後、lexicalにinvalidと判明済みのentryも含む4 member
 すべてをclosed orderで導出する。Retry時のoperation work setは`retryableTools`へprojectされたcontrol、すなわちnon-pending unpublished
 admitted controlと`retryDisposition: same-preview`のrejected controlだけから導出する。Lexical `new-preview-required` controlはfrozen preview下で除外し、clientは
 tool選択でconsentを変更できない。
@@ -326,7 +326,7 @@ Global sequenceのold file/detail/comparison/editor stateだけを無効化す�
 には触れない。別preview/root
 には先にGlobal調査のdisableが必要で、retryable toolがないrequestはclosed conflict `no-retryable-global-tool`として拒否する。
 
-Consent後のroot admissionは0から3 toolをadmitできる。Serialized coordinatorはconsentをactivateし、admitted
+Consent後のroot admissionは0から4 memberをadmitできる。Serialized coordinatorはconsentをactivateし、admitted
 subset全体に最大1つのprovisional batch scanを作る。Lexical-invalid entry、およびmissingまたはreadable directoryでない
 rootはそのtoolだけに影響する。予期しないthrow/rejectionはすべてsession API boundaryへpropagateし、
 transaction全体をabortしてprovisional subsetを一切publishしない。全toolが決定的にrejectされた場合もconsentはactiveのまま、
@@ -341,7 +341,7 @@ all-rejected retryではgenerationをcommitせず、既存SourceとそのIDを�
 |---|---|---|
 | `tool` | tool enum | Consentがactiveな間、support対象toolごとに正確に1つ存在する |
 | `previewId` | opaque string | Active frozen previewを参照し、in-place変更不可 |
-| `state` | `unvalidated \| rejected \| admitted \| published` | Operation-localなprovisional control 3件はすべて`unvalidated`から始まるが、そのstateをactiveな`GlobalControlView`へserializeしない。Lexical-ineligible entryはfilesystem I/Oなしでrejected、`admitted`はreadable-directory admissionに合格したがSource未公開、`published`はSourceを正確に1つ持つ |
+| `state` | `unvalidated \| rejected \| admitted \| published` | Operation-localなprovisional control 4件はすべて`unvalidated`から始まるが、そのstateをactiveな`GlobalControlView`へserializeしない。Lexical-ineligible entryはfilesystem I/Oなしでrejected、`admitted`はreadable-directory admissionに合格したがSource未公開、`published`はSourceを正確に1つ持つ |
 | `sourceId` | opaque IDまたはnull | Root admission成功後だけallocateし、Source commitまではinternal。Admissionをやり直す場合は破棄 |
 | `failureCode` | closed reason codeまたはnull | そのtoolが失敗しpublished Sourceを持たない間だけnon-null。Lexicalなrejection reasonは正確に`present-empty \| relative \| invalid`、missingまたはreadable directoryでないrootは正確に`root-unreadable`、consent後の決定的scan failureは自身のreasonを持ち、いずれもpath/environment valueを含まない。これがfailure自体である — clientはそのcodeが名指す文を描画し、Diagnosticが言い直すことはない |
 | `retryDisposition` | `same-preview \| new-preview-required \| null` | `rejected`以外はnull。Lexical reasonは正確に`new-preview-required`、決定的なconsent後admission/initial-scan reasonはすべて`same-preview` |
@@ -367,7 +367,7 @@ failed `batchStatus`へfailed requestのerrorを1回だけ記録する。Source 
 |---|---|---|
 | `state` | `active \| disabling` | Priority barrier受理時に`disabling`となり、single commitでfieldがnullになるまで維持 |
 | `previewId` | exact 43-character base64url string | Activeな256-bit `GlobalConsentPreview.previewId`と一致するopaque lookup referenceで、filesystem pathでもauthorityの付与でもない |
-| `confirmedTools` | exact `[copilot, claude, codex]` | Fixed all-tools consent setで、clientから選択しない |
+| `confirmedTools` | exact `[copilot, claude, codex, agents]` | Fixed all-members consent setで、clientから選択しない |
 | `pendingTools` | sort済みtool enum[] | Atomicなbatch acceptance後だけ、1 accepted subset scanが所有するadmitted tool。Initial/retry validation/admissionはoperation-localかつunobservable。Cancellation開始後の`disabling`中はnull `batchStatus`とempty |
 | `batchStatus` | `GlobalBatchStatus \| null` | Accepted admitted-subset queueingからterminal success/failureまでnon-null。Fresh snapshot/lost-acceptance-response recovery用にpromote済み`scanRequestId`を保持 |
 | `retryableTools` | sort済みtool enum[] | `active`中、non-pending unpublished `admitted` controlと`retryDisposition: same-preview`の`rejected` controlを正確に含む。Operation-local retry validation中はexact pre-operation projectionを維持し、lexical `new-preview-required` controlを除外する。`unvalidated`はnon-serializedなoperation-local workだけに存在し、`disabling`中はempty |
@@ -416,13 +416,13 @@ retained errorをclearする。Repository operationとpublish済みSourceのresc
 | `commandEpoch` | non-negative integer | 受理時のcoordinator値をcaptureし、全async continuationで一致を要求 |
 | `previewId` | opaque string | Operation全体でfrozen consent previewと一致 |
 | `previewEpoch` | non-negative safe integer | Registration時にexact preview objectからcaptureし、全async boundary後とterminal commit前にobject identityとともにrevalidate |
-| `tools` | non-emptyなsort済みtool enum[] | Initial enableではexact fixed 3-tool set、retryではcomplete server-derived `retryableTools` subset。Clientから供給またはnarrowしない |
+| `tools` | non-emptyなsort済みmember enum[] | Initial enableではexact fixed 4-member set、retryではcomplete server-derived `retryableTools` subset。Clientから供給またはnarrowしない |
 | `scanRequestId` | opaque ASCII stringまたはnull | Rootを1つ以上admitして単一subset scanをacceptした場合だけ正確に1回allocateし、そのbatchとcommitする1つのGlobal generationで共有する |
 | `status` | `waiting \| validating \| admitting \| queueing-batch \| draining \| cancelled \| complete` | Disableがabortすると`draining`になり、以後new authority/jobをpublishできない |
 | `responseDisposition` | `unset \| queued \| active-no-job \| global-disable-pending` | Coordinator linearization pointで正確に1回選択し、`queued`は1つのatomic admitted-subset jobを表す |
 
-Initial enableは同じcoordinator lock下でcommandを登録してexact current preview object/epochをfreezeするが、provisional consent、3件のcontrol、candidate ID、全admission outcomeを
-operation-localかつ観測不能に保ち、3 entryすべての決定的validationが終わる前に`globalControl`を作成せず
+Initial enableは同じcoordinator lock下でcommandを登録してexact current preview object/epochをfreezeするが、provisional consent、4件のcontrol、candidate ID、全admission outcomeを
+operation-localかつ観測不能に保ち、4 entryすべての決定的validationが終わる前に`globalControl`を作成せず
 `pendingTools`も変更しない。Registered中に見えるのはauthority-freeな`globalEnableInProgress { kind: 'initial-enable', operationId, previewId }`
 coordinator projectionだけで、partial tool outcomeを公開せず、operation unregisterまたはatomicな`globalControl`作成時に消える。Retryはexisting active consentに対してcommandを登録し、mutation前のcontrol、failed `batchStatus`、
 diagnostic、pending stateをsnapshotしてauthority-freeな`globalEnableInProgress { kind: 'retry', operationId, previewId }` projectionだけをpublishする。
@@ -615,7 +615,7 @@ relationship targetのopen、InspectorのRepository/Global sourceのmergeはで�
 
 | Field | Type | Rule |
 |---|---|---|
-| `base` | 正確な1 Source-boundary descriptor | Repositoryまたはnamed consent済みtool固有Global boundary。Selectorから推測しない |
+| `base` | 正確な1 Source-boundary descriptor | Repositoryまたはnamed consent済みmember Global boundary。Selectorから推測しない |
 | `selectors` | non-emptyなordered uniqueなselector program（`MatcherSegment[][]`） | 1 static rule所有のalternative。各programはSource rootに相対なclosed ordered programで、final tokenはregular fileを表す |
 | `MatcherSegment` | exact discriminated union | `{ kind: 'literal', value: NonEmptyMatcherLiteralSegment }`、`{ kind: 'regex', pattern: RegExp }`、`{ kind: 'recursive-directories' }`。Executable glob、implicit discriminator、extra fieldは不可 |
 
@@ -747,7 +747,7 @@ viewだけをinvalidateし、他sequenceのstateを決して変更しない。Cr
 |---|---|---|
 | `generation` | `GenerationNumber` | 自sequence内でuniqueかつmonotonic。`0`はRepository sequenceだけに存在してbootstrap専用とし、Global sequenceを作るcommitは正確に`1` — Global sequenceにgeneration 0はない |
 | `baseGeneration` | `GenerationNumber` | Serialized transaction開始時の同一sequenceの最後にcommit済みgeneration。Bootstrapとsequenceを作るGlobal enable commitでは`0` |
-| `scannedSourceIds` | sort済みopaque source ID[] | Repository/per-Source Global rescanでは1件、initial/retry Global batchでは1〜3件、bootstrapではempty |
+| `scannedSourceIds` | sort済みopaque source ID[] | Repository/per-Source Global rescanでは1件、initial/retry Global batchでは1〜4件、bootstrapではempty |
 | `startedAt` / `finishedAt` | `UtcTimestamp` | Commit済みgenerationでは両方必須。In-flight timingは`ScanAttempt`/`ScanProgress`に属する |
 | `outcome` | `complete \| partial` | `partial`はClosed Scan Publication Outcomes tableのfile-confined outcomeだけを意味する。すなわちtraversalが完了し、1つ以上のfileがfile-confined outcome（unreadable、admit済みcandidateのbinary content、parse failure — censusが列挙したcompanionのbinary bytesはその通常の事実であり、何もconfineしない。FR-025）だけを持ち、影響のない全fileがcompleteである。`utf-8-replaced`はcompleteで、throw/rejectされたattemptはgenerationにしない |
 | `files` | `CustomizationFile[]` | 所属sequenceの全enabled Sourceを含む。Source、Source相対Path、IDの決定的順序は、読み手がこのlistを受け取る唯一の場所である公開snapshot projectionが確立し、保持されるassembly順はそれ自体の契約を持たない |
@@ -837,7 +837,7 @@ commitを跨いで安定し、per-attemptのrecord identity（recognitionとdiag
 `StaleSourceFailure`と参照先failureだけをclearし、無関係な全Sourceのentryとfailureをcarryし、そのsequenceの
 generation-scoped comparison/editor stateをclearする。Commitは他sequenceのgenerationやclient stateを決して
 変更・invalidateしない。`remove-active-state` Global disableはscan transactionではない。そのterminal commitは
-Global sequence全体 — commit済みgeneration、全tool固有Global graph、各stale-failure entry/diagnostic pair — を
+Global sequence全体 — commit済みgeneration、全member Global graph、各stale-failure entry/diagnostic pair — を
 filesystem I/Oなしにdiscardし、どちらのsequenceにもgenerationをcommitしない。無関係なRepository pairは残る。
 `cleanup-only` disableはoperation-local/frozen control stateだけをremoveし、committed stateを変えずheld Repository
 commandをreleaseする。
@@ -952,7 +952,7 @@ substituteしない。
 |---|---|
 | `skill` | 1つのtoolが解決した1つのinvocation name（FR-007）: そのtool自身の文書がこのfileを呼び出す名前で、admitしたruleが答える — CodexとCopilotはauthoredなfrontmatter `name`、fileが宣言しない場合はskill directory名。Claude Codeはfrontmatterの宣言に依らずskill directoryで、nestedならroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つのtoolが1つの名前で呼び出す複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前で呼び出される1つのfileは各名前のentryで定義される。definitionはrecognitionであるため、pathで識別されるrowのrecognitionとまったく同じく、admitしたruleが依拠するdocumented behaviorのsurfaceを述べる（FR-009） |
 | `MCP` | 宣言されたserver名1つ: その名前を解決するすべての`[mcp_servers.*]`型宣言 — `(carrier, tool)`ごとに1つ — がその名前のrowの中に列挙される。したがって1つの`.codex/config.toml`は宣言したserverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の住処は明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、そのfile自身のdetailに見えるだけで、MCP rowには合流しない。各宣言は自身のfileを名指す。nameがnullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrier — rowが不明である読めない宣言block、または何も宣言しないcarrier — を保持する |
-| `instructions` | 1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである |
+| `instructions` | 1つのSourceの1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである。Sourceは行のidentityの半分であるため、repositoryの`**`とconsentされたhomeの`**`は2つの行である。一覧はその範囲の1つの見出しの下に両者を示し、Source familyごとに1つのblockへまとめる。familyとは、選択されたrepositoryと、読み手自身の設定ディレクトリである。comparisonは1つのblockのfileの組であり、consentされた2つのhomeを組にすることはあっても、2つのfamilyにまたがることはない（FR-011、FR-030）。blockが自身のfamilyを名乗るのはsessionが複数のSourceを保持する場合だけであり、fileがどのディレクトリにあったかを名乗るのはそのfamilyが複数のSourceを保持する場合だけである。1つの場合、どちらもpageの唯一の答えを繰り返すことになる |
 | `rule` | File自身: rule fileはproductがcontextへ読み込むmodularなinstructionであり、rowのkeyにできる名前も、groupingできる範囲も持たないため、そのSource相対Pathがrowの同一性である。1つのfileを2つのproductが認識する場合は1 rowに2つのrecognitionが並び、各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceを名指す |
 | `permissions` | Policyを宣言するfile自身。条件は`rule` rowと同じ。別kindである理由は主題が違うことにある: permission policyはproductがどのcommandやtoolを実行してよいかを決めるものであり、ruleはproductが読む指針である。Codexは自身のpolicyを`.codex/rules/*.rules`に綴り、Claudeは自身のmodular instructionもまた`rules`と呼ぶため、vendorが共有する語でまとめると無関係な2つの主題が1つのlistに並ぶことになる。File全体がpolicyであるfileと、より大きなdocumentの1 blockとしてpolicyを運ぶfileは、どちらも1 rowである: 違うのはdetailが公開するものであって、rowが何であるかではない。Policyを宣言しないcarrierはrowにならない — documentの残りはそれを所有するrecognitionであり、rowにすれば作者が書いていないpolicyを述べることになる |
 | `prompt/command` | 読み手が起動する名前1つであり、条件は`skill` rowと同じ: その名前を解決する各recognition — `(file, tool)`ごとに1つ — がdefinitionとして名前のrowの中に並ぶため、2つのproductが1つの名前で起動する1 fileはそのrowの2 definitionとなり、product間で名前が異なる場合はそれぞれの名前のrowにdefinitionを持つ。どの名前になるかは、そのfileをadmitしたrule自身のものである。このkindの2つのlocationが異なる答えを返すためである。Command fileの名前が著述されることはない — どちらのproductもcommand fileの`name` keyを無視する — ため、名前は各productのadmitしたrule自身がpathから導出する: Claude Codeはcommand directory配下のpathを取り、区切りをすべて`:`に置き換える。したがって`frontend/component.md`は`frontend:component`、`team/review/security.md`は`team:review:security`となる。stemが大文字小文字を問わず`skill`である葉だけは例外で、自身ではなくそのdirectoryの名前を取る。これはproductがそう振る舞うのであって、どのpageも文書化していない。stemは大文字小文字を無視して比較する一方、`.md`拡張子はmatcherがadmitするものそのものであるため、`SKILL.MD`はここではそもそもcommand fileにならない。Copilot CLIはnamespaceを文書化しておらずsubdirectoryにも到達しないため、file名だけを取る。したがって両者はroot直下の子で正確に一致し、そのfileは両productを名指す1 rowとなり、nestedなfileはClaude単独のrowとなる。一方、VS Code prompt fileは自身で名乗る: 文書化された`name`が読み手が`/`の後に入力するものであり、宣言がなければfile自身の名前が代わりに立つ — したがってcommandが解決する名前を宣言したpromptは、1つのskill名を持つ2 fileと同じように、そのcommandのrowのdefinitionとなる。Skillと違い、rowは同名解決を述べない。いまや2つのprompt fileが1つの名前に到達し得るが、VS Codeはその結果を文書化していないため、rowが答えればどのpageも問うていない問いに答えることになる — definitionは並んで立ち、読み手は両方を見る（FR-009） |
@@ -963,7 +963,11 @@ substituteしない。
 | `settings/config` | File自身。`rule` rowと同じ条件である: settingsまたはconfiguration fileは、rowのkeyになる名前を宣言せず、groupingの基準になる範囲も支配しないため、Source-relative Pathがrowのidentityであり、1つのfileを2つの製品が認識すれば1つのrow上の2つのrecognitionになる。主題が異なるため別のkindである: 製品が設定を読む先のfileであり、contextへ読み込むguidanceであるruleでも、何を実行してよいかを決めるpermission policyでもない。1つの物理fileがこのrowと別kindのrowを同時に持ちうる — Codexの`.codex/config.toml`は宣言した各serverのMCP rowと、それらの宣言が置かれたdocumentであるここのrowを持つ — また、linkがどのdetailを開くかはfileではなくそのlinkが載るrowから従う（FR-007） |
 
 したがってCustomizationFileは自身の事実 — Source相対Path、read結果、size、diagnostic — を1度だけ
-公開し、各kindの一覧はそれを繰り返さず`sourceRelativePath`で参照する。Companionは何を持っていても自身のrowに
+公開し、各kindの一覧はそれを繰り返さず、fileのidentity — それを保持するSourceとSource相対Path
+（FR-030）— で参照する。すべてのkindのrow member — skill definition、MCP/hook
+declaration、agent/prompt/output-style definition、rule/permissions/settings row、plugin
+carrier — はpathの隣に自身の`sourceId`を述べる。Global memberがすべてのkindを公開し、
+2つのSourceが1つのpathを持ちうるからである（FR-015〜FR-018、FR-030）。Companionは何を持っていても自身のrowに
 ならない（FR-003）ため、rowはそれを所有する定義の隣で、自身のcensusに属するfileのdiagnosticを
 pathで名指して述べる: customizationのdirectory内で失敗したreadはgenerationをpartialにしたfileの
 1つであり、一覧の中でそれを言えるのはそのcustomizationのrowだけである（FR-028）。共有された1つのrow形では最初の2つの単位を
@@ -1202,7 +1206,7 @@ Skillのdetail surfaceは、それを運ぶfileではなくskill自身から始�
 rowから読み取られる（contracts/http-api.md § get-session `skills[]`）。定義は1つのtoolの
 recognitionであり、2つのtoolが異なる名前で
 呼び出す1つのfileは各名前のrowの定義になる。pageはURLが選択したfileを示す —
-detail URLは`/skills/<SKILL.mdのSource相対パス>`というskill自身のidentityで、読んでいるfileは
+detail URLは`/skills/detail/<source>/<SKILL.mdのSource相対パス>`というskill自身のidentityで、読んでいるfileは
 その傍らの`file` queryが名指す — ため、どのdocumentがpageに出るかはlinkのidentityであって
 preferenceではない。addressがskillでselectionがfileであるのは、pageの主題がskillだからである:
 companionはそれ自身のpageを持たず、与えてみればどのURLもまず自分がどのskillに属するかを
@@ -1418,11 +1422,13 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   明示された不在へ解決される。行を2つのidentityから導出せず名指すのは、2つのfileが複数の行に
   同居しうるためである — 製品はskillを異なる事実で呼び出すため、他方のdirectory名を自身の`name`
   として宣言するfileは両方を両方の行に載せる — 。導出した行はgenerationが先に公開した方になり、
-  読み手が開いた行の3つ目のcopyをroute自身のswitcherから取り落とす。Instruction routeは、current generationの1つのapplicability-range行が
-  保持する2つのfileの`sourceRelativePath` identityを名指す — skillの前例が確立した、行が所有するペアであり、
-  skill名の行の位置にrange行が立つ。fileはちょうど1つのrangeを統治するため、所有する行は2つのidentityから
-  導出される — 。0件またはreadableなfile 2つへ解決される: instruction fileはそれ自体で完結するため、
-  どちらの側も明示された不在にはならず、単一の行が保持しないペアは比較されずに報告される。MCP routeは
+  読み手が開いた行の3つ目のcopyをroute自身のswitcherから取り落とす。Instruction routeは、先頭に立つSource familyと、side
+  ごとのSourceと`sourceRelativePath` identityを名指す（FR-030）。ペアの所有者は、1つのapplicability
+  rangeがそのfamilyに対して保持するblockである — skillの前例の行がここではblockになり、fileはちょうど
+  1つのrangeを統治するため、そのrangeは2つのidentityから導出される — 。したがってペアはconsentされた
+  2つのhomeのfileを持ちうるが、2つのfamilyにまたがることはない。0件またはreadableなfile 2つへ解決される:
+  instruction fileはそれ自体で完結するため、どちらの側も明示された不在にはならず、所有するblockが
+  保持しないペアは比較されずに報告される。MCP routeは
   1つの宣言済みserver名 — このkindのrow unit — と、current generationのその名前の行が保持する2つの
   carrierの`sourceRelativePath` identityを名指す。名指された行の外にあるselectionは — currentなどの行でも
   ない名前を含めて — 比較されずに報告される。そのペアは通常の`get-mcp-carrier-detail` read 2件でloadし、
@@ -2802,7 +2808,7 @@ initial enableだけ -- disable --> cleanup-only barrier --> inactive / 0 Source
 ```
 
 Enableには一致する`GlobalConsent`が必要。DisableはCoordinator barrierを実行してGlobal sequence全体をdiscardする。
-すなわちtool固有Global file、generation diagnostic、control所有lifecycle diagnostic、comparison、source textをすべて削除する。
+すなわちmember Global file、generation diagnostic、control所有lifecycle diagnostic、comparison、source textをすべて削除する。
 `remove-active-state`はgenerationをcommitせず、Repository sequenceとそのgeneration/IDに決して触れない。Operation-local
 `cleanup-only`はcommitted stateを変えない。後のre-enableはincrement済み`globalContentEpoch`のもとでgeneration 1から
 fresh Global sequenceを開始する。
@@ -2840,8 +2846,8 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
 2. BootstrapからRepository Sourceは正確に1つ存在し、そのboundaryは選択済みRepository root、すなわちdefaultでは
    captureした呼び出し時のexact `process.cwd()`、指定時はそれに対してresolveした単一の`--root` valueである。
    Git rootである必要はなく、labelはread authorityを与えない。
-3. Globalは全新processでdisabledである。SessionはGlobal Sourceを0から3つ持ち、Copilot、Claude、Codexごとに
-   最大1つとする。各Sourceはcurrent allowlistで同じtoolについてconsent済みのboundaryを正確に1つ所有する。
+3. Globalは全新processでdisabledである。SessionはGlobal Sourceを0から4つ持ち、Copilot、Claude、Codex、共有agent home
+   ごとに最大1つとする。各Sourceはcurrent allowlistで同じmemberについてconsent済みのboundaryを正確に1つ所有する。
 4. Accepted file pathは、そのSource root配下で同梱したstaticまたはtyped derived ruleによりadmitされる。
    Parsed valueがcandidateをadmitできるのはその正確なderivation ruleを満たす場合だけで、
    relationship/excluded ruleは決してadmitしない。Client供給のpath stringはreadを認可しない。

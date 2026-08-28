@@ -88,7 +88,9 @@ test.describe('the complete literal Codex configuration detail', () => {
       .filter({ hasText: '.codex/config.toml' })
       .getByRole('link', { name: '.codex/config.toml' })
       .click();
-    await expect(page).toHaveURL(/\/settings-and-configuration\/\.codex\/config\.toml$/u);
+    await expect(page).toHaveURL(
+      /\/settings-and-configuration\/detail\/repository\/\.codex\/config\.toml$/u,
+    );
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
 
     const main = page.locator('main');
@@ -156,7 +158,9 @@ test.describe('the complete literal Codex configuration detail', () => {
     // The other row of the one file: its subject is a declaration, so its
     // detail leads with that declaration and carries no source at all — while
     // the settings page above shows the document those declarations sit in.
-    await page.goto(new URL('/mcp/.codex/config.toml?server=context7', host.origin).toString());
+    await page.goto(
+      new URL('/mcp/detail/repository/.codex/config.toml?server=context7', host.origin).toString(),
+    );
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     const text = await page.locator('main').innerText();
     expect(text).not.toContain('# The project layer for this repository.');
@@ -165,7 +169,10 @@ test.describe('the complete literal Codex configuration detail', () => {
 
   test('returns to the settings tab it was opened from', async ({ page }) => {
     await page.goto(
-      new URL('/settings-and-configuration/.codex/config.toml', host.origin).toString(),
+      new URL(
+        '/settings-and-configuration/detail/repository/.codex/config.toml',
+        host.origin,
+      ).toString(),
     );
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
@@ -176,7 +183,7 @@ test.describe('the complete literal Codex configuration detail', () => {
   test('reports a link the current scan holds nothing at', async ({ page }) => {
     await page.goto(
       new URL(
-        '/settings-and-configuration/packages/api/.codex/config.toml',
+        '/settings-and-configuration/detail/repository/packages/api/.codex/config.toml',
         host.origin,
       ).toString(),
     );
@@ -214,7 +221,10 @@ test.describe('a configuration document whose bytes were never accepted', () => 
     // files in no kind, which is where a `partial` generation says which file
     // made it partial (FR-028).
     await page.goto(
-      new URL('/settings-and-configuration/.codex/config.toml', host.origin).toString(),
+      new URL(
+        '/settings-and-configuration/detail/repository/.codex/config.toml',
+        host.origin,
+      ).toString(),
     );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
@@ -251,7 +261,10 @@ test.describe('a configuration document no parser can read', () => {
     // accepts them. The MCP row of the same file is the one that reports the
     // failure (FR-028).
     await page.goto(
-      new URL('/settings-and-configuration/.codex/config.toml', host.origin).toString(),
+      new URL(
+        '/settings-and-configuration/detail/repository/.codex/config.toml',
+        host.origin,
+      ).toString(),
     );
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
     await expect(page.locator('main')).toContainText('model = "unterminated');

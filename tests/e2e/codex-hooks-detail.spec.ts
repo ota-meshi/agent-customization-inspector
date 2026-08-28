@@ -115,7 +115,7 @@ test.describe('Codex hook declarations opened one at a time', () => {
   test('shows every declaration of a carrier on its file-unit view, with the file’s own keys', async ({
     page,
   }) => {
-    await page.goto(new URL('/hooks/.codex%2Fhooks.json', host.origin).href);
+    await page.goto(new URL('/hooks/detail/repository/.codex%2Fhooks.json', host.origin).href);
     await expect(page.locator('.aci-hook-detail').getByRole('heading', { level: 2 })).toHaveText(
       '.codex/hooks.json',
     );
@@ -175,7 +175,7 @@ test.describe('Codex hook declarations opened one at a time', () => {
     // A handler script a declaration names is no hook carrier: the link is the
     // same dead coordinate a removed file would be, reported rather than
     // guessed at (FR-030).
-    await page.goto(new URL('/hooks/.codex%2Fhooks%2Fstop.py', host.origin).href);
+    await page.goto(new URL('/hooks/detail/repository/.codex%2Fhooks%2Fstop.py', host.origin).href);
     await expect(page.locator('.aci-error')).toContainText('current scan');
     await page.getByRole('link', { name: /Return to the inventory/u }).click();
     await expect(page.getByRole('tab', { name: /Hook/u })).toHaveAttribute('aria-selected', 'true');

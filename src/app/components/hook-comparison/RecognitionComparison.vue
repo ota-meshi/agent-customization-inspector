@@ -40,13 +40,7 @@ import {
 import { canonicalHookEventJsonText } from '../declared-entries-json';
 import { SourceDiffHandle } from '../../composables/monaco';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
-import {
-  CUSTOMIZATION_KIND_TEXT,
-  FILE_ENCODING_TEXT,
-  escapeControlCharacters,
-  inlinePresentationLabel,
-} from '../../../shared/entities';
-import { HOOK_CARRIER_FORM_TEXT } from '../../../shared/api-text';
+import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
 import type { HookCarrierDetailDto } from '../../../shared/api-types';
 
 const props = defineProps<{
@@ -69,6 +63,15 @@ const props = defineProps<{
   readonly leftAttribution: string;
   /** The second carrier's recognitions; see {@link leftAttribution}. */
   readonly rightAttribution: string;
+  /**
+   * The first carrier's facts line — its Source family, its carrier form, and
+   * its read outcome — composed by the page, which holds the session's
+   * Sources: the two sides can be two Sources, so the family is each side's
+   * own fact (FR-002, FR-030).
+   */
+  readonly leftFactsText: string;
+  /** The second carrier's facts line; see {@link leftFactsText}. */
+  readonly rightFactsText: string;
 }>();
 
 /**
@@ -97,20 +100,6 @@ function serialize(detail: HookCarrierDetailDto): string {
   return declared === undefined ? '{}' : canonicalHookEventJsonText(declared);
 }
 
-/** One compared carrier's own facts, beside its path (US3 scenario 1). */
-function fileFacts(detail: HookCarrierDetailDto): string {
-  const facts = [
-    'Repository',
-    CUSTOMIZATION_KIND_TEXT.hook,
-    HOOK_CARRIER_FORM_TEXT[detail.carrier],
-    FILE_ENCODING_TEXT[detail.file.encoding],
-  ];
-  if (detail.file.encoding !== 'unknown') {
-    facts.push(`${detail.file.sizeBytes} bytes`);
-  }
-  return facts.join(' · ');
-}
-
 /** The two sides as the template renders them, in the link's own order. */
 const sides = computed(
   () =>
@@ -118,14 +107,14 @@ const sides = computed(
       {
         caption: 'First file',
         path: props.leftDetail.file.sourceRelativePath,
-        factsText: fileFacts(props.leftDetail),
+        factsText: props.leftFactsText,
         attribution: props.leftAttribution,
         text: serialize(props.leftDetail),
       },
       {
         caption: 'Second file',
         path: props.rightDetail.file.sourceRelativePath,
-        factsText: fileFacts(props.rightDetail),
+        factsText: props.rightFactsText,
         attribution: props.rightAttribution,
         text: serialize(props.rightDetail),
       },

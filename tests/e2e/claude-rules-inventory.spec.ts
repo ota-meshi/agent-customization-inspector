@@ -118,7 +118,7 @@ test.describe('rule files under the .claude/rules subtrees', () => {
     // The Claude instruction file and Copilot's own, and no rule file.
     expect(paths).toEqual(['.claude/CLAUDE.md', '.github/copilot-instructions.md']);
     const instructionsText = await page.getByRole('tabpanel').innerText();
-    expect(instructionsText).not.toContain('/rules/');
+    expect(instructionsText).not.toContain('/rules/detail/repository/');
   });
 
   test('narrows the rule rows with the tool and path filters', async ({ page }) => {

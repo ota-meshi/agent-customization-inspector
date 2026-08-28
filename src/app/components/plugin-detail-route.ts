@@ -12,7 +12,12 @@
 import type { RouteLocationRaw } from 'vue-router';
 
 import type { SupportedTool } from '../../shared/entities';
-import { detailRoute, selectedFileQuery, toJsonStringBody } from './detail-route';
+import {
+  detailRoute,
+  selectedFileQuery,
+  toJsonStringBody,
+  type SourceSelector,
+} from './detail-route';
 
 /**
  * The detail route for one plugin carrier, selecting the plugin the row is
@@ -34,9 +39,10 @@ export function pluginCarrierDetailRoute(
   tool: SupportedTool,
   name: string | null,
   selectedFilePath: string | null = null,
+  source: SourceSelector = 'repository',
 ): RouteLocationRaw {
   return {
-    path: detailRoute('plugin', sourceRelativePath),
+    path: detailRoute('plugin', sourceRelativePath, source),
     query: {
       // The product whose reading the page opens: a row lists one carrier per
       // `(file, tool)`, and which directory an entry's source names is that

@@ -84,7 +84,9 @@ test.describe('the complete literal Claude settings detail', () => {
       .getByRole('link', { name: '.claude/settings.json' })
       .first()
       .click();
-    await expect(page).toHaveURL(/\/settings-and-configuration\/\.claude\/settings\.json$/u);
+    await expect(page).toHaveURL(
+      /\/settings-and-configuration\/detail\/repository\/\.claude\/settings\.json$/u,
+    );
     await expect(page.getByRole('heading', { name: '.claude/settings.json' })).toBeVisible();
 
     const main = page.locator('main');
@@ -120,7 +122,9 @@ test.describe('the complete literal Claude settings detail', () => {
   }) => {
     // The other row of the one file: its subject is the declared policy, so
     // its detail publishes that block and never the settings around it.
-    await page.goto(new URL('/permissions/.claude/settings.json', host.origin).toString());
+    await page.goto(
+      new URL('/permissions/detail/repository/.claude/settings.json', host.origin).toString(),
+    );
     await expect(page.getByRole('heading', { name: '.claude/settings.json' })).toBeVisible();
     const main = page.locator('main');
     await expect(main).toContainText(FIXTURE_SECRET);
@@ -131,7 +135,10 @@ test.describe('the complete literal Claude settings detail', () => {
 
   test('returns to the settings tab it was opened from', async ({ page }) => {
     await page.goto(
-      new URL('/settings-and-configuration/.claude/settings.local.json', host.origin).toString(),
+      new URL(
+        '/settings-and-configuration/detail/repository/.claude/settings.local.json',
+        host.origin,
+      ).toString(),
     );
     await expect(page.getByRole('heading', { name: '.claude/settings.local.json' })).toBeVisible();
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
@@ -142,7 +149,7 @@ test.describe('the complete literal Claude settings detail', () => {
   test('reports a link the current scan holds nothing at', async ({ page }) => {
     await page.goto(
       new URL(
-        '/settings-and-configuration/packages/api/.claude/settings.json',
+        '/settings-and-configuration/detail/repository/packages/api/.claude/settings.json',
         host.origin,
       ).toString(),
     );
@@ -178,13 +185,18 @@ test.describe('a Claude settings document strict JSON cannot read', () => {
     // failure; this row reads nothing out, so its detail is the bytes their
     // author wrote whether or not a parser accepts them (FR-028).
     await page.goto(
-      new URL('/settings-and-configuration/.claude/settings.json', host.origin).toString(),
+      new URL(
+        '/settings-and-configuration/detail/repository/.claude/settings.json',
+        host.origin,
+      ).toString(),
     );
     await expect(page.getByRole('heading', { name: '.claude/settings.json' })).toBeVisible();
     await expect(page.locator('main')).toContainText('"permissions"');
     await expect(page.locator('main')).not.toContainText('could not be read');
 
-    await page.goto(new URL('/permissions/.claude/settings.json', host.origin).toString());
+    await page.goto(
+      new URL('/permissions/detail/repository/.claude/settings.json', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "This carrier's declared permissions could not be read.",
     );

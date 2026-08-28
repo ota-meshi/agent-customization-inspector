@@ -6,7 +6,7 @@
 // composes this into the closed per-tool table.
 import {
   SkillCollisionPolicy,
-  parsedDefinitionPaths,
+  parsedDefinitions,
   rowInternalCollisionGate,
   type SameNameCollisionDefinition,
 } from '../skill-collision';
@@ -19,8 +19,8 @@ class CodexSkillCollisionPolicy extends SkillCollisionPolicy {
    * elsewhere in the view bears on it.
    */
   public override collisionGate(
-    _viewPaths: readonly string[],
-  ): (rowPaths: readonly string[]) => boolean {
+    _viewDefinitions: readonly SameNameCollisionDefinition[],
+  ): (rowEvidence: readonly SameNameCollisionDefinition[]) => boolean {
     return rowInternalCollisionGate();
   }
 
@@ -29,10 +29,10 @@ class CodexSkillCollisionPolicy extends SkillCollisionPolicy {
    * unknown, so such a definition is provisional grouping rather than
    * evidence (FR-028).
    */
-  public override collisionEvidencePaths(
+  public override collisionEvidence(
     rowDefinitions: readonly SameNameCollisionDefinition[],
-  ): readonly string[] {
-    return parsedDefinitionPaths(rowDefinitions);
+  ): readonly SameNameCollisionDefinition[] {
+    return parsedDefinitions(rowDefinitions);
   }
 }
 

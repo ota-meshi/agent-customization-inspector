@@ -47,15 +47,10 @@ export const SKILL_COLLISION_POLICY: Readonly<Record<SupportedTool, SkillCollisi
  */
 export function skillCollisionGates(
   definitions: readonly SameNameCollisionDefinition[],
-): ReadonlyMap<SupportedTool, (rowPaths: readonly string[]) => boolean> {
+): ReadonlyMap<SupportedTool, (rowEvidence: readonly SameNameCollisionDefinition[]) => boolean> {
   const byTool = Map.groupBy(definitions, (definition) => definition.tool);
   return new Map(
-    [...byTool].map(([tool, group]) => [
-      tool,
-      SKILL_COLLISION_POLICY[tool].collisionGate(
-        group.map((definition) => definition.sourceRelativePath),
-      ),
-    ]),
+    [...byTool].map(([tool, group]) => [tool, SKILL_COLLISION_POLICY[tool].collisionGate(group)]),
   );
 }
 
@@ -71,13 +66,16 @@ export function skillCollisionGates(
  * same view; `Map.get` is merely typed for absence.
  */
 export function facesSameNameCollision(
-  gates: ReadonlyMap<SupportedTool, (rowPaths: readonly string[]) => boolean>,
+  gates: ReadonlyMap<
+    SupportedTool,
+    (rowEvidence: readonly SameNameCollisionDefinition[]) => boolean
+  >,
   tool: SupportedTool,
   rowDefinitions: readonly SameNameCollisionDefinition[],
 ): boolean {
-  const rowPaths = SKILL_COLLISION_POLICY[tool].collisionEvidencePaths(
+  const rowEvidence = SKILL_COLLISION_POLICY[tool].collisionEvidence(
     rowDefinitions.filter((definition) => definition.tool === tool),
   );
   const gate = gates.get(tool);
-  return gate !== undefined && gate(rowPaths);
+  return gate !== undefined && gate(rowEvidence);
 }

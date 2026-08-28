@@ -14,6 +14,11 @@
 // secret-bearing skill holds a literal credential-shaped string precisely so
 // a test can prove it never reaches an inventory summary, and the harness is
 // the only writer — the product must not mutate this tree (FR-023).
+//
+// `README.md` and `README.ja.md` beside this module are the guidance for using
+// and extending these trees: which family each builder belongs to, what a
+// suite may rely on, and what a new case owes the tree it joins. They are
+// where a reader starts; this file is where the bytes are.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -6079,11 +6084,16 @@ export function buildPriorityMcpFixture(
       2,
     )}\n`,
   );
-  // The bare-schema CLI spelling re-declares the shared name.
+  // The bare-schema CLI spelling re-declares the shared name — and `tickets`,
+  // which the VS Code carrier below re-declares too: two Copilot carriers of
+  // one name, so that row's Repository block holds a pair of its own. The
+  // spelling pairs with the Global homes fixture, whose Codex config and
+  // Copilot mcp-config declare the same name
+  // (tests/fixtures/global-homes/build-fixtures.ts; T1127, FR-030).
   write(
     root,
     '.github/mcp.json',
-    `{ "gh-actions": { "command": "npx" }, "${sharedServerName}": { "command": "gh" } }\n`,
+    `{ "gh-actions": { "command": "npx" }, "${sharedServerName}": { "command": "gh" }, "tickets": { "command": "npx" } }\n`,
   );
   // The VS Code JSONC carrier re-declares it too, comments and all.
   write(
@@ -6094,6 +6104,7 @@ export function buildPriorityMcpFixture(
   "servers": {
     "vs-docs": { "type": "http", "url": "https://docs.example.com/mcp" },
     "${sharedServerName}": { "command": "vscode-owned" },
+    "tickets": { "command": "npx" },
   }
 }
 `,
@@ -7829,6 +7840,107 @@ export function buildAllCustomizationKindFixture(
   // each carrying the permission policy and skill content the earlier builders
   // put there.
   const claudeHookFixture = buildClaudeHookFixture(prefix, root);
+  // One cross-Source group for each comparing kind the builders above do not
+  // already give one, named to pair with the Global homes fixture
+  // (tests/fixtures/global-homes/build-fixtures.ts): with the personal setup
+  // enabled, each of these rows holds two Repository members and two personal
+  // members, so both of its family blocks offer their own comparison entry
+  // (T1127, FR-030). The `tickets` MCP pair lives in the priority fixture's
+  // two Copilot carriers, and the hook pair completes the `postToolUse` row
+  // the unified hook fixture's `.github/hooks/format.json` starts. The skill
+  // pair avoids `.claude/skills/`, whose `changelog` directory is the unified
+  // plugin fixture's placement-loaded plugin root.
+  write(
+    root,
+    '.agents/skills/changelog/SKILL.md',
+    [
+      '---',
+      'name: changelog',
+      'description: Draft a changelog entry from recent commits.',
+      '---',
+      '',
+      'Summarize the latest commits as one changelog entry.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.github/skills/changelog/SKILL.md',
+    [
+      '---',
+      'name: changelog',
+      'description: Draft a changelog entry from the staged diff.',
+      '---',
+      '',
+      'Summarize the staged changes as one changelog entry.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.claude/agents/deploy-bot.md',
+    [
+      '---',
+      'name: deploy-bot',
+      'description: Runs the deploy checklist.',
+      'tools: Bash, Read',
+      '---',
+      '',
+      'Work through the deploy checklist before shipping.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.codex/agents/deploy-bot.toml',
+    [
+      'name = "deploy-bot"',
+      'description = "Runs the deploy checklist."',
+      '',
+      '[permissions]',
+      'file_system = "read"',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.claude/commands/draftpr.md',
+    [
+      '---',
+      'description: Draft a pull request from the branch',
+      '---',
+      '',
+      'Draft the pull request description from the staged commits.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.github/prompts/draftpr.prompt.md',
+    [
+      '---',
+      'description: Draft a pull request from the branch',
+      '---',
+      '',
+      'Draft the pull request description from the branch history.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.github/hooks/notify-team.json',
+    `${JSON.stringify(
+      {
+        version: 1,
+        description: 'Repository notification hook.',
+        hooks: {
+          postToolUse: [{ type: 'command', command: './scripts/notify-team.sh' }],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
   return {
     root,
     skillFixture,
@@ -7849,5 +7961,269 @@ export function buildAllCustomizationKindFixture(
     hookFixture,
     claudeHookFixture,
     copilotHookFixture,
+  };
+}
+
+/**
+ * What {@link buildCrossSourceGroupFixture} writes: for each kind with a
+ * comparison surface, one group whose name has two Repository files and two
+ * personal-setup files, so the group's row renders one comparison entry per
+ * family block (T1127, FR-030).
+ */
+export interface CrossSourceGroupFixture {
+  /** The absolute fixture root to scan. */
+  readonly root: string;
+  /** The skill name with two Repository copies and two personal copies. */
+  readonly skillName: string;
+  /** The agent name declared by two Repository files and two personal files. */
+  readonly agentName: string;
+  /** The invocation name two Repository prompt files and two personal files resolve to. */
+  readonly promptName: string;
+  /** The MCP server name declared by two Repository carriers and two personal carriers. */
+  readonly mcpServerName: string;
+  /** The hook event declared by two Repository hook files and two personal hook files. */
+  readonly hookEvent: string;
+  /**
+   * The plugin name both Repository catalogs offer. Its row's personal-setup
+   * block holds one carrier at most: the personal catalog is the one exact
+   * `~/.agents/plugins/marketplace.json`, so only the Repository block can
+   * offer a pair.
+   */
+  readonly pluginName: string;
+}
+
+/**
+ * A repository whose customizations pair up with the Global homes fixture
+ * (`tests/fixtures/global-homes/build-fixtures.ts`): each comparing kind has
+ * one group name spelled by two Repository files here and by two personal
+ * files there, so with the personal setup enabled that group's row shows a
+ * Repository block and a personal-setup block that each offer their own
+ * comparison entry (T1127, FR-030).
+ *
+ * The names deliberately equal the Global homes fixture's — `changelog`,
+ * `deploy-bot`, `draftpr`, `tickets`, `postToolUse`, `team-tools` — because
+ * the group exists only where both Sources spell one name.
+ *
+ * Two deliberate asymmetries, both the contracts' rather than this tree's:
+ * the plugin row's personal block holds one carrier (the personal catalog is
+ * one exact file, contracts/vendors/openai-codex.md § Inspector Global
+ * rules), and the rule, permissions, settings, and output-style kinds have no
+ * comparison surface at all, so this tree carries no group for them beyond
+ * the root instruction files.
+ */
+export function buildCrossSourceGroupFixture(
+  prefix = 'inspector-cross-source',
+  root = createRepositoryFixtureRoot(prefix),
+): CrossSourceGroupFixture {
+  // The `**` instruction range: two root files here, and every home's root
+  // instruction file on the personal side — the instructions row grouping
+  // this fixture's other kinds mirror.
+  write(
+    root,
+    'AGENTS.md',
+    [
+      '# Working agreements',
+      '',
+      'Run the linter before proposing a change, and keep commits scoped.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    'CLAUDE.md',
+    [
+      '# Project instructions',
+      '',
+      'Prefer small reviewable diffs and explain non-obvious decisions.',
+      '',
+    ].join('\n'),
+  );
+
+  // The skill group: the same name kept in the Claude skills directory and
+  // the shared agent skills directory, drifted the way two maintained copies
+  // drift. The Global homes' Claude and Copilot homes hold the other two.
+  write(
+    root,
+    '.claude/skills/changelog/SKILL.md',
+    [
+      '---',
+      'name: changelog',
+      'description: Draft a changelog entry from the staged diff.',
+      '---',
+      '',
+      'Summarize the staged changes as one changelog entry.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.agents/skills/changelog/SKILL.md',
+    [
+      '---',
+      'name: changelog',
+      'description: Draft a changelog entry from recent commits.',
+      '---',
+      '',
+      'Summarize the latest commits as one changelog entry.',
+      '',
+    ].join('\n'),
+  );
+
+  // The agent group: one name declared for Claude and for Codex at the
+  // project scope; the Global homes' Claude and Codex homes declare the same
+  // name at the personal scope.
+  write(
+    root,
+    '.claude/agents/deploy-bot.md',
+    [
+      '---',
+      'name: deploy-bot',
+      'description: Runs the deploy checklist.',
+      'tools: Bash, Read',
+      '---',
+      '',
+      'Work through the deploy checklist before shipping.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.codex/agents/deploy-bot.toml',
+    [
+      'name = "deploy-bot"',
+      'description = "Runs the deploy checklist."',
+      '',
+      '[permissions]',
+      'file_system = "read"',
+      '',
+    ].join('\n'),
+  );
+
+  // The prompt group: a Claude command and a Copilot prompt file whose
+  // invocation names coincide; the Global homes' Claude and Codex homes
+  // resolve the same name from their own files.
+  write(
+    root,
+    '.claude/commands/draftpr.md',
+    [
+      '---',
+      'description: Draft a pull request from the branch',
+      '---',
+      '',
+      'Draft the pull request description from the staged commits.',
+      '',
+    ].join('\n'),
+  );
+  write(
+    root,
+    '.github/prompts/draftpr.prompt.md',
+    [
+      '---',
+      'description: Draft a pull request from the branch',
+      '---',
+      '',
+      'Draft the pull request description from the branch history.',
+      '',
+    ].join('\n'),
+  );
+
+  // The MCP group: one server name declared in the Claude project carrier and
+  // the Codex project config; the Global homes' Codex config and Copilot
+  // mcp-config declare the same name.
+  write(
+    root,
+    '.mcp.json',
+    `${JSON.stringify(
+      {
+        mcpServers: {
+          tickets: { command: 'npx', args: ['-y', 'mcp-tickets'] },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    '.codex/config.toml',
+    [
+      'model = "gpt-5-codex"',
+      '',
+      '[mcp_servers.tickets]',
+      'command = "npx"',
+      'args = ["-y", "mcp-tickets"]',
+      '',
+    ].join('\n'),
+  );
+
+  // The hook group: two hook files in the one loaded directory declaring the
+  // same event, the way a team splits unrelated automations across files; the
+  // Global homes' Copilot home holds the personal pair.
+  write(
+    root,
+    '.github/hooks/format-on-save.json',
+    `${JSON.stringify(
+      {
+        version: 1,
+        description: 'Repository formatting hook.',
+        hooks: {
+          postToolUse: [{ type: 'command', command: 'npx prettier --write .' }],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  write(
+    root,
+    '.github/hooks/notify-team.json',
+    `${JSON.stringify(
+      {
+        version: 1,
+        description: 'Repository notification hook.',
+        hooks: {
+          postToolUse: [{ type: 'command', command: './scripts/notify-team.sh' }],
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  // The plugin row: one marketplace kept in both Repository catalog
+  // locations, offering the name the personal catalog also offers. The
+  // Repository block pairs; the personal block cannot (one exact personal
+  // catalog file), which is the plugin row's documented asymmetry.
+  const marketplace = (description: string): string =>
+    `${JSON.stringify(
+      {
+        name: 'personal',
+        plugins: [
+          {
+            name: 'team-tools',
+            description,
+            version: '1.2.0',
+            source: './plugins/team-tools',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`;
+  write(root, '.claude-plugin/marketplace.json', marketplace('Shared productivity commands.'));
+  write(
+    root,
+    '.agents/plugins/marketplace.json',
+    marketplace('Shared productivity commands for every agent.'),
+  );
+
+  return {
+    root,
+    skillName: 'changelog',
+    agentName: 'deploy-bot',
+    promptName: 'draftpr',
+    mcpServerName: 'tickets',
+    hookEvent: 'postToolUse',
+    pluginName: 'team-tools',
   };
 }

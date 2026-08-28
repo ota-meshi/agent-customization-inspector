@@ -93,7 +93,7 @@ test.describe('the MCP declaration comparison', () => {
     await page.getByRole('tab', { name: /MCP/u }).click();
     // The shared name's row links the comparison of its own declarations.
     await page.getByRole('link', { name: "Compare this name's declarations: shared" }).click();
-    await expect(page).toHaveURL(/\/mcp\/compare\?/u);
+    await expect(page).toHaveURL(/\/mcp\/compare\/repository\?/u);
     await expect(page).toHaveURL(/name=shared/u);
     await expect(
       page.getByRole('heading', { name: 'Compare MCP server declarations' }),
@@ -141,7 +141,7 @@ test.describe('the MCP declaration comparison', () => {
     // side in this row's comparison.
     await page.goto(
       new URL(
-        '/mcp/compare?name=shared&left=.codex%2Fconfig.toml&right=.github%2Fagents%2Fdeploy.md',
+        '/mcp/compare/repository?name=shared&leftSource=repository&left=.codex%2Fconfig.toml&rightSource=repository&right=.github%2Fagents%2Fdeploy.md',
         host.origin,
       ).toString(),
     );
@@ -155,7 +155,7 @@ test.describe('the MCP declaration comparison', () => {
     // does not hold it (FR-011).
     await page.goto(
       new URL(
-        '/mcp/compare?name=shared&left=.github%2Fmcp.json&right=.mcp.json',
+        '/mcp/compare/repository?name=shared&leftSource=repository&left=.github%2Fmcp.json&rightSource=repository&right=.mcp.json',
         host.origin,
       ).toString(),
     );
@@ -167,7 +167,7 @@ test.describe('the MCP declaration comparison', () => {
   test('rejects a name no current row is, and a link with no name', async ({ page }) => {
     await page.goto(
       new URL(
-        '/mcp/compare?name=no-such-server&left=.codex%2Fconfig.toml&right=.mcp.json',
+        '/mcp/compare/repository?name=no-such-server&leftSource=repository&left=.codex%2Fconfig.toml&rightSource=repository&right=.mcp.json',
         host.origin,
       ).toString(),
     );
@@ -176,14 +176,20 @@ test.describe('the MCP declaration comparison', () => {
     );
 
     await page.goto(
-      new URL('/mcp/compare?left=.codex%2Fconfig.toml&right=.mcp.json', host.origin).toString(),
+      new URL(
+        '/mcp/compare/repository?leftSource=repository&left=.codex%2Fconfig.toml&rightSource=repository&right=.mcp.json',
+        host.origin,
+      ).toString(),
     );
     await expect(page.locator('main')).toContainText('This link names no MCP comparison.');
   });
 
   test('rejects the same carrier on both sides', async ({ page }) => {
     await page.goto(
-      new URL('/mcp/compare?name=shared&left=.mcp.json&right=.mcp.json', host.origin).toString(),
+      new URL(
+        '/mcp/compare/repository?name=shared&leftSource=repository&left=.mcp.json&rightSource=repository&right=.mcp.json',
+        host.origin,
+      ).toString(),
     );
     await expect(page.locator('main')).toContainText(
       'A comparison needs the declaration from two distinct MCP files, and this link names the same file twice.',
@@ -195,18 +201,20 @@ test.describe('the MCP declaration comparison', () => {
   }) => {
     // The carrier view carries one entry link per declared name whose row
     // holds a counterpart; the shared name's opens its row's comparison.
-    await page.goto(new URL('/mcp/.mcp.json', host.origin).toString());
+    await page.goto(new URL('/mcp/detail/repository/.mcp.json', host.origin).toString());
     await expect(page.getByRole('heading', { name: '.mcp.json' })).toBeVisible();
     await expect(
       page.getByRole('link', { name: "Compare this server's declarations: root-only" }),
     ).toHaveCount(0);
     await page.getByRole('link', { name: "Compare this server's declarations: shared" }).click();
-    await expect(page).toHaveURL(/\/mcp\/compare\?/u);
+    await expect(page).toHaveURL(/\/mcp\/compare\/repository\?/u);
     await expect(page).toHaveURL(/name=shared/u);
     await expect(page.locator('main')).toContainText('Repository · MCP');
 
     // The declaration view links its own name from the overview.
-    await page.goto(new URL('/mcp/.mcp.json?server=shared', host.origin).toString());
+    await page.goto(
+      new URL('/mcp/detail/repository/.mcp.json?server=shared', host.origin).toString(),
+    );
     await page.getByRole('link', { name: "Compare this server's declarations" }).click();
     await expect(page).toHaveURL(/name=shared/u);
   });

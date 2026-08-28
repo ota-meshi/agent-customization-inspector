@@ -681,3 +681,16 @@ export function createOpaqueId(byteLength = 16): string {
   }
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
+
+/**
+ * One file's identity as a set or map key: the Source that holds it, then its
+ * Source-relative Path (FR-030). The separator is U+0000, which no Source ID
+ * contains — IDs are the server's own opaque tokens — so two identities never
+ * collide by concatenation. One exported spelling, because the join is made
+ * wherever files, row members, and comparison sides are resolved by identity:
+ * the server's projections, the inventory views, and the comparison pages all
+ * key by the same pair.
+ */
+export function fileIdentityKey(sourceId: string, sourceRelativePath: string): string {
+  return sourceId + '\u0000' + sourceRelativePath;
+}

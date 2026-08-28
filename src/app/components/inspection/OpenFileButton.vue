@@ -46,7 +46,7 @@ import SublimeTextIcon from '~icons/simple-icons/sublimetext';
 import TerminalEditorIcon from '~icons/lucide/terminal';
 import VisualStudioCodeIcon from '~icons/simple-icons/visualstudiocode';
 import { FILE_OPEN_TARGET_TEXT } from '../../../shared/api-text';
-import type { FileOpenTarget } from '../../../shared/api-types';
+import type { FileOpenTarget, SourceSelector } from '../../../shared/api-types';
 import { SESSION_VIEW_STATE } from '../../session/view-state';
 import {
   rememberOpenTarget,
@@ -57,6 +57,13 @@ import {
 const props = defineProps<{
   /** The committed file this control opens, by its Source-relative Path. */
   sourceRelativePath: string;
+  /**
+   * Which Source holds it — the other half of the file's identity (FR-030).
+   * The page's own addressed Source: what opens must be the file the page is
+   * showing, and a consented home and the selected repository can hold one
+   * path under two different roots.
+   */
+  source: SourceSelector;
 }>();
 
 const sessionViewState = inject(SESSION_VIEW_STATE);
@@ -152,9 +159,10 @@ async function openWith(target: FileOpenTarget): Promise<void> {
   // file it was asked about; otherwise the previous file's failure would
   // appear beside the new one's path.
   const requestedPath = props.sourceRelativePath;
+  const requestedSource = props.source;
   requesting.value = true;
-  const outcome = await sessionViewState.openFile(requestedPath, target);
-  if (requestedPath !== props.sourceRelativePath) {
+  const outcome = await sessionViewState.openFile(requestedPath, requestedSource, target);
+  if (requestedPath !== props.sourceRelativePath || requestedSource !== props.source) {
     requesting.value = false;
     return;
   }

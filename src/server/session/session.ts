@@ -6,34 +6,54 @@
 // disable). The coordinator serializes scans, keeps one request ID across a
 // scan lifecycle, commits atomic N+1 replacements per sequence, and retains
 // explicit-rescan stale state.
-import { isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import {
   SUPPORTED_TOOL_ORDER,
   createOpaqueId,
   createSourceBoundaryDto,
+  fileIdentityKey,
 } from '../../shared/entities';
 import { VENDOR_SURFACE_ORDER } from '../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../shared/registries/behavior-types';
-import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-collision';
+import {
+  facesSameNameCollision,
+  skillCollisionGates,
+  type SameNameCollisionDefinition,
+} from '../../shared/skill-collision';
 import { sameNameSkillResolutionFor } from '../../shared/registries/skill-resolution';
 import {
   createBootstrapGeneration,
+  createGlobalEnableGeneration,
+  prepareNextGlobalGeneration,
   prepareNextRepositoryGeneration,
   type GenerationOutcome,
   type GlobalScanGeneration,
   type RepositoryScanGeneration,
 } from './scan-generation';
+import {
+  GlobalConsentRecord,
+  GlobalToolControl,
+  inMemberOrder,
+  type GlobalEnableMember,
+  type GlobalResolvedOutcome,
+} from './global-control';
 import type { FileOpener } from '../host/file-opener';
 import { clearStaleFailures, deriveSnapshotState, upsertStaleFailure } from './stale-failures';
 import type { SourceBoundaryDto, SupportedTool } from '../../shared/entities';
+import { GLOBAL_MEMBER_ORDER } from '../../shared/api-text';
 import type {
+  GlobalMemberId,
   CustomizationFileDto,
   CustomizationFileSummaryDto,
   DeclaredEntryDto,
   FileDetailDto,
   FileOpenTarget,
   FileRecognitionDto,
+  GlobalEnableInProgressDto,
+  GlobalEnableResultDto,
   InspectionDataResult,
+  SourceSelector,
+  SourceDto,
   InstructionInventoryEntryDto,
   HookCarrierDetailDto,
   HookDeclarationDto,
@@ -70,6 +90,7 @@ import type {
   SourceStatus,
   StaleSourceFailure,
 } from '../../shared/api-types';
+import { pathUnderRoot } from '../inspection/traversal';
 import type { RecognitionDetails, ToolRecognition } from '../inspection/recognizers/candidate';
 import type { SerializedDiagnostic } from '../../shared/diagnostics';
 
@@ -124,6 +145,18 @@ class MutableSourceState {
     this.sourceId = sourceId;
   }
 }
+
+/**
+ * One Global Source's identity beside its overlay: which member it belongs to
+ * and the boundary its admitted root presents. The overlay above is shared with
+ * the Repository Source, which has neither.
+ */
+interface GlobalSourceIdentity {
+  /** The member whose consented home this Source is. */
+  readonly member: GlobalMemberId;
+  /** The non-authorizing escaped presentation of the admitted root (FR-002). */
+  readonly boundary: SourceBoundaryDto;
+}
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -176,15 +209,24 @@ function summarizeFile(file: CustomizationFileDto): CustomizationFileSummaryDto 
  * it.
  */
 function directoryFilesOf(
+  sourceId: string,
   directory: string,
   files: readonly CustomizationFileDto[],
   recognized: ReadonlySet<string>,
 ): string[] {
+  // The owning customization's Source scopes the census: `files` spans every
+  // committed Source, and a path prefix says nothing across boundaries — a
+  // consented home and the repository can both hold `skills/<name>/` (FR-030).
   return directory === ''
     ? []
     : files
-        .map((file) => file.sourceRelativePath)
-        .filter((path) => path.startsWith(directory) && !recognized.has(path));
+        .filter(
+          (file) =>
+            file.sourceId === sourceId &&
+            file.sourceRelativePath.startsWith(directory) &&
+            !recognized.has(fileIdentityKey(sourceId, file.sourceRelativePath)),
+        )
+        .map((file) => file.sourceRelativePath);
 }
 
 /**
@@ -203,10 +245,49 @@ function directoryFilesOf(
  * a plugin this scan says it holds no manifest for while listing that manifest
  * as a row of its own.
  */
-function pluginRootFilesOf(pluginRoot: string, files: readonly CustomizationFileDto[]): string[] {
+function pluginRootFilesOf(
+  sourceId: string,
+  pluginRoot: string,
+  files: readonly CustomizationFileDto[],
+): string[] {
+  // The carrier's own Source scopes the enumeration, for the reason
+  // {@link directoryFilesOf} gives: a root path is relative to one boundary,
+  // and `files` spans them all (FR-030).
   return pluginRoot === ''
     ? []
-    : files.map((file) => file.sourceRelativePath).filter((path) => path.startsWith(pluginRoot));
+    : files
+        .filter(
+          (file) => file.sourceId === sourceId && file.sourceRelativePath.startsWith(pluginRoot),
+        )
+        .map((file) => file.sourceRelativePath);
+}
+
+/**
+ * A comparator over a kind's row members — a definition, a declaration, a
+ * carrier — in the snapshot's published Source order, then Source-relative
+ * Path, then the closed tool order, so two snapshots of one generation publish
+ * the same rows and an opaque ID never decides a visible order. The Source
+ * leads because the inventory reads that way everywhere else: the selected
+ * repository above the reader's own configuration directories
+ * (`#inventorySourceOrder`).
+ */
+function memberComparator(
+  sourceOrder: ReadonlyMap<string, number>,
+): (
+  left: { sourceId: string; sourceRelativePath: string; tool: SupportedTool },
+  right: { sourceId: string; sourceRelativePath: string; tool: SupportedTool },
+) => number {
+  return (left, right) => {
+    const rankDelta =
+      (sourceOrder.get(left.sourceId) ?? 0) - (sourceOrder.get(right.sourceId) ?? 0);
+    if (rankDelta !== 0) {
+      return rankDelta;
+    }
+    const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+    return pathDelta !== 0
+      ? pathDelta
+      : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
+  };
 }
 
 /**
@@ -232,8 +313,13 @@ function pluginRootFilesOf(pluginRoot: string, files: readonly CustomizationFile
 function projectSkillInventory(
   recognitions: readonly ToolRecognition[],
   files: readonly CustomizationFileDto[],
+  sourceOrder: ReadonlyMap<string, number>,
 ): SkillInventoryEntryDto[] {
-  const recognized = new Set(recognitions.map((recognition) => recognition.sourceRelativePath));
+  const recognized = new Set(
+    recognitions.map((recognition) =>
+      fileIdentityKey(recognition.sourceId, recognition.sourceRelativePath),
+    ),
+  );
   const byName = new Map<string, { name: string; definitions: SkillDefinitionDto[] }>();
   for (const recognition of recognitions) {
     if (!isSkillRecognition(recognition)) {
@@ -263,6 +349,7 @@ function projectSkillInventory(
     // directory-derived provisional row, which the same-name machinery reads
     // as grouping rather than as collision evidence (skill-collision.ts).
     entry.definitions.push({
+      sourceId: recognition.sourceId,
       sourceRelativePath: path,
       tool: recognition.tool,
       // The surfaces this one recognition's admissions rest on, derived the
@@ -273,7 +360,12 @@ function projectSkillInventory(
       diagnosticIds: recognition.diagnosticIds,
       // The skill's own directory: a skill is its directory, so the entry
       // point's path is where the files it ships are.
-      companionFiles: directoryFilesOf(path.slice(0, path.lastIndexOf('/') + 1), files, recognized),
+      companionFiles: directoryFilesOf(
+        recognition.sourceId,
+        path.slice(0, path.lastIndexOf('/') + 1),
+        files,
+        recognized,
+      ),
     });
   }
   // One collision gate per recognizing tool over the whole generation's
@@ -285,15 +377,9 @@ function projectSkillInventory(
   );
 
   const entries = [...byName.values()].map((entry): SkillInventoryEntryDto => {
-    // Files in Source-relative Path order, then the contracted tool order
-    // within one file, so two snapshots of one generation publish the same
-    // rows and an opaque ID never decides a visible order.
-    const definitions = entry.definitions.toSorted((left, right) => {
-      const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
-      return pathDelta !== 0
-        ? pathDelta
-        : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-    });
+    // Files in the published Source order, then Source-relative Path, then
+    // the contracted tool order within one file ({@link memberComparator}).
+    const definitions = entry.definitions.toSorted(memberComparator(sourceOrder));
     return {
       name: entry.name,
       definitions,
@@ -390,17 +476,28 @@ function fileRecognitionsOf(recognitions: readonly ToolRecognition[]): FileRecog
  */
 function projectInstructionInventory(
   recognitions: readonly ToolRecognition[],
+  sourceRank: ReadonlyMap<string, number>,
 ): InstructionInventoryEntryDto[] {
-  const byRangeAndPath = new Map<string | null, Map<string, ToolRecognition[]>>();
+  // Keyed by the Source as well as the range, because a range is relative to
+  // its own Source root: the repository's `**` and a consented home's `**` are
+  // different scopes, and a file at the same Source-relative Path in each is
+  // two files (FR-030).
+  const byRow = new Map<string, Map<string, ToolRecognition[]>>();
+  const rowKeys = new Map<string, { readonly sourceId: string; readonly range: string | null }>();
   for (const recognition of recognitions) {
     if (recognition.details.kind !== 'instructions') {
       continue;
     }
     const range = recognition.details.applicabilityRange;
-    let byPath = byRangeAndPath.get(range);
+    // A NUL joins the two halves: no Source ID or range can contain one, so
+    // the composite cannot be forged by a range that happens to look like a
+    // key (data-model.md § RootPresentationEncoding rejects NUL outright).
+    const rowKey = `${recognition.sourceId}\u0000${range ?? ''}`;
+    rowKeys.set(rowKey, { sourceId: recognition.sourceId, range });
+    let byPath = byRow.get(rowKey);
     if (byPath === undefined) {
       byPath = new Map();
-      byRangeAndPath.set(range, byPath);
+      byRow.set(rowKey, byPath);
     }
     const group = byPath.get(recognition.sourceRelativePath);
     if (group === undefined) {
@@ -410,9 +507,10 @@ function projectInstructionInventory(
     }
   }
   return (
-    [...byRangeAndPath.entries()]
-      .map(([applicabilityRange, byPath]) => ({
-        applicabilityRange,
+    [...byRow.entries()]
+      .map(([rowKey, byPath]) => ({
+        sourceId: rowKeys.get(rowKey)!.sourceId,
+        applicabilityRange: rowKeys.get(rowKey)!.range,
         files: [...byPath.entries()]
           .map(([sourceRelativePath, group]) => ({
             sourceRelativePath,
@@ -420,9 +518,16 @@ function projectInstructionInventory(
           }))
           .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath)),
       }))
-      // Ranged rows in range order, and the one no-range row after them all —
-      // nulls-last is the comparator's own rule ({@link compareStrings}).
-      .sort((left, right) => compareStrings(left.applicabilityRange, right.applicabilityRange))
+      // Rows in Source order — the caller's own ranking, so the repository's
+      // rows come before a consented home's — then in range order within a
+      // Source, with the one no-range row after them all (nulls-last is the
+      // comparator's own rule, {@link compareStrings}).
+      .sort(
+        (left, right) =>
+          (sourceRank.get(left.sourceId) ?? Number.MAX_SAFE_INTEGER) -
+            (sourceRank.get(right.sourceId) ?? Number.MAX_SAFE_INTEGER) ||
+          compareStrings(left.applicabilityRange, right.applicabilityRange),
+      )
   );
 }
 
@@ -436,17 +541,29 @@ function projectInstructionInventory(
  * Rows are in Source-relative Path order, so two snapshots of one generation
  * publish the same rows and an opaque ID never decides a visible order.
  */
-function projectRuleInventory(recognitions: readonly ToolRecognition[]): RuleInventoryEntryDto[] {
+function projectRuleInventory(
+  recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
+): RuleInventoryEntryDto[] {
   const byPath = Map.groupBy(
     recognitions.filter((recognition) => recognition.details.kind === 'rule'),
-    (recognition) => recognition.sourceRelativePath,
+    (recognition) => fileIdentityKey(recognition.sourceId, recognition.sourceRelativePath),
   );
-  return [...byPath.entries()]
-    .map(([sourceRelativePath, group]) => ({
-      sourceRelativePath,
+  return [...byPath.values()]
+    .map((group) => ({
+      sourceId: group[0]!.sourceId,
+      sourceRelativePath: group[0]!.sourceRelativePath,
       recognitions: fileRecognitionsOf(group),
     }))
-    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+    .sort((left, right) => {
+      // Rows in the published Source order, then path — the same reading
+      // order as `files[]` ({@link memberComparator}).
+      const rankDelta =
+        (sourceOrder.get(left.sourceId) ?? 0) - (sourceOrder.get(right.sourceId) ?? 0);
+      return rankDelta !== 0
+        ? rankDelta
+        : compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+    });
 }
 
 /**
@@ -468,6 +585,7 @@ function projectRuleInventory(recognitions: readonly ToolRecognition[]): RuleInv
  */
 function projectPromptInventory(
   recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
 ): PromptInventoryEntryDto[] {
   const byName = new Map<string, PromptDefinitionDto[]>();
   for (const recognition of recognitions) {
@@ -476,6 +594,7 @@ function projectPromptInventory(
     }
     const definitions = byName.get(recognition.details.invocationName);
     const definition: PromptDefinitionDto = {
+      sourceId: recognition.sourceId,
       sourceRelativePath: recognition.sourceRelativePath,
       tool: recognition.tool,
       // The surfaces this one recognition's admissions rest on, derived the
@@ -493,15 +612,10 @@ function projectPromptInventory(
     [...byName.entries()]
       .map(([name, definitions]) => ({
         name,
-        // Files in Source-relative Path order, then the contracted tool order
-        // within one file, so two snapshots of one generation publish the same
-        // rows and an opaque ID never decides a visible order.
-        definitions: definitions.toSorted((left, right) => {
-          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
-          return pathDelta !== 0
-            ? pathDelta
-            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-        }),
+        // Files in the published Source order, then Source-relative Path,
+        // then the contracted tool order within one file
+        // ({@link memberComparator}).
+        definitions: definitions.toSorted(memberComparator(sourceOrder)),
       }))
       // Entries in name order: the row's own key sorts it.
       .sort((left, right) => compareStrings(left.name, right.name))
@@ -581,6 +695,7 @@ function pluginManifestPathsAt(
 function projectPluginInventory(
   recognitions: readonly ToolRecognition[],
   files: readonly CustomizationFileDto[],
+  sourceOrder: ReadonlyMap<string, number>,
 ): PluginInventoryEntryDto[] {
   const byName = new Map<string | null, { carriers: PluginCarrierDto[] }>();
   for (const recognition of recognitions) {
@@ -597,6 +712,7 @@ function projectPluginInventory(
       }
     }
     const carrier = {
+      sourceId: recognition.sourceId,
       sourceRelativePath: recognition.sourceRelativePath,
       tool: recognition.tool,
       surfaces: VENDOR_SURFACE_ORDER.filter((surface) => recognizingSurfaces.has(surface)),
@@ -618,11 +734,13 @@ function projectPluginInventory(
       // one name twice — two entries, two directories — reaches both, so the
       // one carrier of that row carries their files together.
       const reached = pluginRootFilesOf(
+        recognition.sourceId,
         recognition.details.plugins[index]?.pluginRoot ?? '',
         files,
       );
       const existing = row.carriers.find(
         (candidate) =>
+          candidate.sourceId === carrier.sourceId &&
           candidate.sourceRelativePath === carrier.sourceRelativePath &&
           candidate.tool === carrier.tool,
       );
@@ -646,12 +764,7 @@ function projectPluginInventory(
     [...byName.entries()]
       .map(([name, row]): PluginInventoryEntryDto => ({
         name,
-        carriers: row.carriers.toSorted((left, right) => {
-          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
-          return pathDelta !== 0
-            ? pathDelta
-            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-        }),
+        carriers: row.carriers.toSorted(memberComparator(sourceOrder)),
       }))
       // Named rows in name order, and the one no-name row after them all —
       // nulls-last is the comparator's own rule ({@link compareStrings}).
@@ -677,6 +790,7 @@ function projectPluginInventory(
  */
 function projectOutputStyleInventory(
   recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
 ): OutputStyleInventoryEntryDto[] {
   const byName = new Map<string, OutputStyleDefinitionDto[]>();
   for (const recognition of recognitions) {
@@ -685,6 +799,7 @@ function projectOutputStyleInventory(
     }
     const definitions = byName.get(recognition.details.styleName);
     const definition: OutputStyleDefinitionDto = {
+      sourceId: recognition.sourceId,
       sourceRelativePath: recognition.sourceRelativePath,
       tool: recognition.tool,
       // The surfaces this one recognition's admissions rest on, derived the
@@ -702,15 +817,10 @@ function projectOutputStyleInventory(
     [...byName.entries()]
       .map(([name, definitions]) => ({
         name,
-        // Files in Source-relative Path order, then the contracted tool order
-        // within one file, so two snapshots of one generation publish the same
-        // rows and an opaque ID never decides a visible order.
-        definitions: definitions.toSorted((left, right) => {
-          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
-          return pathDelta !== 0
-            ? pathDelta
-            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-        }),
+        // Files in the published Source order, then Source-relative Path,
+        // then the contracted tool order within one file
+        // ({@link memberComparator}).
+        definitions: definitions.toSorted(memberComparator(sourceOrder)),
       }))
       // Entries in name order: the row's own key sorts it.
       .sort((left, right) => compareStrings(left.name, right.name))
@@ -740,7 +850,10 @@ function projectOutputStyleInventory(
  * (`rules/registry.ts` § CompiledStaticAgentRule.agentNameOf,
  * data-model.md § Inventory unit).
  */
-function projectAgentInventory(recognitions: readonly ToolRecognition[]): AgentInventoryEntryDto[] {
+function projectAgentInventory(
+  recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
+): AgentInventoryEntryDto[] {
   const byName = new Map<string | null, AgentDefinitionDto[]>();
   for (const recognition of recognitions) {
     if (recognition.details.kind !== 'agent') {
@@ -748,6 +861,7 @@ function projectAgentInventory(recognitions: readonly ToolRecognition[]): AgentI
     }
     const name = recognition.details.agentName ?? null;
     const definition: AgentDefinitionDto = {
+      sourceId: recognition.sourceId,
       sourceRelativePath: recognition.sourceRelativePath,
       tool: recognition.tool,
       // The surfaces this one recognition's admissions rest on, derived the
@@ -767,15 +881,10 @@ function projectAgentInventory(recognitions: readonly ToolRecognition[]): AgentI
     [...byName.entries()]
       .map(([name, definitions]) => ({
         name,
-        // Files in Source-relative Path order, then the contracted tool order
-        // within one file, so two snapshots of one generation publish the same
-        // rows and an opaque ID never decides a visible order.
-        definitions: definitions.toSorted((left, right) => {
-          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
-          return pathDelta !== 0
-            ? pathDelta
-            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-        }),
+        // Files in the published Source order, then Source-relative Path,
+        // then the contracted tool order within one file
+        // ({@link memberComparator}).
+        definitions: definitions.toSorted(memberComparator(sourceOrder)),
       }))
       // Entries in name order, the null-named row last: it is not a name, so
       // it closes the list rather than sorting among the names.
@@ -802,21 +911,31 @@ function projectAgentInventory(recognitions: readonly ToolRecognition[]): AgentI
  */
 function projectPermissionsInventory(
   recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
 ): PermissionsInventoryEntryDto[] {
   const byPath = Map.groupBy(
     recognitions.filter((recognition) => recognition.details.kind === 'permissions'),
-    (recognition) => recognition.sourceRelativePath,
+    (recognition) => fileIdentityKey(recognition.sourceId, recognition.sourceRelativePath),
   );
-  return [...byPath.entries()]
-    .map(([sourceRelativePath, group]) => ({
-      sourceRelativePath,
+  return [...byPath.values()]
+    .map((group) => ({
+      sourceId: group[0]!.sourceId,
+      sourceRelativePath: group[0]!.sourceRelativePath,
       recognitions: fileRecognitionsOf(group),
       // The extraction diagnostics the recognitions reference, deduplicated:
       // the block is read once per file, so every recognition of it points at
       // the one record (FR-028).
       diagnosticIds: [...new Set(group.flatMap((recognition) => recognition.diagnosticIds))],
     }))
-    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+    .sort((left, right) => {
+      // Rows in the published Source order, then path — the same reading
+      // order as `files[]` ({@link memberComparator}).
+      const rankDelta =
+        (sourceOrder.get(left.sourceId) ?? 0) - (sourceOrder.get(right.sourceId) ?? 0);
+      return rankDelta !== 0
+        ? rankDelta
+        : compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+    });
 }
 
 /**
@@ -834,17 +953,30 @@ function projectPermissionsInventory(
  */
 function projectSettingsInventory(
   recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
 ): SettingsInventoryEntryDto[] {
-  const byPath = Map.groupBy(
+  // Grouped by the file's whole identity — Source and Source-relative Path
+  // (FR-030) — because the kind's unit is the file: a consented home's
+  // `settings.json` and a same-path document in another Source are two rows.
+  const byFile = Map.groupBy(
     recognitions.filter((recognition) => recognition.details.kind === 'settings/config'),
-    (recognition) => recognition.sourceRelativePath,
+    (recognition) => fileIdentityKey(recognition.sourceId, recognition.sourceRelativePath),
   );
-  return [...byPath.entries()]
-    .map(([sourceRelativePath, group]) => ({
-      sourceRelativePath,
+  return [...byFile.values()]
+    .map((group) => ({
+      sourceId: group[0]!.sourceId,
+      sourceRelativePath: group[0]!.sourceRelativePath,
       recognitions: fileRecognitionsOf(group),
     }))
-    .sort((left, right) => compareStrings(left.sourceRelativePath, right.sourceRelativePath));
+    .sort((left, right) => {
+      // Rows in the published Source order, then path — the same reading
+      // order as `files[]`, and the reason {@link memberComparator} gives.
+      const rankDelta =
+        (sourceOrder.get(left.sourceId) ?? 0) - (sourceOrder.get(right.sourceId) ?? 0);
+      return rankDelta !== 0
+        ? rankDelta
+        : compareStrings(left.sourceRelativePath, right.sourceRelativePath);
+    });
 }
 
 /**
@@ -863,7 +995,10 @@ function projectSettingsInventory(
  * carrier-path then closed tool order, so two snapshots of one generation
  * publish the same rows and an opaque ID never decides a visible order.
  */
-function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInventoryEntryDto[] {
+function projectMcpInventory(
+  recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
+): McpInventoryEntryDto[] {
   const byName = new Map<string | null, McpDeclarationDto[]>();
   // Which carriers publish at least one named declaration through any
   // product's reading. The no-name row is a statement about the file — "this
@@ -879,7 +1014,9 @@ function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInven
         (recognition) =>
           recognition.parseStatus === 'parsed' && recognition.details.servers.length > 0,
       )
-      .map((recognition) => recognition.sourceRelativePath),
+      // The file's whole identity (FR-030): another Source's same-path
+      // carrier publishing names says nothing about this one's emptiness.
+      .map((recognition) => fileIdentityKey(recognition.sourceId, recognition.sourceRelativePath)),
   );
   for (const recognition of recognitions) {
     if (!isMcpRecognition(recognition)) {
@@ -897,6 +1034,7 @@ function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInven
       }
     }
     const declaration: McpDeclarationDto = {
+      sourceId: recognition.sourceId,
       sourceRelativePath: recognition.sourceRelativePath,
       tool: recognition.tool,
       surfaces: VENDOR_SURFACE_ORDER.filter((surface) => recognizingSurfaces.has(surface)),
@@ -927,7 +1065,9 @@ function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInven
       recognition.parseStatus === 'parsed' && recognition.details.servers.length > 0
         ? recognition.details.servers.map((server) => server.name)
         : recognition.parseStatus === 'failed' ||
-            !pathsWithNames.has(recognition.sourceRelativePath)
+            !pathsWithNames.has(
+              fileIdentityKey(recognition.sourceId, recognition.sourceRelativePath),
+            )
           ? [null]
           : [];
     for (const name of names) {
@@ -943,12 +1083,7 @@ function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInven
     [...byName.entries()]
       .map(([name, declarations]): McpInventoryEntryDto => ({
         name,
-        declarations: declarations.toSorted((left, right) => {
-          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
-          return pathDelta !== 0
-            ? pathDelta
-            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-        }),
+        declarations: declarations.toSorted(memberComparator(sourceOrder)),
       }))
       // Named rows in name order, and the one no-name row after them all —
       // nulls-last is the comparator's own rule ({@link compareStrings}).
@@ -972,7 +1107,10 @@ function projectMcpInventory(recognitions: readonly ToolRecognition[]): McpInven
  * both rather than choosing (`codex.hooks.additive`), and each declaration says
  * which form it is.
  */
-function projectHookInventory(recognitions: readonly ToolRecognition[]): HookInventoryEntryDto[] {
+function projectHookInventory(
+  recognitions: readonly ToolRecognition[],
+  sourceOrder: ReadonlyMap<string, number>,
+): HookInventoryEntryDto[] {
   const byEvent = new Map<string | null, HookDeclarationDto[]>();
   for (const recognition of recognitions) {
     if (recognition.details.kind !== 'hook') {
@@ -988,6 +1126,7 @@ function projectHookInventory(recognitions: readonly ToolRecognition[]): HookInv
       }
     }
     const declaration: HookDeclarationDto = {
+      sourceId: recognition.sourceId,
       sourceRelativePath: recognition.sourceRelativePath,
       tool: recognition.tool,
       carrier: recognition.details.carrier,
@@ -1032,12 +1171,7 @@ function projectHookInventory(recognitions: readonly ToolRecognition[]): HookInv
     [...byEvent.entries()]
       .map(([event, declarations]): HookInventoryEntryDto => ({
         event,
-        declarations: declarations.toSorted((left, right) => {
-          const pathDelta = compareStrings(left.sourceRelativePath, right.sourceRelativePath);
-          return pathDelta !== 0
-            ? pathDelta
-            : SUPPORTED_TOOL_ORDER.indexOf(left.tool) - SUPPORTED_TOOL_ORDER.indexOf(right.tool);
-        }),
+        declarations: declarations.toSorted(memberComparator(sourceOrder)),
       }))
       // Named rows in event order, and the one no-event row after them all —
       // nulls-last is the comparator's own rule ({@link compareStrings}).
@@ -1155,7 +1289,10 @@ function isInstructionRecognition(
  */
 function resolutionsFor(
   definitions: readonly SkillDefinitionDto[],
-  collisionGates: ReadonlyMap<SupportedTool, (rowPaths: readonly string[]) => boolean>,
+  collisionGates: ReadonlyMap<
+    SupportedTool,
+    (rowEvidence: readonly SameNameCollisionDefinition[]) => boolean
+  >,
 ): SameNameSkillResolutionDto[] {
   return [...new Set(definitions.map((definition) => definition.tool))]
     .sort((left, right) => SUPPORTED_TOOL_ORDER.indexOf(left) - SUPPORTED_TOOL_ORDER.indexOf(right))
@@ -1254,6 +1391,28 @@ export class InspectionSession {
   /** Last committed Global generation; null while disabled (FR-042). */
   public committedGlobalGeneration: GlobalScanGeneration | null = null;
 
+  /**
+   * The active Global consent and its controls, or null while Global
+   * inspection is disabled — which is every new session (FR-013).
+   */
+  public globalConsent: GlobalConsentRecord | null = null;
+
+  /**
+   * The registered enable operation's authority-free projection, or null. It
+   * is what makes a duplicate enable a conflict, and it exposes no tool
+   * outcome, root, Source, or job (data-model.md § GlobalEnableOperation).
+   */
+  public globalEnableInProgress: GlobalEnableInProgressDto | null = null;
+
+  /**
+   * Each Global Source's member and boundary, keyed by Source ID. Separate from
+   * {@link sourceStates}, which holds the operational overlay every Source has:
+   * this map holds what only a Global Source has, so the Repository Source is
+   * not carrying two null fields to describe something it is not (AGENTS.md
+   * § Class and interface policy).
+   */
+  public readonly globalSources = new Map<string, GlobalSourceIdentity>();
+
   /** Stale overlays from failed explicit rescans, sorted by sourceId; written by the coordinator. */
   public staleFailures: readonly StaleSourceFailure[] = [];
 
@@ -1315,30 +1474,69 @@ export class InspectionSession {
    * with, from the same causes: never scanned, or removed by the commit that
    * replaced the snapshot the page was rendered from.
    *
-   * The path is resolved against the committed generations rather than
+   * The identity is resolved against the committed generations rather than
    * trusted, so the only absolute path a launch can ever receive is one this
-   * session published (FR-022). Only the Repository generation has a root on
-   * this session today; a Global generation's own root arrives with the phase
-   * that enables one, and until then its files answer `false` instead of
-   * being opened from the wrong root.
+   * session published (FR-022). Both halves are needed: the repository and a
+   * consented home can hold one Source-relative Path and each has its own
+   * root, so a path alone would hand the reader a file from the wrong root —
+   * the other Source's file under the address they clicked (FR-030).
    */
   public async openCommittedFile(
     sourceRelativePath: string,
+    source: SourceSelector,
     target: FileOpenTarget,
   ): Promise<boolean> {
-    const committed = this.committedRepositoryGeneration.files.some(
-      (candidate) => candidate.sourceRelativePath === sourceRelativePath,
-    );
-    if (!committed) {
+    const root = this.#committedSourceRoot(sourceRelativePath, source);
+    if (root === null) {
       return false;
     }
     // The Source-relative Path is the file's identity and is always spelled
-    // with `/`; the platform's own separator is what `join` supplies.
-    await this.#fileOpener.openFile(
-      join(this.selectedRepositoryRoot, ...sourceRelativePath.split('/')),
-      target,
-    );
+    // with `/`. Built by the scan's own append rather than by `join`
+    // ({@link pathUnderRoot}): `join` collapses `..` lexically while the
+    // operating system resolves it after following the previous component, so
+    // for a root holding `link/..` a joined path names a different file than
+    // the one the scan read — and the launch would hand the reader that other
+    // file.
+    await this.#fileOpener.openFile(pathUnderRoot(root, sourceRelativePath.split('/')), target);
     return true;
+  }
+
+  /**
+   * The absolute root the named Source's committed file sits below, or null
+   * when no committed generation of that Source holds the path.
+   *
+   * The root comes from where that Source's read authority lives, never from a
+   * DTO: the Repository's is the selected root, and a Global Source's is the
+   * exact admitted root its consent control retained, which the published
+   * boundary only carries as a one-way escaped presentation
+   * (data-model.md § SourceBoundary).
+   */
+  #committedSourceRoot(sourceRelativePath: string, source: SourceSelector): string | null {
+    const sourceId = this.#sourceIdOf(source);
+    const generation =
+      sourceId === this.repositorySourceId
+        ? this.committedRepositoryGeneration
+        : this.committedGlobalGeneration;
+    const holdsPath =
+      generation?.files.some(
+        (candidate) =>
+          candidate.sourceRelativePath === sourceRelativePath && candidate.sourceId === sourceId,
+      ) === true;
+    if (!holdsPath) {
+      return null;
+    }
+    if (sourceId === this.repositorySourceId) {
+      return this.selectedRepositoryRoot;
+    }
+    const identity = this.globalSources.get(sourceId);
+    // A committed Global file whose consent control is gone. Unreachable while
+    // the only disposal of a control is the disable barrier, which discards the
+    // Global generation in the same step — so the file above would not have
+    // resolved. Answered as staleness rather than trusted, because the
+    // alternative is opening a path no retained authority backs.
+    return identity === undefined
+      ? null
+      : (this.globalConsent?.controls.get(identity.member)?.root ?? null);
   }
 
   /**
@@ -1350,22 +1548,33 @@ export class InspectionSession {
    * declared permission policy — resolves to null and is served by that
    * row's own function instead (FR-007).
    *
-   * The path is the file's identity (FR-030), resolved against the current
-   * committed generations only, so a request made after a commit answers with
-   * what the new generation holds at that path — or null when it holds
-   * nothing — never with a previous generation's record. The lookup spans
-   * both sequences because the two are independent; a path is unique per
-   * Source, and the shipped milestone has one Source — the Global tasks add
-   * the Source dimension when a second one can hold the same path.
+   * The file's identity is the Source and its Source-relative Path (FR-030),
+   * resolved against the current committed generations only, so a request
+   * made after a commit answers with what the new generation holds at that
+   * identity — or null when it holds nothing — never with a previous
+   * generation's record. Every lookup below carries both halves: the Global
+   * generation holds all four members' recognitions together, so two members
+   * can hold one path — a Copilot home and the shared agent home each holding
+   * `skills/<name>/SKILL.md` — and a path-only match would answer with
+   * whichever member the batch listed first.
    */
-  public fileDetail(sourceRelativePath: string): FileDetailDto | null {
+  public fileDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): FileDetailDto | null {
+    // Resolved by both halves of the identity. Searching by path alone answered
+    // with whichever generation held it first, so a repository file shadowed a
+    // consented home's file at the same Source-relative Path — one file's
+    // contents under the other's row (FR-030).
+    const sourceId = this.#sourceIdOf(source);
     const generations = [
       this.committedRepositoryGeneration,
       ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
     ];
     for (const generation of generations) {
       const file = generation.files.find(
-        (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+        (candidate) =>
+          candidate.sourceRelativePath === sourceRelativePath && candidate.sourceId === sourceId,
       );
       if (file === undefined) {
         continue;
@@ -1402,7 +1611,9 @@ export class InspectionSession {
       // own kind with every declared key visible in its presentation.
       const skill = generation.recognitions.find(
         (recognition): recognition is SkillRecognition =>
-          recognition.sourceRelativePath === sourceRelativePath && isSkillRecognition(recognition),
+          recognition.sourceId === sourceId &&
+          recognition.sourceRelativePath === sourceRelativePath &&
+          isSkillRecognition(recognition),
       );
       if (skill !== undefined) {
         return {
@@ -1419,6 +1630,7 @@ export class InspectionSession {
       }
       const instruction = generation.recognitions.find(
         (recognition): recognition is InstructionRecognition =>
+          recognition.sourceId === sourceId &&
           recognition.sourceRelativePath === sourceRelativePath &&
           isInstructionRecognition(recognition),
       );
@@ -1452,6 +1664,7 @@ export class InspectionSession {
       // control flow.
       for (const recognition of generation.recognitions) {
         if (
+          recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== sourceRelativePath ||
           recognition.details.kind !== 'prompt/command'
         ) {
@@ -1481,6 +1694,7 @@ export class InspectionSession {
       // A loop rather than `find`, for the reason the branch above states.
       for (const recognition of generation.recognitions) {
         if (
+          recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== sourceRelativePath ||
           recognition.details.kind !== 'output style'
         ) {
@@ -1509,7 +1723,7 @@ export class InspectionSession {
       // that: a Markdown agent's two halves are the frontmatter block and the
       // body, which is exactly what `MarkdownPresentationDto` carries, so the
       // agent route maps that variant onto its own shape rather than treating
-      // the file as unparsed (`pages/agents/[...path].vue` § presentation).
+      // the file as unparsed (`pages/agents/[source]/[...path].vue` § presentation).
       // Reordering would only move the problem: the instruction route would
       // then receive an agent variant it has no mapping for.
       //
@@ -1519,6 +1733,7 @@ export class InspectionSession {
       // control flow.
       for (const recognition of generation.recognitions) {
         if (
+          recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== sourceRelativePath ||
           recognition.details.kind !== 'agent'
         ) {
@@ -1552,6 +1767,7 @@ export class InspectionSession {
       if (
         generation.recognitions.some(
           (recognition) =>
+            recognition.sourceId === sourceId &&
             recognition.sourceRelativePath === sourceRelativePath &&
             recognition.details.kind === 'rule',
         )
@@ -1574,6 +1790,7 @@ export class InspectionSession {
       if (
         generation.recognitions.some(
           (recognition) =>
+            recognition.sourceId === sourceId &&
             recognition.sourceRelativePath === sourceRelativePath &&
             recognition.details.kind === 'settings/config',
         )
@@ -1600,25 +1817,9 @@ export class InspectionSession {
       if (
         generation.recognitions.some(
           (recognition) =>
-            recognition.sourceRelativePath === sourceRelativePath && isMcpRecognition(recognition),
-        )
-      ) {
-        return null;
-      }
-      // A hook carrier, on the same terms: a hook row's subject is one
-      // declared event inside the file, so its detail is
-      // `hookCarrierDetail`'s own result — the shape with no `sourceText`
-      // field at all (FR-007). Answering here would hand back the bytes that
-      // response deliberately does not carry. A carrier that also holds a
-      // file-subject row was already answered above under it: a
-      // `.codex/config.toml` is its settings document besides, which is why
-      // the settings branch runs first and this one is reached only by a file
-      // whose whole purpose is hooks.
-      if (
-        generation.recognitions.some(
-          (recognition) =>
+            recognition.sourceId === sourceId &&
             recognition.sourceRelativePath === sourceRelativePath &&
-            recognition.details.kind === 'hook',
+            isMcpRecognition(recognition),
         )
       ) {
         return null;
@@ -1635,6 +1836,7 @@ export class InspectionSession {
       if (
         generation.recognitions.some(
           (recognition) =>
+            recognition.sourceId === sourceId &&
             recognition.sourceRelativePath === sourceRelativePath &&
             recognition.details.kind === 'hook',
         )
@@ -1649,6 +1851,7 @@ export class InspectionSession {
       if (
         generation.recognitions.some(
           (recognition) =>
+            recognition.sourceId === sourceId &&
             recognition.sourceRelativePath === sourceRelativePath &&
             recognition.details.kind === 'permissions',
         )
@@ -1679,7 +1882,11 @@ export class InspectionSession {
    * recognition at the path, which the handler answers as the
    * `stale-resource` rejection.
    */
-  public permissionPolicyDetail(sourceRelativePath: string): PermissionPolicyDetailDto | null {
+  public permissionPolicyDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): PermissionPolicyDetailDto | null {
+    const sourceId = this.#sourceIdOf(source);
     const generations = [
       this.committedRepositoryGeneration,
       ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
@@ -1695,6 +1902,8 @@ export class InspectionSession {
       let declared = false;
       for (const recognition of generation.recognitions) {
         if (
+          recognition.sourceId !== sourceId ||
+          recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== sourceRelativePath ||
           recognition.details.kind !== 'permissions'
         ) {
@@ -1712,7 +1921,8 @@ export class InspectionSession {
         continue;
       }
       const file = generation.files.find(
-        (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+        (candidate) =>
+          candidate.sourceId === sourceId && candidate.sourceRelativePath === sourceRelativePath,
       );
       if (file === undefined) {
         // A recognition exists only for a committed file, so the pair cannot
@@ -1781,6 +1991,7 @@ export class InspectionSession {
    * scan holds none of, while the plugin's own files list it.
    */
   public pluginCarrierDetail(params: PluginCarrierDetailParams): PluginCarrierDetailDto | null {
+    const sourceId = this.#sourceIdOf(params.source);
     const generations = [
       this.committedRepositoryGeneration,
       ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
@@ -1792,6 +2003,7 @@ export class InspectionSession {
       // control flow.
       for (const recognition of generation.recognitions) {
         if (
+          recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== params.sourceRelativePath ||
           recognition.tool !== params.tool ||
           recognition.details.kind !== 'plugin'
@@ -1799,7 +2011,9 @@ export class InspectionSession {
           continue;
         }
         const file = generation.files.find(
-          (candidate) => candidate.sourceRelativePath === params.sourceRelativePath,
+          (candidate) =>
+            candidate.sourceId === sourceId &&
+            candidate.sourceRelativePath === params.sourceRelativePath,
         );
         if (file === undefined) {
           // A recognition exists only for a committed file, so the pair cannot
@@ -1869,6 +2083,7 @@ export class InspectionSession {
    * plugin's name.
    */
   public pluginFileDetail(params: PluginFileDetailParams): PluginFileDetailDto | null {
+    const sourceId = this.#sourceIdOf(params.source);
     const generations = [
       this.committedRepositoryGeneration,
       ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
@@ -1876,6 +2091,7 @@ export class InspectionSession {
     for (const generation of generations) {
       for (const recognition of generation.recognitions) {
         if (
+          recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== params.sourceRelativePath ||
           recognition.tool !== params.tool ||
           recognition.details.kind !== 'plugin'
@@ -1894,7 +2110,8 @@ export class InspectionSession {
           return null;
         }
         const file = generation.files.find(
-          (candidate) => candidate.sourceRelativePath === params.filePath,
+          (candidate) =>
+            candidate.sourceId === sourceId && candidate.sourceRelativePath === params.filePath,
         );
         if (file === undefined) {
           // The census enumerated the directory in an earlier commit and this
@@ -1933,7 +2150,11 @@ export class InspectionSession {
    * no reading parsed; which product read a given event stays the inventory's
    * per-declaration fact.
    */
-  public hookCarrierDetail(sourceRelativePath: string): HookCarrierDetailDto | null {
+  public hookCarrierDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): HookCarrierDetailDto | null {
+    const sourceId = this.#sourceIdOf(source);
     const generations = [
       this.committedRepositoryGeneration,
       ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
@@ -1949,6 +2170,8 @@ export class InspectionSession {
       }[] = [];
       for (const recognition of generation.recognitions) {
         if (
+          recognition.sourceId !== sourceId ||
+          recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== sourceRelativePath ||
           recognition.details.kind !== 'hook'
         ) {
@@ -1966,7 +2189,8 @@ export class InspectionSession {
       }
       {
         const file = generation.files.find(
-          (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+          (candidate) =>
+            candidate.sourceId === sourceId && candidate.sourceRelativePath === sourceRelativePath,
         );
         if (file === undefined) {
           // A recognition exists only for a committed file, so the pair cannot
@@ -2032,7 +2256,11 @@ export class InspectionSession {
    * the current committed generations hold no MCP recognition at the path,
    * which the handler answers as the `stale-resource` rejection.
    */
-  public mcpCarrierDetail(sourceRelativePath: string): McpCarrierDetailDto | null {
+  public mcpCarrierDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): McpCarrierDetailDto | null {
+    const sourceId = this.#sourceIdOf(source);
     const generations = [
       this.committedRepositoryGeneration,
       ...(this.committedGlobalGeneration === null ? [] : [this.committedGlobalGeneration]),
@@ -2046,14 +2274,17 @@ export class InspectionSession {
       // with whichever tool's recognition happens to sit first.
       const mcpRecognitions = generation.recognitions.filter(
         (recognition): recognition is McpRecognition =>
-          recognition.sourceRelativePath === sourceRelativePath && isMcpRecognition(recognition),
+          recognition.sourceId === sourceId &&
+          recognition.sourceRelativePath === sourceRelativePath &&
+          isMcpRecognition(recognition),
       );
       const [mcp] = mcpRecognitions;
       if (mcp === undefined) {
         continue;
       }
       const file = generation.files.find(
-        (candidate) => candidate.sourceRelativePath === sourceRelativePath,
+        (candidate) =>
+          candidate.sourceId === sourceId && candidate.sourceRelativePath === sourceRelativePath,
       );
       if (file === undefined) {
         // A recognition exists only for a committed file, so the pair cannot
@@ -2118,6 +2349,84 @@ export class InspectionSession {
    * simply absent from the projection rather than filtered afterwards, and
    * immutability is owned by the readonly types, not re-enforced at runtime.
    */
+  /**
+   * The Source ID one request's selector names, or the empty string when no
+   * such Source exists — a `global-claude` selector before Claude's home has
+   * been consented to, for instance. No file carries an empty Source ID, so
+   * that resolves nothing, which is the same answer a path the generation does
+   * not hold gets (contracts/http-api.md § get-file-detail).
+   */
+  #sourceIdOf(source: SourceSelector): string {
+    if (source === 'repository') {
+      return this.repositorySourceId;
+    }
+    for (const [sourceId, identity] of this.globalSources) {
+      if (`global-${identity.member}` === source) {
+        return sourceId;
+      }
+    }
+    return '';
+  }
+
+  /**
+   * Every committed Global Source, in the fixed member order. A Global Source
+   * exists only once its batch has committed: an admitted member whose scan has
+   * not published yet is a control, not a Source, which is what "no
+   * provisional Source before the one batch commit" means for a reader
+   * refreshing mid-scan (data-model.md § GlobalEnableOperation).
+   */
+  #globalSourceDtos(): SourceDto[] {
+    const generation = this.committedGlobalGeneration;
+    if (generation === null) {
+      return [];
+    }
+    const dtos: SourceDto[] = [];
+    for (const member of GLOBAL_MEMBER_ORDER) {
+      for (const [sourceId, identity] of this.globalSources) {
+        if (identity.member !== member) {
+          continue;
+        }
+        const overlay = this.sourceStates.get(sourceId);
+        if (overlay === undefined) {
+          continue;
+        }
+        dtos.push({
+          sourceId,
+          kind: 'global',
+          member,
+          enabled: true,
+          status: overlay.status,
+          boundary: identity.boundary,
+          generation: generation.generation,
+          scanRequestId: overlay.scanRequestId,
+          progress: overlay.progress,
+          diagnosticIds: [...overlay.diagnosticIds],
+        });
+      }
+    }
+    return dtos;
+  }
+
+  /**
+   * The inventory's Source ordering key: the Repository Source first, then each
+   * Global Source in the fixed member order. It is what puts a reader's own
+   * repository above their personal setup in one list rather than interleaving
+   * two boundaries by path.
+   */
+  #inventorySourceOrder(): Map<string, number> {
+    const order = new Map<string, number>([[this.repositorySourceId, 0]]);
+    let rank = 1;
+    for (const member of GLOBAL_MEMBER_ORDER) {
+      for (const [sourceId, identity] of this.globalSources) {
+        if (identity.member === member) {
+          order.set(sourceId, rank);
+          rank += 1;
+        }
+      }
+    }
+    return order;
+  }
+
   public snapshot(): SessionSnapshot {
     const repository = this.sourceStates.get(this.repositorySourceId);
     if (repository === undefined) {
@@ -2127,6 +2436,9 @@ export class InspectionSession {
       ...this.committedRepositoryGeneration.files,
       ...(this.committedGlobalGeneration?.files ?? []),
     ];
+    // Computed once for the whole snapshot: the file inventory and the
+    // instruction rows both order by it, and two rankings could disagree.
+    const inventorySourceOrder = this.#inventorySourceOrder();
     return {
       sessionId: this.sessionId,
       createdAt: this.createdAt,
@@ -2135,7 +2447,7 @@ export class InspectionSession {
         {
           sourceId: this.repositorySourceId,
           kind: 'repository',
-          tool: null,
+          member: null,
           enabled: true,
           status: repository.status,
           boundary: this.boundary,
@@ -2144,64 +2456,93 @@ export class InspectionSession {
           progress: repository.progress,
           diagnosticIds: [...repository.diagnosticIds],
         },
+        ...this.#globalSourceDtos(),
       ],
       files: sortInventory(
         committedFiles.map((file) => summarizeFile(file)),
-        // Only the Repository Source exists at this milestone, so the
-        // Source-kind key is constant; the Global tasks extend this map
-        // with the fixed Global tool order.
-        new Map([[this.repositorySourceId, 0]]),
+        inventorySourceOrder,
       ),
-      instructions: projectInstructionInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
+      instructions: projectInstructionInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        // The same ranking the file inventory is sorted by, so a row and the
+        // files under it agree about which Source comes first.
+        inventorySourceOrder,
+      ),
       skills: projectSkillInventory(
         [
           ...this.committedRepositoryGeneration.recognitions,
           ...(this.committedGlobalGeneration?.recognitions ?? []),
         ],
         committedFiles,
+        inventorySourceOrder,
       ),
-      mcp: projectMcpInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      agents: projectAgentInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      prompts: projectPromptInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      rules: projectRuleInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      permissions: projectPermissionsInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      hooks: projectHookInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
+      mcp: projectMcpInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
+      agents: projectAgentInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
+      prompts: projectPromptInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
+      rules: projectRuleInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
+      permissions: projectPermissionsInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
+      hooks: projectHookInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
       plugins: projectPluginInventory(
         [
           ...this.committedRepositoryGeneration.recognitions,
           ...(this.committedGlobalGeneration?.recognitions ?? []),
         ],
         committedFiles,
+        inventorySourceOrder,
       ),
-      outputStyles: projectOutputStyleInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
-      settings: projectSettingsInventory([
-        ...this.committedRepositoryGeneration.recognitions,
-        ...(this.committedGlobalGeneration?.recognitions ?? []),
-      ]),
+      outputStyles: projectOutputStyleInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
+      settings: projectSettingsInventory(
+        [
+          ...this.committedRepositoryGeneration.recognitions,
+          ...(this.committedGlobalGeneration?.recognitions ?? []),
+        ],
+        inventorySourceOrder,
+      ),
       // Semantic emission order (data-model.md § Diagnostic): session-owned
       // lifecycle records (repository, Global tools, published Sources)
       // precede the generations' candidate-owned records.
@@ -2213,8 +2554,8 @@ export class InspectionSession {
       ...this.dataEnvelope(),
       snapshotState: deriveSnapshotState(this.staleFailures),
       staleFailures: this.staleFailures,
-      globalControl: null,
-      globalEnableInProgress: null,
+      globalControl: this.globalConsent?.toDto() ?? null,
+      globalEnableInProgress: this.globalEnableInProgress,
       globalDisableInProgress: null,
       sessionDiagnosticIds: [...this.sessionDiagnostics.keys()],
       repositoryFailureDiagnosticId: this.repositoryFailureDiagnosticId,
@@ -2342,6 +2683,16 @@ export class SessionCoordinator {
    */
   #hasCommittedBefore = new Set<string>();
 
+  /**
+   * Whether the shutdown revocation has run. The Global enable batch is not
+   * an entry of {@link SessionCoordinator.#attempts} — it is accepted by
+   * `settleGlobalEnable` and committed by `completeGlobalBatch` — so the
+   * per-attempt revocation cannot reach it; this flag is what makes "a result
+   * arriving after shutdown commits nothing" hold for the batch too
+   * (data-model.md § ScanAttempt).
+   */
+  #allPublicationRevoked = false;
+
   /** Binds the coordinator to the one session whose state it serializes. */
   public constructor(session: InspectionSession) {
     this.#session = session;
@@ -2399,6 +2750,394 @@ export class SessionCoordinator {
   }
 
   /**
+   * Registers one Global enable operation against the frozen preview, or
+   * returns the fixed conflict (contracts/http-api.md § enable-global).
+   *
+   * At most one may be running: a duplicate is `global-enable-in-progress`
+   * rather than a second transaction, because two operations over one consent
+   * would each prepare a batch and only one could commit. The projection it
+   * installs carries no tool outcome, root, Source, or job — only that an
+   * operation exists.
+   */
+  public registerGlobalEnable(
+    previewId: string,
+    kind: 'initial-enable' | 'retry',
+  ): { readonly kind: 'admitted'; readonly operationId: string } | { readonly kind: 'conflict' } {
+    if (this.#session.globalEnableInProgress !== null) {
+      return { kind: 'conflict' };
+    }
+    const operationId = createOpaqueId();
+    this.#session.globalEnableInProgress = { kind, operationId, previewId };
+    return { kind: 'admitted', operationId };
+  }
+
+  /**
+   * Unregisters a Global enable operation that ended before its disposition.
+   *
+   * Reached by the enable function's own failure path: a throw during
+   * admission is not confined to one tool, so the transaction aborts, the
+   * request reports its real error, and no terminal operation history is kept
+   * (data-model.md § GlobalEnableOperation).
+   */
+  public abandonGlobalEnable(operationId: string): void {
+    if (this.#session.globalEnableInProgress?.operationId === operationId) {
+      this.#session.globalEnableInProgress = null;
+    }
+  }
+
+  /**
+   * The atomic disposition of one Global enable operation: activate the
+   * consent and its controls, partition the evaluated tools, and either queue
+   * exactly one batch for the admitted subset or commit `active-no-job`
+   * (contracts/http-api.md § enable-global).
+   *
+   * Every admitted tool's Source ID is allocated here and published only by
+   * the batch's own commit, so no Source exists for a scan that has not
+   * finished. A tool with no bound port is not evaluated: it is absent from
+   * both partitions and receives no control, because this build has nothing to
+   * say about it (`GlobalEnableMember.port`).
+   */
+  public settleGlobalEnable(
+    operationId: string,
+    previewId: string,
+    resolved: readonly {
+      readonly member: GlobalEnableMember;
+      readonly outcome: GlobalResolvedOutcome;
+    }[],
+  ): GlobalEnableResultDto {
+    if (this.#session.globalEnableInProgress?.operationId !== operationId) {
+      // The operation was drained or replaced while its admissions ran. It has
+      // no authority to activate anything, and the caller reports the conflict
+      // its own re-check produces.
+      throw new Error('the global enable operation is no longer registered');
+    }
+    if (this.#session.globalEnableInProgress.kind === 'retry') {
+      return this.#settleGlobalRetry(previewId, resolved);
+    }
+    const controls: GlobalToolControl[] = [];
+    const accepted: GlobalMemberId[] = [];
+    const rejected: GlobalMemberId[] = [];
+    for (const { member, outcome } of resolved) {
+      if (outcome.kind === 'admitted') {
+        const sourceId = createOpaqueId();
+        controls.push(
+          GlobalToolControl.admittedControl(member.member, outcome.root, sourceId, member.origin),
+        );
+        accepted.push(member.member);
+        continue;
+      }
+      controls.push(GlobalToolControl.rejectedControl(member.member, outcome.failureCode));
+      rejected.push(member.member);
+    }
+
+    const consent = new GlobalConsentRecord(previewId, new Date().toISOString(), controls);
+    this.#session.globalConsent = consent;
+    this.#session.globalEnableInProgress = null;
+
+    if (accepted.length === 0) {
+      // Deterministically all-rejected: consent stays active so the reader can
+      // retry or disable, and no job, Source, or generation is created.
+      return {
+        state: 'active-no-job',
+        scanRequestId: null,
+        acceptedTools: inMemberOrder(accepted),
+        rejectedTools: inMemberOrder(rejected),
+      };
+    }
+
+    // One request ID for the whole admitted subset: the batch, its
+    // `batchStatus`, and the one generation it commits all carry it, which is
+    // what keeps an accepted batch correlated even if the response is lost.
+    const scanRequestId = createOpaqueId();
+    const pendingTools = inMemberOrder(accepted);
+    consent.pendingTools = pendingTools;
+    consent.batchStatus = {
+      scanRequestId,
+      tools: pendingTools,
+      phase: 'waiting',
+      failureRef: null,
+    };
+    for (const tool of pendingTools) {
+      const control = consent.controls.get(tool)!;
+      const sourceState = new MutableSourceState(control.sourceId!);
+      sourceState.status = 'scanning';
+      sourceState.scanRequestId = scanRequestId;
+      this.#session.sourceStates.set(control.sourceId!, sourceState);
+    }
+    return {
+      state: 'queued',
+      scanRequestId,
+      acceptedTools: pendingTools,
+      rejectedTools: inMemberOrder(rejected),
+    };
+  }
+
+  /**
+   * The retry disposition over the active consent (contracts/http-api.md
+   * § enable-global): each re-resolved member's control is replaced in
+   * place — a fresh admission with a new Source ID, or a fresh rejection —
+   * while every other control, every published Source, and the consent record
+   * itself stay exactly as they were. Zero admitted is `active-no-job` with
+   * no new job, Source, or generation; a nonempty admitted subset queues one
+   * batch whose commit publishes beside the existing Sources at the
+   * sequence's next generation ({@link completeGlobalBatch}).
+   */
+  #settleGlobalRetry(
+    previewId: string,
+    resolved: readonly {
+      readonly member: GlobalEnableMember;
+      readonly outcome: GlobalResolvedOutcome;
+    }[],
+  ): GlobalEnableResultDto {
+    const consent = this.#session.globalConsent;
+    if (consent === null || consent.previewId !== previewId) {
+      // Reached by no caller: `runGlobalEnable` registers a retry only while
+      // this consent is active, and the preview is frozen for as long as it
+      // is, so the two IDs cannot diverge. The throw keeps the invariant loud
+      // rather than settling a retry against nothing.
+      throw new Error('the global retry has no active consent to settle against');
+    }
+    const accepted: GlobalMemberId[] = [];
+    const rejected: GlobalMemberId[] = [];
+    for (const { member, outcome } of resolved) {
+      const previous = consent.controls.get(member.member);
+      if (previous?.sourceId != null && previous.state === 'admitted') {
+        // A superseded unpublished admission: its Source ID was never
+        // published, so the state allocated for a failed batch goes with it
+        // and the fresh admission allocates its own.
+        this.#session.sourceStates.delete(previous.sourceId);
+      }
+      if (outcome.kind === 'admitted') {
+        const sourceId = createOpaqueId();
+        consent.controls.set(
+          member.member,
+          GlobalToolControl.admittedControl(member.member, outcome.root, sourceId, member.origin),
+        );
+        accepted.push(member.member);
+        continue;
+      }
+      consent.controls.set(
+        member.member,
+        GlobalToolControl.rejectedControl(member.member, outcome.failureCode),
+      );
+      rejected.push(member.member);
+    }
+    this.#session.globalEnableInProgress = null;
+
+    if (accepted.length === 0) {
+      // Deterministically all-rejected again: the consent and its published
+      // Sources stay as they were, and the reader can retry or disable. The
+      // previous batch's failed status goes, because an `active-no-job`
+      // disposition has null `batchStatus` — the fresh rejections on the
+      // controls are the current answer, and a cleared record is what lets
+      // the retained error stop describing a batch a retry has superseded
+      // (contracts/http-api.md § enable-global).
+      consent.batchStatus = null;
+      return {
+        state: 'active-no-job',
+        scanRequestId: null,
+        acceptedTools: [],
+        rejectedTools: inMemberOrder(rejected),
+      };
+    }
+
+    const scanRequestId = createOpaqueId();
+    const pendingTools = inMemberOrder(accepted);
+    consent.pendingTools = pendingTools;
+    consent.batchStatus = {
+      scanRequestId,
+      tools: pendingTools,
+      phase: 'waiting',
+      failureRef: null,
+    };
+    for (const tool of pendingTools) {
+      const control = consent.controls.get(tool)!;
+      const sourceState = new MutableSourceState(control.sourceId!);
+      sourceState.status = 'scanning';
+      sourceState.scanRequestId = scanRequestId;
+      this.#session.sourceStates.set(control.sourceId!, sourceState);
+    }
+    return {
+      state: 'queued',
+      scanRequestId,
+      acceptedTools: pendingTools,
+      rejectedTools: inMemberOrder(rejected),
+    };
+  }
+
+  /**
+   * Commits one Global batch: every admitted member's result published
+   * together in exactly one generation (FR-014).
+   *
+   * One commit rather than one per member, so no poll can observe a partial
+   * Global inventory. The generation is 1 when the enable created the sequence
+   * and the exact N+1 when a retry commits beside existing Sources.
+   */
+  public completeGlobalBatch(
+    scanRequestId: string,
+    results: readonly {
+      readonly member: GlobalMemberId;
+      readonly files: readonly CustomizationFileDto[];
+      readonly recognitions: readonly ToolRecognition[];
+      readonly diagnostics: readonly SerializedDiagnostic[];
+      readonly outcome: GenerationOutcome;
+    }[],
+    failures: readonly {
+      readonly member: GlobalMemberId;
+      readonly failureCode: 'root-unreadable' | 'scan-failed';
+    }[] = [],
+  ): void {
+    // The shutdown revocation covers the batch too: the CLI's close handler
+    // (`cli.ts` § requestClose) revokes every publication before closing the
+    // host, and a batch still reading at that point must commit nothing, the
+    // same rule every revoked attempt follows (data-model.md § ScanAttempt).
+    if (this.#allPublicationRevoked) {
+      return;
+    }
+    const consent = this.#session.globalConsent;
+    if (consent === null || consent.batchStatus?.scanRequestId !== scanRequestId) {
+      // The batch was superseded or its consent was removed while it ran; a
+      // late result commits nothing (FR-029).
+      return;
+    }
+    const now = new Date().toISOString();
+
+    // A member whose admitted root could not be read after all, or whose own
+    // scan failed deterministically. Admission tests readability, so this is
+    // not the mode case it once was: what reaches here is a root that changed
+    // between admission and the scan — removed, or made unreadable — which is
+    // this member's own failure and leaves the others free to commit
+    // (FR-014).
+    for (const failure of failures) {
+      const control = consent.controls.get(failure.member);
+      if (control === undefined) {
+        continue;
+      }
+      const rejected = GlobalToolControl.rejectedControl(failure.member, failure.failureCode);
+      consent.controls.set(failure.member, rejected);
+      const abandoned = control.sourceId;
+      if (abandoned !== null) {
+        // The Source ID was allocated at admission and never published, so it
+        // names nothing: dropping the overlay is what keeps a failed member
+        // from leaving a Source behind (data-model.md § GlobalToolControl).
+        this.#session.sourceStates.delete(abandoned);
+      }
+    }
+
+    if (results.length === 0) {
+      // Every admitted member failed deterministically: no generation commits,
+      // and the batch's terminal status names the members rather than repeating
+      // their reasons, each of which is on its own control.
+      consent.batchStatus = {
+        ...consent.batchStatus,
+        phase: 'failed',
+        failureRef: {
+          kind: 'tool-failures',
+          failedTools: inMemberOrder(failures.map((failure) => failure.member)),
+        },
+      };
+      consent.pendingTools = [];
+      return;
+    }
+
+    const scannedSourceIds: string[] = [];
+    for (const result of results) {
+      const control = consent.controls.get(result.member);
+      if (control?.sourceId === undefined || control.sourceId === null) {
+        continue;
+      }
+      scannedSourceIds.push(control.sourceId);
+      control.markPublished();
+      this.#session.globalSources.set(control.sourceId, {
+        member: result.member,
+        boundary: createSourceBoundaryDto(control.root!, control.origin!),
+      });
+      const overlay = this.#session.sourceStates.get(control.sourceId);
+      if (overlay !== undefined) {
+        overlay.status = result.outcome === 'partial' ? 'partial' : 'ready';
+        overlay.diagnosticIds = result.diagnostics.map((diagnostic) => diagnostic.diagnosticId);
+      }
+    }
+    // A retry's batch covers only the retried subset, and a Global commit
+    // replaces the sequence's one committed generation — so the members this
+    // batch did not scan carry their published files, recognitions, and
+    // diagnostics forward into it. Without the carry, a one-member retry
+    // would publish a generation holding only that member and turn every
+    // other published Source's inventory and details stale (FR-014, FR-030:
+    // a commit invalidates views, never another Source's published data).
+    const previous = this.#session.committedGlobalGeneration;
+    const batchSourceIds = new Set(scannedSourceIds);
+    const carried =
+      previous === null
+        ? { files: [], recognitions: [], diagnostics: [], partial: false }
+        : {
+            files: previous.files.filter((file) => !batchSourceIds.has(file.sourceId)),
+            recognitions: previous.recognitions.filter(
+              (recognition) => !batchSourceIds.has(recognition.sourceId),
+            ),
+            diagnostics: previous.diagnostics.filter(
+              (diagnostic) => !batchSourceIds.has(diagnostic.sourceId),
+            ),
+            // A carried Source's own outcome survives with its files: the
+            // per-source overlays hold it, and any partial one keeps the next
+            // generation partial exactly as it kept this one.
+            partial: previous.outcome === 'partial',
+          };
+    const commit = {
+      scannedSourceIds,
+      scanRequestId,
+      startedAt: now,
+      finishedAt: now,
+      // The batch is partial exactly when any member of the generation is: one
+      // generation, one status, and a file-confined outcome anywhere in it —
+      // scanned now or carried forward — makes the whole commit partial
+      // (FR-028).
+      outcome:
+        carried.partial || results.some((result) => result.outcome === 'partial')
+          ? ('partial' as GenerationOutcome)
+          : ('complete' as GenerationOutcome),
+      files: [...carried.files, ...results.flatMap((result) => result.files)],
+      recognitions: [...carried.recognitions, ...results.flatMap((result) => result.recognitions)],
+      diagnostics: [...carried.diagnostics, ...results.flatMap((result) => result.diagnostics)],
+    };
+    this.#session.committedGlobalGeneration =
+      previous === null
+        ? createGlobalEnableGeneration(commit)
+        : prepareNextGlobalGeneration(previous, commit);
+    // The status is removed by the same commit that publishes the Sources: a
+    // batch that finished is not a batch anyone is waiting for.
+    consent.pendingTools = [];
+    consent.batchStatus = null;
+  }
+
+  /**
+   * Records the terminal failure of one accepted Global batch: the failed
+   * request's own error, retained once for the whole consent under the shared
+   * request ID (data-model.md § GlobalControlView).
+   *
+   * No per-tool failure and no `StaleSourceFailure`: the throw was not confined
+   * to one tool's files, so attributing it to one would be inventing a cause.
+   */
+  public failGlobalBatch(scanRequestId: string, message: string): void {
+    const consent = this.#session.globalConsent;
+    if (consent === null || consent.batchStatus?.scanRequestId !== scanRequestId) {
+      return;
+    }
+    for (const tool of consent.pendingTools) {
+      const sourceId = consent.controls.get(tool)?.sourceId;
+      if (sourceId !== undefined && sourceId !== null) {
+        this.#session.sourceStates.delete(sourceId);
+      }
+    }
+    consent.batchStatus = {
+      ...consent.batchStatus,
+      phase: 'failed',
+      failureRef: { kind: 'error', message },
+    };
+    consent.pendingTools = [];
+  }
+
+  /**
    * Revokes an attempt's right to commit (disable, shutdown, supersession):
    * a result that completes afterwards is discarded instead of committed
    * (FR-029 late-result discard).
@@ -2419,6 +3158,9 @@ export class SessionCoordinator {
     for (const attempt of this.#attempts.values()) {
       attempt.publicationAuthority = 'revoked';
     }
+    // The Global enable batch holds no attempt entry, so it is revoked by
+    // flag; `completeGlobalBatch` consults it before committing.
+    this.#allPublicationRevoked = true;
   }
 
   /**

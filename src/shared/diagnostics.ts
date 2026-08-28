@@ -5,7 +5,8 @@
 // only `code` plus those values: scope, severity, and the actionable message
 // text are all derived from `code` through this one registry.
 // `lifecycleOwnerKey` is internal routing state and never serializes.
-import { createOpaqueId, type SupportedTool } from './entities';
+import { createOpaqueId } from './entities';
+import type { GlobalMemberId } from './api-types';
 
 /**
  * The closed set of diagnostic codes (data-model.md § Diagnostic). An
@@ -180,8 +181,8 @@ export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegi
 export type LifecycleOwnerKey =
   /** The automatic Repository Source root-failure owner. */
   | 'repository'
-  /** One unpublished Global tool's root-failure owner. */
-  | `global:${SupportedTool}`
+  /** One unpublished Global member's root-failure owner. */
+  | `global:${GlobalMemberId}`
   /** One published Source's explicit-rescan failure owner. */
   | `published-source:${string}`;
 

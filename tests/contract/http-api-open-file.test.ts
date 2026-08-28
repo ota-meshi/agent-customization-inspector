@@ -2,11 +2,13 @@
 // (contracts/http-api.md § open-file).
 //
 // The contract this suite holds to is what the host may launch: only a file
-// the current committed generation published, addressed by the Source-relative
-// Path every other request already uses, resolved to an absolute path the
-// client never sees (FR-022, data-model.md § SourceBoundary). A path the
-// generation does not hold takes the declared `stale-resource` outcome, the
-// same one every detail function answers with.
+// the current committed generations published, addressed by the whole identity
+// every other request already uses — the Source and the Source-relative Path
+// (FR-030) — resolved to an absolute path the client never sees (FR-022,
+// data-model.md § SourceBoundary). An identity the generations do not hold
+// takes the declared `stale-resource` outcome, the same one every detail
+// function answers with, and each Source's file opens from that Source's own
+// root.
 //
 // The suite runs the real scan over a real fixture so the path it opens is one
 // the traversal actually published, and the session is built with a recording
@@ -23,7 +25,11 @@ import {
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
 import { buildSecretFixture } from '../fixtures/secrets/build-fixtures';
 import { RecordingFileOpener } from '../fixtures/file-opener';
-import type { CommandResult, DeterministicRejection } from '../../src/shared/api-types';
+import type {
+  CommandResult,
+  DeterministicRejection,
+  SourceSelector,
+} from '../../src/shared/api-types';
 
 /** The captured shape of one registered devframe RPC function. */
 interface CapturedRpcFunction {
@@ -75,6 +81,7 @@ async function openFile(
   context: InspectorHostContext,
   sourceRelativePath: string,
   target: string,
+  source: SourceSelector = 'repository',
 ): Promise<CommandResult<null> | DeterministicRejection> {
   const functions = new Map<string, CapturedRpcFunction>();
   const ctx = {
@@ -86,7 +93,9 @@ async function openFile(
   };
   createInspectorDevframe(context).setup?.(ctx as never, undefined as never);
   const fn = functions.get('agent-customization-inspector:open-file')!;
-  return (await fn.handler(sourceRelativePath as never, target as never)) as
+  // One object naming both halves of the identity and the target, exactly as
+  // the client sends it (contracts/http-api.md § open-file).
+  return (await fn.handler({ sourceRelativePath, source, target } as never)) as
     CommandResult<null> | DeterministicRejection;
 }
 
@@ -106,6 +115,19 @@ describe('open-file', () => {
     const { context, opener, skillPath } = await scannedFixture();
     await openFile(context, skillPath, 'default-application');
     expect(opener.launches[0]?.target).toBe('default-application');
+  });
+
+  it('rejects an identity whose Source this session does not carry', async () => {
+    const { context, opener, skillPath } = await scannedFixture();
+    // The path is committed, and under the Repository Source it opens. Named
+    // with a Source no generation of this session holds, the same path
+    // resolves nothing: a file is its Source and its path, and opening the
+    // repository's copy here would hand the reader a file from a root they did
+    // not address (FR-030).
+    expect(await openFile(context, skillPath, 'visual-studio-code', 'global-codex')).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    expect(opener.launches).toEqual([]);
   });
 
   it('rejects a path no committed generation holds', async () => {

@@ -88,7 +88,7 @@ const EMPTY_NAME_TEXT = '(empty name)';
  * name built only from whitespace or invisible code points, and the
  * empty-name note beside it — the two rules the inventory row and the detail
  * page draw a name by, so one name reads identically wherever it appears
- * (`AgentRow.vue`, `pages/agents/[...path].vue`).
+ * (`AgentRow.vue`, `pages/agents/[source]/[...path].vue`).
  */
 function nameText(definition: CustomAgentSideDefinition): string {
   const name = definition.agentName ?? '';

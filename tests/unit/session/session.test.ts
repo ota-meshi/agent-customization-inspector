@@ -37,7 +37,7 @@ describe('session bootstrap (generation 0)', () => {
     expect(snapshot.sources).toHaveLength(1);
     const repository = snapshot.sources[0]!;
     expect(repository.kind).toBe('repository');
-    expect(repository.tool).toBeNull();
+    expect(repository.member).toBeNull();
     expect(repository.enabled).toBe(true);
     expect(repository.status).toBe('idle');
     expect(repository.scanRequestId).toBeNull();
@@ -783,8 +783,25 @@ describe('an explicit rescan replaces the whole generation (T182)', () => {
     expect(rebooted.diagnostics).toEqual([]);
 
     // The seam every inspected-source operation goes through exports exactly
-    // the five read operations: no write, append, or metadata mutation is
-    // even importable, so persistence has nothing to be written with.
-    expect(Object.keys(fsIo).sort()).toEqual(['lstat', 'readFile', 'readdir', 'realpath', 'stat']);
+    // six read operations: no write, append, or metadata mutation is even
+    // importable, so persistence has nothing to be written with. `access` is
+    // among them because Global root admission asks whether a proposed home is
+    // readable before anything is scanned — a permission test that opens
+    // nothing and changes nothing.
+    //
+    // `fsConstants` is the one non-operation, and it is here rather than in the
+    // module that uses it because the ESLint inspection-io-boundary rule keeps
+    // every production module but this seam away from `node:fs`: the mode
+    // `access` is called with has to reach `global-admission.ts` through the
+    // same seam as the call itself.
+    expect(Object.keys(fsIo).sort()).toEqual([
+      'access',
+      'fsConstants',
+      'lstat',
+      'readFile',
+      'readdir',
+      'realpath',
+      'stat',
+    ]);
   });
 });

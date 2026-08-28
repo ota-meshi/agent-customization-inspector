@@ -1,12 +1,13 @@
 // Vitest configuration with distinct named projects. `tests/integration/security/`
 // is owned by the integration project, like every other directory under it: the
-// suites are separated by what they test, not by the word in a path.
+// suites are separated by what they test, not by the word in a path. The
+// `security` project owns `tests/security/` alone — the Global
+// zero-activation suite (T996), whose gate is the `test:security` script and
+// its CI job.
 //
 // Every project here has tests. `passWithNoTests` is not set, so a suite that
 // stops matching its own files fails instead of reporting a green run that
-// executed nothing — and a project whose tests are not written yet is absent
-// rather than present and empty: it arrives with the task that writes its first
-// ones (T996 for security, T1041 for the documentation gate).
+// executed nothing.
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -39,6 +40,13 @@ export default defineConfig({
           name: 'integration',
           environment: 'node',
           include: ['tests/integration/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'security',
+          environment: 'node',
+          include: ['tests/security/**/*.test.ts'],
         },
       },
       {

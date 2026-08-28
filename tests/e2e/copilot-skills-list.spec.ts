@@ -92,7 +92,7 @@ test('lists each recognition exactly once as a definition with the exact matrix'
       .locator('.aci-item', {
         has: page.locator('.aci-skill-row__name', { hasText: new RegExp(`^${row}$`, 'u') }),
       })
-      .locator('.aci-skill-row__file', { hasText: path });
+      .locator('.aci-source-family-blocks__members > li', { hasText: path });
     await expect(group.locator('.aci-skill-row__tool')).toHaveText([...tools]);
   };
   await expectTools('voyage', '.github/skills/ship/SKILL.md', [
@@ -188,12 +188,14 @@ test('opens a Copilot definition by its stable identity into the detail route', 
 }) => {
   await page.goto(host.origin);
   const link = page
-    .locator('.aci-skill-row__file', { hasText: '.github/skills/ship/SKILL.md' })
+    .locator('.aci-source-family-blocks__members > li', { hasText: '.github/skills/ship/SKILL.md' })
     .locator('.aci-skill-row__owner a');
   await link.click();
   // The detail route is the one surface that serves authored content; the
   // list milestone only proves the row links to the file's own identity —
   // `/skills/<source-relative path>`, with no tool in it, because both
   // products reading a file read the same document.
-  await expect(page).toHaveURL(new URL('/skills/.github/skills/ship/SKILL.md', host.origin).href);
+  await expect(page).toHaveURL(
+    new URL('/skills/detail/repository/.github/skills/ship/SKILL.md', host.origin).href,
+  );
 });

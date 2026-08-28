@@ -521,12 +521,25 @@ export type RecognitionDetails =
  */
 export class ToolRecognition {
   /**
-   * The Source-relative Path of the file this recognition is attached to —
-   * the file's identity (FR-030). Unique per Source; the shipped milestone
-   * has one Source, and the Global tasks add the Source dimension when a
-   * second one can hold the same path.
+   * The Source-relative Path of the file this recognition is attached to.
+   * Unique per Source, and unique on its own only while one Source exists —
+   * which is why {@link sourceId} is the other half of the identity (FR-030).
    */
   public readonly sourceRelativePath: string;
+
+  /**
+   * The Source this recognition's file belongs to, or the empty string as
+   * recognized.
+   *
+   * A recognizer cannot know it: it is handed one candidate's path, bytes, and
+   * admissions, and the Source is the scan's own fact — the same split
+   * {@link diagnosticIds} has, and the scan stamps both through named
+   * derivations rather than a spread copy. Every published recognition carries
+   * it, because a consented Global home and the selected repository can hold
+   * the same Source-relative Path and a projection keyed by path alone would
+   * merge two files into one row (FR-030).
+   */
+  public readonly sourceId: string;
 
   /** The recognizing tool. */
   public readonly tool: SupportedTool;
@@ -561,6 +574,7 @@ export class ToolRecognition {
     parseStatus: RecognitionParseStatus,
     provenances: readonly CandidateProvenance[],
     diagnosticIds: readonly string[],
+    sourceId = '',
   ) {
     this.sourceRelativePath = sourceRelativePath;
     this.tool = tool;
@@ -568,6 +582,7 @@ export class ToolRecognition {
     this.parseStatus = parseStatus;
     this.provenances = provenances;
     this.diagnosticIds = diagnosticIds;
+    this.sourceId = sourceId;
   }
 
   /**
@@ -1025,6 +1040,25 @@ export class ToolRecognition {
       this.parseStatus,
       this.provenances,
       [...this.diagnosticIds, diagnosticId],
+      this.sourceId,
+    );
+  }
+
+  /**
+   * The same recognition attached to the Source that was scanned. A named
+   * derivation for the scan — the one caller — exactly as
+   * {@link withDiagnostic} is: the Source is what the scan knows and the
+   * recognizer does not.
+   */
+  public withSource(sourceId: string): ToolRecognition {
+    return new ToolRecognition(
+      this.sourceRelativePath,
+      this.tool,
+      this.details,
+      this.parseStatus,
+      this.provenances,
+      this.diagnosticIds,
+      sourceId,
     );
   }
 }

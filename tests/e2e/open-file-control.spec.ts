@@ -41,7 +41,10 @@ test.afterEach(async () => {
 test('offers the applications the host can launch, and closes on Escape', async ({ page }) => {
   await page.goto(host.origin);
   // Reached through the inventory row, the way a reader reaches it.
-  await page.locator('[role="tabpanel"] a[href^="/instructions/"]').first().click();
+  await page
+    .locator('[role="tabpanel"] a[href^="/instructions/detail/repository/"]')
+    .first()
+    .click();
   await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
 
   const toggle = page.getByRole('button', { name: 'Choose how to open this file' });
@@ -91,7 +94,10 @@ test('lays the list out beside the control, on one line per entry', async ({ pag
   // would notice a caption wrapped to one character per line: the list would
   // still be attached, visible, and operable — and unreadable.
   await page.goto(host.origin);
-  await page.locator('[role="tabpanel"] a[href^="/instructions/"]').first().click();
+  await page
+    .locator('[role="tabpanel"] a[href^="/instructions/detail/repository/"]')
+    .first()
+    .click();
   await page.getByRole('button', { name: 'Choose how to open this file' }).click();
 
   const layout = await page.evaluate(() => {
@@ -125,7 +131,10 @@ test('keeps the open list inside the viewport at the reflow width', async ({ pag
   // opening it adds no horizontal scrolling either (WCAG 1.4.10).
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto(host.origin);
-  await page.locator('[role="tabpanel"] a[href^="/instructions/"]').first().click();
+  await page
+    .locator('[role="tabpanel"] a[href^="/instructions/detail/repository/"]')
+    .first()
+    .click();
   await page.getByRole('button', { name: 'Choose how to open this file' }).click();
 
   const box = await page.evaluate(() => {

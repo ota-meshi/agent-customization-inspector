@@ -193,7 +193,7 @@ export const COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Visual Studio Code'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists agent instructions via AGENTS.md among the instruction types the Visual Studio Code surface reads, separately from the repository-wide and path-specific types.',
         },
@@ -472,7 +472,7 @@ export const COPILOT_CLI_INSTRUCTIONS_REPOSITORY_BEHAVIOR = {
             'Types of custom instructions',
             'Creating repository-wide custom instructions',
           ],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI discovers the repository-wide .github/copilot-instructions.md in its standard locations — the repository root, the current working directory, the directories between them, and directories on the path of a file it is working on — and the how-to creates the file at the repository root.',
         },
@@ -481,7 +481,7 @@ export const COPILOT_CLI_INSTRUCTIONS_REPOSITORY_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists repository-wide instructions among the types the Copilot CLI surface reads.',
         },
@@ -534,7 +534,7 @@ export const COPILOT_CLI_INSTRUCTIONS_PATH_BEHAVIOR = {
             'Creating path-specific custom instructions',
             'How multiple instruction files interact',
           ],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Modular instruction files live below .github/instructions — discovered in the standard locations but not the intermediate directories — are created with an applyTo frontmatter pattern, optionally organized into subdirectories, and are included only when that pattern matches a file the session is working with.',
         },
@@ -543,7 +543,7 @@ export const COPILOT_CLI_INSTRUCTIONS_PATH_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists path-specific instructions among the types the Copilot CLI surface reads.',
         },
@@ -577,7 +577,7 @@ export const COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'AGENTS.md is an agent-instruction file Copilot CLI discovers in its standard locations.',
         },
@@ -586,7 +586,7 @@ export const COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists agent instructions via AGENTS.md among the types the Copilot CLI surface reads.',
         },
@@ -622,7 +622,7 @@ export const COPILOT_CLI_INSTRUCTIONS_CLAUDE_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'CLAUDE.md is an agent-instruction file Copilot CLI discovers in its standard locations, and the CLI also uses .claude/CLAUDE.md.',
         },
@@ -631,7 +631,7 @@ export const COPILOT_CLI_INSTRUCTIONS_CLAUDE_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists agent instructions via CLAUDE.md among the types the Copilot CLI surface reads.',
         },
@@ -665,7 +665,7 @@ export const COPILOT_CLI_INSTRUCTIONS_GEMINI_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'GEMINI.md is an agent-instruction file Copilot CLI discovers in its standard locations.',
         },
@@ -674,7 +674,7 @@ export const COPILOT_CLI_INSTRUCTIONS_GEMINI_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists agent instructions via GEMINI.md among the types the Copilot CLI surface reads.',
         },
@@ -719,7 +719,7 @@ export const COPILOT_CLI_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project, inherits parent-directory .github/skills layers for monorepos, and resolves a duplicate name to the first found in its documented source order.',
         },
@@ -728,7 +728,7 @@ export const COPILOT_CLI_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills',
           officialHost: 'docs.github.com',
           sections: ['Creating and adding a skill'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-27',
           establishes:
             'The create-a-skill how-to documents the authored shape — a named skill directory carrying its own SKILL.md — in the same three project directories, .github/skills, .claude/skills, and .agents/skills.',
         },
@@ -777,7 +777,7 @@ export const COPILOT_CLI_COMMANDS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Commands (alternative skill format)'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI documents .claude/commands/*.md as an alternative skill format that a same-name skill outranks, without establishing a complete project anchor or ancestor traversal.',
         },
@@ -814,7 +814,7 @@ export const COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions', 'How multiple instruction files interact'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'One copilot-instructions.md inside the Copilot home directory holds user-level instructions that apply across repositories, combined with the applicable repository files, with duplicate copies of identical files removed and no general precedence order defined.',
         },
@@ -823,7 +823,7 @@ export const COPILOT_CLI_USER_INSTRUCTIONS_ROOT_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix records personal instructions at ~/.copilot as a Copilot CLI instruction source separate from the repository ones.',
         },
@@ -858,7 +858,7 @@ export const COPILOT_CLI_USER_INSTRUCTIONS_PATH_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions', 'How multiple instruction files interact'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Modular user-level instructions live below the Copilot home instructions directory and are included only when their applyTo pattern matches a file the session is working with.',
         },
@@ -867,7 +867,7 @@ export const COPILOT_CLI_USER_INSTRUCTIONS_PATH_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix records personal path-specific instructions among the Copilot CLI instruction sources.',
         },
@@ -906,7 +906,7 @@ export const COPILOT_CLI_USER_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI additionally discovers personal skills in user-home locations, placed below project and inherited skills and above later sources in the documented first-found order.',
         },
@@ -915,7 +915,7 @@ export const COPILOT_CLI_USER_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills',
           officialHost: 'docs.github.com',
           sections: ['Adding a skill that someone else has created'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-27',
           establishes:
             'A skill copied into a personal location is the same authored directory shape as a repository skill; only its scope differs.',
         },
@@ -962,7 +962,7 @@ export const COPILOT_CLOUD_INSTRUCTIONS_REPOSITORY_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['GitHub.com'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists repository-wide instructions among the types the Copilot cloud agent reads.',
         },
@@ -1006,7 +1006,7 @@ export const COPILOT_CLOUD_INSTRUCTIONS_PATH_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['GitHub.com'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists path-specific instructions among the types the Copilot cloud agent reads.',
         },
@@ -1051,7 +1051,7 @@ export const COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['GitHub.com'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists agent instructions via AGENTS.md among the types the Copilot cloud agent reads.',
         },
@@ -1096,7 +1096,7 @@ export const COPILOT_CLOUD_INSTRUCTIONS_ALTERNATIVES_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['GitHub.com'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists agent instructions via CLAUDE.md and GEMINI.md among the types the Copilot cloud agent reads.',
         },
@@ -1183,7 +1183,7 @@ export const COPILOT_CLOUD_ORGANIZATION_INSTRUCTIONS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['GitHub.com'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix records organization instructions as a layer of the GitHub.com surface distinct from the repository files.',
         },
@@ -1221,7 +1221,7 @@ export const COPILOT_CLOUD_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills',
           officialHost: 'docs.github.com',
           sections: ['Creating and adding a skill', 'How Copilot uses agent skills'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot cloud agent discovers repository skills in the three fixed root directories and loads a relevant skill progressively; how local personal skills project into the hosted surface is not established.',
         },
@@ -1269,7 +1269,7 @@ export const COPILOT_CLOUD_REMOTE_SKILLS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Organization- or enterprise-hosted skills are projected into a session via the AHP relay with content fetched on demand, from no repository or user filesystem location; the last-in-order placement and name-based priority it documents are the CLI surface’s, leaving Cloud collision behavior unestablished.',
         },
@@ -1309,7 +1309,7 @@ export const COPILOT_CLI_MCP_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['MCP server configuration'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Workspace MCP servers are .mcp.json and .github/mcp.json files loaded from the working directory upward to the Git root, require the folder to be trusted, and sit below session-additional and plugin-provided servers and above the user configuration in the documented loading priority.',
         },
@@ -1318,7 +1318,7 @@ export const COPILOT_CLI_MCP_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers',
           officialHost: 'docs.github.com',
           sections: ['Adding per-repository MCP servers'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'A project-level file declares its servers in either of two schemas — the top-level mcpServers object, or the bare top-level format where each key is an MCP server name — which is why the CLI carrier reading accepts both forms.',
         },
@@ -1356,7 +1356,7 @@ export const COPILOT_CLI_USER_MCP_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['MCP server configuration', 'Environment variables'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Persistent user servers are configured in ~/.copilot/mcp-config.json — the file the copilot mcp add subcommand writes — and that source is the lowest priority of the documented loading order; COPILOT_HOME overrides the configuration and state directory whose default is $HOME/.copilot, which is the relocation the <COPILOT_HOME> spelling names.',
         },
@@ -1643,7 +1643,7 @@ export const COPILOT_CLI_AGENTS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Custom agent locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Project-scoped agents are loaded by walking upward from the working directory to the Git root, taking each ancestor level’s .github/agents/ and .claude/agents/ directories; every such directory is loaded, the deepest takes highest priority, and .github/agents/ takes precedence over .claude/agents/ at the same level.',
         },
@@ -1682,7 +1682,7 @@ export const COPILOT_CLI_USER_AGENTS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Custom agent locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'User agents live at ~/.copilot/agents/ and plugin agents rank lowest; this page states that user-level agents have lower priority than project-level ones, which is one side of the retained project-versus-User conflict.',
         },
@@ -1844,7 +1844,7 @@ export const COPILOT_CLI_SETTINGS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['Configuration file settings'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'Settings apply in the order built-in defaults, MDM managed settings, user settings, repository .github/copilot/settings.json, local .github/copilot/settings.local.json, environment variables, then command-line flags; and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset of repository settings such as companyAnnouncements, disableAllHooks, enabledPlugins, extraKnownMarketplaces, and hooks.',
         },
@@ -1968,7 +1968,7 @@ export const COPILOT_CLI_PLUGINS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['File locations', 'marketplace.json', 'Plugin source types', 'CLI commands'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins. A catalog entry writes its own source as a relative path string — the page catalog example writes ./plugins/<name> — or as an object describing a GitHub repository or a Git URL through its source key, github or url, with optional ref, sha, and path; the owner/repo shorthand belongs to the marketplace add command rather than to an entry source.',
         },
@@ -2003,7 +2003,7 @@ export const COPILOT_CLI_EXTENSIONS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['File locations', 'Loading order and precedence'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "The plugin reference separates a plugin's own components — agents, skills, hooks, MCP and LSP configuration — from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations rather than treating an extension file as a plugin.",
         },
@@ -2095,7 +2095,7 @@ export const COPILOT_CLI_USER_PLUGINS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['File locations'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Installed plugins live under ~/.copilot/installed-plugins, by marketplace and plugin name for a marketplace install and under a direct-source directory otherwise.',
         },
@@ -2257,7 +2257,7 @@ export const COPILOT_CLI_USER_SETTINGS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['Configuration file settings'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'User settings live at ~/.copilot/settings.json — relocatable through COPILOT_HOME — and sit below the repository and local layers in the documented cascade.',
         },
@@ -2455,7 +2455,7 @@ export const COPILOT_CLI_HOOKS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations', 'Hook configuration format'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI loads repository-level hook files from .github/hooks/*.json in the repository root and an inline hooks block from the top level of .github/copilot/settings.json or .github/copilot/settings.local.json, and it also reads the cross-tool .claude/settings.json and .claude/settings.local.json files in the repository. Hook configuration files are JSON with version 1, where a structural error rejects the whole file while a malformed item inside a directory-loaded file drops only that item, and a malformed item in an inline settings block rejects the whole hooks field.',
         },
@@ -2464,7 +2464,7 @@ export const COPILOT_CLI_HOOKS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['Repository settings (.github/copilot/settings.json)'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'The repository configuration file supports a top-level hooks object holding the hook definitions scoped to that repository, merged with the user configuration so the repository entry overrides the user one for the same key.',
         },
@@ -2501,7 +2501,7 @@ export const COPILOT_CLI_USER_HOOKS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'User-level hook files are the *.json files of the user hooks directory — ~/.copilot/hooks/ by default, or $COPILOT_HOME/hooks/ when that variable is set — and a user-level inline hooks block sits at the top level of ~/.copilot/settings.json.',
         },
@@ -2538,7 +2538,7 @@ export const COPILOT_CLOUD_HOOKS_BEHAVIOR = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations', 'Cloud agent execution environment'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'Under the Copilot cloud agent, hook configuration is loaded from .github/hooks/*.json files in the cloned repository, hooks run in an ephemeral non-interactive Linux sandbox, a subset of events fires, and only bash or command entries are honored.',
         },

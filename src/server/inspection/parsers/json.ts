@@ -130,6 +130,15 @@ export class ParsedJsonDocument {
 
 /** The Copilot paths whose reader accepts JSON with comments. */
 const COPILOT_JSONC_DOCUMENT_PATHS: ReadonlySet<string> = new Set([
+  // `settings.json` — the user settings document at the consented
+  // `COPILOT_HOME` root (FR-015), the one Source-relative spelling of it a
+  // Global scan produces; no Repository rule admits a root-level
+  // `settings.json`, so the literal cannot collide. Documented rather than
+  // measured: the CLI configuration-directory reference states "The file
+  // supports JSON with comments (JSONC)" for this file
+  // (contracts/vendors/github-copilot.md § Inspector Global rule;
+  // github.copilot.cli.configuration § settings.json).
+  'settings.json',
   // `.claude/settings.json`, `.claude/settings.local.json` — the cross-tool
   // pair as *this* vendor reads it, and the first entry where its CLI
   // disagrees with its editor.
@@ -188,6 +197,22 @@ const COPILOT_JSONC_DOCUMENT_PATHS: ReadonlySet<string> = new Set([
 const COPILOT_JSONC_HOOK_DIRECTORY = '.github/hooks/';
 
 /**
+ * The Copilot user hook directory below the consented `COPILOT_HOME`
+ * boundary, whose files a Global scan publishes at the Source-relative
+ * `hooks/*.json` (FR-015) — the one spelling of it a scan produces, since no
+ * Repository Copilot rule admits a root-level `hooks/`, so the prefix cannot
+ * collide.
+ *
+ * Lenient for the reason the workspace directory above is: the rule rests on
+ * the editor's user-hooks behavior too (`copilot.behavior.vscode.user.hooks`,
+ * contracts/vendors/github-copilot.md § Inspector Global rule), the editor
+ * parses every hook file it loads with `parse as parseJSONC`
+ * (`parseAllHookFiles`, measured 2026-08-26 — the reference above), and this
+ * table's rule is comments accepted wherever any one surface accepts them.
+ */
+const COPILOT_JSONC_GLOBAL_HOOK_DIRECTORY = 'hooks/';
+
+/**
  * Whether the reading a document is built for accepts JSON with comments. One
  * branch per tool, each carrying what measured its answer.
  *
@@ -218,7 +243,8 @@ function acceptsComments({ tool, sourceRelativePath }: JsonDocumentContext): boo
       // the two tables above.
       if (
         COPILOT_JSONC_DOCUMENT_PATHS.has(sourceRelativePath) ||
-        sourceRelativePath.startsWith(COPILOT_JSONC_HOOK_DIRECTORY)
+        sourceRelativePath.startsWith(COPILOT_JSONC_HOOK_DIRECTORY) ||
+        sourceRelativePath.startsWith(COPILOT_JSONC_GLOBAL_HOOK_DIRECTORY)
       ) {
         return true;
       }

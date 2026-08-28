@@ -90,7 +90,9 @@ test.describe('Claude instruction rows at every depth', () => {
     ]);
     // The grouping this phase exists for: `AGENTS.md` sits in the same row as
     // the root `CLAUDE.md` while staying OpenAI Codex's own recognition.
-    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    const fileEntries = page
+      .getByRole('tabpanel')
+      .locator('.aci-source-family-blocks__members > li');
     const codexEntry = fileEntries.filter({ hasText: 'AGENTS.md' });
     await expect(codexEntry).toContainText('OpenAI Codex');
     await expect(codexEntry).not.toContainText('Claude Code');
@@ -123,7 +125,9 @@ test.describe('Claude instruction rows at every depth', () => {
   test('narrows the rows with the tool and path filters', async ({ page }) => {
     await page.goto(host.origin);
     const items = page.getByRole('tabpanel').locator('.aci-item');
-    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    const fileEntries = page
+      .getByRole('tabpanel')
+      .locator('.aci-source-family-blocks__members > li');
     await expect(items).toHaveCount(2);
     await expect(fileEntries).toHaveCount(5);
 
@@ -174,7 +178,9 @@ test.describe('a Claude instruction file whose declarations cannot be parsed', (
 
   test('keeps both rows and reports the failure on the file it happened to', async ({ page }) => {
     await page.goto(host.origin);
-    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    const fileEntries = page
+      .getByRole('tabpanel')
+      .locator('.aci-source-family-blocks__members > li');
     // Both files keep their place under the root range: what failed is reading
     // one file's declarations, not recognizing it, and a range comes from
     // where a file sits rather than from what parsed.

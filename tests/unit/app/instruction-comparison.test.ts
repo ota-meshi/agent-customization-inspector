@@ -5,12 +5,14 @@
 // kind-specific with no shared module (spec.md § Clarifications Session
 // 2026-08-14), and this kind's model is two files of one
 // applicability-range row compared whole — the row ownership is the compare
-// route's own validation, so the state here sees only the two paths.
+// route's own validation, so the state here sees only the Source and the two
+// paths.
 //
 // The state under test is the browser's: two distinct readable
-// current-generation files named by Source-relative Path — the pair is the
-// compare route's query, with no standing pre-selection — loaded through two
-// ordinary `get-file-detail` requests, because there is no compare API, and
+// current-generation files of one Source, named by Source-relative Path — the
+// Source is the compare route's own segment and the pair its query, with no
+// standing pre-selection — loaded through two ordinary `get-file-detail`
+// requests naming both halves of each file's identity (FR-030), and
 // dropped again by the same three cleanups every detail obeys: a newer
 // committed generation, the central client-data purge, and leaving the view.
 // What is under test is the data half of the kind's recognition metadata:
@@ -54,7 +56,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'ready',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -74,6 +76,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
     })),
     instructions: [
       {
+        sourceId: 'source-repository',
         applicabilityRange: '**',
         files: [
           {
@@ -199,7 +202,15 @@ function scriptedChannel(options: {
           if (handler === undefined) {
             return Promise.reject(new Error('no detail handler scripted'));
           }
-          return Promise.resolve().then(() => handler(String(args[0])));
+          // `get-file-detail` sends one object naming both halves of the
+          // identity (FR-030); the carrier functions still send a bare path,
+          // and this double answers for whichever arrived.
+          const payload = args[0];
+          const path =
+            typeof payload === 'string'
+              ? payload
+              : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+          return Promise.resolve().then(() => handler(path));
         }
         return Promise.reject(new Error(`unexpected call: ${method}`));
       },
@@ -211,7 +222,14 @@ function scriptedChannel(options: {
 function detailCalls(calls: readonly { method: string; args: readonly unknown[] }[]): string[] {
   return calls
     .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
-    .map((call) => String(call.args[0]));
+    .map((call) => {
+      // `get-file-detail` sends one object naming both halves of the identity
+      // (FR-030); the carrier functions still send a bare path.
+      const payload = call.args[0];
+      return typeof payload === 'string'
+        ? payload
+        : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+    });
 }
 
 describe('instruction comparison view (T276)', () => {
@@ -222,7 +240,10 @@ describe('instruction comparison view (T276)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.instructionComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.instructionComparison.open(
+      { source: 'repository', sourceRelativePath: LEFT_PATH },
+      { source: 'repository', sourceRelativePath: RIGHT_PATH },
+    );
     expect(state.instructionComparison.status.value).toBe('ready');
     expect(state.instructionComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
     expect(state.instructionComparison.rightDetail.value?.file.sourceRelativePath).toBe(RIGHT_PATH);
@@ -233,6 +254,31 @@ describe('instruction comparison view (T276)', () => {
     state.dispose();
   });
 
+  it('asks for both sides in the Source the open named (FR-030)', async () => {
+    const scripted = scriptedChannel({
+      sessions: [dataResult(snapshotWith())],
+      detail: (path) => dataResult(instructionDetail(path)),
+    });
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.instructionComparison.open(
+      { source: 'global-codex', sourceRelativePath: LEFT_PATH },
+      { source: 'global-codex', sourceRelativePath: RIGHT_PATH },
+    );
+    // Both halves of each side's identity on the wire: the repository and a
+    // consented home can hold one path, so a request naming the path alone
+    // would compare whichever the session lists first.
+    expect(
+      scripted.calls
+        .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
+        .map((call) => call.args[0]),
+    ).toEqual([
+      { sourceRelativePath: LEFT_PATH, source: 'global-codex' },
+      { sourceRelativePath: RIGHT_PATH, source: 'global-codex' },
+    ]);
+    state.dispose();
+  });
+
   it('refuses the same path on both inputs without spending a request', async () => {
     const scripted = scriptedChannel({
       sessions: [dataResult(snapshotWith())],
@@ -240,7 +286,10 @@ describe('instruction comparison view (T276)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.instructionComparison.open(LEFT_PATH, LEFT_PATH);
+    await state.instructionComparison.open(
+      { source: 'repository', sourceRelativePath: LEFT_PATH },
+      { source: 'repository', sourceRelativePath: LEFT_PATH },
+    );
     expect(state.instructionComparison.status.value).toBe('same-path');
     expect(detailCalls(scripted.calls)).toEqual([]);
     state.dispose();
@@ -254,7 +303,10 @@ describe('instruction comparison view (T276)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.instructionComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.instructionComparison.open(
+      { source: 'repository', sourceRelativePath: LEFT_PATH },
+      { source: 'repository', sourceRelativePath: RIGHT_PATH },
+    );
     expect(state.instructionComparison.status.value).toBe('not-readable');
     expect(state.instructionComparison.unreadablePath.value).toBe(RIGHT_PATH);
     // Neither side renders: a comparison with one side is not a comparison.
@@ -273,7 +325,10 @@ describe('instruction comparison view (T276)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.instructionComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.instructionComparison.open(
+      { source: 'repository', sourceRelativePath: LEFT_PATH },
+      { source: 'repository', sourceRelativePath: RIGHT_PATH },
+    );
     expect(state.instructionComparison.status.value).toBe('ready');
     // A component holding the pair's content registers its disposer; the
     // adoption of a newer generation must run it synchronously with the drop
@@ -302,11 +357,17 @@ describe('instruction comparison view (T276)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.instructionComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.instructionComparison.open(
+      { source: 'repository', sourceRelativePath: LEFT_PATH },
+      { source: 'repository', sourceRelativePath: RIGHT_PATH },
+    );
     expect(state.instructionComparison.status.value).toBe('failed');
     expect(state.instructionComparison.errorMessage.value).toContain('detail request lost');
     // The retry is the same open with the same coordinates.
-    await state.instructionComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.instructionComparison.open(
+      { source: 'repository', sourceRelativePath: LEFT_PATH },
+      { source: 'repository', sourceRelativePath: RIGHT_PATH },
+    );
     expect(state.instructionComparison.status.value).toBe('ready');
     state.dispose();
   });

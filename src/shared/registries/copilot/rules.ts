@@ -31,11 +31,7 @@
 // resolving to a property, and the map's completeness check would break;
 // `satisfies` keeps the literal, so a key cannot disagree with the record it
 // points at.
-import {
-  ANY_DIRECTORIES,
-  ANY_NAME,
-  type StructuredInspectorMatcher,
-} from '../../../server/inspection/rules/registry';
+import { ANY_DIRECTORIES, ANY_NAME } from '../../../server/inspection/rules/registry';
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
 import type { CopilotRuleId } from '../identifier-types';
 import type { InspectionRule } from '../rule-types';
@@ -143,7 +139,7 @@ export const COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI discovers the repository-wide filename in its standard locations, which include the directories on the path of a file it is working on — the documented worked-file reach that is why this rule admits the filename at every depth, since every directory lies on the path of the files under it — while the chain locations (root, working directory, the directories between them) contribute only the selected root, the one member every session shares.',
         },
@@ -152,7 +148,7 @@ export const COPILOT_REPO_INSTRUCTIONS_REPOSITORY_CLI_CONTEXT_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix scopes the repository-wide instruction file to the Copilot CLI surface separately from the other two, which is the provenance this rule carries alone.',
         },
@@ -260,7 +256,7 @@ export const COPILOT_REPO_INSTRUCTIONS_PATH_CLI_CONTEXT_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions', 'Creating path-specific custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI discovers modular instruction files below .github/instructions in its standard locations — excluding the intermediate directories for this filename — and those locations include the directories on the path of a file it is working on, the documented worked-file reach that is why this rule admits the subtree at every depth; subdirectories inside each instructions directory may organize the files.',
         },
@@ -269,7 +265,7 @@ export const COPILOT_REPO_INSTRUCTIONS_PATH_CLI_CONTEXT_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix scopes path-specific instruction files to the Copilot CLI surface separately from the other two, which is the provenance this rule carries alone.',
         },
@@ -326,7 +322,7 @@ export const COPILOT_REPO_INSTRUCTIONS_AGENTS_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI discovers AGENTS.md in its standard locations, which include the directories on the path of a file it is working on — the documented worked-file reach that puts the filename at every depth below the selected root, while the chain locations contribute only the root itself.',
         },
@@ -388,7 +384,7 @@ export const COPILOT_REPO_INSTRUCTIONS_CLAUDE_ROOT_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI discovers CLAUDE.md in its standard locations as one of its agent-instruction files, so a root file carries CLI provenance beside the other two surfaces.',
         },
@@ -437,7 +433,7 @@ export const COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI discovers GEMINI.md in its standard locations as one of its agent-instruction files; its non-root locations are left out of this release rather than denied.',
         },
@@ -455,7 +451,7 @@ export const COPILOT_REPO_INSTRUCTIONS_GEMINI_ROOT_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Visual Studio Code', 'Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists GEMINI.md among the CLI’s agent-instruction types while the rows for VS Code’s own Copilot Chat list AGENTS.md alone, which is why the editor surface is absent here.',
         },
@@ -508,7 +504,7 @@ export const COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI discovers CLAUDE.md, its .claude spelling, and GEMINI.md in every standard location its session covers, not only at the repository root.',
         },
@@ -551,7 +547,7 @@ export const COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Directories listed in COPILOT_CUSTOM_INSTRUCTIONS_DIRS supply additional AGENTS.md and *.instructions.md files, which are lookup roots outside the boundary a scan was authorized for.',
         },
@@ -560,7 +556,7 @@ export const COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The CLI reference documents COPILOT_SKILLS_DIRS adding skill lookup roots, which name directories outside the boundary a scan was authorized for.',
         },
@@ -576,33 +572,6 @@ export const COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE = {
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.command` matcher, authored in the typed segment form the
- * contract table shows: the one program
- * `['.claude', 'commands', /\.md$/u]`.
- *
- * Root-exact and direct-child, and deliberately narrower than Claude's rule
- * over the same directory. The CLI reference documents the location as
- * `.claude/commands/*.md` and establishes neither a project anchor nor an
- * ancestor or recursive walk, so anything past a root direct child would be
- * this product's invention: `packages/api/.claude/commands/deploy.md` and
- * `.claude/commands/frontend/component.md` are both paths Copilot documents
- * no read of, and both stay near misses here while the second remains a
- * Claude candidate (contracts/vendors/github-copilot.md § Inspector
- * Repository matcher rules; § Known conflicts and uncertainties item 3).
- */
-const COPILOT_REPO_COMMAND_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'commands' },
-      { kind: 'regex', pattern: /\.md$/u },
-    ],
-  ],
-};
-
 /**
  * Copilot CLI commands: the read-authorizing counterpart of
  * `copilot.behavior.cli.commands`. A command file is the alternative skill
@@ -630,7 +599,31 @@ export const COPILOT_REPO_COMMAND_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'prompt/command',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_COMMAND_MATCHER,
+  /**
+   * The `copilot.repo.command` matcher, authored in the typed segment form the
+   * contract table shows: the one program
+   * `['.claude', 'commands', /\.md$/u]`.
+   *
+   * Root-exact and direct-child, and deliberately narrower than Claude's rule
+   * over the same directory. The CLI reference documents the location as
+   * `.claude/commands/*.md` and establishes neither a project anchor nor an
+   * ancestor or recursive walk, so anything past a root direct child would be
+   * this product's invention: `packages/api/.claude/commands/deploy.md` and
+   * `.claude/commands/frontend/component.md` are both paths Copilot documents
+   * no read of, and both stay near misses here while the second remains a
+   * Claude candidate (contracts/vendors/github-copilot.md § Inspector
+   * Repository matcher rules; § Known conflicts and uncertainties item 3).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'commands' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -644,36 +637,13 @@ export const COPILOT_REPO_COMMAND_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Commands (alternative skill format)'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Commands are an alternative to skills stored as individual .md files in .claude/commands/, the command name is derived from the filename, the format needs no name field, and a same-name skill has higher priority. The section establishes no project anchor and no ancestor or recursive discovery, which is why this rule admits root direct children alone.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.prompt` matcher, authored in the typed segment form the
- * contract table shows: the one program
- * `['.github', 'prompts', /\.prompt\.md$/u]`.
- *
- * Root-exact and direct-child. The page gives one default folder for the
- * workspace scope and puts every further location behind a setting this tool
- * never reads, so a nested `.github/prompts/team/deploy.prompt.md` is a path
- * whose treatment the page does not state and this rule does not guess
- * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
- */
-const COPILOT_REPO_PROMPT_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'prompts' },
-      { kind: 'regex', pattern: /\.prompt\.md$/u },
-    ],
-  ],
-};
-
 /**
  * Copilot VS Code prompt files: the read-authorizing counterpart of
  * `copilot.behavior.vscode.prompts`. A prompt file is Markdown a reader
@@ -699,7 +669,27 @@ export const COPILOT_REPO_PROMPT_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'prompt/command',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_PROMPT_MATCHER,
+  /**
+   * The `copilot.repo.prompt` matcher, authored in the typed segment form the
+   * contract table shows: the one program
+   * `['.github', 'prompts', /\.prompt\.md$/u]`.
+   *
+   * Root-exact and direct-child. The page gives one default folder for the
+   * workspace scope and puts every further location behind a setting this tool
+   * never reads, so a nested `.github/prompts/team/deploy.prompt.md` is a path
+   * whose treatment the page does not state and this rule does not guess
+   * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'prompts' },
+        { kind: 'regex', pattern: /\.prompt\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -720,56 +710,6 @@ export const COPILOT_REPO_PROMPT_RULE = {
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.skill` matcher, authored in the typed segment form the
- * contract table shows: one root-anchored program per fixed skills directory —
- * `['.github', 'skills', ANY_NAME, 'SKILL.md']`,
- * `['.agents', 'skills', ANY_NAME, 'SKILL.md']`, and
- * `['.claude', 'skills', ANY_NAME, 'SKILL.md']`. `ANY_NAME` is the one direct
- * skill-name child and the terminal `SKILL.md` literal keeps the admitted
- * file exact.
- *
- * Anchored like Codex's program, and for the same reason: no Copilot surface
- * documents a downward or worked-file skill lookup — VS Code and Cloud
- * read their exact workspace or repository root, and the CLI reads its
- * runtime project plus the upward parent-`.github/skills` monorepo tier — so
- * a nested skills directory is a runtime-chain member this product does not
- * select and is never a candidate (FR-003). The chain's one member every
- * session shares is the selected root, which these anchored programs admit;
- * the runtime dependency stays the `runtime-cwd`/`workspace-root` condition
- * on the behavior records, never an admission
- * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
- *
- * The three programs differ only in their fixed directory literal, so nothing
- * matches outside those three spellings — a configured or
- * environment-supplied skills root is rejected by never being matched, not by
- * an exclusion list.
- */
-const COPILOT_REPO_SKILL_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'skills' },
-      ANY_NAME,
-      { kind: 'literal', value: 'SKILL.md' },
-    ],
-    [
-      { kind: 'literal', value: '.agents' },
-      { kind: 'literal', value: 'skills' },
-      ANY_NAME,
-      { kind: 'literal', value: 'SKILL.md' },
-    ],
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'skills' },
-      ANY_NAME,
-      { kind: 'literal', value: 'SKILL.md' },
-    ],
-  ],
-};
-
 /**
  * Copilot Repository skills: the read-authorizing counterpart of the three
  * surface behaviors `copilot.behavior.vscode.skills`,
@@ -796,7 +736,54 @@ export const COPILOT_REPO_SKILL_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'skill',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_SKILL_MATCHER,
+  /**
+   * The `copilot.repo.skill` matcher, authored in the typed segment form the
+   * contract table shows: one root-anchored program per fixed skills directory —
+   * `['.github', 'skills', ANY_NAME, 'SKILL.md']`,
+   * `['.agents', 'skills', ANY_NAME, 'SKILL.md']`, and
+   * `['.claude', 'skills', ANY_NAME, 'SKILL.md']`. `ANY_NAME` is the one direct
+   * skill-name child and the terminal `SKILL.md` literal keeps the admitted
+   * file exact.
+   *
+   * Anchored like Codex's program, and for the same reason: no Copilot surface
+   * documents a downward or worked-file skill lookup — VS Code and Cloud
+   * read their exact workspace or repository root, and the CLI reads its
+   * runtime project plus the upward parent-`.github/skills` monorepo tier — so
+   * a nested skills directory is a runtime-chain member this product does not
+   * select and is never a candidate (FR-003). The chain's one member every
+   * session shares is the selected root, which these anchored programs admit;
+   * the runtime dependency stays the `runtime-cwd`/`workspace-root` condition
+   * on the behavior records, never an admission
+   * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+   *
+   * The three programs differ only in their fixed directory literal, so nothing
+   * matches outside those three spellings — a configured or
+   * environment-supplied skills root is rejected by never being matched, not by
+   * an exclusion list.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'skills' },
+        ANY_NAME,
+        { kind: 'literal', value: 'SKILL.md' },
+      ],
+      [
+        { kind: 'literal', value: '.agents' },
+        { kind: 'literal', value: 'skills' },
+        ANY_NAME,
+        { kind: 'literal', value: 'SKILL.md' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'skills' },
+        ANY_NAME,
+        { kind: 'literal', value: 'SKILL.md' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -819,7 +806,7 @@ export const COPILOT_REPO_SKILL_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The Skill locations table loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project and inherits parent-directory .github/skills layers for monorepos — no downward tier, which is why this rule stays anchored at the selected root.',
         },
@@ -828,43 +815,13 @@ export const COPILOT_REPO_SKILL_RULE = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills',
           officialHost: 'docs.github.com',
           sections: ['Creating and adding a skill'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-27',
           establishes:
             'The cloud agent reads the same three directories at the repository root, so a root candidate is authored inventory for all three surfaces at once.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.mcp` matcher, authored in the typed segment form the
- * contract table shows: the two root-exact programs `['.mcp.json']` and
- * `['.github', 'mcp.json']`. Two programs rather than one dynamic step, so
- * each admission carries which authored spelling matched.
- *
- * Root-exact and deliberately not recursive: the vendor documents these
- * files on an upward walk whose one terminal every session shares is the Git
- * root — the selected root is the only point of that chain this product's
- * frame contains, so a subdirectory file is a runtime-chain member this
- * product does not select and is never a candidate
- * (contracts/vendors/github-copilot.md § Inspector Repository matcher
- * rules), exactly as a nested `AGENTS.md` is never a Codex candidate. This
- * differs from the CLI instruction rules' descendant inventory, whose
- * documented locations include the directories on the path of a file being
- * worked on — an anchor the whole tree carries; the MCP walk documents no
- * worked-file anchor.
- */
-const COPILOT_REPO_MCP_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [{ kind: 'literal', value: '.mcp.json' }],
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'mcp.json' },
-    ],
-  ],
-};
-
 /**
  * Copilot CLI workspace MCP declarations: the read-authorizing counterpart of
  * `copilot.behavior.cli.mcp`, at the one chain point this product's frame
@@ -888,7 +845,34 @@ export const COPILOT_REPO_MCP_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'MCP',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_MCP_MATCHER,
+  /**
+   * The `copilot.repo.mcp` matcher, authored in the typed segment form the
+   * contract table shows: the two root-exact programs `['.mcp.json']` and
+   * `['.github', 'mcp.json']`. Two programs rather than one dynamic step, so
+   * each admission carries which authored spelling matched.
+   *
+   * Root-exact and deliberately not recursive: the vendor documents these
+   * files on an upward walk whose one terminal every session shares is the Git
+   * root — the selected root is the only point of that chain this product's
+   * frame contains, so a subdirectory file is a runtime-chain member this
+   * product does not select and is never a candidate
+   * (contracts/vendors/github-copilot.md § Inspector Repository matcher
+   * rules), exactly as a nested `AGENTS.md` is never a Codex candidate. This
+   * differs from the CLI instruction rules' descendant inventory, whose
+   * documented locations include the directories on the path of a file being
+   * worked on — an anchor the whole tree carries; the MCP walk documents no
+   * worked-file anchor.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [{ kind: 'literal', value: '.mcp.json' }],
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'mcp.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -902,31 +886,13 @@ export const COPILOT_REPO_MCP_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['MCP server configuration'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Workspace MCP servers are .mcp.json and .github/mcp.json files on an upward walk that terminates at the Git root, which is why this rule admits both spellings at the selected root — the one walk member every session shares — and nothing below it.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.mcp.vscode` matcher: the one exact workspace program
- * `['.vscode', 'mcp.json']`. Root-exact by the guide's own words — the
- * workspace location is the workspace root's `.vscode` directory — so a
- * subdirectory `.vscode/mcp.json` belongs to a workspace this product does
- * not select and is a near miss.
- */
-const COPILOT_REPO_MCP_VSCODE_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.vscode' },
-      { kind: 'literal', value: 'mcp.json' },
-    ],
-  ],
-};
-
 /**
  * Copilot VS Code workspace MCP declarations: the read-authorizing
  * counterpart of `copilot.behavior.vscode.mcp` for the dedicated
@@ -944,7 +910,22 @@ export const COPILOT_REPO_MCP_VSCODE_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'MCP',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_MCP_VSCODE_MATCHER,
+  /**
+   * The `copilot.repo.mcp.vscode` matcher: the one exact workspace program
+   * `['.vscode', 'mcp.json']`. Root-exact by the guide's own words — the
+   * workspace location is the workspace root's `.vscode` directory — so a
+   * subdirectory `.vscode/mcp.json` belongs to a workspace this product does
+   * not select and is a near miss.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.vscode' },
+        { kind: 'literal', value: 'mcp.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -967,25 +948,13 @@ export const COPILOT_REPO_MCP_VSCODE_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['MCP server configuration'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The CLI documents its own workspace carriers and schemas apart from this file, which is why the VS Code carrier compiles into its own reading unit instead of sharing the CLI extraction.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.mcp.vscode-root` matcher: the one exact root program
- * `['.mcp.json']` — the same physical path one of `copilot.repo.mcp`'s
- * selectors admits, on purpose: the two admissions are two provenances of
- * one candidate, never two files or two reads.
- */
-const COPILOT_REPO_MCP_VSCODE_ROOT_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [[{ kind: 'literal', value: '.mcp.json' }]],
-};
-
 /**
  * VS Code 1.118+ path/surface provenance for the workspace-root `.mcp.json`:
  * the release note documents the location, while the current guide's
@@ -1004,7 +973,16 @@ export const COPILOT_REPO_MCP_VSCODE_ROOT_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'MCP',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_MCP_VSCODE_ROOT_MATCHER,
+  /**
+   * The `copilot.repo.mcp.vscode-root` matcher: the one exact root program
+   * `['.mcp.json']` — the same physical path one of `copilot.repo.mcp`'s
+   * selectors admits, on purpose: the two admissions are two provenances of
+   * one candidate, never two files or two reads.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [[{ kind: 'literal', value: '.mcp.json' }]],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1034,62 +1012,6 @@ export const COPILOT_REPO_MCP_VSCODE_ROOT_RULE = {
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.agent` matcher, authored in the typed segment form the
- * contract table shows: the Markdown direct children of the Repository root's
- * own `.github/agents/` directory.
- *
- * The `.claude/agents/` directory two of the three surfaces also read has a
- * rule of its own rather than a second selector here, for the reason the
- * repository instruction filename has a CLI-context rule of its own: a rule's
- * surfaces are derived from the behaviors it rests on, so one rule spanning
- * both directories would tag a `.claude/agents/*.md` with the Cloud agent
- * surface, which documents `.github/agents/` alone
- * (`rules/registry.ts` § recognizingSurfaces,
- * contracts/vendors/github-copilot.md § Documented Cloud agent behavior).
- *
- * Direct children, and root-anchored. Every surface documents a root-anchored
- * location — VS Code the workspace root, the cloud agent the repository root,
- * and the CLI an upward walk from its working directory whose one member every
- * session shares is the selected root (FR-001) — so a
- * `packages/api/.github/agents/reviewer.md` belongs to a runtime chain member
- * this product does not select and is a near miss rather than a candidate. No
- * recursive step either: none of the three pages documents a subfolder inside
- * an agents directory, unlike Claude's own subagent page, so admitting one
- * would rest on a search no official text establishes
- * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
- *
- * The `*.agent.md` spelling the cloud agent also documents needs no selector
- * of its own: it ends in `.md`, so the one dynamic step already admits it.
- */
-const COPILOT_REPO_AGENT_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'agents' },
-      { kind: 'regex', pattern: /\.md$/u },
-    ],
-  ],
-};
-
-/**
- * The `copilot.repo.agent.claude` matcher: the same direct-child shape one
- * directory over. Its own program because its rule is its own; see
- * {@link COPILOT_REPO_AGENT_MATCHER} for why the two are not one rule.
- */
-const COPILOT_REPO_AGENT_CLAUDE_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'agents' },
-      { kind: 'regex', pattern: /\.md$/u },
-    ],
-  ],
-};
-
 /**
  * Copilot Repository custom agents: the read-authorizing counterpart of the
  * three surface behaviors that document the same two directories. One
@@ -1116,7 +1038,44 @@ export const COPILOT_REPO_AGENT_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'agent',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_AGENT_MATCHER,
+  /**
+   * The `copilot.repo.agent` matcher, authored in the typed segment form the
+   * contract table shows: the Markdown direct children of the Repository root's
+   * own `.github/agents/` directory.
+   *
+   * The `.claude/agents/` directory two of the three surfaces also read has a
+   * rule of its own rather than a second selector here, for the reason the
+   * repository instruction filename has a CLI-context rule of its own: a rule's
+   * surfaces are derived from the behaviors it rests on, so one rule spanning
+   * both directories would tag a `.claude/agents/*.md` with the Cloud agent
+   * surface, which documents `.github/agents/` alone
+   * (`rules/registry.ts` § recognizingSurfaces,
+   * contracts/vendors/github-copilot.md § Documented Cloud agent behavior).
+   *
+   * Direct children, and root-anchored. Every surface documents a root-anchored
+   * location — VS Code the workspace root, the cloud agent the repository root,
+   * and the CLI an upward walk from its working directory whose one member every
+   * session shares is the selected root (FR-001) — so a
+   * `packages/api/.github/agents/reviewer.md` belongs to a runtime chain member
+   * this product does not select and is a near miss rather than a candidate. No
+   * recursive step either: none of the three pages documents a subfolder inside
+   * an agents directory, unlike Claude's own subagent page, so admitting one
+   * would rest on a search no official text establishes
+   * (contracts/vendors/github-copilot.md § Inspector Repository matcher rules).
+   *
+   * The `*.agent.md` spelling the cloud agent also documents needs no selector
+   * of its own: it ends in `.md`, so the one dynamic step already admits it.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'agents' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1130,7 +1089,7 @@ export const COPILOT_REPO_AGENT_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Custom agent locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The CLI loads project agents from .github/agents/ — the directory this rule admits — walking upward from the working directory to the Git root, whose one member every session shares is the selected root; the ~/.copilot/agents/ user scope named beside it is a different Source boundary this rule may not read.',
         },
@@ -1184,7 +1143,22 @@ export const COPILOT_REPO_AGENT_CLAUDE_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'agent',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_AGENT_CLAUDE_MATCHER,
+  /**
+   * The `copilot.repo.agent.claude` matcher: the same direct-child shape one
+   * directory over. Its own program because its rule is its own; the
+   * `copilot.repo.agent` matcher above states why the two directories are not
+   * one rule.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'agents' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1198,7 +1172,7 @@ export const COPILOT_REPO_AGENT_CLAUDE_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Custom agent locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The CLI loads project agents from .claude/agents/ as well as .github/agents/, walking upward from the working directory to the Git root, whose one member every session shares is the selected root.',
         },
@@ -1214,105 +1188,6 @@ export const COPILOT_REPO_AGENT_CLAUDE_RULE = {
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The two GitHub Copilot settings documents of the Repository root, whose
- * inline `hooks` block the CLI reads. Two programs rather than one dynamic
- * step, so each admission carries which authored filename matched.
- *
- * Its own pair rather than the settings rule's four locations, because the
- * editor's hook-locations table names the Claude-format pair for the workspace
- * scope and not this one: a hook rule over all four would claim a read no page
- * documents.
- *
- * Root-anchored with no recursive step: the pages name these locations as the
- * repository's own, and a settings file in a subdirectory is a path the vendor
- * documents no read of.
- */
-const COPILOT_REPO_COPILOT_SETTINGS_FILES_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'copilot' },
-      { kind: 'literal', value: 'settings.json' },
-    ],
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'copilot' },
-      { kind: 'literal', value: 'settings.local.json' },
-    ],
-  ],
-};
-
-/**
- * The two cross-tool Claude-format settings documents of the Repository root,
- * whose hooks both the CLI and the editor read — the same physical files
- * Claude Code admits under its own rules.
- *
- * Its own pair for the reason the pair above is one: which surfaces document
- * reading a location is what a rule's provenance rests on, and these two are
- * the only settings documents the editor's hook-locations table names.
- *
- * Root-anchored for the same reason as the pair above: the pages name the
- * repository's own `.claude/` files.
- */
-const COPILOT_REPO_CLAUDE_SETTINGS_FILES_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'settings.json' },
-    ],
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'settings.local.json' },
-    ],
-  ],
-};
-
-/**
- * The `copilot.repo.settings` matcher: the two GitHub Copilot settings
- * documents and the two cross-tool Claude-format ones the CLI reads for the
- * documented shared subset, each an exact Repository-root location. Four
- * programs rather than one dynamic step, so each admission carries which
- * authored filename matched.
- *
- * Every location is spelled out here rather than assembled from the two pair
- * matchers above: which files a matcher selects has to be readable from the
- * matcher itself. The CLI reads all four as settings documents, while each
- * hook rule takes the pair its own surfaces document.
- *
- * Root-anchored with no recursive step: the pages name these locations as the
- * repository's own, and a settings file in a subdirectory is a path the vendor
- * documents no read of. A configured location is not here either — a
- * runtime-supplied root is `copilot.excluded.extra-directories`' fact and
- * never a scan root (FR-001).
- */
-const COPILOT_REPO_SETTINGS_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'copilot' },
-      { kind: 'literal', value: 'settings.json' },
-    ],
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'copilot' },
-      { kind: 'literal', value: 'settings.local.json' },
-    ],
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'settings.json' },
-    ],
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'settings.local.json' },
-    ],
-  ],
-};
-
 /**
  * Copilot Repository settings: the supported settings documents, recognized
  * as the `settings/config` kind whose row unit is the file.
@@ -1340,7 +1215,47 @@ export const COPILOT_REPO_SETTINGS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'settings/config',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_SETTINGS_MATCHER,
+  /**
+   * The `copilot.repo.settings` matcher: the two GitHub Copilot settings
+   * documents and the two cross-tool Claude-format ones the CLI reads for the
+   * documented shared subset, each an exact Repository-root location. Four
+   * programs rather than one dynamic step, so each admission carries which
+   * authored filename matched.
+   *
+   * Every location is spelled out here rather than assembled from the two pair
+   * matchers above: which files a matcher selects has to be readable from the
+   * matcher itself. The CLI reads all four as settings documents, while each
+   * hook rule takes the pair its own surfaces document.
+   *
+   * Root-anchored with no recursive step: the pages name these locations as the
+   * repository's own, and a settings file in a subdirectory is a path the vendor
+   * documents no read of. A configured location is not here either — a
+   * runtime-supplied root is `copilot.excluded.extra-directories`' fact and
+   * never a scan root (FR-001).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'copilot' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'copilot' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1354,7 +1269,7 @@ export const COPILOT_REPO_SETTINGS_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['Configuration file settings'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'The repository settings file is .github/copilot/settings.json and the local one .github/copilot/settings.local.json — the exact locations this rule admits — and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset, which is the other pair.',
         },
@@ -1433,38 +1348,6 @@ export const COPILOT_EXCLUDED_CLI_LSP_RULE = {
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `copilot.repo.marketplace` matcher: the four documented locations a
- * marketplace root keeps its catalog at, checked in that order.
- *
- * Anchored at the selected root, because a repository that publishes a catalog
- * *is* the marketplace root its `./` entries resolve against. Which of the four
- * a given root uses is the vendor's own order, and admitting all four claims no
- * registration: `chat.plugins.marketplaces` and the workspace settings'
- * `extraKnownMarketplaces` are what make a session consider a catalog, and both
- * are runtime inputs this product never reads.
- */
-const COPILOT_REPO_MARKETPLACE_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [{ kind: 'literal', value: 'marketplace.json' }],
-    [
-      { kind: 'literal', value: '.plugin' },
-      { kind: 'literal', value: 'marketplace.json' },
-    ],
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'plugin' },
-      { kind: 'literal', value: 'marketplace.json' },
-    ],
-    [
-      { kind: 'literal', value: '.claude-plugin' },
-      { kind: 'literal', value: 'marketplace.json' },
-    ],
-  ],
-};
-
 /**
  * Copilot Repository plugin catalogs: the read-authorizing counterpart of the
  * two plugin behaviors, one per surface.
@@ -1489,7 +1372,36 @@ export const COPILOT_REPO_MARKETPLACE_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'plugin',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_MARKETPLACE_MATCHER,
+  /**
+   * The `copilot.repo.marketplace` matcher: the four documented locations a
+   * marketplace root keeps its catalog at, checked in that order.
+   *
+   * Anchored at the selected root, because a repository that publishes a catalog
+   * *is* the marketplace root its `./` entries resolve against. Which of the four
+   * a given root uses is the vendor's own order, and admitting all four claims no
+   * registration: `chat.plugins.marketplaces` and the workspace settings'
+   * `extraKnownMarketplaces` are what make a session consider a catalog, and both
+   * are runtime inputs this product never reads.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [{ kind: 'literal', value: 'marketplace.json' }],
+      [
+        { kind: 'literal', value: '.plugin' },
+        { kind: 'literal', value: 'marketplace.json' },
+      ],
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'plugin' },
+        { kind: 'literal', value: 'marketplace.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude-plugin' },
+        { kind: 'literal', value: 'marketplace.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1503,7 +1415,7 @@ export const COPILOT_REPO_MARKETPLACE_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['File locations', 'marketplace.json'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'A marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json — the four exact locations this rule admits — checked in that order, and its plugins array carries one entry per plugin with the name and the source that plugin comes from.',
         },
@@ -1554,37 +1466,13 @@ export const COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['File locations', 'Loading order and precedence'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "The plugin reference's own file table separates a plugin's manifest and components from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations, so an extension file is never one of the manifests a plugin is recognized by.",
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `.github/hooks/` directory of the Repository root, whose `*.json` direct
- * children are hook files. One dynamic step for the filename, because the
- * documented location is a directory whose JSON files are all loaded rather
- * than a fixed set of names.
- *
- * Root-anchored and direct-child: all three surfaces name the repository or
- * workspace root's own directory, and a `.github/hooks/` in a subdirectory is
- * a location no page documents a read of. A nested file below that directory
- * is a near miss for the same reason — the pages load the directory's `*.json`
- * files, not a subtree.
- */
-const COPILOT_REPO_HOOK_FILES_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.github' },
-      { kind: 'literal', value: 'hooks' },
-      { kind: 'regex', pattern: /\.json$/u },
-    ],
-  ],
-};
-
 /**
  * Copilot standalone hook files: the root `.github/hooks/*.json` documents
  * whose whole purpose is hooks, recognized as the `hook` kind whose row unit
@@ -1610,7 +1498,28 @@ export const COPILOT_REPO_HOOKS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'hook',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_HOOK_FILES_MATCHER,
+  /**
+   * The `.github/hooks/` directory of the Repository root, whose `*.json` direct
+   * children are hook files. One dynamic step for the filename, because the
+   * documented location is a directory whose JSON files are all loaded rather
+   * than a fixed set of names.
+   *
+   * Root-anchored and direct-child: all three surfaces name the repository or
+   * workspace root's own directory, and a `.github/hooks/` in a subdirectory is
+   * a location no page documents a read of. A nested file below that directory
+   * is a near miss for the same reason — the pages load the directory's `*.json`
+   * files, not a subtree.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'hooks' },
+        { kind: 'regex', pattern: /\.json$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1624,7 +1533,7 @@ export const COPILOT_REPO_HOOKS_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations', 'Hook configuration format'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'Repository-level hook files are .github/hooks/*.json in the repository root — the exact location this rule admits — and the cloud agent loads hook configuration from the same files in the cloned repository; such a file is JSON carrying a version and a hooks object.',
         },
@@ -1670,7 +1579,35 @@ export const COPILOT_REPO_SETTINGS_HOOKS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'hook',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_COPILOT_SETTINGS_FILES_MATCHER,
+  /**
+   * The two GitHub Copilot settings documents of the Repository root, whose
+   * inline `hooks` block the CLI reads. Two programs rather than one dynamic
+   * step, so each admission carries which authored filename matched.
+   *
+   * Its own pair rather than the settings rule's four locations, because the
+   * editor's hook-locations table names the Claude-format pair for the workspace
+   * scope and not this one: a hook rule over all four would claim a read no page
+   * documents.
+   *
+   * Root-anchored with no recursive step: the pages name these locations as the
+   * repository's own, and a settings file in a subdirectory is a path the vendor
+   * documents no read of.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'copilot' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.github' },
+        { kind: 'literal', value: 'copilot' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1684,7 +1621,7 @@ export const COPILOT_REPO_SETTINGS_HOOKS_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'An inline hooks block sits at the top level of .github/copilot/settings.json or .github/copilot/settings.local.json — the exact locations this rule admits — and a malformed item there rejects the whole hooks field.',
         },
@@ -1693,7 +1630,7 @@ export const COPILOT_REPO_SETTINGS_HOOKS_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['Repository settings (.github/copilot/settings.json)', 'User-editable files'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             "hooks is one of the keys the repository configuration file supports, holding the hook definitions scoped to that repository; the page's JSON-with-comments statement is written of the configuration directory's own settings.json rather than of this repository pair, whose sections fix its keys and not its syntax.",
         },
@@ -1718,7 +1655,31 @@ export const COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'hook',
   sourceKinds: ['repository'],
-  matcher: COPILOT_REPO_CLAUDE_SETTINGS_FILES_MATCHER,
+  /**
+   * The two cross-tool Claude-format settings documents of the Repository root,
+   * whose hooks both the CLI and the editor read — the same physical files
+   * Claude Code admits under its own rules.
+   *
+   * Its own pair for the reason the pair above is one: which surfaces document
+   * reading a location is what a rule's provenance rests on, and these two are
+   * the only settings documents the editor's hook-locations table names.
+   *
+   * Root-anchored for the same reason as the pair above: the pages name the
+   * repository's own `.claude/` files.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -1744,7 +1705,7 @@ export const COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'The CLI also reads the cross-tool .claude/settings.json and .claude/settings.local.json files of the repository for their inline hooks block.',
         },
@@ -1753,13 +1714,456 @@ export const COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE = {
 } as const satisfies InspectionRule;
 
 /** Copilot's contribution to the inspection-rule registry, keyed by `ruleId`. */
+/**
+ * Copilot Global personal instructions: the read-authorizing counterpart of
+ * `copilot.behavior.cli.user.instructions.root` (FR-015). An exact target, so
+ * the plan reads the one named file and never enumerates the home.
+ */
+export const COPILOT_GLOBAL_INSTRUCTIONS_ROOT_RULE = {
+  ruleId: 'copilot.global.instructions.root',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'instructions',
+  sourceKinds: ['global'],
+  /**
+   * The exact `copilot-instructions.md` at the consented boundary root: the
+   * personal always-on instruction file (FR-015).
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [[{ kind: 'literal', value: 'copilot-instructions.md' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.instructions.support',
+          url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
+          officialHost: 'docs.github.com',
+          sections: ['Copilot CLI'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The CLI reads personal instructions from ~/.copilot/copilot-instructions.md, applied to every session regardless of project, which is the exact file this rule admits at the consented boundary root.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * Copilot Global path instructions: the read-authorizing counterpart of
+ * `copilot.behavior.cli.user.instructions.path`, and of the `~/.copilot`
+ * subset of `copilot.behavior.vscode.user.instructions` (FR-015).
+ */
+export const COPILOT_GLOBAL_INSTRUCTIONS_PATH_RULE = {
+  ruleId: 'copilot.global.instructions.path',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'instructions',
+  sourceKinds: ['global'],
+  /**
+   * Every `*.instructions.md` at any depth below the boundary's `instructions/`
+   * directory (FR-015): a fixed subtree, so the plan enumerates that subtree and
+   * nothing beside it.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [
+      [
+        { kind: 'literal', value: 'instructions' },
+        ANY_DIRECTORIES,
+        { kind: 'regex', pattern: /\.instructions\.md$/u },
+      ],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.instructions.support',
+          url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
+          officialHost: 'docs.github.com',
+          sections: ['Copilot CLI'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'Personal instructions also load from ~/.copilot/instructions/**/*.instructions.md, the recursive personal instruction directory this rule admits below the consented boundary.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * Copilot personal skills below `COPILOT_HOME`: the read-authorizing
+ * counterpart of the `~/.copilot/skills` half of
+ * `copilot.behavior.cli.user.skills` (FR-015). The `~/.agents/skills` half is
+ * the shared agent home's own rule below.
+ */
+export const COPILOT_GLOBAL_SKILL_RULE = {
+  ruleId: 'copilot.global.skill',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'skill',
+  sourceKinds: ['global'],
+  /**
+   * `skills/<name>/SKILL.md` directly below the consented boundary (FR-015):
+   * `ANY_NAME` is the one direct skill-name child and the terminal literal keeps
+   * the admitted file exact.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [
+      [{ kind: 'literal', value: 'skills' }, ANY_NAME, { kind: 'literal', value: 'SKILL.md' }],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['User-editable files'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'Personal skill definitions live in ~/.copilot/skills, each skill a subdirectory containing a SKILL.md, available in all sessions — the exact layout this rule admits below the consented boundary.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * Copilot personal skills below the shared agent home: the read-authorizing
+ * counterpart of the `~/.agents/skills` half of
+ * `copilot.behavior.cli.user.skills` (FR-045). Codex documents the same
+ * location, so one admitted file there carries both vendors' recognitions —
+ * exactly as one Repository `.agents/skills` file does.
+ */
+export const COPILOT_AGENTS_HOME_SKILL_RULE = {
+  ruleId: 'copilot.global.agents-home.skill',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'skill',
+  sourceKinds: ['global'],
+  /**
+   * `skills/<name>/SKILL.md` directly below the consented shared agent home
+   * (FR-045): the same program as the boundary's own skill rule, based at the
+   * shared boundary Codex also reads.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'agents' },
+    selectors: [
+      [{ kind: 'literal', value: 'skills' }, ANY_NAME, { kind: 'literal', value: 'SKILL.md' }],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-018', 'FR-045', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.reference',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Skill locations'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The documented skill locations include the personal ~/.agents/skills/ directory — agent skills shared across all projects — which is the exact location this rule admits below the consented shared agent home.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * Copilot personal custom agents: the read-authorizing counterpart of
+ * `copilot.behavior.cli.user.agents`, and of the `~/.copilot/agents` half of
+ * `copilot.behavior.vscode.user.agents` (FR-015).
+ */
+export const COPILOT_GLOBAL_AGENT_RULE = {
+  ruleId: 'copilot.global.agent',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'agent',
+  sourceKinds: ['global'],
+  /**
+   * `agents/*.agent.md` directly below the consented boundary (FR-015): the
+   * documented `.agent.md` filename, direct children only — the pages document
+   * no nested search for the personal directory.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [
+      [
+        { kind: 'literal', value: 'agents' },
+        { kind: 'regex', pattern: /\.agent\.md$/u },
+      ],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.custom-agents',
+          url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli',
+          officialHost: 'docs.github.com',
+          sections: ['Creating a custom agent'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'Each custom agent is a Markdown file with an .agent.md extension, and the user location is ~/.copilot/agents/ — the exact filename pattern and directory this rule admits below the consented boundary.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * Copilot user-level standalone hook files: the read-authorizing counterpart
+ * of the `hooks/*.json` half of `copilot.behavior.cli.user.hooks`, and of the
+ * `~/.copilot/hooks` half of `copilot.behavior.vscode.user.hooks` (FR-015).
+ */
+export const COPILOT_GLOBAL_HOOKS_RULE = {
+  ruleId: 'copilot.global.hooks',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['global'],
+  /**
+   * `hooks/*.json` directly below the consented boundary (FR-015): the
+   * documented user-level hook files.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [
+      [
+        { kind: 'literal', value: 'hooks' },
+        { kind: 'regex', pattern: /\.json$/u },
+      ],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'User-level hook files are *.json files in the user-level hooks directory — ~/.copilot/hooks/ by default, $COPILOT_HOME/hooks/ when COPILOT_HOME is set — the exact directory and filename pattern this rule admits.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * The Copilot user settings document: the read-authorizing counterpart of
+ * `copilot.behavior.cli.user.settings` (FR-015). The user layer of the
+ * documented settings cascade, authored as JSONC, and served complete under
+ * its own `settings/config` row exactly as the Repository settings documents
+ * are.
+ */
+export const COPILOT_GLOBAL_SETTINGS_RULE = {
+  ruleId: 'copilot.global.settings',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'settings/config',
+  sourceKinds: ['global'],
+  /**
+   * The one exact user `settings.json` at the consented boundary root
+   * (FR-015), shared with the inline-hooks rule: two rules over one
+   * candidate, read once.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [[{ kind: 'literal', value: 'settings.json' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['User-editable files'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'settings.json in the user-level configuration directory is the primary CLI configuration file, edited directly or through /settings, supports JSONC, and holds global user-level defaults — the exact file this rule admits at the consented boundary root.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The inline `hooks` field of the user settings document: a `hook` recognition
+ * of the same one candidate `copilot.global.settings` admits (FR-015), exactly
+ * as the Repository settings documents' inline hooks are.
+ */
+export const COPILOT_GLOBAL_SETTINGS_HOOKS_RULE = {
+  ruleId: 'copilot.global.hooks.inline',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['global'],
+  /**
+   * The one exact user `settings.json` at the consented boundary root
+   * (FR-015), shared with the settings rule: two rules over one candidate,
+   * read once.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [[{ kind: 'literal', value: 'settings.json' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.hooks',
+          url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Hooks locations'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'Hooks can also be defined inline in the user configuration file ~/.copilot/settings.json under the hooks key, which is the contained declaration this rule recognizes on the settings candidate.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * The Copilot user-level MCP carrier: the read-authorizing counterpart of
+ * `copilot.behavior.cli.user.mcp` (FR-015). One row per declared server name,
+ * exactly as the Repository carriers publish.
+ */
+export const COPILOT_GLOBAL_MCP_RULE = {
+  ruleId: 'copilot.global.mcp',
+  tool: 'copilot',
+  discoveryClass: 'static-candidate',
+  kind: 'MCP',
+  sourceKinds: ['global'],
+  /**
+   * The one exact user MCP carrier `mcp-config.json` at the consented boundary
+   * root (FR-015).
+   */
+  matcher: {
+    base: { kind: 'global', member: 'copilot' },
+    selectors: [[{ kind: 'literal', value: 'mcp-config.json' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['User-editable files'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'mcp-config.json in the user-level configuration directory defines MCP servers available at the user level in all sessions, which is the exact carrier this rule admits at the consented boundary root.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The Copilot user surfaces no Global rule admits, on record as excluded
+ * (contracts/vendors/github-copilot.md § Inspector Global rule): another
+ * tool's home and the VS Code profile files (`~/.claude/*`, profile prompts,
+ * profile MCP and settings), configured extra locations, installed plugins and
+ * plugin data, the user LSP configuration, user extensions, and the
+ * automatically managed state beside the admitted files. It authorizes
+ * nothing and exists so the consent flow can state what it leaves out.
+ *
+ * `kind` is null because an exclusion spans kinds, and `matcher` is null
+ * because a rule that admits nothing needs no selector.
+ */
+export const COPILOT_EXCLUDED_USER_RUNTIME_RULE = {
+  ruleId: 'copilot.excluded.user-runtime',
+  tool: 'copilot',
+  discoveryClass: 'excluded',
+  kind: null,
+  sourceKinds: ['global'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-013', 'FR-014', 'FR-015', 'FR-018', 'QR-001', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'github.copilot.cli.configuration',
+          url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
+          officialHost: 'docs.github.com',
+          sections: ['Automatically managed files'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The vendor itself separates the user-editable files from the automatically managed ones — application state, saved permissions, session and command-history state, the session store, logs, installed plugins, plugin data, IDE state, and MCP OAuth and secret storage — which is the line this exclusion holds.',
+        },
+        {
+          sourceId: 'github.copilot.cli.lsp',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers',
+          officialHost: 'docs.github.com',
+          sections: ['How LSP servers are loaded'],
+          reviewedOn: '2026-08-23',
+          establishes:
+            'The user-level ~/.copilot/lsp-config.json defines LSP servers, a documented surface the closed kind set does not publish, so it stays excluded.',
+        },
+        {
+          sourceId: 'github.copilot.cli.extensions',
+          url: 'https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-extensions',
+          officialHost: 'docs.github.com',
+          sections: ['Choosing where an extension lives'],
+          reviewedOn: '2026-07-15',
+          establishes:
+            'User extensions under ~/.copilot/extensions/ are an experimental executable surface outside the initial allowlist, so they stay excluded.',
+        },
+        {
+          sourceId: 'vscode.copilot.instructions',
+          url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
+          officialHost: 'code.visualstudio.com',
+          sections: ['Use a CLAUDE.md file'],
+          reviewedOn: '2026-08-19',
+          establishes:
+            'VS Code also reads Claude-compatible user paths such as ~/.claude/CLAUDE.md; a cross-home or profile read stays a recorded behavior with no Inspector recognition, and those paths stay excluded here.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
 export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, InspectionRule>> = {
   [COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE.ruleId]:
     COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,
   [COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE.ruleId]: COPILOT_EXCLUDED_CLI_EXTENSIONS_RULE,
   [COPILOT_EXCLUDED_CLI_LSP_RULE.ruleId]: COPILOT_EXCLUDED_CLI_LSP_RULE,
   [COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE.ruleId]: COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE,
+  [COPILOT_EXCLUDED_USER_RUNTIME_RULE.ruleId]: COPILOT_EXCLUDED_USER_RUNTIME_RULE,
   [COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE.ruleId]: COPILOT_EXCLUDED_VSCODE_SETTINGS_RULE,
+  [COPILOT_GLOBAL_AGENT_RULE.ruleId]: COPILOT_GLOBAL_AGENT_RULE,
+  [COPILOT_AGENTS_HOME_SKILL_RULE.ruleId]: COPILOT_AGENTS_HOME_SKILL_RULE,
+  [COPILOT_GLOBAL_HOOKS_RULE.ruleId]: COPILOT_GLOBAL_HOOKS_RULE,
+  [COPILOT_GLOBAL_SETTINGS_HOOKS_RULE.ruleId]: COPILOT_GLOBAL_SETTINGS_HOOKS_RULE,
+  [COPILOT_GLOBAL_INSTRUCTIONS_PATH_RULE.ruleId]: COPILOT_GLOBAL_INSTRUCTIONS_PATH_RULE,
+  [COPILOT_GLOBAL_INSTRUCTIONS_ROOT_RULE.ruleId]: COPILOT_GLOBAL_INSTRUCTIONS_ROOT_RULE,
+  [COPILOT_GLOBAL_MCP_RULE.ruleId]: COPILOT_GLOBAL_MCP_RULE,
+  [COPILOT_GLOBAL_SETTINGS_RULE.ruleId]: COPILOT_GLOBAL_SETTINGS_RULE,
+  [COPILOT_GLOBAL_SKILL_RULE.ruleId]: COPILOT_GLOBAL_SKILL_RULE,
   [COPILOT_REPO_AGENT_RULE.ruleId]: COPILOT_REPO_AGENT_RULE,
   [COPILOT_REPO_AGENT_CLAUDE_RULE.ruleId]: COPILOT_REPO_AGENT_CLAUDE_RULE,
   [COPILOT_REPO_COMMAND_RULE.ruleId]: COPILOT_REPO_COMMAND_RULE,

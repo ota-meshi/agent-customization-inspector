@@ -70,6 +70,7 @@ function definition(
   parseStatus: SkillDefinitionDto['parseStatus'] = 'parsed',
 ): SkillDefinitionDto {
   return {
+    sourceId: 'source-repository',
     sourceRelativePath: path,
     tool,
     surfaces: [],

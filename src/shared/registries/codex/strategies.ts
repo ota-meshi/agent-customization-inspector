@@ -65,7 +65,7 @@ export const CODEX_AGENTS_INHERITANCE_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'The settings a custom agent file may override are the same configuration keys the layer precedence resolves, which is what makes an agent file a configuration layer rather than a manifest of its own.',
         },
@@ -74,7 +74,7 @@ export const CODEX_AGENTS_INHERITANCE_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/subagents.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Custom agents', 'Approvals and sandbox controls'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'A custom agent whose name matches a built-in agent such as explorer takes precedence over it, and Codex loads the selected agent file as a configuration layer for the spawned session: a model or reasoning effort the file sets takes precedence over the value resolved from an explicit spawn request, the [agents] defaults, and the parent, while sandbox_mode, mcp_servers, and skills.config inherit from the parent when the file omits them; the parent turn’s live sandbox and approval overrides are reapplied over the file’s own defaults. The page names the personal and project locations without establishing an order between them.',
         },
@@ -110,7 +110,7 @@ export const CODEX_CONFIG_PRECEDENCE_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'Codex resolves CLI overrides, trusted project layers from root to cwd, profile files, User config, and system config in that fixed order, using the closest applicable value for the same key.',
         },
@@ -156,7 +156,7 @@ export const CODEX_HOOKS_ADDITIVE_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/hooks.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Where Codex looks for hooks', 'Review and trust hooks'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'If more than one hook source exists Codex loads all matching hooks and higher-precedence layers do not replace lower-precedence hooks; a layer holding both hooks.json and inline [hooks] has both merged with a startup warning; hooks bundled with an enabled plugin load alongside the other sources under the same trust review; project-local hooks load only when the project .codex/ layer is trusted, while user hooks keep loading in an untrusted project; and a non-managed hook must be reviewed and trusted before it can run.',
         },
@@ -165,7 +165,7 @@ export const CODEX_HOOKS_ADDITIVE_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'The active config layers a hook source belongs to are the User layer and the trusted project .codex/config.toml layers from the project root down to the runtime cwd.',
         },
@@ -200,7 +200,7 @@ export const CODEX_INSTRUCTIONS_LAYERING_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['How Codex discovers guidance', 'Customize fallback filenames'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'Codex selects at most one non-empty instruction file per directory in the documented filename order and concatenates the selections broad to narrow, from the global fallback through the project chain toward the runtime cwd, stopping at the project_doc_max_bytes budget; that budget and the fallback filenames are configuration values resolved outside the instruction files themselves.',
         },
@@ -244,7 +244,7 @@ export const CODEX_MCP_CONFIGURATION_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'MCP declarations resolve through the ordinary config-layer precedence: the active layers merge per key and the closest applicable declaration wins, with project layers applying only when the project is trusted.',
         },
@@ -253,7 +253,7 @@ export const CODEX_MCP_CONFIGURATION_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/extend/mcp.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Connect Codex to an MCP server'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Servers are declared as named [mcp_servers.*] tables in the configuration file — the map whose keys the per-value layer resolution operates over.',
         },
@@ -296,7 +296,7 @@ export const CODEX_RULES_RESOLUTION_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/rules.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Create a rules file', 'Understand rule fields'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Rule files are read from every active config layer at startup — the user layer, Team Config locations, and project layers whose .codex/ is trusted — and when more than one rule matches a command Codex applies the most restrictive decision, forbidden over prompt over allow; no precedence among the layers themselves is established.',
         },
@@ -329,7 +329,7 @@ export const CODEX_SKILLS_DISCOVERY_STRATEGY = {
           url: 'https://learn.chatgpt.com/docs/build-skills.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Where Codex loads local skills'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Skills that share a name across discovery scopes are not merged and both remain available in skill selectors; the section lists the repository, user, admin, and system locations without establishing any precedence or ordering among them.',
         },
@@ -373,7 +373,7 @@ export const CODEX_PLUGINS_ACTIVATION_STRATEGY = {
           url: 'https://developers.openai.com/plugins/build/plugins.md',
           officialHost: 'developers.openai.com',
           sections: ['How local marketplaces work', 'Marketplace metadata', 'Plugin structure'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "The ChatGPT desktop app reads the repo, legacy-compatible, and personal catalogs, Codex skips an entry whose source it cannot resolve instead of failing the catalog, ChatGPT installs a plugin into ~/.codex/plugins/cache and loads the installed copy from there rather than from the entry, ChatGPT stores each plugin's on or off state in ~/.codex/config.toml, and every plugin requires the .codex-plugin/plugin.json manifest at the plugin root it establishes.",
         },

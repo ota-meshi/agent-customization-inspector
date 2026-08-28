@@ -16,6 +16,8 @@
 // one RPC connection and the one adopted snapshot, and a second view state
 // would race the first for the same request tokens.
 import { computed, inject, nextTick, ref, watch } from 'vue';
+import { NuxtLink } from '#components';
+import type { SourceKind } from '../../shared/api-types';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import DiagnosticList from '../components/diagnostics/DiagnosticList.vue';
 import InventoryFilters from '../components/inventory/InventoryFilters.vue';
@@ -28,11 +30,13 @@ import { recordInventoryReturnPoint } from '../router.options';
 import { useInventoryFilters } from '../composables/filters';
 import {
   SOURCE_BOUNDARY_ORIGIN_TEXT,
+  SOURCE_STATUS_TEXT,
   isCustomizationKind,
   isSupportedTool,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
+import { GLOBAL_MEMBER_TEXT } from '../../shared/api-text';
 
 const sessionViewState = inject(SESSION_VIEW_STATE);
 if (sessionViewState === undefined) {
@@ -54,6 +58,22 @@ const router = useRouter();
  */
 function kindFromQuery(value: unknown): CustomizationKind | null {
   return isCustomizationKind(value) ? value : null;
+}
+
+/**
+ * The Source family read out of `?source=`, or null for anything the label
+ * table does not name — the same rule as {@link kindFromQuery}, for the same
+ * reason. The family is what rides in the URL rather than a Source ID: an ID
+ * belongs to one launch, so a kept link would name nothing after the next one
+ * (`api-text.ts` § SOURCE_KIND_TEXT).
+ */
+function sourceKindFromQuery(value: unknown): SourceKind | null {
+  for (const candidate of ['repository', 'global'] as const) {
+    if (candidate === value) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 /**
@@ -91,16 +111,16 @@ function queryText(value: unknown): string | null {
 // reader who has chosen nothing has chosen nothing, so the parameter stays
 // absent and the default is resolved against whatever inventory is committed
 // then.
-const sourceId = ref<string | null>(queryText(route.query.source));
+const sourceKind = ref<SourceKind | null>(sourceKindFromQuery(route.query.source));
 const tool = ref<SupportedTool | null>(toolFromQuery(route.query.tool));
 const pathQuery = ref(queryText(route.query.path) ?? '');
 const kind = ref<CustomizationKind | null>(kindFromQuery(route.query.kind));
 
-watch([sourceId, tool, pathQuery, kind], () => {
+watch([sourceKind, tool, pathQuery, kind], () => {
   void router.replace({
     query: {
       ...route.query,
-      source: sourceId.value ?? undefined,
+      source: sourceKind.value ?? undefined,
       tool: tool.value ?? undefined,
       path: pathQuery.value === '' ? undefined : pathQuery.value,
       kind: kind.value ?? undefined,
@@ -119,7 +139,7 @@ onBeforeRouteLeave((to) => {
   recordInventoryReturnPoint(to.fullPath);
 });
 
-const filters = useInventoryFilters(snapshot, { sourceId, tool, kind, pathQuery });
+const filters = useInventoryFilters(snapshot, { sourceKind, tool, kind, pathQuery });
 
 // What the two selects display is the selection actually applied, while what
 // they write is the raw choice. A generation that no longer publishes the
@@ -128,10 +148,10 @@ const filters = useInventoryFilters(snapshot, { sourceId, tool, kind, pathQuery 
 // filters" affordance stayed away — three surfaces disagreeing about one state.
 // The write still goes to the raw ref, so the choice comes back on its own when
 // a later generation offers that option again, exactly as the kind tab does.
-const selectedSourceId = computed({
-  get: () => filters.effectiveSourceId.value,
-  set: (value: string | null) => {
-    sourceId.value = value;
+const selectedSourceKind = computed({
+  get: () => filters.effectiveSourceKind.value,
+  set: (value: SourceKind | null) => {
+    sourceKind.value = value;
   },
 });
 const selectedTool = computed({
@@ -188,7 +208,11 @@ const totalRowCount = computed<number>(() => {
     return 0;
   }
   const totals: Readonly<Record<CustomizationKind, number>> = {
-    instructions: committed.instructions.length,
+    // The list's items are ranges, not rows: a range the repository and a
+    // consented home both govern is one item holding two rows
+    // (`filters.ts` § InstructionRangeGroup), so counting rows here would
+    // promise more items than the page shows.
+    instructions: filters.instructionRangeGroupTotal.value,
     skill: committed.skills.length,
     MCP: committed.mcp.length,
     agent: committed.agents.length,
@@ -213,7 +237,7 @@ const totalRowCount = computed<number>(() => {
  * must not navigate the user somewhere else.
  */
 function clearFilters(): void {
-  sourceId.value = null;
+  sourceKind.value = null;
   tool.value = null;
   pathQuery.value = '';
 }
@@ -221,6 +245,37 @@ function clearFilters(): void {
 /** The one Repository Source; Global Sources arrive with the Global phases. */
 const repositorySource = computed(
   () => snapshot.value?.sources.find((source) => source.kind === 'repository') ?? null,
+);
+
+/**
+ * The consented Global Sources, in the fixed tool order the snapshot publishes
+ * them in. Empty until a confirmation's batch commits: an admitted tool whose
+ * scan has not finished is a control rather than a Source, so nothing
+ * provisional appears here (data-model.md § GlobalEnableOperation).
+ */
+const globalSources = computed(
+  () => snapshot.value?.sources.filter((source) => source.kind === 'global') ?? [],
+);
+
+/**
+ * The one sentence the panel's live region announces: which tools' personal
+ * directories have been read, and how each ended.
+ *
+ * Named tools rather than a count, because that is what a reader needs to know
+ * without looking — and no root, because a root belongs in the labelled field
+ * below where it is stated as the escaped presentation it is (FR-002).
+ */
+const globalSourcesAnnouncement = computed(() =>
+  globalSources.value.length === 0
+    ? ''
+    : `Your personal setup was inspected: ${globalSources.value
+        .map(
+          (source) =>
+            `${source.member === null ? 'Unknown member' : GLOBAL_MEMBER_TEXT[source.member]} ${SOURCE_STATUS_TEXT[
+              source.status
+            ].toLowerCase()}`,
+        )
+        .join(', ')}.`,
 );
 
 /**
@@ -286,6 +341,53 @@ const staleFailureMessage = computed(() =>
       />
     </template>
 
+    <!-- The consented homes, once a confirmation's batch has committed. Each
+         is its own Source with its own root: two boundaries never merge, and a
+         file below one belongs to that one (FR-013). The panel is absent
+         before consent and absent while a batch is still running, because a
+         Source that has not committed does not exist. -->
+    <!-- Outside the panel's own `v-if`, and mounted from the first render with
+         nothing in it. A live region added to the document together with its
+         text is not announced — the assistive technology has nothing to
+         observe a change against — and the panel's arrival is exactly the case
+         that would be lost: it appears when a confirmation's batch commits,
+         which on any tab but this one is otherwise a silent change (WCAG 4.1.3,
+         W3C ARIA22; the same rule the shell's own two regions follow).
+         One sentence rather than the list itself, which read atomically would
+         announce every root again on every change. -->
+    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
+      {{ globalSourcesAnnouncement }}
+    </p>
+
+    <template v-if="globalSources.length > 0">
+      <h2>Your personal setup</h2>
+      <dl class="aci-definition-grid">
+        <template v-for="source in globalSources" :key="source.sourceId">
+          <dt>{{ source.member ? GLOBAL_MEMBER_TEXT[source.member] : 'Unknown member' }}</dt>
+          <dd class="aci-inventory-page__display-root">
+            {{ source.boundary.displayRoot }} ({{ SOURCE_STATUS_TEXT[source.status] }})
+          </dd>
+        </template>
+      </dl>
+      <p class="aci-note">
+        These labels are escaped presentations of the consented directories. They are not paths you
+        can open and grant no read access.
+      </p>
+    </template>
+
+    <!-- The consent route's entry. It is a link in the page rather than a
+         URL to type: a reader who cannot find the page cannot decide about
+         it, and a review found the route reachable no other way. -->
+    <p class="aci-inventory-page__consent-entry">
+      <NuxtLink to="/global-consent">
+        {{
+          globalSources.length > 0
+            ? 'Review what is inspected outside this repository'
+            : 'Inspect your personal setup outside this repository'
+        }}
+      </NuxtLink>
+    </p>
+
     <h2>Customization files</h2>
     <!-- The rail carries what decides which rows are on screen — the kind in
          view and the filters that narrow it — and the rows take the rest of the
@@ -306,10 +408,10 @@ const staleFailureMessage = computed(() =>
           />
         </div>
         <InventoryFilters
-          v-model:source-id="selectedSourceId"
+          v-model:source-kind="selectedSourceKind"
           v-model:tool="selectedTool"
           v-model:path-query="pathQuery"
-          :available-sources="filters.availableSources.value"
+          :available-source-kinds="filters.availableSourceKinds.value"
           :available-tools="filters.availableTools.value"
           :match-count="matchCount"
           :total-count="totalRowCount"
@@ -319,7 +421,7 @@ const staleFailureMessage = computed(() =>
       </div>
       <InventoryList
         :kind="filters.activeKind.value"
-        :instruction-rows="filters.instructionRows.value"
+        :instruction-range-groups="filters.instructionRangeGroups.value"
         :skill-rows="filters.skillRows.value"
         :mcp-rows="filters.mcpRows.value"
         :agent-rows="filters.agentRows.value"
@@ -330,7 +432,7 @@ const staleFailureMessage = computed(() =>
         :plugin-rows="filters.pluginRows.value"
         :output-style-rows="filters.outputStyleRows.value"
         :settings-rows="filters.settingsRows.value"
-        :files-by-path="filters.filesByPath.value"
+        :files-by-source="filters.filesBySource.value"
         :total-count="totalRowCount"
         :diagnostics="snapshot.diagnostics"
       />
@@ -455,6 +557,13 @@ const staleFailureMessage = computed(() =>
 .aci-inventory-page__display-root {
   font-family: ui-monospace, monospace;
   overflow-wrap: anywhere;
+}
+
+/* The consent entry sits between the Repository panel and the inventory, so it
+   reads as a second thing this session can inspect rather than as part of
+   either. */
+.aci-inventory-page__consent-entry {
+  margin-block: 1rem 0;
 }
 
 /* Drawn as a box of its own, like the panels above it: closed, it is one line

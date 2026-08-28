@@ -2,8 +2,8 @@
 
 [English](openai-codex.md)
 
-**契約バージョン**: 2026-07-20
-**公式資料のreview日**: 2026-07-15
+**契約バージョン**: 2026-08-27
+**公式資料のreview日**: 2026-08-27
 
 このcontractは、文書化済みCodex lookup behaviorとInspectorのread allowlistを分離する。共通matcher文法と
 source-boundary ruleは[Inspection Path Allowlist Grammar and Index](../inspection-path-allowlist.ja.md)、
@@ -39,6 +39,8 @@ status、Inspector status列はrationaleまたはInspector scope stateであり�
 | `codex.behavior.repo.rules` | `partially-documented` | `[experimental]` | Nested recursionは未指定でrules featureはexperimental |
 | `codex.behavior.user.rules` | `partially-documented` | `[experimental]` | `rules/`のstartup scanをuser layerとproject layerについて1つの文が同じに述べるため、nested recursionはどちらも未指定であり、rules featureはexperimental |
 | `codex.behavior.user.prompts` | `documented` | `[deprecated]` | 文書化済みcustom-prompt surfaceはdeprecated |
+| `codex.global.rules` | `documented` | `[experimental]` | Inspector ruleはuser rules directoryの文書化された直下の子だけをadmitし、rules featureはexperimentalである |
+| `codex.global.prompts` | `documented` | `[deprecated]` | 文書化済みcustom-prompt surfaceはdeprecated |
 | `codex.repo.agent` | `partially-documented` | `[]` | Rootの`.codex/agents/`は文書化されているが、完全なproject directory searchは十分に指定されていない |
 | `codex.repo.rules` | `documented` | `[experimental]` | Inspector ruleは文書化済みdirect childだけをadmitし、未確立のnestingを除外する |
 
@@ -161,23 +163,32 @@ rowのいずれも得ず、そのmanifestへ到達したofferingのrowで、plug
 | Behavior ID | User behavior | User locator | Strategy / composition | Inspector status | Evidence |
 |---|---|---|---|---|---|
 | `codex.behavior.user.instructions` | Instruction fallback | `<CODEX_HOME>/AGENTS.override.md`、なければ`<CODEX_HOME>/AGENTS.md` | `codex.instructions.layering`。最初のnon-empty global candidateがproject chainより前 | 後述`codex.global.instructions`だけでAccepted | `openai.codex.agents-md` |
-| `codex.behavior.user.config` | User configurationとMCP | `<CODEX_HOME>/config.toml`、`<CODEX_HOME>`内profile file | `codex.config.precedence`、`codex.mcp.configuration`。Local clientはhost configurationを共有 | `codex.excluded.user-runtime` | `openai.codex.config-basic`, `openai.codex.mcp` |
-| `codex.behavior.user.agents` | Personal custom agent | `<CODEX_HOME>/agents/*.toml` | `codex.agents.inheritance`。Custom nameはbuilt-in名をoverrideしomitted fieldはparent sessionからinherit | `codex.excluded.user-runtime` | `openai.codex.subagents` |
-| `codex.behavior.user.skills` | User skill | `$HOME/.agents/skills/<name>/SKILL.md` | `codex.skills.discovery`。Repository/admin/system skillに加えてavailableで同名skillはmergeしない | `codex.excluded.user-runtime` | `openai.codex.skills` |
-| `codex.behavior.user.hooks` | User hook | `<CODEX_HOME>/hooks.json`と`<CODEX_HOME>/config.toml`内inline hook | `codex.hooks.additive`。Project/plugin hookとadditive | `codex.excluded.user-runtime` | `openai.codex.hooks` |
-| `codex.behavior.user.rules` | User rule | `<CODEX_HOME>/rules/*.rules` | `codex.rules.resolution`。Active user config layerとしてscan | `codex.excluded.user-runtime` | `openai.codex.rules` |
-| `codex.behavior.user.plugins` | Personal marketplaceとplugin | `$HOME/.agents/plugins/marketplace.json`、Codex state配下installed/cache path | `codex.plugins.activation`。Catalog、installation、enablement、cached copyは別state | `codex.excluded.user-runtime` | `openai.codex.plugins` |
-| `codex.behavior.user.prompts` | Deprecated custom prompt | `<CODEX_HOME>/prompts/*.md` | Explicit invocationのみ。Skillを推奨しdeprecated | `codex.excluded.user-runtime` | `openai.codex.custom-prompts` |
+| `codex.behavior.user.config` | User configurationとMCP | `<CODEX_HOME>/config.toml`、`<CODEX_HOME>`内profile file | `codex.config.precedence`、`codex.mcp.configuration`。Local clientはhost configurationを共有 | 後述の`codex.global.config`、`codex.global.settings`、`codex.global.hooks.inline`でaccepted | `openai.codex.config-basic`, `openai.codex.mcp` |
+| `codex.behavior.user.agents` | Personal custom agent | `<CODEX_HOME>/agents/*.toml` | `codex.agents.inheritance`。Custom nameはbuilt-in名をoverrideしomitted fieldはparent sessionからinherit | 後述の`codex.global.agent`でaccepted | `openai.codex.subagents` |
+| `codex.behavior.user.skills` | User skill | `$HOME/.agents/skills/<name>/SKILL.md` | `codex.skills.discovery`。Repository/admin/system skillに加えてavailableで同名skillはmergeしない | 後述の`codex.global.agents-home.skill`で、consent済み共有agent homeにおいてaccepted（FR-045） | `openai.codex.skills` |
+| `codex.behavior.user.hooks` | User hook | `<CODEX_HOME>/hooks.json`と`<CODEX_HOME>/config.toml`内inline hook | `codex.hooks.additive`。Project/plugin hookとadditive | 後述の`codex.global.hooks`と`codex.global.hooks.inline`でaccepted | `openai.codex.hooks` |
+| `codex.behavior.user.rules` | User rule | `<CODEX_HOME>/rules/*.rules` | `codex.rules.resolution`。Active user config layerとしてscan | 後述の`codex.global.rules`でaccepted | `openai.codex.rules` |
+| `codex.behavior.user.plugins` | Personal marketplaceとplugin | `$HOME/.agents/plugins/marketplace.json`、`<CODEX_HOME>/plugins/`配下installed/cache path | `codex.plugins.activation`。Catalog、installation、enablement、cached copyは別state | Personal marketplaceは後述の`codex.global.agents-home.marketplace`でaccepted（FR-045）。Installed copyは`codex.excluded.user-runtime`のまま | `openai.codex.plugins` |
+| `codex.behavior.user.prompts` | Deprecated custom prompt | `<CODEX_HOME>/prompts/*.md` | Explicit invocationのみ。Skillを推奨しdeprecated | 後述の`codex.global.prompts`でaccepted。Surfaceはdeprecatedのまま | `openai.codex.custom-prompts` |
 | `codex.behavior.user.memories` | Local memory | `<CODEX_HOME>/memories/`と関連local state | Local-client memory control。Repository customization fileではない | `codex.excluded.user-runtime` | `openai.codex.memories` |
 
 ## Inspector Global rule
 
-Global inspectionはsession開始時に無効である。FR-013からFR-018の正確なconsent flow後、Codexは次のruleだけを
-readできる。
+Global inspectionはsession開始時に無効である。FR-013からFR-018およびFR-045の正確なconsent flow後、Codexは次のruleだけを
+readできる — consent済み`CODEX_HOME` boundary配下のrowと、FR-045が名指すconsent済み共有agent home配下のrowである。
 
 | Rule ID | Boundary base | Selector programとselection | Expansion | Class | Behavior refs | Policy refs | Evidence |
 |---|---|---|---|---|---|---|---|
 | `codex.global.instructions` | 正確なconsent済みcapture済み`CODEX_HOME`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.codex`を`node:path.join`した値 | `['AGENTS.override.md']`、次に`['AGENTS.md']` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
+| `codex.global.config` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['config.toml']` | boundaryにおける`exact` | `static-candidate` | `codex.behavior.user.config` | FR-013、FR-014、FR-017、FR-018、QR-005 | User config carrierの`MCP` recognition。3つのruleが1つのfileをadmitし、walkは1回readする1つのcandidateへmergeする — Repositoryの3つ組とまったく同じである | `openai.codex.config-basic`、`openai.codex.mcp` |
+| `codex.global.settings` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['config.toml']` | `exact`。`codex.global.config`がauthorするselectorの上にある | `static-candidate` | `codex.behavior.user.config` | FR-013、FR-014、FR-017、FR-018、QR-005 | 同じcarrierの`settings/config` recognition | `openai.codex.config-basic` |
+| `codex.global.hooks.inline` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['config.toml']` | `exact`。`codex.global.config`がauthorするselectorの上にあり、carrierのinline `[hooks]` tableはその1 fileの`hook` recognitionである | `static-candidate` | `codex.behavior.user.config`、`codex.behavior.user.hooks` | FR-013、FR-014、FR-017、FR-018、QR-005 | 同一layerのstandaloneとinlineのhook occurrenceは別provenanceのまま | `openai.codex.hooks` |
+| `codex.global.hooks` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['hooks.json']` | boundaryにおける`exact` | `static-candidate` | `codex.behavior.user.hooks` | FR-013、FR-014、FR-017、FR-018、QR-005 | User layerのstandalone hook file | `openai.codex.hooks` |
+| `codex.global.agent` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['agents', /\.toml$/u]` | boundaryの`agents/`の`direct-child`。Pageはpersonal agentに`~/.codex/agents/`を名指し、nested searchを文書化しない | `static-candidate` | `codex.behavior.user.agents` | FR-013、FR-014、FR-017、FR-018、QR-005 | Custom nameはbuilt-in nameをoverrideし、省略fieldはparent sessionから継承する | `openai.codex.subagents` |
+| `codex.global.rules` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['rules', /\.rules$/u]` | boundaryの`rules/`の`direct-child`。Repository ruleとまったく同じく`permissions`としてrecognizeする。このfileはsandbox外で実行できるcommandを決めるためである | `static-candidate` | `codex.behavior.user.rules` | FR-013、FR-014、FR-017、FR-018、QR-005 | User layerの`rules/`のstartup scan。Nested recursionは未規定のままであり、recursive stepを持たない | `openai.codex.rules` |
+| `codex.global.prompts` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['prompts', /\.md$/u]` | boundaryの`prompts/`の`direct-child`。Explicit invocationのみ | `static-candidate` | `codex.behavior.user.prompts` | FR-013、FR-014、FR-017、FR-018、QR-005 | 文書化済みsurfaceはskillを推奨してdeprecated。toolがまだ読むdeprecated surfaceは、この製品がまだ見せるsurfaceである | `openai.codex.custom-prompts` |
+| `codex.global.agents-home.skill` | Consent済み共有agent home: request-wideなimport済み`node:os.homedir()` captureと`.agents`を`node:path.join`した値であり、これを移動させる文書化済み設定は存在しない（FR-045） | `['skills', ANY_NAME, 'SKILL.md']` | `direct-child`の後に`exact`。skill名は正確に直下1階層である | `static-candidate` | `codex.behavior.user.skills` | FR-013、FR-014、FR-018、FR-045、QR-005 | 文書化済み`$HOME/.agents/skills` personal location。Copilotが同じpathを文書化するため、admitされたfileは両toolのrecognitionを持つ | `openai.codex.skills` |
+| `codex.global.agents-home.marketplace` | Consent済み共有agent home: request-wideなimport済み`node:os.homedir()` captureと`.agents`を`node:path.join`した値であり、これを移動させる文書化済み設定は存在しない（FR-045） | `['plugins', 'marketplace.json']` | 共有home配下の`exact` | `static-candidate` | `codex.behavior.user.plugins` | FR-013、FR-014、FR-018、FR-045、QR-005 | 文書化済みpersonal marketplace catalog。それが名指すpluginと`<CODEX_HOME>/plugins/`配下のinstalled copyは、Repositoryのplugin bodyとまったく同じくexcludedのまま | `openai.codex.plugins` |
 
 Immutable planは、この2つのexact selectorをその順序で持つclosedな`codex-global-first-non-empty` policyを使う。
 安全にnon-emptyと確定したoverrideはshort-circuitし、`absent`または安全にemptyと確定したoverrideだけが
@@ -197,8 +208,7 @@ fileはemptyとする。Inspectorは選択したnon-empty fileだけをpublish�
 
 Present emptyまたはrelativeな`CODEX_HOME` override、もしくはmissingまたはreadableなdirectoryではないrootから
 暗黙fallbackせず、そのtoolはabsentまたはfailedとして記録する（FR-014）。Root selection/admission中の予期しない
-failureはattemptを通常のerrorとしてfailさせる。同じdirectory配下でもuser config、agent、skill、hook、
-rule、MCP、plugin、prompt、memory、credential、log、session、cacheはexcludedのままである。
+failureはattemptを通常のerrorとしてfailさせる。同じdirectory配下でもuser memory、credential、log、session、cache、installed plugin copyはexcludedのままである。
 
 ## Relationship-onlyとexcluded group
 
@@ -207,12 +217,12 @@ non-normative indexにすぎない。Codexではこれらのruleがarbitrary con
 command、server-provided MCP instruction、parent/child custom-agent contextを扱い、target readを認可しない。
 
 Grouped User exclusionは自身のassessmentとしてlifecycle claimなしの`documented`を持つ。参照先の
-experimental ruleとdeprecated promptはそれぞれ自身のmaintenance recordと自身のqualifierを保持する。それらを
+各subjectはそれぞれ自身のmaintenance recordと自身のqualifierを保持する。それらを
 exclusion ruleやunionへ平坦化するものは無く、まとめて運ぶassessment arrayも存在しない。
 
 | Rule ID | Class | Excluded group | Behavior refs | Policy refs | Strategy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| `codex.excluded.user-runtime` | `excluded` | Consent済みinstruction fallback以外の上記User surfaceすべて。Managed/system configurationとlocal state | `codex.behavior.user.agents`, `codex.behavior.user.config`, `codex.behavior.user.hooks`, `codex.behavior.user.memories`, `codex.behavior.user.plugins`, `codex.behavior.user.prompts`, `codex.behavior.user.rules`, `codex.behavior.user.skills` | FR-013、FR-014、FR-017、FR-018、QR-001、QR-004、QR-005 | `codex.agents.inheritance`, `codex.config.precedence`, `codex.hooks.additive`, `codex.mcp.configuration`, `codex.plugins.activation`, `codex.rules.resolution`, `codex.skills.discovery` | `documented` | `openai.codex.config-basic`, `openai.codex.custom-prompts`, `openai.codex.hooks`, `openai.codex.mcp`, `openai.codex.memories`, `openai.codex.plugins`, `openai.codex.rules`, `openai.codex.skills`, `openai.codex.subagents` |
+| `codex.excluded.user-runtime` | `excluded` | どのGlobal ruleもadmitしない上記User surface: local memory state、`<CODEX_HOME>/plugins/`配下のinstalled plugin copy、managed/system configurationとlocal state | `codex.behavior.user.memories`, `codex.behavior.user.plugins` | FR-013、FR-014、FR-017、FR-018、QR-001、QR-004、QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.memories`, `openai.codex.plugins` |
 | `codex.excluded.plugin-files` | `excluded` | Plugin skill、MCP、app、hook、asset、script、installed/cache copy | `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace`, `codex.behavior.user.plugins` | FR-003、FR-004、FR-024、QR-001、QR-004、QR-005 | `codex.plugins.activation` | `documented` | `openai.codex.plugins` |
 
 ## Initial releaseの規範的presentation allowlist
@@ -249,11 +259,12 @@ connection、execution、import、installation、activationのauthorityを一切
 | `instructions` | — | 受理済みstatic、configured-fallback、またはGlobal instruction file。Authored reference状のtokenはsource textであり、抽出されるreferenceではない。Path-derived scope/orderとbyte-budget factはtyped stateでありmetadataではない |
 | `permissions` | `runtime-reference` | 受理済みdirect-child `.rules` fileの正確なargument/value/item occurrence。Commentと未列挙Starlark expressionはsource textだけに残す |
 | `skill` | `skill-resource`<br>`runtime-reference` | 受理済み`SKILL.md`の正確な`name`と`description` frontmatter value。Resource/script/reference targetはrelationshipになり得るが、そのedgeを通じてreadしない |
-| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済み`.codex/agents/*.toml`の正確なsupported TOML value/item/map-key occurrence。MCPはinherited/carrier relationshipのままで、agent所有のMCP recognitionにはならない |
+| `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済みagents TOML file — Repositoryの`.codex/agents/*.toml`またはconsent済みuserの`agents/*.toml` — の正確なsupported TOML value/item/map-key occurrence。MCPはinherited/carrier relationshipのままで、agent所有のMCP recognitionにはならない |
+| `prompt/command` | — | 受理済みconsent済みuser `prompts/*.md`の正確なfrontmatter value/item occurrence。file自身の名前から導出したinvocation nameはtyped provenanceのままで、declared metadataにはならない |
 | `hook` | `runtime-reference` | 受理済みstandalone `hooks.json`またはinline `[hooks]`のevent map key、matcher value、handler leaf。同じlayerのstandalone occurrenceとinline occurrenceは別provenanceのままとする |
 | `MCP` | `runtime-reference` | Admission済みconfig carrierの`[mcp_servers.*]`配下にあるserver/table nameと正確なsupported leaf/item occurrence。Process environment valueは置換しない |
 | `settings/config` | `agent-reference`<br>`skill-resource`<br>`runtime-reference`<br>`fallback` | Admission済みconfig carrierの正確なsupported TOML value/item/map-key occurrence。MCP/Hook declarationは別のrecognition rowだけに属し、configured target pathはread authorityを得ない |
-| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 受理済み`.codex-plugin/plugin.json`の正確なmetadata/component/presentation leaf/item occurrenceと、entryがplugin名を解決する受理済みRepository-root marketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる。`hooks` field omitted時はregistry定義済みdocumented-default component relationshipだけをemitできる |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 受理済み`.codex-plugin/plugin.json`の正確なmetadata/component/presentation leaf/item occurrenceと、entryがplugin名を解決する受理済みmarketplace file — Repository-root catalogまたはconsent済み共有agent homeの`plugins/marketplace.json` — の正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがclosedなlocal-manifest derivationをseedできる。`hooks` field omitted時はregistry定義済みdocumented-default component relationshipだけをemitできる |
 | `skill metadata` | `skill-resource`<br>`runtime-reference` | Derived `agents/openai.yaml`の正確なsupported YAML leaf/item occurrence。Seed provenanceはtyped stateであり、このfileはowner `SKILL.md`のmetadata identityを継承しない |
 
 `plugin` rowのmanifestに関する記述 — 受理済み`.codex-plugin/plugin.json`内のoccurrenceと、
@@ -263,7 +274,8 @@ connection、execution、import、installation、activationのauthorityを一切
 変更もofficial-source contractのstop-and-regenerate ruleに従うdigest記録済みの変更である。この行が
 今統べているのはもう一方の半分、すなわちcatalog entry自身のoccurrenceである。
 
-Initial releaseのCodex recognitionは、sharedな`prompt/command`または`output style` kindを使用しない。
+Initial releaseのCodex recognitionは、sharedな`output style` kindを使用しない。`prompt/command`
+kindは、consent済みuserの`prompts/*.md` recognitionだけが使用する。
 Initial releaseのrecognitionは`skill metadata` kindも使用しない: sibling `agents/openai.yaml`は
 candidateとしてadmissionされず、所有元skillのcensus companionとして公開されるため
 （§ Derived Repository rule）、上の`skill metadata` rowは消費者を持たないfrozen・digest記録済みの

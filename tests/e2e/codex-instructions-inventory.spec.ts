@@ -84,7 +84,9 @@ test.describe('instruction rows with an admitted carrier', () => {
     // project.
     const paths = await page.getByRole('tabpanel').locator('.aci-item .aci-path').allInnerTexts();
     expect(paths).toEqual(['AGENTS.md', 'AGENTS.override.md', 'TEAM_GUIDE.md', 'docs/AGENTS.md']);
-    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    const fileEntries = page
+      .getByRole('tabpanel')
+      .locator('.aci-source-family-blocks__members > li');
     await expect(fileEntries).toHaveCount(4);
     for (const path of ['AGENTS.md', 'AGENTS.override.md', 'TEAM_GUIDE.md']) {
       await expect(
@@ -147,7 +149,9 @@ test.describe('instruction rows with an admitted carrier', () => {
     await page.goto(host.origin);
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
 
-    const fileEntries = page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+    const fileEntries = page
+      .getByRole('tabpanel')
+      .locator('.aci-source-family-blocks__members > li');
 
     // Tool: OpenAI Codex keeps the three files at the root and drops the
     // nested one only Copilot recognizes, leaving the Codex rows exactly as
@@ -214,7 +218,7 @@ test.describe('the kind tab as URL state', () => {
 
     // Into the detail and back with the browser: the tab the user left is
     // the tab they return to.
-    await page.locator('.aci-skill-row__file').locator('a').first().click();
+    await page.locator('.aci-source-family-blocks__members > li').locator('a').first().click();
     await expect(
       page.getByRole('heading', { name: '.agents/skills/greet/', exact: true }),
     ).toBeVisible();
@@ -222,7 +226,7 @@ test.describe('the kind tab as URL state', () => {
     await expect(page.getByRole('tab', { selected: true })).toContainText('Skill');
 
     // And the detail page's own link names the kind it returns to.
-    await page.locator('.aci-skill-row__file').locator('a').first().click();
+    await page.locator('.aci-source-family-blocks__members > li').locator('a').first().click();
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
     await expect(page.getByRole('tab', { selected: true })).toContainText('Skill');
   });

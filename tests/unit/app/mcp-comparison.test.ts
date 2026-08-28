@@ -36,13 +36,28 @@ import type {
 const LEFT_PATH = '.codex/config.toml';
 const RIGHT_PATH = '.mcp.json';
 
+/**
+ * One compared side as the route now addresses it: the fixture carriers are
+ * the repository's, so the Source token is fixed here (FR-030).
+ */
+function side(sourceRelativePath: string): { source: 'repository'; sourceRelativePath: string } {
+  return { source: 'repository', sourceRelativePath };
+}
+
 /** One inventory declaration of one carrier by one tool. */
 function declarationOf(
   sourceRelativePath: string,
   tool: McpDeclarationDto['tool'],
   surfaces: McpDeclarationDto['surfaces'],
 ): McpDeclarationDto {
-  return { sourceRelativePath, tool, surfaces, parseStatus: 'parsed', diagnosticIds: [] };
+  return {
+    sourceId: 'source-repository',
+    sourceRelativePath,
+    tool,
+    surfaces,
+    parseStatus: 'parsed',
+    diagnosticIds: [],
+  };
 }
 
 /** A committed snapshot holding the two readable carriers on one name row. */
@@ -55,7 +70,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'ready',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -171,7 +186,15 @@ function scriptedChannel(options: {
           if (handler === undefined) {
             return Promise.reject(new Error('no carrier handler scripted'));
           }
-          return Promise.resolve().then(() => handler(String(args[0])));
+          // `get-file-detail` sends one object naming both halves of the
+          // identity (FR-030); the carrier functions still send a bare path,
+          // and this double answers for whichever arrived.
+          const payload = args[0];
+          const path =
+            typeof payload === 'string'
+              ? payload
+              : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+          return Promise.resolve().then(() => handler(path));
         }
         return Promise.reject(new Error(`unexpected call: ${method}`));
       },
@@ -183,7 +206,14 @@ function scriptedChannel(options: {
 function carrierCalls(calls: readonly { method: string; args: readonly unknown[] }[]): string[] {
   return calls
     .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getMcpCarrierDetail)
-    .map((call) => String(call.args[0]));
+    .map((call) => {
+      // `get-file-detail` sends one object naming both halves of the identity
+      // (FR-030); the carrier functions still send a bare path.
+      const payload = call.args[0];
+      return typeof payload === 'string'
+        ? payload
+        : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+    });
 }
 
 describe('MCP comparison view (T397)', () => {
@@ -191,9 +221,17 @@ describe('MCP comparison view (T397)', () => {
     // The URL carries the model's own coordinates: the owning row's declared
     // name and the two carriers' Source-relative Paths (FR-030) — the same
     // builder every entry link and the pickers use.
-    expect(mcpComparisonRouteFor('shared', LEFT_PATH, RIGHT_PATH)).toEqual({
-      path: '/mcp/compare',
-      query: { name: 'shared', left: LEFT_PATH, right: RIGHT_PATH },
+    expect(
+      mcpComparisonRouteFor('repository', 'shared', side(LEFT_PATH), side(RIGHT_PATH)),
+    ).toEqual({
+      path: '/mcp/compare/repository',
+      query: {
+        name: 'shared',
+        leftSource: 'repository',
+        left: LEFT_PATH,
+        rightSource: 'repository',
+        right: RIGHT_PATH,
+      },
     });
     // A declared name that is not well-formed UTF-16 — strict JSON resolves
     // an authored `"\uD800"` escape to a lone surrogate — rides the query
@@ -202,7 +240,9 @@ describe('MCP comparison view (T397)', () => {
     // would throw `URIError` while the row's link renders. The escape is
     // `JSON.stringify`'s own, lowercase hex included — the spelling is the
     // platform's, and `JSON.parse` reads either case back.
-    expect(mcpComparisonRouteFor('\uD800', LEFT_PATH, RIGHT_PATH).query.name).toBe('\\ud800');
+    expect(
+      mcpComparisonRouteFor('repository', '\uD800', side(LEFT_PATH), side(RIGHT_PATH)).query.name,
+    ).toBe('\\ud800');
   });
 
   it('loads exactly two carrier details and adopts both, with no compare API', async () => {
@@ -212,7 +252,7 @@ describe('MCP comparison view (T397)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.mcpComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.mcpComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.mcpComparison.status.value).toBe('ready');
     expect(state.mcpComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
     expect(state.mcpComparison.rightDetail.value?.file.sourceRelativePath).toBe(RIGHT_PATH);
@@ -235,7 +275,7 @@ describe('MCP comparison view (T397)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.mcpComparison.open(LEFT_PATH, '.github/agents/deploy.md');
+    await state.mcpComparison.open(side(LEFT_PATH), side('.github/agents/deploy.md'));
     expect(state.mcpComparison.status.value).toBe('stale');
     state.dispose();
   });
@@ -253,11 +293,11 @@ describe('MCP comparison view (T397)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.mcpComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.mcpComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.mcpComparison.status.value).toBe('failed');
     expect(state.mcpComparison.errorMessage.value).toBe('carrier chunk lost');
     fail = false;
-    await state.mcpComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.mcpComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.mcpComparison.status.value).toBe('ready');
     expect(state.mcpComparison.errorMessage.value).toBeNull();
     state.dispose();
@@ -273,7 +313,7 @@ describe('MCP comparison view (T397)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.mcpComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.mcpComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     let disposed = 0;
     const unregister = state.mcpComparison.registerOpenContentOwner(() => {
       disposed += 1;

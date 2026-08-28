@@ -139,7 +139,7 @@ test.describe('every product’s custom agents in one inventory', () => {
     // One physical file is one line and one link however many products
     // recognize it, with each product stated beside the link.
     const shared = items.filter({ hasText: 'debugger' }).first();
-    await expect(shared.locator('.aci-agent-row__definitions .aci-path')).toHaveText([
+    await expect(shared.locator('.aci-source-family-blocks__members .aci-path')).toHaveText([
       '.claude/agents/debugger.md',
     ]);
     const sharedText = await shared.innerText();

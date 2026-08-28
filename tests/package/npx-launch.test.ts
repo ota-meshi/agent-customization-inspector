@@ -11,7 +11,7 @@
 // `import.meta.url`. Installing a packed tarball into a fresh tree would
 // additionally require a network install, which the package gate
 // deliberately does not perform.
-import { spawn, type ChildProcessByStdio } from 'node:child_process';
+import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,8 +43,12 @@ interface LaunchedCli {
  * the machine's owner may be reserving (AGENTS.md § Agent-started process
  * policy).
  */
-async function launchCli(workingDirectory: string, args: readonly string[]): Promise<LaunchedCli> {
-  const child = spawn(process.execPath, [CLI_ENTRY, '--port', '0', ...args], {
+async function launchCli(
+  workingDirectory: string,
+  args: readonly string[],
+  nodeArguments: readonly string[] = [],
+): Promise<LaunchedCli> {
+  const child = spawn(process.execPath, [...nodeArguments, CLI_ENTRY, '--port', '0', ...args], {
     cwd: workingDirectory,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -80,7 +84,71 @@ async function launchCli(workingDirectory: string, args: readonly string[]): Pro
   return { child, origin, stdout: () => stdout, stderr: () => stderr };
 }
 
+/**
+ * Runs the packaged CLI to completion and returns what it wrote and exited
+ * with. For the invocations that are supposed to finish by themselves — a
+ * rejected option, `--help` — where waiting for a launch line would only time
+ * out.
+ */
+async function runToCompletion(
+  args: readonly string[],
+): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  const child = spawn(process.execPath, [CLI_ENTRY, ...args], {
+    cwd: tmpdir(),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stdout.on('data', (chunk: string) => {
+    stdout += chunk;
+  });
+  child.stderr.on('data', (chunk: string) => {
+    stderr += chunk;
+  });
+  const code = await new Promise<number | null>((resolve) => {
+    child.once('exit', (exitCode) => resolve(exitCode));
+  });
+  return { code, stdout, stderr };
+}
+
+/**
+ * Asks a launched CLI which root its session actually selected, through the
+ * session API a browser would use.
+ *
+ * The launch line carries only the origin, and the selected root reaches no
+ * HTML — it is a field of the session snapshot — so a test that wants to know
+ * which of two `--root` values won has to ask. The read runs in its own Node
+ * process because `devframe/client` resolves its socket URL against
+ * `globalThis.location`, which this one does not have.
+ */
+async function readSelectedRootLabel(origin: string): Promise<string> {
+  const script = [
+    'globalThis.location = new URL(`${process.env.ACI_ORIGIN}/`);',
+    "const { connectDevframe } = await import('devframe/client');",
+    'const rpc = await connectDevframe({ simpleAuth: false, baseURL: process.env.ACI_ORIGIN });',
+    "const session = await rpc.call('agent-customization-inspector:get-session');",
+    'process.stdout.write(session.data.sources[0].boundary.displayRoot, () => process.exit(0));',
+  ].join('\n');
+  return new Promise<string>((resolve, reject) => {
+    execFile(
+      process.execPath,
+      ['--input-type=module', '-e', script],
+      { cwd: REPO_ROOT, env: { ...process.env, ACI_ORIGIN: origin }, timeout: 60_000 },
+      (error, stdout, stderr) => {
+        if (error !== null) {
+          reject(new Error(`the session read-back failed: ${stderr || error.message}`));
+          return;
+        }
+        resolve(stdout);
+      },
+    );
+  });
+}
+
 /** Terminates a launched CLI and requires its graceful zero-code exit. */
+
 async function shutdown(launched: LaunchedCli): Promise<number> {
   const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
     launched.child.once('exit', (code, signal) => resolve({ code, signal }));
@@ -199,4 +267,130 @@ describe('graceful shutdown', () => {
       await rm(fixture, { recursive: true, force: true });
     }
   }, 60_000);
+});
+
+describe('the packaged root selection and its modes (T917)', () => {
+  let fixture: string;
+
+  beforeAll(async () => {
+    fixture = await mkdtemp(join(tmpdir(), 'aci-npx-root-'));
+    await writeFile(join(fixture, 'AGENTS.md'), '# fixture instructions\n', 'utf8');
+  }, 30_000);
+
+  afterAll(async () => {
+    if (fixture !== undefined) {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it('inspects the invocation directory when `--root` is omitted', async () => {
+    // `--root` is optional: launched inside a repository, the packaged CLI
+    // inspects the directory it was invoked from. The unit suite owns which
+    // string is captured; what is packaged-only is that the launch works with
+    // no option at all and serves that tree.
+    const launched = await launchCli(fixture, ['--no-open']);
+    try {
+      expect(launched.origin).toMatch(LOOPBACK_LAUNCH_LINE);
+      const response = await fetch(new URL('/', launched.origin));
+      expect(response.status).toBe(200);
+    } finally {
+      await shutdown(launched);
+    }
+  }, 60_000);
+
+  it('takes the parser’s last value for a repeated `--root`', async () => {
+    // A repeated option is the parser's to resolve, and it resolves to the
+    // last value. Which root won is not visible in the launch line — a root
+    // that cannot be read still launches and still prints one, with its own
+    // diagnostic on the Source (FR-002) — so the session itself is asked.
+    const other = await mkdtemp(join(tmpdir(), 'aci-npx-other-root-'));
+    try {
+      const launched = await launchCli(tmpdir(), ['--no-open', '--root', other, '--root', fixture]);
+      try {
+        expect(launched.origin).toMatch(LOOPBACK_LAUNCH_LINE);
+        expect(await readSelectedRootLabel(launched.origin)).toBe(fixture);
+      } finally {
+        await shutdown(launched);
+      }
+    } finally {
+      await rm(other, { recursive: true, force: true });
+    }
+  }, 90_000);
+
+  it('changes no working directory and opens no outbound connection', async () => {
+    // Instrumented from outside the product: the preload replaces
+    // `process.chdir` and every outbound-connection entry point with throwing
+    // stubs, so a launch that reaches any of them fails instead of passing
+    // quietly. Root selection is lexical (`node:path` only) and the product
+    // issues no outbound request at all (FR-022), so the launch must survive
+    // all of it.
+    const probeDirectory = await mkdtemp(join(tmpdir(), 'aci-npx-probe-'));
+    const probe = join(probeDirectory, 'probe.mjs');
+    await writeFile(
+      probe,
+      [
+        "import { syncBuiltinESMExports } from 'node:module';",
+        "import net from 'node:net';",
+        "import http from 'node:http';",
+        "import https from 'node:https';",
+        'process.chdir = () => {',
+        "  throw new Error('the packaged CLI called process.chdir');",
+        '};',
+        'net.connect = () => {',
+        "  throw new Error('the packaged CLI opened an outbound connection');",
+        '};',
+        'net.createConnection = net.connect;',
+        'http.request = () => {',
+        "  throw new Error('the packaged CLI issued an outbound http request');",
+        '};',
+        'https.request = () => {',
+        "  throw new Error('the packaged CLI issued an outbound https request');",
+        '};',
+        '// A builtin materializes its named exports when it is first imported,',
+        '// so replacing a property on the default export leaves every',
+        "// `import { connect } from 'node:net'` bound to the original. This is",
+        '// what Node provides to republish them, and without it the probe',
+        '// would watch a door nothing uses.',
+        'syncBuiltinESMExports();',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    try {
+      const launched = await launchCli(
+        tmpdir(),
+        ['--no-open', '--root', fixture],
+        ['--import', probe],
+      );
+      try {
+        expect(launched.origin).toMatch(LOOPBACK_LAUNCH_LINE);
+        expect(launched.stderr()).toBe('');
+      } finally {
+        await shutdown(launched);
+      }
+    } finally {
+      await rm(probeDirectory, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('offers one mode: no subcommand, no second thing it can be asked to do', async () => {
+    // Zero extra modes. `--help` is the whole surface, and it names options
+    // rather than commands: a packaged tool that grew a second mode would
+    // list it here.
+    const help = await runToCompletion(['--help']);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toContain('--root');
+    expect(help.stdout).toContain('--no-open');
+    expect(help.stdout.toLowerCase()).not.toContain('commands:');
+    expect(help.stdout.toLowerCase()).not.toContain('subcommand');
+  }, 30_000);
+
+  it('rejects an empty root before it starts anything, saying nothing back', async () => {
+    const empty = await runToCompletion(['--root', '']);
+    expect(empty.code).toBe(1);
+    // Fixed, actionable, and free of the value it rejected — a rejected value
+    // is the reader's own text and never goes back to the terminal.
+    expect(`${empty.stdout}${empty.stderr}`).toMatch(/--root/u);
+    expect(empty.stdout).not.toContain('http://localhost');
+  }, 30_000);
 });

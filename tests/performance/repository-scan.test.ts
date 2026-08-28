@@ -1,22 +1,32 @@
-// T183: the SC-002 scan smoke pass (plan.md § Performance Goals; quickstart.md
-// § SC-002 performance measurement). The pass itself runs once, in the
-// project's `globalSetup` (`global-run.ts`): one fresh packaged-CLI process,
-// the automatic scan settled outside timing, one explicit rescan measured on
-// the rendered page from its input dispatch to request-correlated visible
-// status and to the request-committed operable inventory, the two
-// standardized interactions on that same generation, and the fixture digests
-// recomputed before and after. This suite asserts the scan half of that one
-// shared run.
+// T918: the scan half of the SC-002 release protocol (plan.md § Performance
+// Goals; quickstart.md § SC-002 performance measurement).
 //
-// Non-gating on the timings: the pass records the figures with the profile
-// and manifest identity instead of asserting the 1 s/10 s thresholds, because
-// a smoke run on an arbitrary development machine is not a measurement on a
-// frozen measurement profile. What is gated is harness integrity — the
-// manifest/digest/profile binding, and the fixture's exact content before and
-// after the run. The ten-run nine-of-ten protocol is T918's.
+// The protocol itself runs in the project's `globalSetup` (`global-run.ts`):
+// exactly ten measured runs against one unchanged, manifest-bound fixture,
+// each a fresh packaged-CLI process whose automatic scan settles outside
+// timing, with one explicit rescan measured on the rendered page from its
+// input dispatch to the request-correlated visible status and to the
+// request-committed operable inventory. This suite asserts the scan half of
+// every run in that series, and the nine-of-ten rule over them.
+//
+// What is gated everywhere is the protocol's integrity: the
+// manifest/digest/profile binding, ten runs against one fixture, and each
+// run's own request correlation — a run that measured the automatic baseline,
+// or blended two admissions, is not a measurement of anything. The thresholds
+// themselves are asserted where the checked-in profile applies and recorded
+// where it does not ({@link isSc002MeasurementEnvironment}): the same figures
+// on another machine measure that machine, so gating them on an arbitrary
+// runner would decide the release by that runner's load.
 import { describe, expect, inject, it } from 'vitest';
 
-import { loadSc002Manifest, loadSc002Profile } from './harness';
+import {
+  SC002_QUALIFYING_RUNS,
+  SC002_RUN_COUNT,
+  isSc002MeasurementEnvironment,
+  loadSc002Manifest,
+  loadSc002Profile,
+  qualifyingSc002Runs,
+} from './harness';
 
 describe('SC-002 harness integrity', () => {
   it('binds the manifest, its canonical digest, and the profile together', () => {
@@ -29,22 +39,87 @@ describe('SC-002 harness integrity', () => {
   });
 });
 
-describe('SC-002 scan smoke pass', () => {
-  it('measured one explicit rescan on the rendered page in a fresh process', () => {
-    const record = inject('sc002RunRecord');
-
-    // The run's own coherence: the measured rescan committed the generation
-    // after the automatic baseline, under one recorded request ID, on the
-    // checked-in manifest and profile.
+describe('SC-002 ten-run series', () => {
+  it('measured exactly ten runs on one profile, one manifest, and one fixture', () => {
+    const records = inject('sc002RunRecords');
     const { manifest, manifestSha256 } = loadSc002Manifest();
-    expect(record.manifestVersion).toBe(manifest.manifestVersion);
-    expect(record.manifestSha256).toBe(manifestSha256);
-    expect(record.committedGeneration).toBe(record.baselineGeneration + 1);
-    expect(record.scanRequestId.length).toBeGreaterThan(0);
+    const profile = loadSc002Profile(manifest, manifestSha256);
 
-    // The smoke pass records; it does not gate (T918 owns the protocol).
-    console.info(`SC-002 smoke record: ${JSON.stringify(record)}`);
-    expect(record.statusMillis).toBeGreaterThanOrEqual(0);
-    expect(record.inventoryMillis).toBeGreaterThanOrEqual(record.statusMillis);
+    expect(records).toHaveLength(SC002_RUN_COUNT);
+    for (const [index, record] of records.entries()) {
+      // Every run repeats the same identity: a series whose runs disagree
+      // about the profile, the manifest version, or its canonical digest is
+      // ten measurements of different things.
+      expect(record.profileId, `run ${index}`).toBe(profile.profileId);
+      expect(record.manifestVersion, `run ${index}`).toBe(manifest.manifestVersion);
+      expect(record.manifestSha256, `run ${index}`).toBe(manifestSha256);
+    }
+  });
+
+  it('measured its own explicit rescan in every run, never the automatic state', () => {
+    const records = inject('sc002RunRecords');
+    const requestIds = new Set<string>();
+    for (const [index, record] of records.entries()) {
+      // The measured generation is the one that request committed, one past
+      // the baseline the automatic scan left: a run that recorded the
+      // baseline measured a scan nobody dispatched.
+      expect(record.committedGeneration, `run ${index}`).toBe(record.baselineGeneration + 1);
+      expect(record.scanRequestId.length, `run ${index}`).toBeGreaterThan(0);
+      // A fresh process per run, so each run's admission is its own: a
+      // repeated ID would mean two runs shared a process, and the second
+      // measured a generation the first had already committed.
+      expect(requestIds.has(record.scanRequestId), `run ${index}`).toBe(false);
+      requestIds.add(record.scanRequestId);
+      // The inventory cannot be rendered before the status that precedes it.
+      expect(record.inventoryMillis, `run ${index}`).toBeGreaterThanOrEqual(record.statusMillis);
+    }
+    // Every run starts from the same baseline, because every run runs against
+    // the same unchanged fixture in a fresh process.
+    expect(new Set(records.map((record) => record.baselineGeneration)).size).toBe(1);
+  });
+
+  it('satisfies every threshold in at least nine of the ten runs', () => {
+    const records = inject('sc002RunRecords');
+    const { manifest, manifestSha256 } = loadSc002Manifest();
+    const profile = loadSc002Profile(manifest, manifestSha256);
+    // The criterion is one common subset: the same runs must meet all four
+    // thresholds, so the count is over runs rather than over each threshold's
+    // own passers ({@link qualifyingSc002Runs}).
+    const qualifying = qualifyingSc002Runs(records).length;
+
+    // Recorded for every run whatever the environment is: the figures, the
+    // request each belongs to, and the profile and manifest they were measured
+    // under are the measurement set (spec.md § SC-002).
+    console.info(
+      `SC-002 scan series: ${JSON.stringify({
+        profileId: profile.profileId,
+        manifestVersion: manifest.manifestVersion,
+        manifestSha256,
+        environment: {
+          architecture: process.arch,
+          runtime: process.versions.node,
+          measurementProfile: isSc002MeasurementEnvironment(profile),
+        },
+        qualifying,
+        runs: records.map((record) => ({
+          scanRequestId: record.scanRequestId,
+          committedGeneration: record.committedGeneration,
+          statusMillis: record.statusMillis,
+          inventoryMillis: record.inventoryMillis,
+        })),
+      })}`,
+    );
+
+    if (isSc002MeasurementEnvironment(profile)) {
+      expect(qualifying).toBeGreaterThanOrEqual(SC002_QUALIFYING_RUNS);
+    } else {
+      // Off the profile's own host the thresholds are not this suite's to
+      // judge, so what stays gated is that every run produced a figure to
+      // publish at all.
+      for (const [index, record] of records.entries()) {
+        expect(record.statusMillis, `run ${index}`).toBeGreaterThan(0);
+        expect(record.inventoryMillis, `run ${index}`).toBeGreaterThan(0);
+      }
+    }
   });
 });

@@ -73,7 +73,7 @@ test.describe('the complete literal Claude MCP file detail', () => {
     // labelled by its owner carrier, with the row's name completing the
     // accessible name — is the link to that declaration's own detail.
     await page.getByRole('link', { name: '.mcp.json: context7' }).click();
-    await expect(page).toHaveURL(/\/mcp\/.*\?server=context7/u);
+    await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=context7/u);
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     // The record's identity restated: the recognition line and the
     // owner-carrier line, which links to the carrier's file-unit view.
@@ -148,7 +148,9 @@ test.describe('the complete literal Claude MCP file detail', () => {
     // A retained link to a renamed declaration: the carrier resolves, the
     // name does not, and the page states that rather than showing another
     // record's content.
-    await page.goto(new URL('/mcp/.mcp.json?server=renamed-away', host.origin).toString());
+    await page.goto(
+      new URL('/mcp/detail/repository/.mcp.json?server=renamed-away', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       'No declaration named this way is published for this file in the current scan.',
     );

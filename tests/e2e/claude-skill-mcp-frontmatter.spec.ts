@@ -109,11 +109,11 @@ test.describe('a skill whose frontmatter spells mcpServers', () => {
     // authored (FR-026, FR-027) — because the file's bytes are legitimately
     // displayed under the skill's own kind.
     await page
-      .locator('.aci-skill-row__file', { hasText: SKILL_PATH })
+      .locator('.aci-source-family-blocks__members > li', { hasText: SKILL_PATH })
       .locator('a')
       .first()
       .click();
-    await expect(page).toHaveURL(new RegExp(`/skills/${SKILL_PATH}$`, 'u'));
+    await expect(page).toHaveURL(new RegExp(`/skills/detail/repository/${SKILL_PATH}$`, 'u'));
     await expect(
       page.getByRole('heading', { name: '.claude/skills/deploy/', exact: true }),
     ).toBeVisible();

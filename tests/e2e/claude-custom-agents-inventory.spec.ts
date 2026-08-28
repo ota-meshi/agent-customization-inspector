@@ -173,17 +173,19 @@ test.describe('subagents in the root agents subtree', () => {
     // A nested file is Claude's alone: no Copilot page documents a subfolder
     // inside an agents directory, so its row has the one definition.
     const nested = items.filter({ hasText: 'security-reviewer' });
-    await expect(nested.locator('.aci-agent-row__definitions .aci-path')).toHaveText([
+    await expect(nested.locator('.aci-source-family-blocks__members .aci-path')).toHaveText([
       '.claude/agents/review/security.md',
     ]);
     // The duplicate name is one row listing both files, in path order, with
     // no winner stated anywhere on the page.
     const duplicate = items.filter({ hasText: 'debugger' }).first();
-    await expect(duplicate.locator('.aci-agent-row__definitions .aci-path')).toHaveText([
+    await expect(duplicate.locator('.aci-source-family-blocks__members .aci-path')).toHaveText([
       '.claude/agents/debugger.md',
       '.claude/agents/review/debugger.md',
     ]);
-    await expect(duplicate.locator('.aci-agent-row__definitions')).toContainText('Claude Code');
+    await expect(duplicate.locator('.aci-source-family-blocks__members')).toContainText(
+      'Claude Code',
+    );
     const duplicateText = await duplicate.innerText();
     for (const projected of ['wins', 'winner', 'precedence', 'active', 'selected']) {
       expect(duplicateText.toLowerCase()).not.toContain(projected);
@@ -198,7 +200,7 @@ test.describe('subagents in the root agents subtree', () => {
       .locator('.aci-item')
       .filter({ hasText: 'reviewer' })
       .filter({ hasText: '.codex/agents/reviewer.toml' });
-    await expect(codex.locator('.aci-agent-row__definitions')).toContainText('OpenAI Codex');
+    await expect(codex.locator('.aci-source-family-blocks__members')).toContainText('OpenAI Codex');
   });
 
   test('publishes no MCP row for a subagent and leaks no declared value', async ({ page }) => {

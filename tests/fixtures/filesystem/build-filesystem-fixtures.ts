@@ -371,8 +371,20 @@ export function snapshotTreeState(root: string): {
  * keeps every other production module away from `node:fs`, so this list is
  * the entire product-reachable filesystem surface for inspected sources; a
  * mutation-capable name appearing on that module is itself a violation.
+ *
+ * `access` is on it because Global root admission asks whether this process
+ * may read a proposed home before anything is scanned — a permission test that
+ * opens nothing, lists nothing, and changes nothing, so it belongs to the
+ * read-only set rather than beside it (`global-admission.ts`).
  */
-export const READ_ONLY_FS_SURFACE = ['lstat', 'readFile', 'readdir', 'realpath', 'stat'] as const;
+export const READ_ONLY_FS_SURFACE = [
+  'access',
+  'lstat',
+  'readFile',
+  'readdir',
+  'realpath',
+  'stat',
+] as const;
 
 /**
  * Evaluates the instrumented `fs-io` module after a product run: the

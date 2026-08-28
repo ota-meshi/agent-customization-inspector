@@ -93,7 +93,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   // holding this path offers this file's links. Every recognizing product's
   // link addresses the same file detail, so the first one opens it (T224).
   await page
-    .locator('.aci-instruction-row__files > li', { hasText: path })
+    .locator('.aci-source-family-blocks__members > li', { hasText: path })
     .locator('.aci-instruction-row__owner a')
     .first()
     .click();
@@ -205,11 +205,11 @@ test('drops the content when the route leaves the file', async ({ page }) => {
 });
 
 test('heads a URL with no path segments by the kind, never an empty heading', async ({ page }) => {
-  // The terminal catch-all also matches `/instructions/` itself. An empty
-  // path names no file, so the page reports the dead link — and its focused
-  // heading still describes the page (WCAG 2.4.6) instead of rendering the
-  // empty path.
-  await page.goto(`${host.origin}instructions/`);
+  // The terminal catch-all also matches a Source with nothing below it. An
+  // empty path names no file, so the page reports the dead link — and its
+  // focused heading still describes the page (WCAG 2.4.6) instead of rendering
+  // the empty path.
+  await page.goto(`${host.origin}instructions/detail/repository/`);
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText('Instructions');
   await expect(page.locator('.aci-instruction-detail')).toContainText(
     'Nothing in the current scan sits at this link',
@@ -217,7 +217,7 @@ test('heads a URL with no path segments by the kind, never an empty heading', as
 });
 
 test('reports a link whose path the current scan does not hold', async ({ page }) => {
-  await page.goto(`${host.origin}instructions/REMOVED_GUIDE.md`);
+  await page.goto(`${host.origin}instructions/detail/repository/REMOVED_GUIDE.md`);
   await expect(page.locator('.aci-instruction-detail')).toContainText(
     'Nothing in the current scan sits at this link',
   );

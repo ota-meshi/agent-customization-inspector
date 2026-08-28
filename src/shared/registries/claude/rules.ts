@@ -27,46 +27,10 @@
 // resolving to a property, and the map's completeness check would break;
 // `satisfies` keeps the literal, so a key cannot disagree with the record it
 // points at.
-import {
-  ANY_DIRECTORIES,
-  ANY_NAME,
-  type StructuredInspectorMatcher,
-} from '../../../server/inspection/rules/registry';
+import { ANY_DIRECTORIES, ANY_NAME } from '../../../server/inspection/rules/registry';
 import { SHIPS_MAINTENANCE_DATA } from '../maintenance-data';
 import type { ClaudeRuleId } from '../identifier-types';
 import type { InspectionRule } from '../rule-types';
-
-/**
- * The `claude.repo.instructions` matcher, authored in the typed segment form
- * the contract table shows: `[ANY_DIRECTORIES, 'CLAUDE.md']` and
- * `[ANY_DIRECTORIES, 'CLAUDE.local.md']`. Two programs rather than one dynamic
- * step, so each admission carries which authored filename matched.
- *
- * `ANY_DIRECTORIES` includes zero segments, so each program reaches the
- * Repository root and every descendant directory alike — including `.claude`,
- * which is an ordinary directory name to the recursive step. The
- * `./.claude/CLAUDE.md` form the page names as the other project instruction
- * location therefore needs no selector of its own; a third
- * `['.claude', 'CLAUDE.md']` program would only add a second admission of a
- * file the first one already admitted.
- *
- * The descendant reach is what the vendor documents rather than an Inspector
- * widening: Claude loads the launch directory's files at session start, walks
- * its ancestors, and discovers subdirectory files on demand as it reads files
- * under them. Which of those a concrete session loads depends on its working
- * directory and on the files it worked on, neither of which this tool
- * observes, so no admission classifies a file as a launch, ancestor, or
- * descendant one (FR-009; contracts/vendors/claude-code.md § Repository
- * Inspector matchers).
- */
-const CLAUDE_REPO_INSTRUCTIONS_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [ANY_DIRECTORIES, { kind: 'literal', value: 'CLAUDE.md' }],
-    [ANY_DIRECTORIES, { kind: 'literal', value: 'CLAUDE.local.md' }],
-  ],
-};
-
 /**
  * Claude Repository instructions: the read-authorizing counterpart of the
  * three documented Repository instruction lookups. Admitting a file is not
@@ -86,7 +50,36 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'instructions',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_INSTRUCTIONS_MATCHER,
+  /**
+   * The `claude.repo.instructions` matcher, authored in the typed segment form
+   * the contract table shows: `[ANY_DIRECTORIES, 'CLAUDE.md']` and
+   * `[ANY_DIRECTORIES, 'CLAUDE.local.md']`. Two programs rather than one dynamic
+   * step, so each admission carries which authored filename matched.
+   *
+   * `ANY_DIRECTORIES` includes zero segments, so each program reaches the
+   * Repository root and every descendant directory alike — including `.claude`,
+   * which is an ordinary directory name to the recursive step. The
+   * `./.claude/CLAUDE.md` form the page names as the other project instruction
+   * location therefore needs no selector of its own; a third
+   * `['.claude', 'CLAUDE.md']` program would only add a second admission of a
+   * file the first one already admitted.
+   *
+   * The descendant reach is what the vendor documents rather than an Inspector
+   * widening: Claude loads the launch directory's files at session start, walks
+   * its ancestors, and discovers subdirectory files on demand as it reads files
+   * under them. Which of those a concrete session loads depends on its working
+   * directory and on the files it worked on, neither of which this tool
+   * observes, so no admission classifies a file as a launch, ancestor, or
+   * descendant one (FR-009; contracts/vendors/claude-code.md § Repository
+   * Inspector matchers).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [ANY_DIRECTORIES, { kind: 'literal', value: 'CLAUDE.md' }],
+      [ANY_DIRECTORIES, { kind: 'literal', value: 'CLAUDE.local.md' }],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -104,7 +97,7 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
             'AGENTS.md',
             'How CLAUDE.md files load',
           ],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             'Project instructions are ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions ./CLAUDE.local.md; both filenames are discovered on demand in subdirectories as Claude reads files there — the documented descendant reach that is why this rule admits them at every depth — while the ancestor walk above the working directory contributes only the selected root, the one member every session shares. Claude Code reads CLAUDE.md and not AGENTS.md, which is why no selector here names that filename.',
         },
@@ -120,37 +113,6 @@ export const CLAUDE_REPO_INSTRUCTIONS_RULE = {
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.command` matcher, authored in the typed segment form the
- * contract table shows: `['.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]`.
- *
- * One recursive step and deliberately not two. The trailing `ANY_DIRECTORIES`
- * reaches every depth *inside* the commands directory, because the changelog
- * restored the subdirectory-derived namespace in a command name and shows
- * `.claude/commands/frontend/component.md` invoked as `/frontend:component`.
- * There is no leading one, because a leading recursive step needs a documented
- * worked-file or descendant anchor and the pages supply none for this
- * directory: the skills page says command files work the way skills do but
- * writes its ancestor-walk and lazy-descendant sentences about
- * `.claude/skills/` alone. So the project command scope contributes at the
- * selected root — the one runtime-chain member every session shares — and a
- * `packages/api/.claude/commands/deploy.md` is a near miss rather than a
- * candidate (contracts/vendors/claude-code.md § Repository Inspector
- * matchers).
- */
-const CLAUDE_REPO_COMMAND_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'commands' },
-      ANY_DIRECTORIES,
-      { kind: 'regex', pattern: /\.md$/u },
-    ],
-  ],
-};
-
 /**
  * Claude Repository commands: the read-authorizing counterpart of
  * `claude.behavior.repo.commands`. A command file is Markdown a reader invokes
@@ -187,7 +149,35 @@ export const CLAUDE_REPO_COMMAND_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'prompt/command',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_COMMAND_MATCHER,
+  /**
+   * The `claude.repo.command` matcher, authored in the typed segment form the
+   * contract table shows: `['.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]`.
+   *
+   * One recursive step and deliberately not two. The trailing `ANY_DIRECTORIES`
+   * reaches every depth *inside* the commands directory, because the changelog
+   * restored the subdirectory-derived namespace in a command name and shows
+   * `.claude/commands/frontend/component.md` invoked as `/frontend:component`.
+   * There is no leading one, because a leading recursive step needs a documented
+   * worked-file or descendant anchor and the pages supply none for this
+   * directory: the skills page says command files work the way skills do but
+   * writes its ancestor-walk and lazy-descendant sentences about
+   * `.claude/skills/` alone. So the project command scope contributes at the
+   * selected root — the one runtime-chain member every session shares — and a
+   * `packages/api/.claude/commands/deploy.md` is a near miss rather than a
+   * candidate (contracts/vendors/claude-code.md § Repository Inspector
+   * matchers).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'commands' },
+        ANY_DIRECTORIES,
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'FR-034', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -205,7 +195,7 @@ export const CLAUDE_REPO_COMMAND_RULE = {
             'Discovery from parent and nested directories',
             'How a skill gets its command name',
           ],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Existing .claude/commands/ files keep working and create the same commands skills do, a command file carries the same frontmatter as a skill except name and paths, and it is invoked by its file name without the extension — the exact shape this rule admits. The page states no ancestor or lazy-descendant reach for the command directory, which is why this rule is anchored at the selected root. It documents no .claude/prompts directory at all.',
         },
@@ -221,38 +211,6 @@ export const CLAUDE_REPO_COMMAND_RULE = {
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.skill` matcher, authored in the typed segment form the
- * contract table shows: `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME,
- * 'SKILL.md']`. `ANY_NAME` is the one direct skill-name child and the terminal
- * `SKILL.md` literal keeps the admitted file exact.
- *
- * The leading `ANY_DIRECTORIES` is the difference from the anchored Codex
- * program, and what justifies it is the documented descendant discovery
- * alone: Claude loads nested `.claude/skills` directories on demand when it
- * reads or edits a file in their subtree, so a
- * `packages/api/.claude/skills` directory is a location the vendor documents
- * at that depth. The ancestor startup walk justifies nothing below the root —
- * its one member every session shares is the selected root, which the
- * zero-segment case of `ANY_DIRECTORIES` already covers. Admission never
- * claims Claude loaded the file — which layer actually participates stays
- * conditional on `runtime-cwd` and `worked-path`
- * (contracts/vendors/claude-code.md § Repository Inspector matchers).
- */
-const CLAUDE_REPO_SKILL_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      ANY_DIRECTORIES,
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'skills' },
-      ANY_NAME,
-      { kind: 'literal', value: 'SKILL.md' },
-    ],
-  ],
-};
-
 /**
  * Claude Repository skills: the read-authorizing counterpart of
  * `claude.behavior.repo.skills`. Admitting a file is not asserting Claude
@@ -273,7 +231,36 @@ export const CLAUDE_REPO_SKILL_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'skill',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_SKILL_MATCHER,
+  /**
+   * The `claude.repo.skill` matcher, authored in the typed segment form the
+   * contract table shows: `[ANY_DIRECTORIES, '.claude', 'skills', ANY_NAME,
+   * 'SKILL.md']`. `ANY_NAME` is the one direct skill-name child and the terminal
+   * `SKILL.md` literal keeps the admitted file exact.
+   *
+   * The leading `ANY_DIRECTORIES` is the difference from the anchored Codex
+   * program, and what justifies it is the documented descendant discovery
+   * alone: Claude loads nested `.claude/skills` directories on demand when it
+   * reads or edits a file in their subtree, so a
+   * `packages/api/.claude/skills` directory is a location the vendor documents
+   * at that depth. The ancestor startup walk justifies nothing below the root —
+   * its one member every session shares is the selected root, which the
+   * zero-segment case of `ANY_DIRECTORIES` already covers. Admission never
+   * claims Claude loaded the file — which layer actually participates stays
+   * conditional on `runtime-cwd` and `worked-path`
+   * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        ANY_DIRECTORIES,
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'skills' },
+        ANY_NAME,
+        { kind: 'literal', value: 'SKILL.md' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -287,7 +274,7 @@ export const CLAUDE_REPO_SKILL_RULE = {
           url: 'https://code.claude.com/docs/en/skills',
           officialHost: 'code.claude.com',
           sections: ['Where skills live', 'Discovery from parent and nested directories'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Repository skills live at .claude/skills/<skill-name>/SKILL.md, and skills also load from nested .claude/skills directories on demand when Claude reads or edits a file in their subtree — the documented descendant reach that is why this rule admits that shape at every depth, while the ancestor startup walk that also loads every parent directory up to the repository root contributes only the selected root, the one layer every session shares.',
         },
@@ -296,27 +283,13 @@ export const CLAUDE_REPO_SKILL_RULE = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Skills-directory plugins'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'A skills directory at the exact launch working directory can also be interpreted as a plugin, a separate documented behavior that differs from plain-skill ancestor and lazy-descendant discovery and grants this rule no manifest authority.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.mcp` matcher, authored in the typed segment form the
- * contract table shows: the one exact program `['.mcp.json']`. Root-exact and
- * deliberately not recursive: the vendor documents exactly one project MCP
- * file at the project root, so a `packages/api/.mcp.json` is a path Claude
- * does not read and this rule must not admit
- * (contracts/vendors/claude-code.md § Repository Inspector matchers).
- */
-const CLAUDE_REPO_MCP_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [[{ kind: 'literal', value: '.mcp.json' }]],
-};
-
 /**
  * Claude Repository MCP declarations: the read-authorizing counterpart of
  * `claude.behavior.repo.mcp`. Admitting the carrier is not asserting Claude
@@ -341,7 +314,18 @@ export const CLAUDE_REPO_MCP_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'MCP',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_MCP_MATCHER,
+  /**
+   * The `claude.repo.mcp` matcher, authored in the typed segment form the
+   * contract table shows: the one exact program `['.mcp.json']`. Root-exact and
+   * deliberately not recursive: the vendor documents exactly one project MCP
+   * file at the project root, so a `packages/api/.mcp.json` is a path Claude
+   * does not read and this rule must not admit
+   * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [[{ kind: 'literal', value: '.mcp.json' }]],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -355,46 +339,13 @@ export const CLAUDE_REPO_MCP_RULE = {
           url: 'https://code.claude.com/docs/en/mcp',
           officialHost: 'code.claude.com',
           sections: ['MCP installation scopes'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The project MCP scope is one .mcp.json file at the project root, which is why this rule admits exactly that path at the selected root and nothing below it.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.rules` matcher, authored in the typed segment form the
- * contract table shows: `[ANY_DIRECTORIES, '.claude', 'rules',
- * ANY_DIRECTORIES, /\.md$/u]`.
- *
- * Two recursive steps, and each one is a different documented fact. The
- * leading one reaches every `.claude/rules/` in the tree, because a nested
- * one below the working directory is documented to load on demand — a
- * descendant inventory, not a guess at which directory a session launches
- * from. The trailing one reaches every depth *inside* one rules directory,
- * because the page states that all `.md` files there are discovered
- * recursively and shows `frontend/` and `backend/` subdirectories doing it.
- *
- * `ANY_DIRECTORIES` includes zero segments, so the root's own
- * `.claude/rules/style.md` is reached by the same program as
- * `packages/api/.claude/rules/http/headers.md`, and no second selector is
- * needed for either (contracts/vendors/claude-code.md § Repository Inspector
- * matchers).
- */
-const CLAUDE_REPO_RULES_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      ANY_DIRECTORIES,
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'rules' },
-      ANY_DIRECTORIES,
-      { kind: 'regex', pattern: /\.md$/u },
-    ],
-  ],
-};
-
 /**
  * Claude Repository rules: the read-authorizing counterpart of
  * `claude.behavior.repo.rules`. A rule file is Markdown whose frontmatter may
@@ -437,7 +388,37 @@ export const CLAUDE_REPO_RULES_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'rule',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_RULES_MATCHER,
+  /**
+   * The `claude.repo.rules` matcher, authored in the typed segment form the
+   * contract table shows: `[ANY_DIRECTORIES, '.claude', 'rules',
+   * ANY_DIRECTORIES, /\.md$/u]`.
+   *
+   * Two recursive steps, and each one is a different documented fact. The
+   * leading one reaches every `.claude/rules/` in the tree, because a nested
+   * one below the working directory is documented to load on demand — a
+   * descendant inventory, not a guess at which directory a session launches
+   * from. The trailing one reaches every depth *inside* one rules directory,
+   * because the page states that all `.md` files there are discovered
+   * recursively and shows `frontend/` and `backend/` subdirectories doing it.
+   *
+   * `ANY_DIRECTORIES` includes zero segments, so the root's own
+   * `.claude/rules/style.md` is reached by the same program as
+   * `packages/api/.claude/rules/http/headers.md`, and no second selector is
+   * needed for either (contracts/vendors/claude-code.md § Repository Inspector
+   * matchers).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        ANY_DIRECTORIES,
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'rules' },
+        ANY_DIRECTORIES,
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -451,41 +432,13 @@ export const CLAUDE_REPO_RULES_RULE = {
           url: 'https://code.claude.com/docs/en/memory',
           officialHost: 'code.claude.com',
           sections: ['Organize rules with .claude/rules/'],
-          reviewedOn: '2026-08-18',
+          reviewedOn: '2026-08-27',
           establishes:
             "Project rules are the .md files of a project's .claude/rules/ directory, all discovered recursively so they may be organized into subdirectories, and a nested .claude/rules/ directory loads on demand — the exact locations this rule admits. The personal rules the same section places in ~/.claude/rules/ are a different Source boundary this rule may not read.",
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.output-style` matcher, authored in the typed segment form
- * the contract table shows: `['.claude', 'output-styles', /\.md$/u]`
- * (contracts/vendors/claude-code.md § Repository Inspector matchers).
- *
- * Root-anchored and with no `ANY_DIRECTORIES` between the directory and the
- * file: the page names the direct Markdown children of an
- * `.claude/output-styles/` directory and documents no descent into one, so a
- * `.claude/output-styles/team/reviewer.md` is a near miss rather than a style.
- *
- * The layer chain the page does document — every `.claude/output-styles/`
- * between the working directory and the repository root — is the vendor's
- * walk from a session working directory this product never observes, so the
- * rule admits the selected root's own directory and nothing else: a nested
- * one belongs to a root the reader did not select (FR-001, FR-009).
- */
-const CLAUDE_REPO_OUTPUT_STYLE_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'output-styles' },
-      { kind: 'regex', pattern: /\.md$/u },
-    ],
-  ],
-};
-
 /**
  * Claude Repository output styles: the read-authorizing counterpart of
  * `claude.behavior.repo.output-style`. Admitting a style is not asserting
@@ -500,7 +453,32 @@ export const CLAUDE_REPO_OUTPUT_STYLE_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'output style',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_OUTPUT_STYLE_MATCHER,
+  /**
+   * The `claude.repo.output-style` matcher, authored in the typed segment form
+   * the contract table shows: `['.claude', 'output-styles', /\.md$/u]`
+   * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+   *
+   * Root-anchored and with no `ANY_DIRECTORIES` between the directory and the
+   * file: the page names the direct Markdown children of an
+   * `.claude/output-styles/` directory and documents no descent into one, so a
+   * `.claude/output-styles/team/reviewer.md` is a near miss rather than a style.
+   *
+   * The layer chain the page does document — every `.claude/output-styles/`
+   * between the working directory and the repository root — is the vendor's
+   * walk from a session working directory this product never observes, so the
+   * rule admits the selected root's own directory and nothing else: a nested
+   * one belongs to a root the reader did not select (FR-001, FR-009).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'output-styles' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -514,43 +492,13 @@ export const CLAUDE_REPO_OUTPUT_STYLE_RULE = {
           url: 'https://code.claude.com/docs/en/output-styles',
           officialHost: 'code.claude.com',
           sections: ['Create a custom output style'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'A project output style is a Markdown file saved directly in .claude/output-styles, whose file name is the style name unless the frontmatter sets name — the exact location and identity this rule admits. The User-level ~/.claude/output-styles named beside it is a different Source boundary this rule may not read.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The two root settings files, authored in the typed segment form the contract
- * table shows: `['.claude', 'settings.json']` and
- * `['.claude', 'settings.local.json']`. Two programs rather than one dynamic
- * step, so each admission carries which authored filename matched.
- *
- * Named for the location rather than for any one of its rules, because three
- * of them share it: the permission policy these files declare, the `hooks` they
- * may also declare, and the settings documents they are. A name taken from one
- * consumer would read as that rule's own program.
- *
- * Root-anchored with no `ANY_DIRECTORIES`: the page names these two files as
- * the project scope's own, and a `.claude/settings.json` in a subdirectory is
- * a file the vendor documents no read of.
- */
-const CLAUDE_REPO_SETTINGS_FILES_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'settings.json' },
-    ],
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'settings.local.json' },
-    ],
-  ],
-};
-
 /**
  * Claude Repository permission policy: the `permissions` object the project's
  * settings files declare, recognized as the `permissions` kind.
@@ -585,7 +533,33 @@ export const CLAUDE_REPO_PERMISSIONS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'permissions',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_SETTINGS_FILES_MATCHER,
+  /**
+   * The two root settings files, authored in the typed segment form the contract
+   * table shows: `['.claude', 'settings.json']` and
+   * `['.claude', 'settings.local.json']`. Two programs rather than one dynamic
+   * step, so each admission carries which authored filename matched.
+   *
+   * The same two selectors as the settings and inline-hooks rules': three rules over
+   * the one candidate this location is, read once, each publishing its own
+   * recognition.
+   *
+   * Root-anchored with no `ANY_DIRECTORIES`: the page names these two files as
+   * the project scope's own, and a `.claude/settings.json` in a subdirectory is
+   * a file the vendor documents no read of.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-007', 'FR-019', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -602,7 +576,7 @@ export const CLAUDE_REPO_PERMISSIONS_RULE = {
             'Settings files and who they affect',
             'Compare the scope of each settings file',
           ],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             "A project's .claude/settings.json and .claude/settings.local.json — the exact locations this rule admits — are the project scope's own settings files.",
         },
@@ -654,7 +628,33 @@ export const CLAUDE_REPO_SETTINGS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'settings/config',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_SETTINGS_FILES_MATCHER,
+  /**
+   * The two root settings files, authored in the typed segment form the contract
+   * table shows: `['.claude', 'settings.json']` and
+   * `['.claude', 'settings.local.json']`. Two programs rather than one dynamic
+   * step, so each admission carries which authored filename matched.
+   *
+   * The same two selectors as the permissions and inline-hooks rules': three rules over
+   * the one candidate this location is, read once, each publishing its own
+   * recognition.
+   *
+   * Root-anchored with no `ANY_DIRECTORIES`: the page names these two files as
+   * the project scope's own, and a `.claude/settings.json` in a subdirectory is
+   * a file the vendor documents no read of.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -671,45 +671,13 @@ export const CLAUDE_REPO_SETTINGS_RULE = {
             'Settings files and who they affect',
             'Compare the scope of each settings file',
           ],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             "A project's .claude/settings.json and .claude/settings.local.json — the exact locations this rule admits — are the project scope's own settings files, the first shared with the team and the second personal to one checkout.",
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.agent` matcher, authored in the typed segment form the
- * contract table shows: `['.claude', 'agents', ANY_DIRECTORIES, /\.md$/u]`.
- *
- * One recursive step and deliberately not two, the same shape the command
- * matcher takes and for the same reason. The trailing `ANY_DIRECTORIES`
- * reaches every depth *inside* the agents directory, because the page states
- * that `.claude/agents/` is scanned recursively so definitions can be
- * organized into subfolders — and adds that the subdirectory path does not
- * affect how a subagent is identified, since identity comes only from the
- * `name` frontmatter field. There is no leading one, because a leading
- * recursive step needs a documented worked-file or descendant anchor and this
- * page supplies none: it documents an upward walk from the working directory
- * to the repository root, whose one member every session shares is the
- * selected root (FR-001). So a `packages/api/.claude/agents/reviewer.md` is a
- * near miss rather than a candidate, and the `--add-dir` directories the same
- * paragraph names are a runtime fact this product never turns into a scan root
- * (contracts/vendors/claude-code.md § Repository Inspector matchers).
- */
-const CLAUDE_REPO_AGENT_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'agents' },
-      ANY_DIRECTORIES,
-      { kind: 'regex', pattern: /\.md$/u },
-    ],
-  ],
-};
-
 /**
  * Claude Repository subagents: the read-authorizing counterpart of
  * `claude.behavior.repo.agents`. A subagent file is Markdown whose frontmatter
@@ -749,7 +717,36 @@ export const CLAUDE_REPO_AGENT_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'agent',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_AGENT_MATCHER,
+  /**
+   * The `claude.repo.agent` matcher, authored in the typed segment form the
+   * contract table shows: `['.claude', 'agents', ANY_DIRECTORIES, /\.md$/u]`.
+   *
+   * One recursive step and deliberately not two, the same shape the command
+   * matcher takes and for the same reason. The trailing `ANY_DIRECTORIES`
+   * reaches every depth *inside* the agents directory, because the page states
+   * that `.claude/agents/` is scanned recursively so definitions can be
+   * organized into subfolders — and adds that the subdirectory path does not
+   * affect how a subagent is identified, since identity comes only from the
+   * `name` frontmatter field. There is no leading one, because a leading
+   * recursive step needs a documented worked-file or descendant anchor and this
+   * page supplies none: it documents an upward walk from the working directory
+   * to the repository root, whose one member every session shares is the
+   * selected root (FR-001). So a `packages/api/.claude/agents/reviewer.md` is a
+   * near miss rather than a candidate, and the `--add-dir` directories the same
+   * paragraph names are a runtime fact this product never turns into a scan root
+   * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'agents' },
+        ANY_DIRECTORIES,
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -763,40 +760,13 @@ export const CLAUDE_REPO_AGENT_RULE = {
           url: 'https://code.claude.com/docs/en/sub-agents',
           officialHost: 'code.claude.com',
           sections: ['Choose the subagent scope'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Project subagents live under .claude/agents/ and that directory is scanned recursively, so a definition may sit in a subfolder — the exact subtree this rule admits — while the User scope at ~/.claude/agents/ the same section documents is a different Source boundary the rule may not read, and the directories added with --add-dir are a runtime input rather than a location.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.skills-directory-plugin` matcher: the manifest that makes a
- * skills-directory folder a plugin.
- *
- * Anchored at the selected root's own `.claude/skills/`, with no leading
- * `ANY_DIRECTORIES` — the difference from the plain-skill program beside it,
- * and what the cited page justifies: a project-scope skills-directory plugin
- * loads from the launch working directory's own skills directory and is
- * documented as not walking ancestors, where a plain skill is discovered in
- * nested directories on demand. Admission never claims the session loaded it:
- * the workspace trust dialog stays a runtime condition
- * (contracts/vendors/claude-code.md § Repository Inspector matchers).
- */
-const CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude' },
-      { kind: 'literal', value: 'skills' },
-      ANY_NAME,
-      { kind: 'literal', value: '.claude-plugin' },
-      { kind: 'literal', value: 'plugin.json' },
-    ],
-  ],
-};
-
 /**
  * Claude skills-directory plugins: the read-authorizing counterpart of
  * `claude.behavior.repo.skills-directory-plugin`.
@@ -815,7 +785,31 @@ export const CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'plugin',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_MATCHER,
+  /**
+   * The `claude.repo.skills-directory-plugin` matcher: the manifest that makes a
+   * skills-directory folder a plugin.
+   *
+   * Anchored at the selected root's own `.claude/skills/`, with no leading
+   * `ANY_DIRECTORIES` — the difference from the plain-skill program beside it,
+   * and what the cited page justifies: a project-scope skills-directory plugin
+   * loads from the launch working directory's own skills directory and is
+   * documented as not walking ancestors, where a plain skill is discovered in
+   * nested directories on demand. Admission never claims the session loaded it:
+   * the workspace trust dialog stays a runtime condition
+   * (contracts/vendors/claude-code.md § Repository Inspector matchers).
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'skills' },
+        ANY_NAME,
+        { kind: 'literal', value: '.claude-plugin' },
+        { kind: 'literal', value: 'plugin.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -829,29 +823,13 @@ export const CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['Skills-directory plugins', 'File locations reference'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'A folder under a skills directory that contains .claude-plugin/plugin.json — the exact path this rule admits — is loaded as a plugin named <folder>@skills-dir with no marketplace and no install step, discovered in place; the manifest is the plugin metadata and the components it bundles sit at default locations under that same folder.',
         },
       ]
     : [],
 } as const satisfies InspectionRule;
-
-/**
- * The `claude.repo.marketplace` matcher: the catalog a repository publishes at
- * its own root, which is also the marketplace root its `./` entries resolve
- * against.
- */
-const CLAUDE_REPO_MARKETPLACE_MATCHER: StructuredInspectorMatcher = {
-  base: { kind: 'repository' },
-  selectors: [
-    [
-      { kind: 'literal', value: '.claude-plugin' },
-      { kind: 'literal', value: 'marketplace.json' },
-    ],
-  ],
-};
-
 /**
  * Claude Repository plugin catalogs: the read-authorizing counterpart of
  * `claude.behavior.repo.marketplace`.
@@ -873,7 +851,20 @@ export const CLAUDE_REPO_MARKETPLACE_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'plugin',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_MARKETPLACE_MATCHER,
+  /**
+   * The `claude.repo.marketplace` matcher: the catalog a repository publishes at
+   * its own root, which is also the marketplace root its `./` entries resolve
+   * against.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude-plugin' },
+        { kind: 'literal', value: 'marketplace.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -931,7 +922,33 @@ export const CLAUDE_REPO_SETTINGS_HOOKS_RULE = {
   discoveryClass: 'static-candidate',
   kind: 'hook',
   sourceKinds: ['repository'],
-  matcher: CLAUDE_REPO_SETTINGS_FILES_MATCHER,
+  /**
+   * The two root settings files, authored in the typed segment form the contract
+   * table shows: `['.claude', 'settings.json']` and
+   * `['.claude', 'settings.local.json']`. Two programs rather than one dynamic
+   * step, so each admission carries which authored filename matched.
+   *
+   * The same two selectors as the permissions and settings rules': three rules over
+   * the one candidate this location is, read once, each publishing its own
+   * recognition.
+   *
+   * Root-anchored with no `ANY_DIRECTORIES`: the page names these two files as
+   * the project scope's own, and a `.claude/settings.json` in a subdirectory is
+   * a file the vendor documents no read of.
+   */
+  matcher: {
+    base: { kind: 'repository' },
+    selectors: [
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.json' },
+      ],
+      [
+        { kind: 'literal', value: '.claude' },
+        { kind: 'literal', value: 'settings.local.json' },
+      ],
+    ],
+  },
   policyRefs: SHIPS_MAINTENANCE_DATA
     ? ['FR-003', 'FR-004', 'FR-005', 'FR-024', 'QR-001', 'QR-004', 'QR-005']
     : [],
@@ -996,9 +1013,503 @@ export const CLAUDE_EXCLUDED_PLUGIN_FILES_RULE = {
           url: 'https://code.claude.com/docs/en/plugins-reference',
           officialHost: 'code.claude.com',
           sections: ['File locations reference', 'Plugin manifest schema'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "A plugin's components sit at default locations under its root — skills/, commands/, agents/, workflows/, output-styles/, hooks/hooks.json, .mcp.json, .lsp.json, bin/, settings.json — and the manifest's component path fields may redirect any of them, so every component this rule excludes is reached through a declaration or a default rather than through a documented Repository location of its own.",
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+/**
+ * Claude Global instructions: the one Claude rule consent authorizes, and the
+ * read-authorizing counterpart of `claude.behavior.user.instructions`.
+ *
+ * Exactly one file, with no content-dependent selection: the memory page loads
+ * every discovered scope additively rather than choosing between them
+ * (`claude.instructions.layering`), so there is no override to fall back from
+ * and nothing here for a selection policy to decide. What the file governs is
+ * the range its own path derives, which for a file at the root of the home is
+ * `**` — the same answer its Repository sibling gives for a root `CLAUDE.md`,
+ * and correct for both: a user instruction file is not scoped to a directory of
+ * the home.
+ *
+ * `CLAUDE.local.md` is deliberately absent. The cited table lists local
+ * instructions at the project scope alone, so admitting one here would assert a
+ * location the documentation does not give, and the file sits in the fixture
+ * homes as a neighbour this rule declines.
+ *
+ * Every other Claude User surface stays excluded by
+ * {@link CLAUDE_EXCLUDED_USER_RUNTIME_RULE}, so admitting this file authorizes
+ * nothing beside it.
+ */
+export const CLAUDE_GLOBAL_INSTRUCTIONS_RULE = {
+  ruleId: 'claude.global.instructions',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'instructions',
+  sourceKinds: ['global'],
+  /**
+   * The consented Claude Global instruction target: the one `CLAUDE.md` directly
+   * below the admitted `<claude-config-dir>`
+   * (contracts/vendors/claude-code.md § Global accepted matcher).
+   *
+   * The base is this tool's own Global boundary, never the Repository root: a
+   * Global selector is authored against the consented vendor home, and the two
+   * bases are separate Sources whose roots never merge (FR-013 through FR-018).
+   *
+   * One exact literal, so the plan reads the named file and never enumerates the
+   * home. That is what keeps consent to read an instruction file from becoming
+   * permission to list a reader's configuration directory — which here holds
+   * their settings, credentials helper, skills, agents, and generated memories.
+   */
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [[{ kind: 'literal', value: 'CLAUDE.md' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Choose where to put CLAUDE.md files', 'How CLAUDE.md files load'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The user memory location is ~/.claude/CLAUDE.md, loaded for every project the reader works in, and the documented scopes are concatenated into context rather than overriding one another — so the one user file is read alongside the project chain rather than instead of it.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.directory.file-reference',
+          url: 'https://code.claude.com/docs/en/claude-directory',
+          officialHost: 'code.claude.com',
+          sections: ['File reference'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The directory reference locates CLAUDE.md at the global scope inside the configuration directory, and CLAUDE_CONFIG_DIR is what relocates that directory — which is the value this rule is based at.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Personal Claude rule files: the read-authorizing counterpart of
+ * `claude.behavior.user.rules` (FR-016). Direct children only — the user
+ * section's own example shows that depth, and nested-subdirectory discovery
+ * is unstated for the user layer, so no recursive step
+ * (contracts/vendors/claude-code.md § Global accepted matcher).
+ */
+export const CLAUDE_GLOBAL_RULES_RULE = {
+  ruleId: 'claude.global.rules',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'rule',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [
+      [
+        { kind: 'literal', value: 'rules' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['Organize rules with .claude/rules/'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The user rule directory holds modular Markdown rule files loaded alongside the user CLAUDE.md, at the direct-child depth the section\u2019s own example shows.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Personal Claude skills: the read-authorizing counterpart of
+ * `claude.behavior.user.skills` (FR-016). The reserved `skills/synced/<name>/`
+ * download tree sits one level deeper than this program reaches — a synced
+ * skill is a downloaded copy rather than an authored one, and Claude itself
+ * skips a skill authored at the reserved name.
+ */
+export const CLAUDE_GLOBAL_SKILL_RULE = {
+  ruleId: 'claude.global.skill',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'skill',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [
+      [{ kind: 'literal', value: 'skills' }, ANY_NAME, { kind: 'literal', value: 'SKILL.md' }],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.skills.locations-discovery',
+          url: 'https://code.claude.com/docs/en/skills',
+          officialHost: 'code.claude.com',
+          sections: ['Where skills live'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'Personal skills live under the configuration directory as skills/<name>/SKILL.md, available across every project the reader works in.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.env-vars',
+          url: 'https://code.claude.com/docs/en/env-vars',
+          officialHost: 'code.claude.com',
+          sections: ['Variables'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'CLAUDE_CONFIG_DIR relocates the configuration directory this rule is based at.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Personal Claude command files: the read-authorizing counterpart of
+ * `claude.behavior.user.commands` (FR-016). Recursive below `commands/`,
+ * because subdirectories form command namespaces exactly as the Repository
+ * scope's do.
+ */
+export const CLAUDE_GLOBAL_COMMAND_RULE = {
+  ruleId: 'claude.global.command',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'prompt/command',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [
+      [
+        { kind: 'literal', value: 'commands' },
+        ANY_DIRECTORIES,
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.skills.locations-discovery',
+          url: 'https://code.claude.com/docs/en/skills',
+          officialHost: 'code.claude.com',
+          sections: ['Where skills live', 'How a skill gets its command name'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The user command scope lives under the configuration directory beside the personal skills, invoked by slash-command names derived from each file\u2019s path.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.changelog.legacy-command-nesting',
+          url: 'https://code.claude.com/docs/en/changelog',
+          officialHost: 'code.claude.com',
+          sections: ['1.0.51'],
+          reviewedOn: '2026-08-22',
+          establishes:
+            'User commands are Markdown files under the configuration directory at any depth, with subdirectories forming command namespaces.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Personal Claude subagents: the read-authorizing counterpart of
+ * `claude.behavior.user.agents` (FR-016). Recursive below `agents/`;
+ * duplicate-name selection stays undocumented exactly as it is for the
+ * Repository scope, so no row projects a winner (FR-009).
+ */
+export const CLAUDE_GLOBAL_AGENT_RULE = {
+  ruleId: 'claude.global.agent',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'agent',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [
+      [{ kind: 'literal', value: 'agents' }, ANY_DIRECTORIES, { kind: 'regex', pattern: /\.md$/u }],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Choose the subagent scope'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'User subagents live under the configuration directory\u2019s agents/ and are available across every project the reader works in.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The consented user settings document: the read-authorizing counterpart of
+ * `claude.behavior.user.settings` (FR-016). No user `settings.local.json` is
+ * documented, so the selector is the one exact file — where the Repository
+ * scope's settings rules author a pair.
+ */
+export const CLAUDE_GLOBAL_SETTINGS_RULE = {
+  ruleId: 'claude.global.settings',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'settings/config',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [[{ kind: 'literal', value: 'settings.json' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: ['Compare the scope of each settings file'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The user settings file is <claude-config-dir>/settings.json, the user layer of the documented settings cascade.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The permission policy the consented user settings document declares: the
+ * read-authorizing counterpart of the `permissions` half of
+ * `claude.behavior.user.settings` (FR-016). The selector coincides with
+ * `claude.global.settings` by construction, exactly as the Repository pair
+ * coincides: three rules over the one path are one candidate read once.
+ */
+export const CLAUDE_GLOBAL_PERMISSIONS_RULE = {
+  ruleId: 'claude.global.permissions',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'permissions',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [[{ kind: 'literal', value: 'settings.json' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: ['Compare the scope of each settings file'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The user settings document carries a permissions object among its keys, the user layer of the documented permission cascade.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The `hooks` the consented user settings document contains: the
+ * read-authorizing counterpart of the hooks half of
+ * `claude.behavior.user.settings` (FR-016), recognized exactly as the
+ * Repository settings pair's contained hooks are. The third rule over the one
+ * `settings.json` candidate, read once.
+ */
+export const CLAUDE_GLOBAL_SETTINGS_HOOKS_RULE = {
+  ruleId: 'claude.global.hooks.settings',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'hook',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [[{ kind: 'literal', value: 'settings.json' }]],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.hooks.locations-resolution',
+          url: 'https://code.claude.com/docs/en/hooks',
+          officialHost: 'code.claude.com',
+          sections: ['Hook locations'],
+          reviewedOn: '2026-08-25',
+          establishes:
+            'The user settings file is one of the documented hook locations, its hooks applying to every project the reader works in.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.settings.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/settings',
+          officialHost: 'code.claude.com',
+          sections: ['Compare the scope of each settings file'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The user settings document is <claude-config-dir>/settings.json, the file whose contained hooks this rule recognizes.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * Personal Claude output styles: the read-authorizing counterpart of
+ * `claude.behavior.user.output-style` (FR-016). Direct children of the
+ * boundary's `output-styles/`.
+ */
+export const CLAUDE_GLOBAL_OUTPUT_STYLE_RULE = {
+  ruleId: 'claude.global.output-style',
+  tool: 'claude',
+  discoveryClass: 'static-candidate',
+  kind: 'output style',
+  sourceKinds: ['global'],
+  matcher: {
+    base: { kind: 'global', member: 'claude' },
+    selectors: [
+      [
+        { kind: 'literal', value: 'output-styles' },
+        { kind: 'regex', pattern: /\.md$/u },
+      ],
+    ],
+  },
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.output-styles.locations',
+          url: 'https://code.claude.com/docs/en/output-styles',
+          officialHost: 'code.claude.com',
+          sections: ['Create a custom output style'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'A custom output style can be saved at the User level in ~/.claude/output-styles, beside the project and managed-policy levels.',
+        },
+      ]
+    : [],
+} as const satisfies InspectionRule;
+
+/**
+ * The Claude User surfaces no Global rule admits, on record as excluded
+ * (contracts/vendors/claude-code.md § Derived and excluded rules). It
+ * authorizes nothing and exists so the consent flow can state what it leaves
+ * out: the separate `~/.claude.json` MCP/state file, installed plugins and
+ * their cache, agent memory, auto memory, dynamic workflow scripts, and the
+ * keybindings and theme files — each of which a reader's configuration
+ * directory or home ordinarily holds beside the admitted files.
+ *
+ * `kind` is null because an exclusion spans kinds, and `matcher` is null
+ * because a rule that admits nothing needs no selector: what it names, it names
+ * through the behaviors it is based on.
+ */
+export const CLAUDE_EXCLUDED_USER_RUNTIME_RULE = {
+  ruleId: 'claude.excluded.user-runtime',
+  tool: 'claude',
+  discoveryClass: 'excluded',
+  kind: null,
+  sourceKinds: ['global'],
+  matcher: null,
+  policyRefs: SHIPS_MAINTENANCE_DATA
+    ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-001', 'QR-005']
+    : [],
+  precedenceGroup: null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  // One citation per excluded surface, each resting on the same reviewed
+  // sections that established the behavior it declines to authorize: the
+  // exclusion's claim is that these surfaces exist beside the admitted files
+  // and this product reads none of them, so what it needs is the pages that
+  // locate them.
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'anthropic.claude-code.mcp.scopes-precedence',
+          url: 'https://code.claude.com/docs/en/mcp',
+          officialHost: 'code.claude.com',
+          sections: ['MCP installation scopes'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'User-scoped MCP servers are stored outside the project, in the reader\u2019s own state file, so the servers a reader configured personally are state this rule declines rather than a file in the admitted directory.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.directory.file-reference',
+          url: 'https://code.claude.com/docs/en/claude-directory',
+          officialHost: 'code.claude.com',
+          sections: ['File reference'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The file reference locates ~/.claude.json beside the configuration directory rather than inside it, and lists the workflow scripts, keybindings.json, themes/, projects, and other generated data the directory carries \u2014 the surfaces this rule declines.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.plugins.components-scopes',
+          url: 'https://code.claude.com/docs/en/plugins-reference',
+          officialHost: 'code.claude.com',
+          sections: ['File locations reference', 'Plugin manifest schema'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'Installed plugins live under the configuration directory and ship their own skills, commands, agents, and hooks, so the home holds third-party content this rule declines.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.subagents.scope-context',
+          url: 'https://code.claude.com/docs/en/sub-agents',
+          officialHost: 'code.claude.com',
+          sections: ['Choose the subagent scope'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'A subagent may be given its own memory scope under the configuration directory, so the home holds agent memory that this rule declines.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.memory.locations-load',
+          url: 'https://code.claude.com/docs/en/memory',
+          officialHost: 'code.claude.com',
+          sections: ['How CLAUDE.md files load'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The automatic memory files Claude generates about the reader\u2019s own sessions live under the configuration directory\u2019s projects tree, which this rule declines.',
+        },
+        {
+          sourceId: 'anthropic.claude-code.env-vars',
+          url: 'https://code.claude.com/docs/en/env-vars',
+          officialHost: 'code.claude.com',
+          sections: ['Variables'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'CLAUDE_CONFIG_DIR relocates the configuration directory, so the excluded surfaces move with the admitted files rather than staying behind.',
         },
       ]
     : [],
@@ -1019,4 +1530,14 @@ export const CLAUDE_INSPECTION_RULES: Readonly<Record<ClaudeRuleId, InspectionRu
   [CLAUDE_REPO_SKILL_RULE.ruleId]: CLAUDE_REPO_SKILL_RULE,
   [CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE.ruleId]: CLAUDE_REPO_SKILLS_DIRECTORY_PLUGIN_RULE,
   [CLAUDE_EXCLUDED_PLUGIN_FILES_RULE.ruleId]: CLAUDE_EXCLUDED_PLUGIN_FILES_RULE,
+  [CLAUDE_EXCLUDED_USER_RUNTIME_RULE.ruleId]: CLAUDE_EXCLUDED_USER_RUNTIME_RULE,
+  [CLAUDE_GLOBAL_AGENT_RULE.ruleId]: CLAUDE_GLOBAL_AGENT_RULE,
+  [CLAUDE_GLOBAL_COMMAND_RULE.ruleId]: CLAUDE_GLOBAL_COMMAND_RULE,
+  [CLAUDE_GLOBAL_SETTINGS_HOOKS_RULE.ruleId]: CLAUDE_GLOBAL_SETTINGS_HOOKS_RULE,
+  [CLAUDE_GLOBAL_INSTRUCTIONS_RULE.ruleId]: CLAUDE_GLOBAL_INSTRUCTIONS_RULE,
+  [CLAUDE_GLOBAL_OUTPUT_STYLE_RULE.ruleId]: CLAUDE_GLOBAL_OUTPUT_STYLE_RULE,
+  [CLAUDE_GLOBAL_PERMISSIONS_RULE.ruleId]: CLAUDE_GLOBAL_PERMISSIONS_RULE,
+  [CLAUDE_GLOBAL_RULES_RULE.ruleId]: CLAUDE_GLOBAL_RULES_RULE,
+  [CLAUDE_GLOBAL_SETTINGS_RULE.ruleId]: CLAUDE_GLOBAL_SETTINGS_RULE,
+  [CLAUDE_GLOBAL_SKILL_RULE.ruleId]: CLAUDE_GLOBAL_SKILL_RULE,
 };

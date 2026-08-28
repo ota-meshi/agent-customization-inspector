@@ -82,7 +82,9 @@ test.describe('the complete literal Codex rule detail', () => {
       .filter({ hasText: '.codex/rules/deploy.rules' })
       .getByRole('link', { name: '.codex/rules/deploy.rules' })
       .click();
-    await expect(page).toHaveURL(/\/permissions\/\.codex\/rules\/deploy\.rules$/u);
+    await expect(page).toHaveURL(
+      /\/permissions\/detail\/repository\/\.codex\/rules\/deploy\.rules$/u,
+    );
     await expect(page.getByRole('heading', { name: '.codex/rules/deploy.rules' })).toBeVisible();
 
     const main = page.locator('main');
@@ -144,7 +146,9 @@ test.describe('the complete literal Codex rule detail', () => {
   });
 
   test('returns to the rule tab it was opened from', async ({ page }) => {
-    await page.goto(new URL('/permissions/.codex/rules/default.rules', host.origin).toString());
+    await page.goto(
+      new URL('/permissions/detail/repository/.codex/rules/default.rules', host.origin).toString(),
+    );
     await expect(page.getByRole('heading', { name: '.codex/rules/default.rules' })).toBeVisible();
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
     await expect(page).toHaveURL(/\?kind=permissions$/u);
@@ -152,7 +156,9 @@ test.describe('the complete literal Codex rule detail', () => {
   });
 
   test('reports a link the current scan holds nothing at', async ({ page }) => {
-    await page.goto(new URL('/permissions/.codex/rules/removed.rules', host.origin).toString());
+    await page.goto(
+      new URL('/permissions/detail/repository/.codex/rules/removed.rules', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
@@ -191,8 +197,8 @@ test.describe('a candidate whose bytes were never accepted', () => {
     // files in no kind, which is where a `partial` generation says which file
     // made it partial (FR-028).
     for (const path of [
-      '/permissions/.codex/rules/binary.rules',
-      '/permissions/.codex/rules/broken.rules',
+      '/permissions/detail/repository/.codex/rules/binary.rules',
+      '/permissions/detail/repository/.codex/rules/broken.rules',
     ]) {
       await page.goto(new URL(path, host.origin).toString());
       await expect(page.locator('main')).toContainText(

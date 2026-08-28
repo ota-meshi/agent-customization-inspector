@@ -41,6 +41,7 @@
     "test:unit": "vitest run --project unit",
     "test:contract": "vitest run --project contract",
     "test:integration": "vitest run --project integration",
+    "test:security": "vitest run --project security",
     "test:package": "vitest run --project package",
     "test:performance": "vitest run --project performance",
     "test:coverage": "vitest run --project coverage --coverage",

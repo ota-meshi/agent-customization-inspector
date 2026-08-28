@@ -75,7 +75,7 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     // labelled by its owner carrier, with the row's name completing the
     // accessible name — is the link to that declaration's own detail.
     await page.getByRole('link', { name: '.github/mcp.json: gh-actions' }).click();
-    await expect(page).toHaveURL(/\/mcp\/.*\?server=gh-actions/u);
+    await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=gh-actions/u);
     await expect(page.getByRole('heading', { name: 'gh-actions' })).toBeVisible();
     // The record's identity restated: the recognizing product with the
     // surface its admission rests on, and the owner-carrier line, which
@@ -138,7 +138,12 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     // A retained link to a renamed declaration: the carrier resolves, the
     // name does not, and the page states that rather than showing another
     // record's content.
-    await page.goto(new URL('/mcp/.github/mcp.json?server=renamed-away', host.origin).toString());
+    await page.goto(
+      new URL(
+        '/mcp/detail/repository/.github/mcp.json?server=renamed-away',
+        host.origin,
+      ).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       'No declaration named this way is published for this file in the current scan.',
     );

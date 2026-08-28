@@ -83,8 +83,10 @@ customization-selected destination、別machineへの調査content送信は禁�
    不一致が生むrejectionを文書化する。宣言済みparameterの検証はresolutionであって、
    その前に置くshape guardではない: detailのparameterはいずれもcommit済みgenerationに
    対して解決されるpublished identityであってfilesystem operandではない —
-   `get-file-detail`、`get-mcp-carrier-detail`、`get-permission-policy-detail`がそれぞれ
-   取るcommit済みSource-relative Pathと、`get-plugin-carrier-detail`が取るpathとplugin名の
+   `get-file-detail`と`open-file`がそれぞれ取るSourceとpathの組、
+   `get-mcp-carrier-detail`と`get-permission-policy-detail`がそれぞれ取る
+   commit済みSource-relative Path、
+   `get-plugin-carrier-detail`が取るpathとplugin名の
    組（その答えはinventory row 1件のものである） — であり、invokeされたfunctionが
    そのresourceを保持しないあらゆる値は、別の型の値も含めて、どこにも解決されず
    `stale-resource` rejectionになる。
@@ -260,15 +262,22 @@ SessionSnapshot
 │       持たない file を持つ
 ├── skills[]
 │   └── name string,
-│       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
-│                       diagnosticIds[], companionFiles[] },
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│                       parseStatus, diagnosticIds[], companionFiles[] } —
+│       各definitionはfileをSourceとSource相対Pathで名指す（FR-030）: member
+│       のskill ruleにより2つのSourceが同じ`skills/<name>/SKILL.md` pathを
+│       持ちうるため、pathだけではfileを名指せない。definitionは公開Source順、
+│       次にpath順、次に閉じたtool順で並び、definitionのcensus pathは自身の
+│       Sourceのpathである,
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 ├── mcp[]
 │   └── name string | null,
 │       declarations[] { sourceRelativePath, tool, surfaces[], parseStatus,
 │       diagnosticIds[] } —
-│       宣言されたserver名1つにつき1行で、その名前を解決する各宣言を
-│       carrier path順、次にtool順で持ち、各宣言はadmissionが依拠するvendor
+│       宣言されたserver名1つにつき1行で、その名前を解決する各宣言を持つ —
+│       各宣言はcarrierをSourceとSource相対Pathで名指し（FR-030）、公開
+│       Source順、次にcarrier path順、次に閉じたtool順で並ぶ — 。各宣言は
+│       admissionが依拠するvendor
 │       surfaceをinstruction fileのrecognitionと同じ形で運ぶ。nullの1行が一覧を閉じ、
 │       named宣言を公開しない読み取りを持つ。読めなかった読み取りは、同じfileの
 │       他の読み取りが何を見つけたかに関わらずこの行に載る: そのserverはabsentでは
@@ -279,10 +288,11 @@ SessionSnapshot
 │       bare mapと他方が要求するwrapper — はそのfileについてのfindingではない
 ├── agents[]
 │   └── name string | null,
-│       definitions[] { sourceRelativePath, tool, surfaces[], parseStatus,
-│                       diagnosticIds[] } —
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│                       parseStatus, diagnosticIds[] } —
 │       agent name 1つにつき1行、name順。各rowはそのagentを定義する
-│       すべてのfileを、Source-relative Path順・その中はtool順で列挙する。
+│       すべてのfileを — 各fileはSourceとSource相対Pathで名指され（FR-030）—
+│       公開Source順、次にpath順、次にtool順で列挙する。
 │       nameはadmitしたproductがそのagentを識別する事実であり、どの事実かは
 │       productによって異なる: OpenAI CodexとClaude Codeは`name` fieldを
 │       agentのidentityとし、filenameを一致させることはconventionにすぎない
@@ -303,9 +313,11 @@ SessionSnapshot
 │       definitionはここに到達しない
 ├── prompts[]
 │   └── name string,
-│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│       diagnosticIds[] } —
 │       読み手が起動する名前1つにつき1行を name 順で持ち、各行はその名前で
-│       起動される file を Source 相対パス順、次に tool 順で列挙する。どの名前
+│       起動される file を — 各definitionはfileをSourceとSource相対Pathで
+│       名指し（FR-030）— 公開Source順、次にpath順、次にtool順で列挙する。どの名前
 │       になるかは、その file を admit した rule のものである。command file
 │       の名前が著述されることはない: どちらの product も command file の
 │       `name` key を無視し、それぞれが command を path から導出する。両者が
@@ -315,21 +327,24 @@ SessionSnapshot
 │       command が解決する名前を宣言した prompt は、その command の row の
 │       definition となる
 ├── rules[]
-│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
-│       認識された rule file 1つにつき1行、その recognition を closed tool order
-│       で、各 recognition の product surface を closed surface order で持つ
+│   └── sourceId, sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       認識された rule file 1つにつき1行。fileのidentityであるSourceと自身の
+│       path（FR-030）で名指し、公開Source順、次にpath順に並べ、その recognition
+│       を closed tool order で、各 recognition の product surface を closed
+│       surface order で持つ
 ├── permissions[]
-│   └── sourceRelativePath, recognitions[] { tool, surfaces[] },
+│   └── sourceId, sourceRelativePath, recognitions[] { tool, surfaces[] },
 │       diagnosticIds[] —
-│       宣言された permission policy 1つにつき1行。宣言する file の path で
-│       名指す。宣言しない carrier は残りを所有する kind として認識され、
-│       ここには row を持たない
+│       宣言された permission policy 1つにつき1行。宣言する file の Source と
+│       path（FR-030）で名指し、公開Source順、次にpath順に並ぶ。宣言しない
+│       carrier は残りを所有する kind として認識され、ここには row を持たない
 ├── hooks[]
 │   └── event string | null,
-│       declarations[] { sourceRelativePath, tool, carrier, surfaces[],
-│       parseStatus, diagnosticIds[] } —
-│       宣言されたlifecycle eventごとに1 rowで、それを宣言する各declarationを
-│       carrier-path順、次にtool順に並べる。MCP rowが宣言をまとめるのと同じ形である。
+│       declarations[] { sourceId, sourceRelativePath, tool, carrier,
+│       surfaces[], parseStatus, diagnosticIds[] } —
+│       宣言されたlifecycle eventごとに1 rowで、それを宣言する各declarationを —
+│       各declarationはcarrierをSourceとSource相対Pathで名指し（FR-030）—
+│       公開Source順、次にcarrier path順、次にtool順に並べる。MCP rowが宣言をまとめるのと同じ形である。
 │       `carrier`はその宣言が書かれたdocumentedな形式である — 全体がhookのためのfileは
 │       `standalone`、他のcontentと共にadmitされたfile内のhook tableは`contained` — 。
 │       1つのconfig layerが両形式を持ちうえ、vendorはどちらかを選ばず両方をloadするため、
@@ -340,9 +355,12 @@ SessionSnapshot
 │       fileが含んでいない場合は、どのrowにも載らない
 ├── plugins[]
 │   └── name string または null、
-│       carriers[] { sourceRelativePath, tool, surfaces[], carrier, parseStatus,
+│       carriers[] { sourceId, sourceRelativePath, tool, surfaces[], carrier,
+│       parseStatus,
 │       diagnosticIds[]、files[] } — plugin名ごとに1 row、名前順。各rowは、その名前を解決する
-│       全carrierをSource相対Path順、次にtool順で列挙する。1つのnull名rowが、名前を
+│       全carrierを — 各carrierはSourceとSource相対Pathで名指され（FR-030）、
+│       その`files[]`は同じSourceのpathである — 公開Source順、次にpath順、
+│       次にtool順で列挙する。1つのnull名rowが、名前を
 │       1つも解決しないcarrierとともにlistを閉じる。carrierがどの名前を解決するかは
 │       admitしたruleに属する。commandと同じである: Codexはcatalogの提供を
 │       `plugin@marketplace`としてaddressするため、2つのcatalogが提供する同じ名前は
@@ -360,18 +378,22 @@ SessionSnapshot
 │       enablement、trust、cachedコピーのいずれも述べない
 ├── outputStyles[]
 │   └── name string,
-│       definitions[] { sourceRelativePath, tool, surfaces[], diagnosticIds[] } —
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│       diagnosticIds[] } —
 │       読み手が選択するstyle名ごとに1 row、名前順。各rowは、認識toolがその名前で
-│       選択する全fileを、Source相対Path順、次にtool順で列挙する。どの名前かは
+│       選択する全fileを — 各definitionはfileをSourceとSource相対Pathで名指し
+│       （FR-030）— 公開Source順、次にpath順、次にtool順で列挙する。どの名前かは
 │       fileをadmitしたruleに属する: Claude Codeはfrontmatterの`name`を取り、
 │       無ければ`.md`拡張子を除いたfile名へフォールバックする。authoredな空の名前も
 │       同じくフォールバックする。空にはならない。Rowはsame-name resolutionを
 │       述べない: 1つの名前を定義する2つのproject layerを、pageはこの製品が決して
 │       観測しないsession working directoryへの近さで解決するからである
 ├── settings[]
-│   └── sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│   └── sourceId, sourceRelativePath, recognitions[] { tool, surfaces[] } —
 │       認識された settings または configuration file 1つにつき1行。この
-│       kind の単位は file 自身なので、自身の path で名指す。他の kind が
+│       kind の単位は file 自身なので、SourceとPathというfileのidentityで
+│       名指す（FR-030）: 同意されたhomeの`settings.json`と他所の同path
+│       documentは2つのrowであり、rowは公開Source順、次にpath順に並ぶ。他の kind が
 │       所有する宣言も運ぶ file — Codexの `.codex/config.toml` — は、ここ
 │       にも、その kind の一覧にも row を持つ。diagnostic の一覧は持たない。
 │       `rules[]` と同じ理由で、document から何も読み出さないためである
@@ -462,8 +484,8 @@ Inventory/generation/Source/file/detail/Diagnostic/relationship/comparison data�
 staleness、duplicate-work、その他inspection-state checkより前にfenceをcheckする。したがって
 retained graph stateをleakせずfence conflictが常に優先する。
 
-各Sourceは正確に1つのrootを持つ。Repository Sourceは`tool: null`とし、sessionはGlobal Sourceを
-0〜3個、`tool: codex`、`tool: claude`、`tool: copilot`ごとに最大1個持つ。Global rootを別Source内の
+各Sourceは正確に1つのrootを持つ。Repository Sourceはmemberを持たず、sessionはGlobal Sourceを
+0〜4個、`member: codex`、`member: claude`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
 boundaryとして表現しない。
 `repositoryGeneration`と`globalGeneration`は2つのsequenceがそれぞれ独立してcommitした
 generationであり、`globalGeneration`はGlobal inspectionがdisabledでGlobal sequenceが存在しない間
@@ -564,7 +586,7 @@ generation replacementはそのsequenceのscoped modelだけをdisposeする。G
 
 `globalControl`はGlobal consent/control stateがinactiveな場合だけnullとなる。それ以外では`state`が
 `active`または`disabling`となり、`previewId`がfrozen active previewを識別する。`confirmedTools`は
-常にfixed closed `[copilot, claude, codex]` all-tools consent setとする。Initial enableとretryの
+常にfixed closed `[copilot, claude, codex, agents]` all-members consent setとする。Initial enableとretryの
 validation/admissionはoperation-localのままとし、authority-freeな
 `globalEnableInProgress { kind, operationId, previewId }`だけを公開する。Initial enableでは
 `globalControl: null`を維持し、retryではresult-bound disposition 1件がatomic commitするまでexactな
@@ -610,15 +632,18 @@ Outcomes: fullまたはfenced DTO。
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters: commit済みSource-relative Pathを1つ、functionの単一positional argumentとして
-渡す。Fileのidentityは、そのSourceとSource-relative Pathである（FR-030）。1つのpathを
-保持できるSourceが1つだけの間 — Global commitが第2のSourceをpublishするまでの全session —
-はpath単独がそのidentityを運ぶ。2つのSourceが1つのpathを保持できるようになるのと同じ
-phaseで、Global taskがこのfunctionとdetail/comparison routeへSource qualifierを追加する
-（tasks.md T1001/T1003）ため、同一pathのGlobal fileがRepository fileに隠されることはない。
+Parameters: fileのidentity全体を、functionの単一argumentであるobjectとして渡す。
+すなわちcommit済みSource-relative Pathと、それを保持するSourceである（FR-030）。
+Global commitが第2のSourceをpublishした後は、両者が1つのpathを保持しうるため、
+path単独ではどのfileも指さない。SourceはSource IDではなくselector — `repository`
+または`global-<tool>` — で名指す。IDはそれをmintしたlaunchのものである一方、読み手が
+保存したlinkはそのlaunchより長く生きなければならないからである。Selectorの検証は
+他のdetail parameterと同じくresolutionであってfilesystem operandではないため、
+commit済みSourceのどれも名乗らないselectorはどこにも解決されず、未知のpathと同じ
+`stale-resource` rejectionになる。
 
 ```json
-".claude/skills/deploy/SKILL.md"
+{ "sourceRelativePath": ".claude/skills/deploy/SKILL.md", "source": "repository" }
 ```
 
 Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
@@ -861,11 +886,12 @@ rejection。Disable fenceがnon-nullの間は`global-disable-pending` conflict r
 
 ### `agent-customization-inspector:get-mcp-carrier-detail`
 
-Parameters: commit済みSource-relative Pathを1つ、functionの単一positional argumentとして
-渡す。`get-file-detail`が取るのと同じ形で、宣言するfileのidentityである（FR-030）。
+Parameters: SourceとCommit済みSource-relative Pathを名指すobject 1件 — 宣言するfileの
+identity全体（FR-030）であり、`get-file-detail`が取るpairと同じである。Global memberも
+MCP carrierをpublishするためである（FR-015、FR-017）。
 
 ```json
-".codex/config.toml"
+{ "sourceRelativePath": ".codex/config.toml", "source": "repository" }
 ```
 
 Active-generationのMCP carrier detailを1件返す: fileが行う宣言と、file自身の
@@ -908,11 +934,11 @@ fenceがnon-nullの間は`global-disable-pending` conflict rejection。
 
 ### `agent-customization-inspector:get-hook-carrier-detail`
 
-Parameters: commit済みSource-relative Pathを1つ、functionの単一positional argumentとして
-渡す。`get-mcp-carrier-detail`が取るのと同じ形で、宣言するfileのidentityである（FR-030）。
+Parameters: SourceとCommit済みSource-relative Pathを名指すobject 1件。`get-mcp-carrier-detail`が
+取るのと同じ形で、宣言するfileのidentityである（FR-030）。
 
 ```json
-".codex/hooks.json"
+{ "sourceRelativePath": ".codex/hooks.json", "source": "repository" }
 ```
 
 Active-generationのhook carrier detailを1件返す: fileが宣言するlifecycle eventと、file自身の
@@ -966,13 +992,17 @@ conflict rejection。
 
 ### `agent-customization-inspector:get-plugin-carrier-detail`
 
-Parameter: 宣言するfileのcommit済みSource相対Path — fileのidentityである（FR-030） — 、
-読み出すinventory rowのplugin名、そして答えがどの製品の読み取りであるかを持つobject 1件。
+Parameter: 宣言するfileのSourceとcommit済みSource相対Path — fileのidentityである（FR-030） — 、
+読み出すinventory rowのplugin名（宣言がどの名前にも解決しないrowを閉じる場合はnull）、そして
+答えがどの製品の読み取りであるかを持つobject 1件。Catalogのlocal-directory enumerationは
+Repository catalogのものに留まる: 共有agent home配下でpluginのdirectoryはadmitされない
+（FR-018、FR-045）ため、personal marketplaceは宣言だけをpublishする。
 名前を1つも解決しない宣言でlistを閉じるrowでは`pluginName`はnullである。
 
 ```json
 {
   "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "source": "repository",
   "pluginName": "secret-keeper@inspector-legacy",
   "tool": "codex"
 }
@@ -1068,12 +1098,13 @@ Disable fenceがnon-nullの間は`global-disable-pending` conflict rejectionで�
 
 ### `agent-customization-inspector:get-plugin-file-detail`
 
-Parameter: pluginを宣言するcarrier、その読み取りでfileに到達した製品、読み出すrowのplugin名
+Parameter: pluginを宣言するcarrier — そのSourceとSource相対Path — 、その読み取りでfileに到達した製品、読み出すrowのplugin名
 （listを閉じるrowではnull）、そして読むfileのSource相対Pathを持つobject 1件。
 
 ```json
 {
   "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "source": "repository",
   "tool": "codex",
   "pluginName": "config-helper@inspector-examples",
   "filePath": ".codex/rules/team.rules"
@@ -1105,12 +1136,13 @@ outcomeは別に存在しない。disable fenceが非nullの間は`global-disabl
 
 ### `agent-customization-inspector:get-permission-policy-detail`
 
-Parameters: `get-file-detail`とまったく同じく、commit済みSource相対Pathを1つ、functionの
-唯一のpositional argumentとして取る — policyを宣言するfileのpathであり、これがpermissions row
-の同一性である（FR-030）。
+Parameters: `get-file-detail`とまったく同じく、SourceとCommit済みSource相対Pathを名指す
+object 1件を取る — policyを宣言するfileのidentityであり、これがpermissions rowの同一性である
+（FR-030）。Consent済みmemberのsettingsやrules fileもpermission policyを宣言するためである
+（FR-016、FR-017）。
 
 ```json
-".codex/rules/deploy.rules"
+{ "sourceRelativePath": ".codex/rules/deploy.rules", "source": "repository" }
 ```
 
 Active-generationのpermission policyを1件、宣言するproductが綴る形で返す。Permissions rowが
@@ -1196,21 +1228,28 @@ Repository commandだけ`scan-in-progress` conflict rejection。Disable fenceが
 
 ### `agent-customization-inspector:open-file`
 
-Parameters（順に）:
+Parameters: fileのidentity全体と、渡す先のapplicationを名指すobject 1つ。
 
 ```json
-[".claude/skills/deploy/SKILL.md", "visual-studio-code"]
+{
+  "sourceRelativePath": ".claude/skills/deploy/SKILL.md",
+  "source": "repository",
+  "target": "visual-studio-code"
+}
 ```
 
-開くfileのSource-relative Pathと、閉じたtarget集合
+commit済みSource-relative Path、それを保持するSource（`get-file-detail`が名指すのと同じ
+`repository`または`global-<tool>`）、そして閉じたtarget集合
 `visual-studio-code | sublime-text | terminal-editor | default-application | containing-folder`の1メンバー。
 
 名指されたfileを、hostが動いているmachine上の名指されたapplicationで開く。絶対pathはhostの
 ものであるためhostがlaunchを行う: clientがSourceのrootとして受け取るのは一方向の
 `displayRoot` escapingだけであり（data-model.md § SourceBoundary）、pageは他のrequestと同じ
-identityを送るだけで、自らpathを保持しない。Pathは何かをlaunchする前にcurrentのcommit済み
+identityを送るだけで、自らpathを保持しない。Identityは何かをlaunchする前にcurrentのcommit済み
 generationへ解決されるため、launchが受け取り得る絶対pathはこのsessionが公開したものだけである
-（FR-022）。
+（FR-022）。どのrootと結合するかを決めるのはSourceである。すなわちrepositoryの選択されたroot、
+またはそのtoolのconsent controlが保持している正確なadmitted rootである。Path単独では、session
+が先に列挙したSourceの方を開き、読み手が指していないrootのfileを渡すことになる（FR-030）。
 
 各targetが届く先:
 
@@ -1266,15 +1305,17 @@ createまたはreplaceする。
 ```text
 GlobalConsentPreview
 ├── previewId, allowlistVersion, traversalPlanVersion
-├── entries[] { tool, origin, displayRoot, inputState }
+├── entries[] { member, origin, displayRoot, inputState }
 └── excludedRuleIds[]
 ```
 
 Coordinator conflict確認後に許可したcreate invocationごとに、serverは`COPILOT_HOME`、
 `CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
-empty stringはpresentとする。1つでもabsentなら、そのrequestでimport済み`node:os.homedir()`を
-正確に1回callし、対応するabsent entryについてactive-platformの`node:path.join`と固定suffix
-`.copilot`、`.claude`、`.codex`を使う。`HOME`、`USERPROFILE`その他home sourceを独自選択せず、
+empty stringはpresentとする。そのrequestでimport済み`node:os.homedir()`を
+正確に1回callし — 共有agent home memberは常にそこからderiveされる — 、対応するabsent entryについてactive-platformの`node:path.join`と固定suffix
+`.copilot`、`.claude`、`.codex`を、共有agent homeについて固定suffix `.agents`を使う。`member`はclosedな
+`copilot | claude | codex | agents`集合 — 3つのtool homeと共有agent home（FR-045） — の1つであり、
+`…Tools`と綴られるcontrol/batch fieldはすべてこのmember idを運ぶ。`HOME`、`USERPROFILE`その他home sourceを独自選択せず、
 lexical capture/joinはexistence checkを行わない。それらのvariableは候補Global rootの特定だけに
 使い、inspected content内のreferenceのsubstitutionには使わない。Serializeしないfrozen internal
 preview recordは、各entryの`lexicalRoot`をexact raw stringとして追加保持する。Empty、relative、
@@ -1323,7 +1364,7 @@ Parameters:
 ```json
 {
   "confirmed": true,
-  "allowlistVersion": "2026-07-20",
+  "allowlistVersion": "2026-08-27",
   "previewId": "opaque-preview-id"
 }
 ```
@@ -1334,17 +1375,24 @@ Result data:
 GlobalEnableResult
 ├── state: queued | active-no-job
 ├── scanRequestId: opaque ID | null
-├── acceptedTools[]（tool enumを0〜3個）
-└── rejectedTools[]（tool enumを0〜3個）
+├── acceptedTools[]（member enumを0〜4個）
+└── rejectedTools[]（member enumを0〜4個）
 ```
 
-UIはそのpreviewの3 toolすべての正確なGlobal path集合、lexical input state、exclusionを表示した
+UIはそのpreviewの4 memberすべての正確なGlobal path集合、lexical input state、exclusionを表示した
 後だけ送信できる。Hostはfalse confirmation、古いcontract version、superseded previewを
-拒否する。Stored internal raw `lexicalRoot`とstored typed
+拒否する。
+
+このproductのconfirmationはこれだけではない。launch commandの`--inspect-personal-setup`
+optionはhostが存在する前に同じ判断を述べ、CLIはそこで同じregistration、admission、
+settlement、batchを実行する。すなわちこのfunctionが行うsequenceであって、function自体では
+ない（FR-013）。CLIはbatchをawaitするため、その形のlaunchはGlobal generationがcommit済みの
+状態でoriginをprintし、sessionはactive consentを保持する。その後このfunctionへ送られた
+confirmationは、server導出の`retryableTools`が非空なら同一previewのretryを実行し、retryする残りが無いときに`no-retryable-global-tool` refusalになる。Stored internal raw `lexicalRoot`とstored typed
 traversal programだけを使い、environment inputを読み直さず、`displayRoot`をreverse-convertしない。
-Parameterは意図的にtool selectorを持たない。Initial
-enableは、すでにlexicalにinvalidなentryも含むfrozen preview entry 3件すべてからexact fixed
-`[copilot, claude, codex]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
+Parameterは意図的にmember selectorを持たない。Initial
+enableは、すでにlexicalにinvalidなentryも含むfrozen preview entry 4件すべてからexact fixed
+`[copilot, claude, codex, agents]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
 すなわちunpublishedかつnon-pendingのadmitted controlとsame-preview rejected controlだけをexactに
 deriveする。Lexical `new-preview-required` controlにはdisableとnew previewが必要となる。Clientは
 toolを追加、omit、remove、reorderできない。
@@ -1364,18 +1412,18 @@ accept前failureも`globalEnableInProgress`をunregisterし、terminal operation
 しない。
 
 そのようなexceptionなしでvalidationが終了すると、`acceptedTools`と`rejectedTools`はdisjointかつ
-uniqueなfixed-tool-order arrayとなり、そのunionがtransactionでevaluateした全toolと一致する。
-Coordinatorは3 toolすべてのcontrolを持つinitial consentをatomicにactivateする。Rootを1つも
+uniqueなfixed-member-order arrayとなり、そのunionがtransactionでevaluateした全memberと一致する。
+Coordinatorは4 memberすべてのcontrolを持つinitial consentをatomicにactivateする。Rootを1つも
 admitしなければ、`state: active-no-job`、null `scanRequestId`、Source/job/generationなしで返し、
 disable用controlに加え、`retryDisposition`が許可する場合だけsame-preview retry用controlを維持
 する。それ以外では`scanRequestId`を1つallocateし、全admitted rootを1つのprovisional batch scanへ
 transferし、`state: queued`を返し、そのbatch commit前にSourceを一切publishしない。同じatomic
-acceptanceで、promote済み`scanRequestId`、tool set、`phase: waiting`、null `failureRef`を持つ
+acceptanceで、promote済み`scanRequestId`、member set、`phase: waiting`、null `failureRef`を持つ
 `globalControl.pendingTools`と`batchStatus`をpublishし、fresh pollingによるlost acceptance
-recoveryを可能にする。Tool rootごとにSource identityは分離するが、admitted subsetの全
+recoveryを可能にする。Member rootごとにSource identityは分離するが、admitted subsetの全
 ready/partial Sourceはexact 1つのGlobal generationへ同時に現れる。すなわちenable commitがGlobal
 sequenceをgeneration 1として作成し、既存Global Sourceの隣で行うretry batchはそのsequenceの
-exactなN+1をcommitし、per-tool commitはpollから観測できない。その1 commitはcarried Global
+exactなN+1をcommitし、per-member commitはpollから観測できない。その1 commitはcarried Global
 Sourceのstable Source ID/semantic contentを維持し、
 old Globalのdetail/comparison/editor stateをinvalidateし、該当する決定的tool failureをclear
 する。Repository sequence、そのgeneration、Repositoryのviewには触れない。
@@ -1413,7 +1461,7 @@ Parameters:
 { "sourceId": "opaque-enabled-global-source-id" }
 ```
 
-Global disableがpendingでない場合だけ、指定したenabled tool-specific Global Sourceのscan
+Global disableがpendingでない場合だけ、指定したenabledなmember Global Sourceのscan
 commandを1つ受理する。`sourceId`はopaque IDでありpathではない。Repository rescanと同じFIFO、
 dequeue時base generation、atomic publication、progress、invalidation、serialization ruleを
 Global sequence内で使う。すなわちsuccessful commitはそのsequenceのexactなN+1であり、Globalのviewだけを
@@ -1512,7 +1560,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 
 - 1つのcoordinatorがcorrectness invariantとしてscan transactionをserializeする。1 Sourceあたり
   runningまたはqueuedのscan commandを1つ受理し、duplicate scanはconflict、別のRepositoryまたは
-  tool-specific Global Source scanはFIFOへqueueしてwaiting phaseを示す。1 fileに限定された
+  member Global Source scanはFIFOへqueueしてwaiting phaseを示す。1 fileに限定された
   failureはそのfileのDiagnosticになる（FR-028）。それ以外のscan/admission throw/rejectionは
   domain state mutationなしでowning boundaryへpropagateする。Disableはpriority
   barrierのjoin/no-op ruleに従う。全自動/明示scanは1つのopaque `scanRequestId`を受け、実際の
@@ -1679,16 +1727,25 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    round-tripすることを証明する。
 5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
    される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
-   `/global-consent`、各kindのcomparison route（`/skills/compare`、`/instructions/compare`、
-   `/mcp/compare`、`/prompts-and-commands/compare`）、各kindのdetail route
-   （`/skills/<Source相対パス>`、`/instructions/<Source相対パス>`、`/mcp/<Source相対パス>`、
-   `/hooks/<Source相対パス>`、`/rules/<Source相対パス>`、`/prompts-and-commands/<Source相対パス>`、
-   `/permissions/<Source相対パス>`、`/agents/<Source相対パス>`、
-   `/plugins/<Source相対パス>`、`/output-styles/<Source相対パス>`、
-   `/settings-and-configuration/<Source相対パス>`）のclient routeがすべて同じpackaged SPA
-   shellをbootし、
-   そのshellはsession dataをembedしない。
-6. Repositoryと各tool-specific Global rescanのqueue order、duplicate rejection、abort、partial
+   `/global-consent`、各kindのcomparison route（`/skills/compare/<family>`、
+   `/instructions/compare/<family>`、`/mcp/compare/<family>`、
+   `/prompts-and-commands/compare/<family>`、`/agents/compare/<family>`、
+   `/hooks/compare/<family>`、`/plugins/compare/<family>`）、
+   各kindのdetail route（`skills`、`instructions`、`mcp`、`hooks`、`rules`、
+   `prompts-and-commands`、`permissions`、`agents`、`plugins`、`output-styles`、
+   `settings-and-configuration`の各`<kind>`に対する`/<kind>/detail/<source>/<Source相対パス>`）の
+   client routeがすべて同じpackaged SPA shellをbootし、
+   そのshellはsession dataをembedしない。detail pathがSourceに続けてpathを運ぶのは、fileの
+   identityがそのSourceとSource相対Pathであるためである（FR-030）。あらゆるcomparisonは
+   そのkind自身の`compare` segmentの下に、Source familyを後ろに従えて住む。pairが2つの
+   familyを跨ぐことはなく — repositoryとconsent済みhomeは別の種類の場所であり、rowの各
+   family blockが自身のcomparison entryを持つ — 一方で1つのfamilyはconsentされた2つの
+   homeのfileを持ちうる（FR-015からFR-017、FR-045）ため、各sideはなお自身のSourceを
+   queryで名乗る。`compare` segmentが先頭に来るのは、detailの2番目のsegmentがSource
+   selectorであり、`compare`は決してselectorになり得ないからである: どのSource相対path
+   も — `compare`と綴られたCodexのfallback filenameを含め — comparison routeと衝突
+   できない。
+6. Repositoryと各member Global rescanのqueue order、duplicate rejection、abort、partial
    outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした
    scanはowning sequenceのその時点のcurrent generationから開始し、一方のsequenceのcommitは
    他方のsequenceのcommitted stateを観測可能なまま変更しない。`remove-active-state` barrierは
@@ -1756,14 +1813,14 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    in-progress-enable、disable-fence caseはaccidental replacementなしで文書化したclosed
    outcomeを返す。Escape-collision、control-character、backslash fixtureは、enableがstored raw
    valueだけを使ってenvironmentを再読込せず`displayRoot`を
-   reverse-convertしないことを証明する。Parameterはtool selectorを持たず、initial enableは凍結
-   済みentry 3件すべてを必ずevaluateする。Missing/unreadableなconsented rootと決定的なlexical
-   outcomeがrejected toolとadmitted toolをpartitionし、unexpectedなthrow/rejectionは
+   reverse-convertしないことを証明する。Parameterはmember selectorを持たず、initial enableは凍結
+   済みentry 4件すべてを必ずevaluateする。Missing/unreadableなconsented rootと決定的なlexical
+   outcomeがrejected memberとadmitted memberをpartitionし、unexpectedなthrow/rejectionは
    invocationをordinary errorでrejectし、initial control/jobをactivateせずprovisional subsetを
    一切commitしない。Provisional enable workはSourceをpublishしない。正常なcompleteまたはpartial
-   batch commit 1件は1〜3個の別々にidentifiedされたGlobal Sourceをexact 1つのGlobal generation
-   に同時に作り、toolごとに最大1個、Sourceごとに正確に1 rootとし、cross-tool mergeも
-   observableなper-tool commitも行わない。1 fileに限定されないaccepted batch throw/rejectionはその1つの
+   batch commit 1件は1〜4個の別々にidentifiedされたGlobal Sourceをexact 1つのGlobal generation
+   に同時に作り、memberごとに最大1個、Sourceごとに正確に1 rootとし、cross-member mergeも
+   observableなper-member commitも行わない。1 fileに限定されないaccepted batch throw/rejectionはその1つの
    `scanRequestId`についてfailed requestのerror messageをfailed `batchStatus`にretainし、
    Source/generationもDiagnosticも作らない。
    Prior-currentとprior-staleの両caseをtestする。全rootを決定的にrejectするinitial activation

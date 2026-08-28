@@ -100,7 +100,7 @@ test.afterEach(async () => {
 
 /** Opens one file's skill detail route directly by its stable identity. */
 async function openSkillAt(page: import('@playwright/test').Page, path: string): Promise<void> {
-  await page.goto(new URL(`/skills/${path}`, host.origin).href);
+  await page.goto(new URL(`/skills/detail/repository/${path}`, host.origin).href);
 }
 
 test('shows the literal credential and environment reference with no mask, reveal, or substitution', async ({

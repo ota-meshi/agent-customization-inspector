@@ -42,7 +42,7 @@ function instructionRows(page: import('@playwright/test').Page) {
 
 /** The file entries across every rendered range row, in document order. */
 function fileEntries(page: import('@playwright/test').Page) {
-  return page.getByRole('tabpanel').locator('.aci-instruction-row__files > li');
+  return page.getByRole('tabpanel').locator('.aci-source-family-blocks__members > li');
 }
 
 test('lists every range with each file’s recognizing products', async ({ page }) => {
@@ -120,6 +120,23 @@ test('lists every range with each file’s recognizing products', async ({ page 
   expect(text).not.toContain('.copilot/instructions/personal.instructions.md');
   expect(text).not.toContain('custom-instructions/team.instructions.md');
   expect(text).not.toContain('packages/api/GEMINI.md');
+});
+
+test('names no Source and offers no Source filter with one Source carried', async ({ page }) => {
+  // The ordinary session: nothing outside the selected repository is inspected
+  // until a reader confirms it (FR-013), so every row is the repository's and
+  // saying so on each of them would repeat the page's only answer. The filter
+  // goes with it — one family is a question with one answer.
+  await page.goto(host.origin);
+  await expect(page.locator('.aci-family-heading')).toHaveCount(0);
+  await expect(page.locator('label[for="aci-inventory-filters-source"]')).toHaveCount(0);
+  // And the comparison link announces the range alone, because no second link
+  // under that range needs telling from it (WCAG 2.4.6).
+  await expect(
+    instructionRows(page)
+      .first()
+      .getByRole('link', { name: /^Compare this range's files/u }),
+  ).toHaveAttribute('aria-label', "Compare this range's files: **");
 });
 
 test('reports the deterministic failures on the files they happened to', async ({ page }) => {

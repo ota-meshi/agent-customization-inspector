@@ -67,7 +67,7 @@ export const CODEX_REPO_INSTRUCTIONS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['How Codex discovers guidance', 'Customize fallback filenames'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'Local Codex clients build the instruction chain once at session start, walking the project root down to the runtime cwd and stopping there — without a detectable project root only the current directory is checked — selecting at most one file per directory: AGENTS.override.md, then AGENTS.md, then the configured fallback basenames. Those basenames and the project-document byte budget are themselves configuration values, declared as project_doc_fallback_filenames and project_doc_max_bytes, so which names the walk accepts depends on configuration outside the instruction files themselves.',
         },
@@ -107,7 +107,7 @@ export const CODEX_REPO_CONFIG_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'Local clients load every trusted project .codex/config.toml layer from the project root down to the runtime cwd, and the closest applicable value wins for the same key; marking a project untrusted skips its project-scoped layers entirely.',
         },
@@ -153,7 +153,7 @@ export const CODEX_REPO_HOOKS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/hooks.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Where Codex looks for hooks', 'Config shape'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Each active trusted project layer contributes hooks from its .codex/hooks.json and from an inline [hooks] table in its .codex/config.toml; all matching hooks are additive, and a file and inline table at one layer are both loaded with a warning.',
         },
@@ -162,7 +162,7 @@ export const CODEX_REPO_HOOKS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'The active project config layers the hook lookup reads are the trusted .codex/config.toml files from the project root down to the runtime cwd.',
         },
@@ -203,7 +203,7 @@ export const CODEX_USER_HOOKS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/hooks.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Where Codex looks for hooks'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'The user layer contributes hooks from ~/.codex/hooks.json and from an inline [hooks] table in ~/.codex/config.toml, and keeps contributing them in an untrusted project where the project layer does not.',
         },
@@ -247,7 +247,7 @@ export const CODEX_REPO_MCP_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/extend/mcp.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Connect Codex to an MCP server'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'MCP servers are declared as named [mcp_servers.*] tables in the Codex configuration file, one table per server.',
         },
@@ -256,7 +256,7 @@ export const CODEX_REPO_MCP_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'MCP declarations follow the same config-layer resolution as every other configuration value, and project-scoped layers apply only when the project is trusted.',
         },
@@ -306,7 +306,7 @@ export const CODEX_REPO_RULES_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/rules.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Rules', 'Create a rules file'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             "The page's own preamble states the feature is experimental and may change. Codex scans rules/ under every active config layer at startup, a project layer's rules under <repo>/.codex/rules/ loading only when that .codex/ layer is trusted; the page names the layer's own rules/ directory and establishes no nested-subdirectory recursion.",
         },
@@ -345,7 +345,7 @@ export const CODEX_USER_CONFIG_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/config-file/config-basic.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Codex configuration file', 'Configuration precedence'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             "User configuration lives at the Codex home directory's config.toml (~/.codex/config.toml by default), the CLI and IDE extension share those configuration layers, and its values resolve through the same precedence as the trusted project layers.",
         },
@@ -384,7 +384,7 @@ export const CODEX_USER_INSTRUCTIONS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/agents-md.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['How Codex discovers guidance'],
-          reviewedOn: '2026-08-17',
+          reviewedOn: '2026-08-27',
           establishes:
             'Local Codex clients read a global instruction fallback at <CODEX_HOME>/AGENTS.override.md, otherwise <CODEX_HOME>/AGENTS.md, and the first non-empty global candidate precedes the project chain.',
         },
@@ -430,7 +430,7 @@ export const CODEX_USER_RULES_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/rules.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Rules', 'Create a rules file'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             "The page's own preamble states the feature is experimental and may change. The user layer at ~/.codex/rules/ is one of the active config layers the startup scan reads, and the TUI allow-list flow writes to ~/.codex/rules/default.rules.",
         },
@@ -477,7 +477,7 @@ export const CODEX_REPO_SKILLS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/build-skills.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Where Codex loads local skills'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Local Codex clients discover repository skills at .agents/skills/<name>/SKILL.md, scanning each directory on the chain from the runtime working directory to the repository root, and do not merge same-name skills.',
         },
@@ -517,7 +517,7 @@ export const CODEX_USER_SKILLS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/build-skills.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Where Codex loads local skills'],
-          reviewedOn: '2026-07-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Local Codex clients additionally discover user skills at $HOME/.agents/skills/<name>/SKILL.md, alongside repository, admin, and system scopes.',
         },
@@ -574,7 +574,7 @@ export const CODEX_REPO_AGENTS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/subagents.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Custom agents', 'Custom agent file schema'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Project-scoped custom agents are standalone TOML files under .codex/agents/, each defining one agent that Codex loads as a configuration layer for spawned sessions, with name, description, and developer_instructions required and other supported config.toml keys permitted; the page names the project directory without stating which directories of a project are searched.',
         },
@@ -610,7 +610,7 @@ export const CODEX_USER_AGENTS_BEHAVIOR = {
           url: 'https://learn.chatgpt.com/docs/agent-configuration/subagents.md',
           officialHost: 'learn.chatgpt.com',
           sections: ['Custom agents'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-08-27',
           establishes:
             'Personal custom agents are standalone TOML files under ~/.codex/agents/, and a custom agent whose name matches a built-in agent such as explorer takes precedence over it.',
         },
@@ -657,7 +657,7 @@ export const CODEX_REPO_MARKETPLACE_BEHAVIOR = {
             'Build your own curated plugin list',
             'Add a marketplace from the CLI',
           ],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'The ChatGPT desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible one at $REPO_ROOT/.claude-plugin/marketplace.json, each a JSON catalog whose plugins[] entries name the plugins it exposes, each entry writing its source as a local object with a path kept relative to the marketplace root and started with ./, as that path string alone, or as a url, git-subdir, or npm object, and shows each catalog as a selectable source in the Plugins Directory; the Codex CLI adds, lists, refreshes, and removes marketplace sources and prints the ones Codex is considering, including local defaults, while directing installation and testing back to the desktop app. The personal ~/.agents/plugins/marketplace.json named beside them is a different Source boundary this statement does not reach, and installation and per-plugin enablement are separate state.',
         },
@@ -697,7 +697,7 @@ export const CODEX_PLUGIN_MANIFEST_BEHAVIOR = {
           url: 'https://developers.openai.com/plugins/build/plugins.md',
           officialHost: 'developers.openai.com',
           sections: ['Plugin structure', 'Manifest fields'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Every plugin has its required entry point at .codex-plugin/plugin.json, whose name, version, and description identify the plugin and whose skills, mcpServers, apps, and hooks fields point at bundled components relative to the plugin root; only plugin.json belongs in .codex-plugin/.',
         },
@@ -744,9 +744,98 @@ export const CODEX_USER_PLUGINS_BEHAVIOR = {
           url: 'https://developers.openai.com/plugins/build/plugins.md',
           officialHost: 'developers.openai.com',
           sections: ['How local marketplaces work', 'Marketplace metadata'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "A personal marketplace lives at ~/.agents/plugins/marketplace.json, which the ChatGPT desktop app reads beside the repository ones; ChatGPT installs plugins into ~/.codex/plugins/cache/$MARKETPLACE_NAME/$PLUGIN_NAME/$VERSION/ and loads the installed copy from that cache rather than from the marketplace entry, and stores each plugin's on or off state in ~/.codex/config.toml.",
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex local memories: once the feature is enabled, Codex writes generated
+ * memory files under the Codex home, whose `memories/` directory holds the
+ * summaries, durable entries, recent inputs, and supporting evidence it
+ * carries forward between chats.
+ *
+ * Non-authorizing. The page calls these files generated state and says
+ * outright not to edit them as a control surface, which is the distinction
+ * this statement records: a memory file is something Codex wrote about the
+ * reader's past sessions, not a customization the reader authored, so it stays
+ * local state outside this Source (`codex.excluded.user-runtime`). The
+ * statement exists because the consent exclusions have to name every User
+ * surface the Codex home carries, and a home whose largest directory went
+ * unnamed would describe the excluded scope as smaller than it is.
+ */
+export const CODEX_USER_MEMORIES_BEHAVIOR = {
+  behaviorId: 'codex.behavior.user.memories',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'memories/',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: [],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.memories',
+          url: 'https://learn.chatgpt.com/docs/customization/memories.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: [
+            'How local Codex memories work',
+            'Local memory storage',
+            'Configure local memories',
+          ],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'Codex stores memories under the Codex home directory, which defaults to ~/.codex and is relocated by CODEX_HOME; the main memory files live under ~/.codex/memories/ and hold summaries, durable entries, recent inputs, and supporting evidence from prior chats. They are generated state rather than a hand-edited control surface. The feature is off by default and is turned on either in the ChatGPT desktop app or by a [features] memories flag in config.toml.',
+        },
+      ]
+    : [],
+} as const satisfies VendorBehaviorStatement;
+
+/**
+ * Codex custom prompts: Markdown files in the local Codex home's `prompts/`
+ * directory become slash commands a reader invokes explicitly.
+ *
+ * Non-authorizing, and deprecated by the vendor in favor of skills — which is
+ * why the record carries the `[deprecated]` qualifier the page's own notice
+ * states. It stays User state outside this Source
+ * (`codex.excluded.user-runtime`), and its surface is the shared local Codex
+ * home the whole surface member is defined by; the page names the CLI and the
+ * IDE extension as the clients that invoke a prompt, so the surface says where
+ * the files live rather than claiming every client on it has the command menu.
+ */
+export const CODEX_USER_PROMPTS_BEHAVIOR = {
+  behaviorId: 'codex.behavior.user.prompts',
+  tool: 'codex',
+  surfaces: ['codex-local-clients'],
+  locator: SHIPS_MAINTENANCE_DATA
+    ? {
+        vendorScope: 'user',
+        lookupBase: 'tool-home',
+        relativeSelector: 'prompts/*.md',
+        traversal: 'exact',
+      }
+    : null,
+  documentationStatus: 'documented',
+  lifecycleQualifiers: ['deprecated'],
+  evidence: SHIPS_MAINTENANCE_DATA
+    ? [
+        {
+          sourceId: 'openai.codex.custom-prompts',
+          url: 'https://learn.chatgpt.com/docs/custom-prompts.md',
+          officialHost: 'learn.chatgpt.com',
+          sections: ['Custom Prompts'],
+          reviewedOn: '2026-08-27',
+          establishes:
+            'The page states in its own notice that custom prompts are deprecated in favor of skills. A prompt is a Markdown file in the local Codex home directory — the page creates ~/.codex/prompts and writes ~/.codex/prompts/draftpr.md — carrying description and argument-hint frontmatter, invoked as a slash command in the Codex CLI and the Codex IDE extension after a restart. It requires explicit invocation and is not shared through the repository.',
         },
       ]
     : [],
@@ -774,7 +863,9 @@ export const CODEX_BEHAVIOR_STATEMENTS: Readonly<Record<CodexBehaviorId, VendorB
     [CODEX_USER_CONFIG_BEHAVIOR.behaviorId]: CODEX_USER_CONFIG_BEHAVIOR,
     [CODEX_USER_HOOKS_BEHAVIOR.behaviorId]: CODEX_USER_HOOKS_BEHAVIOR,
     [CODEX_USER_INSTRUCTIONS_BEHAVIOR.behaviorId]: CODEX_USER_INSTRUCTIONS_BEHAVIOR,
+    [CODEX_USER_MEMORIES_BEHAVIOR.behaviorId]: CODEX_USER_MEMORIES_BEHAVIOR,
     [CODEX_USER_PLUGINS_BEHAVIOR.behaviorId]: CODEX_USER_PLUGINS_BEHAVIOR,
+    [CODEX_USER_PROMPTS_BEHAVIOR.behaviorId]: CODEX_USER_PROMPTS_BEHAVIOR,
     [CODEX_USER_RULES_BEHAVIOR.behaviorId]: CODEX_USER_RULES_BEHAVIOR,
     [CODEX_USER_SKILLS_BEHAVIOR.behaviorId]: CODEX_USER_SKILLS_BEHAVIOR,
   };

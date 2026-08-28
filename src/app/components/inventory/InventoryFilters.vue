@@ -18,11 +18,17 @@
 // tab strip beside this section.
 import { nextTick, useTemplateRef } from 'vue';
 import { SUPPORTED_TOOL_TEXT, isSupportedTool, type SupportedTool } from '../../../shared/entities';
-import type { SourceDto } from '../../../shared/api-types';
+import { SOURCE_KIND_TEXT } from '../../../shared/api-text';
+import type { SourceKind } from '../../../shared/api-types';
 
-defineProps<{
-  /** The Sources the current generation published. */
-  availableSources: readonly SourceDto[];
+const props = defineProps<{
+  /**
+   * The Source families the current generation published, in the fixed order
+   * (`filters.ts`). A family rather than one option per Source: the Tool filter
+   * beside this one already answers which product recognized a file, so naming
+   * each consented home here asked the same question twice.
+   */
+  availableSourceKinds: readonly SourceKind[];
   /** The tools the current inventory actually recognizes. */
   availableTools: readonly SupportedTool[];
   /** How many rows the current filters admit, for the result summary. */
@@ -68,16 +74,29 @@ async function clearFilters(): Promise<void> {
   matchSummary.value?.focus();
 }
 
-/** Selected Source, or null for every Source. */
-const sourceId = defineModel<string | null>('sourceId', { required: true });
+/** Selected Source family, or null for every Source. */
+const sourceKind = defineModel<SourceKind | null>('sourceKind', { required: true });
 /** Selected recognizing tool, or null for every tool. */
 const tool = defineModel<SupportedTool | null>('tool', { required: true });
 /** Case-insensitive Source-relative-path substring. */
 const pathQuery = defineModel<string>('pathQuery', { required: true });
 
-/** The Repository Source has no tool of its own, so it is labelled by kind. */
-function sourceLabel(source: SourceDto): string {
-  return source.tool === null ? 'Repository' : SUPPORTED_TOOL_TEXT[source.tool];
+/**
+ * The family the reader chose, read out of the control's own text.
+ *
+ * A `<select>` hands back the raw text of the chosen option, so the offered
+ * families are what turn it into one — the empty option is "all sources", and
+ * anything this generation does not publish selects nothing rather than being
+ * declared a family the inventory has no rows for. The comparison is what
+ * narrows the type, so no assertion is made about the string.
+ */
+function sourceKindFromSelection(value: string): SourceKind | null {
+  for (const candidate of props.availableSourceKinds) {
+    if (candidate === value) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 // A native `<select>` cannot hold null, so the empty option stands for "no
@@ -91,20 +110,21 @@ function toSelectValue(value: string | null): string {
   <section class="aci-inventory-filters aci-panel" aria-labelledby="aci-inventory-filters-heading">
     <h3 id="aci-inventory-filters-heading">Filters</h3>
     <div class="aci-inventory-filters__grid">
-      <p>
+      <!-- Only where it can narrow something. One family is the ordinary
+           session — nothing outside the selected repository is inspected until
+           a reader confirms it — and there the control's two options would name
+           the same population, which is a question with one answer put in front
+           of every reader who has not asked it. -->
+      <p v-if="availableSourceKinds.length > 1">
         <label for="aci-inventory-filters-source">Source</label>
         <select
           id="aci-inventory-filters-source"
-          :value="toSelectValue(sourceId)"
-          @change="sourceId = ($event.target as HTMLSelectElement).value || null"
+          :value="toSelectValue(sourceKind)"
+          @change="sourceKind = sourceKindFromSelection(($event.target as HTMLSelectElement).value)"
         >
           <option value="">All sources</option>
-          <option
-            v-for="source in availableSources"
-            :key="source.sourceId"
-            :value="source.sourceId"
-          >
-            {{ sourceLabel(source) }}
+          <option v-for="candidate in availableSourceKinds" :key="candidate" :value="candidate">
+            {{ SOURCE_KIND_TEXT[candidate] }}
           </option>
         </select>
       </p>

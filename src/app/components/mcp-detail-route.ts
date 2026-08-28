@@ -8,7 +8,7 @@
 // declarationless carrier's record keeps, and the file-unit facts every
 // declaration of the carrier shares. Both survive rescans and server
 // launches and resolve against whatever the current scan holds.
-import { detailRoute, toJsonStringBody } from './detail-route';
+import { detailRoute, toJsonStringBody, type SourceSelector } from './detail-route';
 
 /**
  * The detail route for one MCP carrier. Each path segment is percent-encoded
@@ -30,8 +30,12 @@ import { detailRoute, toJsonStringBody } from './detail-route';
  * query with {@link fromJsonStringBody}, so every declared name — the
  * lone surrogate included — round-trips to its own selection.
  */
-export function mcpServerDetailRoute(sourceRelativePath: string, name: string): string {
-  return `${detailRoute('MCP', sourceRelativePath)}?server=${encodeURIComponent(
+export function mcpServerDetailRoute(
+  sourceRelativePath: string,
+  name: string,
+  source: SourceSelector = 'repository',
+): string {
+  return `${detailRoute('MCP', sourceRelativePath, source)}?server=${encodeURIComponent(
     toJsonStringBody(name),
   )}`;
 }

@@ -318,7 +318,7 @@ test('opens a listed file by its own identity into the detail route', async ({ p
   // same page: the products read the same document, so the route is the
   // file's own.
   const links = page
-    .locator('.aci-skill-row__file')
+    .locator('.aci-source-family-blocks__members > li')
     .locator('a[href$="/.claude/skills/greet/SKILL.md"]');
   await expect(links).toHaveCount(2);
   await links.first().click();
@@ -326,5 +326,7 @@ test('opens a listed file by its own identity into the detail route', async ({ p
   // list milestone proves the row links to the file's stable identity — the
   // Source-relative path — which survives rescans and same-root server
   // launches.
-  await expect(page).toHaveURL(new URL('/skills/.claude/skills/greet/SKILL.md', host.origin).href);
+  await expect(page).toHaveURL(
+    new URL('/skills/detail/repository/.claude/skills/greet/SKILL.md', host.origin).href,
+  );
 });

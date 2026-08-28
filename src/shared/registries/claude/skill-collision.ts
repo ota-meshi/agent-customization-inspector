@@ -7,9 +7,9 @@
 import {
   SkillCollisionPolicy,
   clashingSkillDirectories,
+  skillDirectoryIdentityOf,
   type SameNameCollisionDefinition,
 } from '../skill-collision';
-import { skillDirectoryOf } from '../skill-directory';
 
 /**
  * Claude Code's collision policy: a view-wide clash of skill directories,
@@ -18,16 +18,21 @@ import { skillDirectoryOf } from '../skill-directory';
 class ClaudeSkillCollisionPolicy extends SkillCollisionPolicy {
   /**
    * Claude's clash is the unqualified command — the skill directory name —
-   * shared with any other Claude-recognized skill of the view, so the gate is
-   * built from every Claude path at once and a row is involved when one of
-   * its definitions sits in a clashing directory. A row-internal count cannot
-   * see this clash: nested prefixing puts its sides on different rows.
+   * shared with any other Claude-recognized skill of the same Source in the
+   * view, so the gate is built from every Claude definition at once and a row
+   * is involved when one of its definitions sits in a clashing `(Source,
+   * directory)` identity. A row-internal count cannot see this clash: nested
+   * prefixing puts its sides on different rows. Scoped to one Source, because
+   * the quoted rule is about one root's tree — its qualifying prefix is
+   * root-relative — so a same-named directory in a consented home is another
+   * place's skill, not this clash (FR-030).
    */
   public override collisionGate(
-    viewPaths: readonly string[],
-  ): (rowPaths: readonly string[]) => boolean {
-    const clashing = clashingSkillDirectories(viewPaths);
-    return (rowPaths) => rowPaths.some((path) => clashing.has(skillDirectoryOf(path)));
+    viewDefinitions: readonly SameNameCollisionDefinition[],
+  ): (rowEvidence: readonly SameNameCollisionDefinition[]) => boolean {
+    const clashing = clashingSkillDirectories(viewDefinitions);
+    return (rowEvidence) =>
+      rowEvidence.some((definition) => clashing.has(skillDirectoryIdentityOf(definition)));
   }
 
   /**
@@ -38,10 +43,10 @@ class ClaudeSkillCollisionPolicy extends SkillCollisionPolicy {
    * `skills[]` — "Claude Code's path-derived command name stands either
    * way").
    */
-  public override collisionEvidencePaths(
+  public override collisionEvidence(
     rowDefinitions: readonly SameNameCollisionDefinition[],
-  ): readonly string[] {
-    return rowDefinitions.map((definition) => definition.sourceRelativePath);
+  ): readonly SameNameCollisionDefinition[] {
+    return rowDefinitions;
   }
 }
 

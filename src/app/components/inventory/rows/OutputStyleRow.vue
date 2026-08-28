@@ -29,8 +29,12 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
+import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
+import SourceRootLine from '../SourceRootLine.vue';
 import { detailRoute } from '../../detail-route';
+import { useSessionSources } from '../../../composables/session-sources';
 import {
+  fileIdentityKey,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
   inlinePresentationLabel,
@@ -51,6 +55,9 @@ const props = defineProps<{
   diagnostics: readonly SerializedDiagnostic[];
 }>();
 
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
+
 /**
  * The files defining this name, each with the products that recognize it. One
  * item per file rather than per definition: this kind's detail is addressed by
@@ -64,41 +71,53 @@ const props = defineProps<{
  * definitions the filter removed.
  */
 const fileRows = computed(() => {
-  const byFile = Map.groupBy(
-    props.entry.definitions,
-    (definition: OutputStyleDefinitionDto) => definition.sourceRelativePath,
+  // Grouped by the file's whole identity — Source and Source-relative Path
+  // (FR-030): a consented home's file and a same-path file elsewhere are two
+  // files however identical their spelling. U+0000 joins the halves because
+  // no Source ID contains it.
+  const byFile = Map.groupBy(props.entry.definitions, (definition: OutputStyleDefinitionDto) =>
+    fileIdentityKey(definition.sourceId, definition.sourceRelativePath),
   );
-  return [...byFile.entries()].map(([sourceRelativePath, definitions]) => ({
-    key: sourceRelativePath,
-    /**
-     * The file's path through the shared label rule rather than plain
-     * escaping ({@link pathPresentationLabel}): a name built only from
-     * whitespace or default-ignorable code points draws nothing, and this
-     * line is what says which file the definitions are of.
-     */
-    pathText: pathPresentationLabel(sourceRelativePath),
-    /**
-     * The accessible name of the link is the path, which is what the link
-     * shows. It goes through the single-line label rule instead: an
-     * accessible name is flattened, so authored whitespace the drawn label
-     * legitimately renders would collapse and two different files could
-     * announce identically (WCAG 2.4.4, FR-025).
-     */
-    pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
-    recognitions: definitions.map((definition) => ({
-      tool: definition.tool,
-      toolText: SUPPORTED_TOOL_TEXT[definition.tool],
-      surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-    })),
-    /** The file's own detail route; the path is the whole route identity (FR-030). */
-    detailRoute: detailRoute('output style', sourceRelativePath),
-    /**
-     * The extraction diagnostics this file's definitions reference,
-     * deduplicated: one extraction per `(file, kind)` means every definition
-     * of one file points at the same record (FR-028).
-     */
-    diagnosticIds: [...new Set(definitions.flatMap((definition) => definition.diagnosticIds))],
-  }));
+  return [...byFile.values()].map((definitions) => {
+    const { sourceId, sourceRelativePath } = definitions[0]!;
+    return {
+      key: fileIdentityKey(sourceId, sourceRelativePath),
+      /** The member's Source: what the family blocks and its directory line derive from. */
+      sourceId: sourceId,
+      /**
+       * The file's path through the shared label rule rather than plain
+       * escaping ({@link pathPresentationLabel}): a name built only from
+       * whitespace or default-ignorable code points draws nothing, and this
+       * line is what says which file the definitions are of.
+       */
+      pathText: pathPresentationLabel(sourceRelativePath),
+      /**
+       * The accessible name of the link is the path, which is what the link
+       * shows. It goes through the single-line label rule instead: an
+       * accessible name is flattened, so authored whitespace the drawn label
+       * legitimately renders would collapse and two different files could
+       * announce identically (WCAG 2.4.4, FR-025).
+       */
+      pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      recognitions: definitions.map((definition) => ({
+        tool: definition.tool,
+        toolText: SUPPORTED_TOOL_TEXT[definition.tool],
+        surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
+      })),
+      /** The file's own detail route; the path is the whole route identity (FR-030). */
+      detailRoute: detailRoute(
+        'output style',
+        sourceRelativePath,
+        sessionSources.selectorOf(sourceId),
+      ),
+      /**
+       * The extraction diagnostics this file's definitions reference,
+       * deduplicated: one extraction per `(file, kind)` means every definition
+       * of one file points at the same record (FR-028).
+       */
+      diagnosticIds: [...new Set(definitions.flatMap((definition) => definition.diagnosticIds))],
+    };
+  });
 });
 </script>
 
@@ -128,8 +147,10 @@ const fileRows = computed(() => {
          documented behaviors their admitting rules rest on beside each
          product. Naming a surface is never a claim that the surface applied
          the style (FR-009). -->
-    <ul class="aci-output-style-row__files" role="list">
-      <li v-for="file in fileRows" :key="file.key">
+    <!-- One block per Source family (`SourceFamilyBlocks.vue`), each member
+         rendered by this row. -->
+    <SourceFamilyBlocks :members="fileRows" :member-key="(file) => file.key">
+      <template #member="{ member: file }">
         <p class="aci-output-style-row__owner">
           <NuxtLink
             :to="file.detailRoute"
@@ -145,13 +166,15 @@ const fileRows = computed(() => {
             <span class="aci-output-style-row__surfaces">{{ recognition.surfacesText }}</span></span
           >
         </p>
+
+        <SourceRootLine :source-id="file.sourceId" />
         <!-- The file's own extraction diagnostics — its recognitions'
              reference to the kind's one shared failure record, not the file's
              aggregate, so a row reports its own kind's failure and never every
              problem its file carries (FR-028). -->
         <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
-      </li>
-    </ul>
+      </template>
+    </SourceFamilyBlocks>
   </li>
 </template>
 
@@ -161,19 +184,6 @@ const fileRows = computed(() => {
 .aci-output-style-row__name {
   font-weight: 600;
   margin: 0;
-}
-
-/* The files of the name, set under it by an indent and a rule — the layout
-   every other grouped row uses for the members of its own subject. */
-.aci-output-style-row__files {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
-}
-
-.aci-output-style-row__files > li + li {
-  margin-block-start: 0.4rem;
 }
 
 .aci-output-style-row__owner {

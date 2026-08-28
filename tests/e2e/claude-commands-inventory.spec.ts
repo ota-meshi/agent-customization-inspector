@@ -103,21 +103,21 @@ test.describe('command files under the root .claude/commands directory', () => {
     // Every row names Claude Code, at every depth: the recursion inside the
     // command directory is Claude's own.
     for (let index = 0; index < 5; index += 1) {
-      await expect(items.nth(index).locator('.aci-prompt-row__definitions')).toContainText(
+      await expect(items.nth(index).locator('.aci-source-family-blocks__members')).toContainText(
         'Claude Code',
       );
     }
     // A nested command is Claude's alone — Copilot documents no recursion —
     // so its row carries one definition naming one product.
     const nested = items.filter({ hasText: 'frontend:component' });
-    await expect(nested.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
-    await expect(nested.locator('.aci-prompt-row__definitions')).not.toContainText(
+    await expect(nested.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
+    await expect(nested.locator('.aci-source-family-blocks__members')).not.toContainText(
       'GitHub Copilot',
     );
 
     const definitionsText = await page
       .getByRole('tabpanel')
-      .locator('.aci-prompt-row__definitions')
+      .locator('.aci-source-family-blocks__members')
       .allInnerTexts();
     expect(definitionsText.join(' ')).not.toContain('OpenAI Codex');
 
@@ -140,7 +140,7 @@ test.describe('command files under the root .claude/commands directory', () => {
     const paths = await page.getByRole('tabpanel').locator('.aci-item .aci-path').allInnerTexts();
     expect(paths).toEqual(['.claude/CLAUDE.md', '.github/copilot-instructions.md']);
     const instructionsText = await page.getByRole('tabpanel').innerText();
-    expect(instructionsText).not.toContain('/prompts-and-commands/');
+    expect(instructionsText).not.toContain('/prompts-and-commands/detail/repository/');
   });
 
   test('narrows the command rows with the tool and path filters', async ({ page }) => {

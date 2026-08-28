@@ -33,11 +33,15 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
-import { detailRoute } from '../../detail-route';
+import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
+import SourceRootLine from '../SourceRootLine.vue';
+import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
+import { useSessionSources } from '../../../composables/session-sources';
 import { promptComparisonRouteFor } from '../../../composables/prompt-comparison';
 import {
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
+  fileIdentityKey,
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
@@ -49,6 +53,7 @@ import type {
   PromptDefinitionDto,
   PromptInventoryEntryDto,
   SerializedDiagnostic,
+  SourceKind,
 } from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
 
@@ -56,14 +61,18 @@ const props = defineProps<{
   /** The committed command entry to render: one name a reader invokes. */
   entry: NarrowedInventoryRow<PromptInventoryEntryDto>;
   /**
-   * The generation's files by Source-relative Path, for the read outcome
-   * this row's comparison entry depends on: a file with no readable source
-   * is not comparison-eligible (FR-025).
+   * Every published file by its Source and then its Source-relative Path —
+   * both halves of the file's identity (FR-030) — for the read outcome this
+   * row's comparison entry depends on: a file with no readable source is
+   * not comparison-eligible (FR-025).
    */
-  filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
+  filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
   /** The generation's diagnostics, resolved per definition by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
+
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
 
 /**
  * The comparison this row links to — the first two readable files that
@@ -79,18 +88,43 @@ const props = defineProps<{
  * filter left, so the link a reader followed is still there when they come
  * back to the unnarrowed list ({@link NarrowedInventoryRow}).
  */
-const compareRoute = computed(() => {
-  const readable: string[] = [];
-  for (const path of props.entry.rowFilePaths) {
-    const published = props.filesByPath.get(path);
+/**
+ * The comparable identities of this row as route sides, in the row's own
+ * order — the set no filter narrows
+ * ({@link NarrowedInventoryRow.rowFileIdentities}).
+ */
+const comparableSides = computed<readonly ComparisonSide[]>(() => {
+  // The row's own file identities — the set no filter narrows
+  // ({@link NarrowedInventoryRow.rowFileIdentities}), already one entry per
+  // file however many products invoke it (FR-030).
+  const readable: ComparisonSide[] = [];
+  for (const identity of props.entry.rowFileIdentities) {
+    const published = props.filesBySource.get(identity.sourceId)?.get(identity.sourceRelativePath);
     if (published !== undefined && isReadableFile(published)) {
-      readable.push(path);
+      readable.push({
+        source: sessionSources.selectorOf(identity.sourceId),
+        sourceRelativePath: identity.sourceRelativePath,
+      });
     }
   }
-  const [first, second] = readable;
-  return first !== undefined && second !== undefined
-    ? promptComparisonRouteFor(first, second)
-    : null;
+  return readable;
+});
+
+/**
+ * Each family block's comparison entry — that family's first two comparable
+ * identities, for the blocks that hold a pair (FR-011): a block's comparison
+ * is that family's, and a pair never spans two families
+ * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
+ * hold one member offers no entry — exactly as an instruction range's blocks
+ * do. The comparison surface's own pickers take over from there
+ * (`detail-route.ts` § familyComparisonPairsOf).
+ */
+const blockCompareRoutes = computed(() => {
+  const routes = new Map<SourceKind, ReturnType<typeof promptComparisonRouteFor>>();
+  for (const [kind, [first, second]] of familyComparisonPairsOf(comparableSides.value)) {
+    routes.set(kind, promptComparisonRouteFor(kind, first, second));
+  }
+  return routes;
 });
 
 /**
@@ -105,41 +139,53 @@ const compareRoute = computed(() => {
  * definitions the filter removed.
  */
 const fileRows = computed(() => {
-  const byFile = Map.groupBy(
-    props.entry.definitions,
-    (definition: PromptDefinitionDto) => definition.sourceRelativePath,
+  // Grouped by the file's whole identity — Source and Source-relative Path
+  // (FR-030): a consented home's file and a same-path file elsewhere are two
+  // files however identical their spelling. U+0000 joins the halves because
+  // no Source ID contains it.
+  const byFile = Map.groupBy(props.entry.definitions, (definition: PromptDefinitionDto) =>
+    fileIdentityKey(definition.sourceId, definition.sourceRelativePath),
   );
-  return [...byFile.entries()].map(([sourceRelativePath, definitions]) => ({
-    key: sourceRelativePath,
-    /**
-     * The file's path through the shared label rule rather than plain
-     * escaping ({@link pathPresentationLabel}): a name built only from
-     * whitespace or default-ignorable code points draws nothing, and this
-     * line is what says which file the definitions are of.
-     */
-    pathText: pathPresentationLabel(sourceRelativePath),
-    /**
-     * The accessible name of the link is the path, which is what the link
-     * shows. It goes through the single-line label rule instead: an
-     * accessible name is flattened, so authored whitespace the drawn label
-     * legitimately renders would collapse and two different files could
-     * announce identically (WCAG 2.4.4, FR-025).
-     */
-    pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
-    recognitions: definitions.map((definition) => ({
-      tool: definition.tool,
-      toolText: SUPPORTED_TOOL_TEXT[definition.tool],
-      surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-    })),
-    /** The file's own detail route; the path is the whole route identity (FR-030). */
-    detailRoute: detailRoute('prompt/command', sourceRelativePath),
-    /**
-     * The extraction diagnostics this file's definitions reference,
-     * deduplicated: one extraction per `(file, kind)` means every definition
-     * of one file points at the same record (FR-028).
-     */
-    diagnosticIds: [...new Set(definitions.flatMap((definition) => definition.diagnosticIds))],
-  }));
+  return [...byFile.values()].map((definitions) => {
+    const { sourceId, sourceRelativePath } = definitions[0]!;
+    return {
+      key: fileIdentityKey(sourceId, sourceRelativePath),
+      /** The file's Source: what the family blocks and its directory line derive from. */
+      sourceId,
+      /**
+       * The file's path through the shared label rule rather than plain
+       * escaping ({@link pathPresentationLabel}): a name built only from
+       * whitespace or default-ignorable code points draws nothing, and this
+       * line is what says which file the definitions are of.
+       */
+      pathText: pathPresentationLabel(sourceRelativePath),
+      /**
+       * The accessible name of the link is the path, which is what the link
+       * shows. It goes through the single-line label rule instead: an
+       * accessible name is flattened, so authored whitespace the drawn label
+       * legitimately renders would collapse and two different files could
+       * announce identically (WCAG 2.4.4, FR-025).
+       */
+      pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      recognitions: definitions.map((definition) => ({
+        tool: definition.tool,
+        toolText: SUPPORTED_TOOL_TEXT[definition.tool],
+        surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
+      })),
+      /** The file's own detail route; the path is the whole route identity (FR-030). */
+      detailRoute: detailRoute(
+        'prompt/command',
+        sourceRelativePath,
+        sessionSources.selectorOf(sourceId),
+      ),
+      /**
+       * The extraction diagnostics this file's definitions reference,
+       * deduplicated: one extraction per `(file, kind)` means every definition
+       * of one file points at the same record (FR-028).
+       */
+      diagnosticIds: [...new Set(definitions.flatMap((definition) => definition.diagnosticIds))],
+    };
+  });
 });
 </script>
 
@@ -165,13 +211,18 @@ const fileRows = computed(() => {
       >
     </p>
 
-    <!-- One item per file, each linking to that file's own detail with the
-         products that recognized it beside the path, and the surfaces of the
-         documented behaviors their admitting rules rest on beside each
-         product. Naming a surface is never a claim that the surface loaded the
-         file (FR-009). -->
-    <ul class="aci-prompt-row__definitions" role="list">
-      <li v-for="file in fileRows" :key="file.key">
+    <!-- One block per Source family that resolves the name
+         (`SourceFamilyBlocks.vue`). Within a block, one item per file, each
+         linking to that file's own detail with the products that recognized
+         it beside the path, and the surfaces of the documented behaviors
+         their admitting rules rest on beside each product. Naming a surface
+         is never a claim that the surface loaded the file (FR-009). -->
+    <SourceFamilyBlocks
+      :members="fileRows"
+      :member-key="(file) => file.key"
+      :identities="entry.rowFileIdentities"
+    >
+      <template #member="{ member: file }">
         <p class="aci-prompt-row__owner">
           <NuxtLink
             :to="file.detailRoute"
@@ -187,30 +238,34 @@ const fileRows = computed(() => {
             <span class="aci-prompt-row__surfaces">{{ recognition.surfacesText }}</span></span
           >
         </p>
+
+        <SourceRootLine :source-id="file.sourceId" />
         <!-- The file's own extraction diagnostics — its recognitions'
              reference to the kind's one shared failure record, not the file's
              aggregate, so a row reports its own kind's failure and never every
              problem its file carries (FR-028). -->
         <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
-      </li>
-    </ul>
+      </template>
 
-    <!-- The comparison entry for this name (FR-011): present exactly when
-         two of the name's files have readable source to stand opposite each
-         other — a command file and the prompt file that declares the same
-         name, above all. The comparison surface's own pickers take over from
-         there. The accessible name carries the invocation name, because a
-         reader walking the page's links hears each one out of its visual
-         context and every row offers the same wording (WCAG 2.4.4) — with the
-         visible label kept inside it, so a reader speaking what they see
-         reaches the control (WCAG 2.5.3). -->
-    <p v-if="compareRoute !== null" class="aci-prompt-row__compare">
-      <NuxtLink
-        :to="compareRoute"
-        :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}`"
-        >Compare this name's files</NuxtLink
-      >
-    </p>
+      <!-- The block's own comparison entry (FR-011): the family is where a
+           pair of this row's members lives, so each block that holds two
+           comparable identities offers its own — the instruction blocks'
+           shape. The accessible name carries the row's identity always, and
+           the family where two blocks each offer one (WCAG 2.4.6). -->
+      <template #entry="{ block }">
+        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-prompt-row__compare">
+          <NuxtLink
+            :to="blockCompareRoutes.get(block.kind)!"
+            :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}${
+              blockCompareRoutes.size > 1 && block.familyText !== null
+                ? ` (${block.familyText})`
+                : ''
+            }`"
+            >Compare this name's files</NuxtLink
+          >
+        </p>
+      </template>
+    </SourceFamilyBlocks>
   </li>
 </template>
 
@@ -219,23 +274,6 @@ const fileRows = computed(() => {
    for, and the files that resolve it follow underneath. */
 .aci-prompt-row__name {
   font-weight: 600;
-  margin: 0;
-}
-
-/* The definitions of the name, set under it by an indent and a rule, matching
-   how a skill row groups its own. */
-.aci-prompt-row__definitions {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
-}
-
-.aci-prompt-row__definitions > li + li {
-  margin-block-start: 0.35rem;
-}
-
-.aci-prompt-row__definitions p {
   margin: 0;
 }
 

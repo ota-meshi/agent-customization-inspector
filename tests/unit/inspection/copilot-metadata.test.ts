@@ -158,6 +158,7 @@ describe('Copilot skill invocation name', () => {
       'diagnosticIds',
       'parseStatus',
       'provenances',
+      'sourceId',
       'sourceRelativePath',
       'tool',
     ]);
@@ -214,6 +215,7 @@ describe('Copilot skill invocation name', () => {
         'diagnosticIds',
         'parseStatus',
         'provenances',
+        'sourceId',
         'sourceRelativePath',
         'tool',
       ]);

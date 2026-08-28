@@ -103,7 +103,7 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
       .filter({ hasText: '.claude/settings.json' })
       .getByRole('link', { name: '.claude/settings.json' })
       .click();
-    await expect(page).toHaveURL(/\/permissions\/\.claude\/settings\.json$/u);
+    await expect(page).toHaveURL(/\/permissions\/detail\/repository\/\.claude\/settings\.json$/u);
     const main = page.locator('main');
     await expect(main).toContainText('Claude Code (CLI and IDE clients) · Permissions');
 
@@ -127,7 +127,9 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
   });
 
   test('opens the other vendor’s policy as the whole document it is', async ({ page }) => {
-    await page.goto(new URL('/permissions/.codex/rules/deploy.rules', host.origin).toString());
+    await page.goto(
+      new URL('/permissions/detail/repository/.codex/rules/deploy.rules', host.origin).toString(),
+    );
     const main = page.locator('main');
     await expect(main).toContainText('OpenAI Codex (Local clients) · Permissions');
     await expect(main).toContainText('prefix_rule');

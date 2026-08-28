@@ -111,7 +111,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   // and every recognizing product's link addresses the same file detail, so
   // the first one opens it (T224).
   await page
-    .locator('.aci-instruction-row__files > li')
+    .locator('.aci-source-family-blocks__members > li')
     .filter({ has: page.getByText(path, { exact: true }) })
     .locator('.aci-instruction-row__owner a')
     .first()

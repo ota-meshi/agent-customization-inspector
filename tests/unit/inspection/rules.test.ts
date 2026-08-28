@@ -63,7 +63,10 @@ import {
   type CopilotSkillFixture,
 } from '../../fixtures/repositories/build-fixtures';
 
-import { CODEX_REPOSITORY_RULES } from '../../../src/server/inspection/rules/codex';
+import {
+  CODEX_AGENTS_HOME_RULES,
+  CODEX_REPOSITORY_RULES,
+} from '../../../src/server/inspection/rules/codex';
 import { CODEX_DERIVED_FALLBACK_RULE } from '../../../src/server/inspection/rules/instructions/codex';
 import { CodexCompiledPluginCatalogRule } from '../../../src/server/inspection/rules/plugins/codex';
 import {
@@ -188,6 +191,7 @@ describe('the bounded companion census', () => {
       sourceId: 'src-1',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -231,6 +235,7 @@ describe('the bounded companion census', () => {
       sourceId: 'src-1',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -1009,9 +1014,11 @@ describe('the anchored Codex hook carriers (T835)', () => {
     )!;
     expect(inline.kind).toBe('hook');
     expect(inline).toBeInstanceOf(CodexCompiledInlineHookRule);
-    // The same authored location as the carrier rule's, not a second spelling
-    // of it: a matcher written twice is one that can drift.
-    expect(INSPECTION_RULES['codex.repo.hooks.inline']!.matcher).toBe(
+    // Deliberately the same authored location written twice — each record
+    // spells its matcher inline (AGENTS.md § Implementation simplicity
+    // policy) — so value equality is the drift gate: it fails exactly when
+    // one spelling changes without the other being decided too.
+    expect(INSPECTION_RULES['codex.repo.hooks.inline']!.matcher).toStrictEqual(
       INSPECTION_RULES['codex.repo.config']!.matcher,
     );
     // Scanned alone, the rule admits exactly the root layer: no descendant, no
@@ -1221,6 +1228,7 @@ describe('the direct-child Codex rule inventory (T409)', () => {
       sourceId: 'src-rules',
       root: ruleFixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -1498,6 +1506,44 @@ describe('the shipped Codex plugin plans (T753)', () => {
     // publishes: the vendor's token is not what a reader is shown
     // (`api-types.ts` § PluginSourceForm).
     expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'repository-directory',
+      'repository-directory',
+    ]);
+  });
+
+  it('publishes the personal catalog as declarations alone, with no plugin root', () => {
+    // The contracted read below the shared agent home is the catalog file
+    // itself: "the plugins it names … stay excluded exactly as Repository
+    // plugin bodies are" (contracts/vendors/openai-codex.md § Inspector
+    // Global rule), so the personal marketplace publishes its declarations
+    // and no local source yields a directory for the census — the vendor's
+    // own documented spelling, a home-relative `.agents` one, and a
+    // Source-root-looking one alike (FR-018, FR-045;
+    // contracts/http-api.md § get-plugin-carrier-detail).
+    const catalog = CODEX_AGENTS_HOME_RULES.find(
+      (candidate) => candidate.rule.ruleId === 'codex.global.agents-home.marketplace',
+    )!;
+    if (!(catalog instanceof CodexCompiledPluginCatalogRule)) {
+      throw new Error('the personal catalog rule compiles into the Codex catalog unit');
+    }
+    const sourceText = JSON.stringify({
+      name: 'personal',
+      plugins: [
+        { name: 'inside', source: './.agents/plugins/inside' },
+        { name: 'documented', source: './.codex/plugins/documented' },
+        { name: 'beside', source: './team-tools' },
+      ],
+    });
+    const reading = catalog.pluginCarrierReadingOf(sourceText, 'plugins/marketplace.json');
+    expect(reading.plugins.map((plugin) => [plugin.name, plugin.pluginRoot])).toEqual([
+      ['inside@personal', null],
+      ['documented@personal', null],
+      ['beside@personal', null],
+    ]);
+    // The declarations still classify: a documented local spelling is a local
+    // directory, not an unrecognized source.
+    expect(reading.plugins.map((plugin) => plugin.sourceForm)).toEqual([
+      'repository-directory',
       'repository-directory',
       'repository-directory',
     ]);
@@ -2096,6 +2142,7 @@ describe('the direct-child Claude output-style inventory (T660)', () => {
       sourceId: 'src-claude-output-styles',
       root: styleFixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -2118,6 +2165,7 @@ describe('the direct-child Claude output-style inventory (T660)', () => {
       sourceId: 'src-claude-output-styles',
       root: styleFixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -2143,6 +2191,7 @@ describe('the direct-child Claude output-style inventory (T660)', () => {
       sourceId: 'src-claude-output-styles',
       root: styleFixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -2231,6 +2280,7 @@ describe('the recursive Claude rule inventory (T426)', () => {
       sourceId: 'src-claude-rules',
       root: ruleFixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -2674,16 +2724,20 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
     }
   });
 
-  it('ships MCP candidacy only through the five explicit carrier rules', () => {
+  it('ships MCP candidacy only through the seven explicit carrier rules', () => {
     // Zero candidate rules from contained or runtime MCP facts: the closed
-    // MCP rule set is the explicit carriers'.
+    // MCP rule set is the explicit carriers' — five Repository documents and
+    // the two consented user carriers, Copilot's `mcp-config.json` (FR-015)
+    // and Codex's `config.toml` (FR-017).
     const mcpRuleIds = Object.values(INSPECTION_RULES)
       .filter((rule) => rule.kind === 'MCP' && rule.discoveryClass === 'static-candidate')
       .map((rule) => rule.ruleId)
       .toSorted();
     expect(mcpRuleIds).toEqual([
       'claude.repo.mcp',
+      'codex.global.config',
       'codex.repo.config',
+      'copilot.global.mcp',
       'copilot.repo.mcp',
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
@@ -3241,6 +3295,7 @@ describe('the root-anchored Claude command inventory (T442)', () => {
       sourceId: 'src-commands',
       root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -3514,7 +3569,11 @@ describe('the root Claude settings inventory (T603)', () => {
         { kind: 'literal', value: 'settings.local.json' },
       ],
     ]);
-    expect(INSPECTION_RULES['claude.repo.settings']!.matcher).toBe(
+    // Deliberately the same authored location written twice — each record
+    // spells its matcher inline (AGENTS.md § Implementation simplicity
+    // policy) — so value equality is the drift gate: it fails exactly when
+    // one spelling changes without the other being decided too.
+    expect(INSPECTION_RULES['claude.repo.settings']!.matcher).toStrictEqual(
       INSPECTION_RULES['claude.repo.permissions']!.matcher,
     );
   });
@@ -3569,6 +3628,7 @@ describe('the root Claude permission-policy inventory (T1107)', () => {
       sourceId: 'src-permissions',
       root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -3786,6 +3846,7 @@ describe('the root-anchored Codex custom-agent inventory (T509)', () => {
       sourceId: 'src-agents',
       root: agentFixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -3914,6 +3975,7 @@ describe('the root-anchored Claude subagent inventory (T529)', () => {
       sourceId: 'src-claude-agents',
       root: claudeAgents.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4012,6 +4074,7 @@ describe('the root-anchored Copilot custom-agent inventory (T548)', () => {
       sourceId: 'src-copilot-agents',
       root: copilotAgents.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4053,6 +4116,7 @@ describe('the root-anchored Copilot custom-agent inventory (T548)', () => {
       sourceId: 'src-copilot-agents-shared',
       root: copilotAgents.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4076,6 +4140,7 @@ describe('the root-anchored Copilot custom-agent inventory (T548)', () => {
       sourceId: 'src-copilot-agents-mcp',
       root: copilotAgents.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4169,6 +4234,7 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
       sourceId: 'src-all-kinds-agents',
       root: allKinds.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4200,6 +4266,7 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
       sourceId: 'src-all-kinds-agents-mcp',
       root: allKinds.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4225,6 +4292,7 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
       sourceId: 'src-all-kinds-agents-names',
       root: allKinds.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4260,6 +4328,7 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
       sourceId: 'src-all-kinds-agents-reads',
       root: allKinds.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
@@ -4415,13 +4484,15 @@ describe('the anchored Copilot hook carriers (T880)', () => {
     expect(inline.events.map((event) => event.event)).toEqual(['PreToolUse']);
     expect(Object.keys(inline)).not.toContain('carrierFields');
     // Which carriers this vendor reads leniently is the parsing seam's answer
-    // for the `(tool, path)`: its hook files, whose editor reading parses
-    // JSONC, and the cross-tool pair as that same surface parses it.
+    // for the `(tool, path)`: its hook files — the workspace directory and
+    // the consented `COPILOT_HOME` one, both of whose editor reading parses
+    // JSONC — and the cross-tool pair as that same surface parses it.
     for (const [source, path, expected] of [
       ['{ // draft\n "hooks": { "preToolUse": [] } }', '.github/hooks/draft.json', ['preToolUse']],
+      ['{ // personal\n "hooks": { "postToolUse": [] } }', 'hooks/format.json', ['postToolUse']],
       ['{ /* shared */ "hooks": { "PreToolUse": [] } }', '.claude/settings.json', ['PreToolUse']],
     ] as const) {
-      const unit = path.startsWith('.github/hooks/') ? standalone : contained;
+      const unit = path.startsWith('.claude/') ? contained : standalone;
       expect(
         unit.hookCarrierReadingOf(source, path).events.map((event) => event.event),
         path,

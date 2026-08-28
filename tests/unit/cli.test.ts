@@ -5,8 +5,9 @@
 // host, the one captured `process.cwd()`, purely lexical absolute and
 // relative resolution, zero selection I/O and no `process.chdir()`, fixed
 // actionable rejection of an empty option value and of operands, strict
-// unknown-option rejection, non-binding help/version, and the single
-// loopback launch line.
+// unknown-option rejection, non-binding help/version, the single loopback
+// launch line, and the `--inspect-personal-setup` confirmation — absent by
+// default, and awaited before that launch line when it is given.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resolve } from 'node:path';
@@ -20,6 +21,7 @@ const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(CAPTURED_CWD);
 vi.mock('../../src/server/host/devframe-app', () => ({
   startInspectorHost: vi.fn(),
   executeRepositoryScan: vi.fn(),
+  runGlobalEnable: vi.fn(),
 }));
 
 // The machine this suite runs on is not consulted for the applications a
@@ -39,7 +41,7 @@ vi.mock('../../src/server/host/file-opener', () => ({
   },
 }));
 
-const { executeRepositoryScan, startInspectorHost } =
+const { executeRepositoryScan, runGlobalEnable, startInspectorHost } =
   await import('../../src/server/host/devframe-app');
 const { runInspectorCli } = await import('../../src/server/cli');
 
@@ -77,6 +79,13 @@ beforeEach(() => {
   };
   vi.mocked(executeRepositoryScan).mockReset();
   vi.mocked(executeRepositoryScan).mockResolvedValue(undefined);
+  vi.mocked(runGlobalEnable).mockReset();
+  vi.mocked(runGlobalEnable).mockResolvedValue({
+    state: 'queued',
+    scanRequestId: 'scan-1',
+    acceptedTools: ['codex'],
+    rejectedTools: [],
+  });
   startHost.mockReset();
   closeHost = vi.fn().mockResolvedValue(undefined);
   startHost.mockImplementation(async (options) => {
@@ -304,6 +313,57 @@ describe('automatic first scan', () => {
     expect(startHost).not.toHaveBeenCalled();
     expect(logSpy).not.toHaveBeenCalled();
     expect(closeHost).not.toHaveBeenCalled();
+  });
+});
+
+describe('personal-setup consent', () => {
+  it('confirms nothing and captures no preview without the flag', async () => {
+    await runInspectorCli(['--no-open']);
+    // The default is a session that has read nothing outside the repository
+    // (FR-013): no confirmation was made, and the consent page the host serves
+    // offers to work the directories out rather than showing a preview nobody
+    // asked for.
+    expect(runGlobalEnable).not.toHaveBeenCalled();
+    expect(startHost.mock.calls[0]?.[0].consent?.current() ?? null).toBeNull();
+  });
+
+  it('confirms the captured preview and waits for its batch before the launch line', async () => {
+    const order: string[] = [];
+    vi.mocked(runGlobalEnable).mockImplementationOnce(async () => {
+      // Settled on a later task, not a later microtask: an async function runs
+      // synchronously to its first await, so a mock that pushed immediately
+      // would record the same order whether the CLI awaited the confirmation
+      // or dropped it — the assertion below would hold for a run that printed
+      // the launch line with no Global generation committed.
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+      order.push('global-committed');
+      return {
+        state: 'queued',
+        scanRequestId: 'scan-1',
+        acceptedTools: ['codex'],
+        rejectedTools: [],
+      };
+    });
+    logSpy.mockImplementation(() => {
+      order.push('launch-line');
+    });
+
+    await runInspectorCli(['--no-open', '--inspect-personal-setup']);
+
+    // The flag is the confirmation, and it is awaited for the reason the
+    // Repository scan is: the launch line prints with both generations
+    // committed, so the SPA's one initial fetch already carries the Global
+    // Source.
+    expect(order).toEqual(['global-committed', 'launch-line']);
+    expect(runGlobalEnable).toHaveBeenCalledTimes(1);
+    const [, preview, options] = vi.mocked(runGlobalEnable).mock.calls[0]!;
+    expect(options).toEqual({ waitForBatch: true });
+    // What was confirmed is what the host now serves: the same preview, on the
+    // same consent domain, so the consent page states the active consent
+    // instead of offering a second capture.
+    expect(startHost.mock.calls[0]?.[0].consent?.current()).toBe(preview);
   });
 });
 

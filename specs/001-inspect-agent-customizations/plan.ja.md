@@ -163,7 +163,10 @@ compatibility/support window、rollback/support pathを含めるか、理由付�
 
 `src/server/cli.ts`はGunshiのstableなroot `define`/`cli` APIだけを使用する。Negatableな`open` booleanを
 default trueとして定義して`--no-open`を提供し、単一のstring-valued `root` optionで`--root <path>`を、
-number-valuedな`port` optionで`--port <number>`を提供する。
+number-valuedな`port` optionで`--port <number>`を提供し、false-defaultの
+`inspect-personal-setup` booleanを提供する。後者の存在自体がconsentのconfirmationであり、
+entryはpreviewをcaptureして確認し、hostの起動前にcommit済みのGlobal generationをawaitする。
+自動Repository scanをawaitするのと同じ形である（FR-013）。
 `strict: true`を有効にし、bind前にすべてのpositional/rest argumentを明示的に拒否し、`cli()`をawaitし、
 parser所有のvalidation `AggregateError`を通常どおりnonzeroのprocess exitへ伝播させる。Session作成前に
 `process.cwd()`を正確に1回captureし、明示的なempty valueの`--root`はsession作成またはbrowser起動より前に
@@ -683,7 +686,7 @@ file-scope `Diagnostic` DTOは、actionableなlocationとして必要最小限�
 
 **規模・scope**: ローカルuser 1人、選択済みRepository root（defaultでは1回captureしたexact invocation
 `process.cwd()`、またはaccepted single `--root` value）をrootとするRepository sourceを正確に1つ、session-wideな
-all-tools opt-in 1回から作るadmit済みのtool別Global sourceを0から3つ（Copilot、Claude、Codexごとに最大1つ）、Sourceごとにrootを正確に1つ、
+all-members opt-in 1回から作るadmit済みのmember Global sourceを0から4つ（Copilot、Claude、Codex、共有agent homeごとに最大1つ）、Sourceごとにrootを正確に1つ、
 comparison内は異なるreadableなカスタマイズファイル最大2件、または明示された不在の対応物に対して表示する1件。Inventory sizeはproduct定義のitem上限ではなくsupported runtimeと
 execution environmentによって決まる。
 
@@ -854,8 +857,8 @@ src/
 │   ├── pages/
 │   │   ├── index.vue
 │   │   ├── global-consent.vue
-│   │   ├── skills/compare.vue
-│   │   └── skills/[...path].vue
+│   │   ├── skills/compare/[family].vue
+│   │   └── skills/detail/[source]/[...path].vue
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -983,7 +986,7 @@ LICENSE
 使用する。NuxtはSPA（`ssr: false`）とし、static Nitro preset、`app.baseURL: '/'`、
 `app.buildAssetsDir: '/_nuxt/'`、CDN URLなし、明示的importを使い、component auto-discoveryを無効にする。
 これにより全nested client routeが同じroot-absolute same-origin asset URLをresolveする。Detail routeは、それが表示する
-認識済みkindに属する。`/skills/<SKILL.mdのSource相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
+認識済みkindに属する。`/skills/detail/<source>/<SKILL.mdのSource相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
 指示、directoryであり、別kindのdetailは別のlayoutで別の問いに答える。そのdirectoryのどのfileを読んでいるかは
 addressの傍らの`file` queryであり、主題はpageが記述するcustomizationのままとなる。出荷中のinspection ruleはすべて`skill`を認識するため
 detail routeはこの1つであり、2つ目のkindを認識するphaseがそのkindのrouteとpageを併せて追加する。`src/server/cli.ts` entryは
@@ -1382,7 +1385,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   `retryDisposition: same-preview`の`rejected` controlで構成するfixed-order `retryableTools` projection全体をserver側でderiveする。
   Published、pending、lexicalな`new-preview-required` controlを除外し、requestはtargetを追加、omit、reorderできない。
   Admissionはserver所有のsetを、決定的なrejected subsetと
-  0〜3件のrootからなるadmitted subsetへpartitionする。Lexicalにinvalidなentry、またはmissingか
+  0〜4件のrootからなるadmitted subsetへpartitionする。Lexicalにinvalidなentry、またはmissingか
   readableなdirectoryでないconsent済みrootはそのrootだけを除外し（closed admission outcomeに従って
   absentまたはfailedとして記録する）、admit可能なsiblingを続行させる。それ以外のunexpectedなthrowまたは
   rejectionは通常のerrorとしてattemptをfailさせ、enable/retry transaction全体を
@@ -1462,7 +1465,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Generation 0は、capture済みの呼び出しworking directoryとoptionalな`--root`からlexicalに選択したexact 1つのidleな
   Repository Sourceを持ち、file/diagnosticを持たないcommit済みzero-I/O bootstrap snapshotとし、初回fatal attemptでもlegalな
   retained current baseを持つ。明示Repository rescan、enabled-Global single-Source rescan、Global batchは同じqueue ruleを使う。
-  Global disableの再要求は既存barrierへjoinし、tool固有Global Source/graph、active consent record、retained admitted Global
+  Global disableの再要求は既存barrierへjoinし、member Global Source/graph、active consent record、retained admitted Global
   root context、running/queued Global scan/enable command、retained disable failureが何もない場合は、
   無関係なRepository workの有無にかかわらず即時no-opとする。No-op分岐はfilesystemをenumerate/readせず、jobを作成せず、generation、epoch、fenceを変更しない。
 
@@ -1478,7 +1481,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
 | それ以外でactive-platform `node:path.isAbsolute`がfalseを返す | `inputState: relative` / `preview-invalid` | Filesystem/network I/O 0件でrelative preview entryを保持し、normalize、resolve、fallback、authority作成を行わない |
 | それ以外（通常のhome外を含むabsolute string） | `inputState: eligible` / `preview-eligible` | 保存するexact raw lexical valueをfilesystem/network I/Oなしでescapeしてserver保持preview recordに保持し、fixed three-entry confirmationに保持して1回のall-tools consent actionを待つ。このrowだけがconsent後admissionへ進める |
 | Consentがstale、replayed、またはsupersededな`previewId`を指名 | `consent-rejected` | Proposed-root I/Oを行わず、authorityを作らない |
-| Consent済みrootがmissing、またはreadableなdirectoryでない | `absent`または`root-rejected` | そのSourceを作らず、sibling toolをblockせずにそのtoolをabsentまたはfailedとして記録する。initialでは全3 tool、retryではexact `retryableTools`というcurrent server-owned setのpartitionを続行する |
+| Consent済みrootがmissing、またはreadableなdirectoryでない | `absent`または`root-rejected` | そのSourceを作らず、sibling memberをblockせずにそのmemberをabsentまたはfailedとして記録する。initialでは全3 tool、retryではexact `retryableTools`というcurrent server-owned setのpartitionを続行する |
 | Proposed-root operationがunexpectedにthrowまたはreject | 通常のerror propagation | Global transaction全体をabortし、全provisional sibling context/resultを破棄し、admitted subsetを一切publishせず以前のsnapshotを保持する |
 | 1件以上のrootでconsent後admissionが成功 | `root-admitted` batch subset | 全admitted context/IDを各controlへatomicにattachし、一緒に1つの`GlobalBatchScan`へtransferして、その1回のatomic commit前にpublic Source/graphを作らない |
 

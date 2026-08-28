@@ -38,11 +38,13 @@ import {
   buildCopilotInstructionFixture,
   buildCopilotSkillFixture,
   buildCopilotVscodeMcpFixture,
+  buildCrossSourceGroupFixture,
   buildPriorityMcpFixture,
   buildPluginComparisonFixture,
   buildUnifiedHookFixture,
   buildUnifiedPluginFixture,
 } from '../tests/fixtures/repositories/build-fixtures.ts';
+import { buildGlobalHomeFixture } from '../tests/fixtures/global-homes/build-fixtures.ts';
 
 /** The repository root, one directory above this script. */
 const repositoryRoot = join(import.meta.dirname, '..');
@@ -96,6 +98,10 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   // One marketplace kept in two catalogs, drifted: what the plugin
   // comparison surface is for.
   'plugin-comparison': buildPluginComparisonFixture,
+  // Each comparing kind's group name spelled twice here and twice in the
+  // Global homes below, so with the personal setup enabled every such row
+  // shows one comparison entry per family block.
+  'cross-source': buildCrossSourceGroupFixture,
   commands: buildCommandFixture,
   'codex-mcp': buildCodexMcpFixture,
   'claude-mcp': buildClaudeMcpFixture,
@@ -110,9 +116,15 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   all: buildAllCustomizationKindFixture,
 };
 
-const requestedName = process.argv[2] ?? 'all';
-// Everything after the fixture name goes to the CLI verbatim (e.g. --no-open).
-const cliArguments = process.argv.slice(3);
+// The fixture name is the first operand, and it stays optional: an argument
+// that opens with `-` is one of the CLI's own options, so
+// `pnpm run start:fixture --inspect-personal-setup` serves the default tree
+// with that option rather than looking for a fixture by that name.
+const operands = process.argv.slice(2);
+const namesFixture = operands.length > 0 && !operands[0]!.startsWith('-');
+const requestedName = namesFixture ? operands[0]! : 'all';
+// Everything else goes to the CLI verbatim (e.g. --no-open, --port 0).
+const cliArguments = namesFixture ? operands.slice(1) : operands;
 
 const builder = fixtureBuilders[requestedName];
 if (builder === undefined) {
@@ -134,9 +146,31 @@ mkdirSync(fixtureRoot, { recursive: true });
 builder(undefined, fixtureRoot);
 
 console.log(`fixture: ${fixtureRoot}`);
+
+// The Global homes the consent preview names. They are built beside the
+// repository tree and pointed at through the environment, because that is the
+// product's only input for them: the consent page reads `COPILOT_HOME`,
+// `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` for the three tool members, and
+// derives the shared agent home `~/.agents` from the home directory itself —
+// which is why the fixture's environment also carries `HOME`, pointing the
+// derivation into the built tree (FR-013, FR-045).
+//
+// Built for every launch rather than for a fixture of its own, so the consent
+// page is reviewable from any tree — and pointed at real directories holding
+// real customization files and real neighbouring state, so what the preview
+// proposes is something a reader can open in another window and check. Nothing
+// under them is read before consent; that they stay untouched is what the
+// consent suites assert.
+const globalHomeRoot = join(fixtureBase, 'global-homes');
+rmSync(globalHomeRoot, { recursive: true, force: true });
+mkdirSync(globalHomeRoot, { recursive: true });
+const globalHomes = buildGlobalHomeFixture(undefined, globalHomeRoot);
+console.log(`global homes: ${globalHomes.base}`);
+
 // The CLI owns the terminal from here: it prints its launch line and serves
 // until interrupted. Ctrl+C reaches both processes in the foreground group.
 const served = spawnSync(process.execPath, [cliEntry, '--root', fixtureRoot, ...cliArguments], {
   stdio: 'inherit',
+  env: { ...process.env, ...globalHomes.environment },
 });
 process.exitCode = served.status ?? 1;

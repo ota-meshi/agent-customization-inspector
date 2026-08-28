@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest';
 
 import { RUNTIME_COMPOSITION_STRATEGIES } from '../../src/shared/registries/runtime-composition';
 import { INSPECTION_RULES } from '../../src/shared/registries/inspection-rules';
+import type { RuleId } from '../../src/shared/registries/identifier-types';
 import { VENDOR_BEHAVIOR_STATEMENTS } from '../../src/shared/registries/vendor-behaviors';
 import { RULE_RELATIONS, STRATEGY_RELATIONS } from '../../src/shared/registries/relations';
 
@@ -394,11 +395,16 @@ describe('the Copilot prompt composition graph (T497)', () => {
     expect(INSPECTION_RULES['copilot.repo.prompt'].precedenceGroup).toBeNull();
   });
 
-  it('keeps the User prompt scope a statement no rule rests on', () => {
+  it('keeps the User prompt scope a statement no candidate rests on', () => {
     // The profile scope is documented and unread: it exists as a maintained
-    // record, and no shipped rule may name it as its basis (FR-016, FR-018).
+    // record, and the one record naming it is the non-read User exclusion
+    // whose scope statement it is (FR-015, FR-018) — no rule that could
+    // authorize a read may name it as its basis.
     expect(VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.vscode.user.prompts']).toBeDefined();
-    for (const relations of Object.values(RULE_RELATIONS)) {
+    for (const [ruleId, relations] of Object.entries(RULE_RELATIONS)) {
+      if (INSPECTION_RULES[ruleId as RuleId].discoveryClass === 'excluded') {
+        continue;
+      }
       expect(relations.basedOnBehaviors.map((behavior) => behavior.behaviorId)).not.toContain(
         'copilot.behavior.vscode.user.prompts',
       );
@@ -648,21 +654,35 @@ describe('the Claude custom-agent composition strategies (T540)', () => {
     expect(INSPECTION_RULES['claude.repo.agent'].precedenceGroup).toBeNull();
   });
 
-  it('keeps the memory scopes composition-only, with no rule of their own', () => {
-    // The three memory behaviors exist so the context strategy can name what
-    // it composes. None of them is `basedOnBehaviors` of any rule, which is
-    // what keeps a running subagent's accumulated notes out of the read
-    // allowlist entirely (contracts/vendors/claude-code.md § Repository vendor
-    // behavior).
+  it('keeps the memory scopes composition-only, with no candidate rule of their own', () => {
+    // The four memory behaviors exist so the context strategy can name what it
+    // composes. None of them is `basedOnBehaviors` of any rule that admits
+    // anything, which is what keeps a running subagent's accumulated notes out
+    // of the read allowlist entirely (contracts/vendors/claude-code.md
+    // § Repository vendor behavior).
+    //
+    // An `excluded` rule may rest on them, and `claude.excluded.user-runtime`
+    // does: the consent boundary has to state what it leaves out, and the two
+    // User memory scopes are among the surfaces a reader's configuration
+    // directory holds beside the one admitted file
+    // (contracts/vendors/claude-code.md § Derived and excluded rules). Resting
+    // on a behavior is how an exclusion names it; what it never does is make it
+    // readable.
     const memoryBehaviors = [
       'claude.behavior.repo.agent-memory.local',
       'claude.behavior.repo.agent-memory.project',
       'claude.behavior.user.agent-memory',
       'claude.behavior.user.auto-memory',
     ];
-    for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
-      for (const behavior of edges.basedOnBehaviors) {
-        expect(memoryBehaviors, `${ruleId} rests on ${behavior.behaviorId}`).not.toContain(
+    // Walked from the rules rather than from the edges, so the `ruleId` the
+    // lookup uses is the registry's own typed key and nothing is asserted about
+    // a string.
+    for (const rule of Object.values(INSPECTION_RULES)) {
+      if (rule.discoveryClass === 'excluded') {
+        continue;
+      }
+      for (const behavior of RULE_RELATIONS[rule.ruleId].basedOnBehaviors) {
+        expect(memoryBehaviors, `${rule.ruleId} rests on ${behavior.behaviorId}`).not.toContain(
           behavior.behaviorId,
         );
       }
@@ -1540,13 +1560,14 @@ describe('the Copilot Cloud MCP composition strategy (T379)', () => {
     expect(consumed).toEqual(['copilot.behavior.cloud.mcp']);
     expect(
       Object.entries(RULE_RELATIONS).filter(
-        ([, edges]) =>
-          edges.explainedByStrategies.some(
+        ([ruleId, edges]) =>
+          INSPECTION_RULES[ruleId as RuleId].discoveryClass !== 'excluded' &&
+          (edges.explainedByStrategies.some(
             (strategy) => strategy.strategyId === 'copilot.cloud.mcp.selection',
           ) ||
-          edges.basedOnBehaviors.some(
-            (behavior) => behavior.behaviorId === 'copilot.behavior.cloud.mcp',
-          ),
+            edges.basedOnBehaviors.some(
+              (behavior) => behavior.behaviorId === 'copilot.behavior.cloud.mcp',
+            )),
       ),
     ).toEqual([]);
   });
@@ -1841,8 +1862,13 @@ describe('the Copilot custom-agent composition strategies (T559)', () => {
     // `copilot.behavior.cloud.organization-agents` exists so the Cloud
     // selection can name what it composes. It has no origin file anywhere —
     // an organization profile lives outside every inspected Source — so no
-    // rule may rest on it (contracts/vendors/github-copilot.md).
+    // rule that could authorize a read may rest on it; the shared
+    // managed-remote exclusion names it as scope it declines
+    // (contracts/vendors/github-copilot.md).
     for (const [ruleId, edges] of Object.entries(RULE_RELATIONS)) {
+      if (INSPECTION_RULES[ruleId as RuleId].discoveryClass === 'excluded') {
+        continue;
+      }
       for (const behavior of edges.basedOnBehaviors) {
         expect(behavior.behaviorId, `${ruleId} rests on ${behavior.behaviorId}`).not.toBe(
           'copilot.behavior.cloud.organization-agents',
@@ -2019,21 +2045,82 @@ describe('the Copilot hook composition graph (T892)', () => {
     }
   });
 
-  it('keeps the User hook scopes statements no rule rests on', () => {
-    // Both User scopes are consumed by their surface's composition and
-    // authorize nothing: FR-015 through FR-018 admit only the two Copilot
-    // Global instruction rules, and `copilot.excluded.user-runtime` is what
-    // records that omission.
-    for (const behaviorId of [
-      'copilot.behavior.vscode.user.hooks',
-      'copilot.behavior.cli.user.hooks',
-    ] as const) {
-      expect(VENDOR_BEHAVIOR_STATEMENTS[behaviorId].locator?.vendorScope).toBe('user');
-      for (const relations of Object.values(RULE_RELATIONS)) {
-        expect(
+  it('bases the User hook scopes on exactly the consented member rules', () => {
+    // Both User scopes are consumed by their surface's composition, and the
+    // rules resting on them are the consented member ones alone (FR-015): the
+    // standalone `hooks/*.json` rule for both surfaces, the inline
+    // settings-hooks rule for the CLI's own document, and the User exclusion
+    // whose scope statement covers their profile and cross-home locations.
+    const restingOn = (behaviorId: string): string[] =>
+      Object.entries(RULE_RELATIONS)
+        .filter(([, relations]) =>
           relations.basedOnBehaviors.some((behavior) => behavior.behaviorId === behaviorId),
-          behaviorId,
-        ).toBe(false);
+        )
+        .map(([ruleId]) => ruleId)
+        .toSorted();
+    expect(VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.cli.user.hooks'].locator?.vendorScope).toBe(
+      'user',
+    );
+    expect(
+      VENDOR_BEHAVIOR_STATEMENTS['copilot.behavior.vscode.user.hooks'].locator?.vendorScope,
+    ).toBe('user');
+    expect(restingOn('copilot.behavior.cli.user.hooks')).toEqual([
+      'copilot.global.hooks',
+      'copilot.global.hooks.inline',
+    ]);
+    expect(restingOn('copilot.behavior.vscode.user.hooks')).toEqual([
+      'copilot.excluded.user-runtime',
+      'copilot.global.hooks',
+    ]);
+  });
+});
+
+describe('the composition subgraph this release owns (T920)', () => {
+  const strategies = Object.values(RUNTIME_COMPOSITION_STRATEGIES);
+
+  it('gives every strategy a documented pipeline and a vendor to own it', () => {
+    // A strategy explains a documented order, so it needs operations to
+    // explain it with and the vendor whose product performs them. An empty
+    // pipeline would be a strategy asserting an order it never states.
+    for (const strategy of strategies) {
+      expect(strategy.operations.length, strategy.strategyId).toBeGreaterThan(0);
+      expect(strategy.strategyId.startsWith(`${strategy.tool}.`), strategy.strategyId).toBe(true);
+    }
+  });
+
+  it('resolves every strategy edge to the shipped behavior, by identity', () => {
+    // The same identity rule the rule edges follow: the graph holds records,
+    // so an equal-looking copy is a second record rather than the same one.
+    for (const strategy of strategies) {
+      for (const behavior of STRATEGY_RELATIONS[strategy.strategyId].consumesBehaviors) {
+        expect(VENDOR_BEHAVIOR_STATEMENTS[behavior.behaviorId], strategy.strategyId).toBe(behavior);
+        // A strategy composes its own vendor's behaviors: a cross-vendor edge
+        // would make one product's documented order rest on another's.
+        expect(behavior.behaviorId.startsWith(`${strategy.tool}.`), strategy.strategyId).toBe(true);
+      }
+    }
+  });
+
+  it('keeps every rule that names a strategy inside that strategy’s own vendor', () => {
+    // A rule is one product's read decision, and the order it is explained by
+    // is that same product's documented composition.
+    for (const rule of Object.values(INSPECTION_RULES)) {
+      for (const strategy of RULE_RELATIONS[rule.ruleId].explainedByStrategies) {
+        expect(strategy.tool, rule.ruleId).toBe(rule.tool);
+      }
+    }
+  });
+
+  it('records what established every strategy, and nothing it would run', () => {
+    // Maintenance data: a composition statement is a paraphrase of a vendor
+    // page, so it carries the citation that establishes it — and never a
+    // command, a path to execute, or anything else that would make the
+    // statement an instruction (FR-020).
+    for (const strategy of strategies) {
+      expect(strategy.evidence.length, strategy.strategyId).toBeGreaterThan(0);
+      for (const citation of strategy.evidence) {
+        expect(citation.url.startsWith('https://'), strategy.strategyId).toBe(true);
+        expect(citation.reviewedOn, strategy.strategyId).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
       }
     }
   });

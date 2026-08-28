@@ -97,7 +97,7 @@ async function openCompanionComparison(page: import('@playwright/test').Page): P
     .filter({ hasText: CLAUDE_SKILL })
     .getByRole('link', { name: "Compare this skill's files" })
     .click();
-  await page.waitForURL(/\/skills\/compare\?/u);
+  await page.waitForURL(/\/skills\/compare\/repository\?/u);
   await page.getByRole('combobox', { name: 'Compared file' }).selectOption('agents/openai.yaml');
 }
 
@@ -159,7 +159,7 @@ test('shows authored sensitive values unchanged, with no masking or reveal contr
 test('offers the same comparison entry from the skill detail page', async ({ page }) => {
   await page.goto(host.origin);
   await page
-    .locator('.aci-skill-row__file', { hasText: AGENTS_SKILL })
+    .locator('.aci-source-family-blocks__members > li', { hasText: AGENTS_SKILL })
     .locator('.aci-skill-row__owner a')
     .first()
     .click();
@@ -167,7 +167,7 @@ test('offers the same comparison entry from the skill detail page', async ({ pag
   // the detail page carries the same link the row does, beside the
   // definition line.
   await page.getByRole('link', { name: "Compare this skill's files" }).click();
-  await page.waitForURL(/\/skills\/compare\?/u);
+  await page.waitForURL(/\/skills\/compare\/repository\?/u);
   await expect(page.locator('.aci-skill-compare h2')).toHaveText('Compare skill files');
   await expect(page.locator('.aci-skill-compare__file-path')).toHaveText([
     AGENTS_SKILL,
@@ -195,7 +195,7 @@ test('is operable from the keyboard alone', async ({ page }) => {
     .getByRole('link', { name: "Compare this skill's files" });
   expect(await tabUntilFocused(page, compareLink)).toBe(true);
   await page.keyboard.press('Enter');
-  await page.waitForURL(/\/skills\/compare\?/u);
+  await page.waitForURL(/\/skills\/compare\/repository\?/u);
   await expect(page.locator('.aci-skill-compare h2')).toBeFocused();
   // The switchers are native selects reached in the page's real Tab order;
   // their value-change keys are the platform's own select semantics, which

@@ -219,6 +219,9 @@ describe('devframe host definition', () => {
       'agent-customization-inspector:get-plugin-file-detail',
       'agent-customization-inspector:get-permission-policy-detail',
       'agent-customization-inspector:rescan-repository',
+      'agent-customization-inspector:get-global-consent-preview',
+      'agent-customization-inspector:create-global-consent-preview',
+      'agent-customization-inspector:enable-global',
       'agent-customization-inspector:open-file',
     ]);
   });

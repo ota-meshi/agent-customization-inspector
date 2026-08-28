@@ -94,18 +94,20 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // A root direct child is one row naming both products: two documented
     // reads of one path are two recognitions of it, not a collision (FR-004).
     const shared = items.filter({ hasText: 'deploy' }).first();
-    await expect(shared.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+    await expect(shared.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
     await expect(shared.locator('.aci-prompt-row__tool')).toHaveCount(2);
-    await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
-    await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('GitHub Copilot');
+    await expect(shared.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
+    await expect(shared.locator('.aci-source-family-blocks__members')).toContainText(
+      'GitHub Copilot',
+    );
     // Each definition states the surfaces its own admissions rest on, and
     // Copilot's command surface is the CLI alone.
-    await expect(shared.locator('.aci-prompt-row__definitions')).toContainText('CLI');
+    await expect(shared.locator('.aci-source-family-blocks__members')).toContainText('CLI');
     // The nested command keeps Claude's recognition and gains no Copilot one.
     const nested = items.filter({ hasText: 'frontend:component' });
-    await expect(nested.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+    await expect(nested.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
     await expect(nested.locator('.aci-prompt-row__tool')).toHaveCount(1);
-    await expect(nested.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
+    await expect(nested.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
   });
 
   test('states the one extraction failure once per product on the shared file', async ({
@@ -117,7 +119,7 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // One extraction per `(file, kind)` means one record, which every failed
     // definition of the file references (FR-028) — so the row's one item for
     // the file states it once, beside both products.
-    await expect(broken.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+    await expect(broken.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
     await expect(broken.locator('.aci-prompt-row__tool')).toHaveCount(2);
     await expect(broken).toContainText('This file could not be parsed');
   });

@@ -32,6 +32,14 @@ import type {
 
 /** The two catalogs one marketplace is kept in, which most cases compare. */
 const LEFT_PATH = '.claude-plugin/marketplace.json';
+
+/**
+ * One compared side as the route now addresses it: the fixture carriers are
+ * the repository's, so the Source token is fixed here (FR-030).
+ */
+function side(sourceRelativePath: string): { source: 'repository'; sourceRelativePath: string } {
+  return { source: 'repository', sourceRelativePath };
+}
 const RIGHT_PATH = '.agents/plugins/marketplace.json';
 
 /** The plugin name both catalogs offer; the row that owns the comparison. */
@@ -44,6 +52,7 @@ function carrierOf(
   surfaces: PluginCarrierDto['surfaces'],
 ): PluginCarrierDto {
   return {
+    sourceId: 'source-repository',
     sourceRelativePath,
     tool,
     surfaces,
@@ -66,7 +75,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'ready',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -239,16 +248,26 @@ function carrierCalls(calls: readonly { method: string; args: readonly unknown[]
 describe('plugin comparison view (T829)', () => {
   it('names the row and both carriers in the comparison route', () => {
     // The URL carries the model's own coordinates: the owning row's plugin
-    // name and the two carriers by their Source-relative Paths, each through
-    // the JSON string body the detail routes use, so a name the URL cannot
-    // carry raw round-trips to its own comparison.
-    expect(pluginComparisonRouteFor(PLUGIN_NAME, LEFT_PATH, RIGHT_PATH)).toEqual({
-      path: '/plugins/compare',
-      query: { name: PLUGIN_NAME, left: LEFT_PATH, right: RIGHT_PATH },
+    // name and the two carriers by their whole identities — each side's own
+    // Source and Source-relative Path — each path through the JSON string
+    // body the detail routes use, so a name the URL cannot carry raw
+    // round-trips to its own comparison (FR-030).
+    expect(
+      pluginComparisonRouteFor('repository', PLUGIN_NAME, side(LEFT_PATH), side(RIGHT_PATH)),
+    ).toEqual({
+      path: '/plugins/compare/repository',
+      query: {
+        name: PLUGIN_NAME,
+        leftSource: 'repository',
+        left: LEFT_PATH,
+        rightSource: 'repository',
+        right: RIGHT_PATH,
+      },
     });
-    expect(pluginComparisonRouteFor('lone\uD800', LEFT_PATH, RIGHT_PATH).query.name).toBe(
-      'lone\\ud800',
-    );
+    expect(
+      pluginComparisonRouteFor('repository', 'lone\uD800', side(LEFT_PATH), side(RIGHT_PATH)).query
+        .name,
+    ).toBe('lone\\ud800');
   });
 
   it('loads exactly two carrier details for the named row, with no compare API', async () => {
@@ -261,7 +280,13 @@ describe('plugin comparison view (T829)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.pluginComparison.open(PLUGIN_NAME, LEFT_PATH, 'claude', RIGHT_PATH, 'codex');
+    await state.pluginComparison.open(
+      PLUGIN_NAME,
+      side(LEFT_PATH),
+      'claude',
+      side(RIGHT_PATH),
+      'codex',
+    );
 
     expect(state.pluginComparison.status.value).toBe('ready');
     expect(state.pluginComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
@@ -270,8 +295,18 @@ describe('plugin comparison view (T829)', () => {
     // one row as one product reads it, so neither side can come back holding
     // another plugin's entry or another product's reading of this one.
     expect(carrierCalls(scripted.calls)).toEqual([
-      { sourceRelativePath: LEFT_PATH, pluginName: PLUGIN_NAME, tool: 'claude' },
-      { sourceRelativePath: RIGHT_PATH, pluginName: PLUGIN_NAME, tool: 'codex' },
+      {
+        source: 'repository',
+        sourceRelativePath: LEFT_PATH,
+        pluginName: PLUGIN_NAME,
+        tool: 'claude',
+      },
+      {
+        source: 'repository',
+        sourceRelativePath: RIGHT_PATH,
+        pluginName: PLUGIN_NAME,
+        tool: 'codex',
+      },
     ]);
     expect(
       scripted.calls.filter(
@@ -295,9 +330,9 @@ describe('plugin comparison view (T829)', () => {
     await state.start();
     await state.pluginComparison.open(
       PLUGIN_NAME,
-      LEFT_PATH,
+      side(LEFT_PATH),
       'claude',
-      'plugins/gone/marketplace.json',
+      side('plugins/gone/marketplace.json'),
       'codex',
     );
 
@@ -322,13 +357,25 @@ describe('plugin comparison view (T829)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.pluginComparison.open(PLUGIN_NAME, LEFT_PATH, 'claude', RIGHT_PATH, 'codex');
+    await state.pluginComparison.open(
+      PLUGIN_NAME,
+      side(LEFT_PATH),
+      'claude',
+      side(RIGHT_PATH),
+      'codex',
+    );
 
     expect(state.pluginComparison.status.value).toBe('failed');
     expect(state.pluginComparison.errorMessage.value).toContain('the host closed the connection');
 
     fail = false;
-    await state.pluginComparison.open(PLUGIN_NAME, LEFT_PATH, 'claude', RIGHT_PATH, 'codex');
+    await state.pluginComparison.open(
+      PLUGIN_NAME,
+      side(LEFT_PATH),
+      'claude',
+      side(RIGHT_PATH),
+      'codex',
+    );
     expect(state.pluginComparison.status.value).toBe('ready');
     expect(state.pluginComparison.errorMessage.value).toBeNull();
     state.dispose();
@@ -361,26 +408,52 @@ describe('plugin comparison view (T829)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.pluginComparison.open(PLUGIN_NAME, LEFT_PATH, 'claude', RIGHT_PATH, 'codex');
+    await state.pluginComparison.open(
+      PLUGIN_NAME,
+      side(LEFT_PATH),
+      'claude',
+      side(RIGHT_PATH),
+      'codex',
+    );
 
     const manifests = state.pluginComparison.openManifestPair(
       {
         filePath: 'plugins/left/.claude-plugin/plugin.json',
-        carrier: { sourceRelativePath: LEFT_PATH, tool: 'claude', pluginName: PLUGIN_NAME },
+        carrier: {
+          source: 'repository',
+          sourceRelativePath: LEFT_PATH,
+          tool: 'claude',
+          pluginName: PLUGIN_NAME,
+        },
       },
       {
         filePath: 'plugins/right/.claude-plugin/plugin.json',
-        carrier: { sourceRelativePath: RIGHT_PATH, tool: 'codex', pluginName: PLUGIN_NAME },
+        carrier: {
+          source: 'repository',
+          sourceRelativePath: RIGHT_PATH,
+          tool: 'codex',
+          pluginName: PLUGIN_NAME,
+        },
       },
     );
     const files = state.pluginComparison.openFilePair(
       {
         filePath: 'plugins/left/README.md',
-        carrier: { sourceRelativePath: LEFT_PATH, tool: 'claude', pluginName: PLUGIN_NAME },
+        carrier: {
+          source: 'repository',
+          sourceRelativePath: LEFT_PATH,
+          tool: 'claude',
+          pluginName: PLUGIN_NAME,
+        },
       },
       {
         filePath: 'plugins/right/README.md',
-        carrier: { sourceRelativePath: RIGHT_PATH, tool: 'codex', pluginName: PLUGIN_NAME },
+        carrier: {
+          source: 'repository',
+          sourceRelativePath: RIGHT_PATH,
+          tool: 'codex',
+          pluginName: PLUGIN_NAME,
+        },
       },
     );
     await Promise.all([manifests, files]);
@@ -412,10 +485,17 @@ describe('plugin comparison view (T829)', () => {
       });
       const state = new SessionViewState({ channel: scripted.channel });
       await state.start();
-      await state.pluginComparison.open(PLUGIN_NAME, LEFT_PATH, 'claude', RIGHT_PATH, 'codex');
+      await state.pluginComparison.open(
+        PLUGIN_NAME,
+        side(LEFT_PATH),
+        'claude',
+        side(RIGHT_PATH),
+        'codex',
+      );
       const request = {
         filePath: manifestPath,
         carrier: {
+          source: 'repository' as const,
           sourceRelativePath: LEFT_PATH,
           tool: 'claude' as const,
           pluginName: PLUGIN_NAME,
@@ -464,7 +544,12 @@ describe('plugin comparison view (T829)', () => {
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
     await state.openPluginDetail(
-      { sourceRelativePath: LEFT_PATH, tool: 'claude', pluginName: PLUGIN_NAME },
+      {
+        source: 'repository',
+        sourceRelativePath: LEFT_PATH,
+        tool: 'claude',
+        pluginName: PLUGIN_NAME,
+      },
       'plugins/review-assistant/.claude-plugin/plugin.json',
       'plugins/review-assistant/README.md',
     );
@@ -494,7 +579,13 @@ describe('plugin comparison view (T829)', () => {
     const unregister = state.pluginComparison.registerOpenContentOwner(() => {
       disposed += 1;
     });
-    await state.pluginComparison.open(PLUGIN_NAME, LEFT_PATH, 'claude', RIGHT_PATH, 'codex');
+    await state.pluginComparison.open(
+      PLUGIN_NAME,
+      side(LEFT_PATH),
+      'claude',
+      side(RIGHT_PATH),
+      'codex',
+    );
     state.pluginComparison.close();
 
     // Once for the open's own drop of the previous view, once for the close:

@@ -102,7 +102,9 @@ test.describe('the complete literal Codex custom-agent detail', () => {
       .filter({ hasText: 'docs_researcher' })
       .getByRole('link', { name: /docs-researcher\.toml/u })
       .click();
-    await expect(page).toHaveURL(/\/agents\/\.codex\/agents\/docs-researcher\.toml$/u);
+    await expect(page).toHaveURL(
+      /\/agents\/detail\/repository\/\.codex\/agents\/docs-researcher\.toml$/u,
+    );
     await expect(
       page.getByRole('heading', { name: '.codex/agents/docs-researcher.toml' }),
     ).toBeVisible();
@@ -148,7 +150,12 @@ test.describe('the complete literal Codex custom-agent detail', () => {
   });
 
   test('shows the complete authored source under the file tab', async ({ page }) => {
-    await page.goto(new URL('/agents/.codex/agents/docs-researcher.toml', host.origin).toString());
+    await page.goto(
+      new URL(
+        '/agents/detail/repository/.codex/agents/docs-researcher.toml',
+        host.origin,
+      ).toString(),
+    );
     await page.getByRole('tab', { name: 'File' }).click();
     const main = page.locator('main');
     await expect(main).toContainText('Readable text');
@@ -175,14 +182,18 @@ test.describe('the complete literal Codex custom-agent detail', () => {
     // An MCP declaration's home is an explicit carrier: the agent's own table
     // is its content, so no MCP tab exists and no MCP detail resolves.
     await expect(page.getByRole('tab', { name: /MCP/u })).toHaveCount(0);
-    await page.goto(new URL('/mcp/.codex/agents/docs-researcher.toml', host.origin).toString());
+    await page.goto(
+      new URL('/mcp/detail/repository/.codex/agents/docs-researcher.toml', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
   });
 
   test('returns to the agent tab it was opened from', async ({ page }) => {
-    await page.goto(new URL('/agents/.codex/agents/reviewer.toml', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.codex/agents/reviewer.toml', host.origin).toString(),
+    );
     await expect(page.getByRole('heading', { name: '.codex/agents/reviewer.toml' })).toBeVisible();
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
     await expect(page).toHaveURL(/\?kind=agent$/u);
@@ -190,7 +201,9 @@ test.describe('the complete literal Codex custom-agent detail', () => {
   });
 
   test('reports a link the current scan holds nothing at', async ({ page }) => {
-    await page.goto(new URL('/agents/.codex/agents/removed.toml', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.codex/agents/removed.toml', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
@@ -222,7 +235,9 @@ test.describe('an agent file whose declarations could not be read', () => {
   });
 
   test('lands on the file tab with the failure stated and the source intact', async ({ page }) => {
-    await page.goto(new URL('/agents/.codex/agents/broken.toml', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.codex/agents/broken.toml', host.origin).toString(),
+    );
     await expect(page.getByRole('heading', { name: '.codex/agents/broken.toml' })).toBeVisible();
     // Extraction failed all-or-nothing, so the parse panel has nothing to
     // show and the complete source is the honest landing (FR-028).
@@ -244,7 +259,9 @@ test.describe('an agent file whose declarations could not be read', () => {
   test('opens no agent detail for a candidate whose bytes were never accepted', async ({
     page,
   }) => {
-    await page.goto(new URL('/agents/.codex/agents/gone.toml', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.codex/agents/gone.toml', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );

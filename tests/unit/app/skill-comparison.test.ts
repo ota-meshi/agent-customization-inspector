@@ -27,6 +27,14 @@ import type {
 const LEFT_PATH = '.agents/skills/alpha/SKILL.md';
 const RIGHT_PATH = '.agents/skills/beta/SKILL.md';
 
+/**
+ * One compared side as the route now addresses it: the fixture files are the
+ * repository's, so the Source token is fixed here (FR-030).
+ */
+function side(sourceRelativePath: string): { source: 'repository'; sourceRelativePath: string } {
+  return { source: 'repository', sourceRelativePath };
+}
+
 /** A committed snapshot holding the two readable skills. */
 function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
   return {
@@ -37,7 +45,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'ready',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -157,7 +165,15 @@ function scriptedChannel(options: {
           if (handler === undefined) {
             return Promise.reject(new Error('no detail handler scripted'));
           }
-          return Promise.resolve().then(() => handler(String(args[0])));
+          // `get-file-detail` sends one object naming both halves of the
+          // identity (FR-030); the carrier functions still send a bare path,
+          // and this double answers for whichever arrived.
+          const payload = args[0];
+          const path =
+            typeof payload === 'string'
+              ? payload
+              : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+          return Promise.resolve().then(() => handler(path));
         }
         return Promise.reject(new Error(`unexpected call: ${method}`));
       },
@@ -169,7 +185,14 @@ function scriptedChannel(options: {
 function detailCalls(calls: readonly { method: string; args: readonly unknown[] }[]): string[] {
   return calls
     .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
-    .map((call) => String(call.args[0]));
+    .map((call) => {
+      // `get-file-detail` sends one object naming both halves of the identity
+      // (FR-030); the carrier functions still send a bare path.
+      const payload = call.args[0];
+      return typeof payload === 'string'
+        ? payload
+        : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+    });
 }
 
 describe('comparison view', () => {
@@ -180,7 +203,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.skillComparison.status.value).toBe('ready');
     expect(state.skillComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
     expect(state.skillComparison.rightDetail.value?.file.sourceRelativePath).toBe(RIGHT_PATH);
@@ -204,7 +227,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(alphaCompanion, betaCompanion);
+    await state.skillComparison.open(side(alphaCompanion), side(betaCompanion));
     expect(state.skillComparison.status.value).toBe('ready');
     expect(state.skillComparison.leftDetail.value?.kind).toBe('file');
     expect(state.skillComparison.rightDetail.value?.kind).toBe('file');
@@ -222,14 +245,14 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.openSingle(LEFT_PATH, 'left');
+    await state.skillComparison.openSingle(side(LEFT_PATH), 'left');
     expect(state.skillComparison.status.value).toBe('ready');
     expect(state.skillComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
     expect(state.skillComparison.rightDetail.value).toBeNull();
     expect(detailCalls(scripted.calls)).toEqual([LEFT_PATH]);
     // The present side is wherever the link put the file; the other variant
     // mirrors it.
-    await state.skillComparison.openSingle(RIGHT_PATH, 'right');
+    await state.skillComparison.openSingle(side(RIGHT_PATH), 'right');
     expect(state.skillComparison.leftDetail.value).toBeNull();
     expect(state.skillComparison.rightDetail.value?.file.sourceRelativePath).toBe(RIGHT_PATH);
     state.dispose();
@@ -242,7 +265,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.openSingle(LEFT_PATH, 'left');
+    await state.skillComparison.openSingle(side(LEFT_PATH), 'left');
     // Binary input is textless (FR-025): one-sided or not, there is nothing
     // to show, and the state names the file.
     expect(state.skillComparison.status.value).toBe('not-readable');
@@ -258,7 +281,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, LEFT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(LEFT_PATH));
     // The same file cannot occupy both sides even when it has several
     // recognitions (FR-011): the rejection is stated as its own outcome, and
     // no request was spent discovering it.
@@ -277,7 +300,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.skillComparison.status.value).toBe('stale');
     // Nothing renders under a selection the generation does not hold.
     expect(state.skillComparison.leftDetail.value).toBeNull();
@@ -301,7 +324,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     // Binary input is textless and comparison-ineligible (FR-025): the state
     // names the file rather than fabricating an empty side.
     expect(state.skillComparison.status.value).toBe('not-readable');
@@ -322,7 +345,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    const opened = state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    const opened = state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     await vi.waitFor(() => {
       expect(gate.has(LEFT_PATH)).toBe(true);
     });
@@ -348,13 +371,13 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    const first = state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    const first = state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     await vi.waitFor(() => {
       expect(gate.has(LEFT_PATH)).toBe(true);
     });
     const gammaPath = '.agents/skills/gamma/SKILL.md';
     const deltaPath = '.agents/skills/delta/SKILL.md';
-    const second = state.skillComparison.open(gammaPath, deltaPath);
+    const second = state.skillComparison.open(side(gammaPath), side(deltaPath));
     await vi.waitFor(() => {
       expect(gate.has(gammaPath)).toBe(true);
     });
@@ -384,7 +407,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     const disposer = vi.fn();
     const unregister = state.skillComparison.registerOpenContentOwner(disposer);
     // A commit replaces the generation the open comparison was read from:
@@ -408,7 +431,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     const disposer = vi.fn();
     state.skillComparison.registerOpenContentOwner(disposer);
     state.skillComparison.close();
@@ -434,14 +457,14 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.skillComparison.status.value).toBe('failed');
     expect(state.skillComparison.errorMessage.value).toBe('detail request failed');
     // An ordinary request failure is this comparison's alone: the session and
     // its snapshot are untouched, and the same open is the retry.
     expect(state.view.value).toBe('inspection');
     fail = false;
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.skillComparison.status.value).toBe('ready');
     expect(state.skillComparison.errorMessage.value).toBeNull();
     state.dispose();
@@ -459,7 +482,7 @@ describe('comparison view', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.skillComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.skillComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     // The newer snapshot was adopted — which is itself the generation change
     // that dropped this open — and the view rests on the recoverable idle
     // state for the route to re-request under the new generation.

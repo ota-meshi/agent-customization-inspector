@@ -32,10 +32,14 @@
 import { CodexCompiledRule } from './vendor/codex';
 import { CodexCompiledAgentRule } from './agents/codex';
 import { CodexCompiledSkillRule } from './skills/codex';
+import { CodexCompiledPromptRule } from './prompts-and-commands/codex';
 import { CodexCompiledPermissionsDocumentRule } from './permissions/codex';
 import { CodexCompiledMcpCarrierRule } from './mcp/codex';
 import { CodexCompiledInlineHookRule, CodexCompiledStandaloneHookRule } from './hooks/codex';
-import { CodexCompiledInstructionRule } from './instructions/codex';
+import {
+  CodexCompiledGlobalInstructionRule,
+  CodexCompiledInstructionRule,
+} from './instructions/codex';
 import type { CompiledStaticCandidateRule, CompiledStaticOtherKindRule } from './registry';
 import type { CustomizationKind } from '../../../shared/entities';
 import { CodexCompiledPluginCatalogRule } from './plugins/codex';
@@ -94,6 +98,86 @@ export class CodexCompiledOtherKindRule
 }
 
 /**
+ * The Codex rules a consented `CODEX_HOME` scan executes: the one instruction
+ * rule whose ordered override/fallback pair sits below the admitted boundary
+ * (contracts/vendors/openai-codex.md § Inspector Global rule). The shared
+ * agent home's Codex rules are the separate catalog below, because the two
+ * members are two consented roots.
+ *
+ * Separate from the Repository catalog rather than filtered out of it at call
+ * time, because the two are executed against different roots: a scan is given
+ * the catalog for the Source it is scanning, and there is no call site that
+ * should have to decide which rules of a mixed list apply to the root it holds.
+ *
+ * It compiles through the same instruction unit as its Repository sibling, so
+ * what an admitted Global instruction file governs is answered by the same
+ * code path — the applicability range of a file below a vendor home is still a
+ * fact about an instruction file.
+ */
+export const CODEX_GLOBAL_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
+  CODEX_INSPECTION_RULES,
+)
+  .filter(
+    (rule) =>
+      rule.discoveryClass === 'static-candidate' &&
+      rule.sourceKinds.includes('global') &&
+      rule.matcher?.base.kind === 'global' &&
+      rule.matcher.base.member === 'codex',
+  )
+  // Each record compiles into the unit that answers its kind's question — the
+  // Repository catalog's dispatch, minus the plugin branch no `CODEX_HOME`
+  // rule carries, plus the one branch only this scope has: the instruction
+  // fallback compiles into its own unit, whose plan is the closed
+  // first-non-empty pair.
+  .map((rule) =>
+    rule.kind === 'instructions'
+      ? new CodexCompiledGlobalInstructionRule(rule)
+      : rule.kind === 'MCP'
+        ? new CodexCompiledMcpCarrierRule(rule)
+        : rule.kind === 'agent'
+          ? new CodexCompiledAgentRule(rule)
+          : rule.kind === 'permissions'
+            ? new CodexCompiledPermissionsDocumentRule(rule)
+            : rule.kind === 'hook'
+              ? rule.ruleId === 'codex.global.hooks.inline'
+                ? new CodexCompiledInlineHookRule(rule)
+                : new CodexCompiledStandaloneHookRule(rule)
+              : rule.kind === 'prompt/command'
+                ? new CodexCompiledPromptRule(rule)
+                : new CodexCompiledOtherKindRule(rule),
+  );
+
+/**
+ * The Codex rules a consented shared-agent-home scan executes: the personal
+ * skills and the personal plugin marketplace below `~/.agents` (FR-045;
+ * contracts/vendors/openai-codex.md § Inspector Global rule). Selected by the
+ * boundary their own matcher names, exactly as the `CODEX_HOME` catalog above
+ * is: which rules run below which consented boundary is decided by the base
+ * each record declares, so a rule cannot end up scanned against a root its
+ * selector was never authored for.
+ *
+ * Each compiles through the unit that answers its kind's question — the skill
+ * unit for the invocation name, the plugin-catalog unit for the names the
+ * `plugins[]` entries declare — the same units the Repository `.agents` rules
+ * compile through, because the shared home is that directory's personal
+ * counterpart.
+ */
+export const CODEX_AGENTS_HOME_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
+  CODEX_INSPECTION_RULES,
+)
+  .filter(
+    (rule) =>
+      rule.discoveryClass === 'static-candidate' &&
+      rule.matcher?.base.kind === 'global' &&
+      rule.matcher.base.member === 'agents',
+  )
+  .map((rule) =>
+    rule.kind === 'skill'
+      ? new CodexCompiledSkillRule(rule)
+      : new CodexCompiledPluginCatalogRule(rule),
+  );
+
+/**
  * The Codex Repository rules a Repository scan executes, in shipped order.
  * The remaining Codex rows of the vendor contract arrive with their own
  * inventory phases; the shipped set covers static instructions, skills, the
@@ -111,7 +195,13 @@ export class CodexCompiledOtherKindRule
 export const CODEX_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
   CODEX_INSPECTION_RULES,
 )
-  .filter((rule) => rule.discoveryClass === 'static-candidate')
+  // Selected by scope as well as by class. A Global rule's base is a consented
+  // vendor home, so executing one here would run a Global selector against the
+  // Repository root — a read nobody consented to, of a path that means
+  // something else. `CODEX_GLOBAL_RULES` below is where they go.
+  .filter(
+    (rule) => rule.discoveryClass === 'static-candidate' && rule.sourceKinds.includes('repository'),
+  )
   .map((rule) =>
     // Each record compiles into the unit that can answer its kind's question:
     // an instruction record what its files govern, an MCP record which

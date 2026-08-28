@@ -71,16 +71,20 @@ test.describe('one command inventory for both products', () => {
     // one link, and the products beside it.
     for (const name of ['deploy', 'release']) {
       const row = items.filter({ hasText: name }).first();
-      await expect(row.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
+      await expect(row.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
       await expect(row.locator('.aci-prompt-row__tool')).toHaveCount(2);
-      await expect(row.locator('.aci-prompt-row__definitions')).toContainText('Claude Code');
-      await expect(row.locator('.aci-prompt-row__definitions')).toContainText('GitHub Copilot');
+      await expect(row.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
+      await expect(row.locator('.aci-source-family-blocks__members')).toContainText(
+        'GitHub Copilot',
+      );
     }
     // The nested ones carry Claude's alone.
     for (const name of ['frontend:deploy', 'team:review:security']) {
       const row = items.filter({ hasText: name });
-      await expect(row.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
-      await expect(row.locator('.aci-prompt-row__definitions')).not.toContainText('GitHub Copilot');
+      await expect(row.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
+      await expect(row.locator('.aci-source-family-blocks__members')).not.toContainText(
+        'GitHub Copilot',
+      );
     }
 
     const text = await page.locator('main').innerText();
@@ -102,8 +106,10 @@ test.describe('one command inventory for both products', () => {
     await page.getByLabel('Tool').selectOption('copilot');
     await expect(items.locator('.aci-prompt-row__name')).toHaveText(['deploy', 'release']);
     for (const row of await items.all()) {
-      await expect(row.locator('.aci-prompt-row__definitions > li')).toHaveCount(1);
-      await expect(row.locator('.aci-prompt-row__definitions')).toContainText('GitHub Copilot');
+      await expect(row.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
+      await expect(row.locator('.aci-source-family-blocks__members')).toContainText(
+        'GitHub Copilot',
+      );
     }
 
     await page.getByRole('button', { name: 'Clear filters' }).click();
@@ -127,7 +133,9 @@ test.describe('one command inventory for both products', () => {
     await expect(shared).toContainText('GitHub Copilot');
     await expect(shared).toContainText('Claude Code');
     await shared.getByRole('link', { name: '.claude/commands/deploy.md' }).click();
-    await expect(page).toHaveURL(/\/prompts-and-commands\/\.claude\/commands\/deploy\.md$/u);
+    await expect(page).toHaveURL(
+      /\/prompts-and-commands\/detail\/repository\/\.claude\/commands\/deploy\.md$/u,
+    );
     // And the page states both products, because both recognize the file.
     await expect(page.locator('main')).toContainText('GitHub Copilot (CLI)');
     await expect(page.locator('main')).toContainText('Claude Code (CLI and IDE clients)');

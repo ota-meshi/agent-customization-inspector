@@ -8,7 +8,7 @@
 // `../plugins/codex.ts`. A base declared in either would have to be imported
 // back by the other, and a class cannot extend a base whose module is still
 // being evaluated.
-import { CompiledDerivedRule, CompiledInspectionRule } from '../registry';
+import { CompiledDerivedRule, CompiledInspectionRule, type SelectionPolicy } from '../registry';
 import { CODEX_RULE_RELATIONS } from '../../../../shared/registries/codex/relations';
 import type { RuleId } from '../../../../shared/registries/identifier-types';
 import type { RuleRelations } from '../../../../shared/registries/relation-types';
@@ -27,9 +27,15 @@ export abstract class CodexCompiledRule extends CompiledInspectionRule {
   /** The rule's edges from {@link CODEX_RULE_RELATIONS}, keyed by its own ID. */
   public override readonly relations: RuleRelations;
 
-  /** Compiles one Codex record, rejecting one another product owns. */
-  public constructor(rule: InspectionRule) {
-    super(rule);
+  /**
+   * Compiles one Codex record, rejecting one another product owns.
+   *
+   * `selectionPolicy` is passed through for the one Codex rule whose selection
+   * depends on what it read: the Global instruction pair
+   * ({@link CodexCompiledGlobalInstructionRule}).
+   */
+  public constructor(rule: InspectionRule, selectionPolicy?: SelectionPolicy) {
+    super(rule, selectionPolicy);
     if (rule.tool !== 'codex') {
       throw new TypeError(`rule ${rule.ruleId} is not a Codex rule`);
     }

@@ -21,7 +21,10 @@
 import type {
   CommandResult,
   FileDetailDto,
+  FileDetailParams,
   FileOpenTarget,
+  GlobalConsentPreviewDto,
+  GlobalEnableResultDto,
   InspectionDataResult,
   HookCarrierDetailDto,
   McpCarrierDetailDto,
@@ -33,6 +36,7 @@ import type {
   ScanAdmission,
   SessionSnapshot,
   SourceDto,
+  SourceSelector,
 } from '../../shared/api-types';
 import { DevframeConnectionError } from 'devframe/client';
 import { isRejectionCode, type RejectionCode } from '../../shared/rejection-codes';
@@ -63,6 +67,12 @@ export const SESSION_RPC_FUNCTIONS = {
   rescanRepository: 'agent-customization-inspector:rescan-repository',
   /** Open one committed file in an application on the reader's own machine. */
   openFile: 'agent-customization-inspector:open-file',
+  /** The current Global consent preview, read without capturing anything. */
+  getGlobalConsentPreview: 'agent-customization-inspector:get-global-consent-preview',
+  /** Capture the three proposed Global roots and replace the unconsented preview. */
+  createGlobalConsentPreview: 'agent-customization-inspector:create-global-consent-preview',
+  /** Confirm the reviewed preview and admit every tool the server derives. */
+  enableGlobal: 'agent-customization-inspector:enable-global',
 } as const;
 
 /** One member of the closed {@link SESSION_RPC_FUNCTIONS} catalog. */
@@ -254,7 +264,8 @@ export type HookCarrierDetailOutcome = DetailFetchOutcome<HookCarrierDetailDto>;
  * row's rather than the whole carrier's
  * (contracts/http-api.md § get-plugin-carrier-detail).
  */
-type DetailRequestPayload = string | PluginCarrierDetailParams | PluginFileDetailParams;
+type DetailRequestPayload =
+  string | FileDetailParams | PluginCarrierDetailParams | PluginFileDetailParams;
 
 /**
  * The outcome of one guarded `get-plugin-carrier-detail` request: the shared
@@ -318,6 +329,75 @@ export type RescanOutcome =
       /** The real transport error, or the fixed unsupported-protocol error. */
       readonly error: Error;
       /** True when the channel is gone or the protocol was unsupported. */
+      readonly fatal: boolean;
+    };
+
+/**
+ * The outcome of one consent-preview call, read or capture
+ * (contracts/http-api.md § get-global-consent-preview,
+ * § create-global-consent-preview).
+ *
+ * There is no `discarded` variant, and no generation field to compare: a
+ * preview is not inspection data, and the pair carries no staleness the client
+ * could resolve — the read returns whatever is current, and a capture replaces
+ * it. `missing` is the read's own declared rejection, kept as a variant of its
+ * own because it is the ordinary state of a session nobody has asked for
+ * consent in, not a failure to report.
+ */
+export type ConsentPreviewOutcome =
+  | {
+      /** The current preview, or the one this call captured. */
+      readonly kind: 'ready';
+      /** The frozen preview record's public projection. */
+      readonly preview: GlobalConsentPreviewDto;
+    }
+  | {
+      /** No preview exists yet; the reader is asked to capture one. */
+      readonly kind: 'missing';
+    }
+  | {
+      /** A declared closed rejection other than `consent-preview-missing`. */
+      readonly kind: 'rejected';
+      /** The fixed contract code; see {@link RejectionCode}. */
+      readonly code: RejectionCode;
+    }
+  | {
+      /** The call failed; see {@link fatal} for whether the session survived. */
+      readonly kind: 'failed';
+      /** The real transport or handler error, reported as it arrived. */
+      readonly error: Error;
+      /** True only for a lost channel, which ends the session. */
+      readonly fatal: boolean;
+    };
+
+/**
+ * The outcome of one `enable-global` command
+ * (contracts/http-api.md § enable-global).
+ *
+ * `rejected` covers every declared refusal — a stale preview, a moved read
+ * scope, an unconfirmed body, a conflict — because each is a sentence the page
+ * states rather than an error: the reader is told what to do next, which is
+ * usually to take a fresh preview.
+ */
+export type GlobalEnableOutcome =
+  | {
+      /** The transaction was accepted; the result says what it admitted. */
+      readonly kind: 'accepted';
+      /** The acceptance result, including the shared batch request ID. */
+      readonly result: GlobalEnableResultDto;
+    }
+  | {
+      /** A declared closed rejection. */
+      readonly kind: 'rejected';
+      /** The fixed contract code; see {@link RejectionCode}. */
+      readonly code: RejectionCode;
+    }
+  | {
+      /** The call failed; see {@link fatal} for whether the session survived. */
+      readonly kind: 'failed';
+      /** The real transport or handler error, reported as it arrived. */
+      readonly error: Error;
+      /** True only for a lost channel, which ends the session. */
       readonly fatal: boolean;
     };
 
@@ -716,11 +796,22 @@ export class SessionApiClient {
    * as `newer-generation` — the caller refreshes and re-requests the same
    * path — rather than rendered under state resolved from the older one.
    */
-  public fetchFileDetail(sourceRelativePath: string): Promise<FileDetailOutcome> {
-    return this.#fetchDetail<FileDetailDto>(
-      SESSION_RPC_FUNCTIONS.getFileDetail,
+  public fetchFileDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): Promise<FileDetailOutcome> {
+    // Both halves of the identity, because both are needed: a consented Global
+    // home and the selected repository can hold the same Source-relative Path,
+    // and asking by path alone answers with whichever the session lists first
+    // (FR-030, contracts/http-api.md § get-file-detail).
+    //
+    // Every caller passes the Source its own address or side names; the
+    // `repository` default only keeps a bare-path call spelling the ordinary
+    // single-Source session's answer.
+    return this.#fetchDetail<FileDetailDto>(SESSION_RPC_FUNCTIONS.getFileDetail, {
       sourceRelativePath,
-    );
+      source,
+    });
   }
 
   /**
@@ -730,11 +821,16 @@ export class SessionApiClient {
    * supersedes an older of the other (contracts/http-api.md
    * § get-mcp-carrier-detail).
    */
-  public fetchMcpCarrierDetail(sourceRelativePath: string): Promise<McpCarrierDetailOutcome> {
-    return this.#fetchDetail<McpCarrierDetailDto>(
-      SESSION_RPC_FUNCTIONS.getMcpCarrierDetail,
+  public fetchMcpCarrierDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): Promise<McpCarrierDetailOutcome> {
+    // Both halves of the carrier's identity, for the reason
+    // {@link fetchFileDetail} sends both (FR-030).
+    return this.#fetchDetail<McpCarrierDetailDto>(SESSION_RPC_FUNCTIONS.getMcpCarrierDetail, {
       sourceRelativePath,
-    );
+      source,
+    });
   }
 
   /**
@@ -744,11 +840,14 @@ export class SessionApiClient {
    * supersedes an older of another (contracts/http-api.md
    * § get-hook-carrier-detail).
    */
-  public fetchHookCarrierDetail(sourceRelativePath: string): Promise<HookCarrierDetailOutcome> {
-    return this.#fetchDetail<HookCarrierDetailDto>(
-      SESSION_RPC_FUNCTIONS.getHookCarrierDetail,
+  public fetchHookCarrierDetail(
+    sourceRelativePath: string,
+    source: SourceSelector = 'repository',
+  ): Promise<HookCarrierDetailOutcome> {
+    return this.#fetchDetail<HookCarrierDetailDto>(SESSION_RPC_FUNCTIONS.getHookCarrierDetail, {
       sourceRelativePath,
-    );
+      source,
+    });
   }
 
   /**
@@ -790,10 +889,11 @@ export class SessionApiClient {
    */
   public fetchPermissionPolicyDetail(
     sourceRelativePath: string,
+    source: SourceSelector = 'repository',
   ): Promise<PermissionPolicyDetailOutcome> {
     return this.#fetchDetail<PermissionPolicyDetailDto>(
       SESSION_RPC_FUNCTIONS.getPermissionPolicyDetail,
-      sourceRelativePath,
+      { sourceRelativePath, source },
     );
   }
 
@@ -872,11 +972,26 @@ export class SessionApiClient {
     // is no older branch to guard: the host serves every detail from its
     // current commit under one coordinator, so it cannot answer from a
     // generation behind one this client has already adopted.
+    // Only the requested Source's own sequence decides freshness: a commit
+    // invalidates only its own sequence's views (FR-030, spec.md
+    // § Clarifications Session 2026-07-22), so a Global enable in another tab
+    // must not turn a repository file's unchanged detail into a refresh that
+    // drops the page's held editor state. A payload without a Source — the
+    // bare-path spelling — is compared against both, because nothing narrows
+    // it.
+    const requestedSource = typeof payload === 'string' ? null : payload.source;
+    const repositoryAdvanced =
+      this.#repositoryGeneration !== null &&
+      result.repositoryGeneration > this.#repositoryGeneration;
+    const globalAdvanced =
+      result.globalGeneration !== null &&
+      (this.#globalGeneration === null || result.globalGeneration > this.#globalGeneration);
     if (
-      (this.#repositoryGeneration !== null &&
-        result.repositoryGeneration > this.#repositoryGeneration) ||
-      (result.globalGeneration !== null &&
-        (this.#globalGeneration === null || result.globalGeneration > this.#globalGeneration))
+      requestedSource === null
+        ? repositoryAdvanced || globalAdvanced
+        : requestedSource === 'repository'
+          ? repositoryAdvanced
+          : globalAdvanced
     ) {
       return { kind: 'newer-generation' };
     }
@@ -895,15 +1010,20 @@ export class SessionApiClient {
    */
   public async openFile(
     sourceRelativePath: string,
+    source: SourceSelector,
     target: FileOpenTarget,
   ): Promise<FileOpenOutcome> {
     let settled: unknown;
     try {
-      settled = await this.#channel.call(
-        SESSION_RPC_FUNCTIONS.openFile,
+      // Both halves of the identity and the target as one object: the file the
+      // reader clicked is the one that must open, and a consented home and the
+      // selected repository can hold the same path under different roots
+      // (FR-030, contracts/http-api.md § open-file).
+      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.openFile, {
         sourceRelativePath,
+        source,
         target,
-      );
+      });
     } catch (cause: unknown) {
       return this.#failureOutcome(cause);
     }
@@ -919,5 +1039,98 @@ export class SessionApiClient {
       return { kind: 'failed', error, fatal: true };
     }
     return { kind: 'opened' };
+  }
+
+  /**
+   * Reads the current consent preview without capturing anything
+   * (contracts/http-api.md § get-global-consent-preview). A session nobody has
+   * asked for consent in has none, which is the `missing` outcome rather than
+   * an error: the page then offers to capture one.
+   */
+  public fetchGlobalConsentPreview(): Promise<ConsentPreviewOutcome> {
+    return this.#consentPreviewCall(SESSION_RPC_FUNCTIONS.getGlobalConsentPreview);
+  }
+
+  /**
+   * Captures the three proposed Global roots and replaces the unconsented
+   * preview (contracts/http-api.md § create-global-consent-preview). It
+   * submits no confirmation and grants no read authority: what comes back is
+   * what the reader is about to be asked to confirm.
+   */
+  public createGlobalConsentPreview(): Promise<ConsentPreviewOutcome> {
+    return this.#consentPreviewCall(SESSION_RPC_FUNCTIONS.createGlobalConsentPreview);
+  }
+
+  /**
+   * The call both preview functions share.
+   *
+   * None of the staleness guards the read paths carry apply, for the reason
+   * {@link openFile} states: a preview carries no generation, and the pair has
+   * no superseded state a late settlement could put on screen — a second read
+   * is a second look at whatever is current, and a second capture is a new
+   * preview by design. What remains is the failure handling every call shares,
+   * so a lost channel still ends the session exactly once.
+   */
+  /**
+   * Confirms the reviewed preview and asks the host to admit every tool it
+   * derives (contracts/http-api.md § enable-global).
+   *
+   * The body carries the two identities the host validates against its own
+   * stored record and nothing else: there is no tool list to send, so this
+   * client cannot narrow, reorder, or extend what the confirmation covers.
+   */
+  public async enableGlobal(
+    previewId: string,
+    allowlistVersion: string,
+  ): Promise<GlobalEnableOutcome> {
+    let settled: unknown;
+    try {
+      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.enableGlobal, {
+        confirmed: true,
+        allowlistVersion,
+        previewId,
+      });
+    } catch (cause: unknown) {
+      return this.#failureOutcome(cause);
+    }
+    const rejection = asRejectionCode(settled);
+    if (rejection !== null) {
+      return { kind: 'rejected', code: rejection };
+    }
+    if (hasErrorEnvelope(settled)) {
+      const error = new Error(
+        'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
+      );
+      this.#clientData.purge('channel-failure');
+      return { kind: 'failed', error, fatal: true };
+    }
+    const result = settled as CommandResult<GlobalEnableResultDto>;
+    return { kind: 'accepted', result: result.data };
+  }
+
+  async #consentPreviewCall(method: SessionRpcFunctionName): Promise<ConsentPreviewOutcome> {
+    let settled: unknown;
+    try {
+      settled = await this.#channel.call(method);
+    } catch (cause: unknown) {
+      return this.#failureOutcome(cause);
+    }
+    const rejection = asRejectionCode(settled);
+    if (rejection !== null) {
+      // The read's own declared outcome, which the page renders as an offer to
+      // capture rather than as something that went wrong.
+      return rejection === 'consent-preview-missing'
+        ? { kind: 'missing' }
+        : { kind: 'rejected', code: rejection };
+    }
+    if (hasErrorEnvelope(settled)) {
+      const error = new Error(
+        'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
+      );
+      this.#clientData.purge('channel-failure');
+      return { kind: 'failed', error, fatal: true };
+    }
+    const result = settled as CommandResult<GlobalConsentPreviewDto>;
+    return { kind: 'ready', preview: result.data };
   }
 }

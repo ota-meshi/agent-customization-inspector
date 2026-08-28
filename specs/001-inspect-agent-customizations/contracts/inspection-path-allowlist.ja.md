@@ -2,9 +2,9 @@
 
 [English](inspection-path-allowlist.md)
 
-**契約バージョン**: 2026-07-20
+**契約バージョン**: 2026-08-27
 
-**検査パス決定の再検証日**: 2026-07-20
+**検査パス決定の再検証日**: 2026-08-27
 
 **規範対象**: Rule class、matcher表記、source boundaryの解釈、read認可、vendor横断の適合要件
 
@@ -73,18 +73,19 @@ runtime-composition contractに属し、このboundaryを変更しない。
 ### Global
 
 Global inspectionは新しいsessionごとに無効であり、current contract versionと正確なno-I/O previewにbind
-したconsentを必要とする。Consentは固定Copilot/Claude/Codex entryに対するselectorなしの1 actionである。
-1 transactionで3つすべてをevaluateする。Deterministic rejectionはadmit済みsiblingをblockせず、1 batchが
-resulting Sourceをすべて1つのatomic generationへpublishする。Accepted vendor-home rootごとに独立したtool-specific Global Sourceを作り、Copilot、
-Claude、Codexのいずれかとして別々に識別する。各toolは自身のSourceへ対応し、各Sourceは正確に1つのrootへ
+したconsentを必要とする。Consentは固定member entry — Copilot、Claude、Codex、共有agent home — に対するselectorなしの1 actionである。
+1 transactionで4つすべてをevaluateする。Deterministic rejectionはadmit済みsiblingをblockせず、1 batchが
+resulting Sourceをすべて1つのatomic generationへpublishする。Accepted member rootごとに独立したGlobal Sourceを作り、Copilot、
+Claude、Codex、共有agent homeのいずれかとして別々に識別する。各memberは自身のSourceへ対応し、各Sourceは正確に1つのrootへ
 bindする。これらはRepositoryのchildではなく、互いにmergeせず、Repository Sourceにもmergeしない。
 
 表示またはserializeする全candidate pathは、owning Sourceのsingle rootから計算したSource-relative Pathとする。
-Repository Sourceの場合だけrepository-relativeであり、各Global Sourceは自身のadmit済みtool-home rootを使う。
+Repository Sourceの場合だけrepository-relativeであり、各Global Sourceは自身のadmit済みmember rootを使う。
 
 Vendor contractは保守と将来のreviewのため、文書化済みの追加User behaviorを記録できる。そのrecordはread
-authorityを与えない。FR-015からFR-018により、明示的にcontract化したGlobal instruction ruleだけがGlobal
-candidateをclassifyできる。追加User settings、agent、skill、hook、MCP configuration、plugin、state、隣接
+authorityを与えない。FR-015からFR-018およびFR-045により、明示的にcontract化したGlobal ruleだけがGlobal
+candidateをclassifyできる。Vendor管理のruntime state、credential、cache、session data、install済み
+plugin copy、closed kind setがpublishしない文書化済みsurface、隣接
 directoryは、仕様が変更されるまでexcludedのままとする。
 
 ## Structured Inspector matcher表記
@@ -93,7 +94,7 @@ directoryは、仕様が変更されるまでexcludedのままとする。
 
 | Field | 意味 |
 |---|---|
-| **Base** | 有効な1つの正確なboundary。`Repository`またはconsent済みのnamed `Global` vendor boundary |
+| **Base** | 有効な1つの正確なboundary。`Repository`またはconsent済みのnamed `Global` member boundary |
 | **Selector program** | Source rootに対して相対にauthorしたtyped segment programのnon-empty ordered list。Programはabsolute path、environment expansion、home expansion、URI、暗黙のancestor searchを表現できない |
 
 各selector programは次のclosed unionからなるnon-emptyなordered segment token列を持つ。
@@ -264,10 +265,10 @@ directoryについての事実を公開することになる。存在しないdi
 
 ### Global selectorの要件
 
-Global ruleは1つの正確なconsent済みvendor boundaryをBaseとして指定し、そのboundary相対のselectorを持つ。
+Global ruleは1つの正確なconsent済みmember boundaryをBaseとして指定し、そのboundary相対のselectorを持つ。
 Environment/default-homeの解決はboundary作成の責務であり、selectorの責務ではない。Global selectorは
-consent済みvendor boundaryを基点にauthorし、Repository rootを基点にせず、別vendor boundaryを認可せず、
-FR-015からFR-018が許可するpathを拡張できない。
+consent済みmember boundaryを基点にauthorし、Repository rootを基点にせず、別member boundaryを認可せず、
+FR-015からFR-018およびFR-045が許可するpathを拡張できない。
 
 ### Traversal planのcompileとGlobalのleast privilege
 
@@ -277,8 +278,18 @@ Runtime scanはそのplanをdataとしてloadし、selector textを再parseし�
 Repository planはselector programとexclusionが明示するbroad traversalだけを実行できる。Entry、depth、time、workの
 capacityおよびcompletion behaviorはNode.js、filesystem、実行環境から継承する。
 
-Global planはさらに狭く、vendor-home rootのenumerationから開始してはならない。Exact Global target ruleは
-admit済みroot配下の指定fileだけをreadし、rootをenumerateしない。Contract済みCopilot `instructions/`
+Global planはさらに狭く、member rootのenumerationから開始してはならない。Exact Global target ruleは
+admit済みroot配下の指定fileだけをreadし、rootをenumerateしない。
+
+したがってexact targetの選択は、selectorのliteralをenumerateしたentry nameと比較するのではなく、
+operating system自身の名前解決によって行う。case-insensitiveなfilesystemでは、格納名がliteralと
+caseだけ異なるfileがtargetを満たし、publishされるSource-relative Pathは格納名ではなくselectorの
+literal — 製品がfilesystemに要求した名前 — になる。これは意図的であり、rowの意味そのものである。
+同じfilesystemに同じliteralを要求するvendorは同じfileを開くため、rowはそのvendorがreadするものを
+述べている。case-sensitiveに比較するには、この規則が避けるために存在するenumerationが必要になり、
+しかもvendorが実際にreadするfileを隠すことになる。Enumerateされたpath — すべてのRepository program、
+およびGlobal fixed subtreeのliteral prefix配下 — は格納されたentry nameをpublishする。名前はenumeration
+から来るからである。Contract済みCopilot `instructions/`
 subtreeのような明示的fixed subtree ruleは、そのsubtreeとsegment programが許可するdescendantだけを
 enumerateする。どちらのruleもplanが到達しない隣接pathをlist、open、readしない。許可されたpathが
 存在しなくてもplanを広げず、sibling discoveryを開始しない。
@@ -293,7 +304,7 @@ Replacement decodeされた`utf-8-replaced` textも変更せず判定に参加�
 Unreadableまたはbinaryなoverrideは、そのfile Diagnostic（`file-unreadable`または`file-content-binary`）で
 branchを終了し、fallbackしない。Policyは選択したnon-empty fileをpublishし、両selectorを同時にはpublishしない。
 
-No-I/O Global previewは各toolのresolved rootとlexical stateだけを提示し、patternごとの表示を持たない。
+No-I/O Global previewは各memberのresolved rootとlexical stateだけを提示し、patternごとの表示を持たない。
 Admitted root配下で何をreadするかは保持済み`allowlistVersion`/`traversalPlanVersion` pairが特定する
 同梱planで固定されるため、別管理のpreview allowlistは存在しない。そのversionがclosed selection policyと
 canonical selector programを特定する。
@@ -487,7 +498,7 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    whitespace-only、non-empty、replacement-decoded、binary、unreadable caseを適用し、fallbackがabsent
    または安全にreadしたempty overrideの場合だけ適用されること、unreadable/binaryなoverrideがそのfile
    Diagnosticでbranchを終了してfallbackしないこと、両selectorを同時にpublishしないことを証明する。
-   Global-consent fixtureはselector-shaped inputをrejectし、frozen entry 3つすべてをevaluateし、
+   Global-consent fixtureはselector-shaped inputをrejectし、frozen entry 4つすべてをevaluateし、
    missing/unreadableなrootとadmit済みreadable rootをpartitionし、admit済みone-root Sourceをすべて
    1 batch generationへpublishし、unexpected failureが実際のerrorを報告してprovisional
    subset全体をabortすることを証明する。
@@ -496,7 +507,7 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
    free-form path constructionを使わずvalidated literal segmentだけを受理すること、nonrecursive derivation、
    boundary containment、rejected targetをreadしないことを証明する。
 6. Relationship-onlyとexcluded fixtureは、targetが存在する場合やgeneric filenameにmatchする場合もread authorityが
-   0であることを証明する。FR-015からFR-018の外側で記録したUser behaviorはGlobal candidateにならない。
+   0であることを証明する。FR-015からFR-018およびFR-045の外側で記録したUser behaviorはGlobal candidateにならない。
 7. 1 Source内の複数ruleが受理した1つのphysical fileはSource scan attemptごとに1回readし、独立した各
    provenance — 読み取りを認可したruleと一致したpath — を保持し、admissionをrecognition-level winnerへ
    collapseしない。同じunderlying fileへのhard linkである2つのallowlisted

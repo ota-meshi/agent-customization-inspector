@@ -11,9 +11,10 @@
 // The suite runs the real scan over a real fixture rather than a hand-built
 // generation, because the property under test is that the source the traversal
 // read reaches the response unchanged — which a fabricated DTO could not show.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createInspectorDevframe,
@@ -21,6 +22,8 @@ import {
   type InspectorHostContext,
 } from '../../src/server/host/devframe-app';
 import { InspectionSession, SessionCoordinator } from '../../src/server/session/session';
+import { CLAUDE_GLOBAL_RULES } from '../../src/server/inspection/rules/claude';
+import { runSourceScan } from '../../src/server/inspection/scan';
 import {
   buildSecretFixture,
   ENVIRONMENT_REFERENCE,
@@ -52,6 +55,7 @@ import type {
   InspectionDataResult,
   HookCarrierDetailDto,
   McpCarrierDetailDto,
+  SourceSelector,
 } from '../../src/shared/api-types';
 import { RecordingFileOpener } from '../fixtures/file-opener';
 
@@ -119,9 +123,12 @@ async function scannedFixture(): Promise<{
 async function getFileDetail(
   context: InspectorHostContext,
   sourceRelativePath: string,
+  source: SourceSelector = 'repository',
 ): Promise<InspectionDataResult<FileDetailDto> | DeterministicRejection> {
   const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
-  return (await fn.handler(sourceRelativePath as never)) as
+  // Both halves of the identity: the function names the Source as well as the
+  // path, because two Sources can hold one path (FR-030).
+  return (await fn.handler({ sourceRelativePath, source } as never)) as
     InspectionDataResult<FileDetailDto> | DeterministicRejection;
 }
 
@@ -247,8 +254,11 @@ describe('get-file-detail', () => {
     // tests item 4): the declared path still resolves.
     const { context, skillPath, sourceText } = await scannedFixture();
     const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
+    // The declared parameter is one object naming both halves of the identity,
+    // so an extra positional argument beside it — and an extra key inside it —
+    // are both input the function never reads.
     const result = (await (fn.handler as (...args: unknown[]) => unknown)(
-      skillPath,
+      { sourceRelativePath: skillPath, source: 'repository', neverRead: 'ignored' },
       'never-read',
     )) as InspectionDataResult<FileDetailDto> | DeterministicRejection;
     if (!('data' in result)) {
@@ -432,14 +442,118 @@ describe('get-file-detail', () => {
   });
 });
 
+describe('get-file-detail over a consented member Source (T995)', () => {
+  /** The exact authored member text, credential and reference included. */
+  const MEMBER_TEXT =
+    '# personal instructions\n\nToken: sk-live-contract-9876543210\nDeploy posts to ${MEMBER_CONTRACT_TOKEN}\n';
+
+  /** Boots a session, commits a Repository scan, then one Claude-member enable. */
+  async function globalFixture(): Promise<{ readonly context: InspectorHostContext }> {
+    const base = mkdtempSync(join(tmpdir(), 'aci-detail-global-contract-'));
+    cleanups.push(() => rmSync(base, { recursive: true, force: true }));
+    const repository = join(base, 'repo');
+    mkdirSync(repository, { recursive: true });
+    // The repository holds no CLAUDE.md at all, so the member path resolves
+    // in exactly one Source and a repository-Source request for it must miss.
+    writeFileSync(join(repository, 'AGENTS.md'), '# repository instructions\n', 'utf8');
+    const home = join(base, 'claude-home');
+    mkdirSync(home, { recursive: true });
+    writeFileSync(join(home, 'CLAUDE.md'), MEMBER_TEXT, 'utf8');
+
+    const session = new InspectionSession({
+      invocationCwd: repository,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const coordinator = new SessionCoordinator(session);
+    const context: InspectorHostContext = { session, coordinator };
+    const repositorySource = session.snapshot().sources[0]!;
+    const admission = coordinator.admitScan(repositorySource.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repositorySource.sourceId,
+      'repository',
+    );
+
+    const registered = coordinator.registerGlobalEnable('preview-contract', 'initial-enable');
+    if (registered.kind !== 'admitted') {
+      throw new Error('expected the operation to be registered');
+    }
+    const settled = coordinator.settleGlobalEnable(registered.operationId, 'preview-contract', [
+      {
+        member: {
+          member: 'claude',
+          origin: 'environment' as const,
+          lexicalRoot: home,
+          inputState: 'eligible' as const,
+          port: null,
+        },
+        outcome: { kind: 'admitted' as const, root: home },
+      },
+    ]);
+    if (settled.scanRequestId === null) {
+      throw new Error('expected a queued batch');
+    }
+    const publication = await runSourceScan({
+      sourceId: session.globalConsent!.controls.get('claude')!.sourceId!,
+      root: home,
+      rootFailureOwner: 'global:claude',
+      scope: 'global',
+      rules: CLAUDE_GLOBAL_RULES,
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected the member scan to publish');
+    }
+    coordinator.completeGlobalBatch(settled.scanRequestId, [
+      {
+        member: 'claude' as const,
+        files: publication.files,
+        recognitions: publication.recognitions,
+        diagnostics: publication.diagnostics,
+        outcome: publication.outcome,
+      },
+    ]);
+    return { context };
+  }
+
+  it('serves the member file exactly under its own Source, and nowhere else', async () => {
+    const { context } = await globalFixture();
+    // The member Source's own identity answers with the authored bytes —
+    // credential and environment reference literal, nothing masked or
+    // resolved (FR-025, FR-026).
+    const detail = await getFileDetail(context, 'CLAUDE.md', 'global-claude');
+    if (!('data' in detail) || !('sourceText' in detail.data.file)) {
+      throw new Error('expected a readable member detail');
+    }
+    expect(detail.data.file.sourceText).toBe(MEMBER_TEXT);
+    // The same path under the Repository Source resolves nowhere: the
+    // identity is the Source-and-path pair, and this repository holds no
+    // such file (FR-030, contracts/http-api.md § get-file-detail).
+    expect(await getFileDetail(context, 'CLAUDE.md', 'repository')).toEqual({
+      error: { code: 'stale-resource' },
+    });
+  });
+});
+
 async function getMcpCarrierDetail(
   context: InspectorHostContext,
   sourceRelativePath: string,
+  source: SourceSelector = 'repository',
 ): Promise<InspectionDataResult<McpCarrierDetailDto> | DeterministicRejection> {
   const fn = registerFunctions(context).get(
     'agent-customization-inspector:get-mcp-carrier-detail',
   )!;
-  return (await fn.handler(sourceRelativePath as never)) as
+  // Both halves of the identity, exactly as get-file-detail takes them: a
+  // Global member publishes this kind too, so two Sources can hold one path
+  // (FR-030, contracts/http-api.md).
+  return (await fn.handler({ sourceRelativePath, source } as never)) as
     InspectionDataResult<McpCarrierDetailDto> | DeterministicRejection;
 }
 
@@ -1127,11 +1241,15 @@ describe('get-mcp-carrier-detail for Claude declarations (T316)', () => {
 async function getHookCarrierDetail(
   context: InspectorHostContext,
   sourceRelativePath: string,
+  source: SourceSelector = 'repository',
 ): Promise<InspectionDataResult<HookCarrierDetailDto> | DeterministicRejection> {
   const fn = registerFunctions(context).get(
     'agent-customization-inspector:get-hook-carrier-detail',
   )!;
-  return (await fn.handler(sourceRelativePath as never)) as
+  // Both halves of the identity, exactly as get-file-detail takes them: a
+  // Global member publishes this kind too, so two Sources can hold one path
+  // (FR-030, contracts/http-api.md).
+  return (await fn.handler({ sourceRelativePath, source } as never)) as
     InspectionDataResult<HookCarrierDetailDto> | DeterministicRejection;
 }
 
@@ -1733,5 +1851,151 @@ describe('get-hook-carrier-detail for one carrier two products read differently 
       ['PreToolUse', ['copilot/parsed']],
       [null, ['claude/failed']],
     ]);
+  });
+});
+
+describe('what a detail may and may not carry (T926)', () => {
+  /**
+   * Boots a session over a tree written for this case and runs its first
+   * scan, so a variant that needs particular bytes — replaced text, NUL
+   * bytes — has them without disturbing the shared secret fixture.
+   */
+  async function scannedTree(write: (root: string) => void): Promise<InspectorHostContext> {
+    const root = mkdtempSync(join(tmpdir(), 'inspector-detail-variant-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    write(root);
+    const session = new InspectionSession({
+      invocationCwd: root,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = { session, coordinator: new SessionCoordinator(session) };
+    const repository = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(repository.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(
+      context,
+      admission.scanRequestId,
+      repository.sourceId,
+      'repository',
+    );
+    return context;
+  }
+
+  it('serves replaced text as complete readable source, comparison and all', async () => {
+    // A `U+FFFD` the decoder inserted is content: the file is readable, its
+    // source is complete, and nothing about it is withheld or re-decoded
+    // (FR-025). A reader comparing two such files gets the same text both
+    // surfaces show.
+    const context = await scannedTree((root) => {
+      mkdirSync(join(root, '.claude/skills/replaced'), { recursive: true });
+      writeFileSync(
+        join(root, '.claude/skills/replaced/SKILL.md'),
+        Uint8Array.from([
+          ...new TextEncoder().encode('---\nname: replaced\ndescription: A '),
+          0xff,
+          ...new TextEncoder().encode(' name.\n---\n\nBody.\n'),
+        ]),
+      );
+    });
+    const result = await getFileDetail(context, '.claude/skills/replaced/SKILL.md');
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    const { file } = result.data;
+    if (file.encoding !== 'utf-8-replaced') {
+      throw new Error(`expected replaced text, got ${file.encoding}`);
+    }
+    expect(file.sourceText).toContain('\uFFFD');
+    expect(file.sourceText.endsWith('Body.\n')).toBe(true);
+    expect(file.diagnosticIds).toEqual([]);
+  });
+
+  it('serves a binary file as its diagnostic alone, with no field for content', async () => {
+    const context = await scannedTree((root) => {
+      mkdirSync(join(root, '.claude/skills/binary'), { recursive: true });
+      writeFileSync(
+        join(root, '.claude/skills/binary/SKILL.md'),
+        Uint8Array.from([0x23, 0x00, 0x61]),
+      );
+    });
+    const result = await getFileDetail(context, '.claude/skills/binary/SKILL.md');
+    if (!('data' in result)) {
+      throw new Error('expected a detail result');
+    }
+    const { file } = result.data;
+    expect(file.encoding).toBe('binary');
+    // Absent by construction rather than emptied at serialization: the binary
+    // variant has no `sourceText` member at all, so there is nothing to
+    // forget to clear (FR-025).
+    expect(Object.keys(file)).not.toContain('sourceText');
+    expect(Object.keys(file)).not.toContain('hadLeadingBom');
+    expect(file.diagnosticIds).toHaveLength(1);
+    expect(result.data.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      'file-content-binary',
+    ]);
+  });
+
+  it('offers no acknowledgement, notice, or reveal function at all', async () => {
+    // FR-027 has neither: a session that could be asked to acknowledge
+    // something would have a state a reader must clear before reading their
+    // own file, and one that could reveal something would imply it had
+    // hidden it. The whole registered surface is what proves the absence.
+    const { context } = await scannedFixture();
+    const names = [...registerFunctions(context).keys()].toSorted();
+    expect(names.length).toBeGreaterThan(0);
+    for (const forbidden of ['acknowledge', 'notice', 'reveal', 'unmask', 'resolve-value']) {
+      expect(
+        names.filter((name) => name.includes(forbidden)),
+        forbidden,
+      ).toEqual([]);
+    }
+  });
+
+  it('fails a request-owned rejection with its real error and no payload', async () => {
+    const { context, skillPath } = await scannedFixture();
+    const committed = context.session.snapshot();
+    // The detail is assembled from the committed generation, so a rejection
+    // inside that assembly is this request's own: it reaches the caller
+    // unchanged, and it publishes no result, no generation, and no partial
+    // success to stand in for one (FR-030).
+    const injected = new Error('injected detail failure');
+    const detail = vi.spyOn(context.session, 'fileDetail').mockImplementation(() => {
+      throw injected;
+    });
+    try {
+      await expect(getFileDetail(context, skillPath)).rejects.toBe(injected);
+    } finally {
+      detail.mockRestore();
+    }
+    expect(context.session.snapshot()).toEqual(committed);
+  });
+
+  it('says what it read and never what it thinks of it', async () => {
+    const { context, skillPath } = await scannedFixture();
+    const result = await getFileDetail(context, skillPath);
+    const payload = JSON.stringify(result).toLowerCase();
+    // The detail carries the file's own text and its own facts. A judgement
+    // about it — a validation outcome, a verdict, a remediation — has no
+    // field to travel in (QR-001, FR-032). The authored text is excluded from
+    // the scan: a reader's file may say anything.
+    // The file's own text, excluded from the scan below: a reader's file may
+    // say anything, and this case is about what the product says.
+    let sourceText = '';
+    if ('data' in result) {
+      const { file } = result.data;
+      if (file.encoding === 'utf-8' || file.encoding === 'utf-8-replaced') {
+        sourceText = file.sourceText;
+      }
+    }
+    const authored = JSON.stringify(sourceText).toLowerCase();
+    for (const word of ['"valid', '"invalid', 'compliance', 'remediat', 'verdict', 'severity']) {
+      expect(payload.replace(authored, ''), word).not.toContain(word);
+    }
   });
 });

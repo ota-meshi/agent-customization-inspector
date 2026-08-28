@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { ref, shallowRef, type Ref } from 'vue';
 
 import { detailRoute } from '../../../src/app/components/detail-route';
+import { instructionComparisonRouteFor } from '../../../src/app/composables/instruction-comparison';
 import { useInventoryFilters } from '../../../src/app/composables/filters';
 import { pathPresentationLabel } from '../../../src/shared/entities';
 import type {
@@ -29,13 +30,14 @@ import type {
   SkillDefinitionDto,
   SkillInventoryEntryDto,
   SourceDto,
+  SourceKind,
 } from '../../../src/shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
 
 const REPOSITORY_SOURCE: SourceDto = {
   sourceId: 'src-repo',
   kind: 'repository',
-  tool: null,
+  member: null,
   enabled: true,
   status: 'ready',
   boundary: { displayRoot: '/tmp/repo', origin: 'process-cwd' },
@@ -63,6 +65,7 @@ function file(path: string): CustomizationFileSummaryDto {
 /** One definition — one `(file, tool)` recognition of a skill. */
 function definition(tool: SupportedTool, path: string): SkillDefinitionDto {
   return {
+    sourceId: 'src-repo',
     sourceRelativePath: path,
     tool,
     surfaces: [],
@@ -127,7 +130,7 @@ function snapshotWith(
 // does and passes it in; the composable returns only what it derives.
 function withSelection(snapshot: Ref<SessionSnapshot | null>) {
   const selection = {
-    sourceId: ref<string | null>(null),
+    sourceKind: ref<SourceKind | null>(null),
     tool: ref<SupportedTool | null>(null),
     kind: ref<CustomizationKind | null>(null),
     pathQuery: ref(''),
@@ -163,8 +166,8 @@ describe('a shared file’s recognitions stay separate definitions', () => {
       .flatMap((row) => row.definitions)
       .map(({ sourceRelativePath }) => detailRoute('skill', sourceRelativePath));
     expect(routes).toEqual([
-      '/skills/.claude/skills/lander/SKILL.md',
-      '/skills/.claude/skills/lander/SKILL.md',
+      '/skills/detail/repository/.claude/skills/lander/SKILL.md',
+      '/skills/detail/repository/.claude/skills/lander/SKILL.md',
     ]);
     expect(new Set(routes).size).toBe(1);
   });
@@ -220,18 +223,50 @@ describe('a shared file’s recognitions stay separate definitions', () => {
 });
 
 describe('an instruction row addresses the file’s own detail route (T218)', () => {
-  it('builds one route from the path alone, segments encoded and separators kept', () => {
+  it('builds one route from the file’s whole identity, segments encoded and separators kept', () => {
     // The kind's unit is the file (data-model.md § Inventory unit), so the
     // route carries no tool segment: however many products recognize the
-    // file, they name one page, and the path is the whole identity (FR-030).
-    expect(detailRoute('instructions', 'AGENTS.md')).toBe('/instructions/AGENTS.md');
+    // file, they name one page. What it does carry is both halves of the
+    // identity — the Source that holds the file, then its path (FR-030).
+    expect(detailRoute('instructions', 'AGENTS.md')).toBe(
+      '/instructions/detail/repository/AGENTS.md',
+    );
+    // The same path under a consented home is a different file and a
+    // different address; without the Source segment the two would be one URL
+    // resolving to whichever the session lists first.
+    expect(detailRoute('instructions', 'AGENTS.md', 'global-codex')).toBe(
+      '/instructions/detail/global-codex/AGENTS.md',
+    );
     // Each segment is percent-encoded so an authored entry name cannot
     // smuggle a separator or a query into the URL, while `/` separators stay
     // separators for the catch-all route to split on.
     expect(detailRoute('instructions', 'docs/team guide.md')).toBe(
-      '/instructions/docs/team%20guide.md',
+      '/instructions/detail/repository/docs/team%20guide.md',
     );
-    expect(detailRoute('instructions', 'a?b/c#d.md')).toBe('/instructions/a%3Fb/c%23d.md');
+    expect(detailRoute('instructions', 'a?b/c#d.md')).toBe(
+      '/instructions/detail/repository/a%3Fb/c%23d.md',
+    );
+  });
+
+  it('carries the family and each side’s own Source into the comparison address', () => {
+    // A pair belongs to one Source family and each side carries its own Source:
+    // two consented homes are two Sources of one family, and comparing what
+    // each of them says is what the family groups them for (FR-011, FR-030).
+    expect(
+      instructionComparisonRouteFor(
+        'global',
+        { source: 'global-claude', sourceRelativePath: 'CLAUDE.md' },
+        { source: 'global-codex', sourceRelativePath: 'AGENTS.override.md' },
+      ),
+    ).toEqual({
+      path: '/instructions/compare/global',
+      query: {
+        leftSource: 'global-claude',
+        left: 'CLAUDE.md',
+        rightSource: 'global-codex',
+        right: 'AGENTS.override.md',
+      },
+    });
   });
 
   it('narrows a row’s recognizing tools without changing the row’s identity', () => {
@@ -239,6 +274,7 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     // does is re-key the row, because the path is the identity the detail
     // route resolves — a filtered view still links to the same page.
     const entry: InstructionInventoryEntryDto = {
+      sourceId: 'src-repo',
       applicabilityRange: '**',
       files: [
         {
@@ -257,11 +293,12 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     tool.value = 'codex';
     expect(view.instructionRows.value).toEqual([
       {
+        sourceId: 'src-repo',
         applicabilityRange: '**',
-        // The row's own files, which the narrowing does not touch: they are
-        // what its comparison entry link is built from
+        // The row's own file identities, which the narrowing does not touch:
+        // they are what a comparison entry link is built from
         // (`filters.ts` § NarrowedInventoryRow).
-        rowFilePaths: ['AGENTS.md'],
+        rowFileIdentities: [{ sourceId: 'src-repo', sourceRelativePath: 'AGENTS.md' }],
         files: [
           {
             sourceRelativePath: 'AGENTS.md',
@@ -272,7 +309,7 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
     ]);
     expect(
       detailRoute('instructions', view.instructionRows.value[0]!.files[0]!.sourceRelativePath),
-    ).toBe('/instructions/AGENTS.md');
+    ).toBe('/instructions/detail/repository/AGENTS.md');
   });
 
   it('resolves a stale link’s path to no row', () => {
@@ -286,6 +323,7 @@ describe('an instruction row addresses the file’s own detail route (T218)', ()
         [],
         [
           {
+            sourceId: 'src-repo',
             applicabilityRange: '**',
             files: [
               {
@@ -320,6 +358,7 @@ describe('the path filter matches the spelling the rows render (T1096)', () => {
         [],
         [
           {
+            sourceId: 'src-repo',
             applicabilityRange: '**',
             files: [
               {

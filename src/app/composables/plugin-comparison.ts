@@ -13,7 +13,7 @@
 // still agree.
 //
 // The comparison selection is the route's:
-// `/plugins/compare?name=<plugin name>&left=<path>&right=<path>` — the row's
+// `/plugins/compare/<family>?name=<plugin name>&left=<path>&right=<path>` — the row's
 // name in the carriers' own spelling and the two carriers by their
 // Source-relative Paths, the identities the inventory and the detail route
 // use (FR-030) — and a selection the model does not express is reported by
@@ -35,13 +35,14 @@
 // request tokens.
 import { shallowRef } from 'vue';
 import type { SupportedTool } from '../../shared/entities';
-import { toJsonStringBody } from '../components/detail-route';
+import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
 import type {
   PluginCarrierDetailDto,
   PluginCarrierDetailParams,
   PluginFileDetailDto,
+  SourceKind,
 } from '../../shared/api-types';
 
 /**
@@ -73,8 +74,11 @@ export type PluginComparisonViewStatus =
 /**
  * The plugin comparison route of one compared selection: `name` is the
  * plugin name whose row owns the comparison, as its vendor addresses it
- * (FR-007), `left` and `right` are the two carriers' Source-relative Paths —
- * the identities the inventory rows and the detail route use (FR-030) — and
+ * (FR-007), `left` and `right` are the two carriers' identities — each its
+ * own Source and Source-relative Path, the identity the inventory rows and
+ * the detail route use (FR-030), each side naming its Source because a
+ * consented member publishes plugin carriers too (contracts/http-api.md
+ * § Host requirements #5) — and
  * `file` is the file of the plugin the reader has open, named relative to
  * each side's own root. A module function beside the state class so every
  * surface that builds the link — the inventory row's and detail page's entry
@@ -87,22 +91,32 @@ export type PluginComparisonViewStatus =
  * authored `"\uD800"` escape to a lone surrogate — and the router's own
  * query encoding throws `URIError` on one, which would surface inside the
  * row computed that builds these links.
+ *
+ * The family leads the address rather than a Source, because a pair stays
+ * inside one family while a family can hold two consented homes — a reader
+ * compares one home's file against the other's, never a Repository file
+ * against a home's (contracts/http-api.md § Host requirements #5). Stated in
+ * the address rather than derived so the page can refuse a pair outside it
+ * before resolving anything.
  */
 export function pluginComparisonRouteFor(
+  family: SourceKind,
   name: string,
-  left: string,
-  right: string,
+  left: ComparisonSide,
+  right: ComparisonSide,
   file: string | null = null,
 ): {
   readonly path: string;
   readonly query: Readonly<Record<string, string>>;
 } {
   return {
-    path: '/plugins/compare',
+    path: `/plugins/compare/${family}`,
     query: {
       name: toJsonStringBody(name),
-      left: toJsonStringBody(left),
-      right: toJsonStringBody(right),
+      leftSource: left.source,
+      left: toJsonStringBody(left.sourceRelativePath),
+      rightSource: right.source,
+      right: toJsonStringBody(right.sourceRelativePath),
       // The file the reader has open, named the way both plugins name it:
       // relative to each side's own root, because two copies of one plugin
       // sit at two paths and the file they share is the same name inside
@@ -387,9 +401,9 @@ export class PluginComparisonState {
    */
   public open(
     pluginName: string,
-    leftPath: string,
+    left: ComparisonSide,
     leftTool: SupportedTool,
-    rightPath: string,
+    right: ComparisonSide,
     rightTool: SupportedTool,
   ): Promise<void> {
     // The previous pair's content is dropped before anything is requested,
@@ -404,16 +418,16 @@ export class PluginComparisonState {
     // as a failed load, and a pair waiting its turn has not failed.
     this.status.value = 'loading';
     return this.#run(() =>
-      this.#openOwned(pluginName, leftPath, leftTool, rightPath, rightTool, requested),
+      this.#openOwned(pluginName, left, leftTool, right, rightTool, requested),
     );
   }
 
   /** The queued half of {@link open}; `requested` is that call's own version. */
   async #openOwned(
     pluginName: string,
-    leftPath: string,
+    left: ComparisonSide,
     leftTool: SupportedTool,
-    rightPath: string,
+    right: ComparisonSide,
     rightTool: SupportedTool,
     requested: number,
   ): Promise<void> {
@@ -429,19 +443,19 @@ export class PluginComparisonState {
     // detail settlements through one request-token family: a second
     // in-flight detail would supersede the first and discard its response
     // (`SessionApiClient` § request tokens).
-    const left = await this.#fetchOwned(pluginName, leftPath, leftTool, owns);
-    if (left === null || !owns()) {
+    const leftDetail = await this.#fetchOwned(pluginName, left, leftTool, owns);
+    if (leftDetail === null || !owns()) {
       return;
     }
-    const right = await this.#fetchOwned(pluginName, rightPath, rightTool, owns);
-    if (right === null || !owns()) {
+    const rightDetail = await this.#fetchOwned(pluginName, right, rightTool, owns);
+    if (rightDetail === null || !owns()) {
       return;
     }
     // Adopted together: a comparison with one side is not a comparison, and
     // publishing the pair in one synchronous step means no render can see
     // half of it.
-    this.leftDetail.value = left;
-    this.rightDetail.value = right;
+    this.leftDetail.value = leftDetail;
+    this.rightDetail.value = rightDetail;
     this.status.value = 'ready';
   }
 
@@ -742,7 +756,7 @@ export class PluginComparisonState {
    */
   async #fetchOwned(
     pluginName: string,
-    sourceRelativePath: string,
+    side: ComparisonSide,
     tool: SupportedTool,
     owns: () => boolean,
   ): Promise<PluginCarrierDetailDto | null> {
@@ -752,7 +766,8 @@ export class PluginComparisonState {
     // recognition a projection reached first (`api-types.ts`
     // § PluginCarrierDetailParams.tool).
     const outcome = await this.#client.fetchPluginCarrierDetail({
-      sourceRelativePath,
+      source: side.source,
+      sourceRelativePath: side.sourceRelativePath,
       pluginName,
       tool,
     });

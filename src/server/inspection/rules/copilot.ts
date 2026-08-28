@@ -115,7 +115,13 @@ export class CopilotCompiledOtherKindRule
 export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
   COPILOT_INSPECTION_RULES,
 )
-  .filter((rule) => rule.discoveryClass === 'static-candidate')
+  // Selected by scope as well as by class: a Global rule's base is a consented
+  // member boundary, so executing one here would run a Global selector against
+  // the Repository root. {@link COPILOT_GLOBAL_RULES} and
+  // {@link COPILOT_AGENTS_HOME_RULES} below are where those go.
+  .filter(
+    (rule) => rule.discoveryClass === 'static-candidate' && rule.sourceKinds.includes('repository'),
+  )
   .map((rule) =>
     // Each record compiles into the unit that can answer its kind's question:
     // an instruction record what its files govern, a command record the name
@@ -151,4 +157,57 @@ export const COPILOT_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = 
                 : rule.kind === 'plugin'
                   ? new CopilotCompiledPluginCatalogRule(rule)
                   : new CopilotCompiledOtherKindRule(rule),
+  );
+
+/**
+ * The Copilot rules the consented member scans execute, one catalog per
+ * member, split from one compiled population by the boundary each record's
+ * own matcher names — so a rule cannot be scanned against a root its selector
+ * was never authored for, and the one dispatch below serves both members.
+ *
+ * `COPILOT_GLOBAL_RULES` is the consented `COPILOT_HOME` catalog
+ * (contracts/vendors/github-copilot.md § Inspector Global rule): the personal
+ * instruction pair, skills, agents, standalone and inline hooks, the settings
+ * document, and the user MCP carrier. `COPILOT_AGENTS_HOME_RULES` is the
+ * consented shared-agent-home catalog: the personal skills below `~/.agents`
+ * (FR-045), where one admitted file carries this vendor's recognition beside
+ * Codex's, exactly as one Repository `.agents/skills` file does.
+ *
+ * The defaults stand in for groups the grouping's `Partial` result cannot
+ * promise; the registry contract gates freeze both catalogs non-empty, so an
+ * empty list here is a registry change those gates fail on, never a silent
+ * state a reader meets.
+ */
+export const { copilot: COPILOT_GLOBAL_RULES = [], agents: COPILOT_AGENTS_HOME_RULES = [] } =
+  Object.groupBy(
+    Object.values(COPILOT_INSPECTION_RULES)
+      .filter(
+        (rule) =>
+          rule.discoveryClass === 'static-candidate' && rule.matcher?.base.kind === 'global',
+      )
+      // Each record compiles into the unit that answers its kind's question —
+      // the same dispatch the Repository catalog uses, minus the branches
+      // whose rule IDs only exist at the Repository scope — before the split,
+      // because the shared agent home's Copilot rule is the same vendor's
+      // reading at another consented boundary.
+      .map((rule) =>
+        rule.kind === 'instructions'
+          ? new CopilotCompiledInstructionRule(rule)
+          : rule.kind === 'skill'
+            ? new CopilotCompiledSkillRule(rule)
+            : rule.kind === 'MCP'
+              ? new CopilotCompiledMcpCarrierRule(rule)
+              : rule.kind === 'agent'
+                ? new CopilotCompiledAgentRule(rule)
+                : rule.kind === 'hook'
+                  ? rule.ruleId === 'copilot.global.hooks'
+                    ? new CopilotCompiledStandaloneHookRule(rule)
+                    : new CopilotCompiledSettingsHookRule(rule)
+                  : new CopilotCompiledOtherKindRule(rule),
+      ),
+    // The boundary the compiled plan carries decides the member catalog. The
+    // repository arm is the boundary union's other member, which the filter
+    // above keeps out of this population, so no group ever forms under it.
+    (compiled) =>
+      compiled.plan.boundary.kind === 'global' ? compiled.plan.boundary.member : 'repository',
   );

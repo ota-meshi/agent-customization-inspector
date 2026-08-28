@@ -22,9 +22,10 @@
 // Nothing here reads a byte either: this module answers which files accompany
 // the candidate and where they are, and the scan does the reading through the
 // one read path every other file goes through.
-import { isAbsolute, join, relative, sep } from 'node:path';
+import { isAbsolute, relative, sep } from 'node:path';
 import { readdir, realpath } from './fs-io';
 import {
+  pathUnderRoot,
   INSTALLED_PACKAGE_DIRECTORIES,
   VCS_INTERNALS,
   isVcsInternalPath,
@@ -202,7 +203,10 @@ async function collectWithin(
     if (VCS_INTERNALS.has(entry.name)) {
       continue;
     }
-    const entryPath = join(directory, entry.name);
+    // Appended, never `join`ed: the base descends from the admitted root,
+    // whose own `..` spelling must keep the operating system's resolution
+    // ({@link pathUnderRoot}).
+    const entryPath = pathUnderRoot(directory, [entry.name]);
     let isFile = entry.isFile();
     let isDirectory = entry.isDirectory();
     // A link, or an entry whose type this filesystem does not report — NFS

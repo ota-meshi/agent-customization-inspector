@@ -266,7 +266,7 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
     // itself as no longer in the scan.
     await page.goto(
       new URL(
-        '/plugins/.agents/plugins/marketplace.json' +
+        '/plugins/detail/repository/.agents/plugins/marketplace.json' +
           '?plugin=secret-keeper%40inspector-examples&file=plugins%2Fsecret-keeper%2F.mcp.json',
         host.origin,
       ).href,
@@ -293,7 +293,7 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
     // showing it here would attribute it to this plugin.
     await page.goto(
       new URL(
-        '/plugins/.agents/plugins/marketplace.json' +
+        '/plugins/detail/repository/.agents/plugins/marketplace.json' +
           '?plugin=secret-keeper%40inspector-examples' +
           '&file=plugins%2Fbroken-plugin%2F.codex-plugin%2Fplugin.json',
         host.origin,

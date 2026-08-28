@@ -17,6 +17,7 @@ import { join, sep } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as fsIo from '../../src/server/inspection/fs-io';
+import type { InstructionInventoryEntryDto, SessionSnapshot } from '../../src/shared/api-types';
 import {
   FIXTURE_ENVIRONMENT_REFERENCE,
   FIXTURE_SECRET_LITERAL,
@@ -71,6 +72,29 @@ vi.mock('../../src/server/inspection/fs-io', async (importOriginal) => {
 
 const cleanups: (() => void)[] = [];
 
+/**
+ * The instruction rows with each row's Source replaced by the fixed marker
+ * below.
+ *
+ * A row names its Source as well as its range (FR-030), and that ID is a
+ * per-session opaque value no literal can spell. Normalizing it keeps each case
+ * stating the ranges and files it is about, and
+ * {@link expectRepositoryInstructionSources} asserts the Source itself once.
+ */
+function normalizedInstructions(
+  snapshot: SessionSnapshot,
+): readonly Omit<InstructionInventoryEntryDto, 'sourceId'>[] {
+  return snapshot.instructions.map(({ sourceId: _sourceId, ...rest }) => rest);
+}
+
+/** Every instruction row belongs to the one Repository Source of this session. */
+function expectRepositoryInstructionSources(snapshot: SessionSnapshot): void {
+  const repository = snapshot.sources.find((source) => source.kind === 'repository');
+  for (const entry of snapshot.instructions) {
+    expect(entry.sourceId, entry.applicabilityRange ?? 'no range').toBe(repository?.sourceId);
+  }
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   while (cleanups.length > 0) {
@@ -106,6 +130,7 @@ async function scanOnce(
     sourceId,
     root: context.session.selectedRepositoryRoot,
     rootFailureOwner: trigger === 'startup' ? 'repository' : `published-source:${sourceId}`,
+    scope: 'repository',
   });
   if (publication.kind === 'publishable') {
     await context.coordinator.completeScan(admitted.scanRequestId, {
@@ -150,7 +175,7 @@ describe('generation 0 exists before any filesystem operation (FR-002)', () => {
     expect(snapshot.sources).toHaveLength(1);
     expect(snapshot.sources[0]).toMatchObject({
       kind: 'repository',
-      tool: null,
+      member: null,
       enabled: true,
       status: 'idle',
       generation: 0,
@@ -397,6 +422,7 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
       name: 'greet',
       definitions: [
         {
+          sourceId: context.session.repositorySourceId,
           sourceRelativePath: '.agents/skills/greet/SKILL.md',
           tool: 'copilot',
           // The surfaces the admitting rules rest on, stated beside this
@@ -409,6 +435,7 @@ describe('recognition is atomic per admitted candidate (FR-005)', () => {
           companionFiles,
         },
         {
+          sourceId: context.session.repositorySourceId,
           sourceRelativePath: '.agents/skills/greet/SKILL.md',
           tool: 'codex',
           surfaces: ['codex-local-clients'],
@@ -533,6 +560,7 @@ describe('progress moves while the scan is running', () => {
       sourceId,
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
       onProgress: (update) => {
         context.coordinator.reportProgress(admitted.scanRequestId, update);
         const source = context.session.snapshot().sources[0]!;
@@ -565,6 +593,7 @@ describe('progress moves while the scan is running', () => {
       sourceId: 'companion-progress-source',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
       onProgress: (update) => {
         if (update.phase === 'recognizing') {
           recognizingBytes.push(update.readBytes);
@@ -760,6 +789,9 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
       'companionFiles',
       'diagnosticIds',
       'parseStatus',
+      // The Source holding the file — the other half of its identity, now
+      // that a consented member can hold this kind too (FR-030).
+      'sourceId',
       'sourceRelativePath',
       // The surfaces this recognition's admissions rest on: a definition is a
       // recognition, and FR-009 states them beside every one.
@@ -979,6 +1011,7 @@ describe('a failure not confined to one file aborts the attempt (FR-030)', () =>
         sourceId,
         root: fixture.root,
         rootFailureOwner: `published-source:${sourceId}`,
+        scope: 'repository',
       }),
     ).rejects.toThrow('injected enumeration failure');
 
@@ -1240,6 +1273,7 @@ describe('publication authority and relationship targets', () => {
       sourceId,
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
@@ -1306,6 +1340,7 @@ describe('the Codex plugin scan (T754)', () => {
       sourceId: 'src-codex-plugins',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
@@ -1362,6 +1397,7 @@ describe('the Codex plugin scan (T754)', () => {
         sourceId: 'src-codex-plugin-reads',
         root: fixture.root,
         rootFailureOwner: 'repository',
+        scope: 'repository',
       });
       expect(publication.kind).toBe('publishable');
     } finally {
@@ -1776,6 +1812,7 @@ describe('the unified skill inventory (T180)', () => {
         sourceId,
         root: fixture.root,
         rootFailureOwner: `published-source:${sourceId}`,
+        scope: 'repository',
         recognize: () => {
           recognizeCalls += 1;
           readsAtThrow = vi.mocked(fsIo.readFile).mock.calls.length;
@@ -1825,6 +1862,7 @@ describe('the unified skill inventory (T180)', () => {
         sourceId,
         root: fixture.root,
         rootFailureOwner: `published-source:${sourceId}`,
+        scope: 'repository',
       }),
     ).rejects.toThrow('injected exhaustion');
     // No attempt state leaked: the committed snapshot is unchanged.
@@ -1840,6 +1878,7 @@ describe('the unified skill inventory (T180)', () => {
       sourceId: 'src-progress',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
       onProgress: (update) => {
         phases.push(update.phase);
         updates.push({
@@ -1922,7 +1961,8 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // nested file, each in its own way (T255). The nested file is therefore not
     // a near miss for every product — it is a Copilot row of its own range, and
     // the Codex rows beside it are unchanged.
-    expect(snapshot.instructions).toEqual([
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
       {
         applicabilityRange: '**',
         files: [
@@ -1963,6 +2003,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         name: null,
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: fixture.configCarrierPath,
             tool: 'codex',
             surfaces: ['codex-local-clients'],
@@ -2043,7 +2084,8 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     }
     expect(publication.outcome).toBe('partial');
     const snapshot = context.session.snapshot();
-    expect(snapshot.instructions).toEqual([
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
       {
         applicabilityRange: '**',
         files: [
@@ -2080,6 +2122,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         name: null,
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.codex/config.toml',
             tool: 'codex',
             surfaces: ['codex-local-clients'],
@@ -2097,6 +2140,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         event: null,
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.codex/config.toml',
             tool: 'codex',
             carrier: 'contained',
@@ -2122,6 +2166,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // the bytes the author wrote, malformed or not.
     expect(snapshot.settings).toEqual([
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: '.codex/config.toml',
         recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
       },
@@ -2153,6 +2198,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         name,
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: fixture.carrierPath,
             tool: 'codex',
             surfaces: ['codex-local-clients'],
@@ -2168,6 +2214,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         // declaring no server for either, in the closed tool order.
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.mcp.json',
             tool: 'copilot',
             // Both Copilot surfaces: the CLI reading and the VS Code 1.118+
@@ -2178,6 +2225,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
             diagnosticIds: [],
           },
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.mcp.json',
             tool: 'claude',
             surfaces: ['claude-cli-and-ide-clients'],
@@ -2189,7 +2237,8 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     ]);
     // The instruction and fallback rows beside it stay what Phase 15 made
     // them: the carrier's candidacy changes neither.
-    expect(snapshot.instructions).toEqual([
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
       {
         applicabilityRange: '**',
         files: [
@@ -2231,6 +2280,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // never appears — and the unadmitted owner files reach no recognition at
     // all. No null row exists: the one carrier publishes named rows.
     const claudeDeclaration = (sourceRelativePath: string) => ({
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath,
       tool: 'claude',
       surfaces: ['claude-cli-and-ide-clients'],
@@ -2238,6 +2288,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       diagnosticIds: [],
     });
     const copilotDeclaration = (sourceRelativePath: string) => ({
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath,
       tool: 'copilot',
       // The root spelling carries the VS Code 1.118+ provenance beside the
@@ -2290,6 +2341,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     const snapshot = context.session.snapshot();
 
     const copilotDeclaration = (sourceRelativePath: string) => ({
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath,
       tool: 'copilot',
       // The root spelling carries the VS Code 1.118+ provenance beside the
@@ -2301,6 +2353,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       diagnosticIds: [],
     });
     const claudeDeclaration = (sourceRelativePath: string) => ({
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath,
       tool: 'claude',
       surfaces: ['claude-cli-and-ide-clients'],
@@ -2360,6 +2413,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // file stands beside them. The duplicate name groups both carriers'
     // declarations into one row with no order projected among them (FR-009).
     const vscodeDeclaration = {
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath: fixture.vscodeCarrierPath,
       tool: 'copilot',
       surfaces: ['copilot-vscode'],
@@ -2367,6 +2421,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       diagnosticIds: [],
     };
     const rootCopilotDeclaration = {
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath: fixture.rootCarrierPath,
       tool: 'copilot',
       surfaces: ['copilot-vscode', 'copilot-cli'],
@@ -2374,6 +2429,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       diagnosticIds: [],
     };
     const rootClaudeDeclaration = {
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath: fixture.rootCarrierPath,
       tool: 'claude',
       surfaces: ['claude-cli-and-ide-clients'],
@@ -2415,7 +2471,14 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       sourceRelativePath: string,
       tool: 'copilot' | 'claude' | 'codex',
       surfaces: readonly string[],
-    ) => ({ sourceRelativePath, tool, surfaces, parseStatus: 'parsed', diagnosticIds: [] });
+    ) => ({
+      sourceId: context.session.repositorySourceId,
+      sourceRelativePath,
+      tool,
+      surfaces,
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+    });
     const rootCopilot = declaration(fixture.rootCarrierPath, 'copilot', [
       'copilot-vscode',
       'copilot-cli',
@@ -2448,6 +2511,16 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       {
         name: fixture.pairedServerName,
         declarations: [codexDeclaration, rootCopilot, rootClaude],
+      },
+      // The cross-Source pair's Repository half: two Copilot carriers of one
+      // name, so the row's Repository block can offer its own comparison
+      // entry, spelled to pair with the Global homes fixture (T1127, FR-030).
+      {
+        name: 'tickets',
+        declarations: [
+          declaration(fixture.githubCarrierPath, 'copilot', ['copilot-cli']),
+          declaration(fixture.vscodeCarrierPath, 'copilot', ['copilot-vscode']),
+        ],
       },
       { name: 'vs-docs', declarations: [vscodeCopilot] },
     ]);
@@ -2544,6 +2617,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         name: 'alpha',
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.mcp.json',
             tool: 'copilot',
             // Both Copilot surfaces: the CLI reading and the VS Code 1.118+
@@ -2559,6 +2633,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
         name: 'beta',
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.mcp.json',
             tool: 'copilot',
             // Both Copilot surfaces: the CLI reading and the VS Code 1.118+
@@ -2630,7 +2705,8 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // A binary candidate is never recognized — recognition would need content
     // it has none of — so the instructions inventory lists the readable file
     // alone while the binary one stays visible under its own facts.
-    expect(snapshot.instructions).toEqual([
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
       {
         applicabilityRange: '**',
         files: [
@@ -2753,7 +2829,7 @@ describe('the pure configured-fallback interface (T208)', () => {
     // it was.
     const after = context.session.snapshot();
     expect(after.repositoryGeneration).toBe(before.repositoryGeneration);
-    expect(after.instructions).toEqual(before.instructions);
+    expect(normalizedInstructions(after)).toEqual(normalizedInstructions(before));
     expect(after.diagnostics).toEqual(before.diagnostics);
   });
 });
@@ -2783,7 +2859,8 @@ describe('the committed Claude instructions inventory (T229)', () => {
     // rule: Copilot documents its `CLAUDE.md` alternative at the repository
     // root alone, so `.claude/CLAUDE.md`, `CLAUDE.local.md`, and every nested
     // `CLAUDE.md` stay Claude's (T256).
-    expect(snapshot.instructions).toEqual([
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
       {
         applicabilityRange: '**',
         files: [
@@ -2923,7 +3000,8 @@ describe('the committed Copilot instructions inventory (T248)', () => {
     // repository-wide file is admitted by the root-exact rule and by the
     // CLI-context rule, so it names all three, and the one under
     // `packages/api/` names the CLI's alone.
-    expect(snapshot.instructions).toEqual([
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
       {
         applicabilityRange: '**',
         files: [
@@ -3081,7 +3159,8 @@ describe('a census-listed path a rule independently admits (FR-007)', () => {
     await scanOnce(context);
     const snapshot = context.session.snapshot();
 
-    expect(snapshot.instructions).toEqual([
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual([
       {
         applicabilityRange: '.claude/skills/greet/**',
         files: [
@@ -3113,6 +3192,7 @@ describe('the Claude plugin scan (T777)', () => {
       sourceId: 'src-claude-plugins',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
@@ -3195,20 +3275,30 @@ describe('the Claude plugin scan (T777)', () => {
     mkdirSync(join(root, 'plugins/acme'), { recursive: true });
     writeFileSync(join(root, 'plugins/acme/notes.md'), '# notes\n', 'utf8');
 
-    const publication = await runSourceScan({
-      sourceId: 'src-claude-plugin-spelling',
-      root,
-      rootFailureOwner: 'repository',
-    });
-    if (publication.kind !== 'publishable') {
-      throw new Error('expected a publishable outcome');
+    // Once as the automatic first scan runs, and once as an explicit rescan
+    // does: the verification follows the scan's scope, and the rescan's
+    // `published-source:` diagnostic owner names a lifecycle, not a boundary
+    // (scan.ts § ScanPublicationInput `scope`).
+    for (const rootFailureOwner of [
+      'repository' as const,
+      'published-source:src-claude-plugin-spelling' as const,
+    ]) {
+      const publication = await runSourceScan({
+        sourceId: 'src-claude-plugin-spelling',
+        root,
+        rootFailureOwner,
+        scope: 'repository',
+      });
+      if (publication.kind !== 'publishable') {
+        throw new Error('expected a publishable outcome');
+      }
+      const paths = publication.files.map((file) => file.sourceRelativePath);
+      expect(paths).toContain('plugins/acme/notes.md');
+      // Neither under the spelling that was asked for nor under the one the
+      // disk holds: the declaration names no directory this Source has.
+      expect(paths).not.toContain('Node_Modules/acme/index.js');
+      expect(paths).not.toContain('node_modules/acme/index.js');
     }
-    const paths = publication.files.map((file) => file.sourceRelativePath);
-    expect(paths).toContain('plugins/acme/notes.md');
-    // Neither under the spelling that was asked for nor under the one the disk
-    // holds: the declaration names no directory this Source has.
-    expect(paths).not.toContain('Node_Modules/acme/index.js');
-    expect(paths).not.toContain('node_modules/acme/index.js');
   });
 
   it('keeps what a manifest placement establishes when its text does not parse', async () => {
@@ -3231,6 +3321,7 @@ describe('the Claude plugin scan (T777)', () => {
       sourceId: 'src-claude-malformed-plugin',
       root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
@@ -3386,6 +3477,7 @@ describe('the Copilot plugin scan (T799)', () => {
       sourceId: 'src-copilot-plugins',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
@@ -3520,6 +3612,7 @@ describe('the unified plugin inventory (T821)', () => {
       sourceId: 'src-unified-plugins',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
@@ -3667,7 +3760,8 @@ describe('the unified instructions inventory (T270)', () => {
     // Source-relative Path order, recognitions in the closed tool order with
     // deterministic per-tool surfaces. The binary candidate is recognized by
     // nothing and appears in no row (FR-025).
-    expect(snapshot.instructions).toEqual(expectedInstructionRows({}));
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual(expectedInstructionRows({}));
 
     // One physical item per admitted file, published once whatever the number
     // of admitting products, in raw-path order.
@@ -3756,7 +3850,10 @@ describe('the unified instructions inventory (T270)', () => {
     expect(snapshot.files.map((file) => file.sourceRelativePath)).toEqual(
       fixture.expectedPublishedPaths,
     );
-    expect(snapshot.instructions).toEqual(expectedInstructionRows({ injectionUnreadable: true }));
+    expectRepositoryInstructionSources(snapshot);
+    expect(normalizedInstructions(snapshot)).toEqual(
+      expectedInstructionRows({ injectionUnreadable: true }),
+    );
   });
 
   it('aborts the attempt for an injected recognition failure, retaining the prior commit', async () => {
@@ -3789,6 +3886,7 @@ describe('the unified instructions inventory (T270)', () => {
         sourceId,
         root: fixture.root,
         rootFailureOwner: `published-source:${sourceId}`,
+        scope: 'repository',
         recognize: () => {
           recognizeCalls += 1;
           readsAtThrow = vi.mocked(fsIo.readFile).mock.calls.length;
@@ -3818,7 +3916,8 @@ describe('the unified instructions inventory (T270)', () => {
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
     const context = bootstrap(fixture.root);
     await scanOnce(context);
-    expect(context.session.snapshot().instructions).toEqual(expectedInstructionRows({}));
+    expectRepositoryInstructionSources(context.session.snapshot());
+    expect(normalizedInstructions(context.session.snapshot())).toEqual(expectedInstructionRows({}));
 
     // The tree changes under the committed generation: the override and one
     // fallback file disappear, and the carrier stops declaring any fallback.
@@ -3887,18 +3986,21 @@ describe('the unified commands inventory (T478)', () => {
     const shared = rowsByName.get('deploy')!;
     expect(shared.definitions).toEqual([
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: '.claude/commands/deploy.md',
         tool: 'copilot',
         surfaces: ['copilot-cli'],
         diagnosticIds: [],
       },
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: '.claude/commands/deploy.md',
         tool: 'claude',
         surfaces: ['claude-cli-and-ide-clients'],
         diagnosticIds: [],
       },
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: '.github/prompts/deploy.prompt.md',
         tool: 'copilot',
         surfaces: ['copilot-vscode'],
@@ -4013,6 +4115,7 @@ describe('the unified commands inventory (T478)', () => {
         sourceId,
         root: fixture.root,
         rootFailureOwner: `published-source:${sourceId}`,
+        scope: 'repository',
         recognize: () => {
           throw injected;
         },
@@ -4119,6 +4222,7 @@ describe('the unified settings and configuration inventory (T646)', () => {
         event: null,
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.github/copilot/settings.json',
             tool: 'copilot',
             carrier: 'contained',
@@ -4157,6 +4261,7 @@ describe('the committed Claude settings inventory (T610)', () => {
     // read, one recognition per product (T645).
     expect(snapshot.settings).toEqual([
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: fixture.declaringCarrierPath,
         recognitions: [
           { tool: 'copilot', surfaces: ['copilot-cli'] },
@@ -4164,6 +4269,7 @@ describe('the committed Claude settings inventory (T610)', () => {
         ],
       },
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: fixture.localCarrierPath,
         recognitions: [
           { tool: 'copilot', surfaces: ['copilot-cli'] },
@@ -4237,6 +4343,7 @@ describe('the committed Claude settings inventory (T610)', () => {
     const snapshot = context.session.snapshot();
     expect(snapshot.settings).toEqual([
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: '.claude/settings.json',
         recognitions: [
           { tool: 'copilot', surfaces: ['copilot-cli'] },
@@ -4263,6 +4370,7 @@ describe('the committed Claude settings inventory (T610)', () => {
         event: null,
         declarations: [
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.claude/settings.json',
             tool: 'copilot',
             carrier: 'contained',
@@ -4271,6 +4379,7 @@ describe('the committed Claude settings inventory (T610)', () => {
             diagnosticIds: [expect.any(String)],
           },
           {
+            sourceId: context.session.repositorySourceId,
             sourceRelativePath: '.claude/settings.json',
             tool: 'claude',
             carrier: 'contained',
@@ -4305,6 +4414,7 @@ describe('the committed Codex settings inventory (T581)', () => {
     // (data-model.md § Inventory unit): the one carrier, named by its path.
     expect(snapshot.settings).toEqual([
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: fixture.carrierPath,
         recognitions: [{ tool: 'codex', surfaces: ['codex-local-clients'] }],
       },
@@ -4393,6 +4503,7 @@ describe('the committed Codex custom-agent inventory (T509, T524)', () => {
       '.codex/agents/docs-researcher.toml',
     ]);
     expect(shared.definitions[0]).toEqual({
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath: '.codex/agents/docs-researcher-2.toml',
       tool: 'codex',
       surfaces: ['codex-local-clients'],
@@ -4520,6 +4631,7 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
       ['.claude/agents/research/debugger.md', 'claude'],
     ]);
     expect(duplicate.definitions[1]).toEqual({
+      sourceId: context.session.repositorySourceId,
       sourceRelativePath: '.claude/agents/debugger.md',
       tool: 'claude',
       surfaces: ['claude-cli-and-ide-clients'],
@@ -4564,7 +4676,7 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     // alone and answers with the first variant its fixed order reaches — the
     // instructions one — and that variant carries the same two values a
     // Markdown agent's parse produces, so the agent route maps it rather than
-    // reporting a parsed file as unparsed (pages/agents/[...path].vue).
+    // reporting a parsed file as unparsed (pages/agents/[source]/[...path].vue).
     const root = createRepositoryFixtureRoot('inspector-scan-claude-agent-overlap');
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.claude/agents'), { recursive: true });
@@ -4699,6 +4811,7 @@ describe('the combined all-kind fixture serves every inventory from one tree (T1
     const codexRow = snapshot.mcp.find((entry) => entry.name === 'codex-db')!;
     expect(codexRow.declarations).toEqual([
       {
+        sourceId: context.session.repositorySourceId,
         sourceRelativePath: '.codex/config.toml',
         tool: 'codex',
         surfaces: ['codex-local-clients'],
@@ -4853,6 +4966,7 @@ describe('the committed Claude contained-hook inventory (T860)', () => {
         event: null,
         declarations: [
           {
+            sourceId: failed.session.repositorySourceId,
             sourceRelativePath: '.claude/settings.json',
             tool: 'copilot',
             carrier: 'contained',
@@ -4861,6 +4975,7 @@ describe('the committed Claude contained-hook inventory (T860)', () => {
             diagnosticIds: [expect.any(String)],
           },
           {
+            sourceId: failed.session.repositorySourceId,
             sourceRelativePath: '.claude/settings.json',
             tool: 'claude',
             carrier: 'contained',
@@ -5131,6 +5246,7 @@ describe('the unified hook inventory (T903)', () => {
       sourceId: 'src-unified-hooks',
       root: fixture.root,
       rootFailureOwner: 'repository',
+      scope: 'repository',
     });
     if (publication.kind !== 'publishable') {
       throw new Error('expected a publishable outcome');
@@ -5192,6 +5308,7 @@ describe('the unified hook inventory (T903)', () => {
     expect(closing?.event).toBeNull();
     expect(closing?.declarations).toEqual([
       {
+        sourceId: snapshot.sources[0]!.sourceId,
         sourceRelativePath: fixture.carriers.unreadable,
         tool: 'copilot',
         carrier: 'standalone',
@@ -5228,6 +5345,7 @@ describe('the unified hook inventory (T903)', () => {
         sourceId,
         root: fixture.root,
         rootFailureOwner: `published-source:${sourceId}`,
+        scope: 'repository',
       }),
     ).rejects.toThrow('injected hook enumeration failure');
     context.coordinator.failScan(admitted.scanRequestId, {

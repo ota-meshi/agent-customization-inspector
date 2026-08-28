@@ -33,6 +33,7 @@ import { ParsedTomlDocument } from '../../parsers/toml';
 import { RecognitionExtraction } from '../../parsers/extraction';
 import { CODEX_DERIVED_FALLBACK_BASENAME_RULE } from '../../../../shared/registries/codex/rules';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
+import type { SelectionPolicy } from '../registry';
 
 /**
  * A Codex instruction rule compiled for execution: everything a Codex rule is,
@@ -57,10 +58,45 @@ export class CodexCompiledInstructionRule
   }
 
   /** Compiles one Codex instruction record, rejecting one of another kind. */
-  public constructor(rule: InspectionRule) {
-    super(rule);
+  public constructor(rule: InspectionRule, selectionPolicy?: SelectionPolicy) {
+    super(rule, selectionPolicy);
     if (rule.kind !== 'instructions') {
       throw new TypeError(`rule ${rule.ruleId} is not a Codex instruction rule`);
+    }
+  }
+}
+
+/**
+ * The consented Codex Global instruction rule, compiled with the one
+ * content-dependent selection policy this product has
+ * (contracts/inspection-path-allowlist.md § Global selector requirements).
+ *
+ * A separate unit rather than a branch inside its Repository sibling, because
+ * the policy is a fact about this rule alone: at the Repository scope both
+ * named files are admitted and no winner is projected, while here the vendor's
+ * own rule is decided by the bytes of the two files the scan reads anyway, so
+ * the plan carries `codex-global-first-non-empty` and at most one file is
+ * published.
+ *
+ * The constructor proves what the policy is only valid for: the exact ordered
+ * literal pair below a Global Codex boundary. A record that is not that pair
+ * would make the traversal's two-target branch read a target the rule never
+ * named, so it fails at module load rather than at scan time.
+ */
+export class CodexCompiledGlobalInstructionRule extends CodexCompiledInstructionRule {
+  /** Compiles the Global pair, rejecting any other record. */
+  public constructor(rule: InspectionRule) {
+    super(rule, 'codex-global-first-non-empty');
+    if (rule.matcher?.base.kind !== 'global') {
+      throw new TypeError(`rule ${rule.ruleId} is not anchored at a Global boundary`);
+    }
+    const targets = rule.matcher.selectors.map((selector) =>
+      selector.length === 1 && selector[0]?.kind === 'literal' ? selector[0].value : null,
+    );
+    if (targets.length !== 2 || targets[0] !== 'AGENTS.override.md' || targets[1] !== 'AGENTS.md') {
+      throw new TypeError(
+        `rule ${rule.ruleId} does not name the ordered AGENTS.override.md, AGENTS.md pair`,
+      );
     }
   }
 }

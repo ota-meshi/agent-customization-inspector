@@ -31,10 +31,14 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
+import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
+import SourceRootLine from '../SourceRootLine.vue';
 import { skillRowFiles, type SkillRowFile } from './skill-row-files';
-import { detailRoute } from '../../detail-route';
+import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
+import { useSessionSources } from '../../../composables/session-sources';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import {
+  fileIdentityKey,
   SAME_NAME_SKILL_RESOLUTION_TEXT,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
@@ -47,6 +51,7 @@ import type {
   CustomizationFileSummaryDto,
   SerializedDiagnostic,
   SkillInventoryEntryDto,
+  SourceKind,
 } from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
 
@@ -54,15 +59,19 @@ const props = defineProps<{
   /** The committed skill entry to render: one resolved name. */
   entry: NarrowedInventoryRow<SkillInventoryEntryDto>;
   /**
-   * Every published file by its Source-relative Path — the file's identity
-   * (FR-030). A definition names its file by path and repeats none of its
-   * facts, and its census entries are paths too, so this one lookup resolves
+   * Every published file by its Source and then its Source-relative Path —
+   * both halves of the file's identity (FR-030). A definition names its file
+   * by its own `sourceId` and path and repeats none of its facts, and its
+   * census entries are paths of that same Source, so this lookup resolves
    * both to the files they name.
    */
-  filesByPath: ReadonlyMap<string, CustomizationFileSummaryDto>;
+  filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
   /** The generation's diagnostics, resolved per definition by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
+
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
 
 /**
  * This row's definitions grouped by the file each recognizes, so a file's own
@@ -72,43 +81,45 @@ const props = defineProps<{
 const rowFiles = computed(() => skillRowFiles(props.entry.definitions));
 
 /**
- * The distinct readable entry-point paths of this row's definitions, in the
- * row's own order. A comparison is a pair within one skill name — the URL
- * itself names two of the name's copies (FR-011) — so this row is where the
- * entry's candidate files are already known: two
- * files may resolve to one name, and comparing them is what the comparison
- * surface exists for. A file without readable source text is not among
- * them — a deterministic diagnostic-only item stays visible for review but
+ * The readable entry-point identities of this row's own files — each the
+ * entry file's Source and path, the pair the comparison route addresses a
+ * side by (FR-030). Drawn from {@link NarrowedInventoryRow.rowFileIdentities}
+ * rather than from the members a filter left, so the link a reader followed
+ * is still there when they come back to the unnarrowed list. A comparison is
+ * a pair within one skill name — the URL itself names two of the name's
+ * copies (FR-011) — and a file without readable source text is not among the
+ * sides: a deterministic diagnostic-only item stays visible for review but
  * cannot be a comparison input (US3 scenario 4, FR-025).
  */
-const comparableEntryPaths = computed(() => {
-  const paths: string[] = [];
-  for (const path of props.entry.rowFilePaths) {
-    const file = props.filesByPath.get(path);
+const comparableEntrySides = computed<readonly ComparisonSide[]>(() => {
+  const sides: ComparisonSide[] = [];
+  for (const identity of props.entry.rowFileIdentities) {
+    const file = props.filesBySource.get(identity.sourceId)?.get(identity.sourceRelativePath);
     if (file !== undefined && isReadableFile(file)) {
-      paths.push(path);
+      sides.push({
+        source: sessionSources.selectorOf(identity.sourceId),
+        sourceRelativePath: identity.sourceRelativePath,
+      });
     }
   }
-  return paths;
+  return sides;
 });
 
 /**
- * The comparison this row links to — its first two readable entry files —
- * or null when the name has fewer than two, where a link would open a
- * comparison with nothing to pair. The compare route's own file switchers
- * take over from there: they hold every file of this name, entry points and
- * census companions alike, so the reader switches pairs on the comparison
- * itself instead of composing one here.
- *
- * The pair is drawn from the row's own files rather than from the members a
- * filter left, so the link a reader followed is still there when they come
- * back to the unnarrowed list ({@link NarrowedInventoryRow}).
+ * Each family block's comparison entry — that family's first two comparable
+ * identities, for the blocks that hold a pair (FR-011): a block's comparison
+ * is that family's, and a pair never spans two families
+ * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
+ * hold one member offers no entry — exactly as an instruction range's blocks
+ * do. The comparison surface's own pickers take over from there
+ * (`detail-route.ts` § familyComparisonPairsOf).
  */
-const compareRoute = computed(() => {
-  const [first, second] = comparableEntryPaths.value;
-  return first !== undefined && second !== undefined
-    ? skillComparisonRouteFor(props.entry.name, first, second)
-    : null;
+const blockCompareRoutes = computed(() => {
+  const routes = new Map<SourceKind, ReturnType<typeof skillComparisonRouteFor>>();
+  for (const [kind, [first, second]] of familyComparisonPairsOf(comparableEntrySides.value)) {
+    routes.set(kind, skillComparisonRouteFor(kind, props.entry.name, first, second));
+  }
+  return routes;
 });
 
 /**
@@ -124,11 +135,19 @@ const compareRoute = computed(() => {
 function affectedCompanions(
   file: SkillRowFile,
 ): readonly { path: string; diagnosticIds: readonly string[] }[] {
+  // The census paths are the owning file's Source's, so they resolve under
+  // that Source alone (FR-030).
+  const sourceFiles = props.filesBySource.get(file.sourceId);
   return file.companionFiles.flatMap((sourceRelativePath) => {
-    const file = props.filesByPath.get(sourceRelativePath);
-    return file === undefined || file.diagnosticIds.length === 0
+    const published = sourceFiles?.get(sourceRelativePath);
+    return published === undefined || published.diagnosticIds.length === 0
       ? []
-      : [{ path: escapeControlCharacters(sourceRelativePath), diagnosticIds: file.diagnosticIds }];
+      : [
+          {
+            path: escapeControlCharacters(sourceRelativePath),
+            diagnosticIds: published.diagnosticIds,
+          },
+        ];
   });
 }
 </script>
@@ -160,15 +179,20 @@ function affectedCompanions(
       >
     </p>
 
-    <ul class="aci-skill-row__files" role="list">
-      <!-- One item per file this name is declared by, each stating its own
-           path once with the products that recognize it beside it — the shape
-           every other row whose subject is a file uses. Grouping is what the
-           reader sees, not what the row publishes: every recognition is still
-           stated, because two products recognizing one file do not read it
-           under one condition and the row may not present them as though they
-           did (FR-009). -->
-      <li v-for="file in rowFiles" :key="file.sourceRelativePath" class="aci-skill-row__file">
+    <!-- One block per Source family that resolves the name
+         (`SourceFamilyBlocks.vue`). Within a block, one item per file this
+         name is declared by, each stating its own path once with the products
+         that recognize it beside it — the shape every other row whose subject
+         is a file uses. Grouping is what the reader sees, not what the row
+         publishes: every recognition is still stated, because two products
+         recognizing one file do not read it under one condition and the row
+         may not present them as though they did (FR-009). -->
+    <SourceFamilyBlocks
+      :members="rowFiles"
+      :member-key="(file) => fileIdentityKey(file.sourceId, file.sourceRelativePath)"
+      :identities="entry.rowFileIdentities"
+    >
+      <template #member="{ member: file }">
         <!-- The path is the link: the detail route is the file's identity, and
              its path half survives rescans and launches that select the same
              root, the origin being devframe's port selection (data-model.md
@@ -191,7 +215,13 @@ function affectedCompanions(
              the surface loaded the skill. -->
         <p class="aci-skill-row__owner">
           <NuxtLink
-            :to="detailRoute('skill', file.sourceRelativePath)"
+            :to="
+              detailRoute(
+                'skill',
+                file.sourceRelativePath,
+                sessionSources.selectorOf(file.sourceId),
+              )
+            "
             class="aci-path aci-authored-text"
             :aria-label="`${inlinePresentationLabel(
               file.sourceRelativePath,
@@ -208,6 +238,11 @@ function affectedCompanions(
             }}</span></span
           >
         </p>
+
+        <!-- Which directory the file was in, where its family holds more than
+             one Source: an escaped presentation of the admitted root, never a
+             path anything can open (FR-002, FR-030). -->
+        <SourceRootLine :source-id="file.sourceId" />
         <!-- What ships beside the `SKILL.md`. The census says the skill has
              supporting files, not that a product loads them; the detail view
              is where the directory itself can be opened. It is stated even at
@@ -236,30 +271,27 @@ function affectedCompanions(
             <RowDiagnostics :diagnostic-ids="companion.diagnosticIds" :diagnostics="diagnostics" />
           </li>
         </ul>
-      </li>
-    </ul>
+      </template>
 
-    <!-- The comparison entry for this name (FR-011): the entry links compose
-         pairs within one skill name, so the row whose files share it is where
-         this entry opens — one link, no selection step. It leads with the
-         name's first two readable files, and the comparison surface's own
-         file switchers take over from there, entry points and census
-         companions alike. Absent when the name has fewer than two readable
-         files, where there is nothing to pair. -->
-    <p v-if="compareRoute !== null" class="aci-skill-row__compare">
-      <!-- The accessible name carries the row's name after the visible
-           phrase: in a links list every comparable row would otherwise
-           announce identically, the same reason the tool links above carry
-           their row's name (WCAG 2.4.6; label-in-name keeps the visible phrase
-           as the prefix). Through the whitespace-safe label, because the
-           accessible-name computation normalizes whitespace: two names
-           differing only invisibly must not read as one name (FR-025). -->
-      <NuxtLink
-        :to="compareRoute"
-        :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}`"
-        >Compare this skill's files</NuxtLink
-      >
-    </p>
+      <!-- The block's own comparison entry (FR-011): the family is where a
+           pair of this name's copies lives, so each block that holds two
+           comparable files offers its own — the instruction blocks' shape.
+           The accessible name carries the row's name always, and the family
+           where two blocks each offer one (WCAG 2.4.6). -->
+      <template #entry="{ block }">
+        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-skill-row__compare">
+          <NuxtLink
+            :to="blockCompareRoutes.get(block.kind)!"
+            :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}${
+              blockCompareRoutes.size > 1 && block.familyText !== null
+                ? ` (${block.familyText})`
+                : ''
+            }`"
+            >Compare this skill's files</NuxtLink
+          >
+        </p>
+      </template>
+    </SourceFamilyBlocks>
 
     <!-- Present only when several definitions share the name; one definition
          resolves nothing. -->
@@ -307,22 +339,6 @@ function affectedCompanions(
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-/* The files of the name, set under it by an indent and a rule — the layout
-   every other grouped row uses for the members of its own subject: an
-   instruction row's files, an MCP row's declarations, an agent row's
-   definitions. The indent is what says the files belong to the name above
-   them rather than standing beside it. */
-.aci-skill-row__files {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
-}
-
-.aci-skill-row__files > li + li {
-  margin-block-start: 0.4rem;
 }
 
 /* The statements describe the row as a whole, so they sit apart from the

@@ -127,7 +127,9 @@ test.describe('the complete literal Claude subagent detail', () => {
       .filter({ hasText: 'browser-tester' })
       .getByRole('link', { name: /browser-tester\.md/u })
       .click();
-    await expect(page).toHaveURL(/\/agents\/\.claude\/agents\/browser-tester\.md$/u);
+    await expect(page).toHaveURL(
+      /\/agents\/detail\/repository\/\.claude\/agents\/browser-tester\.md$/u,
+    );
     await expect(
       page.getByRole('heading', { name: '.claude/agents/browser-tester.md' }),
     ).toBeVisible();
@@ -171,7 +173,9 @@ test.describe('the complete literal Claude subagent detail', () => {
   });
 
   test('shows the complete authored source under the file tab', async ({ page }) => {
-    await page.goto(new URL('/agents/.claude/agents/browser-tester.md', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.claude/agents/browser-tester.md', host.origin).toString(),
+    );
     await page.getByRole('tab', { name: 'File' }).click();
     const main = page.locator('main');
     await expect(main).toContainText('Readable text');
@@ -196,10 +200,12 @@ test.describe('the complete literal Claude subagent detail', () => {
     // `.claude/agents/CLAUDE.md` is admitted by both rules, and
     // `get-file-detail` answers with the instructions variant. The agent route
     // maps that variant's two halves onto its own rather than showing an empty
-    // parse panel (pages/agents/[...path].vue § presentation). It is also two
+    // parse panel (pages/agents/[source]/[...path].vue § presentation). It is also two
     // agent rows, because the two products name it differently: `CLAUDE` from
     // the file, `overlapping` from the declaration.
-    await page.goto(new URL('/agents/.claude/agents/CLAUDE.md', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.claude/agents/CLAUDE.md', host.origin).toString(),
+    );
     await expect(page.getByRole('heading', { name: '.claude/agents/CLAUDE.md' })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Agent', selected: true })).toBeVisible();
     const main = page.locator('main');
@@ -208,21 +214,30 @@ test.describe('the complete literal Claude subagent detail', () => {
     await expect(main).toContainText('name: overlapping');
     await expect(main).toContainText('Both kinds own this file.');
     // And the same file opens as an instruction file on its own route.
-    await page.goto(new URL('/instructions/.claude/agents/CLAUDE.md', host.origin).toString());
+    await page.goto(
+      new URL('/instructions/detail/repository/.claude/agents/CLAUDE.md', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText('name: overlapping');
   });
 
   test('publishes no MCP surface for the declared server block', async ({ page }) => {
     await page.goto(host.origin);
     await expect(page.getByRole('tab', { name: /MCP/u })).toHaveCount(0);
-    await page.goto(new URL('/mcp/.claude/agents/browser-tester.md', host.origin).toString());
+    await page.goto(
+      new URL('/mcp/detail/repository/.claude/agents/browser-tester.md', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
   });
 
   test('returns to the agent tab it was opened from', async ({ page }) => {
-    await page.goto(new URL('/agents/.claude/agents/review/security.md', host.origin).toString());
+    await page.goto(
+      new URL(
+        '/agents/detail/repository/.claude/agents/review/security.md',
+        host.origin,
+      ).toString(),
+    );
     await expect(
       page.getByRole('heading', { name: '.claude/agents/review/security.md' }),
     ).toBeVisible();
@@ -232,7 +247,9 @@ test.describe('the complete literal Claude subagent detail', () => {
   });
 
   test('reports a link the current scan holds nothing at', async ({ page }) => {
-    await page.goto(new URL('/agents/.claude/agents/removed.md', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.claude/agents/removed.md', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
@@ -264,7 +281,9 @@ test.describe('a subagent whose frontmatter could not be read', () => {
   });
 
   test('lands on the file tab with the failure stated and the source intact', async ({ page }) => {
-    await page.goto(new URL('/agents/.claude/agents/broken.md', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.claude/agents/broken.md', host.origin).toString(),
+    );
     await expect(page.getByRole('heading', { name: '.claude/agents/broken.md' })).toBeVisible();
     // Extraction failed all-or-nothing, so the parse panel has nothing to show
     // and the complete source is the honest landing (FR-028).
@@ -283,7 +302,9 @@ test.describe('a subagent whose frontmatter could not be read', () => {
   test('opens no agent detail for a candidate whose bytes were never accepted', async ({
     page,
   }) => {
-    await page.goto(new URL('/agents/.claude/agents/gone.md', host.origin).toString());
+    await page.goto(
+      new URL('/agents/detail/repository/.claude/agents/gone.md', host.origin).toString(),
+    );
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );

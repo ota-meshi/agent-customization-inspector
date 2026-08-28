@@ -14,7 +14,7 @@
 // its pickers move the sides among.
 //
 // The comparison selection is the route's:
-// `/mcp/compare?name=<declared name>&left=<path>&right=<path>` — the row's
+// `/mcp/compare/<family>?name=<declared name>&left=<path>&right=<path>` — the row's
 // name in the carriers' own spelling and the two carriers by their
 // Source-relative Paths, the identities the inventory and the detail route
 // use (FR-030) — and a selection the model does not express is reported by
@@ -34,10 +34,10 @@
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
 import { shallowRef } from 'vue';
-import { toJsonStringBody } from '../components/detail-route';
+import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
-import type { McpCarrierDetailDto } from '../../shared/api-types';
+import type { McpCarrierDetailDto, SourceKind } from '../../shared/api-types';
 
 /**
  * Where the one open comparison stands:
@@ -71,8 +71,10 @@ export type McpComparisonViewStatus =
  * The MCP comparison route of one compared selection: `name` is the
  * declared server name whose row owns the comparison, in the carriers' own
  * spelling (FR-007), and `left` and `right` are the two carriers'
- * Source-relative Paths — the identities the inventory rows and the detail
- * route use (FR-030). A module function beside the state class so every
+ * identities — each its own Source and Source-relative Path, the identity
+ * the inventory rows and the detail route use (FR-030), each side naming
+ * its Source because a consented member publishes MCP carriers too
+ * (contracts/http-api.md § Host requirements #5). A module function beside the state class so every
  * surface that builds the link — the inventory row's and detail page's
  * entry links, and the compare route's own pickers — builds the same URL.
  *
@@ -83,24 +85,40 @@ export type McpComparisonViewStatus =
  * `URIError` on one, which would surface inside the row computed that
  * builds these links. The compare route decodes with
  * `fromJsonStringBody`, so every declared name round-trips.
+ *
+ * The family leads the address rather than a Source, because a pair stays
+ * inside one family while a family can hold two consented homes — a reader
+ * compares one home's file against the other's, never a Repository file
+ * against a home's (contracts/http-api.md § Host requirements #5). Stated in
+ * the address rather than derived so the page can refuse a pair outside it
+ * before resolving anything.
  */
 export function mcpComparisonRouteFor(
+  family: SourceKind,
   name: string,
-  left: string,
-  right: string,
+  left: ComparisonSide,
+  right: ComparisonSide,
 ): {
   readonly path: string;
-  readonly query: { readonly name: string; readonly left: string; readonly right: string };
+  readonly query: {
+    readonly name: string;
+    readonly leftSource: string;
+    readonly left: string;
+    readonly rightSource: string;
+    readonly right: string;
+  };
 } {
   // The carrier paths ride the same way the name does, and for the same
   // reason: a raw entry name can hold a lone surrogate the router's own query
   // encoding rejects (`detail-route.ts`).
   return {
-    path: '/mcp/compare',
+    path: `/mcp/compare/${family}`,
     query: {
       name: toJsonStringBody(name),
-      left: toJsonStringBody(left),
-      right: toJsonStringBody(right),
+      leftSource: left.source,
+      left: toJsonStringBody(left.sourceRelativePath),
+      rightSource: right.source,
+      right: toJsonStringBody(right.sourceRelativePath),
     },
   };
 }
@@ -237,7 +255,7 @@ export class McpComparisonState {
    * invocation stops owning the view — a purge, a generation change, a
    * close, a newer open — cannot each grow their own handling.
    */
-  public async open(leftPath: string, rightPath: string): Promise<void> {
+  public async open(left: ComparisonSide, right: ComparisonSide): Promise<void> {
     // The previous pair's content is dropped before anything is requested,
     // so a slow request never leaves one pair's declarations on screen under
     // another pair's paths; this also supersedes any open still in flight.
@@ -251,19 +269,19 @@ export class McpComparisonState {
     // detail settlements through one request-token family: a second
     // in-flight detail would supersede the first and discard its response
     // (`SessionApiClient` § request tokens).
-    const left = await this.#fetchOwned(leftPath, owns);
-    if (left === null || !owns()) {
+    const leftDetail = await this.#fetchOwned(left, owns);
+    if (leftDetail === null || !owns()) {
       return;
     }
-    const right = await this.#fetchOwned(rightPath, owns);
-    if (right === null || !owns()) {
+    const rightDetail = await this.#fetchOwned(right, owns);
+    if (rightDetail === null || !owns()) {
       return;
     }
     // Adopted together: a comparison with one side is not a comparison, and
     // publishing the pair in one synchronous step means no render can see
     // half of it.
-    this.leftDetail.value = left;
-    this.rightDetail.value = right;
+    this.leftDetail.value = leftDetail;
+    this.rightDetail.value = rightDetail;
     this.status.value = 'ready';
   }
 
@@ -274,10 +292,10 @@ export class McpComparisonState {
    * which is true of the session rather than of this request.
    */
   async #fetchOwned(
-    sourceRelativePath: string,
+    side: ComparisonSide,
     owns: () => boolean,
   ): Promise<McpCarrierDetailDto | null> {
-    const outcome = await this.#client.fetchMcpCarrierDetail(sourceRelativePath);
+    const outcome = await this.#client.fetchMcpCarrierDetail(side.sourceRelativePath, side.source);
     switch (outcome.kind) {
       case 'adopted':
         return owns() ? outcome.detail : null;

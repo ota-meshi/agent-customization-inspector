@@ -83,7 +83,9 @@ test.describe('the complete literal Claude command detail', () => {
       .first()
       .getByRole('link', { name: '.claude/commands/deploy.md' })
       .click();
-    await expect(page).toHaveURL(/\/prompts-and-commands\/\.claude\/commands\/deploy\.md$/u);
+    await expect(page).toHaveURL(
+      /\/prompts-and-commands\/detail\/repository\/\.claude\/commands\/deploy\.md$/u,
+    );
     await expect(page.getByRole('heading', { name: '.claude/commands/deploy.md' })).toBeVisible();
 
     const main = page.locator('main');
@@ -119,7 +121,10 @@ test.describe('the complete literal Claude command detail', () => {
 
   test('serves the complete authored file beside the parse', async ({ page }) => {
     await page.goto(
-      new URL('/prompts-and-commands/.claude/commands/deploy.md', host.origin).toString(),
+      new URL(
+        '/prompts-and-commands/detail/repository/.claude/commands/deploy.md',
+        host.origin,
+      ).toString(),
     );
     await page.getByRole('tab', { name: 'File' }).click();
     const main = page.locator('main');
@@ -134,7 +139,7 @@ test.describe('the complete literal Claude command detail', () => {
   test('shows a command with no frontmatter as the prompt it is', async ({ page }) => {
     await page.goto(
       new URL(
-        '/prompts-and-commands/.claude/commands/frontend/component.md',
+        '/prompts-and-commands/detail/repository/.claude/commands/frontend/component.md',
         host.origin,
       ).toString(),
     );
@@ -152,7 +157,7 @@ test.describe('the complete literal Claude command detail', () => {
   test('returns to the command tab it was opened from', async ({ page }) => {
     await page.goto(
       new URL(
-        '/prompts-and-commands/.claude/commands/frontend/component.md',
+        '/prompts-and-commands/detail/repository/.claude/commands/frontend/component.md',
         host.origin,
       ).toString(),
     );
@@ -163,7 +168,10 @@ test.describe('the complete literal Claude command detail', () => {
 
   test('reports a link the current scan holds nothing at', async ({ page }) => {
     await page.goto(
-      new URL('/prompts-and-commands/.claude/commands/gone.md', host.origin).toString(),
+      new URL(
+        '/prompts-and-commands/detail/repository/.claude/commands/gone.md',
+        host.origin,
+      ).toString(),
     );
     const main = page.locator('main');
     await expect(main).toContainText("Nothing in the current scan sits at this link's path.");
@@ -192,7 +200,10 @@ test.describe('a Claude command whose frontmatter is malformed', () => {
 
   test('lands on the complete file and states the extraction failure', async ({ page }) => {
     await page.goto(
-      new URL('/prompts-and-commands/.claude/commands/broken.md', host.origin).toString(),
+      new URL(
+        '/prompts-and-commands/detail/repository/.claude/commands/broken.md',
+        host.origin,
+      ).toString(),
     );
     const main = page.locator('main');
     // Extraction is all-or-nothing: nothing parsed is shown, the failure's

@@ -110,7 +110,7 @@ function guard(): ClientDataGuard & { advance: () => void; purges: string[] } {
 const REPOSITORY_SOURCE: SourceDto = {
   sourceId: 'src-repo',
   kind: 'repository',
-  tool: null,
+  member: null,
   enabled: true,
   status: 'ready',
   boundary: { displayRoot: '/tmp/repo', origin: 'process-cwd' },

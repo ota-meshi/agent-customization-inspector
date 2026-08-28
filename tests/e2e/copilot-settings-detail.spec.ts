@@ -74,7 +74,7 @@ test.describe('the complete literal Copilot settings detail', () => {
       .first()
       .click();
     await expect(page).toHaveURL(
-      /\/settings-and-configuration\/\.github\/copilot\/settings\.json$/u,
+      /\/settings-and-configuration\/detail\/repository\/\.github\/copilot\/settings\.json$/u,
     );
     await expect(
       page.getByRole('heading', { name: '.github/copilot/settings.json' }),
@@ -111,14 +111,20 @@ test.describe('the complete literal Copilot settings detail', () => {
     await page.goto(host.origin);
     await expect(page.getByRole('tab', { name: /^MCP/u })).toHaveCount(0);
     await page.goto(
-      new URL('/settings-and-configuration/.github/copilot/settings.json', host.origin).toString(),
+      new URL(
+        '/settings-and-configuration/detail/repository/.github/copilot/settings.json',
+        host.origin,
+      ).toString(),
     );
     await expect(page.locator('main')).toContainText('"mcpServers"');
   });
 
   test('returns to the settings tab it was opened from', async ({ page }) => {
     await page.goto(
-      new URL('/settings-and-configuration/.github/copilot/settings.json', host.origin).toString(),
+      new URL(
+        '/settings-and-configuration/detail/repository/.github/copilot/settings.json',
+        host.origin,
+      ).toString(),
     );
     await page.getByRole('link', { name: 'Back to the inventory' }).click();
     await expect(page).toHaveURL(/\?kind=settings%2Fconfig$/u);
@@ -129,8 +135,8 @@ test.describe('the complete literal Copilot settings detail', () => {
     // The general `.vscode/settings.json` and the CLI's `.github/lsp.json` are
     // documented exclusions: no row, so no detail.
     for (const path of [
-      '/settings-and-configuration/.vscode/settings.json',
-      '/settings-and-configuration/.github/lsp.json',
+      '/settings-and-configuration/detail/repository/.vscode/settings.json',
+      '/settings-and-configuration/detail/repository/.github/lsp.json',
     ]) {
       await page.goto(new URL(path, host.origin).toString());
       await expect(page.locator('main')).toContainText(

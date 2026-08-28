@@ -141,11 +141,13 @@ test.describe('custom agents at the root agents directory', () => {
     ]);
     // The name two files declare is one row listing both, in path order.
     const shared = items.filter({ hasText: 'reviewer' }).first();
-    await expect(shared.locator('.aci-agent-row__definitions .aci-path')).toHaveText([
+    await expect(shared.locator('.aci-source-family-blocks__members .aci-path')).toHaveText([
       '.codex/agents/reviewer-strict.toml',
       '.codex/agents/reviewer.toml',
     ]);
-    await expect(shared.locator('.aci-agent-row__definitions')).toContainText('OpenAI Codex');
+    await expect(shared.locator('.aci-source-family-blocks__members')).toContainText(
+      'OpenAI Codex',
+    );
 
     // The null-named row's members state their two different facts.
     const unnamed = items.filter({ hasText: 'No known agent name' });

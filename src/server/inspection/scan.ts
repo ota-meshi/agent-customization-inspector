@@ -47,11 +47,11 @@ import {
   type RecognitionInput,
   type ToolRecognition,
 } from './recognizers/candidate';
-import { join } from 'node:path';
 import { CODEX_REPOSITORY_RULES, readCodexConfiguredFallbackPlans } from './rules/codex';
 import { listCompanionFiles } from './companion-census';
 import { readdir } from './fs-io';
 import {
+  pathUnderRoot,
   readCandidate,
   rethrowIfResourceExhaustion,
   runTraversalScan,
@@ -176,6 +176,18 @@ export interface ScanPublicationInput {
    */
   readonly rootFailureOwner: LifecycleOwnerKey;
   /**
+   * Which boundary scope the attempt runs in. `repository` verifies a
+   * catalog-spelled directory against the entry names its ancestors actually
+   * hold before publishing files under it, while `global` never enumerates
+   * the member root and takes the operating system's own name resolution
+   * (contracts/inspection-path-allowlist.md § Traversal-plan compilation and
+   * Global least privilege). Explicit rather than derived from
+   * {@link rootFailureOwner}: the owner names a diagnostic's lifecycle — an
+   * explicit Repository rescan's is `published-source:<sourceId>` — not the
+   * boundary the scan runs in.
+   */
+  readonly scope: 'repository' | 'global';
+  /**
    * The exact rule list whose plans produced `result`. Candidate admissions
    * are plan indexes into this list, so passing a different list would
    * misattribute provenance.
@@ -283,7 +295,10 @@ export async function assembleScanPublication(
         );
         const recognized = await (input.recognize ?? recognizeCandidate)({
           matchedPath: candidate.publicPath,
-          absolutePath: join(input.root, ...candidate.rawSegments),
+          // Appended, never `join`ed, so the admitted root's own `..`
+          // spelling keeps the operating system's resolution
+          // ({@link pathUnderRoot}).
+          absolutePath: pathUnderRoot(input.root, candidate.rawSegments),
           sourceRoot: input.root,
           admissions,
           sourceText: candidate.outcome.sourceText,
@@ -430,10 +445,21 @@ export async function assembleScanPublication(
     // (contracts/inspection-path-allowlist.md § Bounded companion census), and
     // it is how `./Node_Modules/acme` reaches an installed package the
     // exclusion is written to keep out.
-    if (!(await holdsEveryEntryName(input.root, segments, entryNamesByDirectory))) {
+    //
+    // Repository scope only: a Global plan never enumerates the member root
+    // (contracts/inspection-path-allowlist.md § Traversal-plan compilation and
+    // Global least privilege), and the exact-target doctrine already blesses
+    // the alternative — the operating system's own name resolution, with the
+    // path published under the spelling that was asked for. Listing a Global
+    // root's ancestors to compare spellings would be the enumeration that
+    // rule exists to avoid.
+    if (
+      input.scope === 'repository' &&
+      !(await holdsEveryEntryName(input.root, segments, entryNamesByDirectory))
+    ) {
       continue;
     }
-    const absoluteDirectory = join(input.root, ...segments);
+    const absoluteDirectory = pathUnderRoot(input.root, segments);
     let target;
     try {
       // Through the link, like every read this product performs (FR-024).
@@ -560,7 +586,11 @@ export async function assembleScanPublication(
     kind: 'publishable',
     outcome: hasFileConfinedOutcome ? 'partial' : 'complete',
     files,
-    recognitions,
+    // Stamped here, once, on the way out: the Source is the scan's own fact,
+    // and a recognition published without it would be identified by a path
+    // that a consented Global home and the selected repository can both hold
+    // (FR-030).
+    recognitions: recognitions.map((recognition) => recognition.withSource(input.sourceId)),
     visitedEntries: input.result.visitedEntries,
     candidateFiles: input.result.candidateFiles,
     readBytes: input.result.readBytes + companionReadBytes,
@@ -582,8 +612,26 @@ export interface SourceScanInput {
   readonly root: string;
   /** The lifecycle owner of a `root-unreadable` failure; see {@link ScanPublicationInput}. */
   readonly rootFailureOwner: LifecycleOwnerKey;
+  /** Which boundary scope the attempt runs in; see {@link ScanPublicationInput}. */
+  readonly scope: 'repository' | 'global';
   /** The compiled rule catalog to execute; defaults to the shipped Repository set. */
   readonly rules?: readonly CompiledStaticCandidateRule[];
+  /**
+   * The configuration readers to run before the walk. Omitting it runs the
+   * shipped Repository set only when {@link rules} is also omitted — a caller
+   * that named its own catalog gets none unless it asks.
+   *
+   * That default is deliberately fail-closed rather than convenient. A reader
+   * opens a path of its own choosing below the root it is given and turns what
+   * that file declares into further admitted candidates, so running the
+   * Repository readers against a consented Global home reads the vendor
+   * configuration that home's exclusion rule names and then publishes whatever
+   * it pointed at — measured, before this coupling existed: a scan of a home
+   * holding `.codex/config.toml` published the `SECRET_NOTES.md` that file
+   * declared. Forgetting to pass readers must therefore mean reading less,
+   * never more (FR-016 through FR-018).
+   */
+  readonly configurationReaders?: readonly ((root: string) => Promise<ConfigurationReadResult>)[];
   /** The vendor recognizer dispatch; see {@link ScanPublicationInput.recognize}. */
   readonly recognize?: (input: RecognitionInput) => Promise<CandidateRecognition>;
   /**
@@ -637,7 +685,7 @@ async function holdsEveryEntryName(
     if (!entries.includes(segment)) {
       return false;
     }
-    parent = join(parent, segment);
+    parent = pathUnderRoot(parent, [segment]);
   }
   return true;
 }
@@ -664,7 +712,12 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
   // else.
   const configured: ConfiguredDerivedPlan[] = [];
   const seededReads: SeededCandidateRead[] = [];
-  for (const read of REPOSITORY_CONFIGURATION_READERS) {
+  // The readers a caller that named its own catalog gets: none. See
+  // `SourceScanInput.configurationReaders` for why the default is closed.
+  const configurationReaders =
+    input.configurationReaders ??
+    (input.rules === undefined ? REPOSITORY_CONFIGURATION_READERS : []);
+  for (const read of configurationReaders) {
     const contribution = await read(input.root);
     configured.push(...contribution.plans);
     // The reads stage one performed travel into the walk, so the candidate a
@@ -716,6 +769,7 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
     sourceId: input.sourceId,
     root: input.root,
     rootFailureOwner: input.rootFailureOwner,
+    scope: input.scope,
     rules,
     result,
     ...(input.recognize === undefined ? {} : { recognize: input.recognize }),

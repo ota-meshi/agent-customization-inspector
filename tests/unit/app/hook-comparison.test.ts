@@ -34,6 +34,14 @@ import type {
 const LEFT_PATH = '.claude/settings.json';
 const RIGHT_PATH = '.codex/config.toml';
 
+/**
+ * One compared side as the route now addresses it: the fixture files are the
+ * repository's, so the Source token is fixed here (FR-030).
+ */
+function side(sourceRelativePath: string): { source: 'repository'; sourceRelativePath: string } {
+  return { source: 'repository', sourceRelativePath };
+}
+
 /** One inventory declaration of one carrier by one tool. */
 function declarationOf(
   sourceRelativePath: string,
@@ -42,6 +50,7 @@ function declarationOf(
   surfaces: HookDeclarationDto['surfaces'],
 ): HookDeclarationDto {
   return {
+    sourceId: 'source-repository',
     sourceRelativePath,
     tool,
     carrier,
@@ -61,7 +70,7 @@ function snapshotWith(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
       {
         sourceId: 'source-repository',
         kind: 'repository',
-        tool: null,
+        member: null,
         enabled: true,
         status: 'ready',
         boundary: { displayRoot: '/tmp/fixture', origin: 'process-cwd' },
@@ -176,7 +185,15 @@ function scriptedChannel(options: {
           if (handler === undefined) {
             return Promise.reject(new Error('no carrier handler scripted'));
           }
-          return Promise.resolve().then(() => handler(String(args[0])));
+          // `get-file-detail` sends one object naming both halves of the
+          // identity (FR-030); the carrier functions still send a bare path,
+          // and this double answers for whichever arrived.
+          const payload = args[0];
+          const path =
+            typeof payload === 'string'
+              ? payload
+              : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+          return Promise.resolve().then(() => handler(path));
         }
         return Promise.reject(new Error(`unexpected call: ${method}`));
       },
@@ -188,7 +205,14 @@ function scriptedChannel(options: {
 function carrierCalls(calls: readonly { method: string; args: readonly unknown[] }[]): string[] {
   return calls
     .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getHookCarrierDetail)
-    .map((call) => String(call.args[0]));
+    .map((call) => {
+      // `get-file-detail` sends one object naming both halves of the identity
+      // (FR-030); the carrier functions still send a bare path.
+      const payload = call.args[0];
+      return typeof payload === 'string'
+        ? payload
+        : String((payload as { sourceRelativePath?: unknown })?.sourceRelativePath);
+    });
 }
 
 describe('hook comparison view (T908)', () => {
@@ -198,18 +222,37 @@ describe('hook comparison view (T908)', () => {
     // builder every entry link and the pickers use. Three coordinates and no
     // fourth: a runtime fact is on no row, so there is nothing else to name
     // (FR-009).
-    const route = hookComparisonRouteFor('PreToolUse', LEFT_PATH, RIGHT_PATH);
+    const route = hookComparisonRouteFor(
+      'repository',
+      'PreToolUse',
+      side(LEFT_PATH),
+      side(RIGHT_PATH),
+    );
     expect(route).toEqual({
-      path: '/hooks/compare',
-      query: { event: 'PreToolUse', left: LEFT_PATH, right: RIGHT_PATH },
+      path: '/hooks/compare/repository',
+      query: {
+        event: 'PreToolUse',
+        leftSource: 'repository',
+        left: LEFT_PATH,
+        rightSource: 'repository',
+        right: RIGHT_PATH,
+      },
     });
-    expect(Object.keys(route.query)).toEqual(['event', 'left', 'right']);
+    expect(Object.keys(route.query)).toEqual([
+      'event',
+      'leftSource',
+      'left',
+      'rightSource',
+      'right',
+    ]);
     // A declared event that is not well-formed UTF-16 — strict JSON resolves
     // an authored escape to a lone surrogate — rides the query through the
     // same reversible spelling the declaration detail uses
     // (`toJsonStringBody`): raw, the router's own query encoding would throw
     // `URIError` while the row's link renders.
-    expect(hookComparisonRouteFor('\uD800', LEFT_PATH, RIGHT_PATH).query.event).toBe('\\ud800');
+    expect(
+      hookComparisonRouteFor('repository', '\uD800', side(LEFT_PATH), side(RIGHT_PATH)).query.event,
+    ).toBe('\\ud800');
   });
 
   it('loads exactly two carrier details and adopts both, with no compare API', async () => {
@@ -220,7 +263,7 @@ describe('hook comparison view (T908)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.hookComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.hookComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.hookComparison.status.value).toBe('ready');
     expect(state.hookComparison.leftDetail.value?.file.sourceRelativePath).toBe(LEFT_PATH);
     expect(state.hookComparison.rightDetail.value?.file.sourceRelativePath).toBe(RIGHT_PATH);
@@ -248,7 +291,7 @@ describe('hook comparison view (T908)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.hookComparison.open(LEFT_PATH, '.claude/agents/reviewer.md');
+    await state.hookComparison.open(side(LEFT_PATH), side('.claude/agents/reviewer.md'));
     expect(state.hookComparison.status.value).toBe('stale');
     state.dispose();
   });
@@ -266,11 +309,11 @@ describe('hook comparison view (T908)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.hookComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.hookComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.hookComparison.status.value).toBe('failed');
     expect(state.hookComparison.errorMessage.value).toBe('carrier chunk lost');
     fail = false;
-    await state.hookComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.hookComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.hookComparison.status.value).toBe('ready');
     expect(state.hookComparison.errorMessage.value).toBeNull();
     state.dispose();
@@ -286,7 +329,7 @@ describe('hook comparison view (T908)', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.hookComparison.open(LEFT_PATH, RIGHT_PATH);
+    await state.hookComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     let disposed = 0;
     const unregister = state.hookComparison.registerOpenContentOwner(() => {
       disposed += 1;

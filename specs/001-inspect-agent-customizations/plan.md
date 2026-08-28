@@ -195,8 +195,11 @@ blocks T002; missing bilingual validation evidence fails the release gate.
 
 `src/server/cli.ts` uses only Gunshi's stable root `define`/`cli` API. It defines a negatable
 `open` boolean with a true default to provide `--no-open`, a single string-valued
-`root` option for `--root <path>`, and a number-valued `port` option for `--port <number>`,
-enables `strict: true`, explicitly rejects every
+`root` option for `--root <path>`, a number-valued `port` option for `--port <number>`,
+and a false-by-default `inspect-personal-setup` boolean whose presence is itself the
+consent confirmation — the entry captures the preview, confirms it, and awaits the
+committed Global generation before the host starts, exactly as it awaits the automatic
+Repository scan (FR-013) — enables `strict: true`, explicitly rejects every
 positional/rest argument before binding, awaits `cli()`, and lets a parser-owned validation
 `AggregateError` propagate ordinarily to a nonzero process exit. Before creating a
 session it captures `process.cwd()` exactly once and rejects an explicit empty `--root`
@@ -1156,7 +1159,7 @@ location.
 **Scale/Scope**: One local user, exactly one Repository source rooted at the
 selected Repository root (the exact one-time invocation `process.cwd()` capture by default
 or the accepted single `--root` value), zero
-to three admitted tool-specific Global sources produced by one session-wide all-tools
+to four admitted member Global sources produced by one session-wide all-members
 opt-in (at most one each for Copilot, Claude, and Codex), exactly one root per Source, and
 at most two distinct readable customization files in a comparison, or one shown against its stated absent counterpart. Inventory size is governed by the supported runtime and
 execution environment rather than a product-defined item ceiling.
@@ -1371,8 +1374,8 @@ src/
 │   ├── pages/
 │   │   ├── index.vue
 │   │   ├── global-consent.vue
-│   │   ├── skills/compare.vue
-│   │   └── skills/[...path].vue
+│   │   ├── skills/compare/[family].vue
+│   │   └── skills/detail/[source]/[...path].vue
 │   └── styles/
 ├── server/
 │   ├── cli.ts
@@ -1502,8 +1505,8 @@ and CLI are released and versioned together. Nuxt is configured as an SPA (`ssr:
 with the static Nitro preset, `app.baseURL: '/'`, `app.buildAssetsDir: '/_nuxt/'`, no CDN
 URL, explicit imports, and component auto-discovery disabled. Every nested client route
 therefore resolves the same root-absolute, same-origin asset URLs. A detail route belongs
-to the recognized kind whose surface it is, which is why `/skills/<the SKILL.md's
-source-relative path>` names `skills` rather than the file: what a detail shows is a
+to the recognized kind whose surface it is, which is why `/skills/detail/<source>/<the
+SKILL.md's source-relative path>` names `skills` rather than the file: what a detail shows is a
 skill's declarations, its instructions, and its directory, and another kind's detail
 answers different questions with a different layout. Which file of that directory is being
 read is a `file` query beside the address, so the subject stays the customization the page
@@ -1691,8 +1694,8 @@ configuration.
   recursive `node:fs/promises` walk of the fixed inspection-path allowlist compiled from
   the typed matchers: Repository plans walk downward from the selected Repository root
   through their explicitly represented descendant programs, while Global plans touch only
-  the documented instruction paths — an exact target checks only its own path, and the
-  Copilot fixed instructions subtree enumerates only that subtree; neighboring Global
+  the documented member paths — an exact target checks only its own path, and a fixed
+  subtree program enumerates only that subtree; neighboring Global
   paths receive no I/O. Traversal and reading follow symbolic links transparently,
   because the inspector shows what an agent reading the same path would see; recursive
   traversal tracks visited directories by real path so a link cycle cannot prevent a scan
@@ -2033,12 +2036,12 @@ configuration.
   apply the retry partition and, when roots were admitted, attach every context and transfer
   one batch. Batch scan results and graph records then remain tentative until their one
   generation commit.
-  Initial enable attempts all three frozen entries. Retry derives the complete fixed-order
+  Initial enable attempts all four frozen entries. Retry derives the complete fixed-order
   `retryableTools` projection from the same tuple: non-pending unpublished `admitted` controls
   plus `rejected` controls whose `retryDisposition` is `same-preview`; it excludes published,
   pending, and lexical `new-preview-required` controls, and the request cannot add, omit, or
   reorder it. Admission partitions that server-owned set into a deterministic
-  rejected subset and an admitted subset of zero to three roots. A lexically invalid entry
+  rejected subset and an admitted subset of zero to four roots. A lexically invalid entry
   or a consented root that is missing or is not a readable directory excludes only that
   root — recorded as absent or failed per the closed admission outcomes — and
   allows admitted siblings to continue. Any other unexpected throw or
@@ -2161,7 +2164,7 @@ configuration.
   `--root`, and with no files or diagnostics, so a fatal first attempt has a legal retained
   current base. Explicit Repository rescans, enabled-Global single-Source rescans, and Global
   batches share the same queue rules. Repeated Global disable joins an existing barrier;
-  when no tool-specific Global Source or graph, active consent record, retained admitted
+  when no member Global Source or graph, active consent record, retained admitted
   Global root context, running/queued Global
   scan/enable command, or retained disable failure exists,
   disable is an immediate no-op even if unrelated Repository work exists. The no-op branch
@@ -2179,7 +2182,7 @@ configuration.
 | Otherwise active-platform `node:path.isAbsolute` returns false | `inputState: relative` / `preview-invalid` | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority |
 | Otherwise the string is absolute, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Escape and retain the stored exact raw lexical value in the server-retained preview record with zero filesystem/network I/O, keep it in the fixed three-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
 | Consent names a stale, replayed, or superseded `previewId` | `consent-rejected` | Perform zero proposed-root I/O; create no authority |
-| A consented root is missing or is not a readable directory | `absent` or `root-rejected` | Record that tool as absent or failed without creating its Source and without blocking sibling tools; continue partitioning the current server-owned set—all three tools initially or exact `retryableTools` on retry |
+| A consented root is missing or is not a readable directory | `absent` or `root-rejected` | Record that member as absent or failed without creating its Source and without blocking sibling members; continue partitioning the current server-owned set—all three tools initially or exact `retryableTools` on retry |
 | Any proposed-root operation throws or rejects unexpectedly | Ordinary-error propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
 | Post-consent admission succeeds for one or more roots | `root-admitted` batch subset | Atomically attach all admitted contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
 

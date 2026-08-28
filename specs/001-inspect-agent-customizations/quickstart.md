@@ -139,6 +139,21 @@ only place the bound port is stated. Use `--port 0` for any launch that must not
 port someone is holding for their own use; the suites launch that way for the same reason
 (AGENTS.md § Agent-started process policy).
 
+`--inspect-personal-setup` also inspects the documented customization files in the four
+member roots — the tools' own configuration directories and the shared agent home — the
+same read the consent page's checkbox authorizes, stated
+in the command instead. The flag *is* the confirmation: the CLI captures the preview from
+the three environment properties and the always-derived shared agent home, confirms it as
+captured, and waits for the read to
+commit, so the printed URL appears with the Global Source already on the inventory. What
+each tool ended as, and what stays excluded, is on the consent page as it always is;
+without the flag a launch reads nothing outside the selected repository, and the page
+offers to work the directories out.
+
+```bash
+pnpm start --no-open --inspect-personal-setup
+```
+
 To exercise the inspector against a deterministic fixture repository — the exact trees
 the suites assert against, written by the builders in
 `tests/fixtures/repositories/build-fixtures.ts` — one script rebuilds the named fixture
@@ -150,7 +165,10 @@ pnpm run start:fixture all-instructions --no-open
 
 The first argument names the fixture (omitted, it is `all`, which builds every `all-*`
 tree into one root so one launch serves all three inventories; an unknown name lists
-the available ones), and everything after it is passed to the CLI verbatim. Each launch
+the available ones), and everything after it is passed to the CLI verbatim. The name
+stays optional in front of the CLI's own options: an argument opening with `-` is one of
+those options, so `pnpm run start:fixture --inspect-personal-setup` serves the default
+tree with that option rather than looking for a fixture named after it. Each launch
 replaces that fixture's previous tree, so edits made while browsing never leak into the
 next one, and the tree stays on disk afterwards for inspection. The launcher selects the
 root with `--root`; to exercise the invocation-`cwd` selection instead, change into a
@@ -264,6 +282,7 @@ pnpm run typecheck
 pnpm run test:unit
 pnpm run test:contract
 pnpm run test:integration
+pnpm run test:security
 pnpm run test:package
 pnpm run test:performance
 pnpm run test:coverage
@@ -323,13 +342,18 @@ Expected:
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
-- The performance suite runs the T183 SC-002 smoke pass against the packaged CLI (build it
-  first): harness integrity is gated — the checked-in fixture manifest, its canonical
-  SHA-256, and the reference profile must bind together, and the built
-  100,000-entry/500-file fixture must match the manifest's digests before and after the
-  run — while the recorded status/inventory/interaction timings are published with the
-  profile ID and manifest digest without gating. T918 owns the exact ten-run nine-of-ten
-  release protocol.
+- The performance suite runs the SC-002 release protocol against the packaged CLI (build it
+  first): exactly ten measured runs against one unchanged, manifest-bound
+  100,000-entry/500-file fixture, each a fresh process whose automatic scan settles outside
+  timing and whose one explicit rescan is measured on the rendered page. The fixture and
+  manifest digests are recomputed immediately before the first run and after every run, and
+  each run must carry its own admission's request ID on the status it timed and on the
+  generation it committed — one past the automatic baseline, never the baseline itself.
+  At least nine of the ten runs must satisfy the 1-second status, the 10-second inventory,
+  and both sub-100-ms interactions; that threshold rule is asserted on the host the
+  checked-in profile declares and recorded elsewhere, because the same figures measured on
+  another machine are a measurement of that machine. Every run's request ID, generation,
+  timings, profile ID, and manifest digest are published either way.
 - Browser, contract, and manual evidence cover all four user stories and satisfy every
   Applicable row and Not-applicable recheck in the
   [55-row SC-008 matrix](contracts/accessibility-acceptance.md); an axe severity result alone
@@ -469,6 +493,11 @@ Verify:
 
 ### 1. Discover Repository customizations
 
+```bash
+pnpm exec playwright test tests/e2e/discovery.spec.ts
+pnpm exec playwright test tests/e2e/repository-complete-inventory.spec.ts
+```
+
 Verify:
 
 1. With no option, Repository Source equals the exact captured child-process
@@ -504,10 +533,13 @@ Verify:
 
 ```bash
 pnpm exec playwright test tests/e2e/boot.spec.ts
+pnpm exec playwright test tests/e2e/inspection-safety.spec.ts
+pnpm exec playwright test tests/e2e/repository-complete-detail.spec.ts
 pnpm exec vitest run --project unit \
   tests/unit/app/api-client.test.ts \
   tests/unit/app/session-view-state.test.ts \
   tests/unit/app/client-data.test.ts
+pnpm run test:security
 ```
 
 Verify:
@@ -585,6 +617,11 @@ Verify:
 
 ### 3. Compare two files
 
+```bash
+pnpm exec playwright test tests/e2e/comparison.spec.ts
+pnpm exec playwright test tests/e2e/repository-complete-comparison.spec.ts
+```
+
 Verify:
 
 1. In the Repository comparison flow, a skill name with two or more readable entry files
@@ -599,8 +636,11 @@ Verify:
    environment substitution, disable links/editing, and use opaque in-memory URIs rather
    than filesystem paths.
 3. Monaco shows literal source differences without semantic ranking, merge, lint,
-   validation, formatting, conversion, or fix suggestions. Recognition metadata remains
-   distinguishable and is compared by typed fields in Vue rather than serialized as JSON.
+   validation, formatting, conversion, or fix suggestions. Declared metadata is compared as
+   one canonical serialized document per side, diffed in Monaco beside the typed recognition
+   rows each surface renders in Vue: the serialization is FR-012's stated presentation of the
+   parse — the one spelling two sides written in different syntaxes can both be read in — not
+   a conversion of either file.
 4. Monaco and browser capacity comes from the browser engine and execution environment.
    A recoverable editor computation failure reports an actionable diagnostic without
    removing the complete read-only side-by-side authored source.
@@ -610,11 +650,11 @@ Verify:
    labeled controls and the accessible diff viewer without a focus trap.
 7. The packed app loads its editor worker from a same-origin static asset with no
    external request or `blob:` worker.
-8. Direct loads of `/`, `/global-consent`, every kind's comparison route
-   (`/skills/compare`, `/instructions/compare`, `/mcp/compare`,
-   `/prompts-and-commands/compare`, `/agents/compare`, `/plugins/compare`,
-   `/hooks/compare`), and every kind's detail route all boot from the same
-   root-absolute assets served by the devframe host.
+8. Direct loads of `/`, `/global-consent`, every kind's `compare`-led comparison route
+   (`/skills/compare/<family>`, `/instructions/compare/<family>`, `/mcp/compare/<family>`,
+   `/prompts-and-commands/compare/<family>`, `/agents/compare/<family>`,
+   `/plugins/compare/<family>`, `/hooks/compare/<family>`), and every kind's detail route
+   all boot from the same root-absolute assets served by the devframe host.
 9. Session-loss and response-guard tests cover a devframe-transport-reported channel loss,
    channel loss or unsupported protocol on the current non-superseded RPC, session-ID mismatch,
    greater Global content epoch or non-null disable fence, and a late in-flight response after
@@ -665,6 +705,20 @@ Verify:
 
 ### 4. Opt in to Global inspection
 
+The preview and the Codex and Claude members of the confirmation ship so far. Copilot's
+and the shared agent home's member ports, retry, and disable arrive with the phases that
+bind them, so a confirmation here evaluates the Codex and Claude slots.
+
+```bash
+pnpm exec playwright test tests/e2e/global-consent-preview.spec.ts
+pnpm exec playwright test tests/e2e/global-codex-admission.spec.ts
+pnpm exec playwright test tests/e2e/global-claude-admission.spec.ts
+pnpm exec vitest run --project unit tests/unit/host/global-consent.test.ts
+pnpm exec vitest run --project unit tests/unit/session/coordinator.test.ts
+pnpm exec vitest run --project contract tests/contract/http-api-global.test.ts
+pnpm exec vitest run --project integration tests/integration/global-boundaries.test.ts
+```
+
 The test harness supplies isolated fake tool homes; it must never inspect the developer's
 real home directory. Verify:
 
@@ -675,15 +729,19 @@ real home directory. Verify:
    active-platform `node:path.join` applies only the fixed corresponding suffix. No direct
    `HOME`/`USERPROFILE` selection or existence check occurs.
 2. The consent view shows the exact Copilot, Claude, and Codex lexical roots, input
-   states, exclusions, and contract version `2026-07-20`, with the read scope explained in
-   plain language rather than per-pattern path displays. The frozen
+   states, and exclusions, with the read scope explained in plain language rather than
+   per-pattern path displays. It shows neither version the preview binds: a reader can act
+   on neither, cannot look either up, and the version mismatch they guard against cannot
+   occur while the preview is on screen — the values are build constants, and a different
+   build holds no preview to confirm. The confirmation submits `allowlistVersion` and the
+   host refuses one that no longer matches, which is where the pair belongs. The frozen
    internal preview separately retains each exact raw `lexicalRoot` string;
    `displayRoot` is a one-way escaped string and is never decoded into
    read authority. A preview-construction throw/rejection returns its real error with no
    `scanRequestId` or granted authority.
-3. After opt-in, only the documented instruction candidates appear under zero to three
-   separately identified tool-specific Global Sources—at most one each for Copilot,
-   Claude, and Codex—and every Source has exactly one root. Every admitted Source from the
+3. After opt-in, only the documented member candidates appear under zero to four
+   separately identified member Global Sources—at most one each for Copilot, Claude,
+   Codex, and the shared agent home—and every Source has exactly one root. Every admitted Source from the
    initial/retry transaction appears together in one atomic Global generation — the enable
    commit creates the Global sequence at generation 1 without touching Repository views or
    state — with no observable
@@ -794,9 +852,9 @@ real home directory. Verify:
    disabled with the fixed `global-enable-in-progress` conflict until all pending work finishes. It then uses
    the exact nonempty `retryableTools` projection and preserves successful Sources. Lexical
    `new-preview-required` controls require disable/new preview. Disable remains immediate.
-10. On initial activation, when all three tools are deterministically rejected by lexical or
+10. On initial activation, when all four members are deterministically rejected by lexical or
     post-consent root validation, enable returns `active-no-job` with empty
-    `acceptedTools`, all three `rejectedTools`, and no Source/job/generation/stale entry.
+    `acceptedTools`, all four `rejectedTools`, and no Source/job/generation/stale entry.
     `globalControl` remains active with only the same-preview rejected controls retryable;
     lexical `new-preview-required` controls are excluded, so an all-lexically-invalid preview
     has empty `retryableTools` and requires disable/new preview. The preview route returns the
@@ -809,7 +867,7 @@ real home directory. Verify:
 11. A second disable while a barrier is draining/committing joins the same operation and
    still commits nothing; after a retained failure, another disable resumes the same
    cleanup lineage and the already-incremented content epoch.
-   With no tool-specific Global Source or graph, active consent record,
+   With no member Global Source or graph, active consent record,
    running/queued Global scan/enable command, or retained disable failure,
    disable is a true no-op even while unrelated Repository work is active. When active
    consent/control exists during the barrier, the projection is

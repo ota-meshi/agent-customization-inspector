@@ -26,6 +26,7 @@
 import { CLAUDE_INSPECTION_RULES } from './claude/rules';
 import { CODEX_INSPECTION_RULES } from './codex/rules';
 import { COPILOT_INSPECTION_RULES } from './copilot/rules';
+import { SHARED_INSPECTION_RULES } from './shared/rules';
 import type { RuleId } from './identifier-types';
 import type { InspectionRule } from './rule-types';
 
@@ -42,4 +43,5 @@ export const INSPECTION_RULES: Readonly<Record<RuleId, InspectionRule>> = {
   ...COPILOT_INSPECTION_RULES,
   ...CLAUDE_INSPECTION_RULES,
   ...CODEX_INSPECTION_RULES,
+  ...SHARED_INSPECTION_RULES,
 };

@@ -102,7 +102,7 @@ export const COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions',
           officialHost: 'docs.github.com',
           sections: ['How multiple instruction files interact', 'Types of custom instructions'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI combines the applicable user-level and repository instruction files, removes duplicate copies of identical user-level copilot-instructions.md, repository-wide, and agent instruction files — path-specific files are not in that deduplication list — defines no general precedence order, includes path-specific files only when their applyTo matches a file it is working with, and skips a file disabled with the /instructions command.',
         },
@@ -111,7 +111,7 @@ export const COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['Copilot CLI'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix names the repository and personal instruction types this surface draws on, which is the input set the pipeline filters and combines.',
         },
@@ -159,7 +159,7 @@ export const COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
           officialHost: 'docs.github.com',
           sections: ['GitHub.com'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-08-27',
           establishes:
             'The support matrix lists personal instructions for Copilot Chat and not for the cloud agent, which is why no hosted personal layer is projected into this pipeline.',
         },
@@ -190,7 +190,7 @@ export const COPILOT_VSCODE_SKILLS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills',
           officialHost: 'docs.github.com',
           sections: ['How Copilot uses agent skills'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot loads a skill progressively when it judges the skill relevant to the task, which is the selection step this pipeline records.',
         },
@@ -242,7 +242,7 @@ export const COPILOT_CLI_SKILLS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations', 'Commands (alternative skill format)'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'The CLI resolves a duplicate skill name to the first found in its documented source order, and a same-name skill has higher priority than a legacy command.',
         },
@@ -271,7 +271,7 @@ export const COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Skill locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Remote skills are projected alongside local skills via the AHP relay and sit last in the documented source order; that order and its name-based priority are the CLI surface’s, so how the Cloud surface itself resolves a collision stays unestablished.',
         },
@@ -280,7 +280,7 @@ export const COPILOT_CLOUD_SKILLS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills',
           officialHost: 'docs.github.com',
           sections: ['How Copilot uses agent skills'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-27',
           establishes:
             'The cloud agent decides from the prompt and a skill’s description when to load a repository skill, the progressive-selection step this pipeline records; its reviewed sections say nothing about relayed remote skills.',
         },
@@ -317,7 +317,7 @@ export const COPILOT_CLI_MCP_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['MCP server configuration'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Servers from different sources merge in priority order — the --additional-mcp-config option, plugin-provided servers, workspace files, then ~/.copilot/mcp-config.json — and when servers share a name the higher-priority source takes precedence as a whole entry.',
         },
@@ -326,7 +326,7 @@ export const COPILOT_CLI_MCP_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers',
           officialHost: 'docs.github.com',
           sections: ['Adding per-repository MCP servers'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Among the project-level files, same-name definitions in files closer to the working directory take precedence, .mcp.json takes precedence over .github/mcp.json in the same directory, and project-level definitions take precedence over ~/.copilot/mcp-config.json.',
         },
@@ -498,7 +498,7 @@ export const COPILOT_CLI_AGENTS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['User-editable files'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'The personal agents directory is ~/.copilot/agents/, and this page states that project-level agents in .github/agents/ take precedence over personal agents of the same name — one of the two sides of the retained conflict.',
         },
@@ -507,7 +507,7 @@ export const COPILOT_CLI_AGENTS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli',
           officialHost: 'docs.github.com',
           sections: ['Creating a custom agent', 'Using a custom agent'],
-          reviewedOn: '2026-07-15',
+          reviewedOn: '2026-08-27',
           establishes:
             'A profile is created in the project .github/agents/ or the user ~/.copilot/agents/ location, and this page states that a same-name agent in the home directory is used rather than the repository one — the opposite side of the retained conflict; selection itself is a runtime act, by slash command, explicit instruction, or inference from the description.',
         },
@@ -516,7 +516,7 @@ export const COPILOT_CLI_AGENTS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['Loading order and precedence'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             'Agents use first-found-wins precedence and a plugin agent never overrides a project-level or personal one, so plugin agents are the lowest documented source; an agent is deduplicated by an ID derived from its file name, so reviewer.agent.md is the agent reviewer.',
         },
@@ -525,7 +525,7 @@ export const COPILOT_CLI_AGENTS_SELECTION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference',
           officialHost: 'docs.github.com',
           sections: ['Custom agent locations'],
-          reviewedOn: '2026-08-20',
+          reviewedOn: '2026-08-27',
           establishes:
             'Every .github/agents/ directory on the walk is loaded with the deepest taking highest priority, .github/agents/ takes precedence over .claude/agents/ at the same level, and plugin agents are lowest; this page places user agents below project agents, which the retained conflict records against the opposite assertion elsewhere.',
         },
@@ -604,7 +604,7 @@ export const COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY = {
             'Configuration file settings',
             'Repository settings (.github/copilot/settings.json)',
           ],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'Settings are applied in the order built-in defaults, MDM managed settings, user settings, repository settings, local settings, environment variables, then command-line flags, with a later source overriding an earlier one; each key the repository layer supports carries its own merge behavior, listed as replaced by the repository, merged so the repository overrides the user for the same key, a union to which the repository can add entries and never remove them, or tighten-only, which the repository can enable and never disable; an MDM value of disable for permissions.disableBypassPermissionsMode always wins over a closer layer, and the repository model, effortLevel, and contextTier overrides apply only when the working directory is trusted.',
         },
@@ -715,7 +715,7 @@ export const COPILOT_CLI_PLUGINS_ACTIVATION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference',
           officialHost: 'docs.github.com',
           sections: ['File locations', 'Loading order and precedence', 'CLI commands'],
-          reviewedOn: '2026-08-25',
+          reviewedOn: '2026-08-27',
           establishes:
             "A plugin manifest and a marketplace manifest are each checked at four documented locations in a fixed order; a plugin is installed by naming a marketplace plugin, a repository, a subdirectory, a Git URL, or a local path, and its components then compose with the rest — agents and skills are first-found-wins so a plugin's lose to a project's, MCP servers are last-wins so a plugin's takes precedence, and built-ins can be overridden by neither.",
         },
@@ -833,7 +833,7 @@ export const COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference',
           officialHost: 'docs.github.com',
           sections: ['Repository settings (.github/copilot/settings.json)'],
-          reviewedOn: '2026-08-23',
+          reviewedOn: '2026-08-27',
           establishes:
             'The repository hooks object is merged with the user one so the repository entry overrides the user entry for the same key, and disableAllHooks is a repository-takes-precedence switch of the same file.',
         },
@@ -842,7 +842,7 @@ export const COPILOT_CLI_HOOKS_COMPOSITION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations', 'Disable all hooks'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'Copilot CLI loads hooks from policy, user, project, and plugin sources in that order and combines them — a plugin declaring its own in hooks.json or hooks/hooks.json inside its installation directory — and when the same event appears in multiple sources all hook entries from all sources are run; policy hooks load before all other hooks, cannot be disabled by disableAllHooks, and are available regardless of folder trust state.',
         },
@@ -871,7 +871,7 @@ export const COPILOT_CLOUD_HOOKS_COMPOSITION_STRATEGY = {
           url: 'https://docs.github.com/en/copilot/reference/hooks-reference',
           officialHost: 'docs.github.com',
           sections: ['Hooks locations', 'Cloud agent execution environment'],
-          reviewedOn: '2026-08-26',
+          reviewedOn: '2026-08-27',
           establishes:
             'Under the cloud agent, hook configuration is loaded from the .github/hooks/*.json files of the cloned repository, a subset of events fires, only bash or command entries are honored, and policy hooks are not supported there.',
         },

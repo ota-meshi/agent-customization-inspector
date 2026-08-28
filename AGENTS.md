@@ -163,6 +163,51 @@ Above Expediency) to day-to-day coding decisions:
   intended to change cannot change unnoticed, which is the same reason the vendor contract
   tables carry recorded digests. A phase or task added without updating both languages'
   counts is an unfinished change, and the counts are part of the change that adds it.
+- A freeze is written out where it is checked. A check that imports the value it asserts
+  from the code under test asserts nothing: both sides move together, so it cannot fail,
+  and what looks like a pinned value is a restatement of whatever the source currently
+  holds. Spell the literal in the check and the same literal in the source. They are
+  deliberately the same string written twice, and they disagree exactly when someone
+  changed one without deciding to change the other — which is the whole of what a freeze
+  detects. Before writing such a check, change the source value and watch it fail; a
+  freeze nobody has seen fail is a freeze nobody has.
+- A value one place reads is written in that place. Lifting it into an exported named
+  constant adds a hop and a second file to open for a name with one reader, and it is how
+  the tautology above comes to be written: once the value has a name, a check imports the
+  name instead of stating the value. Extraction earns its keep only when several places
+  must agree at compile time — a closed union's label table, a contract-fixed identifier
+  several modules spell. Example: the consent preview's `allowlistVersion` and
+  `traversalPlanVersion` are two literals assigned in the preview's constructor, and the
+  contract suite pins both against the same literals; neither is a constant exported from
+  the rule registry or the plan compiler.
+- Consistency is a value of its own (Constitution Principle II): same-looking code is
+  the same, so a difference always means something and a reader carries what one member
+  of a family taught them to the rest. A pattern therefore holds for its whole family
+  or not at all, and a change of idiom converts every member in the same change; a
+  partial conversion is an unfinished change, not a compromise.
+- A deviation exists only together with its reason. Whatever departs from the pattern
+  around it — in code, tests, fixtures, or documents — stands on a stated difference
+  that distinguishes its case, and the obligation runs for as long as the deviation
+  lives, not once at its introduction: whenever a change erases that difference, the
+  same change converts the deviation, because a deviation whose reason is gone is a
+  defect to fix, not a decision to defend. The rule binds what a pattern was first
+  derived from exactly as it binds every later case, and conformance is judged at what
+  a reader meets — names, shapes, and every consuming site — never by whether an
+  implementation is shared underneath. Two checks make it operational: when
+  introducing a deviation, write its distinguishing reason where the deviation lives,
+  so it can be found; and when a change makes something true that was false before,
+  search for what stood on the old state — stated reasons, comments, exemptions — and
+  re-derive each one found. Example: the instruction row kept a private two-component
+  structure for a stated difference — its blocks owned comparison entries — that a
+  later rollout gave every kind's blocks; the reason was gone, so the structure was a
+  defect, and `InstructionRow` now renders through `SourceFamilyBlocks` like every
+  sibling.
+- A registry record in `src/shared/registries/*/rules.ts` spells its `matcher`
+  inline — base and selectors both, never through a named constant: which location a
+  rule reaches is the first thing a reader asks, and the answer belongs in the record.
+  Records that deliberately admit one location each write the matcher in full, and a
+  value-equality gate freezes the agreement — the freeze doctrine above applied to a
+  structured value.
 - Reach for the platform's own vocabulary before writing an equivalent by hand. When a
   platform construct looks applicable but does not fit, the comment says why, so the next
   reader does not re-propose it. Example: the client-data purge records why it is not a

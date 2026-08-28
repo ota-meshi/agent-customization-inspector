@@ -145,7 +145,9 @@ test.describe('Claude hook declarations opened one at a time', () => {
     // offers. That declaration is the plugin's: the plugin row publishes the
     // entry's own fields, so the catalog is no hook carrier and its hook page
     // is a dead coordinate.
-    await page.goto(new URL('/hooks/.claude-plugin%2Fmarketplace.json', host.origin).href);
+    await page.goto(
+      new URL('/hooks/detail/repository/.claude-plugin%2Fmarketplace.json', host.origin).href,
+    );
     await expect(page.locator('.aci-error')).toContainText('current scan');
     // The declaration itself is a click away, under the plugin it belongs to.
     await page.goto(host.origin);
@@ -174,7 +176,9 @@ test.describe('Claude hook declarations opened one at a time', () => {
     await page.getByRole('tab', { name: /Hook/u }).click();
     await expect(page.getByRole('tabpanel')).not.toContainText('settings.local.json');
 
-    await page.goto(new URL('/hooks/.claude%2Fsettings.local.json', host.origin).href);
+    await page.goto(
+      new URL('/hooks/detail/repository/.claude%2Fsettings.local.json', host.origin).href,
+    );
     await expect(page.locator('.aci-hook-detail__recognition')).toContainText(
       'declared inside another file',
     );
@@ -184,7 +188,10 @@ test.describe('Claude hook declarations opened one at a time', () => {
     // A declaration link into that same carrier is the dead link, and it says
     // which of the two it is: the file is held, the name it asks for is not.
     await page.goto(
-      new URL('/hooks/.claude%2Fsettings.local.json?event=SessionStart', host.origin).href,
+      new URL(
+        '/hooks/detail/repository/.claude%2Fsettings.local.json?event=SessionStart',
+        host.origin,
+      ).href,
     );
     await expect(page.locator('.aci-error')).toContainText(
       'No hook declaration named this way is published for this file in the current scan.',
@@ -194,7 +201,7 @@ test.describe('Claude hook declarations opened one at a time', () => {
   test('reports a link the current scan does not hold, and offers a way back', async ({ page }) => {
     // Claude documents no standalone hook file, so `/hooks/.claude/hooks.json`
     // is a dead coordinate whatever a reader types (FR-030).
-    await page.goto(new URL('/hooks/.claude%2Fhooks.json', host.origin).href);
+    await page.goto(new URL('/hooks/detail/repository/.claude%2Fhooks.json', host.origin).href);
     await expect(page.locator('.aci-error')).toContainText('current scan');
     await page.getByRole('link', { name: /Return to the inventory/u }).click();
     await expect(page.getByRole('tab', { name: /Hook/u })).toHaveAttribute('aria-selected', 'true');
