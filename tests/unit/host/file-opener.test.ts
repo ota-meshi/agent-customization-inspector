@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import open from 'open';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { delimiter } from 'node:path';
+import { delimiter, join, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DetectedFileOpener } from '../../../src/server/host/file-opener';
 import type { FileOpenTarget } from '../../../src/shared/api-types';
@@ -81,7 +81,25 @@ vi.mock('open', () => ({
 
 const LAUNCHER = '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code';
 const SUBLIME_LAUNCHER = '/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl';
-const TERMINAL_EDITOR = '/usr/bin/vim';
+/**
+ * An absolute directory spelled with the running platform's own separator.
+ *
+ * The probe offers a resolution only when its directory is one PATH names,
+ * and it compares the two after putting the PATH entry through `join`
+ * (`file-opener.ts`). On Windows `join` rewrites `/` to `\` while `dirname`
+ * of a `/`-spelled candidate keeps it, so a POSIX literal handed to `which`
+ * and a PATH entry beside it never match and the editor is dropped from the
+ * offer. Spelling both through this keeps the machine's two answers in the
+ * one shape a machine would give them in.
+ */
+function machinePath(...segments: readonly string[]): string {
+  return join(sep, ...segments);
+}
+
+/** The directory the terminal-editor answers below live in, and the one this
+ *  file puts on PATH so the probe's named-directory membership accepts them. */
+const TERMINAL_EDITOR_DIR = machinePath('usr', 'bin');
+const TERMINAL_EDITOR = join(TERMINAL_EDITOR_DIR, 'vim');
 const FILE = '/repo/.agents/AGENTS.md';
 
 /** An opener holding one resolved editor launcher, as a probe would leave it. */
@@ -92,6 +110,7 @@ function openerWith(...launchers: readonly (readonly [FileOpenTarget, string])[]
 const realPlatform = process.platform;
 const realEditor = process.env['EDITOR'];
 const realVisual = process.env['VISUAL'];
+const realPath = process.env['PATH'];
 
 /** Sets, or clears, the variables the terminal-editor probe reads. */
 function setConfiguredEditor(value: string | undefined): void {
@@ -112,6 +131,11 @@ function setPlatform(value: NodeJS.Platform): void {
 afterEach(() => {
   setPlatform(realPlatform);
   setConfiguredEditor(undefined);
+  if (realPath === undefined) {
+    delete process.env['PATH'];
+  } else {
+    process.env['PATH'] = realPath;
+  }
   if (realEditor !== undefined) {
     process.env['EDITOR'] = realEditor;
   }
@@ -162,8 +186,12 @@ describe('the terminal editor a machine can host', () => {
   // which command the rule asks for rather than which editors the machine
   // running the suite happens to have.
   beforeEach(() => {
-    resolvedCommands.set('vi', '/usr/bin/vi');
+    resolvedCommands.set('vi', join(TERMINAL_EDITOR_DIR, 'vi'));
     resolvedCommands.set('vim', TERMINAL_EDITOR);
+    // A resolution is only offered when its directory is one PATH names, so
+    // the directory these answers sit in has to be on it. The machine's own
+    // PATH cannot be relied on for that: a Windows runner names no `/usr/bin`.
+    process.env['PATH'] = TERMINAL_EDITOR_DIR;
   });
 
   it('offers none where the host cannot open a terminal window for one', async () => {
@@ -260,9 +288,10 @@ describe('the terminal editor a machine can host', () => {
     // dropped from the offer.
     setPlatform('darwin');
     setConfiguredEditor('vim');
-    resolvedCommands.set('vim', '/Quoted Dir/vim');
+    const quotedDir = machinePath('Quoted Dir');
+    resolvedCommands.set('vim', join(quotedDir, 'vim'));
     const previous = process.env['PATH'];
-    process.env['PATH'] = '"/Quoted Dir"';
+    process.env['PATH'] = `"${quotedDir}"`;
     try {
       const opener = await DetectedFileOpener.probe();
       expect(opener.targets).toContain('terminal-editor');
@@ -271,7 +300,7 @@ describe('the terminal editor a machine can host', () => {
       expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
         '-e',
         expect.stringContaining('quoted form of'),
-        '/Quoted Dir/vim',
+        join(quotedDir, 'vim'),
         FILE,
       ]);
     } finally {
@@ -369,10 +398,10 @@ describe('the terminal editor a machine can host', () => {
     setPlatform('darwin');
     setConfiguredEditor(undefined);
     resolvedCommands.clear();
+    const injected = machinePath('inspected-repo', 'vi');
+    const named = join(TERMINAL_EDITOR_DIR, 'vi');
     whichMock.mockImplementation(async (command, options) =>
-      command === 'vi' && (options as { all?: boolean }).all
-        ? ['/inspected-repo/vi', '/usr/bin/vi']
-        : null,
+      command === 'vi' && (options as { all?: boolean }).all ? [injected, named] : null,
     );
     const opener = await DetectedFileOpener.probe();
     expect(opener.targets).toContain('terminal-editor');
@@ -382,7 +411,7 @@ describe('the terminal editor a machine can host', () => {
     expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
       '-e',
       expect.stringContaining('quoted form of'),
-      '/usr/bin/vi',
+      named,
       FILE,
     ]);
   });
