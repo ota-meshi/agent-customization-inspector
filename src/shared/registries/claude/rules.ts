@@ -7,15 +7,17 @@
 // and applicability"). The one read no rule authorizes is a companion's, which
 // a recognized kind's census bounds to an admitted candidate's own directory.
 // Vendor behaviors, strategies, evidence, relationships, and authored file
-// content never grant that authority. Rules arrive with the inventory phase
-// that needs them, so the remaining rows of the vendor contract are
-// deliberately absent until their phase ships.
+// content never grant that authority. The catalog below is complete over this
+// vendor's contract: it is typed
+// `Readonly<Record<ClaudeRuleId, InspectionRule>>`, so a contract row with no
+// record here is a compile error rather than a silent gap.
 //
-// The shipped records carry no non-read exclusion: the vendor contract's
-// `claude.excluded.user-runtime` and `claude.excluded.plugin-files` guard
-// Sources and components no shipped phase reads yet, an unsupported
-// instruction location is simply a path no selector reaches, and a symlinked
-// skill needs no exclusion at all because links are read through their targets
+// The shipped records carry the vendor contract's two non-read exclusions,
+// `claude.excluded.user-runtime` and `claude.excluded.plugin-files`, which
+// name what a consented home holds beside the customizations and what a
+// plugin's installed copy holds beside its manifest. What needs no exclusion
+// of its own: an unsupported instruction location is simply a path no
+// selector reaches, and a symlinked skill is read through its target
 // (FR-024; contracts/vendors/claude-code.md § Known ambiguities and
 // version-sensitive facts, item 9). The
 // registry-wide identifier catalog and its complete gate are owned by T913.
@@ -601,11 +603,13 @@ export const CLAUDE_REPO_PERMISSIONS_RULE = {
  * file (data-model.md § Inventory unit) and each is a settings file in its own
  * right rather than two spellings of one.
  *
- * The matcher is shared with the permissions rule rather than restated,
- * because it is the same pair of locations and a second spelling of it could
- * drift. Two rules over one path add no read: the walk merges them into one
- * candidate with both provenances, exactly as any two plans admitting one file
- * do.
+ * The matcher deliberately restates the permissions rule's spelling in
+ * full — base and selectors both — because which locations a rule reaches
+ * belongs in its record (AGENTS.md § Implementation simplicity policy), and
+ * the conformance fixture pins each spelling, so the two agreeing is frozen
+ * rather than trusted. Two rules over one path add no read: the walk merges
+ * them into one candidate with both provenances, exactly as any two plans
+ * admitting one file do.
  *
  * This recognition reads nothing out of the document: its detail is the JSON
  * its author wrote, comments and key order intact. The `permissions` object

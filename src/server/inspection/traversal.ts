@@ -20,7 +20,7 @@
 // a commit (FR-028/FR-030). The residual limitation is inherent: reads are
 // not atomic snapshots, so concurrent external writes may interleave, which
 // the trusted-workspace model accepts.
-import { lstat, readFile, readdir, realpath, stat } from './fs-io';
+import { access, fsConstants, lstat, readFile, readdir, realpath, stat } from './fs-io';
 import { sep } from 'node:path';
 import { decodeSourceBytes, type ReadableFileEncoding } from '../../shared/entities';
 import {
@@ -209,6 +209,26 @@ export const VCS_INTERNALS = new Set(['.git', '.hg', '.svn']);
 export const INSTALLED_PACKAGE_DIRECTORIES = new Set(['node_modules']);
 
 /**
+ * Whether any step of a declared, Source-relative path names a directory the
+ * walk never descends into — VCS internals or an installed-package directory
+ * (contracts/inspection-path-allowlist.md § Bounded companion census).
+ *
+ * This is the spelling half of the census exclusion, answered from the
+ * declared segments alone with no I/O: a plugin root comes from a catalog
+ * entry's declared source, so `./.git/pkg` and `./node_modules/pkg` are
+ * spellings a file can ask for, and the caller that would otherwise enumerate
+ * ancestors to validate such a spelling must refuse it first — the census
+ * publishes nothing from these directories, so listing inside them buys
+ * nothing and a permission error there would fail a scan over a place the
+ * inventory never reports (FR-029).
+ */
+export function hasExcludedDirectorySegment(segments: readonly string[]): boolean {
+  return segments.some(
+    (segment) => VCS_INTERNALS.has(segment) || INSTALLED_PACKAGE_DIRECTORIES.has(segment),
+  );
+}
+
+/**
  * Whether a resolved real path reaches VCS internals the container's own path
  * does not already carry. The entry-name check alone is not enough: an entry
  * named anything else can be a symbolic link to `.git`, and following it would
@@ -312,6 +332,15 @@ export async function readCandidate(absolutePath: string): Promise<CandidateOutc
     // repository. Reporting `unreadable` would tell the user that the files
     // this attempt happened to reach afterwards are broken, and send them to
     // check permissions on files that are fine.
+    //
+    // Everything else — EIO and ESTALE included — is this file's own
+    // `unreadable` outcome, by the closed model: at the single-file boundary
+    // a failure is "classified by where the failure occurred rather than by
+    // inspecting its cause", and "the one closed cause check is the
+    // resource-exhaustion errno set" above (spec.md § Clarifications,
+    // file-size limits and partial-generation answers). A second errno
+    // allowlist here would be the cause inspection the specification
+    // forbids.
     rethrowIfResourceExhaustion(error);
     return { kind: 'unreadable' };
   }
@@ -367,7 +396,14 @@ async function walkDirectory(
   discovered: Map<string, PendingCandidate>,
   counters: { visitedEntries: number; report: ((visitedEntries: number) => void) | undefined },
   rootReal: string,
+  continueScan: () => boolean,
 ): Promise<void> {
+  if (!continueScan()) {
+    // Authority left the attempt mid-walk (disable or shutdown): this
+    // directory's readdir is a new operation the revocation stops, and what
+    // was discovered so far is discarded by the commit gates either way.
+    return;
+  }
   // The grammar's stepping semantics live in the registry beside the
   // segment union; the walk only asks its two closed questions per entry.
   const level = new ProgramLevel(states);
@@ -378,6 +414,13 @@ async function walkDirectory(
   // movement, and cheap enough that the walk is not paced by its own reporting.
   counters.report?.(counters.visitedEntries);
   for (const entry of entries) {
+    if (!continueScan()) {
+      // Authority left mid-directory (disable or shutdown): the remaining
+      // entries' stat and realpath calls are each a new filesystem promise the
+      // revocation stops (data-model.md § ScanAttempt "stops new scheduling"),
+      // and what was discovered is discarded by the commit gates either way.
+      return;
+    }
     if (VCS_INTERNALS.has(entry.name)) {
       continue;
     }
@@ -476,6 +519,13 @@ async function walkDirectory(
       continue;
     }
     if (isDirectory && descendStates.length > 0) {
+      if (!continueScan()) {
+        // Authority left while this entry's classification stat settled: the
+        // descent realpath is its own filesystem promise, and revocation
+        // stops each one (data-model.md § ScanAttempt "stops new
+        // scheduling").
+        return;
+      }
       // Real-path tracking over the current ancestor chain terminates link
       // cycles (FR-024): a directory is skipped only when its real path is
       // already an ancestor of this descent, so a sibling link to the same
@@ -503,6 +553,7 @@ async function walkDirectory(
         discovered,
         counters,
         rootReal,
+        continueScan,
       );
       visitedRealPaths.delete(real);
     }
@@ -577,6 +628,7 @@ async function probeExactTarget(
   root: string,
   fixedPrefix: readonly string[],
   origin: SelectorOrigin,
+  continueScan: () => boolean,
 ): Promise<PendingCandidate | null> {
   const absolutePath = pathUnderRoot(root, fixedPrefix);
   const pending = (knownUnreadable: boolean): PendingCandidate => ({
@@ -597,6 +649,14 @@ async function probeExactTarget(
     return pending(true);
   }
   if (entry.isSymbolicLink()) {
+    if (!continueScan()) {
+      // Authority left while the lstat settled (disable or shutdown): the
+      // through-the-link stat is its own filesystem promise, and revocation
+      // stops each one (data-model.md § ScanAttempt). No candidate: the
+      // revoked attempt's results are discarded by the commit gates either
+      // way, so nothing is fabricated for a probe that never finished.
+      return null;
+    }
     // Transparent read through the link (FR-024): a dangling or unreadable
     // target is this candidate's file-unreadable outcome, not absence.
     try {
@@ -627,6 +687,7 @@ async function runCodexFirstNonEmpty(
     rawSegments: readonly string[],
     knownUnreadable: boolean,
   ) => Promise<CandidateOutcome>,
+  continueScan: () => boolean,
 ): Promise<TraversalCandidate[]> {
   const [overridePrefix, fallbackPrefix] = targets;
   if (overridePrefix === undefined || fallbackPrefix === undefined) {
@@ -642,7 +703,12 @@ async function runCodexFirstNonEmpty(
     admissions: [{ planIndex, selectorIndex }],
     outcome,
   });
-  const override = await probeExactTarget(root, overridePrefix, { planIndex, selectorIndex: 0 });
+  const override = await probeExactTarget(
+    root,
+    overridePrefix,
+    { planIndex, selectorIndex: 0 },
+    continueScan,
+  );
   if (override !== null) {
     const outcome = await classifyOnce(overridePrefix, override.knownUnreadable);
     if (outcome.kind !== 'readable') {
@@ -657,7 +723,18 @@ async function runCodexFirstNonEmpty(
     }
     // A readable empty override advances to the fallback target.
   }
-  const fallback = await probeExactTarget(root, fallbackPrefix, { planIndex, selectorIndex: 1 });
+  if (!continueScan()) {
+    // Authority left while the override branch settled: the fallback probe is
+    // a new filesystem promise the revocation stops, and a revoked attempt's
+    // selection is discarded by the commit gates either way.
+    return [];
+  }
+  const fallback = await probeExactTarget(
+    root,
+    fallbackPrefix,
+    { planIndex, selectorIndex: 1 },
+    continueScan,
+  );
   if (fallback === null) {
     return [];
   }
@@ -674,6 +751,15 @@ async function runCodexFirstNonEmpty(
 export interface TraversalScanInput {
   /** The retained selected raw root — the base of every operation (FR-001). */
   readonly root: string;
+  /**
+   * Whether the attempt may still publish, asked before each new filesystem
+   * operation: disable or shutdown "stops new scheduling" without a
+   * cancellation signal — the one read already in flight finishes, and the
+   * walk simply starts no further readdir, probe, or candidate read once
+   * authority is gone (data-model.md § ScanAttempt; contracts/http-api.md
+   * § Concurrency and lifecycle). Absent means authority always holds.
+   */
+  readonly continueScan?: () => boolean;
   /** The compiled inspection allowlist to interpret as data (FR-019). */
   readonly plans: readonly TraversalPlan[];
   /**
@@ -712,6 +798,23 @@ export interface TraversalScanInput {
 }
 
 /**
+ * The closed failure codes that state a path's own condition — missing, not
+ * a directory, denied, or a link cycle — as opposed to an environmental
+ * failure such as `EIO` or `ESTALE`, which describes the machine's moment
+ * rather than the repository's state. A root or configuration-seed probe
+ * converts only these into its deterministic answer; anything else
+ * propagates as the attempt's ordinary error, exactly as a deeper walk
+ * failure does (FR-030: commit nothing, retain the prior snapshot).
+ */
+export const PATH_CONDITION_FAILURE_CODES: ReadonlySet<string> = new Set([
+  'ENOENT',
+  'ENOTDIR',
+  'EACCES',
+  'EPERM',
+  'ELOOP',
+]);
+
+/**
  * Runs one Source scan attempt: enumerates the compiled allowlist — walking a
  * directory plan, probing the exact target of a plan that names one, and
  * probing a selection-policy plan's targets in order — then classifies every
@@ -722,10 +825,19 @@ export interface TraversalScanInput {
  * caller unchanged.
  */
 export async function runTraversalScan(input: TraversalScanInput): Promise<TraversalScanResult> {
+  const continueScan = input.continueScan ?? ((): boolean => true);
   for (const plan of input.plans) {
     assertLoadableTraversalPlan(plan);
   }
 
+  if (!continueScan()) {
+    // Authority left before the first operation (disable or shutdown): the
+    // root's own stat is a new filesystem operation the revocation stops,
+    // and the empty result is discarded by the commit gates either way — an
+    // honest empty walk, never the root-unreadable verdict of a root nobody
+    // looked at.
+    return { kind: 'scanned', files: [], visitedEntries: 0, candidateFiles: 0, readBytes: 0 };
+  }
   // The selected root must exist and be a directory for the attempt to
   // proceed (FR-002/FR-013) — even while the shipped catalog is empty, a
   // scan of a missing or non-directory root is a failed Source attempt,
@@ -737,6 +849,17 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     if (!(await stat(input.root)).isDirectory()) {
       return { kind: 'root-unreadable' };
     }
+    // And readable-and-searchable, the same pair consent admitted a Global
+    // root by (`global-admission.ts`). The Repository walk would meet an
+    // unreadable root at its own first `readdir`, but a Global plan probes
+    // exact targets and fixed subtrees without ever enumerating the member
+    // root — so without this, a home whose mode changed after consent would
+    // publish `complete` from whatever exact files still opened, reporting a
+    // directory this process can no longer read as a directory it read
+    // whole. Classification, not enumeration: the no-root-enumeration
+    // guarantee holds (contracts/inspection-path-allowlist.md § Global least
+    // privilege).
+    await access(input.root, fsConstants.R_OK | fsConstants.X_OK);
   } catch (error) {
     // Only a failure that is about this root makes the Source unreadable
     // (FR-002). An `EMFILE` or `ENOMEM` says the process ran out of a resource,
@@ -834,19 +957,30 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     try {
       await readdir(input.root);
     } catch (error) {
-      rethrowIfResourceExhaustion(error);
-      return { kind: 'root-unreadable' };
+      // The same closed judgement the stat catch above makes: only a
+      // failure stating this root's own condition is the deterministic
+      // `root-unreadable`; an environmental `EIO`/`ESTALE` propagates as
+      // the attempt's ordinary error (FR-030).
+      if (isRootEnumerationFailure(error, input.root)) {
+        return { kind: 'root-unreadable' };
+      }
+      throw error;
     }
   }
 
-  if (repositoryPrograms.length > 0) {
+  if (repositoryPrograms.length > 0 && continueScan()) {
     const visited = new Set<string>();
     let rootReal: string;
     try {
       rootReal = await realpath(input.root);
       visited.add(rootReal);
     } catch (error) {
-      rethrowIfResourceExhaustion(error);
+      // The same closed judgement as the probes above (FR-030): an
+      // environmental failure propagates instead of becoming the root's
+      // own condition.
+      if (!isRootEnumerationFailure(error, input.root)) {
+        throw error;
+      }
       return { kind: 'root-unreadable' };
     }
     try {
@@ -858,6 +992,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
         discovered,
         counters,
         rootReal,
+        continueScan,
       );
     } catch (error) {
       // Only the root's own enumeration failure is the source-scoped FR-002
@@ -870,13 +1005,27 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   }
 
   for (const target of exactTargets) {
-    const candidate = await probeExactTarget(input.root, target.fixedPrefix, target.origin);
+    if (!continueScan()) {
+      // See walkDirectory: no further probe starts once authority is gone.
+      break;
+    }
+    const candidate = await probeExactTarget(
+      input.root,
+      target.fixedPrefix,
+      target.origin,
+      continueScan,
+    );
     if (candidate !== null) {
       recordCandidate(discovered, candidate);
     }
   }
 
   for (const subtree of subtreeWalks) {
+    if (!continueScan()) {
+      // See walkDirectory: no further subtree realpath or walk starts once
+      // authority is gone.
+      break;
+    }
     const subtreeRoot = pathUnderRoot(input.root, subtree.fixedPrefix);
     let subtreeReal: string;
     try {
@@ -903,6 +1052,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
         // This walk is bounded by the subtree it was given, so that is the
         // container the VCS exclusion is judged against.
         subtreeReal,
+        continueScan,
       );
     } catch (error) {
       // `realpath` succeeds on a regular file, so a prefix that exists but is
@@ -967,9 +1117,13 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     if (!discovered.has(key)) {
       firstNonEmptyCandidates += 1;
     }
-    const outcome = knownUnreadable
-      ? ({ kind: 'unreadable' } as const)
-      : await readCandidate(pathUnderRoot(input.root, rawSegments));
+    const outcome =
+      knownUnreadable || !continueScan()
+        ? // A revoked attempt reads no further candidate; the unreadable
+          // outcome it records here is discarded with the rest of the
+          // attempt's results by the commit gates.
+          ({ kind: 'unreadable' } as const)
+        : await readCandidate(pathUnderRoot(input.root, rawSegments));
     outcomes.set(key, outcome);
     readBytes += 'sizeBytes' in outcome ? outcome.sizeBytes : 0;
     input.onProgress?.({
@@ -1007,11 +1161,16 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   // up again would find nothing.
   const publishedAt = new Map(files.map((file, index) => [file.publicPath, index]));
   for (const run of firstNonEmptyRuns) {
+    if (!continueScan()) {
+      // See walkDirectory: no further probe starts once authority is gone.
+      break;
+    }
     for (const selected of await runCodexFirstNonEmpty(
       input.root,
       run.planIndex,
       run.targets,
       classifyOnce,
+      continueScan,
     )) {
       const index = publishedAt.get(selected.publicPath);
       if (index === undefined) {
@@ -1071,16 +1230,9 @@ export function isRootEnumerationFailure(error: unknown, root: string): boolean 
     return false;
   }
   const { code, path } = error as { code?: string; path?: string };
-  // `ELOOP` belongs here for the same reason as the rest: a root that is a
-  // symbolic-link cycle cannot be enumerated as a directory, and FR-002 asks
-  // for the `root-unreadable` Diagnostic rather than an exception the launch
-  // reports as an unexpected failure.
-  return (
-    path === root &&
-    (code === 'ENOENT' ||
-      code === 'ENOTDIR' ||
-      code === 'EACCES' ||
-      code === 'EPERM' ||
-      code === 'ELOOP')
-  );
+  // `ELOOP` belongs in the set for the same reason as the rest: a root that
+  // is a symbolic-link cycle cannot be enumerated as a directory, and FR-002
+  // asks for the `root-unreadable` Diagnostic rather than an exception the
+  // launch reports as an unexpected failure.
+  return path === root && code !== undefined && PATH_CONDITION_FAILURE_CODES.has(code);
 }

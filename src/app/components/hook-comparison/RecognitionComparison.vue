@@ -27,19 +27,10 @@
 // construct the diff, the complete serializations stay available as inert
 // text with an actionable failure beside them (research.md § 7); that
 // rendering is the failure path only, with no standing toggle to it.
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { canonicalHookEventJsonText } from '../declared-entries-json';
 import { SourceDiffHandle } from '../../composables/monaco';
-import { SESSION_VIEW_STATE } from '../../session/view-state';
+import { useSessionViewState } from '../../composables/session-view-state';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
 import type { HookCarrierDetailDto } from '../../../shared/api-types';
 
@@ -162,11 +153,12 @@ let unmounted = false;
 // The models this component mounts hold the pair's declared values in full —
 // credentials included (FR-025) — so it is an owner the comparison state must
 // clear synchronously: on the central purge (FR-027) and before a greater
-// generation is adopted (data-model.md § BrowserState). Optional, because
-// this component's contract is its props — a harness that renders it without
-// the shell simply has no owner registry to join.
-const sessionViewState = inject(SESSION_VIEW_STATE, undefined);
-const unregisterContentOwner = sessionViewState?.hookComparison.registerOpenContentOwner(() => {
+// generation is adopted (data-model.md § BrowserState).
+// The registration is unconditional — the shell always provides the
+// session (`useSessionViewState`) — because a mount that skipped it
+// would hold authored content the central purge cannot clear.
+const sessionViewState = useSessionViewState();
+const unregisterContentOwner = sessionViewState.hookComparison.registerOpenContentOwner(() => {
   // Supersede any mount still in flight before disposing: a mount resolving
   // after the disposal would otherwise attach and write the dropped
   // declarations into fresh models during the one flush before this component
@@ -194,6 +186,11 @@ function disposeViewer(): void {
 async function showCurrentPair(): Promise<void> {
   requestedPair += 1;
   const requested = requestedPair;
+  // A new pair reclaims a purged instance: the purge condemned the previous
+  // pair's text, and Vue can hand this same component the next pair without
+  // an unmount, so a fallback render after a later mount failure would
+  // otherwise stay blank for content the purge never touched.
+  purged.value = false;
   const element = host.value;
   if (element === null) {
     return;
@@ -269,7 +266,7 @@ watch(
 
 onBeforeUnmount(() => {
   unmounted = true;
-  unregisterContentOwner?.();
+  unregisterContentOwner();
   disposeViewer();
 });
 </script>

@@ -520,8 +520,27 @@ export function escapeControlCharacters(value: string): string {
   return value.replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
     /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF\\]|\p{Default_Ignorable_Code_Point}/gu,
-    (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
+    escapedCodeUnits,
   );
+}
+
+/**
+ * One matched character as its escaped spelling, one `\uXXXX` per UTF-16
+ * code unit. A `\p{...}` class under the `u` flag matches a whole astral
+ * code point - the variation selectors VS17-VS256 (U+E0100-U+E01EF) above
+ * all - and spelling only `charCodeAt(0)` would emit the high surrogate
+ * alone, so two names differing only in which variation selector they carry
+ * would render as one text: the injectivity the escape exists for would
+ * break on exactly the names it exists to keep apart. Two `\uXXXX` escapes
+ * are strict JSON's own spelling of an astral character, the form the
+ * lone-surrogate row already reads as.
+ */
+function escapedCodeUnits(character: string): string {
+  let escaped = '';
+  for (let index = 0; index < character.length; index += 1) {
+    escaped += `\\u${character.charCodeAt(index).toString(16).toUpperCase().padStart(4, '0')}`;
+  }
+  return escaped;
 }
 
 /**
@@ -550,12 +569,18 @@ export function escapeControlCharacters(value: string): string {
  * the literal six characters `\u000A` and one containing a real U+000A render
  * differently instead of as one text. Only that shape: every other backslash
  * is glob syntax and stays exactly as written.
+ *
+ * The escaped set is {@link escapeControlCharacters}'s, less the backslash it
+ * escapes unconditionally: a default-ignorable code point draws nothing, so
+ * `src/<U+200B>**` and `src/**` are two rows that would otherwise render as
+ * one text. The whole-value fallback below cannot cover this — the value is
+ * visible, and only the invisible character inside it is not.
  */
 export function applicabilityRangePresentation(value: string): string {
   const escaped = value.replaceAll(/\\(?=u[0-9A-Fa-f]{4})/gu, '\\u005C').replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
-    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF]/gu,
-    (character) => `\\u${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
+    /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF]|\p{Default_Ignorable_Code_Point}/gu,
+    escapedCodeUnits,
   );
   return rendersNothingVisible(escaped) ? encodeRootPresentation(value) : escaped;
 }
@@ -625,6 +650,26 @@ export function inlinePresentationLabel(value: string): string {
   const escaped = escapeControlCharacters(value);
   return rendersNothingVisible(escaped) || /^\s|\s{2,}|\s$/u.test(escaped)
     ? encodeRootPresentation(value)
+    : escaped;
+}
+
+/**
+ * One authored value as the accessible name beside its visible label
+ * (WCAG 2.5.3 Label in Name; FR-025). It starts with the visible spelling —
+ * speech-input users activate a control by saying what they see — and, where
+ * leading, trailing, or run-together whitespace would collapse two values
+ * into one announcement (WCAG 2.4.4), appends the completely spelled-out
+ * presentation that keeps them apart. A value whose escaped spelling renders
+ * nothing visible has no visible label to start from and is the spelled-out
+ * presentation alone, exactly as its visible label is.
+ */
+export function accessiblePresentationLabel(value: string): string {
+  const escaped = escapeControlCharacters(value);
+  if (rendersNothingVisible(escaped)) {
+    return encodeRootPresentation(value);
+  }
+  return /^\s|\s{2,}|\s$/u.test(escaped)
+    ? `${escaped} (${encodeRootPresentation(value)})`
     : escaped;
 }
 

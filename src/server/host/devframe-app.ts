@@ -16,10 +16,11 @@
 // devframe owns static SPA serving from `cli.distDir` and port selection;
 // the product owns best-effort startup browser opening through its startup
 // opener (`./browser-opener`, research.md § 3), adds no asset manifest or
-// per-asset re-verification, and its only routes of its own are the
+// per-asset re-verification, and its only routes of its own are the shell
+// fallbacks in `createHostApp` — one per kind with a client route:
 // `/skills/**`, `/instructions/**`, `/mcp/**`, `/hooks/**`, `/rules/**`,
-// `/prompts-and-commands/**`, `/permissions/**`, and `/agents/**` shell
-// fallbacks in `createHostApp`,
+// `/prompts-and-commands/**`, `/permissions/**`, `/agents/**`,
+// `/plugins/**`, `/output-styles/**`, and `/settings-and-configuration/**` —
 // which devframe's static handler cannot serve (Constitution Principle I). An unexpected
 // thrown/rejected RPC handler error is serialized as-is by devframe/birpc
 // and the client shows the real error (contracts/http-api.md § Common
@@ -62,7 +63,9 @@ import type {
   FileDetailDto,
   FileDetailParams,
   GlobalConsentPreviewDto,
+  GlobalDisableResultDto,
   GlobalEnableResultDto,
+  GlobalFenceRecoverySnapshot,
   FileOpenParams,
   InspectionDataResult,
   HookCarrierDetailDto,
@@ -72,6 +75,7 @@ import type {
   PluginFileDetailDto,
   PluginFileDetailParams,
   PermissionPolicyDetailDto,
+  GlobalRescanParams,
   ScanAdmission,
   SessionSnapshot,
 } from '../../shared/api-types';
@@ -157,6 +161,10 @@ export async function executeRepositoryScan(
     onProgress: (update) => {
       context.coordinator.reportProgress(scanRequestId, update);
     },
+    // Asked before each new filesystem operation (data-model.md
+    // § ScanAttempt "stops new scheduling"): a disable or shutdown that
+    // revoked this attempt stops the walk at its next operation.
+    authorityHolds: () => context.coordinator.publicationAuthorityHolds(scanRequestId),
   });
   if (publication.kind === 'publishable') {
     await context.coordinator.completeScan(scanRequestId, {
@@ -167,12 +175,73 @@ export async function executeRepositoryScan(
       visitedEntries: publication.visitedEntries,
       candidateFiles: publication.candidateFiles,
       readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
     });
     return;
   }
   // Deterministic returned root failure: retain the actionable Diagnostic
   // where the data model defines it (repository owner reference or the
   // explicit rescan's stale entry) instead of discarding it (FR-002).
+  context.coordinator.failScan(scanRequestId, {
+    kind: 'diagnostic',
+    diagnostic: publication.diagnostic,
+  });
+}
+
+/**
+ * Executes one accepted explicit rescan of a published member Global Source
+ * (T1014; contracts/http-api.md § rescan-global): one Source scan of that
+ * member's retained consented root with that member's own Global rule
+ * catalog, settled through the same coordinator paths a Repository rescan
+ * takes — `completeScan` commits the Global sequence's next generation with
+ * every sibling Source carried, and a deterministic root failure is retained
+ * as the explicit rescan's stale entry rather than discarded (FR-002,
+ * FR-030).
+ */
+export async function executeGlobalMemberRescan(
+  context: InspectorHostContext,
+  scanRequestId: string,
+  sourceId: string,
+  member: GlobalMemberId,
+  root: string,
+): Promise<void> {
+  const publication = await runSourceScan({
+    sourceId,
+    // The exact admitted raw root the control retained, never a display
+    // label: the escaped presentation grants no read authority and is never
+    // decoded back into a path (FR-002).
+    root,
+    // An explicit rescan of a published Source: a deterministic root failure
+    // belongs to that Source's stale overlay (data-model.md § Diagnostic).
+    rootFailureOwner: `published-source:${sourceId}`,
+    scope: 'global',
+    rules: GLOBAL_RULES_BY_MEMBER[member],
+    // No configuration reader, stated rather than inherited, exactly as the
+    // batch states it (FR-016 through FR-018).
+    configurationReaders: [],
+    onProgress: (update) => {
+      context.coordinator.reportProgress(scanRequestId, update);
+    },
+    // Asked before each new filesystem operation (data-model.md
+    // § ScanAttempt "stops new scheduling"): a disable or shutdown that
+    // revoked this attempt stops the walk at its next operation.
+    authorityHolds: () => context.coordinator.publicationAuthorityHolds(scanRequestId),
+  });
+  if (publication.kind === 'publishable') {
+    await context.coordinator.completeScan(scanRequestId, {
+      files: publication.files,
+      recognitions: publication.recognitions,
+      diagnostics: publication.diagnostics,
+      outcome: publication.outcome,
+      visitedEntries: publication.visitedEntries,
+      candidateFiles: publication.candidateFiles,
+      readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
+    });
+    return;
+  }
+  // Deterministic returned root failure: retain the actionable Diagnostic on
+  // the explicit rescan's stale entry instead of discarding it (FR-002).
   context.coordinator.failScan(scanRequestId, {
     kind: 'diagnostic',
     diagnostic: publication.diagnostic,
@@ -206,6 +275,10 @@ export async function executeGlobalBatch(
     recognitions: readonly ToolRecognition[];
     diagnostics: readonly SerializedDiagnostic[];
     outcome: 'complete' | 'partial';
+    visitedEntries: number;
+    candidateFiles: number;
+    readBytes: number;
+    censusEscapedDirectories: readonly string[];
   }[] = [];
   const failures: { member: GlobalMemberId; failureCode: 'root-unreadable' }[] = [];
   try {
@@ -224,6 +297,17 @@ export async function executeGlobalBatch(
         // the boundary visible at the call that depends on it (FR-016 through
         // FR-018).
         configurationReaders: [],
+        // Live per-member counters on the member's own Source, exactly as the
+        // rescans report theirs (contracts/http-api.md § get-session
+        // `progress`).
+        onProgress: (update) => {
+          context.coordinator.reportBatchMemberProgress(scanRequestId, member.sourceId, update);
+        },
+        // Asked before each new filesystem operation (data-model.md
+        // § ScanAttempt): a disable accepted mid-batch stops the member
+        // walks at their next operation while the drain waits out the one
+        // read in flight.
+        authorityHolds: () => context.coordinator.batchAuthorityHolds(scanRequestId),
       });
       if (publication.kind !== 'publishable') {
         // The admitted root cannot be read: it was removed between admission
@@ -239,6 +323,10 @@ export async function executeGlobalBatch(
         recognitions: publication.recognitions,
         diagnostics: publication.diagnostics,
         outcome: publication.outcome,
+        visitedEntries: publication.visitedEntries,
+        candidateFiles: publication.candidateFiles,
+        readBytes: publication.readBytes,
+        censusEscapedDirectories: publication.censusEscapedDirectories,
       });
     }
   } catch (cause: unknown) {
@@ -308,15 +396,35 @@ export async function runGlobalEnable(
   try {
     // Every admission runs before any disposition, so a throw here has
     // activated no consent, no control, and no job — and a retry's throw has
-    // replaced none of the existing controls.
-    resolved = await resolveGlobalMembers(
+    // replaced none of the existing controls. The admission is registered in
+    // the disable barrier's drain: the barrier must cancel and drain an
+    // operation-local initial enable (contracts/http-api.md
+    // § disable-global), so a disable accepted mid-admission waits these
+    // reads out instead of committing beside them.
+    const admission = resolveGlobalMembers(
       preview,
       PRODUCTION_GLOBAL_MEMBER_PORTS,
       retryableTools ?? undefined,
+      // Checked before each member's probe: the barrier cancels this
+      // operation on acceptance, and the next member's read must not start
+      // after that (contracts/http-api.md § disable-global).
+      () => context.session.globalEnableInProgress?.operationId === registered.operationId,
     );
+    context.coordinator.trackInFlight(admission);
+    resolved = await admission;
   } catch (cause: unknown) {
     context.coordinator.abandonGlobalEnable(registered.operationId);
     throw cause;
+  }
+  if (context.session.globalEnableInProgress?.operationId !== registered.operationId) {
+    // The barrier cancelled this operation while its admissions ran
+    // (expected cancellation — nothing was activated). The settle below
+    // would throw that cancellation as an ordinary error; the contract's
+    // answer for an enable the barrier cut down is the same fixed conflict
+    // every fenced command takes (contracts/http-api.md § enable-global
+    // Outcomes), which sends the client through its purge-and-refetch
+    // recovery rather than an error report.
+    return { error: { code: 'global-disable-pending' } };
   }
   const result = context.coordinator.settleGlobalEnable(
     registered.operationId,
@@ -330,7 +438,14 @@ export async function runGlobalEnable(
     const control = context.session.globalConsent!.controls.get(member)!;
     return { member, sourceId: control.sourceId!, root: control.root! };
   });
-  const batch = executeGlobalBatch(context, result.scanRequestId, members);
+  // Through the Global sequence's own FIFO and the disable barrier's drain
+  // set: the batch is one transaction of that sequence, so it never runs
+  // beside an explicit member rescan, and a disable accepted mid-batch waits
+  // out its reads before committing (contracts/http-api.md § disable-global).
+  const scanRequestId = result.scanRequestId;
+  const batch = context.coordinator.runGlobalTransaction(() =>
+    executeGlobalBatch(context, scanRequestId, members),
+  );
   if (options.waitForBatch) {
     await batch;
     return result;
@@ -411,9 +526,19 @@ export function createInspectorDevframe(
         type: 'query',
         // The snapshot is rebuilt synchronously under the single-threaded
         // coordinator turn, so the epoch/fence revalidation the contract
-        // requires is the same turn that binds the payload; the disable
-        // fence itself arrives with the Global tasks.
-        handler: (): InspectionDataResult<SessionSnapshot> => {
+        // requires is the same turn that binds the payload.
+        handler: ():
+          InspectionDataResult<SessionSnapshot> | CommandResult<GlobalFenceRecoverySnapshot> => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The one fenced success: the exact control-only recovery
+            // projection, with no generation or inspection graph — what a
+            // fenced tab renders and retries from (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`).
+            return {
+              globalContentEpoch: context.session.globalContentEpoch,
+              data: context.session.fenceRecoverySnapshot(),
+            };
+          }
           const snapshot = context.session.snapshot();
           return {
             globalContentEpoch: snapshot.globalContentEpoch,
@@ -443,10 +568,14 @@ export function createInspectorDevframe(
         handler: (
           request: FileDetailParams,
         ): InspectionDataResult<FileDetailDto> | DeterministicRejection => {
-          const detail = context.session.fileDetail(
-            request?.sourceRelativePath,
-            request?.source ?? 'repository',
-          );
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
+          const detail = context.session.fileDetail(request?.sourceRelativePath, request?.source);
           if (detail === null) {
             // The current committed generations hold no detail of this
             // function's at the path — never scanned, removed by the commit
@@ -478,9 +607,16 @@ export function createInspectorDevframe(
         handler: (
           request: FileDetailParams,
         ): InspectionDataResult<McpCarrierDetailDto> | DeterministicRejection => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const detail = context.session.mcpCarrierDetail(
             request?.sourceRelativePath,
-            request?.source ?? 'repository',
+            request?.source,
           );
           if (detail === null) {
             // No MCP recognition at the path — never scanned, or removed by
@@ -509,9 +645,16 @@ export function createInspectorDevframe(
         handler: (
           request: FileDetailParams,
         ): InspectionDataResult<HookCarrierDetailDto> | DeterministicRejection => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const detail = context.session.hookCarrierDetail(
             request?.sourceRelativePath,
-            request?.source ?? 'repository',
+            request?.source,
           );
           if (detail === null) {
             // No hook recognition at the path — never scanned, or removed by a
@@ -539,6 +682,13 @@ export function createInspectorDevframe(
         handler: (
           params?: PluginCarrierDetailParams | null,
         ): InspectionDataResult<PluginCarrierDetailDto> | DeterministicRejection => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           // The caller is the wire, which carries whatever was sent: this is
           // the one function whose parameter is an object, so a `null` or an
           // omitted argument would throw on the field read the others survive
@@ -573,6 +723,13 @@ export function createInspectorDevframe(
         handler: (
           params?: PluginFileDetailParams | null,
         ): InspectionDataResult<PluginFileDetailDto> | DeterministicRejection => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const detail =
             params === null || params === undefined
               ? null
@@ -601,9 +758,16 @@ export function createInspectorDevframe(
         handler: (
           request: FileDetailParams,
         ): InspectionDataResult<PermissionPolicyDetailDto> | DeterministicRejection => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const detail = context.session.permissionPolicyDetail(
             request?.sourceRelativePath,
-            request?.source ?? 'repository',
+            request?.source,
           );
           if (detail === null) {
             // No permissions recognition at the path — never scanned, or
@@ -618,6 +782,13 @@ export function createInspectorDevframe(
         name: 'agent-customization-inspector:rescan-repository',
         type: 'action',
         handler: async (): Promise<CommandResult<ScanAdmission> | DeterministicRejection> => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const snapshot = context.session.snapshot();
           const repository = snapshot.sources.find((source) => source.kind === 'repository');
           if (repository === undefined) {
@@ -637,28 +808,126 @@ export function createInspectorDevframe(
           // The invocation resolves with its acceptance; the accepted job's
           // terminal failure is retained as the Source's stale overlay with
           // the failed request's real error message, never re-thrown into a
-          // later unrelated invocation (FR-030).
-          void executeRepositoryScan(
-            context,
-            admission.scanRequestId,
-            repository.sourceId,
-            // An explicit rescan of the published Repository Source: a
-            // deterministic root failure belongs to that Source's stale
-            // overlay, not the automatic-scan repository owner
-            // (data-model.md § Diagnostic).
-            `published-source:${repository.sourceId}`,
-          ).catch((error: unknown) => {
-            context.coordinator.failScan(admission.scanRequestId, {
-              kind: 'error',
-              message: error instanceof Error ? error.message : String(error),
+          // later unrelated invocation (FR-030). The work runs through the
+          // sequence's FIFO chain, so it starts only once every earlier
+          // accepted command of its sequence settled (contracts/http-api.md
+          // § rescan-repository).
+          void context.coordinator
+            .runInSequence(repository.sourceId, admission.scanRequestId, () =>
+              executeRepositoryScan(
+                context,
+                admission.scanRequestId,
+                repository.sourceId,
+                // An explicit rescan of the published Repository Source: a
+                // deterministic root failure belongs to that Source's stale
+                // overlay, not the automatic-scan repository owner
+                // (data-model.md § Diagnostic).
+                `published-source:${repository.sourceId}`,
+              ),
+            )
+            .catch((error: unknown) => {
+              context.coordinator.failScan(admission.scanRequestId, {
+                kind: 'error',
+                message: error instanceof Error ? error.message : String(error),
+              });
             });
-          });
           const updated = context.session
             .snapshot()
             .sources.find((source) => source.sourceId === repository.sourceId);
           return {
             globalContentEpoch: snapshot.globalContentEpoch,
             data: { scanRequestId: admission.scanRequestId, source: updated ?? repository },
+          };
+        },
+      });
+      ctx.rpc.register({
+        name: 'agent-customization-inspector:rescan-global',
+        type: 'action',
+        // One scan command for one enabled member Global Source
+        // (contracts/http-api.md § rescan-global). The parameter validates by
+        // resolution against the published Global Sources — an opaque ID and
+        // never a path — so an unknown or removed ID takes the stale-resource
+        // rejection and no value is ever a filesystem operand (Host
+        // requirements 6).
+        handler: async (
+          request: GlobalRescanParams,
+        ): Promise<CommandResult<ScanAdmission> | DeterministicRejection> => {
+          const snapshot = context.session.snapshot();
+          if (snapshot.globalDisableInProgress !== null) {
+            // The disable barrier outranks every Global command: a scan
+            // accepted behind it could commit into a sequence the barrier is
+            // discarding (contracts/http-api.md § rescan-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
+          // The wire carries whatever was sent: a `null` or omitted argument
+          // reaches the field read below, so the optional access resolves it
+          // to no published Source — the same stale-resource rejection a
+          // value of another type takes (contracts/http-api.md § Host
+          // requirements 6) — rather than throwing on the read.
+          const published = snapshot.sources.find(
+            (source) => source.kind === 'global' && source.sourceId === request?.sourceId,
+          );
+          const consent = context.session.globalConsent;
+          const control =
+            published?.member == null ? undefined : consent?.controls.get(published.member);
+          if (
+            published?.member == null ||
+            control === undefined ||
+            control.sourceId !== published.sourceId ||
+            control.root === null
+          ) {
+            // Not a currently published member Global Source: an unknown ID, a
+            // Source a disable removed, or a control a retry superseded. The
+            // same declared outcome a detail request gives a removed path.
+            return { error: { code: 'stale-resource' } };
+          }
+          // Bound where the guard above has narrowed them: the deferred job
+          // closes over these, and control flow cannot narrow a property
+          // across a closure boundary.
+          const member = published.member;
+          const root = control.root;
+          const admission = context.coordinator.admitScan(published.sourceId, {
+            kind: 'request',
+            operationId: createOpaqueId(),
+          });
+          if (admission.kind === 'conflict') {
+            // At most one scan command per Source is running or queued
+            // (contracts/http-api.md § rescan-global).
+            return { error: { code: 'scan-in-progress' } };
+          }
+          // The invocation resolves with its acceptance; the accepted job's
+          // terminal failure is retained as the Source's stale overlay with
+          // the failed request's real error message (FR-030). The work runs
+          // through the Global sequence's FIFO chain, so two members'
+          // accepted commands run and publish in acceptance order
+          // (contracts/http-api.md § rescan-global).
+          void context.coordinator
+            .runInSequence(published.sourceId, admission.scanRequestId, () =>
+              executeGlobalMemberRescan(
+                context,
+                admission.scanRequestId,
+                published.sourceId,
+                member,
+                root,
+              ),
+            )
+            .catch((error: unknown) => {
+              context.coordinator.failScan(admission.scanRequestId, {
+                kind: 'error',
+                message: error instanceof Error ? error.message : String(error),
+              });
+            });
+          const updated = context.session
+            .snapshot()
+            .sources.find((source) => source.sourceId === published.sourceId);
+          if (updated === undefined) {
+            // Reached by no caller: the Source was resolved above and nothing
+            // between the admission and this read removes it.
+            throw new Error('the admitted global source is missing from the session');
+          }
+          return {
+            globalContentEpoch: snapshot.globalContentEpoch,
+            data: { scanRequestId: admission.scanRequestId, source: updated },
           };
         },
       });
@@ -707,6 +976,13 @@ export function createInspectorDevframe(
         // boundary, devframe serializes it as-is, and no preview, job,
         // `scanRequestId`, retention, or path authority exists as a result.
         handler: (): CommandResult<GlobalConsentPreviewDto> | DeterministicRejection => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence blocks capture and replacement: preview
+            // retrieval still answers with the frozen preview, but a new
+            // capture would replace what a failed cleanup must retain
+            // (data-model.md § GlobalDisableOperation).
+            return { error: { code: 'global-disable-pending' } };
+          }
           // The two states that freeze the preview. Replacing it under either
           // would strand what depends on it: an active consent names its
           // preview by ID, and the recovery path for a fresh client is to
@@ -755,6 +1031,20 @@ export function createInspectorDevframe(
         handler: async (
           request: unknown,
         ): Promise<CommandResult<GlobalEnableResultDto> | DeterministicRejection> => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const body = (request ?? {}) as {
             confirmed?: unknown;
             allowlistVersion?: unknown;
@@ -794,6 +1084,38 @@ export function createInspectorDevframe(
         },
       });
       ctx.rpc.register({
+        name: 'agent-customization-inspector:disable-global',
+        type: 'action',
+        // The priority security barrier for all inspection data
+        // (contracts/http-api.md § disable-global). Argument-free and strict:
+        // whatever body arrives is ignored rather than read. A true no-op
+        // answers through the ordinary single-stage gate; everything else
+        // accepts or joins the barrier and awaits its terminal result — a
+        // post-acceptance failure rejects this invocation with the real
+        // error, which devframe serializes, while the fence stays closed and
+        // the retained projection carries the same message for every fenced
+        // tab. Disable itself never returns `global-disable-pending`.
+        handler: async (): Promise<CommandResult<GlobalDisableResultDto>> => {
+          const disposition = context.coordinator.disposeGlobalDisable(() => {
+            // Inside the terminal success commit's own synchronous block, so
+            // the frozen preview and the session state clear as one step
+            // (data-model.md § GlobalDisableOperation).
+            consent.release();
+          });
+          if (disposition.kind === 'no-op') {
+            return {
+              globalContentEpoch: context.session.globalContentEpoch,
+              data: disposition.result,
+            };
+          }
+          const result = await disposition.completion;
+          return {
+            globalContentEpoch: context.session.globalContentEpoch,
+            data: result,
+          };
+        },
+      });
+      ctx.rpc.register({
         name: 'agent-customization-inspector:open-file',
         type: 'action',
         // The reader's own request to open the file a detail page is showing,
@@ -813,9 +1135,16 @@ export function createInspectorDevframe(
         handler: async (
           request: FileOpenParams,
         ): Promise<CommandResult<null> | DeterministicRejection> => {
+          if (context.session.globalDisableInProgress !== null) {
+            // The disable fence outranks every inspection-data answer: the
+            // check precedes resource resolution, so the conflict wins
+            // without leaking retained graph state (contracts/http-api.md
+            // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const opened = await context.session.openCommittedFile(
             request?.sourceRelativePath,
-            request?.source ?? 'repository',
+            request?.source,
             request?.target,
           );
           if (!opened) {
@@ -861,6 +1190,19 @@ export interface StartInspectorHostOptions {
   /** Called after loopback bind and before the host's startup opener. */
   readonly onReady?: CreateDevServerOptions['onReady'];
   /**
+   * Asked before each of the startup opener's launch steps: false once a
+   * shutdown signal arrived, so the opener neither keeps waiting on the
+   * reuse attempt's account nor opens a fallback browser for a host that is
+   * already closing (`./browser-opener` § openStartupBrowser).
+   */
+  readonly openerShouldProceed?: () => boolean;
+  /**
+   * Aborts the startup opener's own child processes on shutdown: the
+   * predicate above stops the next step, while this signal interrupts a
+   * probe or reuse script already waiting (browser-opener.ts § reuse).
+   */
+  readonly openerAbortSignal?: AbortSignal;
+  /**
    * The consent state the Global functions serve, when the caller holds one
    * already. The CLI's `--inspect-personal-setup` captures and confirms a
    * preview before the host exists, and the consent page must show that
@@ -897,7 +1239,11 @@ export async function startInspectorHost(
       await options.onReady?.(info);
       if (options.openBrowser === true) {
         try {
-          await openStartupBrowser(`${info.origin}/`);
+          await openStartupBrowser(
+            `${info.origin}/`,
+            options.openerShouldProceed,
+            options.openerAbortSignal,
+          );
         } catch {
           // Reached when the opener's `open` fallback cannot spawn the OS
           // helper — e.g. a Linux host whose PATH lacks xdg-open and whose
@@ -917,17 +1263,16 @@ export async function startInspectorHost(
 
 /**
  * The H3 app devframe mounts onto, carrying the route families devframe's
- * own SPA fallback cannot serve: a detail URL ends with the file's own
- * last segment — `/skills/<source-relative path>` with `SKILL.md`,
- * `/instructions/<source-relative path>` with `AGENTS.md`,
- * `/mcp/<source-relative path>` with `config.toml`,
- * `/hooks/<source-relative path>` with `hooks.json`,
- * `/rules/<source-relative path>` with `style.md`,
- * `/prompts-and-commands/<source-relative path>` with `deploy.md`,
- * `/output-styles/<source-relative path>` with `diagrams.md`,
- * `/permissions/<source-relative path>` with `default.rules`,
- * `/agents/<source-relative path>` with `reviewer.toml`,
- * `/settings-and-configuration/<source-relative path>` with `config.toml` —
+ * own SPA fallback cannot serve: a detail URL is
+ * `/<kind>/detail/<source>/<source-relative path>` and so ends with the
+ * file's own last segment — `/skills/detail/repository/<path>` with
+ * `SKILL.md`, `/instructions/detail/…` with `AGENTS.md`, `/mcp/detail/…`
+ * with `config.toml`, `/hooks/detail/…` with `hooks.json`,
+ * `/rules/detail/…` with `style.md`, `/prompts-and-commands/detail/…` with
+ * `deploy.md`, `/output-styles/detail/…` with `diagrams.md`,
+ * `/permissions/detail/…` with `default.rules`, `/agents/detail/…` with
+ * `reviewer.toml`, `/settings-and-configuration/detail/…` with
+ * `config.toml`, and each kind's `/<kind>/compare/<family>` beside them —
  * and devframe's static handler deliberately skips the `index.html` fallback
  * for a miss that looks like a file (it has an extension). This middleware
  * only rewrites such a request to the root and falls through, so devframe's
@@ -958,9 +1303,9 @@ function createHostApp(): H3 {
     }
     return undefined;
   });
-  // One route family per kind detail: each arrives with the phase that ships
-  // its detail route, because a rewrite for a route no page serves would turn
-  // a real 404 into a silent shell boot.
+  // One route family per kind with a client route: the list is closed against
+  // the pages this shell serves, because a rewrite for a route no page serves
+  // would turn a real 404 into a silent shell boot.
   app.use('/skills/**', rewriteToShell);
   app.use('/instructions/**', rewriteToShell);
   app.use('/mcp/**', rewriteToShell);

@@ -988,8 +988,8 @@ LICENSE
 これにより全nested client routeが同じroot-absolute same-origin asset URLをresolveする。Detail routeは、それが表示する
 認識済みkindに属する。`/skills/detail/<source>/<SKILL.mdのSource相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
 指示、directoryであり、別kindのdetailは別のlayoutで別の問いに答える。そのdirectoryのどのfileを読んでいるかは
-addressの傍らの`file` queryであり、主題はpageが記述するcustomizationのままとなる。出荷中のinspection ruleはすべて`skill`を認識するため
-detail routeはこの1つであり、2つ目のkindを認識するphaseがそのkindのrouteとpageを併せて追加する。`src/server/cli.ts` entryは
+addressの傍らの`file` queryであり、主題はpageが記述するcustomizationのままとなる。detail surfaceを持つ認識済みの各kindがこの形のrouteを1つずつ出荷しており、
+新しいkindを認識するphaseがそのkindのrouteとpageを併せて追加する。`src/server/cli.ts` entryは
 BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まり、tsdownがpackaged `dist/cli.mjs`でそのshebangを
 保持し、`package.json.bin`は別のbootstrap wrapperなしでそれを直接指す。同時に配布されるartifact同士を
 user runtimeで相互検証せず、packaged entry pointは`verify:package` CI/release gateがenforceする。
@@ -1088,7 +1088,7 @@ buildまたはpackage quality gateを配置しない。
 設定し、CLI entryと参照される全assembly scriptをscaffoldする。それらのpathが存在するまでSetup stageを
 runnableとみなさない。
 Production `dependencies`はcaret宣言のdirect set `devframe`、`env-editor`、`gunshi`、`h3`、`open`、
-`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`which`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
+`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
 devframe、`open`、`which`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
 build/test toolingはdevelopment-onlyとする。
 
@@ -1117,7 +1117,7 @@ entry pointをadvertiseしない。Package testはbin targetの保持された�
 locationから解決されることを証明する。Pack済みtarballは証明しない: tarballをisolated fixtureへinstallし
 `npx --no-install`で起動するのはT917であり、release gateが所有する。
 
-Package gateは、承認済みのdirect production dependency set — その9つのnameだけで他は含まない — を
+Package gateは、承認済みのdirect production dependency set — その11個のnameだけで他は含まない — を
 `package.json`と`pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは
 research.md § 3の決定が明示的に見直されるまでfailする。各resolved versionとそのintegrity hashは
 commit済みlockfileが所有し、production payload byteを固定し続けるのはこのlockfileである。payload content scan — native/binary/Wasm magic、shell helperとshebang audit、
@@ -1184,10 +1184,11 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   `U+FFFD`が1つでもあればnon-emptyになる。Binaryまたはunreadableなoverrideは、そのfile別diagnosticとともに
   branchを終了し、fallbackしない（FR-035）。
 - Static matcherと、出荷済み`bounded-derived-candidate` ruleごとに1つあるvendorの構成readerだけをcandidate read authorityとする。
-  これらがカバーしない唯一のreadはcensus-listed companionのreadであり、それはどのadmissionも認可せず、
-  admit済みcandidate自身のdirectory外のpathからは到達できない
-  （contracts/inspection-path-allowlist.ja.md § Bounded companion census）— skillのsibling
-  `agents/openai.yaml`はこの経路で公開される
+  これらがカバーしない唯一のreadはcensus-listed fileのreadであり、それはどのadmissionも認可せず、
+  2つのboundのいずれかに収まる: admit済みcandidate自身のdirectory、または、validatedなcatalog entryの
+  local sourceが名指すSource-relativeなplugin root — vendorの文書化済みlocal formに対して検証され、同じSourceに
+  containされる（contracts/inspection-path-allowlist.ja.md § Bounded companion census）— skillのsibling
+  `agents/openai.yaml`と宣言されたpluginのfileはこの経路で公開される
   （contracts/vendors/openai-codex.ja.md § Derived Repository rule）。Derivation schemaは
   static seed provenance/rule/kind、closed declaration field/syntax、seed-relativeまたはsource-root base、固定placement/
   suffix、deterministic target constructionをpinし、callback、arbitrary path join、free-form expression、glob、recursive derivationを表現不能にする。
@@ -1195,7 +1196,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   host-independentなclosed spelling grammarを通し、enumerate済みallowlist entry正確に1件へresolveできた
   場合だけ読み、ADS、device、trailing-dot/space spellingはfile open前に拒否する。
   Vendor behavior registryがその他の
-  supported User customizationを記録する場合も、FR-015からFR-018によりGlobal readは3 instruction setだけに
+  supported User customizationを記録する場合も、FR-015からFR-018とFR-045によりGlobal readは4 memberのfrozen rule catalogだけに
   制限し続ける。
 - Tool recognizerは`(file, tool, kind)`ごとにexact `ToolRecognition` 1件を付け、closed tool/kind順でsortする。
   Compatible admissionはprovenanceをmergeし、incompatible parsed meaningはそのrecognitionのall-or-nothing extractionだけを
@@ -1285,9 +1286,9 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   envelopeは存在せず、startup pathはcatchを持たないためownerless rejectionはprocess top levelへ到達する。
   Global consentはI/Oなしのlexical previewを使い、serverはそれをopaque `previewId`で識別する
   唯一のrecordとして保持する。New unconsented previewごとに`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
-  `CODEX_HOME`をこの順で正確に1回ずつreadし、`undefined`だけをabsentとし、1つでもabsentならimport済み
-  `node:os.homedir()`を正確に1回callする。Absent entryだけにactive-platformの`node:path.join`と固定suffix `.copilot`、
-  `.claude`、`.codex`を使い、`HOME`/`USERPROFILE`を独自選択しない。Proposed rootはproduct定義のbyte上限ではなくsupported Node.js、browser、
+  `CODEX_HOME`をこの順で正確に1回ずつreadし、`undefined`だけをabsentとし、import済み
+  `node:os.homedir()`をpreviewごとに正確に1回callする — 共有agent homeは常にそこから導出される（FR-013、FR-045）。Absentなtool entryだけにactive-platformの`node:path.join`と固定suffix `.copilot`、
+  `.claude`、`.codex`を使い、`.agents`は同じ1回のcaptureから導出し、`HOME`/`USERPROFILE`を独自選択しない。Proposed rootはproduct定義のbyte上限ではなくsupported Node.js、browser、
   platformのstring/path facilityで表現・escapeする。Environmentがproposed rootをrecoverableに表現、escape、retain、
   serializeできない場合、そのthrow/rejectionを通常のerrorとして変更せずpreviewのsession-API request boundaryへ
   伝播させ、preview、authority、job、retained failure stateを作成しない。Accepted entryはinternal exact raw
@@ -1325,10 +1326,14 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   `renderMarginRevertIcon: false`を設定し、環境変数参照を解決せず記述された完全なtextを保持する。`accessibilitySupport`は`auto`、
   `accessibilityVerbose`はenabledとし、各viewに`ariaLabel`を付ける。
   Literal source comparisonはMonaco diff editorが所有する。Tool recognitionはtoolごとに
-  比較し、fileの宣言済みmetadata — kindごとに1回のparse — は`(kind, 宣言key)`で
-  対応付けて各fieldの解決済み値を1回だけ比較・Vue表示し、editorへserializeしない。Repository comparison acceptanceでは最初に同じRepository Source内のreadableなcurrent-generation distinctなカスタマイズファイル
-  2件を使用し、正常なGlobal commit後だけ、各owning SourceとSource-relative namespaceを維持したままreadableなRepository
-  fileとGlobal fileの比較をUS4で検証する。他contentと並行して表示するRepository/Globalの自動更新scan/status informationは、共通のkeyboard操作可能な
+  比較し、fileの宣言済みmetadataは1回だけ比較する — sideごとに1つのcanonical documentへ
+  serializeし、それをdiff editorがsourceの傍らにmountする。kind/fieldで対応付けてVue
+  componentで描画するのではない。その背後のparseは、Markdown系kindについては`(file, kind)`
+  ごと、custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
+  rule自身の読み取りである。Repository comparison acceptanceでは最初に同じRepository Source内のreadableなcurrent-generation distinctなカスタマイズファイル
+  2件を使用し、正常なGlobal commit後だけ、2つのconsented homeが持つ同じrowのreadableなfileどうしの
+  比較を、各owning SourceとSource-relative namespaceを維持したままUS4で検証する — 比較は1つの
+  Source family内に留まるため、RepositoryとGlobalを跨ぐpairは存在しない。他contentと並行して表示するRepository/Globalの自動更新scan/status informationは、共通のkeyboard操作可能な
   pause/resumeとon-demand-refresh controlを使う。Pauseはunderlying scanを停止せず、表示/live-region statusをlast valueで
   freezeし、resumeまたは明示refreshでcurrent stateを表示する。Editorはclient-onlyとし、file/compare routeで
   lazy-loadする。Nuxt/Viteは明示的にimportしたeditor workerをsame-origin static assetとして出力し、
@@ -1372,16 +1377,16 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   interleaveさせない。Queue/operation capacityはNode.jsと現在のprocess environmentから継承し、Inspectorはcommand slot、
   queue depth、handle count、admission byteのquotaを定義しない。Global disableはordinary workと独立してacceptし、既存disable
   transactionへjoinできるpriority security barrierとする。
-  1つのconsent recordは常にfixed closed-order tuple `[copilot, claude, codex]`をpreviewし、UI/APIのper-tool selectorを
+  1つのconsent recordは常にfixed closed-order tuple `[copilot, claude, codex, agents]`をpreviewし、UI/APIのper-tool selectorを
   持たない1つのall-tools confirmation actionを提供する。`confirmedTools`は、lexical previewがinvalidなfrozen entryも含む
   この完全なtupleとし、eligibilityによってconsentをnarrowしない。Serverはtuple memberごとにinternal `GlobalToolControl`を
-  1つ所有する。Filesystem I/Oを伴わないrequest/`previewId` validation後も、initial enableはfrozen consentと3 controlすべてを
+  1つ所有する。Filesystem I/Oを伴わないrequest/`previewId` validation後も、initial enableはfrozen consentと4 controlすべてを
   root admission中operation-localかつ観測不能に保ち、session `globalControl`またはpending stateをまだ作成しない。Retryは
   existing active consent/control stateを正確なpre-operation snapshotとして使用する。どちらもnew root contextとcandidate
   Source/boundary IDをoperation-localに保つ。Owned toolすべてが決定的なadmission outcomeに達した後の1回のcoordinator decisionで
   initial consent/controlをactivateするかretry partitionを適用し、rootをadmitした場合だけ全contextをattachして1 batchへ
   transferする。その後もbatch scan resultとgraph recordは1回のgeneration commitまでtentativeのままにする。
-  Initial enableはfrozen entry 3件すべてを試行する。Retryは同じfixed tupleから、non-pending unpublished `admitted` controlと
+  Initial enableはfrozen entry 4件すべてを試行する。Retryは同じfixed tupleから、non-pending unpublished `admitted` controlと
   `retryDisposition: same-preview`の`rejected` controlで構成するfixed-order `retryableTools` projection全体をserver側でderiveする。
   Published、pending、lexicalな`new-preview-required` controlを除外し、requestはtargetを追加、omit、reorderできない。
   Admissionはserver所有のsetを、決定的なrejected subsetと
@@ -1475,13 +1480,13 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
 
 | Input/phase | Internal transition | I/Oおよびpublic result |
 |---|---|---|
-| Tool-home設定を`undefined`としてcapture | `preview-default` | Request全体で1回の`node:os.homedir()` captureから、active-platform `node:path.join`とtool固定`.copilot`/`.claude`/`.codex` suffixを使ってfilesystem I/Oなしでexact stringを計算し、下記ordered rowでclassifyする。このtoolをfixed three-entry confirmationに保持してauthorityを作らない |
-| Capture済みenvironment設定のlengthが0 | `inputState: present-empty` / `preview-invalid` | Environment-origin valueだけに最初に適用する。Entryをfixed three-entry confirmationに保持し、fallbackもfilesystem/network I/Oも行わず、そのentry用root、Source、job、generationを作らない |
+| Tool-home設定を`undefined`としてcapture | `preview-default` | Request全体で1回の`node:os.homedir()` captureから、active-platform `node:path.join`とtool固定`.copilot`/`.claude`/`.codex` suffixを使ってfilesystem I/Oなしでexact stringを計算し、下記ordered rowでclassifyする。このtoolをfixed four-entry confirmationに保持してauthorityを作らない |
+| Capture済みenvironment設定のlengthが0 | `inputState: present-empty` / `preview-invalid` | Environment-origin valueだけに最初に適用する。Entryをfixed four-entry confirmationに保持し、fallbackもfilesystem/network I/Oも行わず、そのentry用root、Source、job、generationを作らない |
 | それ以外でexact stringがU+0000またはunpaired UTF-16 surrogateを含む | `inputState: invalid` / `preview-invalid` | `path.isAbsolute`より前にrejectし、filesystem/network I/O 0件かつauthorityなしでinvalid preview entryだけを保持する |
 | それ以外でactive-platform `node:path.isAbsolute`がfalseを返す | `inputState: relative` / `preview-invalid` | Filesystem/network I/O 0件でrelative preview entryを保持し、normalize、resolve、fallback、authority作成を行わない |
-| それ以外（通常のhome外を含むabsolute string） | `inputState: eligible` / `preview-eligible` | 保存するexact raw lexical valueをfilesystem/network I/Oなしでescapeしてserver保持preview recordに保持し、fixed three-entry confirmationに保持して1回のall-tools consent actionを待つ。このrowだけがconsent後admissionへ進める |
+| それ以外（通常のhome外を含むabsolute string） | `inputState: eligible` / `preview-eligible` | 保存するexact raw lexical valueをfilesystem/network I/Oなしでescapeしてserver保持preview recordに保持し、fixed four-entry confirmationに保持して1回のall-tools consent actionを待つ。このrowだけがconsent後admissionへ進める |
 | Consentがstale、replayed、またはsupersededな`previewId`を指名 | `consent-rejected` | Proposed-root I/Oを行わず、authorityを作らない |
-| Consent済みrootがmissing、またはreadableなdirectoryでない | `absent`または`root-rejected` | そのSourceを作らず、sibling memberをblockせずにそのmemberをabsentまたはfailedとして記録する。initialでは全3 tool、retryではexact `retryableTools`というcurrent server-owned setのpartitionを続行する |
+| Consent済みrootがmissing、またはreadableなdirectoryでない | `absent`または`root-rejected` | そのSourceを作らず、sibling memberをblockせずにそのmemberをabsentまたはfailedとして記録する。initialでは全4 member、retryではexact `retryableTools`というcurrent server-owned setのpartitionを続行する |
 | Proposed-root operationがunexpectedにthrowまたはreject | 通常のerror propagation | Global transaction全体をabortし、全provisional sibling context/resultを破棄し、admitted subsetを一切publishせず以前のsnapshotを保持する |
 | 1件以上のrootでconsent後admissionが成功 | `root-admitted` batch subset | 全admitted context/IDを各controlへatomicにattachし、一緒に1つの`GlobalBatchScan`へtransferして、その1回のatomic commit前にpublic Source/graphを作らない |
 
@@ -1499,7 +1504,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
 |---|---|---|
 | Traversalが完全、readableな`utf-8-replaced` resultを含む全fileがcomplete、assembly/serializationが成功、authorityがcurrent | `committable-complete`、coordinator | Owning sequenceの`complete` generation 1つとcomplete responseをcommitする。Initial/retry Global batchは全admitted tool固有SourceをこのGlobal-sequence commit 1回で一緒にpublishし、Repository stateに触れない |
 | Traversalが完全、1件以上のfileがfile-confined outcome（unreadable、admit済みcandidateのbinary content、parse failure — censusが列挙したcompanionのbinary bytesはその通常の事実であり、何もconfineしない。FR-025）だけを持ち、非影響fileはすべてcomplete | `committable-partial`、scan assemblerからcoordinator | 影響fileのdiagnosticと完全な非影響resultを持つowning sequenceの`partial` generation 1つをcommitする。Initial/retry Global batchもcommittableなadmitted subset全体をこのGlobal-sequence commit 1回でpublishする |
-| Fixed-three Global admissionが全rootを決定的にreject | `active-no-job`、Global coordinator | Active consent/controlを保持し、`scanRequestId`、batch、Source、generationを作らず、既存のcommit済み全IDを正確に維持する |
+| Fixed-four Global admissionが全rootを決定的にreject | `active-no-job`、Global coordinator | Active consent/controlを保持し、`scanRequestId`、batch、Source、generationを作らず、既存のcommit済み全IDを正確に維持する |
 | 選択済みRepository rootが存在しない、またはdirectoryとしてreadできない | 決定的なfatal outcome、coordinator | Source-scoped `root-unreadable` diagnosticでattemptをfailさせ、sessionは利用可能なまま残す。何もcommitせず、partial inventoryをpublishせず、以前のsnapshotを維持する。Attemptが明示rescanの場合に限り、retained snapshotをそのSourceについてstaleとしてmarkする |
 | 1 fileに限定されない他の理由でattemptがcommit前にfail | その`scanRequestId`の`failed`、所有session-API request boundary | 全tentative Global batch siblingを含め、attemptから何もcommitしない。Failed requestのerrorを通常どおり報告する（job accept前は`scanRequestId`をnullとする）。以前のcommit済みsnapshotを維持する。Accept済みjobが明示rescanの場合に限り、そのSourceのstale overlayを作成または置換してそのerrorのmessageを保存する。Process/sessionを利用可能なまま保つ |
 | Request ownerを持たない自動startup workがfail | Process top levelへのpropagation | Attempt resultまたはgenerationをpublishせず、process/sessionのsurvivalを保証しない。Runtimeの通常のuncaught-error報告を適用する |

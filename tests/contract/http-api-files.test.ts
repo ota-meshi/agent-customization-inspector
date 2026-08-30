@@ -11,7 +11,7 @@
 // The suite runs the real scan over a real fixture rather than a hand-built
 // generation, because the property under test is that the source the traversal
 // read reaches the response unchanged — which a fabricated DTO could not show.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -245,6 +245,124 @@ describe('get-file-detail', () => {
     const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
     expect(await fn.handler(42 as never)).toEqual({ error: { code: 'stale-resource' } });
     expect(await fn.handler(undefined as never)).toEqual({ error: { code: 'stale-resource' } });
+  });
+
+  it('answers a plugin catalog through its own detail routes, never as a file', async () => {
+    // A plugin row's subject is a declaration (FR-007): the generic file
+    // function refuses the catalog exactly as it refuses an MCP or hook
+    // carrier, so the whole document's bytes are not reachable beside the
+    // declaration-shaped response that deliberately omits them.
+    const repository = mkdtempSync(join(tmpdir(), 'inspector-plugin-catalog-'));
+    cleanups.push(() => rmSync(repository, { recursive: true, force: true }));
+    mkdirSync(join(repository, '.agents', 'plugins'), { recursive: true });
+    writeFileSync(
+      join(repository, '.agents', 'plugins', 'marketplace.json'),
+      `${JSON.stringify({ name: 'examples', plugins: [{ name: 'formatter', source: './plugins/formatter' }] })}\n`,
+      'utf8',
+    );
+    const session = new InspectionSession({
+      invocationCwd: repository,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const source = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(source.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(context, admission.scanRequestId, source.sourceId, 'repository');
+    expect(await getFileDetail(context, '.agents/plugins/marketplace.json')).toEqual({
+      error: { code: 'stale-resource' },
+    });
+  });
+
+  it('attributes nothing below a plugin root whose real path escapes the Source', async () => {
+    // The census refuses a root that resolves outside the Source — what lies
+    // beyond the boundary belongs to no Source
+    // (contracts/inspection-path-allowlist.md § Bounded companion census) —
+    // and the verdict travels with the generation: a file another rule
+    // independently admitted below the same spelling (the walk reads links
+    // transparently, FR-024) must not surface as that plugin's shipped file,
+    // and the plugin-file detail must not serve it under the plugin's name.
+    const repository = mkdtempSync(join(tmpdir(), 'inspector-plugin-escape-'));
+    const outside = mkdtempSync(join(tmpdir(), 'inspector-plugin-escape-outside-'));
+    cleanups.push(() => rmSync(repository, { recursive: true, force: true }));
+    cleanups.push(() => rmSync(outside, { recursive: true, force: true }));
+    mkdirSync(join(repository, '.agents', 'plugins'), { recursive: true });
+    writeFileSync(
+      join(repository, '.agents', 'plugins', 'marketplace.json'),
+      `${JSON.stringify({ name: 'examples', plugins: [{ name: 'escaped', source: './.claude' }] })}\n`,
+      'utf8',
+    );
+    // The independently admitted file sits below the same spelling the
+    // catalog names, reached through the link the walk reads transparently:
+    // `.claude/skills/<name>/SKILL.md` is the skill rule's own location.
+    mkdirSync(join(outside, 'skills', 'greet'), { recursive: true });
+    writeFileSync(join(outside, 'skills', 'greet', 'SKILL.md'), '---\nname: greet\n---\n', 'utf8');
+    try {
+      symlinkSync(outside, join(repository, '.claude'));
+    } catch {
+      // A platform that refuses symlink creation cannot build this scenario.
+      return;
+    }
+    const session = new InspectionSession({
+      invocationCwd: repository,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const context: InspectorHostContext = {
+      session,
+      coordinator: new SessionCoordinator(session),
+    };
+    const source = session.snapshot().sources[0]!;
+    const admission = context.coordinator.admitScan(source.sourceId, {
+      kind: 'startup',
+      operationId: null,
+    });
+    if (admission.kind !== 'admitted') {
+      throw new Error('the first scan was not admitted');
+    }
+    await executeRepositoryScan(context, admission.scanRequestId, source.sourceId, 'repository');
+    const snapshot = session.snapshot();
+    // The walk published the file through the link, on its own row's terms.
+    expect(
+      snapshot.files.some((file) => file.sourceRelativePath === '.claude/skills/greet/SKILL.md'),
+    ).toBe(true);
+    // The plugin whose root the census refused ships nothing.
+    const row = snapshot.plugins.find((entry) => entry.name === 'escaped@examples');
+    expect(row).toBeDefined();
+    for (const carrier of row!.carriers) {
+      expect(carrier.files).toEqual([]);
+    }
+    // And the detail authorizes nothing below the refused spelling.
+    expect(
+      session.pluginFileDetail({
+        source: 'repository',
+        sourceRelativePath: '.agents/plugins/marketplace.json',
+        tool: 'codex',
+        pluginName: 'escaped@examples',
+        filePath: '.claude/skills/greet/SKILL.md',
+      } as never),
+    ).toBeNull();
+  });
+
+  it('resolves a missing Source selector to the same stale-resource rejection', async () => {
+    // The Source is the identity's other half (contracts/http-api.md
+    // § get-file-detail): a request that omits it resolves to no Source —
+    // never to a silent repository default, which would answer with another
+    // Source's file whenever the repository holds the same path.
+    const { context, skillPath } = await scannedFixture();
+    const fn = registerFunctions(context).get('agent-customization-inspector:get-file-detail')!;
+    expect(await fn.handler({ sourceRelativePath: skillPath } as never)).toEqual({
+      error: { code: 'stale-resource' },
+    });
   });
 
   it('never reads an extra positional argument', async () => {
@@ -518,6 +636,10 @@ describe('get-file-detail over a consented member Source (T995)', () => {
         recognitions: publication.recognitions,
         diagnostics: publication.diagnostics,
         outcome: publication.outcome,
+        visitedEntries: publication.visitedEntries,
+        candidateFiles: publication.candidateFiles,
+        readBytes: publication.readBytes,
+        censusEscapedDirectories: [],
       },
     ]);
     return { context };

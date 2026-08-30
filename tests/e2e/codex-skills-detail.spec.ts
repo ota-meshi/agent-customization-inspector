@@ -127,7 +127,7 @@ test('titles the tab by the skill the page shows', async ({ page }) => {
   // The subject rides between first-strong isolates so an authored
   // directional control cannot reorder the title around it.
   await expect(page).toHaveTitle(
-    '\u2068.agents/skills/greet/\u2069 — Agent Customization Inspector',
+    '\u2068.agents/skills/greet/ — Repository\u2069 — Agent Customization Inspector',
   );
 });
 

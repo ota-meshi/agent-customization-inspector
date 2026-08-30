@@ -423,6 +423,14 @@ platform path parseはない。Readerはpath stringでなくvalidated literal se
 `first-present-exact`を使い、exact classification欠落だけがregistry orderの次alternativeへ進む。最初にpresentとなったpathは後続の
 read/parse resultが不成功でもlater alternativeを停止する。Ancestor-chain placementではfixed root-to-narrow placementごとに独立適用する。
 
+Catalogがbare entry nameを解決するvendor文書化済みのbase — ClaudeとCopilotの`metadata.pluginRoot` —
+は、nameをjoinする前に1つの`./` prefixへanchorし、末尾separator 1つを落とす。各clientが解決するのが
+まさにそれであり、`plugins`、`./plugins`、`./plugins/`はそのclientにとって1つのdirectoryだからである。
+これで上のgrammarが緩むことはない: anchorはauthored local pathを生成し、そのjoin済みの値が丸ごと
+tokenizeされるため、空segment、dot segment、home marker、backslash、colon、control character、
+unpaired surrogateは依然としてtarget I/O 0でderivationをrejectする。Absolute、home-anchored、
+空のbaseは何も解決しない。
+
 Static traversalから独立してadmit済みのpathはderived provenanceを追加で得るだけである。Static selectorの
 scopeをderived targetへwidenせず、derived resultが別のderivationのseedになることもない。
 

@@ -1389,7 +1389,7 @@
         ]
       ]
     },
-    "policyRefs": ["FR-013", "FR-014", "FR-016", "FR-018", "QR-005"],
+    "policyRefs": ["FR-013", "FR-014", "FR-017", "FR-018", "QR-005"],
     "precedenceGroup": null,
     "documentationStatus": "documented",
     "lifecycleQualifiers": [],
@@ -3536,7 +3536,19 @@
     "kind": null,
     "sourceKinds": ["global"],
     "matcher": null,
-    "policyRefs": ["FR-013", "FR-014", "FR-015", "FR-016", "FR-017", "FR-018", "QR-001", "QR-005"],
+    "policyRefs": [
+      "FR-009",
+      "FR-013",
+      "FR-014",
+      "FR-018",
+      "FR-019",
+      "FR-021",
+      "FR-022",
+      "FR-031",
+      "QR-001",
+      "QR-003",
+      "QR-005"
+    ],
     "precedenceGroup": null,
     "documentationStatus": "documented",
     "lifecycleQualifiers": [],

@@ -396,9 +396,9 @@ export type VsCodeSourceId =
   | 'vscode.copilot.mcp'
   /** The VS Code 1.118 release note adding workspace-root `.mcp.json` and same-name deduplication. */
   | 'vscode.copilot.mcp.workspace-root-release'
-  /** The VS Code settings page: the setting scopes and the order they override each other in. */
   /** The VS Code agent-hooks page: the hook file locations, the configuration format, and agent-scoped hooks. */
   | 'vscode.copilot.hooks'
+  /** The VS Code settings page: the setting scopes and the order they override each other in. */
   | 'vscode.settings';
 
 /**

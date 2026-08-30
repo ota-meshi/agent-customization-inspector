@@ -88,10 +88,24 @@ describe('host startup', () => {
     vi.mocked(openStartupBrowser).mockImplementationOnce(async () => {
       order.push('startup-opener');
     });
-    await startInspectorHost({ context: hostContext(), openBrowser: true, onReady });
+    // The opener's proceed gate and abort signal are the caller's own,
+    // forwarded whole: the host adds no gating of its own around the opener.
+    const openerShouldProceed = () => true;
+    const openerAbortSignal = new AbortController().signal;
+    await startInspectorHost({
+      context: hostContext(),
+      openBrowser: true,
+      onReady,
+      openerShouldProceed,
+      openerAbortSignal,
+    });
     await vi.mocked(createDevServer).mock.calls.at(-1)![1]!.onReady!(READY_INFO);
     expect(onReady).toHaveBeenCalledWith(READY_INFO);
-    expect(vi.mocked(openStartupBrowser)).toHaveBeenCalledWith('http://localhost:1234/');
+    expect(vi.mocked(openStartupBrowser)).toHaveBeenCalledWith(
+      'http://localhost:1234/',
+      openerShouldProceed,
+      openerAbortSignal,
+    );
     expect(order).toEqual(['caller-ready', 'startup-opener']);
   });
 
@@ -219,9 +233,11 @@ describe('devframe host definition', () => {
       'agent-customization-inspector:get-plugin-file-detail',
       'agent-customization-inspector:get-permission-policy-detail',
       'agent-customization-inspector:rescan-repository',
+      'agent-customization-inspector:rescan-global',
       'agent-customization-inspector:get-global-consent-preview',
       'agent-customization-inspector:create-global-consent-preview',
       'agent-customization-inspector:enable-global',
+      'agent-customization-inspector:disable-global',
       'agent-customization-inspector:open-file',
     ]);
   });

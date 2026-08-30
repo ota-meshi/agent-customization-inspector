@@ -56,7 +56,7 @@ test('shows one enabled Repository Source with an empty inventory', async ({ pag
   // Vendor-neutral on purpose: the sentence reports the finding, so it stays
   // correct as the shipped catalog grows past Codex.
   await expect(
-    page.getByText('No customization files were recognized in this repository.'),
+    page.getByText('No customization files were recognized in this scan.'),
   ).toBeVisible();
   await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
 });

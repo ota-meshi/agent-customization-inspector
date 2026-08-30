@@ -34,7 +34,7 @@ import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text
 import {
   fileIdentityKey,
   SUPPORTED_TOOL_TEXT,
-  inlinePresentationLabel,
+  accessiblePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
 import type {
@@ -78,9 +78,9 @@ const nameText = computed(() =>
 const nameIsAuthored = computed(() => props.entry.name !== null && props.entry.name !== '');
 
 /**
- * The row's name as accessible-name text: the single-line label rule, because
- * an accessible name collapses whitespace and would read two invisibly
- * different names as one ({@link inlinePresentationLabel}); the no-name and
+ * The row's name as accessible-name text: it starts with the visible label (WCAG
+ * 2.5.3 Label in Name) and appends the spelled-out presentation where
+ * whitespace would collapse two invisibly different names into one ({@link accessiblePresentationLabel}); the no-name and
  * empty-name cases keep the same copy the visible heading shows.
  */
 const nameAccessibleText = computed(() =>
@@ -88,7 +88,7 @@ const nameAccessibleText = computed(() =>
     ? null
     : props.entry.name === ''
       ? '(empty name)'
-      : inlinePresentationLabel(props.entry.name),
+      : accessiblePresentationLabel(props.entry.name),
 );
 
 /**
@@ -125,8 +125,8 @@ const carrierRows = computed(() => {
       // The accessible name goes through the single-line label rule instead:
       // an accessible name is flattened, so authored whitespace that the drawn
       // label legitimately renders would collapse and two different carriers
-      // could announce identically (FR-025, {@link inlinePresentationLabel}).
-      carrierAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      // could announce identically (FR-025, {@link accessiblePresentationLabel}).
+      carrierAccessibleText: accessiblePresentationLabel(sourceRelativePath),
       recognitions: declarations.map((declaration) => ({
         tool: declaration.tool,
         toolText: SUPPORTED_TOOL_TEXT[declaration.tool],
@@ -164,23 +164,6 @@ const carrierRows = computed(() => {
   });
 });
 
-/**
- * The comparison this row links to — this declared name's declarations in
- * its first two carriers — or null when the name is declared by fewer than
- * two, where a link would open a comparison with nothing to pair. Every
- * carrier of a named row is comparison-eligible (FR-025) by the row's own
- * invariant: its declarations are parsed — a failed carrier publishes no
- * name, and a binary carrier is diagnostic-only — so its text was read
- * (api-types.ts § McpDeclarationDto.parseStatus). The compare route's own
- * pickers take over from there: they hold this row's every carrier, so the
- * reader steps to any other pair on the comparison itself instead of
- * composing one here. The no-name row links none: its carriers publish no
- * declaration a comparison would serialize.
- *
- * The pair is drawn from the row's own files rather than from the members a
- * filter left, so the link a reader followed is still there when they come
- * back to the unnarrowed list ({@link NarrowedInventoryRow}).
- */
 /**
  * The comparable identities of this row as route sides, in the row's own
  * order — the set no filter narrows
@@ -253,7 +236,7 @@ const blockCompareRoutes = computed(() => {
     <SourceFamilyBlocks
       :members="carrierRows"
       :member-key="(carrier) => carrier.key"
-      :identities="entry.rowFileIdentities"
+      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: carrier }">
         <p class="aci-mcp-row__owner">
@@ -261,9 +244,12 @@ const blockCompareRoutes = computed(() => {
             :to="carrier.detailRoute"
             class="aci-path aci-authored-text"
             :aria-label="
-              nameAccessibleText === null
-                ? carrier.carrierAccessibleText
-                : `${carrier.carrierAccessibleText}: ${nameAccessibleText}`
+              sessionSources.qualifiedLinkName(
+                nameAccessibleText === null
+                  ? carrier.carrierAccessibleText
+                  : `${carrier.carrierAccessibleText}: ${nameAccessibleText}`,
+                carrier.sourceId,
+              )
             "
             >{{ carrier.carrierText }}</NuxtLink
           >

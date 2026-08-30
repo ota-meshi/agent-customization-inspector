@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // One row of the plugin inventory (T762). The kind's row unit is one resolved
 // plugin name (data-model.md § Inventory unit), so the row is headed by that
-// name and lists, under it, the declarations of the offering — today always a
-// catalog entry, since every shipped rule admits a catalog.
+// name and lists, under it, every carrier that resolves it: a catalog entry
+// offering the plugin, or the plugin's own manifest
+// (`api-types.ts` § PluginCarrierDto.carrier).
 //
 // The name is the admitting rule's answer, exactly as a skill row's invocation
 // name is. Codex addresses a catalog's offering as `plugin@marketplace`, so one
@@ -38,12 +39,14 @@ import { pluginComparisonRouteFor } from '../../../composables/plugin-comparison
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import { PLUGIN_CARRIER_TEXT } from '../../../../shared/api-text';
 import {
+  escapeControlCharacters,
   fileIdentityKey,
   SUPPORTED_TOOL_TEXT,
-  inlinePresentationLabel,
+  accessiblePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
 import type {
+  CustomizationFileSummaryDto,
   PluginInventoryEntryDto,
   SerializedDiagnostic,
   SourceKind,
@@ -55,6 +58,12 @@ const props = defineProps<{
   entry: NarrowedInventoryRow<PluginInventoryEntryDto>;
   /** The generation's diagnostics, resolved per carrier by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
+  /**
+   * The generation's files by Source and path, for resolving each carrier's
+   * shipped-file census paths to the published read outcomes
+   * ({@link affectedShippedFiles}).
+   */
+  filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
 }>();
 
 /** The shared per-Source lookups (`session-sources.ts`). */
@@ -85,24 +94,9 @@ const nameIsAuthored = computed(() => props.entry.name !== null && props.entry.n
  * legitimately renders would collapse (WCAG 2.4.4).
  */
 const nameAccessibleText = computed(() =>
-  props.entry.name === null ? null : inlinePresentationLabel(props.entry.name),
+  props.entry.name === null ? null : accessiblePresentationLabel(props.entry.name),
 );
 
-/**
- * Where this row's comparison opens, or null when it has none: a comparison
- * needs one plugin name declared in two distinct files, and the row's first
- * two carrier paths are the pair the link names. The compare route's own
- * pickers take over from there — they hold this row's every carrier, so the
- * reader steps to any other pair on the comparison itself instead of
- * composing one here. One file that several products recognize is one carrier
- * of the row, so a row whose carriers are all that file offers no comparison:
- * the two sides would be the same document. The no-name row links none: its
- * carriers resolve no plugin a comparison would be about.
- *
- * The pair is drawn from the row's own files rather than from the members a
- * filter left, so the link a reader followed is still there when they come
- * back to the unnarrowed list ({@link NarrowedInventoryRow}).
- */
 /**
  * The comparable identities of this row as route sides, in the row's own
  * order — the set no filter narrows
@@ -150,7 +144,15 @@ const blockCompareRoutes = computed(() => {
  * directory.
  */
 const shippedFileCount = computed(
-  () => new Set(props.entry.carriers.flatMap((carrier) => carrier.files)).size,
+  () =>
+    new Set(
+      // Deduplicated by whole identity, never by path alone (FR-030): two
+      // consented homes can hold one Source-relative Path, and counting
+      // those as one file would understate what the plugin ships.
+      props.entry.carriers.flatMap((carrier) =>
+        carrier.files.map((path) => fileIdentityKey(carrier.sourceId, path)),
+      ),
+    ).size,
 );
 
 const carrierRows = computed(() =>
@@ -172,7 +174,7 @@ const carrierRows = computed(() =>
      */
     pathText: pathPresentationLabel(carrier.sourceRelativePath),
     /** The link's accessible name; see {@link nameAccessibleText} for the rule. */
-    pathAccessibleText: inlinePresentationLabel(carrier.sourceRelativePath),
+    pathAccessibleText: accessiblePresentationLabel(carrier.sourceRelativePath),
     /** What this file is to the plugin — its manifest, or a catalog listing it. */
     carrierText: PLUGIN_CARRIER_TEXT[carrier.carrier],
     toolText: SUPPORTED_TOOL_TEXT[carrier.tool],
@@ -192,8 +194,51 @@ const carrierRows = computed(() =>
     ),
     /** The kind's extraction diagnostics for this file (FR-028). */
     diagnosticIds: carrier.diagnosticIds,
+    /** The census paths this carrier's offering reached, for {@link affectedShippedFiles}. */
+    files: carrier.files,
   })),
 );
+
+/**
+ * The shipped files of one carrier that carry a diagnostic, each with the
+ * presentation form of its path.
+ *
+ * A shipped file gets no inventory row of its own (FR-003), so a failed read
+ * inside the plugin's directory would otherwise be visible nowhere on this
+ * page — the generation would say `partial` with nothing naming the cause
+ * (FR-028). It is stated here, inside the row of the plugin whose directory
+ * holds it, exactly as a skill row states its companions (`SkillRow.vue`
+ * § affectedCompanions).
+ */
+function affectedShippedFiles(carrier: {
+  readonly sourceId: string;
+  readonly files: readonly string[];
+}): readonly { path: string; diagnosticIds: readonly string[] }[] {
+  // The census paths are the carrier's Source's, so they resolve under that
+  // Source alone (FR-030). The row's own carriers are excluded: a carrier
+  // sits inside the root it names, so its file diagnostic would otherwise
+  // render twice — once on its carrier line and again here as a shipped
+  // file of itself.
+  const carrierKeys = new Set(
+    props.entry.carriers.map((entryCarrier) =>
+      fileIdentityKey(entryCarrier.sourceId, entryCarrier.sourceRelativePath),
+    ),
+  );
+  const sourceFiles = props.filesBySource.get(carrier.sourceId);
+  return carrier.files.flatMap((sourceRelativePath) => {
+    const published = sourceFiles?.get(sourceRelativePath);
+    return published === undefined ||
+      published.diagnosticIds.length === 0 ||
+      carrierKeys.has(fileIdentityKey(carrier.sourceId, sourceRelativePath))
+      ? []
+      : [
+          {
+            path: escapeControlCharacters(sourceRelativePath),
+            diagnosticIds: published.diagnosticIds,
+          },
+        ];
+  });
+}
 </script>
 
 <template>
@@ -226,7 +271,7 @@ const carrierRows = computed(() =>
     <SourceFamilyBlocks
       :members="carrierRows"
       :member-key="(carrier) => carrier.key"
-      :identities="entry.rowFileIdentities"
+      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: carrier }">
         <p class="aci-plugin-row__owner">
@@ -234,9 +279,12 @@ const carrierRows = computed(() =>
             :to="carrier.detailRoute"
             class="aci-path aci-authored-text"
             :aria-label="
-              nameAccessibleText === null
-                ? carrier.pathAccessibleText
-                : `${carrier.pathAccessibleText}: ${nameAccessibleText}`
+              sessionSources.qualifiedLinkName(
+                nameAccessibleText === null
+                  ? carrier.pathAccessibleText
+                  : `${carrier.pathAccessibleText}: ${nameAccessibleText}`,
+                carrier.sourceId,
+              )
             "
             >{{ carrier.pathText }}</NuxtLink
           >
@@ -249,6 +297,20 @@ const carrierRows = computed(() =>
 
         <SourceRootLine :source-id="carrier.sourceId" />
         <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
+
+        <!-- Shipped files whose read kept a diagnostic, named by path so the
+             reader knows which file to open — the skill row's companion rule
+             ({@link affectedShippedFiles}). -->
+        <ul
+          v-if="affectedShippedFiles(carrier).length > 0"
+          class="aci-plugin-row__shipped-file-diagnostics"
+          role="list"
+        >
+          <li v-for="shipped in affectedShippedFiles(carrier)" :key="shipped.path">
+            <span class="aci-path aci-authored-text">{{ shipped.path }}</span>
+            <RowDiagnostics :diagnostic-ids="shipped.diagnosticIds" :diagnostics="diagnostics" />
+          </li>
+        </ul>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a

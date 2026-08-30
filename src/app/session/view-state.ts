@@ -5,11 +5,13 @@
 //
 // The session state that matters to a viewer is on the host; what this module
 // holds is the browser's view of it — which surface is showing, the snapshot
-// currently adopted, and any retained error. There are exactly three
+// currently adopted, and any retained error. There are exactly four
 // surfaces, and which one is active is derived from adoption outcomes rather
 // than set ad hoc:
 //  - 'booting'     nothing adopted yet, or the last purge cleared everything
 //  - 'inspection'  a snapshot passed every guard and is rendered
+//  - 'fenced'      the disable barrier is up; only the control-only recovery
+//                  projection renders (FR-042)
 //  - 'ended'       the channel is gone; the session is unreachable
 //
 // There is no session-liveness probe (plan.md § Structure Decision). Two facts made one unnecessary. A dead host closes
@@ -39,17 +41,18 @@
 // boundary, and the files being shown are the viewer's own. What the gate did
 // do was make every file take two interactions to read. The detail route says
 // what it is showing instead.
-import { computed, shallowRef, type InjectionKey } from 'vue';
+import { computed, shallowRef, type InjectionKey, type ShallowRef } from 'vue';
 import {
   SessionApiClient,
   type ConsentPreviewOutcome,
   type FileOpenOutcome,
   type SessionRpcChannel,
   type ScanSequence,
+  type RescanOutcome,
 } from './api-client';
 import { ClientDataPurge } from './client-data';
 import { clearInventoryReturnPoint } from '../router.options';
-import { sourceIdOf } from '../components/detail-route';
+import { selectorFamilyOf, sourceIdOf } from '../components/detail-route';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
 import { HookComparisonState } from '../composables/hook-comparison';
 import { McpComparisonState } from '../composables/mcp-comparison';
@@ -62,7 +65,9 @@ import type {
   FileOpenTarget,
   GlobalConsentPreviewDto,
   GlobalEnableResultDto,
+  GlobalFenceRecoverySnapshot,
   HookCarrierDetailDto,
+  SourceKind,
   SourceSelector,
   McpCarrierDetailDto,
   PluginCarrierDetailDto,
@@ -81,6 +86,12 @@ export type SessionView =
   | 'booting'
   /** A complete snapshot passed every guard and is safe to render. */
   | 'inspection'
+  /**
+   * The host is fenced by a non-complete disable barrier: everything was
+   * purged and only the control-only recovery renders until a later fetch
+   * returns the full snapshot (FR-042; contracts/http-api.md § disable-global).
+   */
+  | 'fenced'
   /** The local channel is gone and this page cannot recover it. */
   | 'ended';
 
@@ -176,8 +187,8 @@ export class SessionViewState {
    * that closes the open detail drops the open comparison, and the same purge
    * clears both. The skill compare route opens and switches its view; the
    * pair itself is the route's query, not standing state. Skill-scoped by
-   * design — a later family's comparison surface arrives as its own state,
-   * not by widening this one.
+   * design: every comparison-bearing kind owns a state of its own beside
+   * this one, rather than one state widened to span them.
    */
   public readonly skillComparison: SkillComparisonState;
 
@@ -290,6 +301,49 @@ export class SessionViewState {
 
   /** The closed rejection code of a refused rescan command; null otherwise. */
   public readonly rescanRejection = shallowRef<RejectionCode | null>(null);
+
+  /**
+   * Where the one explicit Global rescan command stands — its own slot
+   * beside the Repository's, because each drives its own control's rendering
+   * and one command must never wear the other's state (T1015).
+   */
+  public readonly globalRescanState = shallowRef<RescanState>('idle');
+
+  /**
+   * The published Global Source the current or last Global rescan command was
+   * for, so the one rejection and progress correlation attach to the member
+   * row the reader pressed rather than to every row (FR-030).
+   */
+  public readonly globalRescanSourceId = shallowRef<string | null>(null);
+
+  /**
+   * The `scanRequestId` of each currently admitted Global rescan command,
+   * keyed by the member Source it was accepted for. A map rather than one
+   * pair, because the coordinator admits one command per Source and queues
+   * across Sources FIFO (contracts/http-api.md § Concurrency and
+   * lifecycle) — a second member's accepted rescan must not sever the first
+   * member's still-running correlation (FR-030). Each member's progress is
+   * shown only while it carries that member's exact recorded ID; the rule
+   * {@link activeScanRequestId} states, held per Source.
+   */
+  public readonly activeGlobalScans = shallowRef<ReadonlyMap<string, string>>(new Map());
+
+  /** The closed rejection code of a refused Global rescan command; null otherwise. */
+  public readonly globalRescanRejection = shallowRef<RejectionCode | null>(null);
+
+  /**
+   * The control-only recovery projection the fenced view renders, adopted
+   * from the host's fenced session response; null outside the 'fenced' view
+   * (FR-042). It is what a fenced tab retries and joins from.
+   */
+  public readonly fenceRecovery = shallowRef<GlobalFenceRecoverySnapshot | null>(null);
+
+  /**
+   * Where this page's one disable command stands: 'submitting' from the
+   * pre-request purge until the command settles, 'idle' otherwise. The guard
+   * that keeps a second press from sending a duplicate join.
+   */
+  public readonly globalDisableState = shallowRef<'idle' | 'submitting'>('idle');
 
   /**
    * The open customization's own file — a skill's `SKILL.md` entry point, or
@@ -417,10 +471,6 @@ export class SessionViewState {
   #pageSubjectOwner: symbol | null = null;
 
   /**
-   * Reports the active route's title subject as the calling page instance's
-   * own, so a later release by a page that no longer owns it is a no-op.
-   */
-  /**
    * The Global consent preview the consent route renders, or null when none
    * has been read yet. Held here rather than in the page because the client it
    * comes from is this state's, and because a purge must clear it: a preview
@@ -462,6 +512,10 @@ export class SessionViewState {
   /** Whether a confirmation is in flight, so the control cannot be pressed twice. */
   public readonly globalEnableState = shallowRef<'idle' | 'submitting'>('idle');
 
+  /**
+   * Reports the active route's title subject as the calling page instance's
+   * own, so a later release by a page that no longer owns it is a no-op.
+   */
   public reportPageSubject(value: string | null, owner?: symbol): void {
     this.#pageSubjectOwner = owner ?? null;
     this.pageSubject.value = value;
@@ -490,6 +544,15 @@ export class SessionViewState {
    * covers the route.
    */
   #detailRequestVersion = 0;
+
+  /**
+   * The Source family the open detail's request reads from, held from
+   * dispatch: the adopted detail refs cannot answer it before the first
+   * response lands, and the generation adoption must close the open detail
+   * exactly when the sequence it reads from advanced — never for the other
+   * sequence's commit (FR-030). Null while no detail is open.
+   */
+  #openDetailSequence: SourceKind | null = null;
 
   /**
    * The identity of the customization whose detail is open, as the page last
@@ -530,11 +593,41 @@ export class SessionViewState {
   readonly #openContentOwners = new Set<() => void>();
 
   /**
-   * Increments on every rescan the user issues. A refresh captures it when it
-   * starts and only clears command state it still matches, so a refresh that
-   * began before a rescan cannot erase that rescan's outcome.
+   * Per-slot rescan dispatch counters — one per sequence, because the two
+   * commands are two independent slots (FR-030). A refresh captures both and
+   * clears a slot's command state only while that slot still matches, so a
+   * refresh that began before a rescan cannot erase that rescan's outcome;
+   * a settled command's own restatement compares against its slot alone, so
+   * the other sequence's dispatch never suppresses it.
    */
-  #commandVersion = 0;
+  #repositoryCommandVersion = { value: 0 };
+
+  /** The Global slot's half of the pair above. */
+  #globalCommandVersion = { value: 0 };
+
+  /**
+   * Whether the purge-recovery fetch is already scheduled, so the recovery
+   * fetch's own fenced answer — which purges again by design — does not
+   * schedule an endless chain of identical fetches (see the constructor's
+   * recovery disposer, which serves the fence and greater-epoch reasons).
+   */
+  #fenceRecoveryScheduled = false;
+
+  /**
+   * Set by the Global purge reasons and consumed by the next adopted
+   * snapshot: the recovery contract restores no prior detail and lands on
+   * the fresh default inventory (data-model.md § RecoveryViewState), so the
+   * adoption that follows one of these purges asks the shell to leave
+   * whatever route the purged world was on.
+   */
+  #resumeToInventoryOnAdopt = false;
+
+  /**
+   * Bumped when a post-purge adoption wants the shell on the inventory; the
+   * shell watches it and replaces the route (App.vue). A counter rather
+   * than a flag, so two recoveries in one session both navigate.
+   */
+  public readonly inventoryResumeRequests = shallowRef(0);
 
   /**
    * The one in-flight session refresh, or null. Concurrent callers — the boot
@@ -578,12 +671,21 @@ export class SessionViewState {
       this.snapshot.value = null;
       this.#sessionError.value = null;
       this.closeFileDetail();
-      // The rescan command belongs to the purged session too: its request ID
-      // is meaningless against a different host session, and leaving it set
-      // would let a post-purge status be mistaken for that command's result.
+      // The rescan commands belong to the purged session too: their request
+      // IDs are meaningless against a different host session, and leaving one
+      // set would let a post-purge status be mistaken for that command's
+      // result. The Global command's member selection goes with it.
       this.rescanState.value = 'idle';
       this.activeScanRequestId.value = null;
       this.rescanRejection.value = null;
+      this.globalRescanState.value = 'idle';
+      this.globalRescanSourceId.value = null;
+      this.activeGlobalScans.value = new Map();
+      this.globalRescanRejection.value = null;
+      // The fenced recovery belongs to the purged view too; the disable
+      // command's own submitting state survives, because the purge it runs
+      // before sending must not cancel the very command it precedes.
+      this.fenceRecovery.value = null;
       // The consent preview is the purged session's too: its `previewId` is a
       // lookup key into that host session's memory, so a fresh session must be
       // asked again rather than shown a preview it never captured.
@@ -600,6 +702,40 @@ export class SessionViewState {
       if (this.view.value !== 'ended') {
         this.view.value = 'booting';
       }
+    });
+    this.#clientData.register((reason) => {
+      // Recovery from a Global-content purge is automatic (FR-042): observing
+      // the fence's fixed conflict or a greater epoch on any response —
+      // an ordinary command's as much as the session function's — purges,
+      // and one direct session fetch then adopts what the host now serves:
+      // the fenced recovery projection while the barrier runs, or the fresh
+      // authoritative snapshot once the era moved on. Direct, not through
+      // {@link refresh}, whose coalescing could join a fetch that predates
+      // the purge. The flag collapses the cascade: the recovery fetch's own
+      // fenced answer purges again, and scheduling from that purge would
+      // fetch the same projection forever; the epoch case converges in one
+      // pass because the reset baseline adopts the fresh epoch as its first
+      // observation. Every other purge reason keeps its own follow-up — the
+      // disable request purges before its own command, and a lost channel
+      // or identity ends the session rather than refetching it.
+      if (reason === 'global-disable-fence' || reason === 'global-content-epoch-advanced') {
+        this.#resumeToInventoryOnAdopt = true;
+      }
+      if (
+        (reason !== 'global-disable-fence' && reason !== 'global-content-epoch-advanced') ||
+        this.#fenceRecoveryScheduled
+      ) {
+        return;
+      }
+      this.#fenceRecoveryScheduled = true;
+      // After the purge finishes, not inside it: the epoch increments last
+      // (client-data.ts § purge), so a fetch started here would capture the
+      // old epoch and discard its own answer as purged-under.
+      queueMicrotask(() => {
+        void this.#refreshOnce().finally(() => {
+          this.#fenceRecoveryScheduled = false;
+        });
+      });
     });
     // Constructed after the two registrations above, so its own purge
     // disposer runs after requests are aborted — a settlement can then never
@@ -719,7 +855,8 @@ export class SessionViewState {
     // data captured before it. Re-reading the epoch here puts the check and the
     // commit in one synchronous step (FR-027, FR-042).
     const capturedEpoch = this.#clientData.epoch();
-    const capturedCommandVersion = this.#commandVersion;
+    const capturedRepositoryCommandVersion = this.#repositoryCommandVersion.value;
+    const capturedGlobalCommandVersion = this.#globalCommandVersion.value;
     const outcome = await this.#client.fetchSession();
     // Every branch below writes state the purge owns, so the check belongs
     // ahead of all of them. A fatal failure is the one exception: it purges on
@@ -729,6 +866,14 @@ export class SessionViewState {
       case 'adopted':
         if (purged) {
           return;
+        }
+        if (this.#resumeToInventoryOnAdopt) {
+          // The first snapshot adopted after a Global purge is the recovery
+          // contract's fresh start (data-model.md § RecoveryViewState):
+          // no prior detail comes back, so the shell is asked to land on
+          // the inventory instead of remounting the purged world's route.
+          this.#resumeToInventoryOnAdopt = false;
+          this.inventoryResumeRequests.value += 1;
         }
         // A commit replaced the generation the open detail was read from.
         // Dropping it here is the generation half of the FR-027 cleanup: the
@@ -742,29 +887,16 @@ export class SessionViewState {
           // spec.md § Clarifications Session 2026-07-22): the open detail and
           // each open comparison drop only when the sequence that produced
           // them advanced, so a Global enable in another tab leaves a
-          // repository page's held detail and editor state alone. Families
-          // resolve against the snapshot being replaced — the one the open
-          // views were read from — and a view whose family cannot be resolved
-          // (still loading, or its Source gone) drops, exactly as the
-          // unscoped close did.
+          // repository page's held detail and editor state alone. Each view
+          // is judged by the family its own open request named, held from
+          // dispatch: the adopted details cannot answer it while a view is
+          // still loading — and a comparison's absent side never answers at
+          // all — so resolving families from what has been adopted would
+          // close a Repository view over a Global commit it does not read
+          // from, on a page whose own generation never moved and whose route
+          // therefore never re-requests.
           const advanced = new Set<ScanSequence>(outcome.advancedSequences);
-          const drops = (sourceId: string | undefined): boolean => {
-            const held = (this.snapshot.value?.sources ?? []).find(
-              (source) => source.sourceId === sourceId,
-            );
-            return held === undefined || advanced.has(held.kind);
-          };
-          if (
-            drops(
-              (
-                this.entryDetail.value ??
-                this.pluginDetail.value ??
-                this.carrierDetail.value ??
-                this.hookDetail.value ??
-                this.policyDetail.value
-              )?.file.sourceId,
-            )
-          ) {
+          if (this.#openDetailSequence !== null && advanced.has(this.#openDetailSequence)) {
             this.closeFileDetail();
           }
           for (const comparison of [
@@ -776,7 +908,8 @@ export class SessionViewState {
             this.promptComparison,
             this.customAgentComparison,
           ] as const) {
-            if (drops(comparison.leftDetail.value?.file.sourceId)) {
+            const sequence = comparison.openSequence.value;
+            if (sequence !== null && advanced.has(sequence)) {
               comparison.close();
             }
           }
@@ -789,16 +922,34 @@ export class SessionViewState {
         this.view.value = 'inspection';
         // A rejection describes a command that is now history. The snapshot
         // just adopted is the state the user asked about, so a stale
-        // `scan-in-progress` must not outlive it and sit beside a Ready source.
+        // `scan-in-progress` must not outlive it and sit beside a Ready
+        // source — on the Repository control and on a member row alike.
         // `accepted` is different: it names a scan still running. A refresh
         // that started before a later rescan clears nothing: the rejection it
         // would erase belongs to a command it never saw.
         if (
           this.rescanState.value === 'rejected' &&
-          this.#commandVersion === capturedCommandVersion
+          this.#repositoryCommandVersion.value === capturedRepositoryCommandVersion
         ) {
           this.rescanState.value = 'idle';
           this.rescanRejection.value = null;
+        }
+        if (
+          this.globalRescanState.value === 'rejected' &&
+          this.#globalCommandVersion.value === capturedGlobalCommandVersion
+        ) {
+          this.globalRescanState.value = 'idle';
+          this.globalRescanRejection.value = null;
+        }
+        // Releases the confirmation hold, wherever the adoption came from —
+        // `confirmGlobalConsent`'s own refetch or the reader's Refresh.
+        // Adoption *is* the authoritative answer the hold waits for, whatever
+        // it says: a control block, an operation another tab still runs, or
+        // neither, which is the true state after a pre-acceptance failure.
+        // Reading the answer's content instead would leave confirm and
+        // recapture disabled for good on exactly that path.
+        if (this.globalEnableState.value === 'submitting') {
+          this.globalEnableState.value = 'idle';
         }
         return;
       case 'failed':
@@ -818,8 +969,19 @@ export class SessionViewState {
           this.view.value = 'ended';
         }
         return;
+      case 'fenced':
+        // The client already ran the full purge on observing the fence; what
+        // this view owns is rendering the recovery controls in its place.
+        this.fenceRecovery.value = outcome.recovery;
+        this.view.value = 'fenced';
+        this.#sessionError.value = null;
+        return;
       case 'purged':
-        // The disposer already cleared the view.
+        // The purge disposer already scheduled the one recovery fetch for
+        // the epoch and fence reasons (see the constructor's recovery
+        // disposer); a second pass here would fetch the same snapshot
+        // twice. Every other purge trigger cleared the view, and its own
+        // reporter says what comes next.
         return;
       case 'rejected':
       case 'discarded':
@@ -828,13 +990,72 @@ export class SessionViewState {
   }
 
   /**
-   * Dispatches the explicit rescan, then adopts the status it produced. Only
-   * an acceptance sets the active request ID; a rejection is a declared
-   * functional outcome shown as such, and every other variant has already
-   * been handled by the client's own guards (a purge cleared the view, a
-   * failure ended the session, a discard means a newer command superseded
-   * this one).
+   * Sends the priority disable barrier command (FR-042;
+   * contracts/http-api.md § disable-global). The full client-data purge runs
+   * before the request — nothing this session held may survive the decision
+   * to disable — and the terminal outcome decides what is fetched next: a
+   * no-op or terminal success immediately refetches the full snapshot, while
+   * a post-acceptance failure refetches the fenced recovery so its retained
+   * error and retry render where the reader is.
    */
+  public async requestGlobalDisable(): Promise<void> {
+    if (this.globalDisableState.value === 'submitting') {
+      return;
+    }
+    this.#clientData.purge('global-disable-request');
+    this.globalDisableState.value = 'submitting';
+    this.view.value = 'booting';
+    const outcome = await this.#client.disableGlobal();
+    this.globalDisableState.value = 'idle';
+    switch (outcome.kind) {
+      case 'completed':
+        // A no-op and a terminal success both leave a null fence, so the
+        // full authoritative snapshot is immediately recoverable — fetched,
+        // never reconstructed from anything purged (the FR-027 purge already
+        // ran before the request went out). This is not the control-only
+        // recovery FR-042 mandates: that binds a client that observed a
+        // greater epoch or a non-null fence on a response, and this result
+        // carries neither — it reports the fence already down. Nor does any
+        // Resume step remain for the requester: the fenced view and its
+        // "Check status" Resume exist for a session that hit the fence
+        // mid-operation (GlobalFenceRecovery.vue), and a terminal result is
+        // this requester already holding what that Resume would fetch.
+        await this.#refreshFreshly();
+        return;
+      case 'rejected':
+        // Disable itself returns no closed conflict; an unknown code is
+        // handled by the client as the unsupported protocol. Refetching is
+        // still the right recovery for anything declared later.
+        await this.#refreshFreshly();
+        return;
+      case 'failed': {
+        if (outcome.fatal) {
+          this.#sessionError.value = outcome.error.message;
+          this.view.value = 'ended';
+          return;
+        }
+        // The failure is published immediately — the recovery fetch takes
+        // time, and a known error must not wait for it (the fetch's own
+        // success clears session errors, so it is restated below).
+        this.#sessionError.value = outcome.error.message;
+        const capturedEpoch = this.#clientData.epoch();
+        await this.#refreshFreshly();
+        // A post-acceptance failure surfaces through the fenced view the
+        // refetch just adopted: the fence is still up and the failed
+        // projection retains this same message with its retry control
+        // (contracts/http-api.md § disable-global). A pre-acceptance failure
+        // leaves no fence — nothing was accepted — so the refetch adopted
+        // the ordinary view and cleared the error; the failed request's own
+        // error is restated as the ordinary report it is, unless a purge
+        // moved the session on while the fetch was out.
+        if (this.fenceRecovery.value === null && this.#clientData.epoch() === capturedEpoch) {
+          this.#sessionError.value = outcome.error.message;
+        }
+        return;
+      }
+    }
+  }
+
   /**
    * Reads the host's current consent preview, without capturing one
    * (contracts/http-api.md § get-global-consent-preview). A host that holds
@@ -846,7 +1067,7 @@ export class SessionViewState {
   }
 
   /**
-   * Captures the three proposed Global roots and replaces the host's
+   * Captures the four proposed Global roots and replaces the host's
    * unconsented preview (contracts/http-api.md
    * § create-global-consent-preview). It submits no confirmation: what comes
    * back is what the reader is then asked to review, and enabling Global
@@ -868,12 +1089,30 @@ export class SessionViewState {
     const capturedEpoch = this.#clientData.epoch();
     const outcome = await issue();
     if (this.#clientData.epoch() !== capturedEpoch) {
+      // A fatal failure still lands: the unsupported-rejection path purges
+      // before reporting (`api-client.ts`), so the moved epoch is the fatal
+      // outcome's own doing and dropping it here would leave the page
+      // retrying a session that declared itself unusable.
+      if (outcome.kind === 'failed' && outcome.fatal) {
+        this.#sessionError.value = outcome.error.message;
+        this.view.value = 'ended';
+      }
       return;
     }
     switch (outcome.kind) {
       case 'ready':
         this.consentPreview.value = outcome.preview;
         this.consentPreviewState.value = 'ready';
+        return;
+      case 'purged':
+        // The client purged on the response's greater epoch (FR-042); the
+        // epoch guard above has already dropped this settlement's ownership,
+        // so this case is unreachable in practice and deliberately writes
+        // nothing — the purge disposer owns the view now.
+        return;
+      case 'discarded':
+        // Settled across a purge: the response belongs to the discarded
+        // world, and the epoch guard above already dropped its ownership.
         return;
       case 'missing':
         this.consentPreview.value = null;
@@ -921,40 +1160,170 @@ export class SessionViewState {
     const capturedEpoch = this.#clientData.epoch();
     const outcome = await this.#client.enableGlobal(preview.previewId, preview.allowlistVersion);
     if (this.#clientData.epoch() !== capturedEpoch) {
+      // The same fatal exception the preview guard makes: the unsupported
+      // path's own purge moved the epoch, and 'ended' must still land.
+      if (outcome.kind === 'failed' && outcome.fatal) {
+        this.#sessionError.value = outcome.error.message;
+        this.view.value = 'ended';
+        return;
+      }
+      this.globalEnableState.value = 'idle';
       return;
     }
-    this.globalEnableState.value = 'idle';
+    // `submitting` holds until this command's own follow-up settles: an
+    // acceptance is not on screen until the refetched snapshot is adopted, and
+    // releasing the controls at the response would re-enable confirm and
+    // recapture over the stale preview — a second confirmation would then take
+    // the in-progress or no-retryable conflict and display a failure over a
+    // correctly accepted operation. Each branch releases when its own last
+    // write lands; the purge disposer resets the slot for the purged path.
     switch (outcome.kind) {
-      case 'accepted':
+      case 'purged':
+        // The client purged on the response's greater epoch (FR-042); the
+        // epoch guard above already dropped this settlement, so nothing is
+        // written here — the purge disposer owns the view now.
+        return;
+      case 'discarded':
+        // Settled across a purge: the response belongs to the discarded
+        // world, and the epoch guard above already dropped its ownership.
+        return;
+      case 'accepted': {
         this.globalEnableResult.value = outcome.result;
         // The batch commits after the acceptance, so the snapshot that carries
         // its Sources is the one fetched now — and a refresh is how a queued
         // batch's later commit reaches the page at all.
         await this.#refreshFreshly();
+        // Released only once the authoritative snapshot landed: a failed
+        // refetch leaves the stale preview with no controls on screen, and an
+        // idle state there would re-arm confirm and recapture against an
+        // operation the host already accepted — the second confirmation takes
+        // the in-progress conflict and reads as a failure of an accepted one.
+        // The consent page offers its own Refresh while this hold stands. The
+        // release itself is the adoption's ({@link fetchSession} 'adopted'),
+        // so a refetch that landed has already cleared this slot and one that
+        // failed deliberately has not; a purge clears it through the
+        // disposer.
         return;
+      }
       case 'rejected':
+        this.globalEnableState.value = 'idle';
         this.consentPreviewRejection.value = outcome.code;
         return;
-      case 'failed':
+      case 'failed': {
         this.consentPreviewError.value = outcome.error.message;
         if (outcome.fatal) {
+          this.globalEnableState.value = 'idle';
           this.view.value = 'ended';
+          return;
+        }
+        // A delivery failure can hide a confirmation the host accepted: the
+        // batch may be running or already committed, and the stale snapshot
+        // shows no controls — so no Refresh status control — while a second
+        // confirmation would take the in-progress or no-retryable conflict.
+        // The refetch recovers the accepted state from `batchStatus`
+        // (contracts/http-api.md § enable-global: a lost response loses no
+        // batch), and the failed request's own error is restated over the
+        // refetch's success-clears-errors write while this page still owns
+        // the outcome.
+        await this.#refreshFreshly();
+        // The same adoption-owned release as the accepted branch: a delivery
+        // failure can hide an acceptance, so until a snapshot is adopted the
+        // state stays unresolved and the page keeps confirm and recapture
+        // out, offering its Refresh-and-Disable recovery instead.
+        if (this.#clientData.epoch() === capturedEpoch) {
+          this.consentPreviewError.value = outcome.error.message;
         }
         return;
+      }
     }
   }
 
   public async requestRescan(): Promise<void> {
+    await this.#dispatchRescanCommand(
+      {
+        state: this.rescanState,
+        rejection: this.rescanRejection,
+        recordAcceptance: (scanRequestId) => {
+          this.activeScanRequestId.value = scanRequestId;
+        },
+        version: this.#repositoryCommandVersion,
+      },
+      () => this.#client.rescanRepository(),
+      () => this.snapshot.value?.repositoryGeneration ?? null,
+    );
+  }
+
+  /**
+   * Dispatches one explicit rescan of a published member Global Source
+   * (T1015; contracts/http-api.md § rescan-global), through the shared
+   * command dispatch the Repository rescan uses. The pressed member rides in
+   * {@link globalRescanSourceId} so the rejection and correlation attach to
+   * its own row, and the race guard reads the Global sequence — a rejection
+   * that settles after a newer Global commit was adopted is history exactly
+   * as a Repository one is.
+   */
+  public async rescanGlobalSource(sourceId: string): Promise<void> {
+    if (this.globalRescanState.value === 'requesting') {
+      return;
+    }
+    this.globalRescanSourceId.value = sourceId;
+    await this.#dispatchRescanCommand(
+      {
+        state: this.globalRescanState,
+        rejection: this.globalRescanRejection,
+        recordAcceptance: (scanRequestId) => {
+          // One entry per member Source, so a second member's acceptance
+          // never severs the first member's running correlation (FR-030).
+          this.activeGlobalScans.value = new Map([
+            ...this.activeGlobalScans.value,
+            [sourceId, scanRequestId],
+          ]);
+        },
+        version: this.#globalCommandVersion,
+      },
+      () => this.#client.rescanGlobal(sourceId),
+      () => this.snapshot.value?.globalGeneration ?? null,
+    );
+  }
+
+  /**
+   * The one explicit-rescan command dispatch both Sources' commands share, so
+   * acceptance, rejection-race, failure, purge, and supersession handling
+   * cannot drift between them (FR-030). `slot` is the calling command's own
+   * reactive state, and `generationNow` reads the sequence that command
+   * commits into — the guard that recognizes a late rejection as history.
+   */
+  async #dispatchRescanCommand(
+    slot: {
+      readonly state: ShallowRef<RescanState>;
+      readonly rejection: ShallowRef<RejectionCode | null>;
+      /**
+       * Where an acceptance records the admitted request's correlation —
+       * the Repository slot's single active ID, or one entry of the Global
+       * per-Source map. Called only on `accepted`, so a refused later press
+       * never moves a running command's correlation.
+       */
+      readonly recordAcceptance: (scanRequestId: string) => void;
+      /**
+       * The slot's own dispatch counter: the settled command's restatement
+       * compares against it alone, so the other sequence's dispatch never
+       * suppresses this slot's error (FR-030 — two independent sequences).
+       */
+      readonly version: { value: number };
+    },
+    call: () => Promise<RescanOutcome>,
+    generationNow: () => number | null,
+  ): Promise<void> {
     // One command at a time. A second dispatch while one is in flight would
     // supersede the first's token and lose the request ID it was admitted
     // with — work the host is already doing, which nothing would then name.
-    if (this.rescanState.value === 'requesting') {
+    if (slot.state.value === 'requesting') {
       return;
     }
-    this.#commandVersion += 1;
-    const capturedCommandVersion = this.#commandVersion;
-    this.rescanState.value = 'requesting';
-    this.rescanRejection.value = null;
+    slot.version.value += 1;
+    const capturedCommandVersion = slot.version.value;
+    slot.state.value = 'requesting';
+    slot.rejection.value = null;
     // The previous command's ID is deliberately kept until the new command is
     // admitted. Until then the scan that ID names is still the one running —
     // dispatching again while one is active is exactly the `scan-in-progress`
@@ -968,8 +1337,8 @@ export class SessionViewState {
     // A rejection describes the session as of dispatch. The generation is
     // captured so a rejection that settles after a newer commit was adopted
     // can be recognized as history; see the 'rejected' branch.
-    const capturedGeneration = this.snapshot.value?.repositoryGeneration ?? null;
-    const outcome = await this.#client.rescanRepository();
+    const capturedGeneration = generationNow();
+    const outcome = await call();
     // As in `refresh`: every branch writes state the purge owns.
     const purged = this.#clientData.epoch() !== capturedEpoch;
     switch (outcome.kind) {
@@ -977,8 +1346,8 @@ export class SessionViewState {
         if (purged) {
           return;
         }
-        this.rescanState.value = 'accepted';
-        this.activeScanRequestId.value = outcome.scanRequestId;
+        slot.state.value = 'accepted';
+        slot.recordAcceptance(outcome.scanRequestId);
         // The admission's own `SourceDto` is the Source as of acceptance, so
         // the row shows `scanning` even if the refresh below is slow or fails.
         // Waiting for the refresh alone would leave a Ready row beside an
@@ -995,7 +1364,7 @@ export class SessionViewState {
         // after the acceptance. An in-flight fetch may predate it: a "Refresh
         // status" pressed just before acceptance returns a snapshot with no
         // accepted scan, and adopting it would overwrite the scanning Source
-        // patched above with a Ready row beside a live `activeScanRequestId`.
+        // patched above with a Ready row beside a live active request ID.
         await this.#refreshFreshly();
         return;
       case 'rejected':
@@ -1011,20 +1380,19 @@ export class SessionViewState {
         // running" beside a Ready source until the next refresh.
         if (
           capturedGeneration !== null &&
-          this.snapshot.value !== null &&
-          this.snapshot.value.repositoryGeneration > capturedGeneration
+          (generationNow() ?? capturedGeneration) > capturedGeneration
         ) {
-          this.rescanState.value = 'idle';
+          slot.state.value = 'idle';
           return;
         }
-        this.rescanState.value = 'rejected';
-        this.rescanRejection.value = outcome.code;
+        slot.state.value = 'rejected';
+        slot.rejection.value = outcome.code;
         return;
       case 'failed':
         if (purged && !outcome.fatal) {
           return;
         }
-        this.rescanState.value = 'idle';
+        slot.state.value = 'idle';
         if (outcome.fatal) {
           this.#sessionError.value = outcome.error.message;
           this.view.value = 'ended';
@@ -1046,7 +1414,7 @@ export class SessionViewState {
         // check — owns the state now and must not inherit this error.
         if (
           this.#clientData.epoch() !== capturedEpoch ||
-          this.#commandVersion !== capturedCommandVersion
+          slot.version.value !== capturedCommandVersion
         ) {
           return;
         }
@@ -1056,12 +1424,16 @@ export class SessionViewState {
         // The disposer already cleared the command state along with the view.
         return;
       case 'discarded':
-        // Superseded, and the command that superseded it owns the state now —
-        // including across a purge, where the version advanced too. Writing
-        // `idle` unconditionally would return the newer command to a state the
-        // user has already left.
-        if (this.#commandVersion === capturedCommandVersion) {
-          this.rescanState.value = 'idle';
+        // Settled after its slot moved on — a purge aborted it, or a newer
+        // same-sequence dispatch superseded it. Ownership is read from the
+        // slot itself rather than from the shared command version: the other
+        // sequence's dispatch advances that version without ever touching
+        // this slot, and comparing against it would leave this slot showing
+        // `requesting` forever. If this command still holds its slot open,
+        // release it; anything else means the purge disposer or a newer
+        // owner already wrote the slot.
+        if (slot.state.value === 'requesting') {
+          slot.state.value = 'idle';
         }
         return;
     }
@@ -1111,6 +1483,7 @@ export class SessionViewState {
     }
     this.#detailOwner = null;
     this.#detailRequestVersion += 1;
+    this.#openDetailSequence = null;
     // The reactive state goes first and the component-owned content second.
     // Both happen in this one synchronous block, so what the contract orders
     // still holds: the editor objects are gone before the caller replaces the
@@ -1253,6 +1626,13 @@ export class SessionViewState {
    * its own request is in.
    */
   #dropOpenDetails(): void {
+    // What this clears is the owned state the contract names: the DTO slots
+    // here, and the Monaco models through their registered owners
+    // (data-model.md § BrowserState). A page's computed projections over
+    // these slots may lazily retain their last evaluation until re-read or
+    // unmount; that is Vue's own cache, released by the platform lifecycle —
+    // the central purge unmounts the page — and never by a read-for-effect
+    // flush, which restructuring has replaced before and must not return.
     this.entryDetail.value = null;
     this.openCompanion.value = null;
     this.carrierDetail.value = null;
@@ -1265,6 +1645,10 @@ export class SessionViewState {
     // carrier's path and a declared plugin name — so leaving it behind would
     // keep part of what the reader navigated away from in memory (FR-027).
     this.#openPluginRow = null;
+    // The open detail's requested address goes the same way: its entry path
+    // is a Source-relative Path of the purged view (FR-027), and a held
+    // address with no held detail could only mislead the next comparison.
+    this.#openDetailAddress = null;
   }
 
   /**
@@ -1294,6 +1678,7 @@ export class SessionViewState {
   ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
+    this.#openDetailSequence = selectorFamilyOf(source);
     const requested = this.#detailRequestVersion;
     // The new selection owns the page now: a previous file's retained detail
     // error would otherwise sit beside this selection's loading and stale
@@ -1331,7 +1716,6 @@ export class SessionViewState {
       this.entryDetail.value !== null
         ? this.entryDetail.value
         : null;
-    this.#openDetailAddress = { source, entryPath };
     if (held !== null && this.fileDetailState.value === 'companion-failed') {
       // A retry — or another file selected — from the failed pane: the entry
       // stays, and the pane returns to its in-flight state so the failed
@@ -1350,6 +1734,9 @@ export class SessionViewState {
       // outgoing page's ownership-guarded close.
       this.#dropOpenDetails();
     }
+    // After the drop, which clears the previous address with the rest: the
+    // new selection's address is what the next call compares against.
+    this.#openDetailAddress = { source, entryPath };
     const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page', source));
     if (entry === null || !owns()) {
       return;
@@ -1399,6 +1786,7 @@ export class SessionViewState {
   ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
+    this.#openDetailSequence = selectorFamilyOf(source);
     const requested = this.#detailRequestVersion;
     this.#detailError.value = null;
     const capturedEpoch = this.#clientData.epoch();
@@ -1500,6 +1888,7 @@ export class SessionViewState {
   ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
+    this.#openDetailSequence = selectorFamilyOf(params.source);
     const requested = this.#detailRequestVersion;
     this.#detailError.value = null;
     this.entryDetailError.value = null;
@@ -1511,11 +1900,18 @@ export class SessionViewState {
     // the source alone, for the reason the skill route's entry point is kept:
     // clearing them would take the page through its loading state, unmounting
     // the tree the reader is using — and the link they just activated with it,
-    // dropping keyboard focus to the document.
+    // dropping keyboard focus to the document. "The row" is the whole carrier
+    // identity — Source, path, plugin name, and the product whose reading the
+    // detail answers with: one catalog read as Codex reads it and as Claude
+    // reads it are two answers (api-types.ts § PluginCarrierDetailParams), so
+    // a history step between those two pages must fetch, never keep the other
+    // product's interpretation on screen.
     const held =
       this.#openPluginRow !== null &&
+      this.#openPluginRow.source === params.source &&
       this.#openPluginRow.sourceRelativePath === params.sourceRelativePath &&
-      this.#openPluginRow.pluginName === params.pluginName
+      this.#openPluginRow.pluginName === params.pluginName &&
+      this.#openPluginRow.tool === params.tool
         ? this.pluginDetail.value
         : null;
     if (held !== null && this.fileDetailState.value === 'companion-failed') {
@@ -1757,6 +2153,7 @@ export class SessionViewState {
   ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
+    this.#openDetailSequence = selectorFamilyOf(source);
     const requested = this.#detailRequestVersion;
     this.#detailError.value = null;
     const capturedEpoch = this.#clientData.epoch();
@@ -1844,6 +2241,7 @@ export class SessionViewState {
   ): Promise<void> {
     this.#detailOwner = owner ?? null;
     this.#detailRequestVersion += 1;
+    this.#openDetailSequence = selectorFamilyOf(source);
     const requested = this.#detailRequestVersion;
     this.#detailError.value = null;
     const capturedEpoch = this.#clientData.epoch();
@@ -1864,15 +2262,10 @@ export class SessionViewState {
       return;
     }
     this.fileDetailState.value = 'loading';
-    // Every other slot is dropped before the next detail is asked for, so a
-    // slow request never leaves one subject's content on screen under
-    // another's heading.
-    this.entryDetail.value = null;
-    this.openCompanion.value = null;
-    this.carrierDetail.value = null;
-    this.hookDetail.value = null;
-    this.pluginDetail.value = null;
-    this.policyDetail.value = null;
+    // The previous detail — every slot's — is dropped before the next one is
+    // asked for, so a slow request never leaves one file's content on screen
+    // under another customization's heading.
+    this.#dropOpenDetails();
     const outcome = await this.#client.fetchPermissionPolicyDetail(sourceRelativePath, source);
     switch (outcome.kind) {
       case 'adopted':

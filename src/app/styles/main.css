@@ -1,7 +1,8 @@
 /*
- * Shell stylesheet (T049). Deliberately small and dependency-free: the
- * Phase 3 screen shows almost no product content, and every rule here
- * exists to keep what it does show readable and keyboard-operable.
+ * Shell stylesheet (T049). Deliberately small and dependency-free: it holds
+ * the design tokens, the element-level baseline, and the utilities several
+ * components apply, while every component's own rules live in its own
+ * `<style scoped>` (AGENTS.md § Stylesheet scope policy).
  *
  * Three rules are load-bearing rather than cosmetic:
  *  - the visible :focus-visible outline, because keyboard operation of the
@@ -94,9 +95,10 @@ a:focus-visible {
 }
 
 /* Section headings. Written as the element rather than through the shell's
-   class: three components render an `h2`, so the rule has to reach markup the
-   shell component does not own, and naming that class here would put the global
-   sheet and a component on one name. */
+   class: components across the application render an `h2`, so the rule has to
+   reach markup the shell component does not own — scoping it to any one of
+   them would stop it matching the rest — and naming a component's class here
+   would put the global sheet and that component on one name. */
 h2 {
   border-bottom: 1px solid var(--aci-border);
   font-size: 1.125rem;

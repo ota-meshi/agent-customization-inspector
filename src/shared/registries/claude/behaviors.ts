@@ -843,13 +843,6 @@ export const CLAUDE_USER_SKILLS_BEHAVIOR = {
 } as const satisfies VendorBehaviorStatement;
 
 /**
- * Claude's contribution to the behavior registry, keyed by `behaviorId` in
- * identifier order. A scope's statements ship together with the strategy that
- * composes them — `claude.skills.selection` spans both skill scopes and
- * `claude.instructions.layering` all four instruction ones — because shipping
- * one alone would leave the dangling edge the contract gate rejects.
- */
-/**
  * Claude project rule discovery: every `.md` file found recursively under a
  * rule layer's `.claude/rules/` directory, one layer per documented rule
  * layer from the launch working directory through its parents.
@@ -1352,7 +1345,8 @@ export const CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR = {
  * recorded so `claude.output-style.selection` can name the layer below the
  * project ones and `claude.excluded.user-runtime` can name what it leaves out
  * (contracts/vendors/claude-code.md § Documented User behavior). A
- * non-authorizing statement: this release inspects no User layer.
+ * non-authorizing statement: which files of that layer are read is
+ * `claude.global.output-style`'s to say, and a statement grants no read.
  */
 export const CLAUDE_USER_OUTPUT_STYLE_BEHAVIOR = {
   behaviorId: 'claude.behavior.user.output-style',
@@ -1502,6 +1496,13 @@ export const CLAUDE_USER_WORKFLOWS_BEHAVIOR = {
     : [],
 } as const satisfies VendorBehaviorStatement;
 
+/**
+ * Claude's contribution to the behavior registry, keyed by `behaviorId` in
+ * identifier order. A scope's statements ship together with the strategy that
+ * composes them — `claude.skills.selection` spans both skill scopes and
+ * `claude.instructions.layering` all four instruction ones — because shipping
+ * one alone would leave the dangling edge the contract gate rejects.
+ */
 export const CLAUDE_BEHAVIOR_STATEMENTS: Readonly<
   Record<ClaudeBehaviorId, VendorBehaviorStatement>
 > = {

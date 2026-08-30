@@ -6089,7 +6089,7 @@ export function buildPriorityMcpFixture(
   // one name, so that row's Repository block holds a pair of its own. The
   // spelling pairs with the Global homes fixture, whose Codex config and
   // Copilot mcp-config declare the same name
-  // (tests/fixtures/global-homes/build-fixtures.ts; T1127, FR-030).
+  // (tests/fixtures/global-homes/build-fixtures.ts; T1140, FR-030).
   write(
     root,
     '.github/mcp.json',
@@ -7845,7 +7845,7 @@ export function buildAllCustomizationKindFixture(
   // (tests/fixtures/global-homes/build-fixtures.ts): with the personal setup
   // enabled, each of these rows holds two Repository members and two personal
   // members, so both of its family blocks offer their own comparison entry
-  // (T1127, FR-030). The `tickets` MCP pair lives in the priority fixture's
+  // (T1140, FR-030). The `tickets` MCP pair lives in the priority fixture's
   // two Copilot carriers, and the hook pair completes the `postToolUse` row
   // the unified hook fixture's `.github/hooks/format.json` starts. The skill
   // pair avoids `.claude/skills/`, whose `changelog` directory is the unified
@@ -7968,7 +7968,7 @@ export function buildAllCustomizationKindFixture(
  * What {@link buildCrossSourceGroupFixture} writes: for each kind with a
  * comparison surface, one group whose name has two Repository files and two
  * personal-setup files, so the group's row renders one comparison entry per
- * family block (T1127, FR-030).
+ * family block (T1140, FR-030).
  */
 export interface CrossSourceGroupFixture {
   /** The absolute fixture root to scan. */
@@ -7998,7 +7998,7 @@ export interface CrossSourceGroupFixture {
  * one group name spelled by two Repository files here and by two personal
  * files there, so with the personal setup enabled that group's row shows a
  * Repository block and a personal-setup block that each offer their own
- * comparison entry (T1127, FR-030).
+ * comparison entry (T1140, FR-030).
  *
  * The names deliberately equal the Global homes fixture's — `changelog`,
  * `deploy-bot`, `draftpr`, `tickets`, `postToolUse`, `team-tools` — because

@@ -21,9 +21,8 @@
 // failure beside them, and neither file is treated as valid or invalid
 // (research.md § 7). That rendering is the failure path only: there is
 // deliberately no standing toggle to it.
-import { inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { SourceDiffHandle } from '../../composables/monaco';
-import { SESSION_VIEW_STATE } from '../../session/view-state';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
 
 const props = defineProps<{
@@ -55,6 +54,16 @@ const props = defineProps<{
    * resolves from its own path.
    */
   readonly contentLanguage?: string;
+  /**
+   * Where this pair's content ownership is registered — the comparison's
+   * view-wide registry for the manifest pair, its file registry for the
+   * selected file pair. A prop rather than the self-registration the other
+   * kinds' diff viewers use, because this one component renders two pairs
+   * with two lifetimes: the file pair is dropped by a file change the
+   * manifest pair survives, so the caller names which registry owns each
+   * mount (exactly as `SourceViewer` takes its owner).
+   */
+  readonly registerContentOwner: (disposer: () => void) => () => void;
   /**
    * Sizes the diff to its taller document instead of the fixed reading box,
    * capped by this component's stylesheet (`SourceDiffHandle.mount`
@@ -118,11 +127,11 @@ let unmounted = false;
 // files', or the present side's beside an absent side's empty operand — so
 // it is an owner the comparison state must clear synchronously — on the
 // central purge (FR-027) and before a greater generation is adopted
-// (data-model.md § BrowserState). Optional, because this component's contract is its
-// props — a harness that renders it without the shell simply has no owner
-// registry to join.
-const sessionViewState = inject(SESSION_VIEW_STATE, undefined);
-const unregisterContentOwner = sessionViewState?.pluginComparison.registerOpenContentOwner(() => {
+// (data-model.md § BrowserState).
+// The registration is unconditional — the caller always passes its pair's
+// registry — because a mount that skipped it would hold authored content
+// the central purge cannot clear.
+const unregisterContentOwner = props.registerContentOwner(() => {
   // Supersede any mount still in flight before disposing: a mount resolving
   // after the disposal would otherwise attach and write the dropped sources
   // into fresh models during the one flush before this component unmounts.
@@ -150,6 +159,11 @@ function disposeViewer(): void {
 async function showCurrentPair(): Promise<void> {
   requestedPair += 1;
   const requested = requestedPair;
+  // A new pair reclaims a purged instance: the purge condemned the previous
+  // pair's text, and Vue can hand this same component the next pair without
+  // an unmount, so a fallback render after a later mount failure would
+  // otherwise stay blank for content the purge never touched.
+  purged.value = false;
   const element = host.value;
   if (element === null) {
     return;
@@ -221,7 +235,7 @@ watch(
 
 onBeforeUnmount(() => {
   unmounted = true;
-  unregisterContentOwner?.();
+  unregisterContentOwner();
   disposeViewer();
 });
 </script>

@@ -40,6 +40,7 @@ import type {
   SettingsInventoryEntryDto,
   SkillInventoryEntryDto,
   SourceKind,
+  SourceSelector,
 } from '../../shared/api-types';
 import {
   fileIdentityKey,
@@ -50,6 +51,8 @@ import {
   type SupportedTool,
 } from '../../shared/entities';
 import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-collision';
+import { SOURCE_SELECTOR_TEXT } from '../../shared/api-text';
+import { sourceSelectorOf } from '../components/detail-route';
 
 /**
  * The filter fields the caller owns. They are passed in rather than returned so
@@ -58,13 +61,15 @@ import { facesSameNameCollision, skillCollisionGates } from '../../shared/skill-
  */
 export interface InventoryFilterSelection {
   /**
-   * Selected Source family, or null for every Source. The family rather than
-   * one Source: which tool recognized a file is the tool selection below, so a
-   * per-tool Source choice asked one question twice — and this selection rides
-   * in the inventory's URL, where a Source ID would name nothing after the next
-   * launch (`api-text.ts` § SOURCE_KIND_TEXT).
+   * Selected Source, or null for every Source (FR-006). One Source rather
+   * than a family, because two members' homes are two Sources a reader can
+   * mean apart — the shared agent home is no tool's, so the tool selection
+   * below cannot separate it from a member home. The selection rides in the
+   * inventory's URL as the Source's launch-stable selector, never as a
+   * Source ID, which belongs to the launch that minted it
+   * (`detail-route.ts` § sourceSelectorOf).
    */
-  readonly sourceKind: Ref<SourceKind | null>;
+  readonly source: Ref<SourceSelector | null>;
   /** Selected recognizing tool, or null for every tool. */
   readonly tool: Ref<SupportedTool | null>;
   /**
@@ -182,7 +187,9 @@ function rowFileIdentitiesOf(
  */
 export class InventoryFilterView {
   /** The Sources the current generation published, in snapshot order. */
-  public readonly availableSourceKinds: ComputedRef<readonly SourceKind[]>;
+  public readonly availableSources: ComputedRef<
+    readonly { readonly selector: SourceSelector; readonly label: string }[]
+  >;
 
   /** The tools the current inventory actually recognizes, in the closed tool order. */
   public readonly availableTools: ComputedRef<readonly SupportedTool[]>;
@@ -342,9 +349,9 @@ export class InventoryFilterView {
    * has no `<option>` to render, so a select bound to the raw choice would go
    * blank while the rows were unfiltered.
    */
-  public readonly effectiveSourceKind: ComputedRef<SourceKind | null>;
+  public readonly effectiveSource: ComputedRef<SourceSelector | null>;
 
-  /** The tool selection the rows are actually filtered by; see {@link effectiveSourceKind}. */
+  /** The tool selection the rows are actually filtered by; see {@link effectiveSource}. */
   public readonly effectiveTool: ComputedRef<SupportedTool | null>;
 
   /**
@@ -372,25 +379,26 @@ export class InventoryFilterView {
 
   /** Derives every view above from the snapshot and the caller's selection. */
   public constructor(snapshot: Ref<SessionSnapshot | null>, selection: InventoryFilterSelection) {
-    const { sourceKind, tool, kind, pathQuery } = selection;
+    const { source, tool, kind, pathQuery } = selection;
 
-    // In the fixed family order, and only the families this generation
-    // published: the repository is always one, and a Global family exists once a
-    // consented home has committed. The order is written here because this is
-    // its one reader; a family added to `SourceKind` fails to compile at the
-    // label table instead (`api-text.ts` § SOURCE_KIND_TEXT), which is where an
-    // author is sent to name it.
-    this.availableSourceKinds = computed(() =>
-      (['repository', 'global'] as const).filter((candidate) =>
-        (snapshot.value?.sources ?? []).some((source) => source.kind === candidate),
-      ),
+    // The published Sources in their published order — the Repository first,
+    // then each consented home as its own option (FR-006): the shared agent
+    // home is no tool's, so only a per-Source choice can separate it from a
+    // member home. Labels come from the selector's own table, so the filter
+    // and the document titles name each Source with one word
+    // (`api-text.ts` § SOURCE_SELECTOR_TEXT).
+    this.availableSources = computed(() =>
+      (snapshot.value?.sources ?? []).map((candidate) => {
+        const selector = sourceSelectorOf(candidate);
+        return { selector, label: SOURCE_SELECTOR_TEXT[selector] };
+      }),
     );
-    // Which family each published Source belongs to, so a file's own `sourceId`
-    // resolves to the family the filter is stated in.
-    const sourceKindById = computed(() => {
-      const byId = new Map<string, SourceKind>();
-      for (const source of snapshot.value?.sources ?? []) {
-        byId.set(source.sourceId, source.kind);
+    // Which selector each published Source answers to, so a file's own
+    // `sourceId` resolves to the selection's vocabulary.
+    const selectorById = computed(() => {
+      const byId = new Map<string, SourceSelector>();
+      for (const published of snapshot.value?.sources ?? []) {
+        byId.set(published.sourceId, sourceSelectorOf(published));
       }
       return byId;
     });
@@ -466,15 +474,16 @@ export class InventoryFilterView {
     // Only a selection the current inventory actually offers is applied. The rows
     // and `isNarrowed` read these rather than the raw fields, so the view never
     // claims to be narrowed by an option the user cannot see.
-    const effectiveSourceKind = computed(() =>
-      sourceKind.value !== null && this.availableSourceKinds.value.includes(sourceKind.value)
-        ? sourceKind.value
+    const effectiveSource = computed(() =>
+      source.value !== null &&
+      this.availableSources.value.some((candidate) => candidate.selector === source.value)
+        ? source.value
         : null,
     );
     const effectiveTool = computed(() =>
       tool.value !== null && this.availableTools.value.includes(tool.value) ? tool.value : null,
     );
-    this.effectiveSourceKind = effectiveSourceKind;
+    this.effectiveSource = effectiveSource;
     this.effectiveTool = effectiveTool;
     // The kind in view: the chosen tab while it is still offered, otherwise the
     // first available one so the page always shows something rather than an
@@ -488,16 +497,17 @@ export class InventoryFilterView {
     });
 
     /**
-     * The trimmed, case-folded path query; empty matches every path. Folding is
+     * The case-folded path query; empty matches every path. Folding is
      * `toLowerCase`, not the locale-aware form: a Source-relative Path is not
      * locale text, and in a Turkish locale `I` folds to a dotless `ı`, so an ASCII
      * path would stop matching the ASCII the user typed.
      *
-     * No Unicode normalization on either side: a published path is the exact
-     * raw entry names (FR-024), and the query matches the spelling the list
-     * shows.
+     * No Unicode normalization on either side, and no trimming: a published
+     * path is the exact raw entry names (FR-024), an entry name can begin or
+     * end in whitespace, and a query trimmed of the very characters that
+     * distinguish such a name could never narrow the list down to it.
      */
-    const query = computed(() => pathQuery.value.trim().toLowerCase());
+    const query = computed(() => pathQuery.value.toLowerCase());
 
     /**
      * Whether a published file passes the Source and path filters, resolved
@@ -511,8 +521,8 @@ export class InventoryFilterView {
         return false;
       }
       if (
-        effectiveSourceKind.value !== null &&
-        sourceKindById.value.get(file.sourceId) !== effectiveSourceKind.value
+        effectiveSource.value !== null &&
+        selectorById.value.get(file.sourceId) !== effectiveSource.value
       ) {
         return false;
       }
@@ -588,15 +598,23 @@ export class InventoryFilterView {
       return rank;
     });
     /** Which family each published Source belongs to, for the grouping below. */
+    const familyKindById = computed(() => {
+      const byId = new Map<string, SourceKind>();
+      for (const published of snapshot.value?.sources ?? []) {
+        byId.set(published.sourceId, published.kind);
+      }
+      return byId;
+    });
     const familyOf = (sourceId: string): SourceKind =>
-      sourceKindById.value.get(sourceId) ?? 'repository';
+      familyKindById.value.get(sourceId) ?? 'repository';
     /**
      * The family-major order every range group publishes its rows and
      * identities in — the repository's before the consented homes', and
      * within a family the published Source order — so the shared family
      * grouping renders the repository block first. The fixed family order is
-     * written here for the reason the Source filter's is
-     * (`availableSourceKinds`).
+     * written here because this is its one reader; a family added to
+     * `SourceKind` fails to compile at the label table instead
+     * (`api-text.ts` § SOURCE_KIND_TEXT).
      */
     const familyMajorCompare = (left: string, right: string): number => {
       const familyRank = (sourceId: string): number =>
@@ -1016,8 +1034,7 @@ export class InventoryFilterView {
     });
 
     this.isNarrowed = computed(
-      () =>
-        effectiveSourceKind.value !== null || effectiveTool.value !== null || query.value !== '',
+      () => effectiveSource.value !== null || effectiveTool.value !== null || query.value !== '',
     );
   }
 }

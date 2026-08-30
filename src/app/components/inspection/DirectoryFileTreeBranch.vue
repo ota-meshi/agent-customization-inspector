@@ -66,7 +66,23 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
       <template v-else>
         <!-- A directory is not something to open: it holds the nodes under it,
              and every file the census reached is already one of them. -->
-        <span class="aci-directory-file-tree-branch__directory aci-authored-text"
+        <!-- The same whitespace rule the file links carry (FR-025): where the
+             accessible spelling differs from the visible one — leading,
+             trailing, or run-together whitespace, which announcement
+             collapses — the visible segment is hidden from the name
+             computation and the spelled-out twin speaks instead. `aria-label`
+             cannot do it here: a generic span exposes none. -->
+        <template v-if="node.accessibleLabel !== node.label">
+          <span
+            class="aci-directory-file-tree-branch__directory aci-authored-text"
+            aria-hidden="true"
+            >{{ node.label }}/</span
+          >
+          <span class="aci-directory-file-tree-branch__directory-spelling"
+            >{{ node.accessibleLabel }}/</span
+          >
+        </template>
+        <span v-else class="aci-directory-file-tree-branch__directory aci-authored-text"
           >{{ node.label }}/</span
         >
         <DirectoryFileTreeBranch
@@ -82,6 +98,19 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 </template>
 
 <style scoped>
+/* The spelled-out twin is for the accessibility tree alone: visually the
+   authored segment above already shows, so this one is clipped out of the
+   visual layout without leaving the accessible one (the display:none family
+   would remove both). */
+.aci-directory-file-tree-branch__directory-spelling {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .aci-directory-file-tree-branch {
   list-style: none;
   margin: 0;

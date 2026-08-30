@@ -274,8 +274,9 @@ provenanceが所有し、VS Code provenanceはdirect official documentationがsc
 同名orderingのunknownは推測したwinnerではなくconditionとしてprojectする。
 
 Pluginとmarketplaceのstatic ruleはrepository descendantを探索しない。Copilotは、任意descendantのmanifest/catalogを
-filenameが一致するだけでactivateしない。Nested local plugin manifestは、後述するaccepted marketplace entryからの
-closed derivationによってのみadmitする。このderivationもproduct discovery/activationではなくInspector policyである。
+filenameが一致するだけでactivateしない。Local sourceがvalidateされたaccepted marketplace entryがpluginのrootを名指し、
+censusがそのrootのfile — manifestを含む — をcatalog自身のrowの下に列挙する。Nested manifestをadmitするruleも
+deriveするruleも存在せず、このcensusもproduct discovery/activationではなくInspector policyである。
 
 1つの明示的にestablishedなplugin rootで、documented manifest recognition orderは`.plugin/plugin.json`、`plugin.json`、
 `.github/plugin/plugin.json`、`.claude-plugin/plugin.json`である。Marketplace orderは`marketplace.json`、
@@ -355,7 +356,7 @@ installation、activationのauthorityを一切与えない。
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みVS Code promptまたはroot direct-child CLI commandの正確なsupported frontmatter value/item occurrence。Matched pathから導出するprompt/command invocation nameはtyped provenanceのままとし、linkまたは`#file` targetはinertに保つ |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | 受理済みagents Markdown file — Repositoryの`.github/agents/*.md`か`.claude/agents/*.md`、またはconsent済みuserの`agents/*.agent.md` — の正確なsupported frontmatter value/item/map-entry occurrence。Body instructionは`sourceText`のまま保持し、`hooks`と`mcp-servers`はagent自身のfrontmatter宣言であって、hook recognitionもMCP recognitionも所有しない |
 | `settings/config` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | 正確なsupported Repository/local、consent済みuser、またはcross-tool-compatible settings leaf/item/map-entry occurrence。Contained Hook valueは`hook` recognitionだけに属し、settingsはMCP recognitionを所有しない |
-| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みCopilot plugin manifestの正確なmetadata/component-path leaf/item occurrenceと、entryがplugin名を解決する受理済みmarketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがplain-string sourceまたはobjectの`path` leafを表し、closedなlocal-manifest derivationをseedできる。Inline component bodyはactivateせず、inline Hook/MCP bodyと参照先script/assetはplugin metadata IDを取得せず、component pathはcandidateを作らない |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | 受理済みCopilot plugin manifestの正確なmetadata/component-path leaf/item occurrenceと、entryがplugin名を解決する受理済みmarketplace fileの正確なcatalog/plugin-entry leaf/item occurrence。`marketplace.plugin.source`だけがplain-string sourceまたはobjectの`path` leafを表し、censusがfileを列挙するplugin rootを名指す。Inline component bodyはactivateせず、inline Hook/MCP bodyと参照先script/assetはplugin metadata IDを取得せず、component pathはcandidateを作らない |
 | `hook` | `runtime-reference` | 受理済みstandalone hook file、または受理済みsettings documentのcontained `hooks` blockにあるversion value、event map key、matcher value、正確なhandler leaf/item/map-entry occurrence。このvendorが文書化する他のowner — custom agentのfrontmatterとplugin自身のhook file — はそのcustomizationを構成するものとしてhookを宣言し、それらのoccurrenceは各kind自身の行に属する。Plugin Hook pathはrelationshipだけに保つ |
 
 `plugin` rowのmanifestに関する記述 — 受理済みCopilot plugin manifest内のoccurrence — は、どのruleも

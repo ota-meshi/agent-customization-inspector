@@ -27,8 +27,8 @@
 // The exclusions are stated twice, and deliberately: the paragraph names the
 // categories, which is what a reader decides from, and the list below names
 // the tool each shipped exclusion is about, which is what they can check
-// against their own home. The list is derived from `excludedRuleIds`, so
-// Copilot's row appears when Phase 98 ships its rules.
+// against their own home. The list is derived from `excludedRuleIds`, so it
+// holds exactly the Global-scoped exclusions the shipped catalog carries.
 //
 // The sentence beside each tool is fixed rather than per rule: an exclusion's
 // `kind` is null by construction — it spans kinds — so the only renderable
@@ -50,10 +50,11 @@ interface Props {
   /** The frozen preview to review; the page owns loading and recovery. */
   readonly preview: GlobalConsentPreviewDto;
   /**
-   * Whether a confirmation of this preview is already in effect. It decides one
-   * sentence: what "nothing has been read yet" describes is the act of working
-   * the directories out, which stops being the whole truth once a confirmation
-   * has read them.
+   * Whether the reader has confirmed this preview — an in-flight enable
+   * request included, because the server may already be reading the
+   * directories before its commit is adopted. It decides one sentence: what
+   * "nothing has been read yet" describes is the act of working the
+   * directories out, which stops being the whole truth at the confirmation.
    */
   readonly consentGiven: boolean;
 }
@@ -84,11 +85,14 @@ const exclusions = computed(() =>
     <h3>What would be inspected</h3>
     <p>
       Inspecting your personal setup means reading the customization files each tool documents in
-      its own configuration directory — instructions, and the skills, agents, commands, hooks,
-      settings, and server declarations the tool reads from there — plus the shared agent directory
-      that Codex and Copilot both read skills from. Nothing else in those directories is read: not
-      credentials, not saved sessions, not installed plugins, and not anything the tools generate
-      for themselves.
+      its own configuration directory — instructions, and the skills, agents, prompts and commands,
+      rules, permission policies, hooks, settings, output styles, and server declarations the tool
+      reads from there — plus the shared agent directory that Codex and Copilot both read skills
+      from, where Codex also reads the personal plugin marketplace file. Nothing else in those
+      directories is read: not credentials, not saved sessions, and not anything the tools generate
+      for themselves. Installed plugin copies are not read either — a marketplace file says where
+      each plugin comes from and is read as that list, while the plugin folders it points at stay
+      unread.
     </p>
     <!-- Two sentences for two states, because the same page shows this preview
          before a confirmation and after one: "nothing has been read" is true of
@@ -142,9 +146,9 @@ const exclusions = computed(() =>
            do not admit. -->
       <ul class="aci-global-consent-preview__exclusions">
         <li v-for="exclusion in exclusions" :key="exclusion.ruleId">
-          {{ exclusion.tool }} — everything else in that directory beyond the files described above:
-          credentials, saved sessions, caches, installed plugin copies, and anything it generates
-          for itself
+          {{ exclusion.tool }} — everything the read scope above does not name: credentials, saved
+          sessions, caches, installed plugin copies, state the tool keeps outside these directories,
+          and anything it generates for itself
         </li>
       </ul>
     </template>

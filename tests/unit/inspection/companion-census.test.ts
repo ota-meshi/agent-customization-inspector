@@ -15,6 +15,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { listCompanionFiles } from '../../../src/server/inspection/companion-census';
 
+/**
+ * The files half of one census, for the cases about enumeration alone; the
+ * containment verdict has its own case below.
+ */
+async function companionFiles(
+  sourceRoot: string,
+  censusRoot: string,
+  continueScan?: () => boolean,
+): Promise<readonly { censusRelativePath: string; absolutePath: string }[]> {
+  return (await listCompanionFiles(sourceRoot, censusRoot, continueScan)).files;
+}
+
 /** Absolute path of the temporary repository these cases enumerate. */
 let root: string;
 
@@ -67,7 +79,7 @@ describe('listCompanionFiles', () => {
     // Paths are relative to the enumerated directory: this module is told
     // which directory to walk and nothing else, so it cannot state a
     // Source-relative Path and does not try to.
-    const listed = (await listCompanionFiles(root, join(root, '.agents/skills/greet'))).map(
+    const listed = (await companionFiles(root, join(root, '.agents/skills/greet'))).map(
       (companion) => companion.censusRelativePath,
     );
     // The seed is not excluded here: this module enumerates a directory, and
@@ -97,7 +109,7 @@ describe('listCompanionFiles', () => {
     // Both `loop` and `up` resolve outside or back onto the census root. The
     // call returning at all is half the assertion; the other half is that
     // nothing above the skill directory appears.
-    const listed = (await listCompanionFiles(root, join(root, '.agents/skills/greet'))).map(
+    const listed = (await companionFiles(root, join(root, '.agents/skills/greet'))).map(
       (companion) => companion.censusRelativePath,
     );
     expect(listed.every((path) => !path.startsWith('..'))).toBe(true);
@@ -112,7 +124,7 @@ describe('listCompanionFiles', () => {
     // The entry-name exclusion cannot see `meta -> .git`. Without the resolved-
     // path check the census would report the repository's object store as this
     // skill's companion files.
-    const listed = (await listCompanionFiles(root, join(root, '.agents/skills/greet'))).map(
+    const listed = (await companionFiles(root, join(root, '.agents/skills/greet'))).map(
       (companion) => companion.censusRelativePath,
     );
     expect(listed.some((path) => path.startsWith('meta/'))).toBe(false);
@@ -133,7 +145,13 @@ describe('listCompanionFiles', () => {
       writeFileSync(join(outside, 'linked/SKILL.md'), '# linked\n', 'utf8');
       writeFileSync(join(outside, 'linked/secret.md'), 'not a companion\n', 'utf8');
       symlinkSync(join(outside, 'linked'), join(root, '.agents/skills/escaped'));
-      expect(await listCompanionFiles(root, join(root, '.agents/skills/escaped'))).toEqual([]);
+      // The verdict is published, not folded into emptiness: the session
+      // refuses membership below the spelling on its strength
+      // (session.ts § pluginRootFilesOf).
+      expect(await listCompanionFiles(root, join(root, '.agents/skills/escaped'))).toEqual({
+        rootContained: false,
+        files: [],
+      });
     } finally {
       rmSync(outside, { recursive: true, force: true });
     }
@@ -143,7 +161,7 @@ describe('listCompanionFiles', () => {
     // Neither is decoded from the other: the display path is presentation
     // identity and the absolute path is never published. The scan needs
     // both — one to read with, one to publish (FR-024).
-    const census = await listCompanionFiles(root, join(root, '.agents/skills/greet'));
+    const census = await companionFiles(root, join(root, '.agents/skills/greet'));
     const reference = census.find((file) => file.censusRelativePath === 'reference.md');
     expect(reference?.absolutePath).toBe(join(root, '.agents/skills/greet/reference.md'));
     for (const file of census) {
@@ -167,7 +185,7 @@ describe('listCompanionFiles', () => {
       // does not exist here.
       return;
     }
-    const census = await listCompanionFiles(root, directory);
+    const census = await companionFiles(root, directory);
     // The entry point is listed like any other entry — this module enumerates
     // a directory and the caller removes what the walk already published — so
     // the two spellings are the entries beside it.
@@ -204,8 +222,8 @@ describe('a census root the walk could never have descended to', () => {
       writeFileSync(join(root, '.git/config'), '[core]\n', 'utf8');
       mkdirSync(join(root, 'node_modules/pkg'), { recursive: true });
       writeFileSync(join(root, 'node_modules/pkg/index.js'), 'module.exports = {};\n', 'utf8');
-      expect(await listCompanionFiles(root, join(root, '.git'))).toEqual([]);
-      expect(await listCompanionFiles(root, join(root, 'node_modules/pkg'))).toEqual([]);
+      expect(await companionFiles(root, join(root, '.git'))).toEqual([]);
+      expect(await companionFiles(root, join(root, 'node_modules/pkg'))).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -226,8 +244,8 @@ describe('a census root the walk could never have descended to', () => {
       writeFileSync(join(root, 'node_modules/pkg/skill/SKILL.md'), '# packaged\n', 'utf8');
       symlinkSync(join(root, 'node_modules/pkg/skill'), join(root, 'vendored'), 'dir');
 
-      expect(await listCompanionFiles(root, join(root, 'store'))).toEqual([]);
-      const vendored = await listCompanionFiles(root, join(root, 'vendored'));
+      expect(await companionFiles(root, join(root, 'store'))).toEqual([]);
+      const vendored = await companionFiles(root, join(root, 'vendored'));
       expect(vendored.map((entry) => entry.censusRelativePath)).toEqual(['SKILL.md']);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -236,6 +254,26 @@ describe('a census root the walk could never have descended to', () => {
 });
 
 describe('an installed-package name that is not a directory (T1097)', () => {
+  it('stops enumerating once scan authority is withdrawn', async () => {
+    // Disable/shutdown revokes authority between filesystem promises
+    // (data-model.md § ScanAttempt "stops new scheduling"): a census that has
+    // answered its containment realpaths but not yet enumerated must start no
+    // readdir, and one interrupted mid-tree must stop at the next entry.
+    const askedNever = await companionFiles(root, join(root, '.agents/skills/greet'), () => false);
+    expect(askedNever).toEqual([]);
+
+    // Authority leaves after the first asks: the walk returns what it had
+    // rather than continuing into scripts/lib — a partial list the commit
+    // gates discard, never a published census.
+    let asks = 0;
+    const interrupted = await companionFiles(root, join(root, '.agents/skills/greet'), () => {
+      asks += 1;
+      return asks <= 3;
+    });
+    const full = await companionFiles(root, join(root, '.agents/skills/greet'));
+    expect(interrupted.length).toBeLessThan(full.length);
+  });
+
   it('lists a regular file named node_modules beside the skill', async () => {
     // The exclusion is about a directory a package manager filled. An entry of
     // that name resolving to a regular file is one of the files that ship with
@@ -246,12 +284,12 @@ describe('an installed-package name that is not a directory (T1097)', () => {
       mkdirSync(join(root, 'skill/node_modules'), { recursive: true });
       writeFileSync(join(root, 'skill/SKILL.md'), '# skill\n', 'utf8');
       writeFileSync(join(root, 'skill/node_modules/pkg.md'), '# packaged\n', 'utf8');
-      const listed = await listCompanionFiles(root, join(root, 'skill'));
+      const listed = await companionFiles(root, join(root, 'skill'));
       expect(listed.map((entry) => entry.censusRelativePath)).toEqual(['SKILL.md']);
 
       rmSync(join(root, 'skill/node_modules'), { recursive: true, force: true });
       writeFileSync(join(root, 'skill/node_modules'), 'an ordinary file\n', 'utf8');
-      const withFile = await listCompanionFiles(root, join(root, 'skill'));
+      const withFile = await companionFiles(root, join(root, 'skill'));
       expect(withFile.map((entry) => entry.censusRelativePath)).toEqual([
         'SKILL.md',
         'node_modules',

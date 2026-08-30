@@ -570,16 +570,19 @@ Inspector matcher look like vendor lookup behavior:
   Marketplace registration, installation, an explicit plugin directory, or another
   documented mechanism establishes a plugin root. Claude's plugin manifest is optional;
   a matching manifest or catalog at an arbitrary Repository descendant is not by itself a
-  vendor auto-discovery event. The Inspector may retain a root-exact authored-project
-  matcher; a nested local manifest is admitted only through bounded derivation from an
-  independently accepted catalog. Presence never proves registration, installation,
+  vendor auto-discovery event. The Inspector retains a root-exact authored-project
+  matcher; below a catalog entry whose validated local source names a plugin root, the
+  census enumerates that root's files — the manifest among them — under the catalog's own
+  row, and no rule admits a nested manifest or derives one. Presence never proves registration, installation,
   enablement, trust, component loading, or precedence.
 
 The vendor contracts also inventory documented User settings, agents, skills, rules,
 hooks, MCP sources, plugins, state, and deprecated surfaces for future maintenance. These
-User tables are evidence, not consent. FR-015 through FR-018 continue to authorize only the
-three exact Global instruction sets; every neighboring User surface remains `excluded`
-without a specification change, even when the vendor behavior registry documents it.
+User tables are evidence, not consent. FR-015 through FR-018 and FR-045 authorize exactly
+the four members' frozen Global rule catalogs — each member's documented customization
+kinds, and the shared agent home's skills and personal plugin marketplace file; every
+User surface outside those catalogs remains `excluded` without a specification change,
+even when the vendor behavior registry documents it.
 
 Every vendor behavior, Inspector rule, and composition strategy cites its exact official
 `sourceId` values. The official-source record maps those IDs back to bounded URL sections
@@ -1226,7 +1229,7 @@ missing or not a readable directory as that tool's absent or failed outcome with
 blocking the other tools (FR-014); an unexpected failure outside one tool's root aborts
 the whole transaction through the owning request boundary. If
 validation admits no root, `active-no-job` retains control for retry/disable and publishes no
-Source/job/generation. If it admits one to three roots, one provisional batch scan publishes
+Source/job/generation. If it admits one to four roots, one provisional batch scan publishes
 all of their separate Sources together in exactly one Global generation — the enable
 commit that creates the Global sequence — with no per-tool commit
 observable. Active-consent retry validation/admission is operation-local: only

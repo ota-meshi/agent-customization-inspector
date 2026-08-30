@@ -149,6 +149,112 @@ describe('a newer generation abandons data, not commands', () => {
   });
 });
 
+describe("a commit aborts only its own sequence's data requests (FR-030)", () => {
+  it('keeps a Repository detail in flight across a Global commit', async () => {
+    // A Global enable commits its first generation while a Repository
+    // comparison's detail load is still in flight. The load reads committed
+    // Repository state the commit does not touch, so aborting it would leave
+    // the comparison loading forever — its own generation never moved, so no
+    // route re-requests it.
+    const detailResponse = Promise.withResolvers<unknown>();
+    const sessions = [
+      sessionResult(snapshot()),
+      sessionResult(snapshot({ globalGeneration: 1 }), { globalGeneration: 1 }),
+    ];
+    const channel = {
+      call: (method: SessionRpcFunctionName) =>
+        method === SESSION_RPC_FUNCTIONS.getFileDetail
+          ? detailResponse.promise
+          : Promise.resolve(sessions.length > 1 ? sessions.shift() : sessions[0]),
+    };
+    const client = new SessionApiClient({ channel, clientData: guard() });
+    await client.fetchSession();
+    const detail = client.fetchFileDetail('AGENTS.md', 'repository');
+    const adopted = await client.fetchSession();
+    expect(adopted).toMatchObject({ kind: 'adopted', advancedSequences: ['global'] });
+    detailResponse.resolve({
+      globalContentEpoch: 0,
+      repositoryGeneration: 0,
+      globalGeneration: 1,
+      data: { file: { sourceRelativePath: 'AGENTS.md' } },
+    });
+    // Adopted, not discarded as aborted: the Global commit invalidated only
+    // Global data, and this request's sequence never advanced.
+    expect((await detail).kind).toBe('adopted');
+  });
+
+  it("retires only the aborted request's token, never a newer request's", async () => {
+    // An abandoned Global detail is still in flight when the reader moves on
+    // to a Repository comparison, whose own detail request now holds the
+    // family's latest token. The Global commit that then arrives aborts the
+    // old Global load — and must retire only that request's token: blanking
+    // the family's latest would discard the comparison's settlement as
+    // superseded, leaving it loading on a page whose sequence never advanced.
+    const globalDetail = Promise.withResolvers<unknown>();
+    const repositoryDetail = Promise.withResolvers<unknown>();
+    const sessions = [
+      sessionResult(snapshot()),
+      sessionResult(snapshot({ globalGeneration: 1 }), { globalGeneration: 1 }),
+    ];
+    const channel = {
+      call: (method: SessionRpcFunctionName, payload?: unknown) => {
+        if (method === SESSION_RPC_FUNCTIONS.getFileDetail) {
+          return (payload as { source: string }).source === 'repository'
+            ? repositoryDetail.promise
+            : globalDetail.promise;
+        }
+        return Promise.resolve(sessions.length > 1 ? sessions.shift() : sessions[0]);
+      },
+    };
+    const client = new SessionApiClient({ channel, clientData: guard() });
+    await client.fetchSession();
+    const abandonedGlobal = client.fetchFileDetail('CLAUDE.md', 'global-claude');
+    const comparisonDetail = client.fetchFileDetail('AGENTS.md', 'repository');
+    const adopted = await client.fetchSession();
+    expect(adopted).toMatchObject({ kind: 'adopted', advancedSequences: ['global'] });
+    globalDetail.resolve({
+      globalContentEpoch: 0,
+      repositoryGeneration: 0,
+      globalGeneration: 1,
+      data: { file: { sourceRelativePath: 'CLAUDE.md' } },
+    });
+    expect((await abandonedGlobal).kind).toBe('discarded');
+    repositoryDetail.resolve({
+      globalContentEpoch: 0,
+      repositoryGeneration: 0,
+      globalGeneration: 1,
+      data: { file: { sourceRelativePath: 'AGENTS.md' } },
+    });
+    expect((await comparisonDetail).kind).toBe('adopted');
+  });
+
+  it('aborts a Repository detail when its own sequence commits', async () => {
+    const detailResponse = Promise.withResolvers<unknown>();
+    const sessions = [
+      sessionResult(snapshot()),
+      sessionResult(snapshot({ repositoryGeneration: 1 })),
+    ];
+    const channel = {
+      call: (method: SessionRpcFunctionName) =>
+        method === SESSION_RPC_FUNCTIONS.getFileDetail
+          ? detailResponse.promise
+          : Promise.resolve(sessions.length > 1 ? sessions.shift() : sessions[0]),
+    };
+    const client = new SessionApiClient({ channel, clientData: guard() });
+    await client.fetchSession();
+    const detail = client.fetchFileDetail('AGENTS.md', 'repository');
+    const adopted = await client.fetchSession();
+    expect(adopted).toMatchObject({ kind: 'adopted', advancedSequences: ['repository'] });
+    detailResponse.resolve({
+      globalContentEpoch: 0,
+      repositoryGeneration: 1,
+      globalGeneration: null,
+      data: { file: { sourceRelativePath: 'AGENTS.md' } },
+    });
+    expect(await detail).toMatchObject({ kind: 'discarded', reason: 'aborted' });
+  });
+});
+
 describe('session API client — invoked functions', () => {
   it('calls nothing outside the closed session function catalog', async () => {
     const scripted = scriptedChannel([sessionResult(snapshot())]);
@@ -274,15 +380,24 @@ describe('session API client — inspection-data guards', () => {
     });
   });
 
-  it('purges instead of rendering a result that carries a non-null fence', async () => {
+  it('purges on the fenced recovery snapshot and adopts only its controls', async () => {
+    // A fenced host answers the session function with the control-only
+    // recovery in a `{ globalContentEpoch, data }` envelope — no
+    // result-level generations at all (contracts/http-api.md § get-session
+    // `GlobalFenceRecoverySnapshot`). Observing it runs the full purge
+    // before anything renders (FR-042).
     const clientData = guard();
-    const fenced = snapshot({
-      globalDisableInProgress: { operationId: 'op', state: 'draining' },
-    } as unknown as Partial<SessionSnapshot>);
-    const scripted = scriptedChannel([sessionResult(fenced)]);
+    const recovery = {
+      sessionId: 'session-a',
+      globalContentEpoch: 1,
+      globalControl: null,
+      globalEnableInProgress: null,
+      globalDisableInProgress: { operationId: 'op', state: 'draining' as const },
+    };
+    const scripted = scriptedChannel([{ globalContentEpoch: 1, data: recovery }]);
     const client = new SessionApiClient({ channel: scripted.channel, clientData });
     const outcome = await client.fetchSession();
-    expect(outcome).toEqual({ kind: 'purged', reason: 'global-disable-fence' });
+    expect(outcome).toEqual({ kind: 'fenced', recovery });
     expect(clientData.purges).toEqual(['global-disable-fence']);
   });
 
@@ -295,6 +410,92 @@ describe('session API client — inspection-data guards', () => {
     const client = new SessionApiClient({ channel: scripted.channel, clientData });
     await client.fetchSession();
     const outcome = await client.fetchSession();
+    expect(outcome).toEqual({ kind: 'purged', reason: 'global-content-epoch-advanced' });
+    expect(clientData.purges).toEqual(['global-content-epoch-advanced']);
+  });
+
+  it('purges when an open-file response carries a greater epoch', async () => {
+    // FR-042: a greater epoch on any response purges before rendering — the
+    // launch already happened, so the outcome reports the purge rather than
+    // a success the purged page would render beside stale content.
+    const clientData = guard();
+    const scripted = scriptedChannel([
+      sessionResult(snapshot()),
+      { globalContentEpoch: 1, data: null },
+    ]);
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
+    await client.fetchSession();
+    const outcome = await client.openFile('AGENTS.md', 'repository', 'default-application');
+    expect(outcome).toEqual({ kind: 'purged', reason: 'global-content-epoch-advanced' });
+    expect(clientData.purges).toEqual(['global-content-epoch-advanced']);
+  });
+
+  it('discards a stale fence conflict instead of purging the fresh world', async () => {
+    // A `global-disable-pending` settlement that outlives a purge belongs to
+    // the discarded world: acting on it would purge the state a newer
+    // request already adopted, so it discards — one purge per observation,
+    // never one per straggler.
+    const clientData = guard();
+    const held = Promise.withResolvers<unknown>();
+    let calls = 0;
+    const channel = {
+      call: () => {
+        calls += 1;
+        return calls === 1 ? Promise.resolve(sessionResult(snapshot())) : held.promise;
+      },
+    };
+    const client = new SessionApiClient({ channel, clientData });
+    await client.fetchSession();
+    const pending = client.fetchGlobalConsentPreview();
+    clientData.purge('global-disable-request');
+    held.resolve({ error: { code: 'global-disable-pending' } });
+    const outcome = await pending;
+    expect(outcome).toEqual({ kind: 'discarded', reason: 'client-data-epoch-advanced' });
+    expect(clientData.purges).toEqual(['global-disable-request']);
+  });
+
+  it('purges on the fence conflict any ordinary response can carry', async () => {
+    // A `global-disable-pending` rejection is the non-null fence (FR-042):
+    // observing it on a rescan runs the full purge, exactly as the session
+    // function's recovery answer does, instead of rendering the conflict as
+    // a functional outcome.
+    const clientData = guard();
+    const scripted = scriptedChannel([
+      sessionResult(snapshot()),
+      { error: { code: 'global-disable-pending' } },
+    ]);
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
+    await client.fetchSession();
+    const outcome = await client.rescanRepository();
+    expect(outcome).toEqual({ kind: 'purged', reason: 'global-disable-fence' });
+    expect(clientData.purges).toEqual(['global-disable-fence']);
+  });
+
+  it('purges when a consent-preview response carries a greater epoch', async () => {
+    // FR-042: a greater epoch on any response purges before rendering — the
+    // preview read itself is harmless, but everything else this session still
+    // holds belongs to the purged world.
+    const clientData = guard();
+    const scripted = scriptedChannel([
+      sessionResult(snapshot()),
+      { globalContentEpoch: 3, data: { previewId: 'p-1' } },
+    ]);
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
+    await client.fetchSession();
+    const outcome = await client.fetchGlobalConsentPreview();
+    expect(outcome).toEqual({ kind: 'purged', reason: 'global-content-epoch-advanced' });
+    expect(clientData.purges).toEqual(['global-content-epoch-advanced']);
+  });
+
+  it('purges when an enable acceptance carries a greater epoch', async () => {
+    const clientData = guard();
+    const scripted = scriptedChannel([
+      sessionResult(snapshot()),
+      { globalContentEpoch: 3, data: { state: 'queued' } },
+    ]);
+    const client = new SessionApiClient({ channel: scripted.channel, clientData });
+    await client.fetchSession();
+    const outcome = await client.enableGlobal('p-1', 'v-1');
     expect(outcome).toEqual({ kind: 'purged', reason: 'global-content-epoch-advanced' });
     expect(clientData.purges).toEqual(['global-content-epoch-advanced']);
   });

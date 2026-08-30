@@ -433,6 +433,7 @@ describe('recognition parse failure keeps the source displayed (FR-028)', () => 
       startedAt: '2026-07-22T00:00:00.000Z',
       finishedAt: '2026-07-22T00:00:01.000Z',
       outcome: 'partial',
+      censusEscapedDirectories: [],
       recognitions: [],
       files: [
         {
@@ -841,6 +842,7 @@ describe('late results after revocation are discarded (FR-029)', () => {
         visitedEntries: 0,
         candidateFiles: 0,
         readBytes: publication.readBytes,
+        censusEscapedDirectories: publication.censusEscapedDirectories,
       });
       const snapshot = session.snapshot();
       expect(snapshot.repositoryGeneration).toBe(0);

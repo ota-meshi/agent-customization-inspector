@@ -71,26 +71,12 @@ export class ClaudeCompiledOtherKindRule
 }
 
 /**
- * The Claude Repository rules a Repository scan executes, in shipped order.
- * The remaining Claude rows of the vendor contract arrive with their own
- * inventory phases; the shipped set covers instructions, skills, commands, the
- * MCP carrier, rule files, the permission policy, custom agents, and the
- * settings documents — the last two rules over one candidate, since
- * `.claude/settings*.json` is both the permission policy's carrier and a
- * settings document of its own (FR-007).
- *
- * The selection is by declared class and by scope, as the Codex list's is: the
- * catalog carries `excluded` rows — `claude.excluded.plugin-files` and
- * `claude.excluded.user-runtime`, which authorize no traversal by definition —
- * and one Global rule, so the Repository static candidates are taken and every
- * one of them is compiled. A static record that still cannot be executed fails the
- * build that ships it through the {@link ClaudeCompiledRule} constructor's
- * guard rather than disappearing from the scan.
- */
-/**
- * The Claude rules a consented Global scan executes: the one instruction rule
- * whose `CLAUDE.md` sits directly below the admitted `<claude-config-dir>`
- * (contracts/vendors/claude-code.md § Global accepted matcher).
+ * The Claude rules a consented Global scan executes: every static candidate
+ * this vendor's catalog admits below the consented `<claude-config-dir>` —
+ * the instruction file directly below it, and each further kind the contract
+ * places in that home (contracts/vendors/claude-code.md § Inspector Global
+ * rules). Derived from the shipped catalog by boundary rather than listed
+ * here, so a rule added to a member home cannot be missed by this map.
  *
  * Separate from the Repository catalog rather than filtered out of it at call
  * time, because the two are executed against different roots: a scan is given
@@ -133,6 +119,23 @@ export const CLAUDE_GLOBAL_RULES: readonly CompiledStaticCandidateRule[] = Objec
                   : new ClaudeCompiledOtherKindRule(rule),
   );
 
+/**
+ * The Claude Repository rules a Repository scan executes, in shipped order —
+ * every Repository row of this vendor's contract, derived from the catalog
+ * rather than listed here. They cover instructions, skills, commands, the
+ * MCP carrier, rule files, the permission policy, custom agents, and the
+ * settings documents — the last two rules over one candidate, since
+ * `.claude/settings*.json` is both the permission policy's carrier and a
+ * settings document of its own (FR-007).
+ *
+ * The selection is by declared class and by scope, as the Codex list's is: the
+ * catalog carries `excluded` rows — `claude.excluded.plugin-files` and
+ * `claude.excluded.user-runtime`, which authorize no traversal by definition —
+ * and one Global rule, so the Repository static candidates are taken and every
+ * one of them is compiled. A static record that still cannot be executed fails the
+ * build that ships it through the {@link ClaudeCompiledRule} constructor's
+ * guard rather than disappearing from the scan.
+ */
 export const CLAUDE_REPOSITORY_RULES: readonly CompiledStaticCandidateRule[] = Object.values(
   CLAUDE_INSPECTION_RULES,
 )

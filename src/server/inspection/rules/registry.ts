@@ -743,6 +743,13 @@ export type CompiledStaticCandidateRule =
   | CompiledStaticOtherKindRule;
 
 /**
+ * What a scan submits to the traversal from a derivation: the closed union of
+ * the shipped derived units, discriminated by `kind` exactly as the static
+ * union is.
+ */
+export type CompiledDerivedCandidateRule = CompiledDerivedInstructionRule;
+
+/**
  * What a recognizer receives: any rule that can admit a candidate — a static
  * one or a vendor's derivation — seen through the closed union its `kind`
  * discriminates.
@@ -754,13 +761,6 @@ export type CompiledStaticCandidateRule =
  * proves its half in its constructor and declares the narrow `kind` its class
  * body promises, so the discriminant cannot disagree with the record.
  */
-/**
- * What a scan submits to the traversal from a derivation: the closed union of
- * the shipped derived units, discriminated by `kind` exactly as the static
- * union is.
- */
-export type CompiledDerivedCandidateRule = CompiledDerivedInstructionRule;
-
 export type CompiledCandidateRule = CompiledStaticCandidateRule | CompiledDerivedCandidateRule;
 
 /**

@@ -35,16 +35,7 @@
 // generation all drop the open detail through the same cleanup the
 // instruction route uses; only the URL survives a commit, and the page
 // refetches the same path under the new generation.
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -53,6 +44,7 @@ import { frontmatterYamlText } from '../../../../components/inspection/frontmatt
 import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 import { LEADING_PROMPT_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
+  familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
@@ -60,9 +52,10 @@ import {
 } from '../../../../components/detail-route';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { usePageOwnership } from '../../../../composables/page-ownership';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { promptComparisonRouteFor } from '../../../../composables/prompt-comparison';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   fileIdentityKey,
@@ -73,16 +66,12 @@ import {
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
+  rendersNothingVisible,
 } from '../../../../../shared/entities';
+import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
@@ -139,6 +128,14 @@ const sessionSources = useSessionSources();
  * same-path file in another Source is a different file (FR-030).
  */
 const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
+
+// The open file's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source (`source-facts.ts`).
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
 
 /**
  * The family the open file's Source is of: the family a comparison entry
@@ -283,9 +280,20 @@ const toolsText = computed(() =>
  * declared one is authored text: both are the reader's own characters, and
  * both are shown as what they are (data-model.md § Inventory unit).
  */
-const invocationNamesText = computed(() =>
-  [...new Set(owner.value.map(({ name }) => escapeControlCharacters(name)))].join(', '),
-);
+const invocationNames = computed(() => {
+  const seen = new Map<string, { text: string; invisible: boolean }>();
+  for (const { name } of owner.value) {
+    const text = escapeControlCharacters(name);
+    if (!seen.has(text)) {
+      // A name drawing nothing gets the inventory's own note beside it: the
+      // reader would otherwise see `Invocation name:` followed by blank
+      // space, which says nothing about the name it is showing (FR-025;
+      // `PromptRow.vue` states the same rule for the row).
+      seen.set(text, { text, invisible: rendersNothingVisible(name) });
+    }
+  }
+  return [...seen.values()];
+});
 
 /**
  * The open detail once it is this path's: the fetched entry whose file is the
@@ -505,8 +513,7 @@ watch(
   [
     openPath,
     (): boolean => owner.value.length > 0,
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
-    (): number | null => snapshot.value?.globalGeneration ?? null,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step between two Sources' details at one path leaves the path
     // identical and the file different, so without this the page would keep
@@ -534,7 +541,7 @@ function focusHeading(): void {
 }
 
 onMounted(focusHeading);
-watch(openPath, () => void nextTick(focusHeading));
+watch([openSource, openPath], () => void nextTick(focusHeading));
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2): the path
@@ -556,7 +563,9 @@ const titleSubject = computed<string | null>(() => {
   if (detailFailure.value !== null) {
     return 'Prompt or command file could not be loaded';
   }
-  return pathIsSpelledOut.value ? null : openPath.value;
+  return pathIsSpelledOut.value
+    ? null
+    : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount
@@ -699,7 +708,17 @@ onBeforeUnmount(() => {
              page and the list agree, beside the kind's own caption (FR-007).
              No product is quoted for what it would select or run: existence
              is what an admission proves (FR-009). -->
-        <p class="aci-prompt-detail__recognition">{{ toolsText }} · {{ kindText }}</p>
+        <p class="aci-prompt-detail__recognition">
+          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
+          >{{ toolsText }} · {{ kindText }}
+        </p>
+
+        <!-- Which directory the file was in, where its family holds more
+             than one: an escaped presentation of the admitted root, never a
+             path anything can open (FR-002). -->
+        <p v-if="sourceRootText !== null" class="aci-prompt-detail__root aci-note">
+          <span class="aci-authored-text">{{ sourceRootText }}</span>
+        </p>
 
         <!-- The name the inventory row this page was opened from is listed
              under: the answer of the rule that admitted the file, derived from
@@ -707,7 +726,17 @@ onBeforeUnmount(() => {
              never a claim that typing it would reach this file — a same-name
              skill outranks a command (FR-009). -->
         <p class="aci-prompt-detail__invocation-name aci-note">
-          Invocation name: <span class="aci-authored-text">{{ invocationNamesText }}</span>
+          Invocation name:
+          <template v-for="(entry, index) in invocationNames" :key="entry.text"
+            ><span v-if="index > 0">, </span
+            ><span
+              class="aci-authored-text"
+              :class="entry.invisible ? 'aci-authored-atomic' : undefined"
+              >{{ entry.text }}</span
+            ><span v-if="entry.invisible" class="aci-muted">
+              (name with no visible characters)</span
+            ></template
+          >
         </p>
 
         <!-- The comparison entry for this file (FR-011): present exactly

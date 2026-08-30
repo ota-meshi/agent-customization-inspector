@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="Member extends { readonly sourceId: string }">
 // A file-unit kind's list split into one section per Source family (FR-030,
-// tasks.md T1127): a rule, permissions, or settings row is one file of one
+// tasks.md T1140): a rule, permissions, or settings row is one file of one
 // Source, so the family grouping the name-keyed rows render inside themselves
 // lives here, above the rows.
 //

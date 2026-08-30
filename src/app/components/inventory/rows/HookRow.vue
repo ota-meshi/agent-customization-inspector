@@ -39,7 +39,7 @@ import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text
 import {
   fileIdentityKey,
   SUPPORTED_TOOL_TEXT,
-  inlinePresentationLabel,
+  accessiblePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
 import { HOOK_CARRIER_FORM_TEXT } from '../../../../shared/api-text';
@@ -84,9 +84,9 @@ const eventText = computed(() =>
 const eventIsAuthored = computed(() => props.entry.event !== null && props.entry.event !== '');
 
 /**
- * The row's event as accessible-name text: the single-line label rule, because
- * an accessible name collapses whitespace and would read two invisibly
- * different names as one ({@link inlinePresentationLabel}); the no-event and
+ * The row's event as accessible-name text: it starts with the visible label (WCAG
+ * 2.5.3 Label in Name) and appends the spelled-out presentation where
+ * whitespace would collapse two invisibly different names into one ({@link accessiblePresentationLabel}); the no-event and
  * empty-name cases keep the same copy the visible heading shows.
  */
 const eventAccessibleText = computed(() =>
@@ -94,7 +94,7 @@ const eventAccessibleText = computed(() =>
     ? null
     : props.entry.event === ''
       ? '(empty name)'
-      : inlinePresentationLabel(props.entry.event),
+      : accessiblePresentationLabel(props.entry.event),
 );
 
 /**
@@ -126,8 +126,8 @@ const carrierRows = computed(() => {
       // The accessible name goes through the single-line label rule instead:
       // an accessible name is flattened, so authored whitespace that the drawn
       // label legitimately renders would collapse and two different carriers
-      // could announce identically (FR-025, {@link inlinePresentationLabel}).
-      carrierAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      // could announce identically (FR-025, {@link accessiblePresentationLabel}).
+      carrierAccessibleText: accessiblePresentationLabel(sourceRelativePath),
       // The form is the carrier's, so the first declaration answers for it: a
       // file is one form whichever product read it.
       formText:
@@ -169,23 +169,6 @@ const carrierRows = computed(() => {
   });
 });
 
-/**
- * The comparison this row links to — this declared event's declarations in its
- * first two carriers — or null when the event is declared by fewer than two,
- * where a link would open a comparison with nothing to pair. Every carrier of
- * a named row is comparable by the row's own invariant: its declarations are
- * parsed — a carrier whose reading failed publishes no event, and a binary
- * carrier is diagnostic-only — so its declarations were read
- * (`api-types.ts` § HookDeclarationDto.parseStatus). The compare route's own
- * pickers take over from there: they hold this row's every carrier, so the
- * reader steps to any other pair on the comparison itself instead of composing
- * one here. The no-event row links none: its carriers publish no declaration a
- * comparison would serialize.
- *
- * The pair is drawn from the row's own files rather than from the members a
- * filter left, so the link a reader followed is still there when they come
- * back to the unnarrowed list ({@link NarrowedInventoryRow}).
- */
 /**
  * The comparable identities of this row as route sides, in the row's own
  * order — the set no filter narrows
@@ -256,7 +239,7 @@ const blockCompareRoutes = computed(() => {
     <SourceFamilyBlocks
       :members="carrierRows"
       :member-key="(carrier) => carrier.key"
-      :identities="entry.rowFileIdentities"
+      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: carrier }">
         <p class="aci-hook-row__owner">
@@ -264,9 +247,12 @@ const blockCompareRoutes = computed(() => {
             :to="carrier.detailRoute"
             class="aci-path aci-authored-text"
             :aria-label="
-              eventAccessibleText === null
-                ? carrier.carrierAccessibleText
-                : `${carrier.carrierAccessibleText}: ${eventAccessibleText}`
+              sessionSources.qualifiedLinkName(
+                eventAccessibleText === null
+                  ? carrier.carrierAccessibleText
+                  : `${carrier.carrierAccessibleText}: ${eventAccessibleText}`,
+                carrier.sourceId,
+              )
             "
             >{{ carrier.carrierText }}</NuxtLink
           >

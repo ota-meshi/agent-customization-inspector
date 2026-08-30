@@ -12,6 +12,7 @@
 // of it wherever the table lives: a new member cannot compile until someone has
 // decided how it reads.
 import type {
+  GlobalDisableState,
   FileDetailDto,
   FileOpenTarget,
   GlobalMemberId,
@@ -24,6 +25,7 @@ import type {
   PluginSourceForm,
   ScanProgressPhase,
   SourceKind,
+  SourceSelector,
 } from './api-types';
 import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_ORDER, SUPPORTED_TOOL_TEXT } from './entities';
 
@@ -169,15 +171,15 @@ export const FILE_DETAIL_KIND_TEXT: Readonly<Record<FileDetailDto['kind'], strin
 };
 
 /**
- * What each Source family reads as on the inventory's Source filter. The
- * repository is named by the same word its own summary panel is headed by, and
- * the consented homes by the phrase the consent page and its panel already use
- * for them, so one thing has one name across the product.
- *
- * The family rather than one option per Source: which tool recognized a file is
- * the Tool filter beside this one, so a per-tool Source option asked the same
- * question twice — and a Source ID belongs to one launch, while this selection
- * rides in the inventory's URL.
+ * What each Source family reads as wherever a family heads a group — the
+ * inventory's family blocks and the "All sources" side of its Source filter.
+ * The repository is named by the same word its own summary panel is headed
+ * by, and the consented homes by the phrase the consent page and its panel
+ * already use for them, so one thing has one name across the product. The
+ * filter's own options are per Source — the repository through this table's
+ * word, each consented home through its member's name
+ * (`GLOBAL_MEMBER_TEXT`) — because which Source holds a file is the question
+ * that filter answers (FR-006).
  */
 export const SOURCE_KIND_TEXT: Readonly<Record<SourceKind, string>> = {
   /** The one Source selected from the invocation Repository boundary. */
@@ -205,6 +207,35 @@ export const GLOBAL_MEMBER_ORDER: readonly GlobalMemberId[] = [...SUPPORTED_TOOL
 export const GLOBAL_MEMBER_TEXT: Readonly<Record<GlobalMemberId, string>> = {
   ...SUPPORTED_TOOL_TEXT,
   agents: 'Shared agent home',
+};
+
+/**
+ * What each Source route token reads as where a surface names the Source
+ * itself — a detail or comparison document title (WCAG 2.4.2). The repository
+ * by its family's word and a consented home by its member's name, spread from
+ * the tables those surfaces already use so one thing keeps one name.
+ */
+export const SOURCE_SELECTOR_TEXT: Readonly<Record<SourceSelector, string>> = {
+  repository: SOURCE_KIND_TEXT.repository,
+  'global-copilot': GLOBAL_MEMBER_TEXT.copilot,
+  'global-claude': GLOBAL_MEMBER_TEXT.claude,
+  'global-codex': GLOBAL_MEMBER_TEXT.codex,
+  'global-agents': GLOBAL_MEMBER_TEXT.agents,
+};
+
+/**
+ * What each disable-barrier state reads as on the fenced recovery view
+ * (contracts/http-api.md § disable-global; api-types.ts § GlobalDisableState).
+ * The table sits beside the closed union's consumers so a new member cannot
+ * ship without its sentence (AGENTS.md § User-visible copy policy).
+ */
+export const GLOBAL_DISABLE_STATE_TEXT: Readonly<Record<GlobalDisableState, string>> = {
+  /** Accepted; the barrier is waiting out the work it revoked. */
+  draining: 'Disabling is in progress: waiting for the running work to stop.',
+  /** Drained; the one atomic removal is being committed. */
+  committing: 'Disabling is in progress: removing the personal-setup results.',
+  /** A cleanup failure was retained; the reader can retry or restart. */
+  failed: 'Disabling failed before it finished. Nothing has been re-exposed.',
 };
 
 /**

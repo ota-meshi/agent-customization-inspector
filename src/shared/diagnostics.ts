@@ -94,16 +94,18 @@ export interface DiagnosticRegistryEntry {
  */
 export const DIAGNOSTIC_REGISTRY: Readonly<Record<DiagnosticCode, DiagnosticRegistryEntry>> = {
   /**
-   * A published Source root is unreadable. An unpublished Global tool has
-   * no Source to attach to; the shape its equivalent record takes arrives
-   * with the Global tasks that construct it (data-model.md).
+   * A published Source root is unreadable. A member whose root never
+   * published a Source carries no Diagnostic at all: its refusal is the
+   * control's own `failureCode`, which the consent page states beside that
+   * member (data-model.md § GlobalToolControl; `global-control.ts`
+   * § GlobalMemberOutcome).
    */
   'root-unreadable': {
     ownerKind: 'lifecycle',
     scope: 'source',
     severity: 'error',
     message:
-      'The selected root does not exist or cannot be read as a directory. Check the path and run the inspector again from a readable directory.',
+      'The selected root does not exist or cannot be read as a directory. Check that the directory exists and is readable, then rescan or run the inspector again.',
   },
   /** One published file disappeared or could not be read; {@link DiagnosticOwnerKind} says which files those are. */
   'file-unreadable': {

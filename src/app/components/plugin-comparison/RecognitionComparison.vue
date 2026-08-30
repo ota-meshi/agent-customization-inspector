@@ -109,7 +109,7 @@ const right = computed(() => props.sides[1]);
          would otherwise take them for a live state (FR-009). -->
     <p class="aci-note">
       Whether either plugin is installed, registered with a client, enabled, or trusted is state
-      outside this repository. A component a manifest points at — bundled skills, an `.mcp.json`,
+      this product does not read. A component a manifest points at — bundled skills, an `.mcp.json`,
       hook files, assets — is shown here as the value the file wrote; nothing is opened through that
       value. The files panel lists what each plugin's directory holds, which is where a file like
       that is read.

@@ -905,17 +905,23 @@ export async function runSc002MeasuredRun(
         const statusMillis = performance.now() - start;
         // The ten-second stop: the generation this request committed rendered —
         // it advanced past the automatic scan's baseline — with the complete
-        // row set visible and every primary list control operable: the three
-        // filter controls enabled and visible, and the kind tab selected and
-        // visible. Every row must be visible, not only the endpoints; the
-        // full sweep runs only once the cheap endpoint gate holds, so the
-        // per-frame cost stays bounded while the sweep still gates the stop.
+        // row set visible and every primary list control operable: the filter
+        // controls enabled and visible, and the kind tab selected and visible.
+        // Every row must be visible, not only the endpoints; the full sweep
+        // runs only once the cheap endpoint gate holds, so the per-frame cost
+        // stays bounded while the sweep still gates the stop.
+        //
+        // The source control is deliberately not among them. It renders only
+        // where more than one Source kind is available, because with one it
+        // would offer two options naming the same population
+        // (`InventoryFilters.vue`), and this fixture is a Repository on its
+        // own — so requiring it would wait for a control the measured page
+        // never renders.
         await new Promise<void>((resolve, reject) => {
           const check = (): void => {
             const rows = document.querySelectorAll('[role="tabpanel"] .aci-item');
             const controls = [
               document.getElementById('aci-inventory-filters-path'),
-              document.getElementById('aci-inventory-filters-source'),
               document.getElementById('aci-inventory-filters-tool'),
             ] as (HTMLInputElement | HTMLSelectElement | null)[];
             const kindTab = document.querySelector('[role="tab"][aria-selected="true"]');

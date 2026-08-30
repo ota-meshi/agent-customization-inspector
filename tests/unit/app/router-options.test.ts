@@ -40,13 +40,31 @@ function scrollFor(to: RouteLocationNormalized, from: RouteLocationNormalized) {
 
 /**
  * Renders one inventory row link at a fixed distance below the top of the
- * viewport, standing in for the layout happy-dom does not perform.
+ * viewport, standing in for the layout happy-dom does not perform. Rendered
+ * inside a `data-aci-inventory-rows` container, because the module scopes
+ * itself to the containers the inventory marks as holding row links — a link
+ * outside one is chrome and records no return point.
  */
 function renderLink(href: string, viewportTop: number): HTMLAnchorElement {
+  let rows = document.querySelector('[data-aci-inventory-rows]');
+  if (rows === null) {
+    rows = document.createElement('div');
+    rows.setAttribute('data-aci-inventory-rows', '');
+    document.body.append(rows);
+  }
   const link = document.createElement('a');
   link.setAttribute('href', href);
   link.textContent = href;
   link.getBoundingClientRect = () => new DOMRect(0, viewportTop, 320, 24);
+  rows.append(link);
+  return link;
+}
+
+/** Renders one chrome link outside every row container — the consent entry's shape. */
+function renderChromeLink(href: string): HTMLAnchorElement {
+  const link = document.createElement('a');
+  link.setAttribute('href', href);
+  link.textContent = href;
   document.body.append(link);
   return link;
 }
@@ -120,6 +138,18 @@ describe('the navigation scroll rule', () => {
     recordInventoryReturnPoint('/skills/detail/repository/never-rendered');
 
     expect(scrollFor(inventory, skillDetail)).toEqual({ left: 0, top: 0 });
+  });
+
+  it('records nothing for a chrome link and clears the previous row point', () => {
+    // The consent entry is a link on the page but not a row: returning from
+    // it lands at the ordinary top of the page, and a point recorded from an
+    // earlier row departure must not survive the chrome departure either.
+    const row = renderLink('/skills/detail/repository/a', 40);
+    renderChromeLink('/global-consent');
+    row.focus();
+    recordInventoryReturnPoint('/skills/detail/repository/a');
+    recordInventoryReturnPoint('/global-consent');
+    expect(scrollFor(inventory, routeAt('/global-consent'))).toEqual({ left: 0, top: 0 });
   });
 
   it('keeps only the last departure, which is the one a return was made from', () => {

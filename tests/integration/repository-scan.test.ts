@@ -141,6 +141,7 @@ async function scanOnce(
       visitedEntries: publication.visitedEntries,
       candidateFiles: publication.candidateFiles,
       readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
     });
   } else {
     context.coordinator.failScan(admitted.scanRequestId, {
@@ -281,7 +282,7 @@ describe("a skill's own directory is published with it", () => {
       // Read like any other file, and classified as nothing: no rule admitted
       // it, so it has no recognition, no kind, and no extractor applied to it.
       expect(file.diagnosticIds).toEqual([]);
-      const detail = context.session.fileDetail(file.sourceRelativePath);
+      const detail = context.session.fileDetail(file.sourceRelativePath, 'repository');
       expect(detail?.kind).toBe('file');
     }
   });
@@ -315,7 +316,7 @@ describe("a skill's own directory is published with it", () => {
     expect(publication.kind === 'publishable' && publication.outcome).toBe('complete');
     const row = snapshot.skills.find((entry) => entry.name === 'gar\uFFFDbled');
     expect(row).toBeDefined();
-    const detail = context.session.fileDetail(file!.sourceRelativePath);
+    const detail = context.session.fileDetail(file!.sourceRelativePath, 'repository');
     if (detail?.file.encoding !== 'utf-8-replaced') {
       throw new Error('expected the replacement-decoded variant');
     }
@@ -361,7 +362,7 @@ describe("a skill's own directory is published with it", () => {
     const readme = context.session
       .snapshot()
       .files.find((file) => file.sourceRelativePath === '.agents/skills/greet/README.md');
-    const detail = context.session.fileDetail(readme!.sourceRelativePath);
+    const detail = context.session.fileDetail(readme!.sourceRelativePath, 'repository');
     if (detail?.file.encoding !== 'utf-8') {
       throw new Error('expected a readable companion detail');
     }
@@ -387,7 +388,11 @@ describe("a skill's own directory is published with it", () => {
     // It is named by the skill that ships it, which is how the detail view
     // resolves the directory.
     const greet = snapshot.skills.find((entry) => entry.name === 'greet');
-    expect(greet?.definitions[0]?.companionFiles).toEqual([...fixture.expectedCompanionPaths]);
+    // Path order (compareStrings), never walk order: the census list renders
+    // as a tree whose order must not depend on read order.
+    expect(greet?.definitions[0]?.companionFiles).toEqual(
+      [...fixture.expectedCompanionPaths].toSorted(),
+    );
   });
 });
 
@@ -1286,6 +1291,7 @@ describe('publication authority and relationship targets', () => {
       visitedEntries: publication.visitedEntries,
       candidateFiles: publication.candidateFiles,
       readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
     });
     const snapshot = context.session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(0);
@@ -2063,6 +2069,57 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     }
   });
 
+  it('reads the configuration seed from the directory the walk scans, `link/..` roots included', async () => {
+    // A root spelled through a symbolic link and `..` resolves differently
+    // than it joins: the operating system follows the link before applying
+    // `..`, while a lexical join collapses it first (traversal.ts
+    // § pathUnderRoot, measured there). The configuration seed must be read
+    // by the walk's own path construction, or the scan would be configured
+    // by a different directory's `.codex/config.toml` than the one it
+    // publishes as `codex.repo.config`.
+    const base = createRepositoryFixtureRoot('inspector-scan-linkdot-root');
+    cleanups.push(() => rmSync(base, { recursive: true, force: true }));
+    // The lexical collapse of `<base>/link/..` lands here; its declaration
+    // must configure nothing.
+    mkdirSync(join(base, '.codex'), { recursive: true });
+    writeFileSync(
+      join(base, '.codex/config.toml'),
+      'project_doc_fallback_filenames = ["LEXICAL.md"]\n',
+      'utf8',
+    );
+    // The operating system's resolution of the same spelling: the link's
+    // target's parent, whose declaration is the scan's real configuration.
+    mkdirSync(join(base, 'resolved/inner'), { recursive: true });
+    mkdirSync(join(base, 'resolved/.codex'), { recursive: true });
+    writeFileSync(
+      join(base, 'resolved/.codex/config.toml'),
+      'project_doc_fallback_filenames = ["OS.md"]\n',
+      'utf8',
+    );
+    writeFileSync(join(base, 'resolved/OS.md'), '# configured fallback\n', 'utf8');
+    writeFileSync(join(base, 'resolved/LEXICAL.md'), '# the other file\n', 'utf8');
+    symlinkSync(join(base, 'resolved/inner'), join(base, 'link'));
+
+    const publication = await runSourceScan({
+      sourceId: 'src-linkdot-root',
+      // Concatenated, never `join`ed: `join` collapses the `..` lexically —
+      // the exact behavior under test — so it would hand the scan the plain
+      // base directory instead of the link-crossing spelling.
+      root: [base, 'link', '..'].join(sep),
+      rootFailureOwner: 'repository',
+      scope: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const paths = publication.files.map((file) => file.sourceRelativePath);
+    // The walk scanned `<base>/resolved`, so the seed configured `OS.md` —
+    // never the lexical directory's `LEXICAL.md`.
+    expect(paths).toContain('OS.md');
+    expect(paths).toContain('.codex/config.toml');
+    expect(paths).not.toContain('LEXICAL.md');
+  });
+
   it('configures nothing from a malformed carrier while its failed recognition publishes', async () => {
     const root = createRepositoryFixtureRoot('inspector-scan-instructions-malformed');
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
@@ -2514,7 +2571,7 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
       },
       // The cross-Source pair's Repository half: two Copilot carriers of one
       // name, so the row's Repository block can offer its own comparison
-      // entry, spelled to pair with the Global homes fixture (T1127, FR-030).
+      // entry, spelled to pair with the Global homes fixture (T1140, FR-030).
       {
         name: 'tickets',
         declarations: [
@@ -2650,8 +2707,41 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // with whichever recognition sits first: Claude's parsed-empty reading
     // contributes nothing, and the CLI's names are served, not null
     // (contracts/http-api.md § get-mcp-carrier-detail).
-    const detail = context.session.mcpCarrierDetail('.mcp.json');
+    const detail = context.session.mcpCarrierDetail('.mcp.json', 'repository');
     expect(detail?.servers?.map((server) => server.name)).toEqual(['alpha', 'beta']);
+  });
+
+  it('reads the seed whose carrier file is a link, exactly as the walk publishes it', async () => {
+    // Only the carrier *file* is a link — into `.git`, even — while `.codex`
+    // itself is an ordinary directory. The walk resolves descent, not file
+    // entries: a linked file is inventoried on its authored location's terms
+    // (FR-024), so `.codex/config.toml` is a published candidate here, and
+    // the configuration read must judge the same spelling at the same
+    // granularity — the parent chain — or the scan would refuse to derive
+    // from a carrier whose declaration the inventory shows.
+    const root = createRepositoryFixtureRoot('inspector-scan-linked-seed');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.git'), { recursive: true });
+    writeFileSync(
+      join(root, '.git/real-config.toml'),
+      'project_doc_fallback_filenames = ["TEAM_GUIDE.md"]\n',
+      'utf8',
+    );
+    writeFileSync(join(root, 'TEAM_GUIDE.md'), '# configured fallback body\n', 'utf8');
+    mkdirSync(join(root, '.codex'), { recursive: true });
+    try {
+      symlinkSync(join(root, '.git/real-config.toml'), join(root, '.codex/config.toml'));
+    } catch {
+      // The platform (or its configuration) does not permit creating the
+      // link, so the case under test cannot exist here.
+      return;
+    }
+    const context = bootstrap(root);
+    await scanOnce(context);
+    const snapshot = context.session.snapshot();
+    const paths = snapshot.files.map((file) => file.sourceRelativePath);
+    expect(paths).toContain('.codex/config.toml');
+    expect(paths).toContain('TEAM_GUIDE.md');
   });
 
   it('reads no configuration seed through a link into VCS internals', async () => {
@@ -3299,6 +3389,58 @@ describe('the Claude plugin scan (T777)', () => {
       expect(paths).not.toContain('Node_Modules/acme/index.js');
       expect(paths).not.toContain('node_modules/acme/index.js');
     }
+  });
+
+  it('refuses an excluded declared root before enumerating its ancestors', async () => {
+    // `./node_modules/pkg` and `./.git/pkg` are spellings a catalog file can
+    // ask for, and the census publishes nothing from either. The refusal must
+    // come before the spelling verification enumerates the declared root's
+    // ancestors: that check reads each ancestor's entries, so without the
+    // gate it would list inside the excluded directory — and a permission
+    // error there would fail the whole scan over a place the inventory never
+    // reports (FR-029; scan.ts § hasExcludedDirectorySegment).
+    const root = createRepositoryFixtureRoot('inspector-claude-plugin-excluded');
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, '.claude-plugin'), { recursive: true });
+    writeFileSync(
+      join(root, '.claude-plugin/marketplace.json'),
+      `${JSON.stringify({
+        name: 'excluded',
+        plugins: [
+          { name: 'installed', source: { source: 'local', path: './node_modules/pkg' } },
+          { name: 'store', source: { source: 'local', path: './.git/pkg' } },
+          { name: 'ordinary', source: { source: 'local', path: './plugins/pkg' } },
+        ],
+      })}\n`,
+      'utf8',
+    );
+    mkdirSync(join(root, 'node_modules/pkg'), { recursive: true });
+    writeFileSync(join(root, 'node_modules/pkg/index.js'), 'module.exports = {};\n', 'utf8');
+    mkdirSync(join(root, '.git/pkg'), { recursive: true });
+    writeFileSync(join(root, '.git/pkg/config.md'), '# store\n', 'utf8');
+    mkdirSync(join(root, 'plugins/pkg'), { recursive: true });
+    writeFileSync(join(root, 'plugins/pkg/notes.md'), '# notes\n', 'utf8');
+    // Unreadable excluded directories are what tell a refusal-before-listing
+    // from a listing whose results are merely dropped: enumerating either
+    // would throw EACCES and fail the attempt.
+    for (const excluded of ['node_modules', '.git'] as const) {
+      chmodSync(join(root, excluded), 0o000);
+      cleanups.push(() => chmodSync(join(root, excluded), 0o700));
+    }
+
+    const publication = await runSourceScan({
+      sourceId: 'src-claude-plugin-excluded',
+      root,
+      rootFailureOwner: 'repository',
+      scope: 'repository',
+    });
+    if (publication.kind !== 'publishable') {
+      throw new Error('expected a publishable outcome');
+    }
+    const paths = publication.files.map((file) => file.sourceRelativePath);
+    expect(paths).toContain('plugins/pkg/notes.md');
+    expect(paths).not.toContain('node_modules/pkg/index.js');
+    expect(paths).not.toContain('.git/pkg/config.md');
   });
 
   it('keeps what a manifest placement establishes when its text does not parse', async () => {
@@ -4233,7 +4375,7 @@ describe('the unified settings and configuration inventory (T646)', () => {
         ],
       },
     ]);
-    const detail = context.session.fileDetail('.github/copilot/settings.json');
+    const detail = context.session.fileDetail('.github/copilot/settings.json', 'repository');
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable settings file detail');
     }
@@ -4392,7 +4534,7 @@ describe('the committed Claude settings inventory (T610)', () => {
     ]);
     // And the document still reaches its own detail whole, because that row's
     // subject is the file rather than the block a parser rejected.
-    const detail = context.session.fileDetail('.claude/settings.json');
+    const detail = context.session.fileDetail('.claude/settings.json', 'repository');
     if (detail?.kind !== 'settings/config' || detail.file.encoding !== 'utf-8') {
       throw new Error('expected the readable settings file detail');
     }
@@ -4555,7 +4697,7 @@ describe('the committed Codex custom-agent inventory (T509, T524)', () => {
     expect(failed.diagnosticIds).toEqual(malformed.diagnosticIds);
     // The complete source is still what the detail serves, and the parse
     // publishes nothing rather than the half that would have parsed (FR-028).
-    const detail = context.session.fileDetail(fixture.malformedAgentPath);
+    const detail = context.session.fileDetail(fixture.malformedAgentPath, 'repository');
     expect(detail).toMatchObject({ kind: 'agent', presentation: null });
     expect(detail!.file.encoding).toBe('utf-8');
   });
@@ -4566,7 +4708,7 @@ describe('the committed Codex custom-agent inventory (T509, T524)', () => {
     const context = bootstrap(fixture.root);
     await scanOnce(context);
 
-    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath);
+    const detail = context.session.fileDetail(fixture.mcpSpellingAgentPath, 'repository');
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed custom-agent detail');
     }
@@ -4699,7 +4841,7 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     ]);
     // The detail the fixed order settles on carries the parse both routes
     // draw, in the shape that variant publishes it.
-    const detail = context.session.fileDetail('.claude/agents/CLAUDE.md');
+    const detail = context.session.fileDetail('.claude/agents/CLAUDE.md', 'repository');
     if (detail?.kind !== 'instructions' || detail.presentation === null) {
       throw new Error('expected a parsed instructions detail');
     }
@@ -4716,7 +4858,7 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     const context = bootstrap(fixture.root);
     await scanOnce(context);
 
-    const detail = context.session.fileDetail(fixture.mcpFrontmatterAgentPath);
+    const detail = context.session.fileDetail(fixture.mcpFrontmatterAgentPath, 'repository');
     if (detail?.kind !== 'agent' || detail.presentation === null) {
       throw new Error('expected a parsed subagent detail');
     }
@@ -4742,7 +4884,7 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
 
     // The referencing agent's memory scope, preloaded skills, and agent
     // reference are declared values on the same terms.
-    const referencing = context.session.fileDetail(fixture.referencingAgentPath);
+    const referencing = context.session.fileDetail(fixture.referencingAgentPath, 'repository');
     if (referencing?.kind !== 'agent' || referencing.presentation === null) {
       throw new Error('expected a parsed subagent detail');
     }

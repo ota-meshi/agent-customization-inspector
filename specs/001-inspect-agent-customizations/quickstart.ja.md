@@ -80,8 +80,7 @@ pnpm run build
   audit済みNode JavaScriptへ対応させ、argvだけをforwardして追加input/application logicを持たせない。
   `open` packageのvendoredなPOSIX shell `xdg-open`はpayload内の唯一の例外である
   （spec.md FR-038）: Linux hostでは、package自身の選択policyがvendored copyを実行可能である限り使い、
-  そうでないときにsystemの`xdg-open`へfallbackする。生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
-  `open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageとlockfileが所有する。
+  そうでないときにsystemの`xdg-open`へfallbackする。生成HTML shell、CSS、JSON file、必須documentation/license fileはdeclarativeかつnon-executableなartifactとする。Directなproduction dependencyは正確に11件、`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageとlockfileが所有する。
 - Build outputにfixture、raw customization text、Global content、cache、inspected machineを公開する
   source-map pathが含まれない。
 
@@ -180,7 +179,7 @@ launchを終了させる。
   process-loss保証を定義しない。Portを再利用して再起動しても`sessionId`が変わり、purge前にcaptureしたresponseも
   session identityが一致しないresponseも、以前の表示stateを復元しない。
 - Sessionはloopback bindの背後でunauthenticatedである。Productはper-session token、Origin/Host
-  check、hand-written routerを追加せず、browser storage/cookieへ何も保存しない。Inspector実行中は
+  check、hand-written routerを追加せず、session identity・credential・inspectedな値をbrowser storage/cookieへ保存しない。保存されるのはFR-044の2つのpresentation preference（配色とopen先）だけで、どちらもinspectedな値を持たない。Inspector実行中は
   他のlocal processと、DNS rebinding経由のmalicious web pageがsessionへ到達し得ることを、
   documentedなresidual
   limitationとする。
@@ -199,9 +198,11 @@ macOSではまず、起動中のChromium系browserが既に表示originを開い
 （固定のprocess一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script）、
 それ以外の場合は表示origin付きで`open`の固定OS helperをspawnし、devframeのbundled openerは
 無効化されてproductのopenerだけが動く。このfixed startup openingがinitial releaseで
-readerが明示的に要求するopen-in-editorと並ぶ、許可するproductのchild-process surfaceであり、spawnされるどのprocessも固定の引数と表示origin
-だけを受け取り、inspection由来のcontent、path、authored value、
-user-supplied commandを受け取らず、launch environmentを変更なしで継承する — productはそこへ
+readerが明示的に要求するopen-in-editorと並ぶ、許可するproductのchild-process surfaceである。
+Startup openerのprocessは固定の引数と表示originだけを受け取る。Open-in-editor requestは
+それに加えて正確に1つの値 — readerが開くよう求めたcommitted fileのabsolute path、それがこの機能そのもの —
+を渡し、authored contentやuser-supplied commandは渡さない。spawnされるどのprocessも
+launch environmentを変更なしで継承する — productはそこへ
 inspection由来の値を書き込まず、user自身の`$BROWSER`を尊重するplatform helperはuser preferenceを
 適用している。CLIのnegatableな`--open` flag
 （default true）が`--no-open`のsuppressionを提供する。Openerがmissingまたはfailedでもserverは
@@ -280,8 +281,8 @@ pnpm run test:e2e
   graceful shutdownを検証する。これはpackaged pathだけのisolationであり、現行gateはtarballをinstallせず、
   installed package linkもinvokeしない。T917が、isolated fixtureへpack/installし、working treeまたは
   runtime downloadへ依存せず`npx --no-install`でlaunchするfinal-release testを所有する。
-  Production-graph testは承認済みのdirect dependency 9 件、すなわち
-  `devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`を正確にassertし（resolved versionとintegrity hashは
+  Production-graph testは承認済みのdirect dependency 11 件、すなわち
+  `devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
   missingまたはnon-regularなrequired entry pointがpublish前に`verify:package`をfailさせることを証明する。
 - Performance suiteはpackaged CLI（先にbuildする）に対してSC-002 release protocolを実行する。
@@ -570,12 +571,13 @@ pnpm exec playwright test tests/e2e/repository-complete-comparison.spec.ts
 
 ### 4. Global inspectionへのopt-in
 
-preview と、確認のうち Codex と Claude の member が現時点で出荷されている部分です。Copilot と
-共有 agent home の member port、retry、disable は、それらを bind する各 phase とともに到着します。
-したがって、ここでの確認は Codex と Claude の slot を評価します。
+opt-in の全体が出荷されています: preview、固定4 memberの確認、memberごとの再スキャン、
+same-preview retry、そしてすべてのGlobal結果を再び除去する優先disable barrierです。
 
 ```bash
 pnpm exec playwright test tests/e2e/global-consent-preview.spec.ts
+pnpm exec playwright test tests/e2e/global-consent.spec.ts
+pnpm exec playwright test tests/e2e/global-disable.spec.ts
 pnpm exec playwright test tests/e2e/global-codex-admission.spec.ts
 pnpm exec playwright test tests/e2e/global-claude-admission.spec.ts
 pnpm exec vitest run --project unit tests/unit/host/global-consent.test.ts
@@ -588,7 +590,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
 
 1. Consent前にGlobal pathへ一切touchせず、previewを`stat`、`realpath`、enumeration、file readなしでlexicalに
    派生する。Instrumented captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に1回ずつcaptureし、
-   `undefined`だけをabsentとし、いずれかがabsentの場合だけ`node:os.homedir()`を正確に1回callし、active-platform
+   `undefined`だけをabsentとし、`node:os.homedir()`をpreviewごとに正確に1回callし — 共有agent homeは常にそこから導出される — active-platform
    `node:path.join`が対応する固定suffixだけを適用することを証明する。`HOME`/`USERPROFILE`の直接選択もexistence checkも行わない。
 2. Consent viewが正確なCopilot/Claude/Codex lexical root、input state、除外を表示し、
    read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。previewが束縛する2つのversionは
@@ -600,14 +602,15 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
 3. Opt-in後は文書化されたmember candidateだけが0から4つの別識別member Global Sourceに表示される。
    Copilot、Claude、Codexごとに最大1つで、各Sourceは正確に1つのrootを持つ。Initial/retry transactionでadmitされた
    全Sourceは、観測可能なper-tool commitなしに1つのatomicなGlobal generationへ一緒に現れる — enable commitは
-   Repositoryのviewとstateに触れずにGlobal sequenceをgeneration 1で作成する。ReadableなRepository file 1つとGlobal file
-   1つを比較し、rootを統合せずsemanticな判定を行わず、それぞれが独立して識別されたowning SourceとSource-relative Pathの
-   下に残ることを検証する。
+   Repositoryのviewとstateに触れずにGlobal sequenceをgeneration 1で作成する。同じrowの2つのconsent済みhomeのreadableなfileを比較し
+   — comparisonは1つのSource familyの内側に留まるため、Repository fileがそのpairのsideとして提示されることはない
+   （spec.md § Clarifications Session 2026-08-28）— rootを統合せずsemanticな判定を行わず、それぞれが独立して識別された
+   owning SourceとSource-relative Pathの下に残ることを検証する。
 4. Present-empty、relative、invalidのenv overrideは固定preview state/messageを使い、retained Diagnosticを
    作らずdefaultへ黙ってfallbackしない。設定がabsentの場合だけdefaultを使う。Consent済みrootがmissingまたは
    readableなdirectoryでない場合は、他のtoolのcommitを妨げずそのtoolをabsentまたはfailedとして記録する。
    Eligibleなabsolute rootは通常のhome外でもeligibleであり、その場所だけを理由にrejectしたりconsent前I/O authorityを
-   与えたりしない。All-invalid preview、またはconsent後に3 rootすべてがabsentと判明するeligible previewも
+   与えたりしない。All-invalid preview、またはconsent後に4 rootすべてがabsentと判明するeligible previewも
    all-tools confirmationを1回受けてよく、deterministicallyに
    `active-no-job`になる。
 5. 注入したunexpectedなadmission failureはtransaction全体をabortさせる。Initial enableはそのfailureの
@@ -619,9 +622,9 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    を特定するrecordレベルの`allowlistVersion`/`traversalPlanVersion` pairも保持する。Display fieldをraw fieldの代用にしない。Enableはfrozen raw
    valueとstored planだけを使い、environmentを再読込せず、`displayRoot`をreverse-convertしない。Recordが別fieldを保持し、admissionが
    stored raw valueを使うことをescape-collision、control-character、backslash fixtureで証明する。
-   Previewで2 entryがeligible、1 entryがinvalidの場合もrequest側tool selectorは持たない。Initial enableは固定の
-   `confirmedTools: [copilot, claude, codex]`を導出して3つすべてをevaluateする。Responseのdisjointな
-   `acceptedTools`/`rejectedTools`のunionは3つすべてと一致する。`tools` keyなどselector-shaped inputはrejectする。
+   Previewにeligibleとinvalidのentryが混在してもrequest側tool selectorは持たない。Initial enableは固定の
+   `confirmedTools: [copilot, claude, codex, agents]`を導出して4つすべてをevaluateする。Responseのdisjointな
+   `acceptedTools`/`rejectedTools`のunionは4つすべてと一致する。`tools` keyなどselector-shaped inputはrejectする。
    Retryはnon-pending unpublished `admitted` controlと`same-preview` rejected controlからなるcomplete fixed-order
    `retryableTools` projectionをderiveし、published、pending、lexicalな`new-preview-required` controlを除外する。Clientは
    targetを追加、subset化、reorderできない。同じexact active consentはprojectionがnonemptyの場合だけ再利用でき、既存Sourceは
@@ -675,7 +678,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    disabledとして固定の`global-enable-in-progress` conflictを返す。その後はexact nonempty `retryableTools` projectionを使用して成功済みSourceを
    保持する。Lexicalな`new-preview-required` controlにはdisable/new previewを要求し、disableは直ちに利用できる。
 10. Initial activationで4 memberすべてがlexicalまたはconsent後root validationでdeterministicallyにrejectされた場合、enableはempty
-    `acceptedTools`、3つすべての`rejectedTools`、Source/job/generation/stale entryなしの`active-no-job`を返す。
+    `acceptedTools`、4つすべての`rejectedTools`、Source/job/generation/stale entryなしの`active-no-job`を返す。
     `globalControl`はsame-preview rejected controlだけをretryableとしてactiveのままとし、lexicalな`new-preview-required` controlを
     除外する。したがってall-lexically-invalid previewの`retryableTools`はemptyでdisable/new previewを必要とする。Preview routeは
     同じfrozen previewを返し、disableも利用できる。
@@ -1182,8 +1185,7 @@ exact `package.json.files` entryの`dist`、`README.md`、`README.ja.md`、`LICE
 を含むことをassertする。残りの`dist` contentはNuxt/tsdownのbuild outputであり、
 product manifestで再列挙しない。Exact `bin` mappingと
 `main`/`module`/`exports`不在、license notice、保持されたexact shebang、
-公開README pairを確認する。Directなproduction dependencyは正確に9件、`devframe`、`gunshi`、`h3`、
-`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageと
+公開README pairを確認する。Directなproduction dependencyは正確に11件、`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`とする。devframeと`open`のtransitive treeはそれぞれのpackageと
 lockfileが所有する。
 
 再実行すべきhost-securityやHTTP-API-router contract stepは存在しない。devframeがhosting policy
@@ -1199,7 +1201,7 @@ initial baselineをno impactとして記録する。それ以外では必要なc
 rollback/support pathを記録する。Evidenceが欠落するか一方の言語だけならrelease gateをfailureとする。
 
 承認済みproduction dependency setを`package.json`と`pnpm-lock.yaml` closureからassertする。すなわちdirect
-dependency 9 件、`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`yaml`を正確にassertし、graph変更は
+dependency 11 件、`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`を正確にassertし、graph変更は
 dependency決定が明示的に見直されるまでgateをfailさせる。各resolved versionとそのintegrity hashはcommit済み
 lockfileが所有し、全production packageのpayload byteをpinするのはこのlockfileである。
 Exactな宣言済み

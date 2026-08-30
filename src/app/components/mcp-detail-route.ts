@@ -11,13 +11,6 @@
 import { detailRoute, toJsonStringBody, type SourceSelector } from './detail-route';
 
 /**
- * The detail route for one MCP carrier. Each path segment is percent-encoded
- * so an authored entry name cannot smuggle a separator or a query into the
- * URL, while the `/` separators stay separators for the catch-all route to
- * split on — the same encoding the skill and instruction routes use.
- */
-
-/**
  * The detail route for one server declaration: the carrier's route selecting
  * the declared name. The name is percent-encoded whole — it is a TOML key,
  * so a `/`, `&`, or `=` in it is authored text rather than URL structure.

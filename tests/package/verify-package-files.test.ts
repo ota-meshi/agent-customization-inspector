@@ -6,6 +6,7 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -139,6 +140,31 @@ describe('verifyPackageFiles', () => {
   });
 });
 
+describe('the packaged browser bundle carries no maintenance-only registry data', () => {
+  // The SPA imports the same registries (`GlobalConsentPreview.vue` renders
+  // the excluded-rule IDs), so the same `__ACI_SHIP_MAINTENANCE_DATA__`
+  // substitution must hold in the Vite build (`nuxt.config.ts` vite.define) —
+  // and it fails just as silently there, so the guarantee is asserted against
+  // every emitted JavaScript asset of the published browser tree.
+  it('folds citations, policy references, and locators out of every asset', () => {
+    const assetsDir = join(REPO_ROOT, 'dist', 'public', '_nuxt');
+    const assets = readdirSync(assetsDir).filter((name) => name.endsWith('.js'));
+    expect(assets.length).toBeGreaterThan(0);
+    for (const name of assets) {
+      const bundle = readFileSync(join(assetsDir, name), 'utf8');
+      for (const field of ['officialHost', 'reviewedOn', 'establishes', 'lookupBase']) {
+        expect(bundle, `${name}: ${field}`).not.toMatch(
+          new RegExp(String.raw`\b${field}\s*:`, 'u'),
+        );
+      }
+      for (const [, value] of bundle.matchAll(/policyRefs\s*:\s*(\[[^\]]*\])/gu)) {
+        expect(value, name).toBe('[]');
+      }
+      expect(bundle, name).not.toMatch(/["'](?:FR|QR)-\d{3}["']/u);
+    }
+  });
+});
+
 describe('the packaged CLI carries no maintenance-only registry data', () => {
   // Evidence citations, vendor locators, and policy references are compiled out by the
   // `__ACI_SHIP_MAINTENANCE_DATA__` define in `tsdown.config.ts`
@@ -184,6 +210,13 @@ describe('the packaged CLI carries no maintenance-only registry data', () => {
     expect(bundle).not.toContain('relativeSelector');
     expect(bundle).not.toContain('ancestor-chain-to-repository-root');
     expect(bundle).not.toContain('standard-location-chain');
-    expect(bundle).not.toContain('.agents/skills/<name>/SKILL.md');
+    // The selector's own spelling also appears in shipped JSDoc, where a
+    // matcher's doc comment quotes what the contract table shows — prose, not
+    // a locator — so the assertion is on the emitted data form, as the
+    // evidence and policy-reference cases above are. A locator that survived
+    // would carry the path in a string, whether alone or as one of the
+    // semicolon-joined alternatives a `relativeSelector` spells; only the
+    // backtick-quoted comment form is excluded.
+    expect(bundle).not.toMatch(/(?<!`)\.agents\/skills\/<name>\/SKILL\.md/u);
   });
 });

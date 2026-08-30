@@ -38,10 +38,13 @@ export abstract class SkillCollisionPolicy {
    * of one directory clash on different rows. A vendor whose clash is
    * row-internal ignores the view-wide definitions
    * ({@link rowInternalCollisionGate}). Definitions rather than bare paths,
-   * because a clash is scoped to one Source: the repository's `deploy` and a
-   * consented home's `deploy` are two different places' skills, and a rule
-   * quoted about one root must not be attached on the strength of the other
-   * (FR-030; spec.md § FR-007 — "of the same generation").
+   * because what a definition is — which Source it is in, what its file
+   * declares, whether its extraction parsed — is what each vendor's own rule
+   * reads: Codex and Copilot invoke the authored name, so two members'
+   * files sharing one name are one clash however many Sources they span,
+   * while Claude's rule is about one root's tree and scopes its clash to a
+   * single Source (`claude/skill-collision.ts`). A bare path could answer
+   * neither question (FR-030; spec.md § FR-007 — "of the same generation").
    */
   public abstract collisionGate(
     viewDefinitions: readonly SameNameCollisionDefinition[],

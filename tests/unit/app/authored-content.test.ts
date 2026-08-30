@@ -161,6 +161,7 @@ describe('authored file content in the browser', () => {
       ),
     ];
     expect(surface.toSorted()).toEqual([
+      'activeGlobalScans',
       'activeScanRequestId',
       // The consent preview's capture: it reads the three environment
       // properties and nothing on disk, so it uncovers nothing — a preview
@@ -189,12 +190,20 @@ describe('authored file content in the browser', () => {
       // What a plugin manifest's own request failed with: a message about a
       // file, never any of its content, in the slot the manifest is shown in.
       'entryDetailError',
+      'fenceRecovery',
       'fileDetailState',
       // What the confirmation returned, and whether one is in flight. The
       // result names tools rather than files, so it carries no authored
       // content: consent is about which directories may be read at all.
+      'globalDisableState',
       'globalEnableResult',
       'globalEnableState',
+      // The Global rescan command's own slots, beside the Repository's: each
+      // dispatches a scan of already-consented state and uncovers nothing
+      // (contracts/http-api.md § rescan-global).
+      'globalRescanRejection',
+      'globalRescanSourceId',
+      'globalRescanState',
       // The hook comparison view (FR-011): the hook kind's own two ordinary
       // carrier-detail loads of declarations alone — a hook carrier's source
       // reaches no surface (FR-007), so neither side has anything to mask or
@@ -208,6 +217,10 @@ describe('authored file content in the browser', () => {
       // two ordinary detail loads, with the same guards as the skill one and
       // nothing that masks or reveals either side.
       'instructionComparison',
+      // Bumped when a post-purge adoption asks the shell to land on the
+      // inventory (data-model.md § RecoveryViewState): a navigation counter,
+      // never content, and the opposite of a reveal.
+      'inventoryResumeRequests',
       // Reads whatever consent preview the host already holds. It captures
       // nothing, so arriving on the consent route is not itself an act.
       'loadConsentPreview',
@@ -260,7 +273,9 @@ describe('authored file content in the browser', () => {
       'releasePageSubject',
       'reportChannelLost',
       'reportPageSubject',
+      'requestGlobalDisable',
       'requestRescan',
+      'rescanGlobalSource',
       'rescanRejection',
       'rescanState',
       'sessionErrorMessage',

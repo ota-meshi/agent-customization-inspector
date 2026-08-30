@@ -35,7 +35,7 @@ describe('closed diagnostic registry', () => {
   it('gives every code a fixed problem statement and practical next step', () => {
     const messages: Record<DiagnosticCode, string> = {
       'root-unreadable':
-        'The selected root does not exist or cannot be read as a directory. Check the path and run the inspector again from a readable directory.',
+        'The selected root does not exist or cannot be read as a directory. Check that the directory exists and is readable, then rescan or run the inspector again.',
       'file-unreadable':
         'This file could not be read. It may have been removed or its permissions may deny reading; other files were unaffected. Check that the file exists and is readable, then rescan.',
       'file-content-binary':

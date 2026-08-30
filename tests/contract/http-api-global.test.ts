@@ -33,6 +33,8 @@ import type {
   CommandResult,
   GlobalConsentPreviewDto,
   GlobalEnableResultDto,
+  ScanAdmission,
+  SessionSnapshot,
 } from '../../src/shared/api-types';
 
 /** One registered RPC function as captured from the definition's `setup`. */
@@ -669,5 +671,381 @@ describe('the preview freeze once consent exists', () => {
     expect((read.handler() as CommandResult<GlobalConsentPreviewDto>).data.previewId).toBe(
       preview.previewId,
     );
+  });
+});
+
+describe('rescan-global (T1008; contracts/http-api.md § rescan-global)', () => {
+  let fixture: GlobalHomeFixture;
+
+  /** The acceptance payload, or a failure naming what came back. */
+  function acceptedData<Data>(result: unknown): Data {
+    const success = result as CommandResult<Data>;
+    if (typeof success !== 'object' || success === null || !('data' in success)) {
+      throw new Error(`expected an acceptance, got ${JSON.stringify(result)}`);
+    }
+    return success.data;
+  }
+
+  beforeEach(() => {
+    fixture = buildGlobalHomeFixture();
+    for (const [variable, value] of Object.entries(fixture.environment)) {
+      process.env[variable] = value;
+    }
+    process.env.HOME = fixture.home;
+  });
+
+  afterEach(() => {
+    chmodSync(fixture.homes.codex, 0o700);
+    rmSync(fixture.base, { recursive: true, force: true });
+  });
+
+  /** One host with its functions and context, enabled and fully published. */
+  async function publishedHost(): Promise<{
+    context: InspectorHostContext;
+    rescan: (body: unknown) => Promise<unknown>;
+    codexSourceId: string;
+  }> {
+    const context = hostContext();
+    const functions = new Map<string, CapturedRpcFunction>();
+    createInspectorDevframe(context).setup?.(
+      {
+        rpc: {
+          register(fn: CapturedRpcFunction) {
+            functions.set(fn.name, fn);
+          },
+        },
+      } as never,
+      undefined as never,
+    );
+    const create = functions.get('agent-customization-inspector:create-global-consent-preview')!;
+    const enable = functions.get('agent-customization-inspector:enable-global')!;
+    const rescan = functions.get('agent-customization-inspector:rescan-global')!;
+    expect(rescan.type).toBe('action');
+    const preview = payload(create.handler());
+    acceptedData(
+      await (enable.handler as (body: unknown) => Promise<unknown>)({
+        confirmed: true,
+        allowlistVersion: preview.allowlistVersion,
+        previewId: preview.previewId,
+      }),
+    );
+    await expect
+      .poll(() => context.session.snapshot().globalControl?.batchStatus, { timeout: 10_000 })
+      .toBeNull();
+    const codexSourceId = context.session
+      .snapshot()
+      .sources.find((source) => source.member === 'codex')!.sourceId;
+    return {
+      context,
+      rescan: rescan.handler as (body: unknown) => Promise<unknown>,
+      codexSourceId,
+    };
+  }
+
+  it('rejects an unknown or non-Global Source ID as the stale resource it names', async () => {
+    const { context, rescan } = await publishedHost();
+    expect(await rescan({ sourceId: 'no-such-source' })).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    // The Repository Source is not an enabled member Global Source, so its ID
+    // is outside this command whatever the session holds at it.
+    const repositoryId = context.session
+      .snapshot()
+      .sources.find((source) => source.kind === 'repository')!.sourceId;
+    expect(await rescan({ sourceId: repositoryId })).toEqual({
+      error: { code: 'stale-resource' },
+    });
+    // A missing or non-object argument resolves the same way (contracts:
+    // Host requirements 6): the wire can send anything, and a value that
+    // names no Source takes the declared rejection rather than a thrown
+    // field read.
+    expect(await rescan(null as never)).toEqual({ error: { code: 'stale-resource' } });
+    expect(await rescan(undefined as never)).toEqual({ error: { code: 'stale-resource' } });
+  });
+
+  it('admits one command per Source, correlates its ID, and commits N+1', async () => {
+    const { context, rescan, codexSourceId } = await publishedHost();
+    const before = context.session.snapshot();
+    const admission = acceptedData<ScanAdmission>(await rescan({ sourceId: codexSourceId }));
+    // The admission names the command and the Source it is for, and the same
+    // opaque ID rides on the Source's own progress (FR-030).
+    expect(admission.source.sourceId).toBe(codexSourceId);
+    expect(admission.source.status).toBe('scanning');
+    expect(admission.source.progress?.scanRequestId).toBe(admission.scanRequestId);
+    // A second command for the same Source while the first is running or
+    // queued is the declared conflict, never a coalesced or second read.
+    expect(await rescan({ sourceId: codexSourceId })).toEqual({
+      error: { code: 'scan-in-progress' },
+    });
+    await expect
+      .poll(() => context.session.snapshot().globalGeneration, { timeout: 10_000 })
+      .toBe((before.globalGeneration ?? 0) + 1);
+    const after = context.session.snapshot();
+    // The Global sequence advanced exactly once; the Repository sequence and
+    // every Source ID stayed as they were.
+    expect(after.repositoryGeneration).toBe(before.repositoryGeneration);
+    expect(after.sources.map((source) => source.sourceId).toSorted()).toEqual(
+      before.sources.map((source) => source.sourceId).toSorted(),
+    );
+    expect(after.snapshotState).toBe('current');
+  });
+
+  it('retains a failed rescan as that Source’s stale overlay and recovers on retry', async () => {
+    const { context, rescan, codexSourceId } = await publishedHost();
+    const before = context.session.snapshot();
+    const codexFiles = before.files.filter((file) => file.sourceId === codexSourceId);
+    expect(codexFiles.length).toBeGreaterThan(0);
+    chmodSync(fixture.homes.codex, 0o000);
+    if (statSync(fixture.homes.codex).mode & 0o700) {
+      // Running as root, or a filesystem that ignores the mode: the failing
+      // premise cannot be materialized here.
+      return;
+    }
+    try {
+      acceptedData(await rescan({ sourceId: codexSourceId }));
+      await expect
+        .poll(() => context.session.snapshot().snapshotState, { timeout: 10_000 })
+        .toBe('stale-after-fatal-rescan');
+      const stale = context.session.snapshot();
+      // The failed attempt committed nothing: the retained graph — files and
+      // IDs — stays exactly as the last commit published it, and one entry
+      // explains that it is stale (contracts/http-api.md § rescan-global).
+      expect(stale.globalGeneration).toBe(before.globalGeneration);
+      expect(stale.files.filter((file) => file.sourceId === codexSourceId)).toEqual(codexFiles);
+      expect(stale.staleFailures.map((entry) => entry.sourceId)).toEqual([codexSourceId]);
+      expect(stale.staleFailures[0]?.baseGeneration).toBe(before.globalGeneration);
+      expect(stale.sources.find((source) => source.sourceId === codexSourceId)?.status).toBe(
+        'failed',
+      );
+      expect(
+        stale.sources.find((source) => source.sourceId === codexSourceId)?.progress,
+      ).toBeNull();
+    } finally {
+      chmodSync(fixture.homes.codex, 0o700);
+    }
+    // A later successful rescan of the same Source replaces its graph
+    // atomically and clears the overlay.
+    acceptedData(await rescan({ sourceId: codexSourceId }));
+    await expect
+      .poll(() => context.session.snapshot().snapshotState, { timeout: 10_000 })
+      .toBe('current');
+    const recovered = context.session.snapshot();
+    expect(recovered.globalGeneration).toBe((before.globalGeneration ?? 0) + 1);
+    expect(recovered.staleFailures).toEqual([]);
+  });
+});
+
+describe('disable-global (T1018; contracts/http-api.md § disable-global)', () => {
+  let fixture: GlobalHomeFixture;
+
+  /** The acceptance payload, or a failure naming what came back. */
+  function acceptedData<Data>(result: unknown): Data {
+    const success = result as CommandResult<Data>;
+    if (typeof success !== 'object' || success === null || !('data' in success)) {
+      throw new Error(`expected an acceptance, got ${JSON.stringify(result)}`);
+    }
+    return success.data;
+  }
+
+  beforeEach(() => {
+    fixture = buildGlobalHomeFixture();
+    for (const [variable, value] of Object.entries(fixture.environment)) {
+      process.env[variable] = value;
+    }
+    process.env.HOME = fixture.home;
+  });
+
+  afterEach(() => {
+    rmSync(fixture.base, { recursive: true, force: true });
+  });
+
+  /** One host with every captured function, not yet enabled. */
+  function host(): {
+    context: InspectorHostContext;
+    call: (name: string, body?: unknown) => Promise<unknown>;
+  } {
+    const context = hostContext();
+    const functions = new Map<string, CapturedRpcFunction>();
+    createInspectorDevframe(context).setup?.(
+      {
+        rpc: {
+          register(fn: CapturedRpcFunction) {
+            functions.set(fn.name, fn);
+          },
+        },
+      } as never,
+      undefined as never,
+    );
+    return {
+      context,
+      call: async (name, body?) => {
+        const fn = functions.get(`agent-customization-inspector:${name}`);
+        if (fn === undefined) {
+          throw new Error(`no such function: ${name}`);
+        }
+        return (fn.handler as (body?: unknown) => unknown)(body);
+      },
+    };
+  }
+
+  /** Enables the members and waits for the batch commit. */
+  async function publishedHost(): Promise<ReturnType<typeof host>> {
+    const built = host();
+    const preview = payload(await built.call('create-global-consent-preview'));
+    acceptedData(
+      await built.call('enable-global', {
+        confirmed: true,
+        allowlistVersion: preview.allowlistVersion,
+        previewId: preview.previewId,
+      }),
+    );
+    await expect
+      .poll(() => built.context.session.snapshot().globalControl?.batchStatus, { timeout: 10_000 })
+      .toBeNull();
+    return built;
+  }
+
+  it('answers a true no-op through the single-stage gate, mutating nothing', async () => {
+    const { context, call } = host();
+    const before = context.session.snapshot();
+    // Argument-free and strict: an arriving body is ignored, never read.
+    const result = acceptedData(await call('disable-global', { anything: 'ignored' }));
+    expect(result).toEqual({
+      state: 'no-op',
+      operationId: null,
+      commitKind: null,
+      repositoryGeneration: before.repositoryGeneration,
+    });
+    // No operation, no epoch increment, no fence: the already-purged client
+    // may immediately recover a full snapshot.
+    expect(context.session.globalContentEpoch).toBe(0);
+    const after = (await call('get-session')) as { data: { globalDisableInProgress: unknown } };
+    expect(after.data.globalDisableInProgress).toBeNull();
+  });
+
+  it('serves only the recovery snapshot while fenced, and conflicts everywhere else', async () => {
+    const { context, call } = await publishedHost();
+    const epochBefore = context.session.globalContentEpoch;
+    // One in-flight execution the drain must wait for, so the barrier stays
+    // between acceptance and its terminal commit while the fenced responses
+    // below are observed — the same window a still-running scan holds open.
+    const inFlight = Promise.withResolvers<unknown>();
+    context.coordinator.trackInFlight(inFlight.promise);
+    const disable = call('disable-global');
+    const fenced = (await call('get-session')) as {
+      globalContentEpoch: number;
+      data: Record<string, unknown>;
+    };
+    expect(context.session.globalContentEpoch).toBe(epochBefore + 1);
+    expect(fenced.globalContentEpoch).toBe(epochBefore + 1);
+    // The exact control-only DTO: identity, epoch, and the three control
+    // projections — no generation and no inspection graph.
+    expect(Object.keys(fenced.data).toSorted()).toEqual([
+      'globalContentEpoch',
+      'globalControl',
+      'globalDisableInProgress',
+      'globalEnableInProgress',
+      'sessionId',
+    ]);
+    expect(fenced.data['globalDisableInProgress']).toMatchObject({
+      state: expect.stringMatching(/draining|committing/u),
+    });
+    expect((fenced.data['globalControl'] as { state: string }).state).toBe('disabling');
+    // Every other inspection-data function returns the fixed conflict while
+    // the fence is closed — details, commands, preview capture, enable.
+    for (const [name, body] of [
+      ['get-file-detail', { sourceRelativePath: 'CLAUDE.md', source: 'global-claude' }],
+      ['rescan-repository', undefined],
+      ['create-global-consent-preview', undefined],
+      ['enable-global', { confirmed: true, allowlistVersion: 'x', previewId: 'y' }],
+      [
+        'open-file',
+        { sourceRelativePath: 'CLAUDE.md', source: 'global-claude', target: 'default-application' },
+      ],
+    ] as const) {
+      expect(await call(name, body), name).toEqual({
+        error: { code: 'global-disable-pending' },
+      });
+    }
+    inFlight.resolve(null);
+    const result = acceptedData<{ state: string }>(await disable);
+    expect(result.state).toBe('disabled');
+  });
+
+  it('discards the whole Global sequence on terminal success, Repository untouched', async () => {
+    const { context, call } = await publishedHost();
+    const before = context.session.snapshot();
+    const result = acceptedData(await call('disable-global'));
+    expect(result).toMatchObject({
+      state: 'disabled',
+      commitKind: 'remove-active-state',
+      repositoryGeneration: before.repositoryGeneration,
+    });
+    const after = (await call('get-session')) as {
+      repositoryGeneration: number;
+      data: SessionSnapshot;
+    };
+    // The Repository-only terminal buffer: the Global sequence no longer
+    // exists, while the Repository sequence, its generation, and its Source
+    // are exactly what they were.
+    expect(after.data.globalGeneration).toBeNull();
+    expect(after.data.globalControl).toBeNull();
+    expect(after.data.globalDisableInProgress).toBeNull();
+    expect(after.data.sources.map((source) => source.kind)).toEqual(['repository']);
+    expect(after.data.repositoryGeneration).toBe(before.repositoryGeneration);
+    expect(after.data.globalContentEpoch).toBe(1);
+    // The preview freeze died with the consent: a fresh capture is admitted.
+    expect('previewId' in payload(await call('create-global-consent-preview'))).toBe(true);
+  });
+
+  it('cleans up an unpublished initial enable without touching committed state', async () => {
+    const { context, call } = host();
+    // The operation-local window: an enable is registered and has not
+    // settled, so no consent, control, or Source was ever published.
+    const registered = context.coordinator.registerGlobalEnable('preview-x', 'initial-enable');
+    expect(registered.kind).toBe('admitted');
+    const before = context.session.snapshot();
+    const result = acceptedData(await call('disable-global'));
+    expect(result).toMatchObject({ state: 'disabled', commitKind: 'cleanup-only' });
+    const after = (await call('get-session')) as { data: SessionSnapshot };
+    expect(after.data.repositoryGeneration).toBe(before.repositoryGeneration);
+    expect(after.data.globalGeneration).toBeNull();
+    expect(after.data.globalControl).toBeNull();
+    expect(after.data.globalEnableInProgress).toBeNull();
+    expect(after.data.globalDisableInProgress).toBeNull();
+  });
+
+  it('joins concurrent requests to one operation and result', async () => {
+    const { call } = await publishedHost();
+    const [first, second] = await Promise.all([call('disable-global'), call('disable-global')]);
+    expect(acceptedData(second)).toEqual(acceptedData(first));
+  });
+
+  it('retains a failed cleanup on the fence and retries it through the same route', async () => {
+    const { context, call } = await publishedHost();
+    // A post-acceptance failure, driven through the coordinator exactly as an
+    // unexpected terminal-assembly throw reaches it; the RPC surface owns
+    // what a fenced tab and a retry then observe.
+    const failing = context.coordinator.disposeGlobalDisable(() => {
+      throw new Error('cleanup blew up');
+    });
+    if (failing.kind !== 'pending') {
+      throw new Error('expected an accepted barrier');
+    }
+    await expect(failing.completion).rejects.toThrow('cleanup blew up');
+    const fenced = (await call('get-session')) as { data: Record<string, unknown> };
+    expect(fenced.data['globalDisableInProgress']).toEqual({
+      operationId: failing.operationId,
+      state: 'failed',
+      message: 'cleanup blew up',
+    });
+    // A later disable resumes idempotent cleanup and terminal success alone
+    // clears the fence; the epoch is not incremented again.
+    const result = acceptedData<{ state: string }>(await call('disable-global'));
+    expect(result.state).toBe('disabled');
+    expect(context.session.globalContentEpoch).toBe(1);
+    const after = (await call('get-session')) as { data: SessionSnapshot };
+    expect(after.data.globalDisableInProgress).toBeNull();
+    expect(after.data.globalControl).toBeNull();
   });
 });

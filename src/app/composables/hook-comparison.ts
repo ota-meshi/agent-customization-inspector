@@ -41,7 +41,7 @@
 // `SessionViewState`: a second instance would race the first for the same
 // request tokens.
 import { shallowRef } from 'vue';
-import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
+import { sideFamilyOf, toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
 import type { HookCarrierDetailDto, SourceKind } from '../../shared/api-types';
@@ -166,6 +166,14 @@ export class HookComparisonState {
 
   /** Where the one open comparison stands; see {@link HookComparisonViewStatus}. */
   public readonly status = shallowRef<HookComparisonViewStatus>('idle');
+  /**
+   * The Source family of the open request, held from dispatch (FR-030): the
+   * adopted details cannot answer it while the pair is still loading or is
+   * one-sided, and the session's generation adoption must close a comparison
+   * exactly when the sequence that owns it advanced — never for the other
+   * sequence's commit.
+   */
+  public readonly openSequence = shallowRef<SourceKind | null>(null);
 
   /** The first compared carrier's adopted detail. Null outside 'ready'. */
   public readonly leftDetail = shallowRef<HookCarrierDetailDto | null>(null);
@@ -232,6 +240,7 @@ export class HookComparisonState {
     this.leftDetail.value = null;
     this.rightDetail.value = null;
     this.status.value = 'idle';
+    this.openSequence.value = null;
     this.errorMessage.value = null;
     for (const disposer of this.#openContentOwners) {
       disposer();
@@ -262,6 +271,7 @@ export class HookComparisonState {
     // so a slow request never leaves one pair's declarations on screen under
     // another pair's paths; this also supersedes any open still in flight.
     this.#dropView();
+    this.openSequence.value = sideFamilyOf(left);
     const requested = this.#requestVersion;
     const capturedEpoch = this.#clientData.epoch();
     const owns = (): boolean =>

@@ -33,12 +33,12 @@
 - [x] The closed scan-publication table permits partial publication only for file-confined outcomes after complete traversal; any other failure commits nothing, reports the failure as an ordinary error, and retains the prior committed snapshot
 - [x] The byte-decoding table covers NUL/binary, valid UTF-8, one recorded and removed leading BOM, and one-pass replacement decoding of invalid non-NUL UTF-8 as complete `utf-8-replaced` garbled text, without alternate decoding or a product-defined byte, line, or item ceiling
 - [x] The Customization File entity exposes complete source text for `utf-8` and `utf-8-replaced` reads, forbids it for binary outcomes, and represents an unreadable file as a diagnostic-only item that does not affect other files
-- [x] US3 is independently testable with two distinct readable Repository files before Global work and rejects the same file in both inputs, while US4 separately covers a Repository-to-Global comparison without merging Source-relative namespaces
+- [x] US3 is independently testable with two distinct readable Repository files before Global work and rejects the same file in both inputs, while US4 separately covers comparing two consented homes' files of one row inside the Global Source family — a comparison never pairs across families, so no Repository file is offered as a side of that pair, and Source-relative namespaces are never merged (§ Clarifications Session 2026-08-28)
 - [x] SC-003, SC-004, SC-005, and SC-007 use a frozen versioned release-evidence fixture manifest with stable case IDs, per-fixture digests, nonzero required classes, exact executed-case records, paired automated manifest-version transition tests for denominator-semantic changes, a separate T1062 human-review record, both fixture and canonical digest updates for fixture-byte-only changes, and mandatory failure for missing, omitted, duplicate, or mismatched evidence
 - [x] Authored values — source text, declared metadata, authored relationship targets, and both comparison sides — are reachable only through an explicit bundled-browser `FileDetail` request or comparison construction, one at a time, with no confirmation step in front of either and no acknowledgement state anywhere; ordinary route, Source, and generation cleanup remains scoped, while Global disable is the explicit full-session-purge exception before request and again on greater-epoch or non-null-fence observation
 - [x] The closed Global-root table distinguishes absent/default, empty, invalid, relative, and eligible roots including those outside the ordinary home, records a missing or unreadable consented root as absent or failed without blocking the others, and admits readable roots into one atomic batch commit
 - [x] Repository-root selection is closed to captured `process.cwd()` or one resolved `--root` value, performs no `chdir`, rejects invalid option shapes before session creation, and creates exactly one generation-0 Repository Source at bootstrap
-- [x] One selector-free session-wide Global action binds the fixed Copilot/Claude/Codex preview, evaluates all three entries, excludes a missing or unreadable root without blocking the others, and publishes every admitted Source in one batch and one atomic generation; an unexpected failure aborts the whole transaction
+- [x] One selector-free session-wide Global action binds the fixed four-member preview — the Copilot, Claude, and Codex homes and the shared agent home — evaluates all four entries, excludes a missing or unreadable root without blocking the others, and publishes every admitted Source in one batch and one atomic generation; an unexpected failure aborts the whole transaction *(amended 2026-08-30: restated for FR-045.)*
 - [x] Active-consent Global retry reuses the frozen preview and fixed tuple, derives the complete retryable target set server-side only after pending work empties, preserves existing Sources and the prior snapshot, creates no request/job/generation for an all-rejected retry, and otherwise publishes one request-correlated atomic batch
 - [x] Filesystem operations use raw entry names, and a public Source-relative Path is those names joined with `/`; hard links are ordinary files, and symbolic links are read through their targets, with a broken link yielding a per-file diagnostic *(amended 2026-07-29: the derived NFC display spelling and its collision rejection are removed — the raw spelling is the published identity)*
 - [x] Traversal is ordinary and reads only allowlisted paths: a problem confined to one file yields that file's diagnostic without affecting other files, and the specification adds no adversarial-input machinery (FR-019)
@@ -101,7 +101,8 @@
   Configuration/Settings order, and Global inspection remains after Repository acceptance.
 - Validation iteration 11 passed all items on 2026-07-19 after defining US4's Repository
   result stability semantically while requiring successful Global Source commits to advance
-  the generation, rekey generation-owned IDs, and invalidate prior-generation state; defining exclusive
+  the generation and invalidate prior-generation state *(amended 2026-08-30: restated for the
+  decision that a file's identity is its Source and Source-relative Path.)*; defining exclusive
   per-scope Diagnostic location invariants; and replacing SC-008's undefined
   critical-defect threshold with a bilingual all-Level-A-and-AA matrix and a nonzero-denominator,
   zero-failed-applicable-criteria gate.
@@ -132,7 +133,8 @@
   client-data-purge scope.
 - Validation iteration 17 passed all items on 2026-07-20 after closing selected-root and
   `--root` behavior, non-authorizing generation-0 Repository Source creation, selector-free
-  fixed-three-tool Global batching, exact structural-`lstat` `ENOENT` handling, REST versus
+  selector-free fixed-member Global batching *(amended 2026-08-30: restated for FR-045.)*, exact
+  structural-`lstat` `ENOENT` handling, REST versus
   startup Operation Error ownership, as-is garbled-text UTF-8 replacement, raw-path and hard-link
   identity rules, exact Codex emptiness, and the verification-only Presentation Allowlist gate.
 - Validation iteration 18 passed all items on 2026-07-20 after separating documentation

@@ -33,16 +33,7 @@
 // generation all drop the open detail through the same cleanup the
 // instruction route uses; only the URL survives a commit, and the page
 // refetches the same path under the new generation.
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -51,13 +42,16 @@ import { frontmatterYamlText } from '../../../../components/inspection/frontmatt
 import type { DeclaredEntryDto } from '../../../../../shared/api-types';
 import { LEADING_OUTPUT_STYLE_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
+  familyGenerationOf,
   asSourceSelector,
   decodeDetailRoutePath,
   type SourceSelector,
 } from '../../../../components/detail-route';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { usePageOwnership } from '../../../../composables/page-ownership';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
+import { useSessionSources } from '../../../../composables/session-sources';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   CUSTOMIZATION_KIND_TEXT,
@@ -69,15 +63,10 @@ import {
   pathPresentationLabel,
   rendersNothingVisible,
 } from '../../../../../shared/entities';
+import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
@@ -124,6 +113,20 @@ const openPath = computed((): string =>
  */
 const openSource = computed((): SourceSelector => openAddress.value.source ?? 'repository');
 
+/** The shared Source lookup; resolves the route's Source token to its ID. */
+const sessionSources = useSessionSources();
+
+/** The open Source's ID, or null while the snapshot does not carry it. */
+const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
+
+// The open file's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source (`source-facts.ts`).
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
+
 const entryDetail = sessionViewState.entryDetail;
 const detailState = sessionViewState.fileDetailState;
 /** This route's own failed request, which this page reports and announces. */
@@ -131,22 +134,28 @@ const detailError = sessionViewState.detailErrorMessage;
 const snapshot = sessionViewState.snapshot;
 
 /**
- * The commands inventory definitions the URL's path names — empty when the
- * committed inventory holds none there. Resolved from the snapshot rather
+ * The output-style inventory definitions the URL's path names — empty when
+ * the committed inventory holds none there. Resolved from the snapshot rather
  * than from a fetched detail because they have to be known before anything is
- * requested: they carry the recognizing products and the names this page
+ * requested: they carry the recognizing product and the style names this page
  * states, and a path the inventory does not list is the same dead link the
  * host would answer, reportable without a doomed request.
  *
- * Gathered across rows rather than found in one, because a row is one name
- * and this page is one file: a file two products invoke by different names is
- * a definition on each of those names' rows, and the page is about the file
- * either way (data-model.md § Inventory unit).
+ * Gathered across rows rather than found in one, because a row is one style
+ * name and this page is one file: a file that resolves to more than one name
+ * is a definition on each of those names' rows, and the page is about the
+ * file either way (data-model.md § Inventory unit).
  */
 const owner = computed(() =>
   (snapshot.value?.outputStyles ?? []).flatMap((entry) =>
     entry.definitions
-      .filter((definition) => definition.sourceRelativePath === openPath.value)
+      .filter(
+        (definition) =>
+          // Both halves of the identity (FR-030): a same-path definition in
+          // another Source is a different file's.
+          definition.sourceId === openSourceId.value &&
+          definition.sourceRelativePath === openPath.value,
+      )
       .map((definition) => ({ name: entry.name, definition })),
   ),
 );
@@ -434,8 +443,7 @@ watch(
   [
     openPath,
     (): boolean => owner.value.length > 0,
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
-    (): number | null => snapshot.value?.globalGeneration ?? null,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step between two Sources' details at one path leaves the path
     // identical and the file different, so without this the page would keep
@@ -463,7 +471,7 @@ function focusHeading(): void {
 }
 
 onMounted(focusHeading);
-watch(openPath, () => void nextTick(focusHeading));
+watch([openSource, openPath], () => void nextTick(focusHeading));
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2): the path
@@ -485,7 +493,9 @@ const titleSubject = computed<string | null>(() => {
   if (detailFailure.value !== null) {
     return 'Output style could not be loaded';
   }
-  return pathIsSpelledOut.value ? null : openPath.value;
+  return pathIsSpelledOut.value
+    ? null
+    : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount
@@ -628,7 +638,17 @@ onBeforeUnmount(() => {
              page and the list agree, beside the kind's own caption (FR-007).
              No product is quoted for what it would select or run: existence
              is what an admission proves (FR-009). -->
-        <p class="aci-output-style-detail__recognition">{{ toolsText }} · {{ kindText }}</p>
+        <p class="aci-output-style-detail__recognition">
+          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
+          >{{ toolsText }} · {{ kindText }}
+        </p>
+
+        <!-- Which directory the file was in, where its family holds more
+             than one: an escaped presentation of the admitted root, never a
+             path anything can open (FR-002). -->
+        <p v-if="sourceRootText !== null" class="aci-output-style-detail__root aci-note">
+          <span class="aci-authored-text">{{ sourceRootText }}</span>
+        </p>
 
         <!-- The name the inventory row this page was opened from is listed
              under: the answer of the rule that admitted the file, derived from

@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applicabilityRangePresentation,
   CUSTOMIZATION_KIND_ORDER,
   LIFECYCLE_QUALIFIER_ORDER,
   SUPPORTED_TOOL_ORDER,
@@ -14,6 +15,7 @@ import {
   escapeControlCharacters,
   isCustomizationKind,
   isSupportedTool,
+  accessiblePresentationLabel,
   pathPresentationLabel,
   rendersNothingVisible,
 } from '../../../src/shared/entities';
@@ -201,6 +203,19 @@ describe('escapeControlCharacters', () => {
       '.agents/skills/café name/SKILL.md',
     );
   });
+
+  it('spells an astral default-ignorable code point out whole, both surrogates', () => {
+    // The supplementary-plane variation selectors are default-ignorable, so
+    // the class matches the whole code point; spelling only its first code
+    // unit would emit the high surrogate alone, and two names differing only
+    // in which selector they carry would render as one text — the exact
+    // collision the escape exists to prevent.
+    expect(escapeControlCharacters('漢\u{E0100}.md')).toBe('漢\\uDB40\\uDD00.md');
+    expect(escapeControlCharacters('漢\u{E0101}.md')).toBe('漢\\uDB40\\uDD01.md');
+    expect(escapeControlCharacters('漢\u{E0100}.md')).not.toBe(
+      escapeControlCharacters('漢\u{E0101}.md'),
+    );
+  });
 });
 
 describe('pathPresentationLabel', () => {
@@ -248,6 +263,30 @@ describe('pathPresentationLabel', () => {
   });
 });
 
+describe('accessiblePresentationLabel', () => {
+  it('is the visible spelling for an ordinary value', () => {
+    expect(accessiblePresentationLabel('skills/deploy/SKILL.md')).toBe('skills/deploy/SKILL.md');
+    expect(accessiblePresentationLabel('a b.md')).toBe('a b.md');
+  });
+
+  it('starts with the visible label and appends the spelled-out form for whitespace runs', () => {
+    // WCAG 2.5.3 Label in Name: a speech-input user says what they see, so
+    // the accessible name must contain the visible text — while the appended
+    // spelled-out form keeps `a b.md` and `a  b.md` announced apart
+    // (WCAG 2.4.4, FR-025).
+    expect(accessiblePresentationLabel('a  b.md')).toBe('a  b.md (a\\u0020\\u0020b.md)');
+    expect(
+      accessiblePresentationLabel('a  b.md').startsWith(pathPresentationLabel('a  b.md')),
+    ).toBe(true);
+    expect(accessiblePresentationLabel('a  b.md')).not.toBe(accessiblePresentationLabel('a b.md'));
+  });
+
+  it('is the spelled-out form alone where nothing draws, exactly as the visible label is', () => {
+    expect(accessiblePresentationLabel(' ')).toBe('\\u0020');
+    expect(accessiblePresentationLabel(' ')).toBe(pathPresentationLabel(' '));
+  });
+});
+
 describe('evidence vocabulary', () => {
   it('fixes the lifecycle qualifier order', () => {
     // The order is contract data the registry gate checks each record's
@@ -263,6 +302,22 @@ describe('opaque IDs', () => {
     const id = createOpaqueId();
     expect(id).toMatch(/^[A-Za-z0-9_-]{22}$/u);
     expect(createOpaqueId()).not.toBe(id);
+  });
+});
+
+describe('an applicability range as a row renders it', () => {
+  it('escapes an invisible character inside an otherwise visible range', () => {
+    // Two rows whose ranges differ only by a default-ignorable code point are
+    // two rows: rendering both as `src/**` would show one text for two
+    // distinct declared ranges (FR-025). The whole-value fallback cannot
+    // cover this — the value draws, and only the character inside it does
+    // not.
+    expect(applicabilityRangePresentation('src/\u200B**')).toBe('src/\\u200B**');
+    expect(applicabilityRangePresentation('src/**')).toBe('src/**');
+  });
+
+  it('keeps every other backslash, which is glob syntax', () => {
+    expect(applicabilityRangePresentation('src/\\*literal*')).toBe('src/\\*literal*');
   });
 });
 

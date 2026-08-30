@@ -80,9 +80,9 @@ export class CopilotCompiledOtherKindRule
 }
 
 /**
- * The Copilot Repository rules a Repository scan executes, in shipped order.
- * The remaining Copilot rows of the vendor contract arrive with their own
- * inventory phases; the shipped set covers instructions, skills, prompts and
+ * The Copilot Repository rules a Repository scan executes, in shipped order —
+ * every Repository row of this vendor's contract, derived from the catalog
+ * rather than listed here. They cover instructions, skills, prompts and
  * commands, custom agents, the MCP carriers — the CLI's two root spellings
  * and the VS Code pair — and the settings documents, the CLI's own pair
  * beside the Claude-compatible subset it also reads.

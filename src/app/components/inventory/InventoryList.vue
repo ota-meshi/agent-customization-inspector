@@ -250,6 +250,7 @@ const rowCount = computed(() =>
           :key="entry.name === null ? 'unnamed' : `name:${entry.name}`"
           :entry="entry"
           :diagnostics="diagnostics"
+          :files-by-source="filesBySource"
         />
       </template>
       <template v-if="kind === 'output style'">
@@ -286,9 +287,13 @@ const rowCount = computed(() =>
     <!-- Both sentences count the kind's rows, so they name the row unit in
          plural rather than the kind: `CUSTOMIZATION_KIND_TEXT` labels a tab,
          and no rule turns `Instructions` or `MCP` into a countable noun. -->
+    <!-- "in this scan" rather than "in this repository": the inventory spans
+         every inspected Source once personal setup is enabled, and naming the
+         repository would claim the consented homes were repository content
+         (FR-002, FR-030). -->
     <p v-else-if="totalCount === 0" class="aci-empty">
       No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} were
-      recognized in this repository.
+      recognized in this scan.
     </p>
     <p v-else class="aci-empty">
       No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} match

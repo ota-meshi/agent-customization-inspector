@@ -81,7 +81,7 @@ Lockfileはpublishされたpackageには同行しないため、consumerの`npx`
 registryに対して解決する。Auditが確立するのは、このprojectが出荷し検証するtreeであり、
 後続の任意のinstallが生成するtreeではない。tsdownはproject所有moduleとshared
 contractをbundleし、任意のtransitive packageはbundleしない。Directなproduction dependencyは
-`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`which`、`yaml`の正確に11個とする（§ 3）。
+`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`の正確に11個とする（§ 3）。
 
 承認済みのdirect production dependency set — その11個のnameだけで他は含まない — を`package.json`と
 `pnpm-lock.yaml` closureからassertする。これによりnew production dependencyは§ 3の決定が明示的に
@@ -292,7 +292,7 @@ Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)�
 Node/TypeScript互換性とclosedなunknown-option behaviorの根拠にする。
 Safe-filesystem layerはNode built-inの`node:fs/promises`、`node:fs`、`node:path` APIだけを使用するため、
 platform toolchainやruntime package dependencyを追加しない。
-Directなproduction `dependencies` setは`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`、`which`、`yaml`の
+Directなproduction `dependencies` setは`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`の
 正確に11個とする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする。`h3`のresolved versionはdevframe自身のh3と一致し、両者は1つのmodule instanceへ解決される）: CLIとparserのpackageはnpm graph上のleafであり、h3は下記のtransitive host treeに既に含まれ、devframeがそのtreeを
 持ち込み、`open`はhelper検出の小さなtree（`default-browser`、`is-wsl`とそのleaf）をlockfileのpin付きで持ち込む。
 Nuxt/Vue/Vite/tsdown、Monaco、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
@@ -449,13 +449,14 @@ relationshipまたはexcludedのままとする。
 - **Plugin rootはactivateされるものであり、任意のrecursive manifest searchでdiscoverされない。** Marketplace
   registration、installation、明示plugin directory、その他文書化済みmechanismがplugin rootを確立する。
   Claudeのplugin manifestはoptionalであり、任意のRepository descendantにmatching manifestまたはcatalogが
-  あるだけではvendor auto-discovery eventにならない。Inspectorが保持できるのはroot-exactなauthored-project
-  matcherであり、nested local manifestは独立して受理したcatalogからのbounded derivationによってのみadmitする。
+  あるだけではvendor auto-discovery eventにならない。Inspectorはroot-exactなauthored-project
+  matcherを保持する。Validated localなsourceがplugin rootを指名するcatalog entryの下では、censusがそのroot以下のfile（manifestを含む）をcatalog自身のrowの下に列挙し、nested manifestをadmitするruleもderiveするruleも存在しない。
   Presenceはregistration、installation、enablement、trust、component loading、precedenceを証明しない。
 
 Vendor contractは将来の保守のため、文書化済みUser settings、agent、skill、rule、hook、MCP source、plugin、
-state、deprecated surfaceもinventoryする。これらUser tableはevidenceでありconsentではない。FR-015からFR-018は
-正確な3つのGlobal instruction setだけを引き続き認可し、vendor behavior registryが記録していても、隣接User
+state、deprecated surfaceもinventoryする。これらUser tableはevidenceでありconsentではない。FR-015からFR-018とFR-045が認可するのは、
+正確に4 memberのfrozen Global rule catalog — 各memberの文書化済みcustomization kindと、共有agent homeのskillおよび個人plugin
+marketplace file — であり、vendor behavior registryが記録していても、それらcatalog外のUser
 surfaceはspecification変更なしではすべて`excluded`のままとする。
 
 全vendor behavior、Inspector rule、composition strategyは正確な公式`sourceId`を参照する。Official-source
@@ -966,7 +967,7 @@ Session-wide consent 1件で4 member全てを固定し、frozen preview entryご
 blockせずそのtoolのabsent/failed outcomeとして記録する（FR-014）。1つのtoolのrootに限定されない
 unexpected failureは全transactionをowning request
 boundary経由でabortする。Validationがrootを1つもadmitしない場合、`active-no-job`はretry/disable用controlを保持し、
-Source/job/generationをpublishしない。1つから3つをadmitした場合、provisional batch scan 1件が各rootの独立したSourceを
+Source/job/generationをpublishしない。1つから4つをadmitした場合、provisional batch scan 1件が各rootの独立したSourceを
 正確に1つのGlobal generation — Global sequenceを作るenable commit — でまとめてpublishし、tool別commitは観測できない。Active-consent retryのvalidation/admissionは
 operation-localで、新たにvisibleとなるのは`globalEnableInProgress`だけとし、`pendingTools`、`retryableTools`、`batchStatus`、
 Diagnostic、control、Source、prior snapshotはexactなpre-operation projectionを維持する。Atomic queued acceptanceだけが

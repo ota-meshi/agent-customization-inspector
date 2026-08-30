@@ -49,6 +49,7 @@ describe('completeScan preparation failure (T026 regression)', () => {
         visitedEntries: 0,
         candidateFiles: 0,
         readBytes: 0,
+        censusEscapedDirectories: [],
       }),
     ).rejects.toThrow('EIO: generation preparation failed');
 

@@ -135,7 +135,7 @@ const COPILOT_METADATA_PLUGIN_ROOT_KEY = 'pluginRoot';
 function copilotEntryPathOf(
   declaredSource: string,
   catalogFields: readonly DeclaredEntryDto[],
-): string {
+): string | null {
   const relative = declaredSource.startsWith('./')
     ? declaredSource.slice('./'.length)
     : declaredSource;
@@ -152,14 +152,27 @@ function copilotEntryPathOf(
     return `./${relative}`;
   }
   // The client strips one leading `./` from the declared root as it does from
-  // the source, and joins with one separator: a root written `./` or with a
-  // trailing slash is the same directory, and joining it verbatim would spell
-  // the empty segment the path contract refuses — losing the plugin root of a
-  // catalog that is spelled exactly as its own page shows.
+  // the source, and joins with one separator: a root written with a trailing
+  // slash is the same directory, and joining it verbatim would spell the
+  // empty segment the path contract refuses — losing the plugin root of a
+  // catalog that is spelled exactly as its own page shows
+  // (contracts/inspection-path-allowlist.md § Bounded derivation).
+  if (declaredRoot.text === '' || declaredRoot.text.startsWith('/')) {
+    // A root declared as nothing, or as an absolute path, names no directory
+    // below the marketplace: falling back to the entry's own relative
+    // spelling would resolve the plugin to a directory this catalog did not
+    // name. Refused where the grammar refuses it, with zero target I/O, and
+    // for the same spellings this vendor's sibling refuses (`claude.ts`
+    // § claudeBarePluginRootBaseOf).
+    return null;
+  }
   const anchored = declaredRoot.text.startsWith('./')
     ? declaredRoot.text.slice('./'.length)
     : declaredRoot.text;
   const root = anchored.endsWith('/') ? anchored.slice(0, -1) : anchored;
+  // An anchored root that is empty here is the `./` spelling — the
+  // marketplace directory itself, which is the directory the declaration
+  // names, exactly as `.` is for this vendor's sibling.
   return root === '' ? `./${relative}` : `./${root}/${relative}`;
 }
 

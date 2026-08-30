@@ -162,7 +162,7 @@ Global disableだけは、asynchronous drain完了前にbarrier acceptanceがpub
 |---|---|---|
 | `sourceId` | opaque ASCII string | Server生成でprocess lifetime中はstable |
 | `kind` | `repository \| global` | Repository Sourceを正確に1つ、Global Sourceを0から4つ |
-| `tool` | `copilot \| claude \| codex \| null` | Repositoryはnullと組み合わせる。各Global Sourceはsupport対象toolを正確に1つ持ち、2つのGlobal Sourceが同じtoolを共有しない |
+| `member` | `copilot \| claude \| codex \| agents \| null` | Repositoryはnullと組み合わせる。各Global Sourceはfixedな4-member set（3つのsupport対象toolと共有agent home）のmemberを正確に1つ持ち、2つのGlobal Sourceが同じmemberを共有しない |
 | `enabled` | boolean | Repositoryとpublishedな全Global Sourceはtrue。AbsenceはそのtoolにSource未公開であることだけを表し、disabled/pending/retryable control stateは`globalControl`で区別する。Disabling sourceはatomic removalまでtrue |
 | `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | 後述transitionに従う。Publicな`partial`は、traversal完了後に1つ以上のfileがfile-confined outcome（unreadable、admit済みcandidateのbinary content、parse failure — censusが列挙したcompanionのbinary bytesはその通常の事実であり、何もconfineしない。FR-025）だけを持ち、影響のない全fileがcompleteであるgenerationのcommitだけを示す。`failed`は最新attemptが失敗し、最後のcommit済みsnapshotが利用可能であることを示す。Fatalな明示rescanだけがsnapshotをstaleにする |
 | `boundary` | `SourceBoundary` | 選択済みrootを正確に1つ持つ。Repositoryはcapture済み`process.cwd()`またはresolve済み`--root`、GlobalはそのSourceのtoolについてconsent済みの1つのhome root |
@@ -179,7 +179,7 @@ diagnostic contentはatomic generation commitでだけ変更する。
 
 | Field | Type | 公開範囲 | Rule |
 |---|---|---|---|
-| `tool` | `copilot \| claude \| codex \| null` | internal | 公開済みowning Sourceのtoolと一致し、Repositoryはnull |
+| `member` | `copilot \| claude \| codex \| agents \| null` | internal | 公開済みowning Sourceのmemberと一致し、Repositoryはnull |
 | `displayRoot` | ASCII `RootPresentationEncoding` string | DTO | Source rootのdeterministic encoding。`SourceRelativePath`、inventory-item locator、caller input、read authorityではない |
 | `root` | exact absolute platform path string | internal | 選択済みRepository rootまたはそのtoolのconsent済みhome root。このSourceの全inspected-source filesystem operationのbase path |
 | `origin` | `process-cwd \| root-option \| default-home \| environment` | DTO | Read authorityを与えずrootの選択理由を示す |
@@ -321,8 +321,9 @@ Confirmationで複数toolを結合したGlobal Sourceを作らず、1 toolのSou
 必要である。既存Sourceはsemantic contentとstableな
 `sourceId`を保持する。ただし、初回またはretryのadmitted-subset transaction成功時には新規admit済みSourceをすべて一緒に
 publishし、Global sequenceのgenerationを正確に1回commitする。Sequenceが存在しなければgeneration 1として作成し、
-存在すればcurrent Global snapshotを正確にN+1でatomicに置換する。Globalのgeneration-owned IDをすべて再生成し、
-Global sequenceのold file/detail/comparison/editor stateだけを無効化する。Repository sequenceとそのgeneration、ID、view
+存在すればcurrent Global snapshotを正確にN+1でatomicに置換する。公開するSourceのgeneration-owned IDを再生成し — carried Sourceはrecordと
+IDを保つ — 、adoptionが置き換えるsnapshotを通じてGlobal sequenceの
+old file/detail/comparison/editor stateを無効化する。Repository sequenceとそのgeneration、ID、view
 には触れない。別preview/root
 には先にGlobal調査のdisableが必要で、retryable toolがないrequestはclosed conflict `no-retryable-global-tool`として拒否する。
 
@@ -339,7 +340,7 @@ all-rejected retryではgenerationをcommitせず、既存SourceとそのIDを�
 
 | Field | Type | Rule |
 |---|---|---|
-| `tool` | tool enum | Consentがactiveな間、support対象toolごとに正確に1つ存在する |
+| `member` | member enum | Consentがactiveな間、Global memberごとに正確に1つ存在する |
 | `previewId` | opaque string | Active frozen previewを参照し、in-place変更不可 |
 | `state` | `unvalidated \| rejected \| admitted \| published` | Operation-localなprovisional control 4件はすべて`unvalidated`から始まるが、そのstateをactiveな`GlobalControlView`へserializeしない。Lexical-ineligible entryはfilesystem I/Oなしでrejected、`admitted`はreadable-directory admissionに合格したがSource未公開、`published`はSourceを正確に1つ持つ |
 | `sourceId` | opaque IDまたはnull | Root admission成功後だけallocateし、Source commitまではinternal。Admissionをやり直す場合は破棄 |
@@ -435,7 +436,7 @@ Running/queued `GlobalEnableOperation`は最大1つとする。決定的なlexic
 rejected/admitted setへpartitionする。予期しないthrow/rejectionはすべてsession API ownerへunwindする。Initial enableは
 consent/controlをactivateせず全provisional stateを破棄し、retryは正確なpre-operation snapshotを復元する。どちらもpartial
 admitted subsetをcommitしない。全owning toolが決定的validation outcomeへ到達した後、coordinatorはlock下でgeneral
-pre-acceptance response transactionを行う。最初にcurrent operation ID/command epoch/preview object/preview epoch/signalを検証し、publishせず、initial consentと3 control
+pre-acceptance response transactionを行う。最初にcurrent operation ID/command epoch/preview object/preview epoch/signalを検証し、publishせず、initial consentと4 control
 またはretry partition、candidate batch/`scanRequestId`と`queued`、あるいはjobなし/null IDと`active-no-job`をprepareする。
 続いて同じlock内で同じ
 operation ID/command epoch/preview object/preview epoch/signal/barrier stateを再検証し、その後だけcontrolをatomic activate/applyする。
@@ -2453,7 +2454,7 @@ Closed observation-class fieldは次のとおり。
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
 | `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-hook-carrier-detail \| rpc-get-plugin-carrier-detail \| rpc-get-plugin-file-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
@@ -2493,7 +2494,11 @@ exact 1件とする(`contracts/http-api.ja.md` § RPC function一覧):
 | `rpc-get-session` | `agent-customization-inspector:get-session` |
 | `rpc-get-file-detail` | `agent-customization-inspector:get-file-detail` |
 | `rpc-get-mcp-carrier-detail` | `agent-customization-inspector:get-mcp-carrier-detail` |
+| `rpc-get-hook-carrier-detail` | `agent-customization-inspector:get-hook-carrier-detail` |
+| `rpc-get-plugin-carrier-detail` | `agent-customization-inspector:get-plugin-carrier-detail` |
+| `rpc-get-plugin-file-detail` | `agent-customization-inspector:get-plugin-file-detail` |
 | `rpc-get-permission-policy-detail` | `agent-customization-inspector:get-permission-policy-detail` |
+| `rpc-open-file` | `agent-customization-inspector:open-file` |
 | `rpc-rescan-repository` | `agent-customization-inspector:rescan-repository` |
 | `rpc-get-global-consent-preview` | `agent-customization-inspector:get-global-consent-preview` |
 | `rpc-create-global-consent-preview` | `agent-customization-inspector:create-global-consent-preview` |
@@ -2787,13 +2792,13 @@ failed/stale -> scanning（waitingまたはactive） -> ready/partial（このSo
                                                \-> failed/stale（このSourceのentry + diagnosticを置換）
 ```
 
-### Tool固有Global source
+### Member Global source
 
 ```text
 0 source -- consent preview --> 0 source（Source/I/Oなし）
-0 source -- registered initial enable --> globalEnableInProgress。凍結済みentry 3件をoperation-localにvalidate
+0 source -- registered initial enable --> globalEnableInProgress。凍結済みentry 4件をoperation-localにvalidate
 0 admitted root -------------> active-no-job（active control、Source/generationなし）
-1..3 admitted root ----------> atomic queued acceptance + batchStatus(waiting/id) --> running --> 全ready/partial Sourceを含む1 atomic Global generation
+1..4 admitted root ----------> atomic queued acceptance + batchStatus(waiting/id) --> running --> 全ready/partial Sourceを含む1 atomic Global generation
                                                                             \-> failed（tool failureまたはfailed requestのerror、同じID）
 exact retryable subset ------> 同じatomic batch lifecycle。Lexical-ineligible controlはdisable/new previewが必要
 予期しないaccept前throw/rejection --> ordinary request error。Transaction由来のsubset Source/generationなし
@@ -2801,7 +2806,7 @@ ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                        \-> failed/stale（own entryを作成）
 failed/stale -- accepted per-source rescan --> scanning --> ready/partial（own entry + diagnosticをclear）
                                                        \-> failed/stale（own entry + diagnosticを置換）
-active Global control（0..3 Source） -- disable --> disabling barrier --> inactive / 0 Source（Global sequenceをdiscardし、何もcommitしない）
+active Global control（0..4 Source） -- disable --> disabling barrier --> inactive / 0 Source（Global sequenceをdiscardし、何もcommitしない）
                                                                     \-> failed + retained error --> retry disable
 initial enableだけ -- disable --> cleanup-only barrier --> inactive / 0 Source（committed state不変）
                                                 \-> failed + retained error --> retry disable

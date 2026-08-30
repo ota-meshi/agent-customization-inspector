@@ -18,7 +18,7 @@
 // the pickers move the two sides among that row's files alone.
 //
 // The URL carries the model's own coordinates —
-// `/prompts-and-commands/compare?leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>`
+// `/prompts-and-commands/compare/<family>?leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>`
 // — the two files
 // named by their Source-relative Paths, the identity the inventory rows and
 // the detail route already use (FR-030); the owning name row is derived from
@@ -45,6 +45,7 @@ import {
   type ComparisonSide,
   querySideOf,
   sideIdentityKeyOf,
+  comparisonTitleSides,
 } from '../../../components/detail-route';
 import {
   comparisonSideOptions,
@@ -52,16 +53,7 @@ import {
   sideValueOf,
 } from '../../../components/comparison-side-picker';
 import { sourceFactsOf } from '../../../components/source-name';
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/prompt-comparison/RecognitionComparison.vue';
@@ -71,7 +63,7 @@ import {
   type PromptSideDefinition,
 } from '../../../components/prompt-comparison/recognition-comparison';
 import { promptComparisonRouteFor } from '../../../composables/prompt-comparison';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -89,13 +81,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a comparison page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const comparison = sessionViewState.promptComparison;
 const snapshot = sessionViewState.snapshot;
@@ -385,7 +371,7 @@ watch(
  * directory it was in where that family holds more than one Source, its
  * recognized kind, and its read outcome (US3 scenario 1). Per side rather
  * than per pair, because the two sides can be two Sources — a consented
- * home's file beside the repository's is the pair this route now expresses
+ * home's file beside another member's is the pair this route expresses
  * (FR-002, FR-030).
  */
 function fileFacts(detail: FileDetailDto): string {
@@ -663,8 +649,14 @@ const titleSubject = computed<string>(() => {
   }
   switch (status.value) {
     case 'ready':
-    case 'loading':
-      return 'Comparing prompt and command files';
+    case 'loading': {
+      // The pair in the title, so two comparison tabs never read identically
+      // (WCAG 2.4.2; `detail-route.ts` § comparisonTitleSides).
+      const sides = comparisonTitleSides(leftSide.value, rightSide.value);
+      return sides === null
+        ? 'Comparing prompt and command files'
+        : `Comparing prompt and command files — ${sides}`;
+    }
     case 'stale':
       return 'Link not in this scan';
     case 'same-path':

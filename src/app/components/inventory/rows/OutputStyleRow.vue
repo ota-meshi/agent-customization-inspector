@@ -40,6 +40,7 @@ import {
   inlinePresentationLabel,
   pathPresentationLabel,
   rendersNothingVisible,
+  accessiblePresentationLabel,
 } from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
@@ -98,7 +99,7 @@ const fileRows = computed(() => {
        * legitimately renders would collapse and two different files could
        * announce identically (WCAG 2.4.4, FR-025).
        */
-      pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      pathAccessibleText: accessiblePresentationLabel(sourceRelativePath),
       recognitions: definitions.map((definition) => ({
         tool: definition.tool,
         toolText: SUPPORTED_TOOL_TEXT[definition.tool],
@@ -155,7 +156,12 @@ const fileRows = computed(() => {
           <NuxtLink
             :to="file.detailRoute"
             class="aci-path aci-authored-text"
-            :aria-label="`${file.pathAccessibleText}: ${inlinePresentationLabel(entry.name)}`"
+            :aria-label="
+              sessionSources.qualifiedLinkName(
+                `${file.pathAccessibleText}: ${inlinePresentationLabel(entry.name)}`,
+                file.sourceId,
+              )
+            "
             >{{ file.pathText }}</NuxtLink
           >
           <span

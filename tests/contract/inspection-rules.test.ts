@@ -311,7 +311,7 @@ describe('the Claude skill slice of the reference graph (T130, T133)', () => {
     // carrier, permission-policy, rule-file, settings, skill, and
     // skills-directory plugin rules, and the contained-hook rule over the
     // settings files' own matcher (T863) — the widened Global member set
-    // (T970, T1125), all read-authorizing, plus the two `excluded` rows: the
+    // (T970, T1138), all read-authorizing, plus the two `excluded` rows: the
     // one the plugin phases own and the User-runtime one the consent boundary
     // owns. No `relationship-only` Claude row ships — a symlinked
     // skill needs none because links are read through their targets (FR-024),

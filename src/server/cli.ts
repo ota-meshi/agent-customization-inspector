@@ -2,8 +2,8 @@
 // CLI entry (FR-001, T038/T047): captures the invocation working directory
 // exactly once, validates the optional `--root`, bootstraps the session
 // synchronously with zero filesystem I/O — the session's own constructor
-// resolves the root lexically from those two facts — completes the Phase 3
-// automatic Repository scan, confirms the personal-setup consent when
+// resolves the root lexically from those two facts — completes the automatic
+// Repository scan, confirms the personal-setup consent when
 // `--inspect-personal-setup` asked for it, and starts the loopback devframe
 // host. This file
 // is the direct `package.json.bin` target: tsdown preserves the shebang in
@@ -87,7 +87,7 @@ const command = define({
       type: 'boolean',
       default: false,
       description:
-        'Also inspect your personal setup: the customization files each tool documents in its own configuration directory — instructions, skills, agents, hooks, settings, and MCP declarations — plus the shared ~/.agents directory (this flag is the confirmation the consent page otherwise asks for)',
+        'Also inspect your personal setup: the customization files each tool documents in its own configuration directory — instructions, skills, agents, prompts and commands, rules, permission policies, hooks, settings, output styles, and MCP declarations — plus the shared ~/.agents directory, its skills and its personal plugin marketplace file included; installed plugin copies are never read (this flag is the confirmation the consent page otherwise asks for)',
     },
   },
   async run(ctx) {
@@ -169,11 +169,17 @@ const command = define({
     // remembered and closes the handle as soon as it becomes available.
     let closeHost: (() => Promise<void>) | null = null;
     let closeWhenReady = false;
+    // Aborts the startup opener's own child processes: `shouldProceed` stops
+    // the next step, while this signal interrupts a wait already in
+    // progress — the reuse script blocks for up to its timeout on the macOS
+    // automation-consent dialog, and shutdown must not wait that out.
+    const openerAbort = new AbortController();
     const requestClose = (): void => {
       if (closeWhenReady) {
         return;
       }
       closeWhenReady = true;
+      openerAbort.abort();
       // A running scan outlives the host it was started for: closing the server
       // stops new requests but not the attempt already reading. Revoking its
       // publication authority first means a result arriving after shutdown
@@ -189,6 +195,10 @@ const command = define({
     const server = await startInspectorHost({
       context,
       openBrowser: ctx.values.open,
+      // A signal during the opener's own attempts must not end with a fresh
+      // fallback browser for a closing host (§ requestClose above).
+      openerShouldProceed: () => !closeWhenReady,
+      openerAbortSignal: openerAbort.signal,
       // Forwarded exactly as parsed, `undefined` included: which port is bound
       // stays devframe's decision (FR-001), so the product neither substitutes
       // a default of its own nor range-checks a value devframe already

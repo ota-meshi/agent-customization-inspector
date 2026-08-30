@@ -28,24 +28,21 @@
 //  - Focus. The shell moves focus to its own heading on navigation; what this
 //    page adds is that the confirmation checkbox is reachable by keyboard in
 //    document order after the preview it is about, so nobody can confirm
-//    before the roots are in front of them.
-import { computed, inject, onMounted, ref, watch } from 'vue';
+//    before the roots are in front of them. The capture and try-again
+//    buttons unmount with their own branch when the answer arrives, which
+//    would drop keyboard focus on the body, so their handlers return focus
+//    to the page heading — the same landing every navigation uses.
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { NuxtLink } from '#components';
 import GlobalConsentPreview from '../components/consent/GlobalConsentPreview.vue';
-import { SESSION_VIEW_STATE } from '../session/view-state';
+import { useSessionViewState } from '../composables/session-view-state';
 import {
   GLOBAL_MEMBER_TEXT,
   GLOBAL_TOOL_FAILURE_TEXT,
   GLOBAL_TOOL_STATE_TEXT,
 } from '../../shared/api-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats a consent page with no session
-  // behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const preview = sessionViewState.consentPreview;
 const previewState = sessionViewState.consentPreviewState;
@@ -122,6 +119,18 @@ const enableFailureText = computed(
   () => rejectionText.value ?? sessionViewState.consentPreviewError.value,
 );
 
+/**
+ * What the page's own live region announces when a preview or enable request
+ * fails or is refused. The failure branches replace the node that was on
+ * screen, and focus has already returned to the heading, so only a region
+ * that outlives every branch reaches a screen reader (WCAG 4.1.3; the
+ * shell's `aci-live-region` pattern) — the visible rendering stays with its
+ * branch, and this announces the same sentence.
+ */
+const failureAnnouncement = computed(
+  () => rejectionText.value ?? sessionViewState.consentPreviewError.value ?? '',
+);
+
 // A fresh preview is a different set of proposed directories, so a
 // confirmation given for the previous one cannot carry over: the reader
 // confirms what is currently on screen or nothing.
@@ -131,6 +140,18 @@ watch(preview, () => {
 
 /** The per-tool controls the snapshot published, in the fixed tool order. */
 const controls = computed(() => sessionViewState.snapshot.value?.globalControl?.controls ?? []);
+
+/**
+ * The authority-free projection of a live enable operation — this tab's own,
+ * or another tab's, which a reload or a second tab sees through the snapshot
+ * alone. While one runs, offering to confirm or capture again would only
+ * collect the fixed `global-enable-in-progress` conflict, and disabling must
+ * stay available even though no control exists yet (data-model.md
+ * § GlobalEnableOperation).
+ */
+const enableInProgress = computed(
+  () => sessionViewState.snapshot.value?.globalEnableInProgress ?? null,
+);
 
 /**
  * The server-derived same-preview retry subset while consent is active
@@ -165,11 +186,47 @@ onMounted(() => {
   // when none does.
   void sessionViewState.loadConsentPreview();
 });
+
+/** The page heading, the focus landing for a button that unmounts itself. */
+const heading = ref<HTMLHeadingElement | null>(null);
+
+/**
+ * Runs one capture or reload and moves focus to the heading: the pressed
+ * button unmounts with its branch when the state changes, and an unmounted
+ * focus target silently becomes the body — the reader's place on the page
+ * would be lost exactly when its content changed (WCAG 2.4.3).
+ */
+function runAndRefocus(action: () => Promise<void>): void {
+  void action();
+  void nextTick(() => heading.value?.focus());
+}
+
+/**
+ * Runs the status refresh and recovers focus only when the refresh unmounted
+ * the pressed control — another tab's commit replaces the live-operation
+ * branch with the Source controls, and another tab's disable replaces the
+ * whole page with the fenced view, leaving focus silently on the body
+ * (WCAG 2.4.3). A refresh that changed nothing keeps the reader's place,
+ * which is why this is not {@link runAndRefocus}: a status poll must not
+ * yank focus to the heading every time.
+ */
+function refreshAndRecoverFocus(): void {
+  void sessionViewState.refresh().then(() =>
+    nextTick(() => {
+      if (document.activeElement === document.body) {
+        heading.value?.focus();
+      }
+    }),
+  );
+}
 </script>
 
 <template>
   <div class="aci-global-consent-page">
-    <h2>Inspect your personal setup</h2>
+    <h2 ref="heading" tabindex="-1">Inspect your personal setup</h2>
+    <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
+      {{ failureAnnouncement }}
+    </p>
 
     <p v-if="previewState === 'loading'" aria-live="polite">Reading the proposed directories…</p>
 
@@ -179,18 +236,33 @@ onMounted(() => {
         been read, and working it out reads nothing either — it looks only at the tools' own
         environment variables.
       </p>
-      <button type="button" @click="sessionViewState.captureConsentPreview()">
+      <button type="button" @click="runAndRefocus(() => sessionViewState.captureConsentPreview())">
         Work out the directories
       </button>
     </template>
 
     <template v-else-if="previewState === 'failed'">
       <p class="aci-error">{{ rejectionText ?? sessionViewState.consentPreviewError.value }}</p>
-      <button type="button" @click="sessionViewState.loadConsentPreview()">Try again</button>
+      <button type="button" @click="runAndRefocus(() => sessionViewState.loadConsentPreview())">
+        Try again
+      </button>
     </template>
 
     <template v-else-if="preview">
-      <GlobalConsentPreview :preview="preview" :consent-given="controls.length > 0" />
+      <!-- Consent is given at the reader's confirmation, not at the commit
+           it leads to: while the enable request is in flight — this tab's own
+           (`submitting`) or another tab's, which the snapshot reports as
+           `enableInProgress` — the server may already be reading the
+           directories, so "nothing has been read yet" must not outlive the
+           press wherever it was pressed (FR-013). -->
+      <GlobalConsentPreview
+        :preview="preview"
+        :consent-given="
+          controls.length > 0 ||
+          enableInProgress !== null ||
+          sessionViewState.globalEnableState.value === 'submitting'
+        "
+      />
 
       <!-- The confirmation comes after the preview in document order, so a
            keyboard reader reaches it having passed everything it is about. -->
@@ -209,13 +281,14 @@ onMounted(() => {
       <p
         v-if="
           confirmed &&
+          enableInProgress === null &&
           (controls.length === 0 || (retryableTools.length > 0 && pendingTools.length === 0))
         "
       >
         <button
           type="button"
           :disabled="sessionViewState.globalEnableState.value === 'submitting'"
-          @click="sessionViewState.confirmGlobalConsent()"
+          @click="runAndRefocus(() => sessionViewState.confirmGlobalConsent())"
         >
           {{ controls.length === 0 ? 'Inspect these directories' : 'Try the failed members again' }}
         </button>
@@ -235,6 +308,19 @@ onMounted(() => {
       <template v-if="controls.length > 0">
         <h3>What is inspected</h3>
         <p aria-live="polite">{{ consentSummary }}</p>
+        <!-- The page's one manual refresh, the same contract the inventory's
+             scan status states: nothing here updates on its own, so a batch
+             that fails after the acceptance's own refresh would otherwise
+             leave "being read now" on screen with no error and no retry —
+             the retry offer above is derived from the snapshot too, so it
+             cannot appear until the reader asks for the current state. -->
+        <p>
+          <button type="button" @click="refreshAndRecoverFocus()">Refresh status</button>
+        </p>
+        <p class="aci-note">
+          Nothing on this page updates by itself. Use “Refresh status” to see the result of a read
+          that is still running.
+        </p>
         <ul class="aci-global-consent-page__outcomes">
           <li v-for="control in controls" :key="control.member">
             {{ GLOBAL_MEMBER_TEXT[control.member] }} — {{ GLOBAL_TOOL_STATE_TEXT[control.state] }}
@@ -246,10 +332,89 @@ onMounted(() => {
         <p v-if="batchStatus?.failureRef?.kind === 'error'" class="aci-error">
           Reading failed: {{ batchStatus.failureRef.message }}
         </p>
+        <!-- The same way out the inventory's summary offers, stated where
+             consent itself is decided (FR-042). -->
+        <p>
+          <button
+            type="button"
+            :aria-disabled="sessionViewState.globalDisableState.value === 'submitting' || undefined"
+            @click="sessionViewState.requestGlobalDisable()"
+          >
+            Disable personal inspection
+          </button>
+        </p>
+        <p class="aci-note">
+          Disabling removes every personal-setup result from this session. Your repository results
+          are untouched, and enabling again later asks for consent again.
+        </p>
       </template>
 
-      <p v-if="controls.length === 0">
-        <button type="button" @click="sessionViewState.captureConsentPreview()">
+      <!-- A confirmation whose outcome has not landed: the response was an
+           acceptance, or a delivery failure that can hide one, and the
+           refetch failed — so the stale preview is on screen with no
+           controls. The hold in `SessionViewState.confirmGlobalConsent`
+           keeps confirm and recapture out; Refresh is the way forward, and
+           Disable stays offered because the host may already be reading
+           (contracts/http-api.md § disable-global: disable is available in
+           every state). -->
+      <template
+        v-if="
+          sessionViewState.globalEnableState.value === 'submitting' &&
+          controls.length === 0 &&
+          enableInProgress === null
+        "
+      >
+        <p aria-live="polite">
+          {{
+            sessionViewState.globalEnableResult.value !== null
+              ? 'Your confirmation was accepted, but fetching the result failed. Use “Refresh status” to load the current state.'
+              : 'Your confirmation was sent, but its outcome could not be fetched. The host may already be reading; use “Refresh status” to load the current state.'
+          }}
+        </p>
+        <p>
+          <button type="button" @click="refreshAndRecoverFocus()">Refresh status</button>
+          <button
+            type="button"
+            :aria-disabled="sessionViewState.globalDisableState.value === 'submitting' || undefined"
+            @click="sessionViewState.requestGlobalDisable()"
+          >
+            Disable personal inspection
+          </button>
+        </p>
+      </template>
+
+      <!-- A live enable operation another tab (or a reload) is following:
+           confirming or recapturing would only collect the fixed conflict,
+           so the page states the operation and keeps disable available even
+           though no control exists yet (data-model.md
+           § GlobalEnableOperation). -->
+      <template v-if="enableInProgress !== null && controls.length === 0">
+        <p aria-live="polite">
+          Personal inspection is already being enabled — possibly from another tab. Use “Refresh
+          status” to follow it.
+        </p>
+        <p>
+          <button type="button" @click="refreshAndRecoverFocus()">Refresh status</button>
+          <button
+            type="button"
+            :aria-disabled="sessionViewState.globalDisableState.value === 'submitting' || undefined"
+            @click="sessionViewState.requestGlobalDisable()"
+          >
+            Disable personal inspection
+          </button>
+        </p>
+      </template>
+
+      <p v-if="enableInProgress === null && controls.length === 0">
+        <!-- Disabled while a confirmation is in flight, like the confirm
+             control above: replacing the preview mid-enable would drop the
+             very preview the acceptance is binding, and the conflict the
+             request would take reads as a failure of an accepted operation. -->
+        <button
+          type="button"
+          :disabled="sessionViewState.globalEnableState.value === 'submitting'"
+          @click="runAndRefocus(() => sessionViewState.captureConsentPreview())"
+        >
           Work the directories out again
         </button>
       </p>

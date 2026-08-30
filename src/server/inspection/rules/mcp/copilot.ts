@@ -41,21 +41,25 @@ export class CopilotCompiledMcpCarrierRule
   /**
    * The server declarations one admitted CLI carrier makes, one per named
    * map entry, in the parser's resolved order (FR-007). The CLI documents
-   * two strict-JSON schemas for a project-level file — the top-level
-   * `mcpServers` object, and the bare top-level format where each key is a
-   * server name (contracts/vendors/github-copilot.md § Repository vendor
-   * behavior, `copilot.behavior.cli.mcp`) — and this reading accepts both,
-   * which is one reason it is this vendor's own contract rather than a
-   * shared one: Claude reads only the wrapper form out of the same root
-   * `.mcp.json`.
+   * two schemas for a project-level file — the top-level `mcpServers`
+   * object, and the bare top-level format where each key is a server name
+   * (contracts/vendors/github-copilot.md § Repository vendor behavior,
+   * `copilot.behavior.cli.mcp`) — and this reading accepts both, which is
+   * one reason it is this vendor's own contract rather than a shared one:
+   * Claude reads only the wrapper form out of the same root `.mcp.json`, and
+   * reads it strictly where this vendor's root `.mcp.json` is JSONC
+   * (`parsers/json.ts` § acceptsComments — the mode belongs to the
+   * `(tool, path)` pair).
    *
    * A file declaring a top-level `mcpServers` key is the wrapper form —
    * the vendor documents that key as the wrapper, so it is never read as a
    * bare server of that name, and a non-mapping `mcpServers` then declares
    * none. What a found map means is the shared projection
-   * ({@link declaredServersIn}). Throws on text strict JSON cannot parse; the
-   * recognizer's extraction boundary turns the throw into the recognition's
-   * `failed` state while the carrier stays an admitted candidate (FR-028).
+   * ({@link declaredServersIn}). Throws on text the `(tool, path)` mode
+   * cannot parse — JSONC for this vendor's root `.mcp.json`
+   * (`parsers/json.ts` § acceptsComments) — and the recognizer's extraction
+   * boundary turns the throw into the recognition's `failed` state while the
+   * carrier stays an admitted candidate (FR-028).
    */
   public serverDeclarationsOf(
     sourceText: string,

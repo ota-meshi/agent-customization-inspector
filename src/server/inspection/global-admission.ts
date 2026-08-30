@@ -75,12 +75,26 @@ export type GlobalRootAdmission =
  * `displayRoot`: the display value is one-way presentation and is never
  * decoded back into a path.
  */
-export async function admitGlobalRoot(root: string): Promise<GlobalRootAdmission> {
+export async function admitGlobalRoot(
+  root: string,
+  stillAuthorized: () => boolean = () => true,
+): Promise<GlobalRootAdmission> {
   try {
     if (!(await stat(root)).isDirectory()) {
       // A regular file, a socket, or a device at the proposed path is not a
       // home directory: the same non-directory outcome the Repository root
       // check gives, and this tool's own rejection.
+      return { kind: 'rejected', reason: 'root-unreadable' };
+    }
+    if (!stillAuthorized()) {
+      // The disable barrier or host shutdown revoked the enable transaction
+      // between this root's two probes (data-model.md § ScanAttempt: the
+      // revocation stops new scheduling, so the `access` never starts). The
+      // value is a late result: the same predicate makes the member loop stop
+      // and the settle gate refuse the whole resolution
+      // (`resolveGlobalMembers`, devframe-app.ts § runGlobalEnable), so no
+      // fabricated outcome can publish — rejection is the fail-closed
+      // direction for a path that cannot.
       return { kind: 'rejected', reason: 'root-unreadable' };
     }
     await access(root, fsConstants.R_OK | fsConstants.X_OK);

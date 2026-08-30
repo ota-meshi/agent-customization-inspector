@@ -28,7 +28,19 @@ export const SHARED_EXCLUDED_MANAGED_REMOTE_STATE_RULE = {
   sourceKinds: ['global'],
   matcher: null,
   policyRefs: SHIPS_MAINTENANCE_DATA
-    ? ['FR-013', 'FR-014', 'FR-015', 'FR-016', 'FR-017', 'FR-018', 'QR-001', 'QR-005']
+    ? [
+        'FR-009',
+        'FR-013',
+        'FR-014',
+        'FR-018',
+        'FR-019',
+        'FR-021',
+        'FR-022',
+        'FR-031',
+        'QR-001',
+        'QR-003',
+        'QR-005',
+      ]
     : [],
   precedenceGroup: null,
   documentationStatus: 'documented',

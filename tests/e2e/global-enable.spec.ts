@@ -15,7 +15,7 @@
 //    of its family's copies offers its own entry — two consented homes'
 //    same-spelled copies compare as two files, each side stating its own
 //    directory — while a row whose blocks hold one copy each offers none
-//    (T1127, FR-030; contracts/http-api.md § Host requirements #5).
+//    (T1140, FR-030; contracts/http-api.md § Host requirements #5).
 //  - A credential literal in a consented home's file is served exactly as
 //    authored, with no mask and no verdict (FR-025, FR-027).
 import { rm } from 'node:fs/promises';
@@ -46,7 +46,7 @@ test.beforeAll(async () => {
   // comparison entry (FR-011, FR-030).
   mkdirSync(join(repository, '.claude', 'skills', 'deploy'), { recursive: true });
   // A repository settings document, so the settings list holds both families
-  // and its family sections have two headings to show (T1127).
+  // and its family sections have two headings to show (T1140).
   writeFileSync(
     join(repository, '.claude', 'settings.json'),
     '{\n  "permissions": { "allow": ["Bash(ls:*)"] }\n}\n',
@@ -59,7 +59,7 @@ test.beforeAll(async () => {
   );
   // Two repository copies of the `relay` name: with the two personal copies
   // below, each of the row's family blocks holds a pair of its own, so the
-  // row offers one comparison entry per block (T1127, FR-030).
+  // row offers one comparison entry per block (T1140, FR-030).
   for (const [directory, body] of [
     ['.claude', 'The repository relay copy.'],
     ['.agents', 'The shared-directory relay copy.'],
@@ -162,7 +162,7 @@ test('narrows the inventory by Source family and back', async ({ page }) => {
   const panel = page.getByRole('tabpanel');
   await expect(panel).toContainText('deploy');
   await expect(panel).toContainText('common');
-  // The family filter: the repository family alone drops the rows only the
+  // The Source filter: the repository alone drops the rows only the
   // consented homes publish.
   await page.getByLabel('Source').selectOption({ label: 'Repository' });
   await expect(panel).toContainText('deploy');
@@ -176,7 +176,7 @@ test('offers no comparison entry on a row whose blocks hold one copy each', asyn
   const panel = page.getByRole('tabpanel');
   const deployRow = panel.locator('.aci-item').filter({ hasText: 'deploy' });
   // The row's two copies still render as two family blocks, each headed by
-  // the family's own words (T1127, FR-030).
+  // the family's own words (T1140, FR-030).
   await expect(deployRow.locator('.aci-family-heading')).toHaveText([
     'Repository',
     'Your personal setup',
@@ -189,7 +189,7 @@ test('offers no comparison entry on a row whose blocks hold one copy each', asyn
   );
 });
 
-test('compares two same-spelled copies as two files, each naming its directory (T1127)', async ({
+test('compares two same-spelled copies as two files, each naming its directory (T1140)', async ({
   page,
 }) => {
   await page.goto(new URL('/?kind=skill', host.origin).href);
@@ -206,7 +206,7 @@ test('compares two same-spelled copies as two files, each naming its directory (
   await expect(main).toContainText('The shared-home copy.');
 });
 
-test('offers one comparison entry per family block when both blocks pair (T1127)', async ({
+test('offers one comparison entry per family block when both blocks pair (T1140)', async ({
   page,
 }) => {
   await page.goto(new URL('/?kind=skill', host.origin).href);
@@ -235,7 +235,7 @@ test('offers one comparison entry per family block when both blocks pair (T1127)
 test('groups a file-unit kind into one section per family', async ({ page }) => {
   // The settings list holds the repository's documents and every consented
   // home's, so the list itself splits into family sections with the same
-  // headings the rows' own blocks carry (T1127, FR-030).
+  // headings the rows' own blocks carry (T1140, FR-030).
   await page.goto(new URL('/?kind=settings%2Fconfig', host.origin).href);
   const panel = page.getByRole('tabpanel');
   await expect(panel.locator('.aci-family-heading')).toHaveText([
@@ -257,4 +257,21 @@ test('serves a home credential exactly as authored, with no mask or verdict', as
   await expect(main).toContainText(HOME_SECRET);
   await expect(main).not.toContainText('redact');
   await expect(main).not.toContainText('****');
+});
+
+test('states the Source family and directory on a Global detail (FR-007)', async ({ page }) => {
+  // A directly opened Global detail must say which place its file came from:
+  // the family name on the recognition line, and — the personal family holds
+  // several Sources — the consented directory it was read from, as an
+  // escaped presentation rather than anything openable (FR-002).
+  await page.goto(
+    new URL('/settings-and-configuration/detail/global-codex/config.toml', host.origin).href,
+  );
+  const main = page.locator('main');
+  await expect(main).toContainText('Your personal setup');
+  await expect(main.locator('.aci-settings-detail__root')).toContainText('codex-home');
+  // The same two facts on a name-keyed kind's page.
+  await page.goto(new URL('/skills/detail/global-claude/skills/deploy/SKILL.md', host.origin).href);
+  await expect(main).toContainText('Your personal setup');
+  await expect(main.locator('.aci-skill-detail__root')).toContainText('claude-home');
 });

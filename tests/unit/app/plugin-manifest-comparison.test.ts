@@ -15,7 +15,7 @@
 // plugin's form, registration, installation, enablement, and trust are state
 // outside this repository (FR-009) — and a relationship a manifest declares
 // is a value here, never a file this surface opens.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { canonicalDeclaredEntriesJsonText } from '../../../src/app/components/declared-entries-json';
 import { pluginComparisonRouteFor } from '../../../src/app/composables/plugin-comparison';
@@ -463,6 +463,68 @@ describe('plugin comparison view (T829)', () => {
     state.dispose();
   });
 
+  it('disposes the selected file pair\u2019s owners synchronously on a file change', async () => {
+    // Choosing another of the plugin's files drops the previous file's
+    // models in the same synchronous block as its state (data-model.md
+    // \u00a7 BrowserState) \u2014 through the file pair's own registry, so the
+    // carrier and manifest panes, which stay open across the change, keep
+    // their models.
+    const scripted = scriptedChannel({
+      sessions: [dataResult(snapshotWith())],
+      carrier: ({ sourceRelativePath }) =>
+        dataResult(catalogDetail(sourceRelativePath, [declaration(PLUGIN_NAME, {})])),
+      file: (sourceRelativePath) =>
+        dataResult({
+          file: {
+            sourceId: 'source-repository',
+            sourceRelativePath,
+            encoding: 'utf-8',
+            hadLeadingBom: false,
+            sourceText: `# ${sourceRelativePath}\n`,
+            sizeBytes: 8,
+            diagnosticIds: [],
+          },
+          diagnostics: [],
+        }),
+    });
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.pluginComparison.open(
+      PLUGIN_NAME,
+      side(LEFT_PATH),
+      'claude',
+      side(RIGHT_PATH),
+      'codex',
+    );
+    const fileOwner = vi.fn();
+    const viewOwner = vi.fn();
+    state.pluginComparison.registerOpenFileContentOwner(fileOwner);
+    state.pluginComparison.registerOpenContentOwner(viewOwner);
+    await state.pluginComparison.openFilePair(
+      {
+        filePath: 'plugins/left/README.md',
+        carrier: {
+          source: 'repository',
+          sourceRelativePath: LEFT_PATH,
+          tool: 'claude',
+          pluginName: PLUGIN_NAME,
+        },
+      },
+      {
+        filePath: 'plugins/right/README.md',
+        carrier: {
+          source: 'repository',
+          sourceRelativePath: RIGHT_PATH,
+          tool: 'codex',
+          pluginName: PLUGIN_NAME,
+        },
+      },
+    );
+    expect(fileOwner).toHaveBeenCalledTimes(1);
+    expect(viewOwner).not.toHaveBeenCalled();
+    state.dispose();
+  });
+
   it('adopts a document a carrier response carried instead of reading it again', async () => {
     // One side is a catalog whose plugin declares itself with the very file the
     // other side's carrier is. That document arrived with the carrier
@@ -516,6 +578,33 @@ describe('plugin comparison view (T829)', () => {
       ).toEqual([]);
       state.dispose();
     }
+  });
+
+  it('refetches the carrier when the same row opens as another product\u2019s reading', async () => {
+    // One catalog read as Claude reads it and as Codex reads it are two
+    // answers (api-types.ts \u00a7 PluginCarrierDetailParams): a history step from
+    // the Claude page to the Codex page \u2014 same file, same plugin name \u2014 must
+    // fetch, never keep the other product's interpretation on screen as the
+    // held declarations.
+    const scripted = scriptedChannel({
+      sessions: [dataResult(snapshotWith())],
+      carrier: ({ sourceRelativePath }) =>
+        dataResult(catalogDetail(sourceRelativePath, [declaration(PLUGIN_NAME, {})])),
+    });
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    const open = (tool: 'claude' | 'codex') =>
+      state.openPluginDetail(
+        { source: 'repository', sourceRelativePath: LEFT_PATH, tool, pluginName: PLUGIN_NAME },
+        null,
+        null,
+      );
+    await open('claude');
+    await open('codex');
+    expect(
+      scripted.calls.filter((call) => call.method === SESSION_RPC_FUNCTIONS.getPluginCarrierDetail),
+    ).toHaveLength(2);
+    state.dispose();
   });
 
   it('drops the plugin panel\u2019s own files when another detail route opens', async () => {

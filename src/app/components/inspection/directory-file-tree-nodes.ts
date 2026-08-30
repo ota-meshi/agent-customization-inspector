@@ -7,7 +7,7 @@
 // Nesting is derived from the paths rather than requested from the host: the
 // census publishes Source-relative paths, and the directory structure is what
 // their shared prefixes already say.
-import { inlinePresentationLabel, pathPresentationLabel } from '../../../shared/entities';
+import { accessiblePresentationLabel, pathPresentationLabel } from '../../../shared/entities';
 
 /** One file's node: a leaf the reader can open. */
 export class SkillTreeFileNode {
@@ -27,10 +27,11 @@ export class SkillTreeFileNode {
   public readonly label: string;
 
   /**
-   * The same name as accessible-name text: an accessible name collapses
-   * whitespace, so `a b.md` and `a  b.md` — two files a directory holds apart
-   * and the label above draws apart — would otherwise announce as one link
-   * (FR-025, WCAG 2.4.4).
+   * The same name as accessible-name text: it starts with the visible label
+   * (WCAG 2.5.3 Label in Name) and appends the spelled-out presentation
+   * where whitespace would collapse two files a directory holds apart into
+   * one announcement (FR-025, WCAG 2.4.4;
+   * {@link accessiblePresentationLabel}).
    */
   public readonly accessibleLabel: string;
 
@@ -38,7 +39,7 @@ export class SkillTreeFileNode {
   public constructor(sourceRelativePath: string, name: string) {
     this.sourceRelativePath = sourceRelativePath;
     this.label = pathPresentationLabel(name);
-    this.accessibleLabel = inlinePresentationLabel(name);
+    this.accessibleLabel = accessiblePresentationLabel(name);
   }
 
   /** Stable identity for the render; a file's path is already unique. */
@@ -67,6 +68,15 @@ export class SkillTreeDirectoryNode {
   /** The directory's own segment, as presentation text. */
   public readonly label: string;
 
+  /**
+   * The whitespace-preserving accessible spelling of the same segment, for
+   * the branch's `aria-label` — an accessible name collapses whitespace, so
+   * two directories held apart only by it must not announce as one, exactly
+   * as the file nodes' rule (FR-025; `entities.ts`
+   * § accessiblePresentationLabel).
+   */
+  public readonly accessibleLabel: string;
+
   /** The files and directories immediately inside it, in the order given. */
   public readonly children: DirectoryTreeNode[] = [];
 
@@ -74,6 +84,7 @@ export class SkillTreeDirectoryNode {
   public constructor(ancestors: readonly string[], name: string) {
     this.id = [...ancestors, name].join('/');
     this.label = pathPresentationLabel(name);
+    this.accessibleLabel = accessiblePresentationLabel(name);
   }
 }
 

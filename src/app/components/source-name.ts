@@ -11,7 +11,7 @@
 // the inventory's instruction blocks, the files in no kind, and the instruction
 // detail all stop naming a Source in the same session — the one that carries a
 // single Source, where naming it would repeat the page's only answer.
-import { SOURCE_KIND_TEXT } from '../../shared/api-text';
+import { GLOBAL_MEMBER_TEXT, SOURCE_KIND_TEXT } from '../../shared/api-text';
 import type { SourceDto, SourceKind } from '../../shared/api-types';
 
 /**
@@ -85,8 +85,8 @@ export function fileSourceRootOf(sources: readonly SourceDto[], sourceId: string
  * that order, ready for the kind and read-outcome facts the page appends.
  *
  * The family is stated unconditionally, unlike a list heading: a facts line
- * identifies one side on a page whose two sides can be two Sources — a
- * consented home's file beside the repository's — so "Repository" carries
+ * identifies one side on a page whose two sides can be two Sources — one
+ * consented home's file beside another member's — so the family word carries
  * meaning even in a single-Source session (FR-002, FR-030). The directory
  * stays gated the way every per-file directory is
  * ({@link sourceRootOf}).
@@ -99,4 +99,34 @@ export function sourceFactsOf(sources: readonly SourceDto[], sourceId: string): 
     }
   }
   return [];
+}
+
+/**
+ * The accessible qualifier of one file's Source, or null where its family
+ * holds one Source and the link's name needs none. The member the home
+ * belongs to plus the escaped directory it was admitted at — the facts the
+ * row shows beside the link (the member label and `SourceRootLine`) — so two
+ * links to one path in two consented homes never announce identically in a
+ * links list (WCAG 2.4.6). Appended after the visible-label prefix, which
+ * keeps the visible text at the front of the name (WCAG 2.5.3).
+ */
+export function fileSourceQualifierOf(
+  sources: readonly SourceDto[],
+  sourceId: string,
+): string | null {
+  for (const source of sources) {
+    if (source.sourceId !== sourceId) {
+      continue;
+    }
+    if (source.kind !== 'global') {
+      // Exactly one Repository Source exists (data-model.md § Source), so a
+      // repository family never holds a same-path pair to tell apart.
+      return null;
+    }
+    if (sources.filter((candidate) => candidate.kind === 'global').length <= 1) {
+      return null;
+    }
+    return `${GLOBAL_MEMBER_TEXT[source.member]}, ${source.boundary.displayRoot}`;
+  }
+  return null;
 }

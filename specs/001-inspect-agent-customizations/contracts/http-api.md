@@ -100,11 +100,14 @@ another machine remains prohibited.
    documents them with the rejection a mismatch produces. A declared parameter is
    validated by resolution, never by a shape guard in front of it: every detail
    parameter is a published identity resolved against the committed generations and
-   never a filesystem operand — the Source-and-path pair `get-file-detail`, `open-file`,
+   never a filesystem operand — the Source-and-path pair `get-file-detail`,
    `get-mcp-carrier-detail`, `get-hook-carrier-detail`, and
-   `get-permission-policy-detail` each take, and the Source-path-and-plugin-name
+   `get-permission-policy-detail` each take; that pair plus the closed open target
+   `open-file` takes; the Source, path, recognizing tool, and plugin-name
    parameters `get-plugin-carrier-detail` takes, whose answer is one
-   inventory row's — and any value whose resource the invoked function does not hold, a
+   inventory row's; and the carrier's Source-and-path pair plus the recognizing
+   tool, the row's plugin name — null for the no-name row — and the shipped
+   file's own Source-relative Path `get-plugin-file-detail` takes — and any value whose resource the invoked function does not hold, a
    value of another type included, resolves nowhere and is the `stale-resource`
    rejection; the Global functions' preview, allowlist-version,
    and consent parameters carry their own documented codes the same way. No generic
@@ -268,8 +271,8 @@ SessionSnapshot
 ├── fileOpenTargets[] — the applications this host can hand a committed file
 │   to, in the order a detail surface offers them and with the one a plain
 │   click uses first: each editor the host resolved on this machine, then
-│   `default-application` and `containing-folder`, which every machine
-│   satisfies through its own handlers (see § open-file)
+│   `default-application` and `containing-folder`, each a hand-off to the
+│   platform's own handler launchers (see § open-file)
 ├── sessionId, createdAt, repositoryGeneration, globalGeneration, snapshotState, globalContentEpoch,
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
 │   globalEnableInProgress null | { kind, operationId, previewId },
@@ -278,7 +281,7 @@ SessionSnapshot
 │                         batchStatus null | { scanRequestId, tools[], phase, failureRef } },
 │   sessionDiagnosticIds, repositoryFailureDiagnosticId
 ├── sources[]
-│   ├── sourceId, kind, tool, enabled, status, generation, scanRequestId
+│   ├── sourceId, kind, member, enabled, status, generation, scanRequestId, diagnosticIds[]
 │   ├── boundary { displayRoot, origin }
 │   └── progress null | { scanRequestId, phase, visitedEntries, candidateFiles, readBytes,
 │                         diagnosticCount, queuedAt, startedAt }
@@ -288,9 +291,10 @@ SessionSnapshot
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── instructions[]
-│   └── applicabilityRange string | null,
+│   └── sourceId, applicabilityRange string | null,
 │       files[] { sourceRelativePath, recognitions[] { tool, surfaces[] } } —
-│       one row per applicability range, each file it governs with that file's
+│       one row per Source and applicability range — the Source is the row's
+│       other identity half (FR-030) — each file it governs with that file's
 │       recognitions in the closed tool order, and each recognition's product
 │       surfaces in the closed surface order; the one null row closes the
 │       list with the files whose range is not known
@@ -307,7 +311,7 @@ SessionSnapshot
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 ├── mcp[]
 │   └── name string | null,
-│       declarations[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│       declarations[] { sourceId, sourceRelativePath, tool, surfaces[], parseStatus,
 │       diagnosticIds[] } —
 │       one row per declared server name with each declaration resolving it —
 │       each naming its carrier by Source and Source-relative Path (FR-030),
@@ -758,7 +762,7 @@ Parameters: the file's whole identity as the function's single argument — an o
 carrying the committed Source-relative Path and the Source that holds it (FR-030). A
 path alone names no file once a Global commit publishes a second Source, because both
 can hold one path. The Source is named by a selector — `repository` or
-`global-<tool>` — rather than by a Source ID: an ID belongs to the launch that minted
+`global-<member>` — rather than by a Source ID: an ID belongs to the launch that minted
 it, while a link a reader keeps has to outlive that launch. The selector resolves like
 every other detail parameter and is never a filesystem operand, so one no committed
 Source answers to resolves nowhere and takes the same `stale-resource` rejection an
@@ -906,17 +910,19 @@ route is the path alone: two products reading one file read the same bytes, so a
 address would give one document two URLs, and where the products differ — the name each
 invokes a skill by — the page states them together from the rows that hold the file. There is no admission record either: which rule
 authorized a read, and where it matched, is an internal record of the committed
-generation (data-model.md § ToolRecognition) that the relationship phases will read; no
+generation (data-model.md § ToolRecognition); no
 session response carries it — a configured fallback instruction file's detail is
 therefore indistinguishable in shape from a static one's. And there is no
-`relationships` array of edge records — no shipped recognition can produce an edge, so
-the array would be empty in every response, and it arrives with the relationship phases
-that populate it. An instruction file never yields one, whichever product recognizes it:
+`relationships` array of edge records: an edge may be emitted only from an origin a
+relationship-only rule covers, the registry ships none
+(contracts/runtime-composition.md § Normative relationship-only registry), so no
+recognition produces one and the response carries no such array at all. An instruction
+file yields none either, whichever product recognizes it:
 this product does not read references out of prose, because no vendor page fixes where an
 authored `@path`-shaped token ends, so every boundary rule would be this product's own
 invention and a wrong one asserts a reference the reader never wrote. Such a token stays
-source text, and no relationship-only rule covers an instruction origin. The edges later
-phases do publish come from declarations a format delimits — a frontmatter value, a JSON
+source text, and no relationship-only rule covers an instruction origin. What such a
+rule could ever cover is a declaration a format delimits — a frontmatter value, a JSON
 or TOML field, a map key — where the boundary is the format's rather than this
 product's.
 
@@ -1452,7 +1458,7 @@ to.
 ```
 
 The committed Source-relative Path, the Source that holds it — `repository` or
-`global-<tool>`, exactly as `get-file-detail` names one — and one member of the closed
+`global-<member>`, exactly as `get-file-detail` names one — and one member of the closed
 target set
 `visual-studio-code | sublime-text | terminal-editor | default-application | containing-folder`.
 
@@ -1491,8 +1497,13 @@ What each target reaches:
   inside it: what the reader asked for is the folder.
 
 `fileOpenTargets` in the `get-session` snapshot is exactly the set this function accepts
-on this machine, in the order a surface offers them, and an editor the host did not
-resolve is absent from it — so a surface offers no application the host could not launch.
+on this machine, in the order a surface offers them. An editor the host did not resolve is
+absent from it — the host verifies an editor's own executable, so a surface offers no
+editor the host could not start. The two handler targets are different: they are always
+present, because each is a hand-off to the platform's own handler launcher, and whether a
+handler is registered for the file is that machine's own state, which no probe short of
+launching answers. A machine whose launcher is missing or has no handler reports that
+launch's ordinary error.
 The result carries no payload: it reports that the launch was requested, and says nothing
 about what the machine did with the file, which is that machine's business.
 
@@ -1843,8 +1854,10 @@ the post-acceptance failure's ordinary error. Disable itself never returns
   graph record, Diagnostic, and DTO result is discarded. Physical
   cancellation of an uncancellable kernel operation is not guaranteed.
 - A successful complete or partial scan commits exactly N+1 in its owning sequence and
-  regenerates that sequence's generation-owned graph IDs for the scanned Source and, in a
-  Global batch commit, all carried Global Sources; process-lifetime-stable Source IDs and
+  regenerates that sequence's generation-owned graph IDs for the Sources it publishes — the
+  scanned Source, and in a Global batch commit each newly published member Source — while
+  carried Global Sources keep their records and IDs, invalidated only through the
+  generation the snapshot adoption replaces; process-lifetime-stable Source IDs and
   the entire other sequence — its generation, IDs, and views — remain unchanged. It clears
   only the scanned Source's stale-failure
   entry and referenced failure and carries both for other Sources. A fatal explicit rescan discards every uncommitted

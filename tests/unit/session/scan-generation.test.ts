@@ -25,6 +25,7 @@ function commitInput(
     startedAt: NOW,
     finishedAt: NOW,
     outcome: 'complete' as const,
+    censusEscapedDirectories: [],
     files,
     recognitions,
     diagnostics,

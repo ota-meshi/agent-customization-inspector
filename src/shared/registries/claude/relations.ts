@@ -117,7 +117,7 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
   },
   /**
    * Agent selection composes both documented subagent scopes: the project
-   * files this product can read and the personal ones it may not. Both are
+   * files and the personal ones a consented home holds. Both are
    * listed because the strategy describes Claude's runtime — the User scope is
    * one of the priorities it orders — while the managed, session `--agents`,
    * and plugin scopes it also orders have no behavior statement of their own,
@@ -129,10 +129,10 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
   },
   /**
    * Command selection composes both documented command scopes and both skill
-   * scopes. The command scopes are listed even though only the project one is
-   * readable: the strategy describes Claude's runtime, and omitting the User
-   * scope would describe the selection as choosing among project command files
-   * alone. The skill scopes are listed because they are the other side of the
+   * scopes. Both scopes are listed because the strategy describes Claude's
+   * runtime, whichever Sources a session has consented to: omitting the User
+   * scope would describe the selection as choosing among project command
+   * files alone. The skill scopes are listed because they are the other side of the
    * one selection this strategy records — the documented outcome is that a
    * same-name skill wins over a command, so a graph naming only the command
    * lookups would describe a choice with one candidate.
@@ -145,13 +145,6 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
       CLAUDE_USER_SKILLS_BEHAVIOR,
     ],
   },
-  /**
-   * Instruction layering composes all four documented instruction scopes. The
-   * User file is listed even though only the Repository ones are readable:
-   * the strategy describes Claude's runtime, and omitting it would misdescribe
-   * the documented broadest-to-most-specific order as starting at the
-   * repository.
-   */
   /**
    * Additive hook composition consumes every documented source of a hook this
    * vendor has: the contained-declaration statement that locates them, the two
@@ -175,6 +168,13 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
       CLAUDE_USER_SETTINGS_BEHAVIOR,
     ],
   },
+  /**
+   * Instruction layering composes all four documented instruction scopes. The
+   * User file is listed beside the Repository ones, whichever Sources a session consented to:
+   * the strategy describes Claude's runtime, and omitting it would misdescribe
+   * the documented broadest-to-most-specific order as starting at the
+   * repository.
+   */
   [CLAUDE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       CLAUDE_REPO_INSTRUCTIONS_ANCESTOR_BEHAVIOR,
@@ -257,7 +257,7 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
     ],
   },
   /**
-   * Settings precedence composes the project scope this product reads and the
+   * Settings precedence composes the project scope and the
    * User scope it does not: the order the page documents starts above the
    * project files, and leaving the User scope out would describe a precedence
    * that begins where this product's read authority happens to begin.
@@ -275,8 +275,9 @@ export const CLAUDE_STRATEGY_RELATIONS: Readonly<Record<ClaudeStrategyId, Strate
 export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>> = {
   /**
    * The subagent rule is based on the project agent lookup alone — the User
-   * scope the same page documents is a different Source boundary it may not
-   * open — and is explained by both agent strategies: the selection that
+   * scope the same page documents is a different Source boundary, which
+   * `claude.global.agent` admits under its own consent — and is explained by
+   * both agent strategies: the selection that
    * orders same-name definitions across scopes and leaves a same-tree
    * duplicate unresolved, and the composition that assembles a spawned
    * subagent's context. Neither is projected by any surface (FR-009). No MCP
@@ -368,13 +369,6 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
     explainedByStrategies: [CLAUDE_SETTINGS_PRECEDENCE_STRATEGY],
   },
   /**
-   * The Repository rule-file rule is based on the project rule lookup alone —
-   * the User `rules/` directory the same section documents is a different
-   * Source boundary this rule may not read — and is explained by the layering
-   * strategy, which owns the User-before-project order and the `paths`
-   * activation the rule deliberately does not project (FR-009).
-   */
-  /**
    * The Repository output-style rule is based on the Repository lookup alone —
    * the User layer is a different Source boundary this rule may not read — and
    * is explained by the selection strategy that composes both.
@@ -383,6 +377,13 @@ export const CLAUDE_RULE_RELATIONS: Readonly<Record<ClaudeRuleId, RuleRelations>
     basedOnBehaviors: [CLAUDE_REPO_OUTPUT_STYLE_BEHAVIOR],
     explainedByStrategies: [CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY],
   },
+  /**
+   * The Repository rule-file rule is based on the project rule lookup alone —
+   * the User `rules/` directory the same section documents is a different
+   * Source boundary this rule may not read — and is explained by the layering
+   * strategy, which owns the User-before-project order and the `paths`
+   * activation the rule deliberately does not project (FR-009).
+   */
   [CLAUDE_REPO_RULES_RULE.ruleId]: {
     basedOnBehaviors: [CLAUDE_REPO_RULES_BEHAVIOR],
     explainedByStrategies: [CLAUDE_RULES_LAYERING_STRATEGY],

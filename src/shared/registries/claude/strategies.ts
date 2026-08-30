@@ -445,7 +445,6 @@ export const CLAUDE_PLUGINS_ACTIVATION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
-/** Claude's contribution to the strategy registry, keyed by `strategyId` in identifier order. */
 /**
  * Claude rule layering: add the applicable User and project rule layers
  * (`append`), and keep a `paths` rule out of context until Claude works with
@@ -581,6 +580,7 @@ export const CLAUDE_OUTPUT_STYLE_SELECTION_STRATEGY = {
     : [],
 } as const satisfies RuntimeCompositionStrategy;
 
+/** Claude's contribution to the strategy registry, keyed by `strategyId` in identifier order. */
 export const CLAUDE_COMPOSITION_STRATEGIES: Readonly<
   Record<ClaudeStrategyId, RuntimeCompositionStrategy>
 > = {

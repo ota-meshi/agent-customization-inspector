@@ -45,6 +45,7 @@ import {
   inlinePresentationLabel,
   isReadableFile,
   rendersNothingVisible,
+  accessiblePresentationLabel,
 } from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
@@ -190,7 +191,7 @@ function affectedCompanions(
     <SourceFamilyBlocks
       :members="rowFiles"
       :member-key="(file) => fileIdentityKey(file.sourceId, file.sourceRelativePath)"
-      :identities="entry.rowFileIdentities"
+      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: file }">
         <!-- The path is the link: the detail route is the file's identity, and
@@ -223,9 +224,14 @@ function affectedCompanions(
               )
             "
             class="aci-path aci-authored-text"
-            :aria-label="`${inlinePresentationLabel(
-              file.sourceRelativePath,
-            )}: ${inlinePresentationLabel(entry.name)}`"
+            :aria-label="
+              sessionSources.qualifiedLinkName(
+                `${accessiblePresentationLabel(file.sourceRelativePath)}: ${inlinePresentationLabel(
+                  entry.name,
+                )}`,
+                file.sourceId,
+              )
+            "
             >{{ file.pathText }}</NuxtLink
           >
           <span

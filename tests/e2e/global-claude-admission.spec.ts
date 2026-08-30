@@ -140,7 +140,7 @@ test('publishes the one CLAUDE.md instruction row and nothing beside it', async 
   expect(claudeRows).toEqual(['/instructions/detail/global-claude/CLAUDE.md']);
 });
 
-test('publishes every contracted Claude kind from the one confirmation (T1125)', async ({
+test('publishes every contracted Claude kind from the one confirmation (T1138)', async ({
   page,
 }) => {
   await page.goto(host.origin);

@@ -109,6 +109,37 @@ test.describe('discovering the customizations of one repository', () => {
     await expect(files).toHaveCount(unfiltered);
   });
 
+  test("restores the narrowed list on a history step between this page's own entries", async ({
+    page,
+  }) => {
+    // A history jump between two of the inventory page's own entries changes
+    // only the query, with no mount in between: the selections must read the
+    // URL back, or the address bar would show the narrowed list while the
+    // controls and the rows stayed on the other entry's state.
+    await page.goto(new URL('/?kind=instructions', host.origin).href);
+    const panel = page.getByRole('tabpanel');
+    await page.getByLabel('Path contains').fill('CLAUDE');
+    await expect(panel).not.toContainText('AGENTS.md');
+    // Navigating to a detail page and back through its own link produces two
+    // inventory entries — the narrowed one and the unfiltered one the back
+    // link wrote.
+    await panel
+      .getByRole('link', { name: /CLAUDE\.md/u })
+      .first()
+      .click();
+    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await expect(panel).toContainText('AGENTS.md');
+    // The browser's history menu jumps straight from the unfiltered entry to
+    // the narrowed one — one popstate over the detail entry, landing on the
+    // page that is already mounted.
+    await page.evaluate(() => {
+      history.go(-2);
+    });
+    await expect(page.getByLabel('Path contains')).toHaveValue('CLAUDE');
+    await expect(panel).not.toContainText('AGENTS.md');
+    await expect(panel).toContainText('CLAUDE.md');
+  });
+
   test('commits the automatic scan and replaces it on an explicit rescan', async ({ page }) => {
     await page.goto(host.origin);
     const main = page.locator('main');
@@ -165,7 +196,7 @@ test.describe('an empty repository', () => {
     // showing a failure.
     await expect(page.locator('main')).toContainText('Inspection session ready.');
     await expect(page.locator('main')).toContainText(
-      'No customization files were recognized in this repository.',
+      'No customization files were recognized in this scan.',
     );
     await expect(page.locator('.aci-error')).toHaveCount(0);
   });

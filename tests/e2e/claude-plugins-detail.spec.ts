@@ -210,7 +210,7 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
     const body = page.locator('body');
     await expect(body).toContainText('This scan holds no manifest inside');
     await expect(body).toContainText('plugins/bare-helper/');
-    await expect(body).not.toContainText('names no directory in this repository');
+    await expect(body).not.toContainText('name no directory below this file');
     // The files it does ship are still its own, read through the plugin.
     await page.getByRole('tab', { name: /^files/iu }).click();
     const tree = page.getByRole('navigation', { name: 'Files in this plugin' });

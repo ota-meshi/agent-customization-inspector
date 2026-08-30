@@ -28,6 +28,7 @@ import {
   pathUnderRoot,
   INSTALLED_PACKAGE_DIRECTORIES,
   VCS_INTERNALS,
+  hasExcludedDirectorySegment,
   isVcsInternalPath,
   rethrowIfResourceExhaustion,
   statThroughLink,
@@ -117,20 +118,62 @@ export class CompanionFile {
 export async function listCompanionFiles(
   sourceRoot: string,
   censusRoot: string,
-): Promise<readonly CompanionFile[]> {
+  continueScan: () => boolean = () => true,
+): Promise<CompanionCensusResult> {
+  if (!continueScan()) {
+    // Authority left between the caller's loop-head check and this census
+    // (the stat it performed in between settled late): the containment
+    // realpath is a new filesystem promise the revocation stops. The result
+    // is a late one the commit gates discard, so the verdict it carries is
+    // never published either way.
+    return { rootContained: true, files: [] };
+  }
   const rootReal = await realpath(sourceRoot);
+  if (!continueScan()) {
+    // Authority left between the two containment realpaths (disable or
+    // shutdown, scan.ts § assembleScanPublication authorityHolds): the second
+    // is a new filesystem promise the revocation stops (data-model.md
+    // § ScanAttempt), and the empty list is a late result the commit gates
+    // discard rather than a published census.
+    return { rootContained: true, files: [] };
+  }
   const censusReal = await realpath(censusRoot);
-  if (
-    !isWithin(rootReal, censusReal) ||
-    isExcludedDirectory(relative(sourceRoot, censusRoot), relative(rootReal, censusReal))
-  ) {
-    return [];
+  if (!isWithin(rootReal, censusReal)) {
+    // The verdict travels with the empty list rather than folding into it:
+    // "this root's real path is outside the Source" is the census's own
+    // established fact, and what lies beyond the boundary belongs to no
+    // Source — so a candidate another rule admitted below the same spelling
+    // must not be attributed to this root either
+    // (contracts/inspection-path-allowlist.md § Bounded companion census).
+    // An empty contained directory reads the same as itself, which is why a
+    // boolean is published and not derived from `files.length`.
+    return { rootContained: false, files: [] };
+  }
+  if (isExcludedDirectory(relative(sourceRoot, censusRoot), relative(rootReal, censusReal))) {
+    return { rootContained: true, files: [] };
   }
   const found: string[] = [];
-  await collectWithin(censusRoot, censusReal, rootReal, new Set([censusReal]), found);
-  return found
-    .map((absolute) => new CompanionFile(censusRoot, absolute))
-    .toSorted((left, right) => (left.censusRelativePath < right.censusRelativePath ? -1 : 1));
+  await collectWithin(censusRoot, censusReal, rootReal, new Set([censusReal]), found, continueScan);
+  return {
+    rootContained: true,
+    files: found
+      .map((absolute) => new CompanionFile(censusRoot, absolute))
+      .toSorted((left, right) => (left.censusRelativePath < right.censusRelativePath ? -1 : 1)),
+  };
+}
+
+/**
+ * One census's answer: the files the directory holds, and whether the
+ * directory's own real path sits inside the Source at all. The two are one
+ * result because the second decides what the first's emptiness means — an
+ * escaped root has no files *by verdict*, and the session must not rebuild a
+ * membership the census refused (session.ts § pluginRootFilesOf).
+ */
+export interface CompanionCensusResult {
+  /** False exactly when the census root's real path escapes the Source root's. */
+  readonly rootContained: boolean;
+  /** The files enumerated below a contained root, sorted; empty otherwise. */
+  readonly files: readonly CompanionFile[];
 }
 
 /**
@@ -158,11 +201,9 @@ export async function listCompanionFiles(
  * first: two paths on different Windows volumes never reach this.
  */
 function isExcludedDirectory(declaredSteps: string, resolvedSteps: string): boolean {
-  const declaredSegments = declaredSteps.split(sep);
   return (
-    declaredSegments.some(
-      (segment) => VCS_INTERNALS.has(segment) || INSTALLED_PACKAGE_DIRECTORIES.has(segment),
-    ) || resolvedSteps.split(sep).some((segment) => VCS_INTERNALS.has(segment))
+    hasExcludedDirectorySegment(declaredSteps.split(sep)) ||
+    resolvedSteps.split(sep).some((segment) => VCS_INTERNALS.has(segment))
   );
 }
 
@@ -197,9 +238,23 @@ async function collectWithin(
   rootReal: string,
   visitedRealPaths: Set<string>,
   found: string[],
+  continueScan: () => boolean,
 ): Promise<void> {
+  if (!continueScan()) {
+    // Authority left before this level's enumeration (the census caller's
+    // authorityHolds, scan.ts): the readdir is a new filesystem promise the
+    // revocation stops (data-model.md § ScanAttempt), and the partial list is
+    // a late result the commit gates discard.
+    return;
+  }
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
+    if (!continueScan()) {
+      // Authority left mid-directory: each remaining entry's stat or realpath
+      // is a new filesystem promise the revocation stops, exactly as the
+      // ordinary walk stops between entries (traversal.ts § walkDirectory).
+      return;
+    }
     if (VCS_INTERNALS.has(entry.name)) {
       continue;
     }
@@ -245,6 +300,12 @@ async function collectWithin(
         // show a skill missing a file its own directory has.
         continue;
       }
+      if (!continueScan()) {
+        // Authority left while this entry's stat settled: the descent
+        // realpath is its own filesystem promise, and revocation stops each
+        // one (data-model.md § ScanAttempt "stops new scheduling").
+        return;
+      }
       const real = await realpath(entryPath);
       // A directory whose real path is outside the census root is not part of
       // this customization's directory, however it is reached. VCS internals
@@ -260,7 +321,7 @@ async function collectWithin(
         continue;
       }
       visitedRealPaths.add(real);
-      await collectWithin(entryPath, censusReal, rootReal, visitedRealPaths, found);
+      await collectWithin(entryPath, censusReal, rootReal, visitedRealPaths, found, continueScan);
       visitedRealPaths.delete(real);
     }
   }

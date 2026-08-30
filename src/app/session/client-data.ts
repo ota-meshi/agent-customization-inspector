@@ -16,13 +16,16 @@
  * Why the purge ran. Each member names a documented trigger
  * (contracts/http-api.md § Concurrency and lifecycle, FR-042).
  *
- * The pre-disable purge the client runs before sending a Global disable is
- * not listed: no code sends that request yet, so the Global tasks that add
- * it add its reason with it.
+ * The pre-disable purge the Global disable command runs before sending is
+ * `global-disable-request` (`view-state.ts` § requestGlobalDisable): nothing
+ * this session held may survive the decision to disable, so the purge
+ * precedes the request rather than following its outcome (FR-042).
  */
 export type PurgeReason =
   /** A response reported a greater server-owned Global content epoch. */
   | 'global-content-epoch-advanced'
+  /** The browser is about to send `disable-global` and purges first (FR-042). */
+  | 'global-disable-request'
   /** A response reported a non-null Global disable fence. */
   | 'global-disable-fence'
   /** The host answered with an identity different from the adopted session. */

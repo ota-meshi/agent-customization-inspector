@@ -16,7 +16,7 @@
 // own carriers.
 //
 // The URL carries the model's own coordinates —
-// `/mcp/compare?name=<declared name>&leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>`
+// `/mcp/compare/<family>?name=<declared name>&leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>`
 // — the row's name in the carriers' own spelling (FR-007) and the two
 // carriers by their whole identities — each side's own Source and
 // Source-relative Path, the identity the inventory rows and the detail route
@@ -37,16 +37,7 @@
 // the comparison state owns: leaving the route closes it, a client-data
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same selection under the new snapshot (FR-030).
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import DeclarationDiff from '../../../components/mcp-comparison/DeclarationDiff.vue';
@@ -58,6 +49,7 @@ import {
   fromJsonStringBody,
   querySideOf,
   sideIdentityKeyOf,
+  comparisonTitleSides,
 } from '../../../components/detail-route';
 import {
   comparisonSideOptions,
@@ -66,7 +58,7 @@ import {
 } from '../../../components/comparison-side-picker';
 import { sourceFactsOf } from '../../../components/source-name';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
 import { useSessionSources } from '../../../composables/session-sources';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
@@ -81,13 +73,7 @@ import {
 } from '../../../../shared/entities';
 import type { McpCarrierDetailDto, SourceKind } from '../../../../shared/api-types';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a comparison page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const comparison = sessionViewState.mcpComparison;
 const snapshot = sessionViewState.snapshot;
@@ -425,7 +411,7 @@ const diffContentLabel = computed(() => {
  * directory it was in where that family holds more than one Source, its
  * recognized kind, and its read outcome (US3 scenario 1). Per side rather
  * than per pair, because the two sides can be two Sources — a consented
- * home's carrier beside the repository's is the pair this route now
+ * home's carrier beside another member's is the pair this route
  * expresses (FR-002, FR-030).
  */
 function fileFacts(detail: McpCarrierDetailDto): string {
@@ -671,8 +657,18 @@ const titleSubject = computed<string>(() => {
   }
   switch (status.value) {
     case 'ready':
-    case 'loading':
-      return 'Comparing MCP declarations';
+    case 'loading': {
+      // The row and its pair in the title, so two comparison tabs never read
+      // identically (WCAG 2.4.2; `detail-route.ts` § comparisonTitleSides).
+      const sides = comparisonTitleSides(leftSide.value, rightSide.value);
+      if (sides === null) {
+        return 'Comparing MCP declarations';
+      }
+      const subject = subjectName.value;
+      return subject === null
+        ? `Comparing MCP declarations — ${sides}`
+        : `Comparing MCP declarations: ${subject} — ${sides}`;
+    }
     case 'stale':
       return 'Link not in this scan';
     case 'failed':

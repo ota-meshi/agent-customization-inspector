@@ -15,9 +15,10 @@
 // The session view state is injected rather than created: the shell owns the
 // one RPC connection and the one adopted snapshot, and a second view state
 // would race the first for the same request tokens.
-import { computed, inject, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { NuxtLink } from '#components';
-import type { SourceKind } from '../../shared/api-types';
+import type { SourceSelector } from '../../shared/api-types';
+import { GLOBAL_MEMBER_ORDER, GLOBAL_MEMBER_TEXT } from '../../shared/api-text';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import DiagnosticList from '../components/diagnostics/DiagnosticList.vue';
 import InventoryFilters from '../components/inventory/InventoryFilters.vue';
@@ -25,7 +26,8 @@ import InventoryKindTabs from '../components/inventory/InventoryKindTabs.vue';
 import InventoryList from '../components/inventory/InventoryList.vue';
 import UnclassifiedList from '../components/inventory/UnclassifiedList.vue';
 import ScanProgress from '../components/inventory/ScanProgress.vue';
-import { SESSION_VIEW_STATE } from '../session/view-state';
+import GlobalSourceControls from '../components/consent/GlobalSourceControls.vue';
+import { useSessionViewState } from '../composables/session-view-state';
 import { recordInventoryReturnPoint } from '../router.options';
 import { useInventoryFilters } from '../composables/filters';
 import {
@@ -36,15 +38,8 @@ import {
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
-import { GLOBAL_MEMBER_TEXT } from '../../shared/api-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering this route; its absence is
-  // a wiring bug, and failing loudly beats rendering an inventory-shaped page
-  // with no session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const snapshot = sessionViewState.snapshot;
 
@@ -63,14 +58,18 @@ function kindFromQuery(value: unknown): CustomizationKind | null {
 /**
  * The Source family read out of `?source=`, or null for anything the label
  * table does not name — the same rule as {@link kindFromQuery}, for the same
- * reason. The family is what rides in the URL rather than a Source ID: an ID
- * belongs to one launch, so a kept link would name nothing after the next one
- * (`api-text.ts` § SOURCE_KIND_TEXT).
+ * reason. The Source's launch-stable selector is what rides in the URL rather
+ * than a Source ID: an ID belongs to one launch, so a kept link would name
+ * nothing after the next one (`detail-route.ts` § sourceSelectorOf).
  */
-function sourceKindFromQuery(value: unknown): SourceKind | null {
-  for (const candidate of ['repository', 'global'] as const) {
-    if (candidate === value) {
-      return candidate;
+function sourceFromQuery(value: unknown): SourceSelector | null {
+  if (value === 'repository') {
+    return value;
+  }
+  for (const member of GLOBAL_MEMBER_ORDER) {
+    const selector: SourceSelector = `global-${member}`;
+    if (value === selector) {
+      return selector;
     }
   }
   return null;
@@ -111,22 +110,170 @@ function queryText(value: unknown): string | null {
 // reader who has chosen nothing has chosen nothing, so the parameter stays
 // absent and the default is resolved against whatever inventory is committed
 // then.
-const sourceKind = ref<SourceKind | null>(sourceKindFromQuery(route.query.source));
+const sourceFilter = ref<SourceSelector | null>(sourceFromQuery(route.query.source));
 const tool = ref<SupportedTool | null>(toolFromQuery(route.query.tool));
 const pathQuery = ref(queryText(route.query.path) ?? '');
 const kind = ref<CustomizationKind | null>(kindFromQuery(route.query.kind));
 
-watch([sourceKind, tool, pathQuery, kind], () => {
+/**
+ * The purge generation this page's history entries are written under,
+ * persisted in `sessionStorage` so it survives a reload: a process-local
+ * counter would reset to zero and re-validate every pre-purge entry the
+ * moment the tab reloaded. The stored value is an opaque token replaced
+ * whenever a purge's recovery re-adopts the inventory (FR-042;
+ * `SessionViewState.inventoryResumeRequests`), because the recovery contract
+ * starts that inventory at the default filters (data-model.md
+ * § RecoveryViewState). Stamped into each entry's `history.state`: an entry
+ * the reader left before the purge — a narrowed inventory behind the consent
+ * page, say — is not unmounted by it and would otherwise hand its pre-purge
+ * narrowing back through the browser's Back button. Wrapped in try/catch
+ * because storage can be unavailable; the page then behaves as before the
+ * stamp existed.
+ */
+const FILTER_GENERATION_KEY = 'aci-filter-generation';
+
+/**
+ * The token this page instance uses when `sessionStorage` cannot hold one.
+ * It rotates on the same purge recovery the stored token does, so a browser
+ * with site data blocked still tells a pre-purge entry apart for as long as
+ * the page lives — which is every Back within one session, the case the
+ * stamp exists for. What it cannot survive is a reload, where nothing this
+ * page could write persists at all.
+ */
+let inPageFilterGeneration = crypto.randomUUID();
+
+function filterGeneration(): string {
+  try {
+    const held = window.sessionStorage.getItem(FILTER_GENERATION_KEY);
+    if (held !== null) {
+      return held;
+    }
+    window.sessionStorage.setItem(FILTER_GENERATION_KEY, inPageFilterGeneration);
+    return inPageFilterGeneration;
+  } catch {
+    return inPageFilterGeneration;
+  }
+}
+watch(
+  () => sessionViewState.inventoryResumeRequests.value,
+  () => {
+    // A purge recovery re-adopted the inventory: every entry stamped before
+    // this moment is pre-purge, so the token is replaced rather than counted.
+    // Both spellings rotate, because the stored one may be unwritable and the
+    // in-page one is then what every stamp reads.
+    inPageFilterGeneration = crypto.randomUUID();
+    try {
+      window.sessionStorage.setItem(FILTER_GENERATION_KEY, inPageFilterGeneration);
+    } catch {
+      // Storage unavailable: the in-page token above is the whole mechanism.
+    }
+  },
+);
+
+/** Whether this history entry's filters predate the last purge recovery. */
+function queryPredatesPurge(): boolean {
+  const hasSelection =
+    route.query.source !== undefined ||
+    route.query.tool !== undefined ||
+    route.query.path !== undefined ||
+    route.query.kind !== undefined;
+  if (!hasSelection) {
+    return false;
+  }
+  const state = window.history.state as { aciFilterGeneration?: unknown } | null;
+  // An entry that carries no stamp key at all is a fresh arrival — a typed or
+  // shared URL — whose filters are the reader's own ask; the selection
+  // watcher stamps it on the first write. A stamp that disagrees — an older
+  // token, or the retired numeric counter — is a pre-purge entry.
+  if (state === null || !('aciFilterGeneration' in state)) {
+    return false;
+  }
+  return state.aciFilterGeneration !== filterGeneration();
+}
+
+/** Strips a pre-purge entry's filters, restamping it in the current generation. */
+function dropPrePurgeQuery(): void {
   void router.replace({
     query: {
       ...route.query,
-      source: sourceKind.value ?? undefined,
+      source: undefined,
+      tool: undefined,
+      path: undefined,
+      kind: undefined,
+    },
+    state: { aciFilterGeneration: filterGeneration() },
+  });
+}
+
+watch([sourceFilter, tool, pathQuery, kind], () => {
+  void router.replace({
+    query: {
+      ...route.query,
+      source: sourceFilter.value ?? undefined,
       tool: tool.value ?? undefined,
       path: pathQuery.value === '' ? undefined : pathQuery.value,
       kind: kind.value ?? undefined,
     },
+    state: { aciFilterGeneration: filterGeneration() },
   });
 });
+
+if (queryPredatesPurge()) {
+  // Mounted straight onto a pre-purge entry — a reload, or Back into a page
+  // the purge had already unmounted: the narrowing goes the same way the
+  // unmount path below sends it.
+  dropPrePurgeQuery();
+}
+
+onBeforeUnmount(() => {
+  // A purge unmounts this page by moving the view off `inspection` — the
+  // shell renders it only there — and the filter query is that purged view's
+  // client state: the path text is an authored path fragment (FR-027), and
+  // the recovery contract starts the next inventory at the default filters
+  // (data-model.md § RecoveryViewState), so the parameters go with the view.
+  // An ordinary navigation keeps them — the view is still `inspection`, and
+  // returning restores the reader's narrowing.
+  if (sessionViewState.view.value !== 'inspection') {
+    void router.replace({
+      query: {
+        ...route.query,
+        source: undefined,
+        tool: undefined,
+        path: undefined,
+        kind: undefined,
+      },
+    });
+  }
+});
+
+// The reverse half of the synchronization above: this page can be re-entered
+// at another of its own history entries without a mount — a detail page's
+// back link wrote the unfiltered entry, and the browser's history menu jumps
+// straight to the narrowed one — and such a step changes only `route.query`.
+// Without reading it back, the URL would show the narrowed list while the
+// controls and the rows stayed on whatever this mount initialized from.
+// Guarded to this page's own route: the leave to a detail route also changes
+// the query, and syncing from it would first blank the selections and then
+// write them over the destination's own query through the watcher above.
+watch(
+  () => route.fullPath,
+  () => {
+    if (route.path !== '/') {
+      return;
+    }
+    if (queryPredatesPurge()) {
+      // Back onto an entry written before the purge: the recovery contract
+      // starts this inventory at the defaults, so the stale narrowing is
+      // dropped rather than synchronized (the replace re-runs this watcher).
+      dropPrePurgeQuery();
+      return;
+    }
+    sourceFilter.value = sourceFromQuery(route.query.source);
+    tool.value = toolFromQuery(route.query.tool);
+    pathQuery.value = queryText(route.query.path) ?? '';
+    kind.value = kindFromQuery(route.query.kind);
+  },
+);
 
 // Where the reader is when they leave, so that coming back puts them there
 // rather than at the top of a list they would have to find their place in
@@ -139,7 +286,7 @@ onBeforeRouteLeave((to) => {
   recordInventoryReturnPoint(to.fullPath);
 });
 
-const filters = useInventoryFilters(snapshot, { sourceKind, tool, kind, pathQuery });
+const filters = useInventoryFilters(snapshot, { source: sourceFilter, tool, kind, pathQuery });
 
 // What the two selects display is the selection actually applied, while what
 // they write is the raw choice. A generation that no longer publishes the
@@ -148,10 +295,10 @@ const filters = useInventoryFilters(snapshot, { sourceKind, tool, kind, pathQuer
 // filters" affordance stayed away — three surfaces disagreeing about one state.
 // The write still goes to the raw ref, so the choice comes back on its own when
 // a later generation offers that option again, exactly as the kind tab does.
-const selectedSourceKind = computed({
-  get: () => filters.effectiveSourceKind.value,
-  set: (value: SourceKind | null) => {
-    sourceKind.value = value;
+const selectedSource = computed({
+  get: () => filters.effectiveSource.value,
+  set: (value: SourceSelector | null) => {
+    sourceFilter.value = value;
   },
 });
 const selectedTool = computed({
@@ -237,12 +384,12 @@ const totalRowCount = computed<number>(() => {
  * must not navigate the user somewhere else.
  */
 function clearFilters(): void {
-  sourceKind.value = null;
+  sourceFilter.value = null;
   tool.value = null;
   pathQuery.value = '';
 }
 
-/** The one Repository Source; Global Sources arrive with the Global phases. */
+/** The one Repository Source; the consented homes are {@link globalSources}. */
 const repositorySource = computed(
   () => snapshot.value?.sources.find((source) => source.kind === 'repository') ?? null,
 );
@@ -277,39 +424,6 @@ const globalSourcesAnnouncement = computed(() =>
         )
         .join(', ')}.`,
 );
-
-/**
- * How many of this Source's committed files kept a file-confined diagnostic —
- * which is what a `partial` status reports (FR-028). The scan status states it,
- * because the status is where a reader asks what "Partial" means and the causes
- * themselves are spread across the rows of the files that carry them.
- *
- * Counted from the published files rather than from `snapshot.diagnostics`: a
- * diagnostic is referenced by the file it belongs to, and one file may hold
- * several, so counting records would report a number no list on this page has.
- */
-const diagnosticFileCount = computed(() => {
-  const sourceId = repositorySource.value?.sourceId;
-  let count = 0;
-  for (const file of snapshot.value?.files ?? []) {
-    if (file.sourceId === sourceId && file.diagnosticIds.length > 0) {
-      count += 1;
-    }
-  }
-  return count;
-});
-
-const staleFailure = computed(() => {
-  const sourceId = repositorySource.value?.sourceId;
-  return snapshot.value?.staleFailures.find((entry) => entry.sourceId === sourceId) ?? null;
-});
-
-// A stale overlay explains itself with either the failed request's real error
-// message or a retained Diagnostic; only the message variant has text of its
-// own, and the Diagnostic variant is already rendered by the diagnostic list.
-const staleFailureMessage = computed(() =>
-  staleFailure.value?.failureRef.kind === 'error' ? staleFailure.value.failureRef.message : null,
-);
 </script>
 
 <template>
@@ -328,17 +442,7 @@ const staleFailureMessage = computed(() =>
         and grants no read access.
       </p>
 
-      <ScanProgress
-        :source="repositorySource"
-        :diagnostic-file-count="diagnosticFileCount"
-        :active-scan-request-id="sessionViewState.activeScanRequestId.value"
-        :requesting="sessionViewState.rescanState.value === 'requesting'"
-        :rejection="sessionViewState.rescanRejection.value"
-        :stale-failure="staleFailure"
-        :stale-failure-message="staleFailureMessage"
-        @rescan="sessionViewState.requestRescan()"
-        @refresh="sessionViewState.refresh()"
-      />
+      <ScanProgress />
     </template>
 
     <!-- The consented homes, once a confirmation's batch has committed. Each
@@ -361,18 +465,7 @@ const staleFailureMessage = computed(() =>
 
     <template v-if="globalSources.length > 0">
       <h2>Your personal setup</h2>
-      <dl class="aci-definition-grid">
-        <template v-for="source in globalSources" :key="source.sourceId">
-          <dt>{{ source.member ? GLOBAL_MEMBER_TEXT[source.member] : 'Unknown member' }}</dt>
-          <dd class="aci-inventory-page__display-root">
-            {{ source.boundary.displayRoot }} ({{ SOURCE_STATUS_TEXT[source.status] }})
-          </dd>
-        </template>
-      </dl>
-      <p class="aci-note">
-        These labels are escaped presentations of the consented directories. They are not paths you
-        can open and grant no read access.
-      </p>
+      <GlobalSourceControls />
     </template>
 
     <!-- The consent route's entry. It is a link in the page rather than a
@@ -392,7 +485,12 @@ const staleFailureMessage = computed(() =>
     <!-- The rail carries what decides which rows are on screen — the kind in
          view and the filters that narrow it — and the rows take the rest of the
          width, because a row is a path and a path is what needs the room. -->
-    <div class="aci-inventory-page__browse">
+    <!-- `data-aci-inventory-rows` scopes the return-point machinery to row
+         links: this container and the no-kind disclosure below hold every row,
+         while the consent entry above is chrome — leaving through it records
+         no point, so coming back lands at the ordinary top of the page
+         (router.options.ts § renderedLinks). -->
+    <div class="aci-inventory-page__browse" data-aci-inventory-rows>
       <div class="aci-inventory-page__rail">
         <!-- The kind list is the part of the rail that gives way when the rail
              is taller than the viewport, which is what keeps the filters below
@@ -408,10 +506,10 @@ const staleFailureMessage = computed(() =>
           />
         </div>
         <InventoryFilters
-          v-model:source-kind="selectedSourceKind"
+          v-model:source="selectedSource"
           v-model:tool="selectedTool"
           v-model:path-query="pathQuery"
-          :available-source-kinds="filters.availableSourceKinds.value"
+          :available-sources="filters.availableSources.value"
           :available-tools="filters.availableTools.value"
           :match-count="matchCount"
           :total-count="totalRowCount"
@@ -447,7 +545,11 @@ const staleFailureMessage = computed(() =>
          count stays on the closed summary, and the scan status states how many
          files kept a diagnostic (`ScanProgress.vue`), so a `partial` generation
          still says which file it was (FR-028) at the cost of one interaction. -->
-    <details v-if="filters.unrecognizedRows.value.length > 0" class="aci-inventory-page__no-kind">
+    <details
+      v-if="filters.unrecognizedRows.value.length > 0"
+      class="aci-inventory-page__no-kind"
+      data-aci-inventory-rows
+    >
       <summary>
         <h3 class="aci-inventory-page__no-kind-heading">
           Files in no kind

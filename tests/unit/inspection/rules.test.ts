@@ -1961,6 +1961,14 @@ describe('the Copilot catalog entry source forms (T1126)', () => {
     expect(rootFor('./plugins/')).toBe('plugins/formatter/');
     expect(rootFor('plugins/')).toBe('plugins/formatter/');
     expect(rootFor('./')).toBe('formatter/');
+    // A root that names no directory below the marketplace is refused rather
+    // than dropped: resolving to the entry's own relative spelling would give
+    // the plugin a directory this catalog did not name, and then stat and
+    // enumerate it (contracts/inspection-path-allowlist.md § Bounded
+    // derivation — zero target I/O for a refused declaration).
+    expect(rootFor('')).toBeNull();
+    expect(rootFor('/')).toBeNull();
+    expect(rootFor('/srv/plugins')).toBeNull();
   });
 
   it('joins a declared `metadata.pluginRoot` in front of either spelling', () => {

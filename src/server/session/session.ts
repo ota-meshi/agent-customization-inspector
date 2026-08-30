@@ -49,8 +49,12 @@ import type {
   FileDetailDto,
   FileOpenTarget,
   FileRecognitionDto,
+  GlobalDisableCommitKind,
+  GlobalDisableInProgressDto,
+  GlobalDisableResultDto,
   GlobalEnableInProgressDto,
   GlobalEnableResultDto,
+  GlobalFenceRecoverySnapshot,
   InspectionDataResult,
   SourceSelector,
   SourceDto,
@@ -217,6 +221,10 @@ function directoryFilesOf(
   // The owning customization's Source scopes the census: `files` spans every
   // committed Source, and a path prefix says nothing across boundaries — a
   // consented home and the repository can both hold `skills/<name>/` (FR-030).
+  // The prefix test is exact at the directory boundary because the caller
+  // passes the directory with its trailing separator — the entry point's own
+  // path sliced past its last `/` — so `skills/deploy/` never swallows a
+  // `skills/deploy2/` sibling.
   return directory === ''
     ? []
     : files
@@ -226,7 +234,11 @@ function directoryFilesOf(
             file.sourceRelativePath.startsWith(directory) &&
             !recognized.has(fileIdentityKey(sourceId, file.sourceRelativePath)),
         )
-        .map((file) => file.sourceRelativePath);
+        .map((file) => file.sourceRelativePath)
+        // Path order, not walk order: the generation's `files[]` arrive in
+        // commit order, and a census list is rendered as a tree whose order
+        // must not depend on which file the scan happened to read first.
+        .toSorted(compareStrings);
 }
 
 /**
@@ -249,17 +261,40 @@ function pluginRootFilesOf(
   sourceId: string,
   pluginRoot: string,
   files: readonly CustomizationFileDto[],
+  censusEscapedRoots: ReadonlySet<string>,
 ): string[] {
   // The carrier's own Source scopes the enumeration, for the reason
   // {@link directoryFilesOf} gives: a root path is relative to one boundary,
-  // and `files` spans them all (FR-030).
-  return pluginRoot === ''
+  // and `files` spans them all (FR-030). The prefix test is exact at the
+  // directory boundary because every vendor publishes `pluginRoot` with its
+  // trailing separator (rules/plugins/{codex,claude,copilot}.ts), so
+  // `plugins/foo/` never swallows a `plugins/foobar/` sibling.
+  //
+  // Derived from the published files rather than kept as a second scan-time
+  // membership fact, which could disagree with them (AGENTS.md § publish one
+  // fact). The derivation is closed over this Source's own published paths,
+  // so nothing outside the Source can enter it; the one fact that cannot be
+  // derived here — whether the census refused the root itself — is the
+  // verdict the generation carries and the gate above honours.
+  // The census's own verdict outranks the spelling: a root whose real path
+  // escaped the Source belongs to no Source
+  // (contracts/inspection-path-allowlist.md § Bounded companion census), so a
+  // file another rule independently admitted below the same spelling — an
+  // `AGENTS.md` the walk reached through the link — must not be attributed to
+  // it. The verdict travels with the generation
+  // (scan-generation.ts § censusEscapedDirectories) because nothing at this
+  // layer may re-derive it: that would be filesystem I/O outside the scan.
+  return pluginRoot === '' || censusEscapedRoots.has(fileIdentityKey(sourceId, pluginRoot))
     ? []
     : files
         .filter(
           (file) => file.sourceId === sourceId && file.sourceRelativePath.startsWith(pluginRoot),
         )
-        .map((file) => file.sourceRelativePath);
+        .map((file) => file.sourceRelativePath)
+        // Path order, not walk order — and the same order the two-declaration
+        // merge below re-sorts its union into, so one carrier's list never
+        // reads differently before and after a sibling declaration lands.
+        .toSorted(compareStrings);
 }
 
 /**
@@ -338,7 +373,7 @@ function projectSkillInventory(
     // `(file, tool)` — so a file two products invoke by one name is two
     // definitions of that entry, and a product invoking the file by a
     // different name defines on that name's entry instead. The detail route
-    // is the file's own, `/skills/<source-relative path>`: two products read
+    // is the file's own, `/skills/detail/<source>/<path>`: two products read
     // one file's bytes, and the names they invoke it by are what the rows
     // carry. The census is the file's, so each of its
     // definitions carries the same list; the parse state is the
@@ -696,7 +731,13 @@ function projectPluginInventory(
   recognitions: readonly ToolRecognition[],
   files: readonly CustomizationFileDto[],
   sourceOrder: ReadonlyMap<string, number>,
+  censusEscapedDirectories: readonly { sourceId: string; directory: string }[],
 ): PluginInventoryEntryDto[] {
+  // Keyed by the file-identity spelling, because a root path is relative to
+  // one Source and two Sources can hold one spelling (FR-030).
+  const censusEscapedRoots: ReadonlySet<string> = new Set(
+    censusEscapedDirectories.map((entry) => fileIdentityKey(entry.sourceId, entry.directory)),
+  );
   const byName = new Map<string | null, { carriers: PluginCarrierDto[] }>();
   for (const recognition of recognitions) {
     if (recognition.details.kind !== 'plugin') {
@@ -737,6 +778,7 @@ function projectPluginInventory(
         recognition.sourceId,
         recognition.details.plugins[index]?.pluginRoot ?? '',
         files,
+        censusEscapedRoots,
       );
       const existing = row.carriers.find(
         (candidate) =>
@@ -1136,9 +1178,10 @@ function projectHookInventory(
     };
     // A parsed reading contributes one declaration per event it declares; a
     // carrier declaring none — failed, or holding no hook map at all — lands on
-    // the null row. Unlike an MCP carrier, one hook carrier is read by one
-    // product's contract per file here, so there is no other reading whose
-    // names could make this file's own emptiness the wrong statement.
+    // the null row. One file can carry two products' readings — Claude and
+    // Copilot both read `.claude/settings*.json` — so the events of a file are
+    // the union of its readings ({@link unionOfHookReadings}), and the null
+    // row is reached only when every reading of it declares none.
     //
     // Deduplicated per carrier, because a file can declare one event more than
     // once and a row lists a carrier once however many of its blocks reach
@@ -1405,6 +1448,25 @@ export class InspectionSession {
   public globalEnableInProgress: GlobalEnableInProgressDto | null = null;
 
   /**
+   * The non-complete disable barrier's public projection, or null. Its
+   * presence is the all-inspection-data fence (FR-042; contracts/http-api.md
+   * § disable-global): while non-null, the session function serves only
+   * {@link GlobalFenceRecoverySnapshot} and every other inspection-data
+   * function returns the `global-disable-pending` conflict. Written only by
+   * {@link SessionCoordinator}'s barrier acceptance, failure retention, and
+   * terminal commit.
+   */
+  public globalDisableInProgress: GlobalDisableInProgressDto | null = null;
+
+  /**
+   * The server-owned Global content epoch (FR-042). Incremented exactly once
+   * per disable barrier at first acceptance — a retry inherits it — so a
+   * client that observes a greater value purges before rendering anything;
+   * it distinguishes Global eras across a disable and a later re-enable.
+   */
+  public globalContentEpoch = 0;
+
+  /**
    * Each Global Source's member and boundary, keyed by Source ID. Separate from
    * {@link sourceStates}, which holds the operational overlay every Source has:
    * this map holds what only a Global Source has, so the Repository Source is
@@ -1483,7 +1545,7 @@ export class InspectionSession {
    */
   public async openCommittedFile(
     sourceRelativePath: string,
-    source: SourceSelector,
+    source: SourceSelector | undefined,
     target: FileOpenTarget,
   ): Promise<boolean> {
     const root = this.#committedSourceRoot(sourceRelativePath, source);
@@ -1511,7 +1573,10 @@ export class InspectionSession {
    * boundary only carries as a one-way escaped presentation
    * (data-model.md § SourceBoundary).
    */
-  #committedSourceRoot(sourceRelativePath: string, source: SourceSelector): string | null {
+  #committedSourceRoot(
+    sourceRelativePath: string,
+    source: SourceSelector | undefined,
+  ): string | null {
     const sourceId = this.#sourceIdOf(source);
     const generation =
       sourceId === this.repositorySourceId
@@ -1560,7 +1625,7 @@ export class InspectionSession {
    */
   public fileDetail(
     sourceRelativePath: string,
-    source: SourceSelector = 'repository',
+    source: SourceSelector | undefined,
   ): FileDetailDto | null {
     // Resolved by both halves of the identity. Searching by path alone answered
     // with whichever generation held it first, so a repository file shadowed a
@@ -1843,6 +1908,23 @@ export class InspectionSession {
       ) {
         return null;
       }
+      // A plugin catalog, on the same terms: a plugin row's subject is one
+      // declared plugin inside the file, so its detail is
+      // `pluginCarrierDetail`'s own result — declarations without the
+      // document's bytes (FR-007) — and the files below a declared root are
+      // `pluginFileDetail`'s. Answering here would hand out the whole
+      // catalog's sourceText beside the declaration-shaped response that
+      // deliberately does not carry it.
+      if (
+        generation.recognitions.some(
+          (recognition) =>
+            recognition.sourceId === sourceId &&
+            recognition.sourceRelativePath === sourceRelativePath &&
+            recognition.details.kind === 'plugin',
+        )
+      ) {
+        return null;
+      }
       // A declared permission policy, on the same terms: what a permissions
       // row names is a policy rather than a file (data-model.md § Inventory
       // unit), so it is `permissionPolicyDetail`'s resource, and answering
@@ -1875,8 +1957,10 @@ export class InspectionSession {
    * Its own resolver rather than a `fileDetail` branch because a permissions
    * row names a policy, not a file (data-model.md § Inventory unit): the row's
    * identity is the declaring file's path, which is what this takes, and the
-   * shipped policy happens to be the whole document while the form a carrier
-   * declares as one block arrives with the phase that recognizes one.
+   * answer takes one of the kind's two published forms — the whole document
+   * for a file that is a policy, and the content-free declared block for a
+   * policy one key of a settings carrier declares
+   * (`api-types.ts` § PermissionPolicyDetailDto).
    *
    * Null when the current committed generations hold no permissions
    * recognition at the path, which the handler answers as the
@@ -1884,7 +1968,7 @@ export class InspectionSession {
    */
   public permissionPolicyDetail(
     sourceRelativePath: string,
-    source: SourceSelector = 'repository',
+    source: SourceSelector | undefined,
   ): PermissionPolicyDetailDto | null {
     const sourceId = this.#sourceIdOf(source);
     const generations = [
@@ -1900,9 +1984,9 @@ export class InspectionSession {
       // hand-authored predicate (data-model.md § ToolRecognition).
       let policy: readonly DeclaredEntryDto[] | null | undefined;
       let declared = false;
+      let policyDiagnosticIds: readonly string[] = [];
       for (const recognition of generation.recognitions) {
         if (
-          recognition.sourceId !== sourceId ||
           recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== sourceRelativePath ||
           recognition.details.kind !== 'permissions'
@@ -1914,6 +1998,7 @@ export class InspectionSession {
           // Null exactly for a failed extraction, whose Diagnostic the file
           // already carries: the block is unknown rather than absent (FR-028).
           policy = recognition.parseStatus === 'failed' ? null : recognition.details.declaredPolicy;
+          policyDiagnosticIds = recognition.diagnosticIds;
           break;
         }
       }
@@ -1930,10 +2015,15 @@ export class InspectionSession {
         // policy whose file facts this commit does not hold.
         throw new Error('a permissions recognition names a file its generation does not hold');
       }
-      // The declaring file's own diagnostic references, in the commit's
-      // deterministic order — the same rule `fileDetail` applies (FR-028).
+      // Whole-document: the file is the policy, so its own diagnostic
+      // references travel exactly as `fileDetail`'s do. Declared-block: only
+      // the permissions recognition's own — the carrier's other keys, a hook
+      // block's failed parse among them, are another recognition's content
+      // and reach no permissions response (contracts/http-api.md
+      // § get-permission-policy-detail).
+      const diagnosticIds = policy === undefined ? file.diagnosticIds : policyDiagnosticIds;
       const diagnostics = generation.diagnostics.filter((diagnostic) =>
-        file.diagnosticIds.includes(diagnostic.diagnosticId),
+        diagnosticIds.includes(diagnostic.diagnosticId),
       );
       // Returned per branch rather than through one literal carrying a union
       // `form`: each form is its own member of the result, and building one
@@ -2029,10 +2119,11 @@ export class InspectionSession {
               carrier: 'manifest',
               file,
               // The one declaration a manifest makes carries the root the
-              // rule resolved; an extraction that failed published none, and
-              // the file's own directory chain is not this projection's to
-              // guess at, so the carrier answers with no root rather than a
-              // guessed one (FR-028).
+              // rule resolved from the manifest's own placement — the folder
+              // holding it — which stands whether or not the extraction
+              // parsed, so a failed manifest still answers with the root its
+              // path establishes and only its declared fields are absent
+              // (FR-028; `plugins/claude.ts` § claudePluginPlacementOf).
               pluginRoot: recognition.details.plugins[0]?.pluginRoot ?? '',
               diagnostics,
             }
@@ -2102,10 +2193,19 @@ export class InspectionSession {
         // the reading that product published: a declaration of another name at
         // the same carrier reaches its own directory, and a file below that one
         // is that row's rather than this one's.
+        const escapedRoots = new Set(
+          generation.censusEscapedDirectories.map((entry) =>
+            fileIdentityKey(entry.sourceId, entry.directory),
+          ),
+        );
         const roots = recognition.details.plugins
           .filter((plugin) => plugin.name === params.pluginName)
           .map((plugin) => plugin.pluginRoot)
-          .filter((root): root is string => root !== null);
+          .filter((root): root is string => root !== null)
+          // The census's verdict gates the detail exactly as it gates the
+          // row's file list ({@link pluginRootFilesOf}): a root whose real
+          // path escaped the Source authorizes nothing below its spelling.
+          .filter((root) => !escapedRoots.has(fileIdentityKey(recognition.sourceId, root)));
         if (!roots.some((root) => params.filePath.startsWith(root))) {
           return null;
         }
@@ -2152,7 +2252,7 @@ export class InspectionSession {
    */
   public hookCarrierDetail(
     sourceRelativePath: string,
-    source: SourceSelector = 'repository',
+    source: SourceSelector | undefined,
   ): HookCarrierDetailDto | null {
     const sourceId = this.#sourceIdOf(source);
     const generations = [
@@ -2258,7 +2358,7 @@ export class InspectionSession {
    */
   public mcpCarrierDetail(
     sourceRelativePath: string,
-    source: SourceSelector = 'repository',
+    source: SourceSelector | undefined,
   ): McpCarrierDetailDto | null {
     const sourceId = this.#sourceIdOf(source);
     const generations = [
@@ -2331,24 +2431,16 @@ export class InspectionSession {
    * The adoption-guard values every inspection-data success carries beside
    * its payload (contracts/http-api.md § Common results and errors), read
    * straight off the committed state: a detail request binds three scalars
-   * and must not pay for the full snapshot projection to get them. The
-   * Global content epoch is the Global scaffold's fixed 0 until the Global
-   * tasks arrive.
+   * and must not pay for the full snapshot projection to get them.
    */
   public dataEnvelope(): Omit<InspectionDataResult<never>, 'data'> {
     return {
-      globalContentEpoch: 0,
+      globalContentEpoch: this.globalContentEpoch,
       repositoryGeneration: this.committedRepositoryGeneration.generation,
       globalGeneration: this.committedGlobalGeneration?.generation ?? null,
     };
   }
 
-  /**
-   * Rebuilds the public projection from this session's state on every call.
-   * Internal authority fields (the selected root and coordinator state) are
-   * simply absent from the projection rather than filtered afterwards, and
-   * immutability is owned by the readonly types, not re-enforced at runtime.
-   */
   /**
    * The Source ID one request's selector names, or the empty string when no
    * such Source exists — a `global-claude` selector before Claude's home has
@@ -2356,7 +2448,12 @@ export class InspectionSession {
    * that resolves nothing, which is the same answer a path the generation does
    * not hold gets (contracts/http-api.md § get-file-detail).
    */
-  #sourceIdOf(source: SourceSelector): string {
+  #sourceIdOf(source: SourceSelector | undefined): string {
+    // The wire can omit or misspell the selector; both resolve to no Source
+    // and take the same stale-resource rejection an unknown path does —
+    // resolution, not a shape guard, and never a silent repository default
+    // that could answer with another Source's resource
+    // (contracts/http-api.md § get-file-detail).
     if (source === 'repository') {
       return this.repositorySourceId;
     }
@@ -2427,6 +2524,12 @@ export class InspectionSession {
     return order;
   }
 
+  /**
+   * Rebuilds the public projection from this session's state on every call.
+   * Internal authority fields (the selected root and coordinator state) are
+   * simply absent from the projection rather than filtered afterwards, and
+   * immutability is owned by the readonly types, not re-enforced at runtime.
+   */
   public snapshot(): SessionSnapshot {
     const repository = this.sourceStates.get(this.repositorySourceId);
     if (repository === undefined) {
@@ -2528,6 +2631,10 @@ export class InspectionSession {
         ],
         committedFiles,
         inventorySourceOrder,
+        [
+          ...this.committedRepositoryGeneration.censusEscapedDirectories,
+          ...(this.committedGlobalGeneration?.censusEscapedDirectories ?? []),
+        ],
       ),
       outputStyles: projectOutputStyleInventory(
         [
@@ -2544,10 +2651,15 @@ export class InspectionSession {
         inventorySourceOrder,
       ),
       // Semantic emission order (data-model.md § Diagnostic): session-owned
-      // lifecycle records (repository, Global tools, published Sources)
-      // precede the generations' candidate-owned records.
+      // lifecycle records precede the generations' candidate-owned records,
+      // and within them the owner rank — Repository, then the fixed member
+      // order — decides, never the failures' arrival order or an opaque
+      // Source ID ({@link #lifecycleDiagnosticRank}).
       diagnostics: [
-        ...this.sessionDiagnostics.values(),
+        ...[...this.sessionDiagnostics.values()].toSorted(
+          (left, right) =>
+            this.#lifecycleDiagnosticRank(left) - this.#lifecycleDiagnosticRank(right),
+        ),
         ...this.committedRepositoryGeneration.diagnostics,
         ...(this.committedGlobalGeneration?.diagnostics ?? []),
       ],
@@ -2556,9 +2668,54 @@ export class InspectionSession {
       staleFailures: this.staleFailures,
       globalControl: this.globalConsent?.toDto() ?? null,
       globalEnableInProgress: this.globalEnableInProgress,
-      globalDisableInProgress: null,
+      globalDisableInProgress: this.globalDisableInProgress,
       sessionDiagnosticIds: [...this.sessionDiagnostics.keys()],
       repositoryFailureDiagnosticId: this.repositoryFailureDiagnosticId,
+    };
+  }
+
+  /**
+   * The semantic owner rank of one lifecycle Diagnostic (data-model.md
+   * § Diagnostic): the Repository first, then the fixed member order — for a
+   * published member Source or an unpublished control's abandoned Source ID
+   * alike — then anything neither resolves, which keeps whatever relative
+   * order it arrived in. An opaque Source ID never supplies the order.
+   */
+  #lifecycleDiagnosticRank(diagnostic: SerializedDiagnostic): number {
+    if (diagnostic.sourceId === this.repositorySourceId) {
+      return 0;
+    }
+    const published = this.globalSources.get(diagnostic.sourceId)?.member;
+    if (published !== undefined) {
+      return 1 + GLOBAL_MEMBER_ORDER.indexOf(published);
+    }
+    for (const [member, control] of this.globalConsent?.controls ?? []) {
+      if (control.sourceId === diagnostic.sourceId) {
+        return 1 + GLOBAL_MEMBER_ORDER.indexOf(member);
+      }
+    }
+    return 1 + GLOBAL_MEMBER_ORDER.length;
+  }
+
+  /**
+   * The exact control-only session response served while the disable fence is
+   * non-null (contracts/http-api.md § get-session `GlobalFenceRecoverySnapshot`).
+   * It carries no generation, Source, file, path, authored value, or
+   * Diagnostic field: the fence exists so no inspection data is public until
+   * terminal success or process restart (FR-042). Throws when no fence is
+   * installed, because serving a recovery snapshot beside a full one would be
+   * two session answers at once — the session handler picks by the fence.
+   */
+  public fenceRecoverySnapshot(): GlobalFenceRecoverySnapshot {
+    if (this.globalDisableInProgress === null) {
+      throw new Error('the fence recovery snapshot exists only while the disable fence is closed');
+    }
+    return {
+      sessionId: this.sessionId,
+      globalContentEpoch: this.globalContentEpoch,
+      globalControl: this.globalConsent?.toDto() ?? null,
+      globalEnableInProgress: this.globalEnableInProgress,
+      globalDisableInProgress: this.globalDisableInProgress,
     };
   }
 }
@@ -2656,11 +2813,78 @@ class AttemptState {
 }
 
 /**
- * Serializes scan admission and commit for one session. At most one scan per
- * source is running or queued; a commit atomically replaces its own
- * sequence's committed generation with exactly N+1 and clears stale state
- * only for the sources it refreshed. Only the Repository path exists yet;
- * Global commits arrive with the Global tasks.
+ * One accepted priority disable barrier (data-model.md
+ * § GlobalDisableOperation). Constructed at first acceptance and mutated only
+ * by the drain/commit/failure transitions; a retry replaces the instance but
+ * inherits every acceptance-time field, so the disposition can never be
+ * recomputed from the partially cleaned public projection.
+ */
+class GlobalDisableOperation {
+  /** The barrier's opaque command ID; joined requests share it and its result. */
+  public readonly operationId: string;
+
+  /** The content epoch captured at acceptance; every continuation must match it. */
+  public readonly commandEpoch: number;
+
+  /** The disposition fixed at first acceptance and retained by every retry. */
+  public readonly commitKind: GlobalDisableCommitKind;
+
+  /**
+   * The exact per-sequence committed generations at acceptance. The barrier
+   * commits no generation, so a mismatch at terminal revalidation is an
+   * internal invariant failure, never a rebase.
+   */
+  public readonly baseGenerations: {
+    readonly repository: number;
+    readonly global: number | null;
+  };
+
+  /** Where the barrier stands; `complete` projects as a null fence. */
+  public status: 'draining' | 'committing' | 'failed' | 'complete' = 'draining';
+
+  /** The failed request's retained error message; null outside `failed`. */
+  public retainedMessage: string | null = null;
+
+  /** Fixes the acceptance-time fields; see the class doc. */
+  public constructor(
+    operationId: string,
+    commandEpoch: number,
+    commitKind: GlobalDisableCommitKind,
+    baseGenerations: { readonly repository: number; readonly global: number | null },
+  ) {
+    this.operationId = operationId;
+    this.commandEpoch = commandEpoch;
+    this.commitKind = commitKind;
+    this.baseGenerations = baseGenerations;
+  }
+}
+
+/**
+ * One Repository command the disable barrier held: the exact identity the
+ * requeue restores — same request ID, trigger owner, and Source — plus the
+ * job the sequence chain re-runs after terminal success (contracts/http-api.md
+ * § disable-global "held for one requeue").
+ */
+interface HeldRepositoryCommand {
+  /** The held command's Source. */
+  readonly sourceId: string;
+  /** The admitted request ID the requeue preserves; no new admission is made. */
+  readonly scanRequestId: string;
+  /** Who initiated the held command; preserved across the requeue. */
+  readonly triggerOwner: TriggerOwner;
+  /** Whether the held command was an explicit rescan; preserved across the requeue. */
+  readonly explicit: boolean;
+  /** The execution the sequence chain re-runs once, after terminal success. */
+  readonly job: () => Promise<void>;
+}
+
+/**
+ * Serializes scan admission and commit for one session, in both sequences:
+ * the Repository's scans and the Global sequence's enable batch, member
+ * rescans, and priority disable barrier. At most one scan per source is
+ * running or queued and every transaction runs in one FIFO; a commit
+ * atomically replaces its own sequence's committed generation with exactly
+ * N+1 and clears stale state only for the sources it refreshed.
  */
 export class SessionCoordinator {
   /** The one session whose internal state this coordinator serializes. */
@@ -2684,6 +2908,56 @@ export class SessionCoordinator {
   #hasCommittedBefore = new Set<string>();
 
   /**
+   * The one execution chain: the settlement of the last transaction the
+   * coordinator started, whichever sequence owns it. Every scan command and
+   * the enable batch run one at a time in acceptance order — "Source scans
+   * never execute concurrently" (data-model.md § ScanAttempt;
+   * contracts/http-api.md § Concurrency and lifecycle: a command queues FIFO
+   * while another transaction is active, Repository or Global alike). Only
+   * generation bookkeeping is per-sequence.
+   */
+  #executionChain: Promise<void> = Promise.resolve();
+
+  /**
+   * The pending execution of each admitted command, keyed by request ID, from
+   * admission until its job settles. What the disable barrier reads to hold a
+   * Repository command with its own job — a held command is re-run by the
+   * requeue, and the closure is the only re-runnable form of it.
+   */
+  readonly #pendingJobs = new Map<string, () => Promise<void>>();
+
+  /**
+   * Every in-flight execution the coordinator started — sequence-chain jobs
+   * and the Global enable batch — so the disable barrier's drain can wait for
+   * exactly the work its revocation affected (data-model.md
+   * § GlobalDisableOperation). Entries remove themselves on settlement.
+   */
+  readonly #inFlightWork = new Set<Promise<unknown>>();
+
+  /**
+   * The current disable barrier, or null. Held across `failed` so a retry
+   * inherits the acceptance-time disposition; replaced by the retry's own
+   * instance and cleared by nothing — `complete` simply stops being current
+   * when the next barrier is accepted.
+   */
+  #disableOperation: GlobalDisableOperation | null = null;
+
+  /**
+   * The running barrier's completion, shared verbatim with every joined
+   * request (contracts/http-api.md § disable-global): a second disable while
+   * the barrier is draining or committing awaits this same promise and
+   * receives the same terminal result. Null while no cleanup is running.
+   */
+  #disableCompletion: Promise<GlobalDisableResultDto> | null = null;
+
+  /**
+   * The Repository commands the barrier held, in their queue order, for the
+   * one requeue terminal success performs. A failed attempt releases nothing:
+   * the entries stay held until success requeues them or the process ends.
+   */
+  #heldRepository: HeldRepositoryCommand[] = [];
+
+  /**
    * Whether the shutdown revocation has run. The Global enable batch is not
    * an entry of {@link SessionCoordinator.#attempts} — it is accepted by
    * `settleGlobalEnable` and committed by `completeGlobalBatch` — so the
@@ -2702,6 +2976,10 @@ export class SessionCoordinator {
    * Admits one scan command for a Source and issues its opaque
    * `scanRequestId` (FR-030). While a scan for the same Source is running
    * or queued, returns the fixed `conflict` instead of stacking attempts.
+   * A command admitted while another attempt holds its sequence is admitted
+   * as queued — `waiting`, a `queuedAt`, no `startedAt` — and
+   * {@link SessionCoordinator.runInSequence} dequeues it in acceptance order
+   * (contracts/http-api.md § rescan-repository, § rescan-global).
    */
   public admitScan(sourceId: string, triggerOwner: TriggerOwner): AdmitScanResult {
     const sourceState = this.#session.sourceStates.get(sourceId);
@@ -2715,6 +2993,15 @@ export class SessionCoordinator {
         return { kind: 'conflict' };
       }
     }
+    // Whether an earlier admitted attempt still holds this Source's sequence:
+    // commands serialize within a sequence, so this one starts as queued and
+    // its work begins at dequeue (contracts/http-api.md § rescan-global "same
+    // FIFO ... applied within the Global sequence").
+    // One chain for every transaction (see #executionChain): a command
+    // admitted while anything runs or waits — either sequence's command, or
+    // the enable batch — is queued behind it and starts as the contract's
+    // waiting presentation.
+    const queued = this.#globalTransactionsPending > 0 || this.#attempts.size > 0;
     const scanRequestId = createOpaqueId();
     // Only a session-API-triggered rescan of a Source with a committed
     // snapshot counts as "explicit": automatic first scans and initial
@@ -2732,21 +3019,201 @@ export class SessionCoordinator {
     );
     sourceState.status = 'scanning';
     sourceState.scanRequestId = scanRequestId;
+    sourceState.progress = queued
+      ? {
+          scanRequestId,
+          // Queued behind the sequence's running command: the contract's
+          // waiting presentation, replaced at dequeue (§ rescan-repository).
+          phase: 'waiting',
+          queuedAt: new Date().toISOString(),
+          startedAt: null,
+          visitedEntries: 0,
+          candidateFiles: 0,
+          readBytes: 0,
+          diagnosticCount: 0,
+        }
+      : {
+          scanRequestId,
+          // An admitted attempt begins with its configuration read, not with
+          // the walk: `runSourceScan` runs each vendor's reader before
+          // enumerating anything, so seeding `enumerating` would name a stage
+          // that has not started, and the walk's own first report moves the
+          // phase on.
+          phase: 'deriving',
+          queuedAt: null,
+          startedAt: new Date().toISOString(),
+          visitedEntries: 0,
+          candidateFiles: 0,
+          readBytes: 0,
+          diagnosticCount: 0,
+        };
+    return { kind: 'admitted', scanRequestId };
+  }
+
+  /**
+   * The generation sequence a Source commits into: the bootstrap Repository
+   * Source is the Repository sequence's, and every other Source is a member
+   * Global Source (FR-030).
+   */
+  #sequenceOf(sourceId: string): 'repository' | 'global' {
+    return sourceId === this.#session.repositorySourceId ? 'repository' : 'global';
+  }
+
+  /**
+   * Runs one admitted command's execution in its sequence's acceptance order
+   * (contracts/http-api.md § rescan-repository "queued FIFO", § rescan-global
+   * "same FIFO ... applied within the Global sequence"): admission answers
+   * immediately, and the work itself starts only after every earlier admitted
+   * command of the same sequence settled — so two members' commands publish
+   * in acceptance order, while the two sequences stay independent of each
+   * other. The returned promise settles with `job`'s own settlement, so the
+   * trigger-owning boundary still receives an unexpected failure unchanged
+   * (FR-029); the chain itself absorbs it, so one command's failure never
+   * refuses the next.
+   *
+   * Dequeue is where a queued command's clock starts: its `waiting` overlay
+   * becomes the running presentation, and the job reads the committed
+   * generation as of this moment — the dequeue-time base the contract fixes.
+   * An attempt revoked or settled while it waited runs nothing: its work was
+   * cleanup-only the moment authority left it (data-model.md § ScanAttempt).
+   */
+  public runInSequence(
+    sourceId: string,
+    scanRequestId: string,
+    job: () => Promise<void>,
+  ): Promise<void> {
+    this.#pendingJobs.set(scanRequestId, job);
+    const previous = this.#executionChain;
+    const run = previous.then(async () => {
+      const attempt = this.#attempts.get(scanRequestId);
+      if (
+        attempt === undefined ||
+        attempt.publicationAuthority === 'revoked' ||
+        this.#allPublicationRevoked
+      ) {
+        // The shutdown revocation covers a job that was queued when the CLI's
+        // close handler ran: revoking the flag alone would let this dequeue
+        // start reading after shutdown ({@link revokeAllPublicationAuthority}
+        // "a result arriving afterwards must commit nothing" — and no new
+        // reading starts either, data-model.md § ScanAttempt).
+        this.#pendingJobs.delete(scanRequestId);
+        return;
+      }
+      if (this.#session.globalDisableInProgress !== null) {
+        // The disable barrier is a generation fence: no generation-mutating
+        // command may dequeue while it is non-complete (data-model.md
+        // § GlobalDisableOperation). A queued Repository command stays held
+        // in its waiting overlay for the one requeue terminal success
+        // performs; a queued Global command was already swept at acceptance,
+        // so reaching here is the sweep's own race window and runs nothing.
+        this.#pendingJobs.delete(scanRequestId);
+        return;
+      }
+      try {
+        this.#markDequeued(attempt);
+        await job();
+      } finally {
+        this.#pendingJobs.delete(scanRequestId);
+      }
+    });
+    this.#trackInFlight(run);
+    this.#executionChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  /**
+   * Runs one Global-sequence transaction that owns no scan attempt — the
+   * enable batch — in the same FIFO the sequence's commands use
+   * (contracts/http-api.md § rescan-global "same FIFO ... applied within the
+   * Global sequence"), tracked for the disable barrier's drain
+   * (§ disable-global): the barrier must wait out a batch already reading,
+   * and a retry batch must never run beside an explicit member rescan. The
+   * fence check at dequeue is the barrier's queued-work cancellation for
+   * this shape — a batch that has not started when the barrier accepts runs
+   * nothing, which is expected cancellation with nothing retained.
+   */
+  public runGlobalTransaction(job: () => Promise<void>): Promise<void> {
+    const previous = this.#executionChain;
+    this.#globalTransactionsPending += 1;
+    const run = previous.then(async () => {
+      if (this.#session.globalDisableInProgress !== null || this.#allPublicationRevoked) {
+        // The disable fence and the shutdown revocation both cancel a queued
+        // batch at dequeue: starting its reads after either would be new
+        // I/O the revocation stops (data-model.md § ScanAttempt).
+        return;
+      }
+      await job();
+    });
+    void run.then(
+      () => (this.#globalTransactionsPending -= 1),
+      () => (this.#globalTransactionsPending -= 1),
+    );
+    this.#trackInFlight(run);
+    this.#executionChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  /**
+   * Global-sequence transactions — the enable batch — currently queued or
+   * running through {@link runGlobalTransaction}. They own no attempt entry,
+   * so {@link admitScan}'s occupied-sequence test counts them here: a
+   * command admitted behind one is queued in the same FIFO and starts at
+   * the contract's waiting presentation rather than claiming to run
+   * (contracts/http-api.md § rescan-global).
+   */
+  #globalTransactionsPending = 0;
+
+  /**
+   * Registers one in-flight execution for the disable barrier's drain
+   * (data-model.md § GlobalDisableOperation): the barrier waits for exactly
+   * the work its revocation affected, and an entry removes itself on
+   * settlement. Public because the Global enable batch runs outside the
+   * sequence chains, at the host boundary that starts it.
+   */
+  public trackInFlight(work: Promise<unknown>): void {
+    this.#trackInFlight(work);
+  }
+
+  /** {@link SessionCoordinator.trackInFlight}, shared with the sequence chains. */
+  #trackInFlight(work: Promise<unknown>): void {
+    this.#inFlightWork.add(work);
+    void work.then(
+      () => this.#inFlightWork.delete(work),
+      () => this.#inFlightWork.delete(work),
+    );
+  }
+
+  /**
+   * Replaces a dequeued command's `waiting` overlay with the running
+   * presentation: the phase its work opens with, and a `startedAt` stamped
+   * now — dequeue time, which is also when the job reads its base generation
+   * (contracts/http-api.md § rescan-repository). A command admitted straight
+   * into a free sequence was never `waiting` and keeps its admission overlay.
+   */
+  #markDequeued(attempt: AttemptState): void {
+    const sourceState = this.#session.sourceStates.get(attempt.sourceId);
+    if (
+      sourceState === undefined ||
+      sourceState.progress === null ||
+      sourceState.progress.scanRequestId !== attempt.scanRequestId ||
+      sourceState.progress.phase !== 'waiting'
+    ) {
+      return;
+    }
     sourceState.progress = {
-      scanRequestId,
-      // An admitted attempt begins with its configuration read, not with the
-      // walk: `runSourceScan` runs each vendor's reader before enumerating
-      // anything, so seeding `enumerating` would name a stage that has not
-      // started, and the walk's own first report moves the phase on.
+      ...sourceState.progress,
       phase: 'deriving',
+      // Cleared as work begins (data-model.md § ScanProgress): an active
+      // phase requires null `queuedAt`.
       queuedAt: null,
       startedAt: new Date().toISOString(),
-      visitedEntries: 0,
-      candidateFiles: 0,
-      readBytes: 0,
-      diagnosticCount: 0,
     };
-    return { kind: 'admitted', scanRequestId };
   }
 
   /**
@@ -2862,6 +3329,20 @@ export class SessionCoordinator {
       const sourceState = new MutableSourceState(control.sourceId!);
       sourceState.status = 'scanning';
       sourceState.scanRequestId = scanRequestId;
+      // The batch runs behind the acceptance as one Global-sequence
+      // transaction, so every member starts at the contract's waiting
+      // presentation; the batch's own first report moves the phase on
+      // (data-model.md § ScanProgress: scanning is never a null progress).
+      sourceState.progress = {
+        scanRequestId,
+        phase: 'waiting',
+        queuedAt: new Date().toISOString(),
+        startedAt: null,
+        visitedEntries: 0,
+        candidateFiles: 0,
+        readBytes: 0,
+        diagnosticCount: 0,
+      };
       this.#session.sourceStates.set(control.sourceId!, sourceState);
     }
     return {
@@ -2955,6 +3436,20 @@ export class SessionCoordinator {
       const sourceState = new MutableSourceState(control.sourceId!);
       sourceState.status = 'scanning';
       sourceState.scanRequestId = scanRequestId;
+      // The batch runs behind the acceptance as one Global-sequence
+      // transaction, so every member starts at the contract's waiting
+      // presentation; the batch's own first report moves the phase on
+      // (data-model.md § ScanProgress: scanning is never a null progress).
+      sourceState.progress = {
+        scanRequestId,
+        phase: 'waiting',
+        queuedAt: new Date().toISOString(),
+        startedAt: null,
+        visitedEntries: 0,
+        candidateFiles: 0,
+        readBytes: 0,
+        diagnosticCount: 0,
+      };
       this.#session.sourceStates.set(control.sourceId!, sourceState);
     }
     return {
@@ -2962,6 +3457,82 @@ export class SessionCoordinator {
       scanRequestId,
       acceptedTools: pendingTools,
       rejectedTools: inMemberOrder(rejected),
+    };
+  }
+
+  /**
+   * Re-forms one Global commit's carried-plus-scanned diagnostics into the
+   * fixed published member order, keeping each Source's own internal order
+   * (stable sort). The carry-forward otherwise appends the rescanned
+   * Source's records after every sibling's, so the reading order would come
+   * to depend on rescan history — and an opaque Source ID must never supply
+   * a visible order (shared/diagnostics.ts § sortDiagnostics). Diagnostics
+   * alone, deliberately: the generation's files and recognitions are
+   * re-sorted by every surface that renders them, while the diagnostics
+   * list is served as committed.
+   */
+  #diagnosticsInMemberOrder(
+    diagnostics: readonly SerializedDiagnostic[],
+  ): readonly SerializedDiagnostic[] {
+    const rank = new Map<string, number>();
+    for (const [sourceId, identity] of this.#session.globalSources) {
+      rank.set(sourceId, GLOBAL_MEMBER_ORDER.indexOf(identity.member));
+    }
+    return diagnostics.toSorted(
+      (left, right) => (rank.get(left.sourceId) ?? 0) - (rank.get(right.sourceId) ?? 0),
+    );
+  }
+
+  /**
+   * The published Global data a commit that scanned only `excluded`'s
+   * complement carries forward: every other published Source's files,
+   * recognitions, and diagnostics, and whether any of those carried Sources
+   * remains `partial` (T1012/T1013). One derivation for the enable/retry
+   * batch and the explicit single-Source rescan, because both commit the
+   * sequence's one next generation and a Source outside the scan must keep
+   * its published graph and IDs exactly (FR-014, FR-030).
+   */
+  #carriedGlobalData(excluded: ReadonlySet<string>): {
+    readonly files: readonly CustomizationFileDto[];
+    readonly recognitions: readonly ToolRecognition[];
+    readonly diagnostics: readonly SerializedDiagnostic[];
+    readonly censusEscapedDirectories: readonly { sourceId: string; directory: string }[];
+    readonly partial: boolean;
+  } {
+    const previous = this.#session.committedGlobalGeneration;
+    if (previous === null) {
+      return {
+        files: [],
+        recognitions: [],
+        diagnostics: [],
+        censusEscapedDirectories: [],
+        partial: false,
+      };
+    }
+    let partial = false;
+    for (const sourceId of this.#session.globalSources.keys()) {
+      if (
+        !excluded.has(sourceId) &&
+        previous.files.some((file) => file.sourceId === sourceId && file.diagnosticIds.length > 0)
+      ) {
+        // Read from what the carried generation itself committed, never from
+        // the mutable overlay: a Source whose rescan failed reads `failed`
+        // and one that is rescanning reads `scanning`, so asking the overlay
+        // would drop the partial outcome its carried files still carry and
+        // commit a `complete` generation holding their diagnostics (FR-028).
+        partial = true;
+      }
+    }
+    return {
+      files: previous.files.filter((file) => !excluded.has(file.sourceId)),
+      recognitions: previous.recognitions.filter(
+        (recognition) => !excluded.has(recognition.sourceId),
+      ),
+      diagnostics: previous.diagnostics.filter((diagnostic) => !excluded.has(diagnostic.sourceId)),
+      censusEscapedDirectories: previous.censusEscapedDirectories.filter(
+        (entry) => !excluded.has(entry.sourceId),
+      ),
+      partial,
     };
   }
 
@@ -2981,6 +3552,17 @@ export class SessionCoordinator {
       readonly recognitions: readonly ToolRecognition[];
       readonly diagnostics: readonly SerializedDiagnostic[];
       readonly outcome: GenerationOutcome;
+      /**
+       * The member scan's own walk counters, committed as that Source's final
+       * `complete` progress exactly as a single-Source commit's are
+       * (data-model.md § ScanProgress: a committed ready/partial Source
+       * retains its final progress).
+       */
+      readonly visitedEntries: number;
+      readonly candidateFiles: number;
+      readonly readBytes: number;
+      /** The member scan's escaped census roots (scan.ts § ScanPublication). */
+      readonly censusEscapedDirectories: readonly string[];
     }[],
     failures: readonly {
       readonly member: GlobalMemberId;
@@ -2991,7 +3573,10 @@ export class SessionCoordinator {
     // (`cli.ts` § requestClose) revokes every publication before closing the
     // host, and a batch still reading at that point must commit nothing, the
     // same rule every revoked attempt follows (data-model.md § ScanAttempt).
-    if (this.#allPublicationRevoked) {
+    if (this.#allPublicationRevoked || this.#session.globalDisableInProgress !== null) {
+      // The disable fence joins the shutdown revocation here: a batch still
+      // reading when the barrier was accepted must commit nothing
+      // (data-model.md § GlobalDisableOperation).
       return;
     }
     const consent = this.#session.globalConsent;
@@ -3041,12 +3626,21 @@ export class SessionCoordinator {
     }
 
     const scannedSourceIds: string[] = [];
+    // The Source each member committed under, for tagging its per-member
+    // publication facts — the escaped census roots — with the ID the
+    // generation records them by.
+    const memberSourceIds = new Map<GlobalMemberId, string>();
     for (const result of results) {
       const control = consent.controls.get(result.member);
       if (control?.sourceId === undefined || control.sourceId === null) {
         continue;
       }
       scannedSourceIds.push(control.sourceId);
+      memberSourceIds.set(result.member, control.sourceId);
+      // The batch is this Source's first commit: a later session-API rescan
+      // of it is an explicit rescan whose terminal failure leaves the stale
+      // overlay ({@link SessionCoordinator.admitScan}).
+      this.#hasCommittedBefore.add(control.sourceId);
       control.markPublished();
       this.#session.globalSources.set(control.sourceId, {
         member: result.member,
@@ -3055,7 +3649,28 @@ export class SessionCoordinator {
       const overlay = this.#session.sourceStates.get(control.sourceId);
       if (overlay !== undefined) {
         overlay.status = result.outcome === 'partial' ? 'partial' : 'ready';
-        overlay.diagnosticIds = result.diagnostics.map((diagnostic) => diagnostic.diagnosticId);
+        // Only the source-scoped records: a file-scoped Diagnostic is listed
+        // by its file, and the Source lists what has no file to carry it
+        // (data-model.md § Source `diagnosticIds`).
+        overlay.diagnosticIds = result.diagnostics
+          .filter((diagnostic) => diagnostic.sourceRelativePath === null)
+          .map((diagnostic) => diagnostic.diagnosticId);
+        // The member's completed counters, exactly as `completeScan` commits
+        // them: leaving the admission's zeros would report no work beside a
+        // published inventory (contracts/http-api.md § get-session
+        // `progress`).
+        overlay.progress = {
+          scanRequestId,
+          // Null through complete (data-model.md § ScanProgress), exactly as
+          // the single-Source commit writes it.
+          queuedAt: null,
+          startedAt: overlay.progress?.startedAt ?? now,
+          phase: 'complete',
+          visitedEntries: result.visitedEntries,
+          candidateFiles: result.candidateFiles,
+          readBytes: result.readBytes,
+          diagnosticCount: result.diagnostics.length,
+        };
       }
     }
     // A retry's batch covers only the retried subset, and a Global commit
@@ -3067,22 +3682,7 @@ export class SessionCoordinator {
     // a commit invalidates views, never another Source's published data).
     const previous = this.#session.committedGlobalGeneration;
     const batchSourceIds = new Set(scannedSourceIds);
-    const carried =
-      previous === null
-        ? { files: [], recognitions: [], diagnostics: [], partial: false }
-        : {
-            files: previous.files.filter((file) => !batchSourceIds.has(file.sourceId)),
-            recognitions: previous.recognitions.filter(
-              (recognition) => !batchSourceIds.has(recognition.sourceId),
-            ),
-            diagnostics: previous.diagnostics.filter(
-              (diagnostic) => !batchSourceIds.has(diagnostic.sourceId),
-            ),
-            // A carried Source's own outcome survives with its files: the
-            // per-source overlays hold it, and any partial one keeps the next
-            // generation partial exactly as it kept this one.
-            partial: previous.outcome === 'partial',
-          };
+    const carried = this.#carriedGlobalData(batchSourceIds);
     const commit = {
       scannedSourceIds,
       scanRequestId,
@@ -3098,7 +3698,19 @@ export class SessionCoordinator {
           : ('complete' as GenerationOutcome),
       files: [...carried.files, ...results.flatMap((result) => result.files)],
       recognitions: [...carried.recognitions, ...results.flatMap((result) => result.recognitions)],
-      diagnostics: [...carried.diagnostics, ...results.flatMap((result) => result.diagnostics)],
+      diagnostics: this.#diagnosticsInMemberOrder([
+        ...carried.diagnostics,
+        ...results.flatMap((result) => result.diagnostics),
+      ]),
+      censusEscapedDirectories: [
+        ...carried.censusEscapedDirectories,
+        ...results.flatMap((result) =>
+          result.censusEscapedDirectories.map((directory) => ({
+            sourceId: memberSourceIds.get(result.member) ?? '',
+            directory,
+          })),
+        ),
+      ],
     };
     this.#session.committedGlobalGeneration =
       previous === null
@@ -3138,6 +3750,422 @@ export class SessionCoordinator {
   }
 
   /**
+   * The one priority disable barrier entry point (contracts/http-api.md
+   * § disable-global; data-model.md § GlobalDisableOperation). Request
+   * validation and barrier registration linearize here — the method is
+   * synchronous up to starting the cleanup — and the outcome is one of:
+   *
+   *  - `no-op`: the complete predicate held — no member Global Source or
+   *    graph, no active consent or retained admitted root context, no
+   *    running or queued Global scan/enable work, and no retained disable
+   *    failure — so nothing was mutated: no operation, no epoch increment,
+   *    no fence. Unrelated Repository work does not prevent it.
+   *  - `pending` with a joined completion: a barrier already draining or
+   *    committing shares its operation and terminal result; a retained
+   *    `failed` barrier is resumed by a new operation inheriting the exact
+   *    `commitKind`, base generations, and already-incremented epoch; and a
+   *    first acceptance atomically fixes the disposition, increments the
+   *    content epoch, installs the fence, revokes Global authority, cancels
+   *    the enable operation and queued Global work, and holds running
+   *    Repository work for the one requeue after terminal success.
+   *
+   * `releaseFrozenPreview` runs inside the terminal success commit's own
+   * synchronous block, so the frozen preview and the session state clear as
+   * one observable step (data-model.md § GlobalDisableOperation).
+   */
+  public disposeGlobalDisable(releaseFrozenPreview: () => void):
+    | { readonly kind: 'no-op'; readonly result: GlobalDisableResultDto }
+    | {
+        readonly kind: 'pending';
+        readonly operationId: string;
+        readonly completion: Promise<GlobalDisableResultDto>;
+      } {
+    const running = this.#disableOperation;
+    if (
+      running !== null &&
+      (running.status === 'draining' || running.status === 'committing') &&
+      this.#disableCompletion !== null
+    ) {
+      // A join: the same operation, the same terminal result; disconnecting
+      // any transport does not cancel the barrier.
+      return {
+        kind: 'pending',
+        operationId: running.operationId,
+        completion: this.#disableCompletion,
+      };
+    }
+    if (running !== null && running.status === 'failed') {
+      // A retry resumes idempotent cleanup under a new operation that
+      // inherits the failed one's exact disposition and the already
+      // incremented epoch; the content epoch is not incremented again.
+      const retry = new GlobalDisableOperation(
+        createOpaqueId(),
+        running.commandEpoch,
+        running.commitKind,
+        running.baseGenerations,
+      );
+      // The retained error stays the sole one until this retry's own
+      // terminal outcome supersedes or clears it; the fence projection
+      // returns to `draining`, whose state carries no message.
+      this.#disableOperation = retry;
+      this.#session.globalDisableInProgress = {
+        operationId: retry.operationId,
+        state: 'draining',
+      };
+      const completion = this.#runDisableCleanup(retry, releaseFrozenPreview);
+      this.#disableCompletion = completion;
+      return { kind: 'pending', operationId: retry.operationId, completion };
+    }
+    if (this.#isDisableNoOp()) {
+      // The ordinary single-stage response gate: nothing existed, nothing is
+      // mutated, and the already-purged client may immediately recover a
+      // full snapshot because the fence stays null.
+      return {
+        kind: 'no-op',
+        result: {
+          state: 'no-op',
+          operationId: null,
+          commitKind: null,
+          repositoryGeneration: this.#session.committedRepositoryGeneration.generation,
+        },
+      };
+    }
+    const operation = this.#acceptGlobalDisable();
+    const completion = this.#runDisableCleanup(operation, releaseFrozenPreview);
+    this.#disableCompletion = completion;
+    return { kind: 'pending', operationId: operation.operationId, completion };
+  }
+
+  /**
+   * Whether a disable request is a true no-op (data-model.md
+   * § GlobalDisableOperation): every condition below must be absent, and
+   * unrelated Repository work is deliberately not one of them.
+   */
+  #isDisableNoOp(): boolean {
+    if (
+      this.#session.globalConsent !== null ||
+      this.#session.globalSources.size > 0 ||
+      this.#session.committedGlobalGeneration !== null ||
+      this.#session.globalEnableInProgress !== null
+    ) {
+      return false;
+    }
+    for (const attempt of this.#attempts.values()) {
+      if (this.#sequenceOf(attempt.sourceId) === 'global') {
+        return false;
+      }
+    }
+    // A retained disable failure keeps the fence closed, so it is never a
+    // no-op; a completed barrier no longer holds anything to clean.
+    return this.#disableOperation === null || this.#disableOperation.status === 'complete';
+  }
+
+  /**
+   * The atomic first acceptance (data-model.md § GlobalDisableOperation):
+   * fixes the disposition, increments the content epoch, installs the fence,
+   * marks the control `disabling` with its batch cleared, cancels the enable
+   * operation, revokes Global publication authority, sweeps queued Global
+   * commands, and holds Repository commands for the post-success requeue.
+   * Synchronous end to end, so no continuation can observe a half-accepted
+   * barrier.
+   */
+  #acceptGlobalDisable(): GlobalDisableOperation {
+    const session = this.#session;
+    // `remove-active-state` exactly when public Global consent/control/Source
+    // state exists; `cleanup-only` only cancels an operation-local initial
+    // enable that published none of it.
+    const commitKind: GlobalDisableCommitKind =
+      session.globalConsent !== null || session.globalSources.size > 0
+        ? 'remove-active-state'
+        : 'cleanup-only';
+    session.globalContentEpoch += 1;
+    const operation = new GlobalDisableOperation(
+      createOpaqueId(),
+      session.globalContentEpoch,
+      commitKind,
+      {
+        repository: session.committedRepositoryGeneration.generation,
+        global: session.committedGlobalGeneration?.generation ?? null,
+      },
+    );
+    this.#disableOperation = operation;
+    session.globalDisableInProgress = {
+      operationId: operation.operationId,
+      state: 'draining',
+    };
+    const consent = session.globalConsent;
+    if (consent !== null) {
+      consent.disabling = true;
+      consent.pendingTools = [];
+      consent.batchStatus = null;
+    }
+    // The registered enable operation is cancelled outright: its projection
+    // disappears, and a continuation that later reaches `settleGlobalEnable`
+    // finds its operation unregistered and stops (expected cancellation, no
+    // Diagnostic, no retained error).
+    session.globalEnableInProgress = null;
+    for (const attempt of this.#attempts.values()) {
+      if (this.#sequenceOf(attempt.sourceId) === 'global') {
+        if (this.#pendingJobs.has(attempt.scanRequestId)) {
+          // Queued and never dequeued: the final queued-Global-work
+          // cancellation sweep removes it now — expected cancellation, so
+          // its overlay reverts and nothing is retained.
+          this.#pendingJobs.delete(attempt.scanRequestId);
+          this.#attempts.delete(attempt.scanRequestId);
+          const sourceState = session.sourceStates.get(attempt.sourceId);
+          if (sourceState !== undefined) {
+            sourceState.status = attempt.priorOverlay.status;
+            sourceState.scanRequestId = attempt.priorOverlay.scanRequestId;
+            sourceState.progress = attempt.priorOverlay.progress;
+          }
+        } else {
+          // Already running: authority is revoked and the drain waits for
+          // its settlement, whose late result the commit gates discard.
+          attempt.publicationAuthority = 'revoked';
+        }
+      } else {
+        // A Repository command is not cancelled — it is held for exactly one
+        // requeue after terminal success, preserving its admitted identity.
+        const job = this.#pendingJobs.get(attempt.scanRequestId);
+        if (job !== undefined) {
+          this.#heldRepository.push({
+            sourceId: attempt.sourceId,
+            scanRequestId: attempt.scanRequestId,
+            triggerOwner: attempt.triggerOwner,
+            explicit: attempt.explicit,
+            job,
+          });
+          if (!this.#isWaiting(attempt)) {
+            // Running: revoke so its terminal outcome discards; the discard
+            // then restores the waiting overlay through
+            // {@link #restoreHeldWaiting}. A queued command keeps its
+            // waiting overlay and its attempt as they stand — the fence in
+            // {@link runInSequence} refuses its dequeue.
+            attempt.publicationAuthority = 'revoked';
+          }
+        }
+      }
+    }
+    return operation;
+  }
+
+  /** Whether an attempt is still queued — its overlay shows the waiting phase. */
+  #isWaiting(attempt: AttemptState): boolean {
+    const sourceState = this.#session.sourceStates.get(attempt.sourceId);
+    return (
+      sourceState?.progress?.scanRequestId === attempt.scanRequestId &&
+      sourceState.progress.phase === 'waiting'
+    );
+  }
+
+  /**
+   * Returns one held Repository command to its waiting overlay after its
+   * running execution's late result was discarded, so the fence shows the
+   * held command as queued — which it is — rather than as the pre-admission
+   * state the discard restored (contracts/http-api.md § disable-global
+   * "returning the existing command to waiting"). Recreates the attempt
+   * entry under the same request ID: the identity is preserved and no new
+   * admission is allocated.
+   */
+  #restoreHeldWaiting(scanRequestId: string): void {
+    if (this.#allPublicationRevoked) {
+      // The shutdown revocation ({@link revokeAllPublicationAuthority}) ends
+      // every future: recreating an active attempt here would hand the
+      // requeue a command that commits after "a result arriving afterwards
+      // must commit nothing". The overlay stays at the revoked reversion.
+      return;
+    }
+    const held = this.#heldRepository.find((entry) => entry.scanRequestId === scanRequestId);
+    if (held === undefined) {
+      return;
+    }
+    const sourceState = this.#session.sourceStates.get(held.sourceId);
+    if (sourceState === undefined) {
+      return;
+    }
+    this.#attempts.set(
+      scanRequestId,
+      new AttemptState(scanRequestId, held.sourceId, held.triggerOwner, held.explicit, sourceState),
+    );
+    sourceState.status = 'scanning';
+    sourceState.scanRequestId = scanRequestId;
+    sourceState.progress = {
+      scanRequestId,
+      phase: 'waiting',
+      queuedAt: new Date().toISOString(),
+      startedAt: null,
+      visitedEntries: 0,
+      candidateFiles: 0,
+      readBytes: 0,
+      diagnosticCount: 0,
+    };
+  }
+
+  /**
+   * Drains the affected in-flight work and performs the one atomic terminal
+   * commit (data-model.md § GlobalDisableOperation). The drain performs no
+   * filesystem I/O of its own — it waits for the already-running work whose
+   * authority the acceptance revoked, discarding each late result through
+   * the commit gates — and the commit is a synchronous block, so the frozen
+   * preview, the session state, and the fence clear as one observable step.
+   * An unexpected failure retains the operation as `failed` with the
+   * request's real error, keeps the fence closed, and propagates to the
+   * request-owning boundary; nothing it cleaned is re-exposed.
+   */
+  async #runDisableCleanup(
+    operation: GlobalDisableOperation,
+    releaseFrozenPreview: () => void,
+  ): Promise<GlobalDisableResultDto> {
+    const session = this.#session;
+    try {
+      // Wait for exactly the work the acceptance affected; the fence keeps
+      // new work out, so the set only shrinks. Settlement order is the
+      // environment's; results were already condemned by the commit gates.
+      // The settled rejections are deliberately not re-raised here: the
+      // barrier "waits for the affected in-flight work to settle while
+      // discarding its late results" (data-model.md § GlobalDisableOperation)
+      // — settle, not succeed — and each rejection is a drained job's own
+      // failure, already owned and reported by its own boundary: a rescan's
+      // failScan overlay, a batch's failed batchStatus, an enable request's
+      // ordinary error. Raising one again would fail the barrier over a
+      // failure the barrier did not have (contracts/http-api.md
+      // § disable-global: expected cancellation retains no error). What the
+      // contract's "drain failure" names is this block's own throw — the
+      // revalidation and commit steps below — which the catch retains as
+      // `failed`.
+      await Promise.allSettled([...this.#inFlightWork]);
+      operation.status = 'committing';
+      session.globalDisableInProgress = {
+        operationId: operation.operationId,
+        state: 'committing',
+      };
+      // Revalidation: the barrier commits no generation, so the bases cannot
+      // have moved; a mismatch is an internal invariant failure.
+      if (
+        operation.commandEpoch !== session.globalContentEpoch ||
+        operation.baseGenerations.repository !== session.committedRepositoryGeneration.generation ||
+        operation.baseGenerations.global !== (session.committedGlobalGeneration?.generation ?? null)
+      ) {
+        throw new Error('the disable barrier found its acceptance-time state replaced');
+      }
+      // The one fallible step runs first: everything after it is synchronous
+      // map and field clearing that cannot throw, which is what makes the
+      // terminal commit atomic — a failure here leaves the whole graph
+      // fenced and untouched for the retry, never half-removed.
+      releaseFrozenPreview();
+      if (operation.commitKind === 'remove-active-state') {
+        // The one atomic discard of the whole Global sequence: Sources,
+        // consent, controls, stale failures, and the tools' lifecycle
+        // diagnostics — while the Repository sequence, its generation, and
+        // its IDs stay untouched (FR-042).
+        const globalSourceIds = [...session.globalSources.keys()];
+        for (const sourceId of globalSourceIds) {
+          session.sourceStates.delete(sourceId);
+          this.#hasCommittedBefore.delete(sourceId);
+          this.#dropLifecycleDiagnosticsFor(sourceId);
+        }
+        // The accepted batch's unpublished member states go with the graph:
+        // queued acceptance allocated one per pending control
+        // (`#settleGlobalEnable`), no commit published them — so the
+        // published-Source sweep above cannot reach them — and the drain
+        // discarded their late completion. Left behind they would hold a
+        // ghost `scanning` overlay in the state map for the process's life.
+        for (const control of session.globalConsent?.controls.values() ?? []) {
+          if (control.sourceId !== null && !session.globalSources.has(control.sourceId)) {
+            session.sourceStates.delete(control.sourceId);
+          }
+        }
+        session.staleFailures = clearStaleFailures(session.staleFailures, globalSourceIds);
+        session.globalSources.clear();
+        session.committedGlobalGeneration = null;
+        session.globalConsent = null;
+      }
+      session.globalDisableInProgress = null;
+      operation.status = 'complete';
+      this.#disableCompletion = null;
+      const result: GlobalDisableResultDto = {
+        state: 'disabled',
+        operationId: operation.operationId,
+        commitKind: operation.commitKind,
+        repositoryGeneration: session.committedRepositoryGeneration.generation,
+      };
+      this.#requeueHeldRepository();
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      operation.status = 'failed';
+      operation.retainedMessage = message;
+      session.globalDisableInProgress = {
+        operationId: operation.operationId,
+        state: 'failed',
+        message,
+      };
+      this.#disableCompletion = null;
+      throw error;
+    }
+  }
+
+  /**
+   * The one requeue terminal success performs: every held Repository command
+   * returns to its sequence chain in its original queue order, under its own
+   * request ID and trigger owner, with no new admission and no interim
+   * success (contracts/http-api.md § disable-global). The waiting overlay is
+   * already in place — the hold kept it, or the discard restored it.
+   */
+  #requeueHeldRepository(): void {
+    const held = this.#heldRepository;
+    this.#heldRepository = [];
+    if (this.#allPublicationRevoked) {
+      // Reached when the CLI's close handler revoked everything while the
+      // barrier drained: the process is closing, so there is no session left
+      // for the held command to commit into, and running it would start
+      // filesystem reads after shutdown.
+      return;
+    }
+    for (const command of held) {
+      // The same terminalization the command's original dispatch attached
+      // (devframe-app.ts rescan-repository, and the automatic startup scan):
+      // the held entry carries only the job, so a requeued run that rejects
+      // must be failed here, or the Source would stay `scanning` and refuse
+      // every later rescan of its sequence.
+      void this.runInSequence(command.sourceId, command.scanRequestId, command.job).catch(
+        (error: unknown) => {
+          this.failScan(command.scanRequestId, {
+            kind: 'error',
+            message: error instanceof Error ? error.message : String(error),
+          });
+        },
+      );
+    }
+  }
+
+  /**
+   * Whether the attempt may still publish — what a walk asks before starting
+   * another filesystem operation: disable or shutdown "stops new scheduling"
+   * (data-model.md § ScanAttempt) without interrupting the one read already
+   * in flight (contracts/http-api.md § Concurrency and lifecycle).
+   */
+  public publicationAuthorityHolds(scanRequestId: string): boolean {
+    return (
+      !this.#allPublicationRevoked &&
+      this.#attempts.get(scanRequestId)?.publicationAuthority === 'active'
+    );
+  }
+
+  /**
+   * The batch counterpart of {@link publicationAuthorityHolds}: the enable
+   * batch owns no attempt entry, so its walks ask the accepted batch status
+   * and the same shutdown and disable revocations instead.
+   */
+  public batchAuthorityHolds(scanRequestId: string): boolean {
+    return (
+      !this.#allPublicationRevoked &&
+      this.#session.globalDisableInProgress === null &&
+      this.#session.globalConsent?.batchStatus?.scanRequestId === scanRequestId
+    );
+  }
+
+  /**
    * Revokes an attempt's right to commit (disable, shutdown, supersession):
    * a result that completes afterwards is discarded instead of committed
    * (FR-029 late-result discard).
@@ -3161,6 +4189,14 @@ export class SessionCoordinator {
     // The Global enable batch holds no attempt entry, so it is revoked by
     // flag; `completeGlobalBatch` consults it before committing.
     this.#allPublicationRevoked = true;
+    // A registered enable operation is cancelled the way the disable barrier
+    // cancels one: its admission's stillAuthorized predicate reads this
+    // registration (devframe-app.ts § runGlobalEnable), so clearing it stops
+    // the next member's probe, and the settle gate then refuses the late
+    // resolution — no probe starts and no disposition commits after shutdown
+    // ({@link revokeAllPublicationAuthority} "a result arriving afterwards
+    // must commit nothing").
+    this.#session.globalEnableInProgress = null;
   }
 
   /**
@@ -3200,6 +4236,66 @@ export class SessionCoordinator {
   }
 
   /**
+   * Records one batch member's in-flight walk counters on that member's own
+   * Source overlay (contracts/http-api.md § get-session `progress`). The
+   * batch owns no attempt, so this is the batch counterpart of
+   * {@link reportProgress}: it verifies the batch is still the accepted one
+   * and the overlay still belongs to it, and the first report stamps
+   * `startedAt` — the batch dequeues from the Global FIFO, so its start is
+   * the first report rather than the admission.
+   */
+  public reportBatchMemberProgress(
+    scanRequestId: string,
+    sourceId: string,
+    update: {
+      readonly phase: ScanProgressPhase;
+      readonly visitedEntries: number;
+      readonly candidateFiles: number;
+      readonly readBytes: number;
+      readonly diagnosticCount: number;
+    },
+  ): void {
+    if (this.#session.globalConsent?.batchStatus?.scanRequestId !== scanRequestId) {
+      // A superseded or disabled batch reports nothing: the overlay either
+      // belongs to a newer batch or is gone (FR-029).
+      return;
+    }
+    const sourceState = this.#session.sourceStates.get(sourceId);
+    if (sourceState?.progress?.scanRequestId !== scanRequestId) {
+      return;
+    }
+    sourceState.progress = {
+      ...sourceState.progress,
+      // The first report is where a queued batch member's work begins, so
+      // `queuedAt` clears here (data-model.md § ScanProgress).
+      queuedAt: null,
+      startedAt: sourceState.progress.startedAt ?? new Date().toISOString(),
+      phase: update.phase,
+      visitedEntries: update.visitedEntries,
+      candidateFiles: update.candidateFiles,
+      readBytes: update.readBytes,
+      diagnosticCount: update.diagnosticCount,
+    };
+    // The batch phase follows the running member's report through the shared
+    // pipeline stages (data-model.md § GlobalControlView): the members run in
+    // sequence, so what the one running member is doing is what the batch is
+    // doing. The member-only phases — a queued `waiting`, a barrier's
+    // `cancelling`, a commit's `complete` — leave the batch phase where its
+    // own lifecycle put it.
+    const consent = this.#session.globalConsent;
+    if (
+      consent?.batchStatus !== null &&
+      consent !== null &&
+      (update.phase === 'deriving' ||
+        update.phase === 'enumerating' ||
+        update.phase === 'reading' ||
+        update.phase === 'recognizing')
+    ) {
+      consent.batchStatus = { ...consent.batchStatus, phase: update.phase };
+    }
+  }
+
+  /**
    * Commits an attempt's result as its sequence's exact N+1 generation and
    * clears stale state only for the Sources it refreshed (FR-030). A
    * revoked or already terminal attempt commits nothing.
@@ -3229,6 +4325,8 @@ export class SessionCoordinator {
       readonly candidateFiles: number;
       /** Bytes the attempt accepted, as counted while reading. */
       readonly readBytes: number;
+      /** The attempt's escaped census roots (scan.ts § ScanPublication). */
+      readonly censusEscapedDirectories: readonly string[];
     },
   ): Promise<void> {
     const attempt = this.#attempts.get(scanRequestId);
@@ -3239,18 +4337,25 @@ export class SessionCoordinator {
     if (sourceState === undefined) {
       return;
     }
-    if (attempt.publicationAuthority === 'revoked') {
+    if (
+      attempt.publicationAuthority === 'revoked' ||
+      this.#session.globalDisableInProgress !== null
+    ) {
       // Cleanup-only: the late result is discarded, public generation state
       // is untouched, and the Source overlay reverts to the exact
       // pre-admission state (see {@link AttemptState.priorOverlay}). That
       // includes `scanRequestId`, which becomes null again when the revoked
       // attempt was the Source's first: a Source whose every admission was
       // revoked states no request rather than one whose result was thrown
-      // away (data-model.md § Source `scanRequestId`).
+      // away (data-model.md § Source `scanRequestId`). The disable fence
+      // takes the same path — no scan may commit while the barrier is
+      // non-complete — and a held Repository command then returns to its
+      // waiting overlay (§ disable-global "held for one requeue").
       this.#attempts.delete(scanRequestId);
       sourceState.status = attempt.priorOverlay.status;
       sourceState.scanRequestId = attempt.priorOverlay.scanRequestId;
       sourceState.progress = attempt.priorOverlay.progress;
+      this.#restoreHeldWaiting(scanRequestId);
       return;
     }
     // The entry is removed only after the fallible commit below succeeds.
@@ -3261,32 +4366,91 @@ export class SessionCoordinator {
     // stuck 'scanning' with no stale/failed record. Keeping it lets that
     // `failScan` record the terminal failure (FR-030).
     const now = new Date().toISOString();
-    const next = prepareNextRepositoryGeneration(this.#session.committedRepositoryGeneration, {
-      scannedSourceIds: [attempt.sourceId],
-      scanRequestId,
-      startedAt: sourceState.progress?.startedAt ?? now,
-      finishedAt: now,
-      outcome: result.outcome,
-      files: result.files,
-      recognitions: result.recognitions,
-      diagnostics: result.diagnostics,
-    });
-    // Atomic replacement: commit the generation, then update overlays. The
-    // stale entry — and any lifecycle Diagnostic it references — is cleared
-    // only for the Source this commit refreshed; failures for other Sources
-    // are carried forward untouched (data-model.md § StaleSourceFailure).
-    this.#session.committedRepositoryGeneration = next;
+    if (this.#session.globalSources.has(attempt.sourceId)) {
+      // A published member Global Source: the commit is the Global sequence's
+      // exact next generation, built at commit time from the then-current one
+      // — the dequeue-time base — so a scan that ran behind another Source's
+      // commit carries that commit's data rather than the state it was
+      // admitted against (contracts/http-api.md § rescan-global). Every other
+      // published Source's graph and IDs ride forward untouched, and the
+      // Repository sequence is not read or written (FR-014, FR-030).
+      const previous = this.#session.committedGlobalGeneration;
+      if (previous === null) {
+        // Reached by no caller: a Source is in `globalSources` exactly from
+        // the batch commit that created the sequence, and disable discards
+        // both together after revoking every attempt's authority — a revoked
+        // attempt returned above. The throw keeps the invariant loud rather
+        // than inventing a first generation for a rescan.
+        throw new Error('a published Global Source has no committed Global generation');
+      }
+      const carried = this.#carriedGlobalData(new Set([attempt.sourceId]));
+      this.#session.committedGlobalGeneration = prepareNextGlobalGeneration(previous, {
+        scannedSourceIds: [attempt.sourceId],
+        scanRequestId,
+        startedAt: sourceState.progress?.startedAt ?? now,
+        finishedAt: now,
+        // One generation, one status: a file-confined outcome anywhere in it —
+        // rescanned now or carried forward — makes the whole commit partial
+        // (FR-028).
+        outcome: carried.partial || result.outcome === 'partial' ? 'partial' : 'complete',
+        files: [...carried.files, ...result.files],
+        recognitions: [...carried.recognitions, ...result.recognitions],
+        diagnostics: this.#diagnosticsInMemberOrder([
+          ...carried.diagnostics,
+          ...result.diagnostics,
+        ]),
+        censusEscapedDirectories: [
+          ...carried.censusEscapedDirectories,
+          ...result.censusEscapedDirectories.map((directory) => ({
+            sourceId: attempt.sourceId,
+            directory,
+          })),
+        ],
+      });
+    } else {
+      this.#session.committedRepositoryGeneration = prepareNextRepositoryGeneration(
+        this.#session.committedRepositoryGeneration,
+        {
+          scannedSourceIds: [attempt.sourceId],
+          scanRequestId,
+          startedAt: sourceState.progress?.startedAt ?? now,
+          finishedAt: now,
+          outcome: result.outcome,
+          files: result.files,
+          recognitions: result.recognitions,
+          diagnostics: result.diagnostics,
+          censusEscapedDirectories: result.censusEscapedDirectories.map((directory) => ({
+            sourceId: attempt.sourceId,
+            directory,
+          })),
+        },
+      );
+    }
+    // Atomic replacement: the generation above committed, so the overlays
+    // update now. The stale entry — and any lifecycle Diagnostic it
+    // references — is cleared only for the Source this commit refreshed;
+    // failures for other Sources are carried forward untouched
+    // (data-model.md § StaleSourceFailure).
     this.#dropLifecycleDiagnosticsFor(attempt.sourceId);
     this.#session.staleFailures = clearStaleFailures(this.#session.staleFailures, [
       attempt.sourceId,
     ]);
     sourceState.status = result.outcome === 'partial' ? 'partial' : 'ready';
+    // The commit replaces the Source's own diagnostic list with this
+    // generation's source-scoped records — never accumulated across commits,
+    // and never a file-scoped record, which its file lists (data-model.md
+    // § Source `diagnosticIds`).
+    sourceState.diagnosticIds = result.diagnostics
+      .filter((diagnostic) => diagnostic.sourceRelativePath === null)
+      .map((diagnostic) => diagnostic.diagnosticId);
     // The completed counters are what the attempt actually did. Leaving them at
     // the zero an admission starts them with would report "0 files" beside a
     // published inventory (contracts/http-api.md § get-session `progress`).
     sourceState.progress = {
       scanRequestId,
-      queuedAt: sourceState.progress?.queuedAt ?? null,
+      // Null through complete (data-model.md § ScanProgress): the committed
+      // final progress keeps the cleared-at-dequeue value.
+      queuedAt: null,
       startedAt: sourceState.progress?.startedAt ?? now,
       phase: 'complete',
       visitedEntries: result.visitedEntries,
@@ -3333,13 +4497,19 @@ export class SessionCoordinator {
     if (sourceState === undefined) {
       return;
     }
-    if (attempt.publicationAuthority === 'revoked') {
-      // Late-result discard: a failure that lands after revocation
+    if (
+      attempt.publicationAuthority === 'revoked' ||
+      this.#session.globalDisableInProgress !== null
+    ) {
+      // Late-result discard: a failure that lands after revocation — or
+      // behind the disable fence, which no terminal outcome may cross —
       // publishes nothing, and the Source overlay reverts to the exact
-      // pre-admission state (see {@link AttemptState.priorOverlay}).
+      // pre-admission state (see {@link AttemptState.priorOverlay}); a held
+      // Repository command then returns to its waiting overlay.
       sourceState.status = attempt.priorOverlay.status;
       sourceState.scanRequestId = attempt.priorOverlay.scanRequestId;
       sourceState.progress = attempt.priorOverlay.progress;
+      this.#restoreHeldWaiting(scanRequestId);
       return;
     }
     // At most one current failure record per lifecycle owner: replacing a
@@ -3360,7 +4530,13 @@ export class SessionCoordinator {
             ? { kind: 'diagnostic', diagnosticId: failure.diagnostic.diagnosticId }
             : { kind: 'error', message: failure.message },
         failedAt: new Date().toISOString(),
-        baseGeneration: this.#session.committedRepositoryGeneration.generation,
+        // The retained snapshot the entry explains as stale is the failing
+        // Source's own sequence's: the Global generation for a member Global
+        // Source, the Repository generation otherwise (FR-030,
+        // contracts/http-api.md § rescan-global).
+        baseGeneration: this.#session.globalSources.has(attempt.sourceId)
+          ? (this.#session.committedGlobalGeneration?.generation ?? 0)
+          : this.#session.committedRepositoryGeneration.generation,
       });
     } else if (
       failure.kind === 'diagnostic' &&

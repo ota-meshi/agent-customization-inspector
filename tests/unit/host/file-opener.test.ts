@@ -9,6 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import open from 'open';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { delimiter } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { DetectedFileOpener } from '../../../src/server/host/file-opener';
 import type { FileOpenTarget } from '../../../src/shared/api-types';
 
@@ -24,7 +26,12 @@ const { spawnMock, execFileAsyncMock, whichMock, resolvedCommands } = vi.hoisted
   }),
   execFileAsyncMock: vi.fn<(file: string, args: readonly string[]) => Promise<unknown>>(),
   whichMock:
-    vi.fn<(command: string, options: { nothrow: true; path?: string }) => Promise<string | null>>(),
+    vi.fn<
+      (
+        command: string,
+        options: { nothrow: true; path?: string; all?: boolean },
+      ) => Promise<string | string[] | null>
+    >(),
   // The commands this file answers the machine lookup for itself, cleared
   // after every test. A command it holds no answer for is asked of the real
   // machine, which is what the probe does.
@@ -40,9 +47,16 @@ const { spawnMock, execFileAsyncMock, whichMock, resolvedCommands } = vi.hoisted
 // exercised below.
 vi.mock('which', async (importOriginal) => {
   const { default: realWhich } = await importOriginal<{ default: typeof import('which') }>();
-  whichMock.mockImplementation(
-    async (command, options) => resolvedCommands.get(command) ?? realWhich(command, options),
-  );
+  whichMock.mockImplementation(async (command, options) => {
+    const held = resolvedCommands.get(command);
+    if (held === undefined) {
+      return realWhich(command, options as never);
+    }
+    // The real `all: true` answers with every match as an array; the probe
+    // filters that list against its named directories, so the double keeps
+    // the same contract.
+    return (options as { all?: boolean }).all ? [held] : held;
+  });
   return { default: whichMock };
 });
 vi.mock('node:child_process', () => ({
@@ -60,7 +74,7 @@ vi.mock('open', () => ({
   default: vi.fn(async () => {
     // A launcher that has already handed the path over: `exitCode` is set,
     // which is the state the caller reads before it would await the event.
-    const launcher = Object.assign(new EventEmitter(), { exitCode: 0 });
+    const launcher = Object.assign(new EventEmitter(), { exitCode: 0, signalCode: null });
     return launcher as never;
   }),
 }));
@@ -184,6 +198,194 @@ describe('the terminal editor a machine can host', () => {
     setConfiguredEditor('code');
     expect((await DetectedFileOpener.probe()).targets).toContain('terminal-editor');
   });
+
+  it('drops every spelling of a project-local node_modules/.bin from the probe PATH', async () => {
+    // `node_modules/.bin/.` and a trailing separator name the same directory
+    // the package manager prepends, so the exclusion judges the normalized
+    // entry: an executable the inspected repository ships must never become
+    // the offered editor (FR-022), whichever spelling PATH carries.
+    setPlatform('darwin');
+    setConfiguredEditor('code');
+    resolvedCommands.set('code', '/usr/local/bin/code');
+    const previous = process.env['PATH'];
+    process.env['PATH'] = [
+      '/repo/node_modules/.bin',
+      '/repo/node_modules/.bin/',
+      '/repo/node_modules/.bin/.',
+      '/usr/local/bin',
+    ].join(delimiter);
+    try {
+      await DetectedFileOpener.probe();
+    } finally {
+      process.env['PATH'] = previous;
+    }
+    const searchedPaths = whichMock.mock.calls
+      .map(([, options]) => (options as { path?: string }).path)
+      .filter((value): value is string => value !== undefined);
+    expect(searchedPaths.length).toBeGreaterThan(0);
+    for (const searched of searchedPaths) {
+      expect(searched).not.toContain('node_modules');
+    }
+  });
+
+  it('keeps a directory whose name merely ends in node_modules/.bin', async () => {
+    // `/opt/notnode_modules/.bin` is a legitimate entry — only the exact
+    // `node_modules`/`.bin` trailing pair is the package manager's injection,
+    // and a suffix string test would make its editors undetectable (FR-022
+    // bounds what is excluded, not more).
+    setPlatform('darwin');
+    setConfiguredEditor('code');
+    resolvedCommands.set('code', '/opt/notnode_modules/.bin/code');
+    const previous = process.env['PATH'];
+    process.env['PATH'] = ['/opt/notnode_modules/.bin', '/usr/local/bin'].join(delimiter);
+    try {
+      await DetectedFileOpener.probe();
+    } finally {
+      process.env['PATH'] = previous;
+    }
+    // The catalog probes search their own fixed directories; the PATH-backed
+    // lookups are the ones that must still carry the legitimate entry.
+    const searchedPaths = whichMock.mock.calls
+      .map(([, options]) => (options as { path?: string }).path)
+      .filter((value): value is string => value !== undefined);
+    expect(searchedPaths.some((searched) => searched.includes('/opt/notnode_modules/.bin'))).toBe(
+      true,
+    );
+  });
+
+  it('accepts a resolution inside a quoted PATH entry', async () => {
+    // Windows permits quoted PATH entries and `which` strips the quotes
+    // before resolving inside them; the named-directory membership must read
+    // the entry the same way, or the editor `which` correctly resolved is
+    // dropped from the offer.
+    setPlatform('darwin');
+    setConfiguredEditor('vim');
+    resolvedCommands.set('vim', '/Quoted Dir/vim');
+    const previous = process.env['PATH'];
+    process.env['PATH'] = '"/Quoted Dir"';
+    try {
+      const opener = await DetectedFileOpener.probe();
+      expect(opener.targets).toContain('terminal-editor');
+      execFileAsyncMock.mockResolvedValueOnce(undefined);
+      await opener.openFile(FILE, 'terminal-editor');
+      expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+        '-e',
+        expect.stringContaining('quoted form of'),
+        '/Quoted Dir/vim',
+        FILE,
+      ]);
+    } finally {
+      process.env['PATH'] = previous;
+    }
+  });
+
+  it('runs an absolute terminal editor rather than the default of that name', async () => {
+    // The catalog reads `/custom/bin/vi` as an unknown editor — it takes the
+    // last segment as an id and no entry is named `vi` — so classifying by
+    // the whole value would call the reader's own executable non-terminal
+    // and start whatever `vi` PATH offers instead.
+    setPlatform('darwin');
+    setConfiguredEditor('/custom/bin/vi');
+    resolvedCommands.set('/custom/bin/vi', '/custom/bin/vi');
+    const opener = await DetectedFileOpener.probe();
+    expect(opener.targets).toContain('terminal-editor');
+    execFileAsyncMock.mockResolvedValueOnce(undefined);
+    await opener.openFile(FILE, 'terminal-editor');
+    expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+      '-e',
+      expect.stringContaining('quoted form of'),
+      '/custom/bin/vi',
+      FILE,
+    ]);
+  });
+
+  it('keeps an absolute editor path that carries spaces, exactly as written', async () => {
+    // `/Applications/Vim App/.../vim` and `vim -u NONE` read alike
+    // lexically; the resolution tells them apart, because `which` checks a
+    // separator-carrying value directly. A real executable at the exact
+    // spelling is what the reader named, so that is what runs — never the
+    // PATH's own `vim`.
+    setPlatform('darwin');
+    const spacedPath = '/Applications/Vim App/Contents/MacOS/vim';
+    setConfiguredEditor(spacedPath);
+    resolvedCommands.set(spacedPath, spacedPath);
+    const opener = await DetectedFileOpener.probe();
+    expect(opener.targets).toContain('terminal-editor');
+    execFileAsyncMock.mockResolvedValueOnce(undefined);
+    await opener.openFile(FILE, 'terminal-editor');
+    expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+      '-e',
+      expect.stringContaining('quoted form of'),
+      spacedPath,
+      FILE,
+    ]);
+  });
+
+  it('refuses a relative separator-carrying editor value instead of resolving it', async () => {
+    // `which` checks a separator-carrying value against the working
+    // directory — the inspected repository — so `EDITOR=bin/vim` would offer
+    // an executable the repository ships. Only an absolute spelling is
+    // checked directly; the relative one falls back to the catalog's own
+    // command (FR-022, the same boundary the named-directory membership
+    // draws for PATH lookups).
+    setPlatform('darwin');
+    setConfiguredEditor('bin/vim');
+    resolvedCommands.set('bin/vim', '/inspected-repo/bin/vim');
+    const opener = await DetectedFileOpener.probe();
+    expect(opener.targets).toContain('terminal-editor');
+    execFileAsyncMock.mockResolvedValueOnce(undefined);
+    await opener.openFile(FILE, 'terminal-editor');
+    expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+      '-e',
+      expect.stringContaining('quoted form of'),
+      TERMINAL_EDITOR,
+      FILE,
+    ]);
+  });
+
+  it('falls back to the catalog command for a flags-carrying editor value', async () => {
+    // `vim -u NONE` resolves nowhere as a single spelling, so the catalog's
+    // own command for the named editor is what runs, flags unhonoured.
+    setPlatform('darwin');
+    setConfiguredEditor('vim -u NONE');
+    const opener = await DetectedFileOpener.probe();
+    expect(opener.targets).toContain('terminal-editor');
+    execFileAsyncMock.mockResolvedValueOnce(undefined);
+    await opener.openFile(FILE, 'terminal-editor');
+    expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+      '-e',
+      expect.stringContaining('quoted form of'),
+      TERMINAL_EDITOR,
+      FILE,
+    ]);
+  });
+
+  it('skips a candidate outside the named directories and keeps searching', async () => {
+    // `which` on Windows injects the working directory — the inspected
+    // repository — ahead of whatever path it was given, so its first match
+    // can be a committed `vi` no named directory holds. Refusing that
+    // candidate must not end the search: the legitimate installation right
+    // behind it on the named path is the one to offer (FR-022).
+    setPlatform('darwin');
+    setConfiguredEditor(undefined);
+    resolvedCommands.clear();
+    whichMock.mockImplementation(async (command, options) =>
+      command === 'vi' && (options as { all?: boolean }).all
+        ? ['/inspected-repo/vi', '/usr/bin/vi']
+        : null,
+    );
+    const opener = await DetectedFileOpener.probe();
+    expect(opener.targets).toContain('terminal-editor');
+    execFileAsyncMock.mockResolvedValueOnce(undefined);
+    await opener.openFile(FILE, 'terminal-editor');
+    // The launcher is the allowed second match, never the injected first.
+    expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+      '-e',
+      expect.stringContaining('quoted form of'),
+      '/usr/bin/vi',
+      FILE,
+    ]);
+  });
 });
 
 describe("opening through the machine's own handlers", () => {
@@ -286,9 +488,113 @@ describe('a handler that refused the path (T1123)', () => {
     // A machine with no handler registered for the file type: the launcher
     // exits non-zero, and nothing opened.
     vi.mocked(open).mockImplementationOnce((async () =>
-      Object.assign(new EventEmitter(), { exitCode: 3 })) as never);
+      Object.assign(new EventEmitter(), { exitCode: 3, signalCode: null })) as never);
     await expect(
       openerWith(['visual-studio-code', LAUNCHER]).openFile(FILE, 'default-application'),
     ).rejects.toThrow('exited with code 3');
+  });
+
+  it('reports a refusal that arrives as the exit event within the grace period', async () => {
+    // The same refusal a beat later: the launcher is still running when the
+    // listener attaches and exits non-zero moments after.
+    const launcher = Object.assign(new EventEmitter(), {
+      exitCode: null,
+      unref: vi.fn(),
+      signalCode: null,
+    });
+    vi.mocked(open).mockImplementationOnce((async () => launcher) as never);
+    const opened = openerWith().openFile(FILE, 'default-application');
+    queueMicrotask(() => launcher.emit('exit', 4));
+    await expect(opened).rejects.toThrow('exited with code 4');
+    expect(launcher.unref).not.toHaveBeenCalled();
+  });
+
+  it('reports a launcher the machine killed rather than a clean exit', async () => {
+    // Node reports the two halves of an exit separately: a launcher killed by
+    // a signal exits with a null code and a non-null signal
+    // (nodejs.org/api/child_process.html#event-exit), and reading the code
+    // alone would take that for the zero a successful hand-off has.
+    const launcher = Object.assign(new EventEmitter(), {
+      exitCode: null,
+      signalCode: null,
+      unref: vi.fn(),
+    });
+    vi.mocked(open).mockImplementationOnce((async () => launcher) as never);
+    const opened = openerWith().openFile(FILE, 'default-application');
+    queueMicrotask(() => launcher.emit('exit', null, 'SIGKILL'));
+    await expect(opened).rejects.toThrow('terminated by SIGKILL');
+  });
+
+  it('reports a launcher that had already been killed when the read happened', async () => {
+    // The same state read synchronously: a launcher that exited before the
+    // listener could attach reports through `signalCode`, which a read of
+    // `exitCode` alone would see as null and treat as still running.
+    vi.mocked(open).mockImplementationOnce((async () =>
+      Object.assign(new EventEmitter(), {
+        exitCode: null,
+        signalCode: 'SIGTERM',
+        unref: vi.fn(),
+      })) as never);
+    await expect(openerWith().openFile(FILE, 'default-application')).rejects.toThrow(
+      'terminated by SIGTERM',
+    );
+  });
+
+  it('waits out the portal timeout inside a Flatpak sandbox and reports its refusal', async () => {
+    // Inside Flatpak the bundled `xdg-open` never keeps running: it calls the
+    // desktop portal with `gdbus call --timeout 5` and exits either way
+    // (open/xdg-open § open_flatpak), so a refusal can arrive as a non-zero
+    // exit several seconds in. The one-second grace would have answered
+    // `opened` before the refusal existed; the sandbox's own `FLATPAK_ID`
+    // export is what detects it, and the grace stretches past the portal's
+    // own timeout.
+    const savedFlatpakId = process.env.FLATPAK_ID;
+    process.env.FLATPAK_ID = 'org.example.Inspector';
+    try {
+      const launcher = Object.assign(new EventEmitter(), {
+        exitCode: null,
+        unref: vi.fn(),
+        signalCode: null,
+      });
+      vi.mocked(open).mockImplementationOnce((async () => launcher) as never);
+      const opened = openerWith().openFile(FILE, 'default-application');
+      // Real time, deliberately: fake timers do not reach
+      // `node:timers/promises`, and the point is exactly that the refusal
+      // lands after the ordinary one-second grace has passed.
+      await delay(1100);
+      launcher.emit('exit', 4);
+      await expect(opened).rejects.toThrow('exited with code 4');
+      expect(launcher.unref).not.toHaveBeenCalled();
+    } finally {
+      if (savedFlatpakId === undefined) {
+        Reflect.deleteProperty(process.env, 'FLATPAK_ID');
+      } else {
+        process.env.FLATPAK_ID = savedFlatpakId;
+      }
+    }
+  });
+
+  it('resolves without waiting for a launcher that keeps running', async () => {
+    // The bundled `xdg-open`'s success shape: it deliberately does not fork
+    // the application off, so it lives for the application's whole session
+    // (open/xdg-open § "In case of success"). The launch must resolve once
+    // the grace period passes with no exit — waiting for one would hold the
+    // open control's whole menu until the reader closes the application —
+    // and release the process.
+    vi.useFakeTimers();
+    try {
+      const launcher = Object.assign(new EventEmitter(), {
+        exitCode: null,
+        unref: vi.fn(),
+        signalCode: null,
+      });
+      vi.mocked(open).mockImplementationOnce((async () => launcher) as never);
+      const opened = openerWith().openFile(FILE, 'default-application');
+      await vi.advanceTimersByTimeAsync(1000);
+      await expect(opened).resolves.toBeUndefined();
+      expect(launcher.unref).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

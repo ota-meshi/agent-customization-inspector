@@ -1,7 +1,8 @@
 // Nuxt client SPA configuration. The browser application is a static,
 // same-origin bundle served by the local Node host: no SSR, no CDN, and
 // root-absolute assets so the one shell also boots nested routes such as
-// /skills/<source-relative path>. Auto-imports and implicit components are disabled so every
+// /skills/detail/<source>/<source-relative path>. Auto-imports and implicit
+// components are disabled so every
 // dependency of the security-reviewed client code is an explicit import.
 import { defineNuxtConfig } from 'nuxt/config';
 import Icons from 'unplugin-icons/vite';
@@ -30,6 +31,14 @@ export default defineNuxtConfig({
     },
   },
   vite: {
+    // The same substitution `tsdown.config.ts` performs for the CLI: the SPA
+    // imports the shared registries (the consent preview renders excluded-rule
+    // IDs), and without this define every citation URL, review date,
+    // paraphrase, and policy reference would ship in the browser bundle. The
+    // package suite asserts the emitted assets carry none
+    // (tests/package/verify-package-files.test.ts), because the substitution
+    // fails silently (src/shared/registries/maintenance-data.ts).
+    define: { __ACI_SHIP_MAINTENANCE_DATA__: 'false' },
     plugins: [
       // Each `~icons/<collection>/<name>` import becomes a Vue component whose
       // template is that icon's own SVG, resolved from the installed

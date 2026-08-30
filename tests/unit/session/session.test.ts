@@ -131,6 +131,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const after = session.snapshot().sources[0]!;
     expect(after.status).toBe('ready');
@@ -167,6 +168,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const snapshot = session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(0);
@@ -192,6 +194,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const second = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-1' });
     if (second.kind !== 'admitted') {
@@ -227,6 +230,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const failing = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-r1' });
     if (failing.kind !== 'admitted') {
@@ -246,6 +250,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     // The discarded late success must not erase the current failure
     // presentation: the Source reverts to failed with the failed request's
@@ -279,6 +284,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const second = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-2' });
     if (second.kind !== 'admitted') {
@@ -293,6 +299,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const snapshot = session.snapshot();
     expect(snapshot.sources[0]!.status).toBe('ready');
@@ -339,6 +346,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     expect(session.snapshot().snapshotState).toBe('current');
 
@@ -377,6 +385,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     // One opaque ID spans admission, status, and the committed generation
     // (FR-030 request correlation).
@@ -445,6 +454,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-d' });
     if (rescan.kind !== 'admitted') {
@@ -477,6 +487,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const cleared = session.snapshot();
     expect(cleared.staleFailures).toEqual([]);
@@ -548,6 +559,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
       files: [
         {
           sourceId,
@@ -627,6 +639,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const rescan = coordinator.admitScan(sourceId, { kind: 'request', operationId: 'op-3' });
     if (rescan.kind !== 'admitted') {
@@ -648,6 +661,7 @@ describe('scan lifecycle', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     const snapshot = session.snapshot();
     expect(snapshot.snapshotState).toBe('current');
@@ -675,6 +689,7 @@ describe('an explicit rescan replaces the whole generation (T182)', () => {
       visitedEntries: 4,
       candidateFiles: 2,
       readBytes: 10,
+      censusEscapedDirectories: [],
       files: [
         {
           sourceId,
@@ -705,6 +720,7 @@ describe('an explicit rescan replaces the whole generation (T182)', () => {
       visitedEntries: 3,
       candidateFiles: 1,
       readBytes: 7,
+      censusEscapedDirectories: [],
       files: [
         {
           sourceId,
@@ -759,6 +775,7 @@ describe('an explicit rescan replaces the whole generation (T182)', () => {
       visitedEntries: 1,
       candidateFiles: 1,
       readBytes: 5,
+      censusEscapedDirectories: [],
       files: [
         {
           sourceId,

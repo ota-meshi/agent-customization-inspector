@@ -30,7 +30,7 @@ import type {
   SkillDefinitionDto,
   SkillInventoryEntryDto,
   SourceDto,
-  SourceKind,
+  SourceSelector,
 } from '../../../src/shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
 
@@ -130,7 +130,7 @@ function snapshotWith(
 // does and passes it in; the composable returns only what it derives.
 function withSelection(snapshot: Ref<SessionSnapshot | null>) {
   const selection = {
-    sourceKind: ref<SourceKind | null>(null),
+    source: ref<SourceSelector | null>(null),
     tool: ref<SupportedTool | null>(null),
     kind: ref<CustomizationKind | null>(null),
     pathQuery: ref(''),

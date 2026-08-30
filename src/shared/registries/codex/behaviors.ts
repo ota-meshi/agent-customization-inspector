@@ -319,9 +319,11 @@ export const CODEX_REPO_RULES_BEHAVIOR = {
  * shared by every local client and resolved through the same precedence as
  * the project layers.
  *
- * A non-authorizing carrier fact recorded for maintenance and for the
- * precedence strategy that composes it: it expands no Global inspection, and
- * the User runtime exclusion that names it arrives with its own phase
+ * A non-authorizing carrier fact: what a consented home's copy of this file
+ * is read as is `codex.global.config`'s and `codex.global.settings`'s to
+ * say, and what is left out beside it is `codex.excluded.user-runtime`'s.
+ * This statement records the documented cascade the precedence strategy
+ * composes, and authorizes nothing itself
  * (contracts/vendors/openai-codex.md § Documented User behavior).
  */
 export const CODEX_USER_CONFIG_BEHAVIOR = {

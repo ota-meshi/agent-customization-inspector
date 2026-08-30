@@ -72,6 +72,7 @@ describe('the registered session RPC catalog', () => {
   it('registers exactly the functions this release ships', () => {
     expect([...registerFunctions().keys()].toSorted()).toEqual([
       'agent-customization-inspector:create-global-consent-preview',
+      'agent-customization-inspector:disable-global',
       'agent-customization-inspector:enable-global',
       'agent-customization-inspector:get-file-detail',
       'agent-customization-inspector:get-global-consent-preview',
@@ -82,6 +83,7 @@ describe('the registered session RPC catalog', () => {
       'agent-customization-inspector:get-plugin-file-detail',
       'agent-customization-inspector:get-session',
       'agent-customization-inspector:open-file',
+      'agent-customization-inspector:rescan-global',
       'agent-customization-inspector:rescan-repository',
     ]);
   });

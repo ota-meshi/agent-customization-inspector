@@ -196,6 +196,15 @@ export class GlobalConsentRecord {
   /** The accepted batch's status, or null; see {@link GlobalBatchStatusDto}. */
   public batchStatus: GlobalBatchStatusDto | null = null;
 
+  /**
+   * True from disable-barrier acceptance until this record is removed by
+   * terminal `remove-active-state` success (contracts/http-api.md
+   * § get-session `globalControl`): the projection then reads `disabling`
+   * with empty pending/retry arrays, because the barrier cleared the batch
+   * and no retry can be offered behind the fence.
+   */
+  public disabling = false;
+
   /** Opens a consent record with its controls, as one atomic disposition. */
   public constructor(
     previewId: string,
@@ -216,6 +225,12 @@ export class GlobalConsentRecord {
    * policy).
    */
   public retryableTools(): GlobalMemberId[] {
+    if (this.disabling) {
+      // No retry is offered behind the disable fence: the confirmation that
+      // would use it takes the `global-disable-pending` conflict instead
+      // (contracts/http-api.md § disable-global).
+      return [];
+    }
     const pending = new Set(this.pendingTools);
     const retryable: GlobalMemberId[] = [];
     for (const control of this.controls.values()) {
@@ -229,9 +244,7 @@ export class GlobalConsentRecord {
   /** The public control projection returned in every snapshot while this record lives. */
   public toDto(): GlobalControlViewDto {
     return {
-      // `disabling` arrives with the disable barrier; while this record exists
-      // and no barrier does, the consent is active.
-      state: 'active',
+      state: this.disabling ? 'disabling' : 'active',
       previewId: this.previewId,
       confirmedTools: this.confirmedTools,
       controls: inMemberOrder(this.controls.keys()).map((member) =>
@@ -300,8 +313,15 @@ export type GlobalResolvedOutcome =
  * module, and a coordinator that reached for one would be a second place with
  * read authority. A port is called only for an `eligible` entry — the three
  * lexical rejections are decided from the captured string with no I/O at all.
+ * `stillAuthorized` is the enable transaction's own authority, re-asked
+ * between the port's filesystem probes: the disable barrier and host shutdown
+ * revoke it mid-probe, and no probe starts after that (data-model.md
+ * § ScanAttempt).
  */
-export type GlobalMemberPort = (lexicalRoot: string) => Promise<GlobalMemberOutcome>;
+export type GlobalMemberPort = (
+  lexicalRoot: string,
+  stillAuthorized?: () => boolean,
+) => Promise<GlobalMemberOutcome>;
 
 /**
  * One member's slot in the fixed-four transaction, as the host hands it to

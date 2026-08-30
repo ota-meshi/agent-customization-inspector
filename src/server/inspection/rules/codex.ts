@@ -98,11 +98,14 @@ export class CodexCompiledOtherKindRule
 }
 
 /**
- * The Codex rules a consented `CODEX_HOME` scan executes: the one instruction
- * rule whose ordered override/fallback pair sits below the admitted boundary
- * (contracts/vendors/openai-codex.md § Inspector Global rule). The shared
- * agent home's Codex rules are the separate catalog below, because the two
- * members are two consented roots.
+ * The Codex rules a consented `CODEX_HOME` scan executes: every static
+ * candidate this vendor's catalog admits below that boundary — the ordered
+ * override/fallback instruction pair, and each further kind the contract
+ * places in that home (contracts/vendors/openai-codex.md § Inspector Global
+ * rules). Derived from the shipped catalog by boundary rather than listed
+ * here, so a rule added to the member home cannot be missed by this map. The
+ * shared agent home's Codex rules are the separate catalog below, because the
+ * two members are two consented roots.
  *
  * Separate from the Repository catalog rather than filtered out of it at call
  * time, because the two are executed against different roots: a scan is given
@@ -178,9 +181,9 @@ export const CODEX_AGENTS_HOME_RULES: readonly CompiledStaticCandidateRule[] = O
   );
 
 /**
- * The Codex Repository rules a Repository scan executes, in shipped order.
- * The remaining Codex rows of the vendor contract arrive with their own
- * inventory phases; the shipped set covers static instructions, skills, the
+ * The Codex Repository rules a Repository scan executes, in shipped order —
+ * every Repository row of this vendor's contract, derived from the catalog
+ * rather than listed here. They cover static instructions, skills, the
  * MCP carrier, the settings document that carrier is, rule files, custom
  * agents, and both hook carriers, with the configured instruction fallbacks
  * reaching the same walk through the derived rule below.

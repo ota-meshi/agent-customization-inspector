@@ -206,7 +206,7 @@ are closed by `GlobalDisableOperation`; no other command may copy that exception
 |---|---|---|
 | `sourceId` | opaque ASCII string | Server-generated and stable for the process lifetime |
 | `kind` | `repository \| global` | Exactly one Repository source; zero to four Global Sources |
-| `tool` | `copilot \| claude \| codex \| null` | Repository pairs with null; each Global Source pairs with exactly one supported tool, and no two Global Sources share a tool |
+| `member` | `copilot \| claude \| codex \| agents \| null` | Repository pairs with null; each Global Source pairs with exactly one member of the fixed four-member set — the three supported tools plus the shared agent home — and no two Global Sources share a member |
 | `enabled` | boolean | Repository and every published Global Source are true; absence means only that no Source is published for that tool, while `globalControl` distinguishes disabled, pending, and retryable control states; a disabling source remains true until atomic removal |
 | `status` | `idle \| scanning \| disabling \| ready \| partial \| failed` | Follows transitions below; public `partial` denotes only a generation committed after complete traversal in which one or more files have file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete; `failed` means the latest attempt failed while the last committed snapshot remains available; only a fatal explicit rescan marks that snapshot stale |
 | `boundary` | `SourceBoundary` | Exactly one selected root: the captured `process.cwd()` or resolved `--root` for Repository, or the one consented home root for this Global Source's tool |
@@ -224,7 +224,7 @@ changes only through an atomic generation commit.
 
 | Field | Type | Visibility | Rules |
 |---|---|---|---|
-| `tool` | `copilot \| claude \| codex \| null` | internal | Must equal the owning Source's already-published tool; Repository uses null |
+| `member` | `copilot \| claude \| codex \| agents \| null` | internal | Must equal the owning Source's already-published member; Repository uses null |
 | `displayRoot` | ASCII `RootPresentationEncoding` string | DTO | Deterministic encoding of the Source root; not a `SourceRelativePath`, inventory-item locator, caller input, or read authority |
 | `root` | exact absolute platform path string | internal | The selected Repository root or this tool's consented home root; the base path for every inspected-source filesystem operation of this Source |
 | `origin` | `process-cwd \| root-option \| default-home \| environment` | DTO | Explains how the root was selected without granting read authority |
@@ -415,8 +415,9 @@ disable and a new preview. Existing Sources retain their semantic content and st
 Each successful initial or retry admitted-subset transaction publishes all newly admitted
 Sources together and commits exactly one Global-sequence generation — creating the sequence
 at generation 1 when none exists, or atomically replacing the current Global snapshot at
-exactly N+1 — regenerating every Global generation-owned ID and invalidating only the
-Global sequence's old file/detail/comparison/editor state; the Repository sequence, its
+exactly N+1 — regenerating the generation-owned IDs of the Sources it publishes — carried
+Sources keep their records and IDs — and invalidating the Global sequence's old
+file/detail/comparison/editor state through the snapshot that adoption replaces; the Repository sequence, its
 generation, its IDs, and its views are untouched. A different preview or root requires disabling
 Global inspection first; a request with no retryable tool is rejected as closed conflict
 `no-retryable-global-tool`.
@@ -437,7 +438,7 @@ root or making a lexical-ineligible control eligible requires disable and a new 
 
 | Field | Type | Rules |
 |---|---|---|
-| `tool` | tool enum | Exactly one of each supported tool exists while consent is active |
+| `member` | member enum | Exactly one of each Global member exists while consent is active |
 | `previewId` | opaque string | References the active frozen preview and cannot be changed in place |
 | `state` | `unvalidated \| rejected \| admitted \| published` | All four provisional operation-local controls begin `unvalidated`, but that state is never serialized in an active `GlobalControlView`; lexical-ineligible entries become rejected without filesystem I/O, `admitted` has passed readable-directory admission but has no published Source, and `published` has exactly one Source |
 | `sourceId` | opaque ID or null | Allocated only after successful root admission; remains internal until a Source commit and is discarded if admission must be repeated |
@@ -3201,7 +3202,7 @@ The closed observation-class fields are:
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
 | `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-hook-carrier-detail \| rpc-get-plugin-carrier-detail \| rpc-get-plugin-file-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
@@ -3246,7 +3247,11 @@ and `targetClass` exactly per dispatched function
 | `rpc-get-session` | `agent-customization-inspector:get-session` |
 | `rpc-get-file-detail` | `agent-customization-inspector:get-file-detail` |
 | `rpc-get-mcp-carrier-detail` | `agent-customization-inspector:get-mcp-carrier-detail` |
+| `rpc-get-hook-carrier-detail` | `agent-customization-inspector:get-hook-carrier-detail` |
+| `rpc-get-plugin-carrier-detail` | `agent-customization-inspector:get-plugin-carrier-detail` |
+| `rpc-get-plugin-file-detail` | `agent-customization-inspector:get-plugin-file-detail` |
 | `rpc-get-permission-policy-detail` | `agent-customization-inspector:get-permission-policy-detail` |
+| `rpc-open-file` | `agent-customization-inspector:open-file` |
 | `rpc-rescan-repository` | `agent-customization-inspector:rescan-repository` |
 | `rpc-get-global-consent-preview` | `agent-customization-inspector:get-global-consent-preview` |
 | `rpc-create-global-consent-preview` | `agent-customization-inspector:create-global-consent-preview` |
@@ -3599,13 +3604,13 @@ failed/stale -> scanning (waiting or active) -> ready/partial (clears this Sourc
                                              \-> failed/stale (replaces this Source's entry + diagnostic)
 ```
 
-### Tool-specific Global sources
+### Member Global sources
 
 ```text
 0 sources -- consent preview --> 0 sources (no Source or I/O)
-0 sources -- registered initial enable --> globalEnableInProgress; validate all 3 frozen entries operation-locally
+0 sources -- registered initial enable --> globalEnableInProgress; validate all 4 frozen entries operation-locally
 0 admitted roots ------------> active-no-job (active control, no Source/generation)
-1..3 admitted roots ---------> atomic queued acceptance + batchStatus(waiting/id) --> running --> one atomic Global generation containing every ready/partial Source
+1..4 admitted roots ---------> atomic queued acceptance + batchStatus(waiting/id) --> running --> one atomic Global generation containing every ready/partial Source
                                                                         \-> failed(tool failures or the failed request's error; same id)
 exact retryable subset ------> same atomic batch lifecycle; lexical-ineligible controls require disable/new preview
 unexpected pre-accept throw/rejection --> ordinary request error; no subset Source/generation from the transaction
@@ -3613,7 +3618,7 @@ ready/partial -- accepted per-source rescan --> scanning --> ready/partial
                                                      \-> failed/stale (creates own entry)
 failed/stale -- accepted per-source rescan --> scanning --> ready/partial (clears own entry + diagnostic)
                                                      \-> failed/stale (replaces own entry + diagnostic)
-active Global control (0..3 Sources) -- disable --> disabling barrier --> inactive / 0 Sources (Global sequence discarded; commits nothing)
+active Global control (0..4 Sources) -- disable --> disabling barrier --> inactive / 0 Sources (Global sequence discarded; commits nothing)
                                                                   \-> failed + retained error --> retry disable
 initial enable only -- disable --> cleanup-only barrier --> inactive / 0 Sources (no committed state changed)
                                                   \-> failed + retained error --> retry disable

@@ -147,6 +147,10 @@ async function commitEnable(
       recognitions: publication.recognitions,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
+      visitedEntries: publication.visitedEntries,
+      candidateFiles: publication.candidateFiles,
+      readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
     });
   }
   coordinator.completeGlobalBatch(scanRequestId, results);

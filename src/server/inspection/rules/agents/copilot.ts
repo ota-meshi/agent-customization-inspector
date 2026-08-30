@@ -36,10 +36,11 @@ const COPILOT_AGENT_PROFILE_SUFFIX = '.agent.md';
  * the Markdown parse and the rendering of resolved values are the format's and
  * stay in `parsers/markdown.ts`.
  *
- * Both agent records compile into this one unit: the two differ in which
- * directory they admit and therefore in which surfaces they rest on, which is
- * the rules' own fact, while how an admitted file splits and what names it is
- * identical for either.
+ * Every Copilot agent record compiles into this one unit — the Repository
+ * ones and `copilot.global.agent` alike: they differ in which directory they
+ * admit and therefore in which surfaces they rest on, which is each rule's
+ * own fact, while how an admitted file splits and what names it is identical
+ * for all of them.
  */
 export class CopilotCompiledAgentRule
   extends CopilotCompiledRule
@@ -91,8 +92,9 @@ export class CopilotCompiledAgentRule
    * outright has an empty name, which is the vendor's own answer for it rather
    * than an absent one, and the row states it as the empty name it is.
    *
-   * The slicing is exact rather than defensive: this unit compiles only the
-   * `copilot.repo.agent` record, whose two selectors both end in `/\.md$/u`.
+   * The slicing is exact rather than defensive: every record this unit
+   * compiles — `copilot.repo.agent`, `copilot.repo.agent.claude`, and
+   * `copilot.global.agent` — admits only selectors ending in `/\.md$/u`.
    */
   public agentNameOf(sourceRelativePath: string): string {
     const fileName = sourceRelativePath.split('/').at(-1)!;

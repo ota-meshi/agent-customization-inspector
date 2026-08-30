@@ -19,7 +19,7 @@
 // pickers move the two sides among that row's files alone.
 //
 // The URL carries the model's own coordinates —
-// `/agents/compare?name=<agent name>&left=<path>&right=<path>` — the two files
+// `/agents/compare/<family>?name=<agent name>&leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>` — the two files
 // named by their Source-relative Paths, the identity the inventory rows and
 // the detail route already use (FR-030), and the row named by the name it is
 // headed with. The row is carried rather than derived, because this kind's
@@ -58,6 +58,7 @@ import {
   fromJsonStringBody,
   querySideOf,
   sideIdentityKeyOf,
+  comparisonTitleSides,
 } from '../../../components/detail-route';
 import {
   comparisonSideOptions,
@@ -65,16 +66,7 @@ import {
   sideValueOf,
 } from '../../../components/comparison-side-picker';
 import { sourceFactsOf } from '../../../components/source-name';
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/custom-agent-comparison/RecognitionComparison.vue';
@@ -84,7 +76,7 @@ import {
   type CustomAgentSideDefinition,
 } from '../../../components/custom-agent-comparison/recognition-comparison';
 import { customAgentComparisonRouteFor } from '../../../composables/custom-agent-comparison';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -102,13 +94,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a comparison page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const comparison = sessionViewState.customAgentComparison;
 const snapshot = sessionViewState.snapshot;
@@ -470,7 +456,7 @@ watch(
  * directory it was in where that family holds more than one Source, its
  * recognized kind, and its read outcome (US3 scenario 1). Per side rather
  * than per pair, because the two sides can be two Sources — a consented
- * home's file beside the repository's is the pair this route now expresses
+ * home's file beside another member's is the pair this route expresses
  * (FR-002, FR-030).
  */
 function fileFacts(detail: FileDetailDto): string {
@@ -770,8 +756,18 @@ const titleSubject = computed<string>(() => {
   }
   switch (status.value) {
     case 'ready':
-    case 'loading':
-      return 'Comparing custom-agent files';
+    case 'loading': {
+      // The row and its pair in the title, so two comparison tabs never read
+      // identically (WCAG 2.4.2; `detail-route.ts` § comparisonTitleSides).
+      const sides = comparisonTitleSides(leftSide.value, rightSide.value);
+      if (sides === null) {
+        return 'Comparing custom-agent files';
+      }
+      const subject = rowName.value;
+      return subject === null
+        ? `Comparing custom-agent files — ${sides}`
+        : `Comparing custom-agent files: ${subject} — ${sides}`;
+    }
     case 'stale':
       return 'Link not in this scan';
     case 'same-path':

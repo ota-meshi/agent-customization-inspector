@@ -19,11 +19,14 @@
 // nothing that was inspected (`components/inspection/open-target-preference.ts`).
 // This client also calls nothing outside the closed function catalog below.
 import type {
+  GlobalRescanParams,
   CommandResult,
   FileDetailDto,
   FileDetailParams,
   FileOpenTarget,
   GlobalConsentPreviewDto,
+  GlobalDisableResultDto,
+  GlobalFenceRecoverySnapshot,
   GlobalEnableResultDto,
   InspectionDataResult,
   HookCarrierDetailDto,
@@ -46,8 +49,9 @@ import type { ClientDataPurge, PurgeReason } from './client-data';
  * The session RPC functions this client invokes, spelled exactly as the
  * host registers them under the `agent-customization-inspector:` namespace
  * (contracts/http-api.md § RPC function catalog). The client issues no
- * request outside this set; the remaining catalog entries arrive with the
- * phases that use them.
+ * request outside this set, which is the product's whole catalog: every
+ * function the host registers under that namespace is named here, so a
+ * request this client cannot spell is a request the host does not answer.
  */
 export const SESSION_RPC_FUNCTIONS = {
   /** Full `InspectionSession` snapshot, or the fenced control DTO. */
@@ -65,11 +69,15 @@ export const SESSION_RPC_FUNCTIONS = {
   getPermissionPolicyDetail: 'agent-customization-inspector:get-permission-policy-detail',
   /** Accept one explicit Repository scan command. */
   rescanRepository: 'agent-customization-inspector:rescan-repository',
+  /** Accept one explicit scan command for one enabled Global Source. */
+  rescanGlobal: 'agent-customization-inspector:rescan-global',
+  /** The priority disable barrier for all inspection data (FR-042). */
+  disableGlobal: 'agent-customization-inspector:disable-global',
   /** Open one committed file in an application on the reader's own machine. */
   openFile: 'agent-customization-inspector:open-file',
   /** The current Global consent preview, read without capturing anything. */
   getGlobalConsentPreview: 'agent-customization-inspector:get-global-consent-preview',
-  /** Capture the three proposed Global roots and replace the unconsented preview. */
+  /** Capture the four proposed Global roots and replace the unconsented preview. */
   createGlobalConsentPreview: 'agent-customization-inspector:create-global-consent-preview',
   /** Confirm the reviewed preview and admit every tool the server derives. */
   enableGlobal: 'agent-customization-inspector:enable-global',
@@ -145,6 +153,16 @@ export type SessionFetchOutcome =
       readonly advancedSequences: readonly ScanSequence[];
     }
   | {
+      /**
+       * The host is fenced by a non-complete disable barrier: the shared
+       * purge has run and only the control-only recovery may render until a
+       * later fetch returns the full snapshot again (FR-042).
+       */
+      readonly kind: 'fenced';
+      /** The exact control-only recovery projection the host served. */
+      readonly recovery: GlobalFenceRecoverySnapshot;
+    }
+  | {
       /** An ordinary staleness outcome; nothing rendered, nothing purged. */
       readonly kind: 'discarded';
       /** Which guard dropped the response; see {@link DiscardReason}. */
@@ -174,6 +192,35 @@ export type SessionFetchOutcome =
        * committed view intact (contracts/http-api.md § Concurrency and
        * lifecycle).
        */
+      readonly fatal: boolean;
+    };
+
+/**
+ * The outcome of one `disable-global` command
+ * (contracts/http-api.md § disable-global): the terminal result — a no-op or
+ * a disabled barrier — or the request's own failure. There is no discarded
+ * variant, because a barrier is joined rather than superseded, and no purged
+ * variant of its own: the caller purged before sending.
+ */
+export type GlobalDisableOutcome =
+  | {
+      /** The terminal result every joiner of the barrier shares. */
+      readonly kind: 'completed';
+      /** The documented result payload. */
+      readonly result: GlobalDisableResultDto;
+    }
+  | {
+      /** A declared closed functional rejection, not an error. */
+      readonly kind: 'rejected';
+      /** The fixed contract code; see {@link RejectionCode}. */
+      readonly code: RejectionCode;
+    }
+  | {
+      /** The call failed; a post-acceptance failure leaves the host fenced. */
+      readonly kind: 'failed';
+      /** The real transport or handler error. */
+      readonly error: Error;
+      /** True when the channel itself is gone or the protocol was unsupported. */
       readonly fatal: boolean;
     };
 
@@ -352,6 +399,26 @@ export type ConsentPreviewOutcome =
       readonly preview: GlobalConsentPreviewDto;
     }
   | {
+      /**
+       * The response observed a purge trigger — a greater Global content
+       * epoch, or the disable fence's fixed conflict — so everything this
+       * session held is purged before anything renders (FR-042).
+       */
+      readonly kind: 'purged';
+      /** Which documented trigger ran the purge; see {@link PurgeReason}. */
+      readonly reason: PurgeReason;
+    }
+  | {
+      /**
+       * The settlement outlived a purge: it belongs to the discarded world,
+       * so nothing is adopted and — decisively — nothing is purged again, a
+       * stale fence conflict included ({@link DiscardReason}).
+       */
+      readonly kind: 'discarded';
+      /** Why the settlement was dropped; see {@link DiscardReason}. */
+      readonly reason: DiscardReason;
+    }
+  | {
       /** No preview exists yet; the reader is asked to capture one. */
       readonly kind: 'missing';
     }
@@ -387,6 +454,26 @@ export type GlobalEnableOutcome =
       readonly result: GlobalEnableResultDto;
     }
   | {
+      /**
+       * The response observed a purge trigger — a greater Global content
+       * epoch, or the disable fence's fixed conflict — so everything this
+       * session held is purged before anything renders (FR-042).
+       */
+      readonly kind: 'purged';
+      /** Which documented trigger ran the purge; see {@link PurgeReason}. */
+      readonly reason: PurgeReason;
+    }
+  | {
+      /**
+       * The settlement outlived a purge: it belongs to the discarded world,
+       * so nothing is adopted and — decisively — nothing is purged again, a
+       * stale fence conflict included ({@link DiscardReason}).
+       */
+      readonly kind: 'discarded';
+      /** Why the settlement was dropped; see {@link DiscardReason}. */
+      readonly reason: DiscardReason;
+    }
+  | {
       /** A declared closed rejection. */
       readonly kind: 'rejected';
       /** The fixed contract code; see {@link RejectionCode}. */
@@ -409,12 +496,36 @@ export type GlobalEnableOutcome =
  *
  * There is no `discarded` variant, because nothing here is superseded: an
  * open request is one reader action on one file, so a second one is a second
- * launch rather than a newer view of the same state.
+ * launch rather than a newer view of the same state. An older-epoch response
+ * is `opened` for the same reason — the launch happened, and the response
+ * renders nothing a stale view could keep.
  */
 export type FileOpenOutcome =
   | {
       /** The host launched the chosen application for the file. */
       readonly kind: 'opened';
+    }
+  | {
+      /**
+       * The response observed a purge trigger — a greater Global content
+       * epoch on a launch that happened, or the disable fence's fixed
+       * conflict — so the session state this page renders is purged
+       * (FR-042).
+       */
+      readonly kind: 'purged';
+      /** Which documented trigger ran the purge; see {@link PurgeReason}. */
+      readonly reason: PurgeReason;
+    }
+  | {
+      /**
+       * The settlement outlived a purge: the launch may have happened, but
+       * this response belongs to the discarded world, so nothing is adopted
+       * and — decisively — nothing is purged again, a stale fence conflict
+       * included ({@link DiscardReason}).
+       */
+      readonly kind: 'discarded';
+      /** Why the settlement was dropped; see {@link DiscardReason}. */
+      readonly reason: DiscardReason;
     }
   | {
       /** A declared closed functional rejection; `stale-resource` is the one this command can take. */
@@ -492,15 +603,26 @@ export class SessionApiClient {
 
   // The latest issued token per response family. A settlement whose token is
   // no longer the latest is a late response and is discarded (FR-029 has the
-  // server-side counterpart; this is the client half). The rescan command has
-  // its own family: a superseded snapshot fetch must not silently invalidate
-  // an in-flight command, and vice versa.
+  // server-side counterpart; this is the client half). The rescan commands
+  // have their own families: a superseded snapshot fetch must not silently
+  // invalidate an in-flight command, and vice versa.
   /** The latest `get-session` token. */
   #latestSessionToken: symbol | null = null;
   /** The latest `get-file-detail` token. */
   #latestDetailToken: symbol | null = null;
-  /** The latest `rescan-repository` token. */
-  #latestRescanToken: symbol | null = null;
+  /**
+   * The latest explicit-rescan token, one per sequence: the host admits a
+   * Repository and a Global rescan side by side because they commit into
+   * independent sequences (FR-030; contracts/http-api.md § rescan-global), so
+   * a Global dispatch must not turn the Repository command's still-pending
+   * admission into a superseded late response — that would leave its slot
+   * showing `requesting` for a command the host accepted. Within one
+   * sequence a newer dispatch still supersedes the older settlement.
+   */
+  readonly #latestRescanTokens: { repository: symbol | null; global: symbol | null } = {
+    repository: null,
+    global: null,
+  };
 
   // Outstanding controllers, split by what a generation adoption may abort. A
   // newer generation invalidates that sequence's *data* — the snapshot a fetch
@@ -509,8 +631,22 @@ export class SessionApiClient {
   // for (contracts/http-api.md § Concurrency and lifecycle). A purge abandons
   // both. The product defines no request timeout, retry timer, or memory lease:
   // the browser/network/runtime owns settlement.
-  /** Outstanding inspection-data requests, abortable by a generation adoption. */
-  readonly #outstandingData = new Set<AbortController>();
+  /**
+   * Outstanding inspection-data requests, each tagged with what invalidates
+   * it: the requested Source's own sequence for a detail, `'both'` for a
+   * bare-path detail nothing narrows, and `'session'` for a session fetch. A
+   * generation adoption aborts only the entries the advanced sequences
+   * invalidate — a commit invalidates only its own sequence's views (FR-030),
+   * so a Global enable must not cut down a Repository comparison's in-flight
+   * detail loads, which no route would ever re-request. The request's own
+   * token rides along so the abort retires exactly the request it cancelled:
+   * blanking the family's latest token outright would also discard a newer
+   * request issued after the state the abort clears.
+   */
+  readonly #outstandingData = new Map<
+    AbortController,
+    { readonly sequence: ScanSequence | 'both' | 'session'; readonly token: symbol }
+  >();
   /** Outstanding commands; only a purge abandons these. */
   readonly #outstandingCommands = new Set<AbortController>();
 
@@ -533,14 +669,39 @@ export class SessionApiClient {
    * detail request belongs to this family: it was read from the generation
    * that just moved on, so its result carries content the page must re-request
    * under the new generation rather than show.
+   *
+   * `advanced` narrows the abort to what those sequences invalidate — the
+   * other sequence's in-flight detail loads are that sequence's committed
+   * reads and stay valid (FR-030). A session fetch is aborted either way: the
+   * caller is about to adopt a newer snapshot than any in flight. Omitting
+   * `advanced` aborts everything, which is the purge's shape.
    */
-  #abortDataRequests(): void {
-    this.#latestSessionToken = null;
-    this.#latestDetailToken = null;
-    for (const controller of this.#outstandingData) {
+  #abortDataRequests(advanced?: ReadonlySet<ScanSequence>): void {
+    for (const [controller, entry] of this.#outstandingData) {
+      if (
+        advanced !== undefined &&
+        entry.sequence !== 'session' &&
+        entry.sequence !== 'both' &&
+        !advanced.has(entry.sequence)
+      ) {
+        continue;
+      }
       controller.abort();
+      this.#outstandingData.delete(controller);
+      // Each family's latest token is retired only when the aborted request
+      // is the one holding it: an invalidated Global detail abandoned
+      // mid-load must not blank the token a Repository comparison's newer
+      // request owns — that settlement would be discarded as superseded, and
+      // the comparison would load forever on a page whose own sequence never
+      // advanced.
+      if (entry.sequence === 'session') {
+        if (this.#latestSessionToken === entry.token) {
+          this.#latestSessionToken = null;
+        }
+      } else if (this.#latestDetailToken === entry.token) {
+        this.#latestDetailToken = null;
+      }
     }
-    this.#outstandingData.clear();
   }
 
   /**
@@ -550,7 +711,8 @@ export class SessionApiClient {
    */
   public abortOutstandingRequests(): void {
     this.#abortDataRequests();
-    this.#latestRescanToken = null;
+    this.#latestRescanTokens.repository = null;
+    this.#latestRescanTokens.global = null;
     for (const controller of this.#outstandingCommands) {
       controller.abort();
     }
@@ -605,7 +767,7 @@ export class SessionApiClient {
     const token = Symbol('get-session');
     const controller = new AbortController();
     this.#latestSessionToken = token;
-    this.#outstandingData.add(controller);
+    this.#outstandingData.set(controller, { sequence: 'session', token });
     const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
@@ -650,22 +812,33 @@ export class SessionApiClient {
       this.#clientData.purge('channel-failure');
       return { kind: 'failed', error, fatal: true };
     }
+    if (typeof settled === 'object' && settled !== null && !('repositoryGeneration' in settled)) {
+      // The control-only recovery snapshot a fenced host serves in place of
+      // the full envelope (contracts/http-api.md § get-session
+      // `GlobalFenceRecoverySnapshot`). Observing the non-null fence runs
+      // the full purge before anything renders (FR-042); the recovery
+      // projection itself is re-adopted after it, which is why the identity
+      // and epoch are written below the purge.
+      const fenced = settled as CommandResult<GlobalFenceRecoverySnapshot>;
+      if (this.#sessionId !== null && fenced.data.sessionId !== this.#sessionId) {
+        this.#clientData.purge('session-identity-lost');
+        return { kind: 'purged', reason: 'session-identity-lost' };
+      }
+      this.#clientData.purge('global-disable-fence');
+      this.#sessionId = fenced.data.sessionId;
+      this.#globalContentEpoch = fenced.globalContentEpoch;
+      return { kind: 'fenced', recovery: fenced.data };
+    }
     const result = settled as InspectionDataResult<SessionSnapshot>;
     // Session identity is the outermost adoption boundary. Compare it before
-    // either epoch ordering or the fence: epochs are meaningful only within
-    // one host session, so a restarted host's lower epoch must purge the old
-    // session rather than look like an ordinary stale response.
+    // epoch ordering: epochs are meaningful only within one host session, so
+    // a restarted host's lower epoch must purge the old session rather than
+    // look like an ordinary stale response. The disable fence needs no gate
+    // of its own here: a fenced host answers this function with the recovery
+    // snapshot above, never with a full envelope carrying a fence.
     if (this.#sessionId !== null && result.data.sessionId !== this.#sessionId) {
       this.#clientData.purge('session-identity-lost');
       return { kind: 'purged', reason: 'session-identity-lost' };
-    }
-    // The final response gate: an inspection-data success renders only while
-    // the epoch it was bound under is still the adopted one and the fence is
-    // null. A result bound before disable acceptance is a bounded
-    // pre-fence-authorized response the client must purge, never render.
-    if (result.data.globalDisableInProgress !== null) {
-      this.#clientData.purge('global-disable-fence');
-      return { kind: 'purged', reason: 'global-disable-fence' };
     }
     if (this.#globalContentEpoch !== null && result.globalContentEpoch > this.#globalContentEpoch) {
       this.#clientData.purge('global-content-epoch-advanced');
@@ -705,17 +878,51 @@ export class SessionApiClient {
       advancedSequences.push('global');
     }
     if (advancedSequences.length > 0) {
-      // Only this sequence's generation-owned data requests are aborted; the
-      // other sequence's committed views stay valid and are not refetched, and
-      // a command awaiting its admission response is untouched. Phase 3 has
-      // exactly one inspection-data request family, so that is all of them.
-      this.#abortDataRequests();
+      // Only the advanced sequences' generation-owned data requests are
+      // aborted; the other sequence's committed views — an in-flight detail
+      // load among them — stay valid and are not refetched, and a command
+      // awaiting its admission response is untouched.
+      this.#abortDataRequests(new Set(advancedSequences));
     }
     this.#sessionId = result.data.sessionId;
     this.#globalContentEpoch = result.globalContentEpoch;
     this.#repositoryGeneration = result.repositoryGeneration;
     this.#globalGeneration = result.globalGeneration;
     return { kind: 'adopted', snapshot: result.data, advancedSequences };
+  }
+
+  /**
+   * Issues the priority disable barrier command (contracts/http-api.md
+   * § disable-global). The pre-request full purge is the caller's — the page
+   * purges before sending (FR-042) — and this call carries no supersession
+   * token: a barrier is joined, never replaced, and its settlement is the
+   * terminal result every joiner shares. A post-acceptance failure arrives
+   * as this request's real error and leaves the host fenced; the caller
+   * refetches to observe the retained failed projection.
+   */
+  public async disableGlobal(): Promise<GlobalDisableOutcome> {
+    let settled: unknown;
+    try {
+      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.disableGlobal);
+    } catch (cause: unknown) {
+      return this.#failureOutcome(cause);
+    }
+    const rejection = asRejectionCode(settled);
+    if (rejection !== null) {
+      return { kind: 'rejected', code: rejection };
+    }
+    if (hasErrorEnvelope(settled)) {
+      const error = new Error(
+        'The local session returned an unsupported rejection. Restart the inspector and reload this page.',
+      );
+      this.#clientData.purge('channel-failure');
+      return { kind: 'failed', error, fatal: true };
+    }
+    const result = settled as CommandResult<GlobalDisableResultDto>;
+    // The barrier's epoch is adopted directly: the pre-request purge reset
+    // the baseline, so this is the fresh era's first observation.
+    this.#globalContentEpoch = result.globalContentEpoch;
+    return { kind: 'completed', result: result.data };
   }
 
   /**
@@ -727,19 +934,48 @@ export class SessionApiClient {
    * request.
    */
   public async rescanRepository(): Promise<RescanOutcome> {
-    const token = Symbol('rescan-repository');
+    return this.#dispatchRescan('repository', SESSION_RPC_FUNCTIONS.rescanRepository);
+  }
+
+  /**
+   * Issues one explicit Global rescan command for one published member
+   * Source, through the same guards and outcome shape as
+   * {@link SessionApiClient.rescanRepository} but in its own token family:
+   * the two commands commit into independent sequences the host admits side
+   * by side, so neither dispatch supersedes the other's settlement
+   * (contracts/http-api.md § rescan-global).
+   */
+  public async rescanGlobal(sourceId: string): Promise<RescanOutcome> {
+    return this.#dispatchRescan('global', SESSION_RPC_FUNCTIONS.rescanGlobal, { sourceId });
+  }
+
+  /**
+   * The one guarded rescan dispatch both explicit-rescan commands share, so
+   * the supersession, epoch, rejection, and acceptance handling cannot drift
+   * between them (FR-030). `sequence` names the token family the dispatch
+   * owns and supersedes within.
+   */
+  async #dispatchRescan(
+    sequence: 'repository' | 'global',
+    functionName: SessionRpcFunctionName,
+    payload?: GlobalRescanParams,
+  ): Promise<RescanOutcome> {
+    const token = Symbol(functionName);
     const controller = new AbortController();
-    this.#latestRescanToken = token;
+    this.#latestRescanTokens[sequence] = token;
     this.#outstandingCommands.add(controller);
     const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
-      settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.rescanRepository);
+      settled =
+        payload === undefined
+          ? await this.#channel.call(functionName)
+          : await this.#channel.call(functionName, payload);
     } catch (cause: unknown) {
       this.#outstandingCommands.delete(controller);
       const discarded = this.#guardSettlement(
         token,
-        this.#latestRescanToken,
+        this.#latestRescanTokens[sequence],
         controller,
         capturedClientDataEpoch,
       );
@@ -751,7 +987,7 @@ export class SessionApiClient {
     this.#outstandingCommands.delete(controller);
     const discarded = this.#guardSettlement(
       token,
-      this.#latestRescanToken,
+      this.#latestRescanTokens[sequence],
       controller,
       capturedClientDataEpoch,
     );
@@ -759,6 +995,9 @@ export class SessionApiClient {
       return { kind: 'discarded', reason: discarded };
     }
     const rejection = asRejectionCode(settled);
+    if (this.#observedFence(rejection)) {
+      return { kind: 'purged', reason: 'global-disable-fence' };
+    }
     if (rejection !== null) {
       return { kind: 'rejected', code: rejection };
     }
@@ -911,7 +1150,19 @@ export class SessionApiClient {
     const token = Symbol(functionName);
     const controller = new AbortController();
     this.#latestDetailToken = token;
-    this.#outstandingData.add(controller);
+    // The requested Source's own sequence, derived once for the abort tag
+    // here and the freshness comparison below; a bare-path payload narrows
+    // to neither, so either sequence's advance invalidates it.
+    const requestedSource = typeof payload === 'string' ? null : payload.source;
+    this.#outstandingData.set(controller, {
+      sequence:
+        requestedSource === null
+          ? 'both'
+          : requestedSource === 'repository'
+            ? 'repository'
+            : 'global',
+      token,
+    });
     const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
@@ -940,6 +1191,9 @@ export class SessionApiClient {
       return { kind: 'discarded', reason: discarded };
     }
     const rejection = asRejectionCode(settled);
+    if (this.#observedFence(rejection)) {
+      return { kind: 'purged', reason: 'global-disable-fence' };
+    }
     if (rejection !== null) {
       return { kind: 'rejected', code: rejection };
     }
@@ -979,7 +1233,6 @@ export class SessionApiClient {
     // drops the page's held editor state. A payload without a Source — the
     // bare-path spelling — is compared against both, because nothing narrows
     // it.
-    const requestedSource = typeof payload === 'string' ? null : payload.source;
     const repositoryAdvanced =
       this.#repositoryGeneration !== null &&
       result.repositoryGeneration > this.#repositoryGeneration;
@@ -1002,17 +1255,20 @@ export class SessionApiClient {
    * Asks the host to open one committed file in one of the applications the
    * snapshot published (contracts/http-api.md § open-file).
    *
-   * None of the staleness guards the read paths carry apply: the command
-   * renders nothing, so there is no state a late settlement could put on
-   * screen, and no epoch or generation comparison can make a launch that
-   * already happened un-happen. What remains is the failure handling every
-   * call shares, so a lost channel still ends the session exactly once.
+   * The command renders nothing and no comparison can make a launch that
+   * already happened un-happen, so there is no `discarded` path. The greater-
+   * epoch guard still applies, exactly as it does to every other command
+   * result (FR-042: a greater epoch on any response purges before rendering):
+   * a disable landed while the request was in flight, and everything this
+   * page still shows belongs to the purged world. A lost channel ends the
+   * session exactly once, as every call's failure handling does.
    */
   public async openFile(
     sourceRelativePath: string,
     source: SourceSelector,
     target: FileOpenTarget,
   ): Promise<FileOpenOutcome> {
+    const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
       // Both halves of the identity and the target as one object: the file the
@@ -1027,7 +1283,16 @@ export class SessionApiClient {
     } catch (cause: unknown) {
       return this.#failureOutcome(cause);
     }
+    if (this.#clientData.epoch() !== capturedClientDataEpoch) {
+      // Settled across a purge: this response — a stale fence conflict
+      // included — describes the discarded world, and acting on it here
+      // would purge the fresh state a newer request already adopted.
+      return { kind: 'discarded', reason: 'client-data-epoch-advanced' };
+    }
     const rejection = asRejectionCode(settled);
+    if (this.#observedFence(rejection)) {
+      return { kind: 'purged', reason: 'global-disable-fence' };
+    }
     if (rejection !== null) {
       return { kind: 'rejected', code: rejection };
     }
@@ -1037,6 +1302,11 @@ export class SessionApiClient {
       );
       this.#clientData.purge('channel-failure');
       return { kind: 'failed', error, fatal: true };
+    }
+    const result = settled as CommandResult<null>;
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch > this.#globalContentEpoch) {
+      this.#clientData.purge('global-content-epoch-advanced');
+      return { kind: 'purged', reason: 'global-content-epoch-advanced' };
     }
     return { kind: 'opened' };
   }
@@ -1052,7 +1322,7 @@ export class SessionApiClient {
   }
 
   /**
-   * Captures the three proposed Global roots and replaces the unconsented
+   * Captures the four proposed Global roots and replaces the unconsented
    * preview (contracts/http-api.md § create-global-consent-preview). It
    * submits no confirmation and grants no read authority: what comes back is
    * what the reader is about to be asked to confirm.
@@ -1061,16 +1331,6 @@ export class SessionApiClient {
     return this.#consentPreviewCall(SESSION_RPC_FUNCTIONS.createGlobalConsentPreview);
   }
 
-  /**
-   * The call both preview functions share.
-   *
-   * None of the staleness guards the read paths carry apply, for the reason
-   * {@link openFile} states: a preview carries no generation, and the pair has
-   * no superseded state a late settlement could put on screen — a second read
-   * is a second look at whatever is current, and a second capture is a new
-   * preview by design. What remains is the failure handling every call shares,
-   * so a lost channel still ends the session exactly once.
-   */
   /**
    * Confirms the reviewed preview and asks the host to admit every tool it
    * derives (contracts/http-api.md § enable-global).
@@ -1083,6 +1343,7 @@ export class SessionApiClient {
     previewId: string,
     allowlistVersion: string,
   ): Promise<GlobalEnableOutcome> {
+    const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
       settled = await this.#channel.call(SESSION_RPC_FUNCTIONS.enableGlobal, {
@@ -1093,7 +1354,15 @@ export class SessionApiClient {
     } catch (cause: unknown) {
       return this.#failureOutcome(cause);
     }
+    if (this.#clientData.epoch() !== capturedClientDataEpoch) {
+      // Settled across a purge — a stale fence conflict included — so
+      // nothing is adopted and nothing purges the fresh state again.
+      return { kind: 'discarded', reason: 'client-data-epoch-advanced' };
+    }
     const rejection = asRejectionCode(settled);
+    if (this.#observedFence(rejection)) {
+      return { kind: 'purged', reason: 'global-disable-fence' };
+    }
     if (rejection !== null) {
       return { kind: 'rejected', code: rejection };
     }
@@ -1105,17 +1374,73 @@ export class SessionApiClient {
       return { kind: 'failed', error, fatal: true };
     }
     const result = settled as CommandResult<GlobalEnableResultDto>;
+    // The same greater-epoch guard every command result passes (FR-042: a
+    // greater epoch on any response purges before rendering): a disable
+    // landed while this request was in flight, and the acceptance belongs
+    // to the purged world. An older epoch is a response-order inversion over
+    // the same record and adopts nothing stale, so it passes.
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch > this.#globalContentEpoch) {
+      this.#clientData.purge('global-content-epoch-advanced');
+      return { kind: 'purged', reason: 'global-content-epoch-advanced' };
+    }
     return { kind: 'accepted', result: result.data };
   }
 
+  /**
+   * The fence observation an ordinary rejection can carry (FR-042): a
+   * `global-disable-pending` code is the non-null fence, so the full purge
+   * runs before anything renders — exactly as it does when the session
+   * function answers with the recovery snapshot — and the caller reports
+   * `purged` so its view enters control-only recovery instead of rendering
+   * the conflict as a functional outcome. The session function itself never
+   * takes this code (it answers a fence with the recovery snapshot), and
+   * `disable-global` joins the barrier rather than being fenced by it.
+   *
+   * The open, enable, and preview commands deliberately carry no request
+   * token or AbortController of their own: a settlement that outlives a
+   * purge cannot mis-purge the fresh state, because a stale response only
+   * ever carries the epoch its server held when it answered — never more
+   * than the current one — and the reset baseline treats the first
+   * post-purge observation as its own start. What a late settlement could
+   * still write is owned by each caller's captured-epoch guard in the view
+   * state, which drops it.
+   */
+  #observedFence(code: RejectionCode | null): boolean {
+    if (code !== 'global-disable-pending') {
+      return false;
+    }
+    this.#clientData.purge('global-disable-fence');
+    return true;
+  }
+
+  /**
+   * The call both preview functions share.
+   *
+   * The generation guards the read paths carry do not apply — a preview
+   * carries no generation, a second read is a second look at whatever is
+   * current, and a second capture is a new preview by design — but the
+   * greater-epoch guard does, exactly as it does on every response (FR-042):
+   * a disable that landed while this call was out purges before anything
+   * renders. A lost channel still ends the session exactly once, through the
+   * failure handling every call shares.
+   */
   async #consentPreviewCall(method: SessionRpcFunctionName): Promise<ConsentPreviewOutcome> {
+    const capturedClientDataEpoch = this.#clientData.epoch();
     let settled: unknown;
     try {
       settled = await this.#channel.call(method);
     } catch (cause: unknown) {
       return this.#failureOutcome(cause);
     }
+    if (this.#clientData.epoch() !== capturedClientDataEpoch) {
+      // Settled across a purge — a stale fence conflict included — so
+      // nothing is adopted and nothing purges the fresh state again.
+      return { kind: 'discarded', reason: 'client-data-epoch-advanced' };
+    }
     const rejection = asRejectionCode(settled);
+    if (this.#observedFence(rejection)) {
+      return { kind: 'purged', reason: 'global-disable-fence' };
+    }
     if (rejection !== null) {
       // The read's own declared outcome, which the page renders as an offer to
       // capture rather than as something that went wrong.
@@ -1131,6 +1456,15 @@ export class SessionApiClient {
       return { kind: 'failed', error, fatal: true };
     }
     const result = settled as CommandResult<GlobalConsentPreviewDto>;
+    // The same greater-epoch guard every result passes (FR-042: a greater
+    // epoch on any response purges before rendering): a disable landed while
+    // this read was out, and whatever else this session still holds belongs
+    // to the purged world. An older epoch is a response-order inversion over
+    // the one frozen preview record and adopts nothing stale, so it passes.
+    if (this.#globalContentEpoch !== null && result.globalContentEpoch > this.#globalContentEpoch) {
+      this.#clientData.purge('global-content-epoch-advanced');
+      return { kind: 'purged', reason: 'global-content-epoch-advanced' };
+    }
     return { kind: 'ready', preview: result.data };
   }
 }

@@ -83,6 +83,14 @@ interface ScanGenerationBase {
   readonly recognitions: readonly ToolRecognition[];
   /** Diagnostics committed with this generation. */
   readonly diagnostics: readonly SerializedDiagnostic[];
+  /**
+   * Census roots whose real path escaped their Source, one entry per
+   * `(sourceId, directory)` in the recognitions' own `pluginRoot` spelling
+   * (scan.ts § ScanPublication): what lies beyond the Source belongs to no
+   * Source, so the session refuses plugin membership below these spellings
+   * instead of rebuilding one from independently admitted files.
+   */
+  readonly censusEscapedDirectories: readonly { sourceId: string; directory: string }[];
 }
 
 /**
@@ -128,6 +136,8 @@ export interface ScanCommitInput {
   readonly recognitions: readonly ToolRecognition[];
   /** The attempt's diagnostics, already serialized for the DTO. */
   readonly diagnostics: readonly SerializedDiagnostic[];
+  /** The scanned Source's escaped census roots (§ ScanGenerationBase). */
+  readonly censusEscapedDirectories: readonly { sourceId: string; directory: string }[];
 }
 
 /** Builds the empty zero-I/O Repository generation 0 (FR-002). */
@@ -144,6 +154,7 @@ export function createBootstrapGeneration(now: string): RepositoryScanGeneration
     files: [],
     recognitions: [],
     diagnostics: [],
+    censusEscapedDirectories: [],
   };
 }
 
@@ -164,6 +175,7 @@ export function prepareNextRepositoryGeneration(
     files: input.files,
     recognitions: input.recognitions,
     diagnostics: input.diagnostics,
+    censusEscapedDirectories: input.censusEscapedDirectories,
   };
 }
 
@@ -186,6 +198,7 @@ export function createGlobalEnableGeneration(input: ScanCommitInput): GlobalScan
     files: input.files,
     recognitions: input.recognitions,
     diagnostics: input.diagnostics,
+    censusEscapedDirectories: input.censusEscapedDirectories,
   };
 }
 
@@ -206,5 +219,6 @@ export function prepareNextGlobalGeneration(
     files: input.files,
     recognitions: input.recognitions,
     diagnostics: input.diagnostics,
+    censusEscapedDirectories: input.censusEscapedDirectories,
   };
 }

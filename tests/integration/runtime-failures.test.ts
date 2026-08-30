@@ -99,6 +99,7 @@ async function scanOnce(
       visitedEntries: publication.visitedEntries,
       candidateFiles: publication.candidateFiles,
       readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
     });
   } else {
     context.coordinator.failScan(admitted.scanRequestId, {
@@ -387,6 +388,7 @@ describe('no ceiling, no verdict, and no cancellation claim (T915, FR-029)', () 
     const keys = Object.keys(publication).toSorted();
     expect(keys).toEqual([
       'candidateFiles',
+      'censusEscapedDirectories',
       'diagnostics',
       'files',
       'kind',
@@ -436,6 +438,7 @@ describe('no ceiling, no verdict, and no cancellation claim (T915, FR-029)', () 
       visitedEntries: publication.visitedEntries,
       candidateFiles: publication.candidateFiles,
       readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
     });
 
     // The late result committed nothing and the Source reverted to exactly
@@ -535,9 +538,13 @@ describe('a domain operation that throws is the request’s, unchanged (T922)', 
     // A stale identity is answered, not thrown at: the file is not in this
     // generation, which is a fact the caller renders rather than a failure of
     // the request (contracts/http-api.md § get-file-detail).
-    expect(context.session.fileDetail('.agents/skills/gone/SKILL.md')).toBeNull();
-    expect(context.session.hookCarrierDetail('.agents/skills/gone/SKILL.md')).toBeNull();
-    expect(context.session.mcpCarrierDetail('.agents/skills/gone/SKILL.md')).toBeNull();
+    expect(context.session.fileDetail('.agents/skills/gone/SKILL.md', 'repository')).toBeNull();
+    expect(
+      context.session.hookCarrierDetail('.agents/skills/gone/SKILL.md', 'repository'),
+    ).toBeNull();
+    expect(
+      context.session.mcpCarrierDetail('.agents/skills/gone/SKILL.md', 'repository'),
+    ).toBeNull();
   });
 });
 

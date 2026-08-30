@@ -40,16 +40,7 @@
 // generation all drop the open detail through the same cleanup the prompt
 // route uses; only the URL survives a commit, and the page refetches the same
 // path under the new generation.
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -58,6 +49,7 @@ import { frontmatterYamlText } from '../../../../components/inspection/frontmatt
 import { LEADING_AGENT_METADATA_KEYS } from '../../../../components/inspection/declaration-order';
 import { customAgentComparisonRouteFor } from '../../../../composables/custom-agent-comparison';
 import {
+  familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
@@ -65,8 +57,9 @@ import {
 } from '../../../../components/detail-route';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { usePageOwnership } from '../../../../composables/page-ownership';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   fileIdentityKey,
@@ -79,6 +72,7 @@ import {
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../../shared/entities';
+import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 import type {
   AgentPresentationDto,
   DeclaredEntryDto,
@@ -87,13 +81,7 @@ import type {
 } from '../../../../../shared/api-types';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
@@ -149,6 +137,14 @@ const sessionSources = useSessionSources();
  * same-path file in another Source is a different file (FR-030).
  */
 const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
+
+// The open file's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source (`source-facts.ts`).
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
 
 /**
  * The family the open file's Source is of: the family a comparison entry
@@ -655,8 +651,7 @@ watch(
   [
     openPath,
     (): boolean => owner.value.length > 0,
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
-    (): number | null => snapshot.value?.globalGeneration ?? null,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step between two Sources' details at one path leaves the path
     // identical and the file different, so without this the page would keep
@@ -684,7 +679,7 @@ function focusHeading(): void {
 }
 
 onMounted(focusHeading);
-watch(openPath, () => void nextTick(focusHeading));
+watch([openSource, openPath], () => void nextTick(focusHeading));
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2): the path the
@@ -706,7 +701,9 @@ const titleSubject = computed<string | null>(() => {
   if (detailFailure.value !== null) {
     return 'Custom-agent file could not be loaded';
   }
-  return pathIsSpelledOut.value ? null : openPath.value;
+  return pathIsSpelledOut.value
+    ? null
+    : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount cannot
@@ -849,7 +846,17 @@ onBeforeUnmount(() => {
              page and the list agree, beside the kind's own caption (FR-007).
              No product is quoted for what it would spawn or inherit: existence
              is what an admission proves (FR-009). -->
-        <p class="aci-agent-detail__recognition">{{ toolsText }} · {{ kindText }}</p>
+        <p class="aci-agent-detail__recognition">
+          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
+          >{{ toolsText }} · {{ kindText }}
+        </p>
+
+        <!-- Which directory the file was in, where its family holds more
+             than one: an escaped presentation of the admitted root, never a
+             path anything can open (FR-002). -->
+        <p v-if="sourceRootText !== null" class="aci-agent-detail__root aci-note">
+          <span class="aci-authored-text">{{ sourceRootText }}</span>
+        </p>
 
         <!-- The name each inventory row this file is listed under carries —
              the declared `name` where the product makes it the agent's

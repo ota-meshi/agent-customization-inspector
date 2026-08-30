@@ -1187,7 +1187,7 @@ Classification valueは次のclosed setとする。
 | `actorClass` | `inspector \| bundled-spa \| browser-extension \| other-host-process \| operating-system \| participant \| unknown` |
 | `authorityClass` | `exact-issued \| other-loopback \| remote \| unclassifiable \| not-applicable` |
 | `requestClass` | `authorized-static \| authorized-rpc \| prohibited \| unrelated \| os-mediated \| unclassifiable \| not-applicable` |
-| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-plugin-carrier-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
+| `targetClass` | `static-manifested-asset \| static-spa-shell \| static-client-route-fallback \| connection-discovery-metadata \| rpc-channel-upgrade \| rpc-get-session \| rpc-get-file-detail \| rpc-get-mcp-carrier-detail \| rpc-get-hook-carrier-detail \| rpc-get-plugin-carrier-detail \| rpc-get-plugin-file-detail \| rpc-get-permission-policy-detail \| rpc-open-file \| rpc-rescan-repository \| rpc-get-global-consent-preview \| rpc-create-global-consent-preview \| rpc-enable-global \| rpc-rescan-global \| rpc-disable-global \| rpc-devframe-framework \| other-loopback \| remote \| mcp \| unclassifiable \| not-applicable` |
 | `methodClass` | `get \| head \| post \| other \| unclassifiable \| not-applicable` |
 | `originClass` | `exact-same-origin \| missing \| mismatched \| unclassifiable \| not-applicable` |
 | `effectClass` | `none \| unauthorized-request \| command-or-code-execution \| child-process \| mcp-connection \| prohibited-outbound-request \| inspected-source-mutation \| cross-machine-content-exposure \| workflow-blocker` |
@@ -1235,7 +1235,9 @@ probe memory内だけで分類する:
 | `agent-customization-inspector:get-session` | `rpc-get-session` |
 | `agent-customization-inspector:get-file-detail` | `rpc-get-file-detail` |
 | `agent-customization-inspector:get-mcp-carrier-detail` | `rpc-get-mcp-carrier-detail` |
+| `agent-customization-inspector:get-hook-carrier-detail` | `rpc-get-hook-carrier-detail` |
 | `agent-customization-inspector:get-plugin-carrier-detail` | `rpc-get-plugin-carrier-detail` |
+| `agent-customization-inspector:get-plugin-file-detail` | `rpc-get-plugin-file-detail` |
 | `agent-customization-inspector:get-permission-policy-detail` | `rpc-get-permission-policy-detail` |
 | `agent-customization-inspector:open-file` | `rpc-open-file` |
 | `agent-customization-inspector:rescan-repository` | `rpc-rescan-repository` |

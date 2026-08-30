@@ -8,6 +8,12 @@ test-results/
 .pnpm-store/
 .tmp/
 
+# Agent worktrees are other sessions' working copies of this repository, each
+# with its own checkout of everything above and below — formatting through
+# them would rewrite files mid-edit under another session and reformat the
+# vendored skills its checkout carries.
+.claude/worktrees/
+
 # Spec-kit's scaffolding and the speckit-* skills it installs are taken from
 # upstream whole.
 .specify/

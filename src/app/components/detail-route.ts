@@ -17,8 +17,13 @@
 // plugin carrier's names the row (`plugin-detail-route.ts`).
 import { fileIdentityKey } from '../../shared/entities';
 import type { CustomizationKind } from '../../shared/entities';
-import { GLOBAL_MEMBER_ORDER } from '../../shared/api-text';
-import type { SourceDto, SourceKind, SourceSelector } from '../../shared/api-types';
+import { GLOBAL_MEMBER_ORDER, SOURCE_SELECTOR_TEXT } from '../../shared/api-text';
+import type {
+  SessionSnapshot,
+  SourceDto,
+  SourceKind,
+  SourceSelector,
+} from '../../shared/api-types';
 
 /**
  * Re-exported so a component naming a route's Source imports it from the module
@@ -183,9 +188,10 @@ const SOURCE_SELECTORS: readonly SourceSelector[] = [
  * One compared file as a comparison route addresses it: the Source that holds
  * it and its Source-relative Path, which together are the file's identity
  * (FR-030). Every comparison surface carries its pair this way — each side
- * names its own Source in the query — because a Global member may publish the
- * compared kind too, so a pair may hold a consented home's file beside the
- * repository's (contracts/http-api.md § Host requirements #5).
+ * names its own Source in the query — because a pair lives inside one Source
+ * family and the Global family holds up to four member Sources, so a pair may
+ * hold one consented home's file beside another member's
+ * (contracts/http-api.md § Host requirements #5).
  */
 export interface ComparisonSide {
   /** Which Source holds it; see {@link SourceSelector}. */
@@ -262,6 +268,28 @@ export function sourceIdOf(sources: readonly SourceDto[], selector: SourceSelect
  */
 export function asSourceSelector(value: unknown): SourceSelector | null {
   return SOURCE_SELECTORS.find((candidate) => candidate === value) ?? null;
+}
+
+/**
+ * How a document title names a comparison's two sides (WCAG 2.4.2): the two
+ * paths, each led by its Source's name when the sides sit in two Sources —
+ * two tabs comparing one path across two consented homes must not read
+ * identically, while two paths of one Source already tell themselves apart.
+ * Null while the URL does not name both sides; the raw paths, because the
+ * shell escapes a title subject exactly once at the rendering boundary.
+ */
+export function comparisonTitleSides(
+  left: ComparisonSide | null,
+  right: ComparisonSide | null,
+): string | null {
+  if (left === null || right === null) {
+    return null;
+  }
+  return left.source === right.source
+    ? `${left.sourceRelativePath} and ${right.sourceRelativePath}`
+    : `${SOURCE_SELECTOR_TEXT[left.source]} ${left.sourceRelativePath} and ${
+        SOURCE_SELECTOR_TEXT[right.source]
+      } ${right.sourceRelativePath}`;
 }
 
 /**
@@ -363,13 +391,40 @@ export function comparisonFamilyOf(segment: unknown): SourceKind | null {
 }
 
 /**
- * The Source family one side's selector addresses: the repository token is
- * the Repository family's, and every other token names a consented home
- * ({@link SourceSelector}). Resolved from the address alone, so a page can
- * refuse a pair outside its family segment before resolving anything.
+ * The Source family a selector addresses: the repository token is the
+ * Repository family's, and every other token names a consented home
+ * ({@link SourceSelector}). Resolved from the address alone, so a caller can
+ * scope a request to its sequence before resolving anything — the open
+ * detail's and each open comparison's generation-invalidation scope reads
+ * this (FR-030).
  */
+export function selectorFamilyOf(source: SourceSelector): SourceKind {
+  return source === 'repository' ? 'repository' : 'global';
+}
+
+/** {@link selectorFamilyOf}, read from a comparison side's own selector. */
 export function sideFamilyOf(side: ComparisonSide): SourceKind {
-  return side.source === 'repository' ? 'repository' : 'global';
+  return selectorFamilyOf(side.source);
+}
+
+/**
+ * The committed generation of the family `source` addresses, or 0 while no
+ * snapshot — or no Global sequence — exists. This is what a detail route
+ * watches beside its path keys, so a commit re-requests the open file exactly
+ * when the sequence it reads from advanced (FR-030): a Repository page must
+ * not refetch over a Global commit, and a Global page must notice its own
+ * family's commit even though the Repository generation never moved.
+ */
+export function familyGenerationOf(
+  snapshot: Pick<SessionSnapshot, 'repositoryGeneration' | 'globalGeneration'> | null,
+  source: SourceSelector,
+): number {
+  if (snapshot === null) {
+    return 0;
+  }
+  return selectorFamilyOf(source) === 'repository'
+    ? snapshot.repositoryGeneration
+    : (snapshot.globalGeneration ?? 0);
 }
 
 /**

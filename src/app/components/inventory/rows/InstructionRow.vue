@@ -3,7 +3,7 @@
 // its files in one block per Source family, rendered through the shared
 // family blocks exactly as every sibling row renders its members
 // (`SourceFamilyBlocks.vue`; T214, linked to its detail by T224, grouped by
-// what its files govern by T1095, family blocks by T1127).
+// what its files govern by T1095, family blocks by T1140).
 //
 // The published row is one range of one Source (data-model.md § Inventory
 // unit), and this list item gathers every Source's rows of one range: a
@@ -41,9 +41,9 @@ import {
   SUPPORTED_TOOL_TEXT,
   applicabilityRangePresentation,
   fileIdentityKey,
-  inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
+  accessiblePresentationLabel,
 } from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
@@ -123,7 +123,7 @@ const rowFiles = computed(() =>
        * offers one link, so the path is what tells them apart out of visual
        * context, through the whitespace-safe label (WCAG 2.4.4, FR-025).
        */
-      pathAccessibleText: inlinePresentationLabel(file.sourceRelativePath),
+      pathAccessibleText: accessiblePresentationLabel(file.sourceRelativePath),
       recognitions: file.recognitions.map((recognition) => ({
         tool: recognition.tool,
         toolText: SUPPORTED_TOOL_TEXT[recognition.tool],
@@ -178,7 +178,7 @@ const blockCompareRoutes = computed(() => {
     <SourceFamilyBlocks
       :members="rowFiles"
       :member-key="(file) => fileIdentityKey(file.sourceId, file.sourceRelativePath)"
-      :identities="group.fileIdentities"
+      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: file }">
         <!-- The file's path is its identity within the range and the link to
@@ -198,7 +198,7 @@ const blockCompareRoutes = computed(() => {
           <NuxtLink
             :to="file.detailRoute"
             class="aci-path aci-authored-text"
-            :aria-label="file.pathAccessibleText"
+            :aria-label="sessionSources.qualifiedLinkName(file.pathAccessibleText, file.sourceId)"
             >{{ file.pathText }}</NuxtLink
           >
           <span

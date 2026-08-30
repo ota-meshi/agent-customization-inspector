@@ -377,6 +377,85 @@ describe('VCS-internal exclusion by resolved path', () => {
   });
 });
 
+describe('root probes and environmental failure (FR-030)', () => {
+  it('propagates an environmental realpath failure instead of calling the root unreadable', async () => {
+    // `root-unreadable` states the root's own condition; `EIO` states the
+    // machine's moment. Converting it would commit that verdict \u2014 a stale
+    // overlay and a retry hint \u2014 for a failure a retry may simply outlive,
+    // and the deeper walk already propagates the same codes (FR-030: commit
+    // nothing, retain the prior snapshot).
+    const realpathMock = vi.mocked(fsIo.realpath);
+    realpathMock.mockRejectedValueOnce(Object.assign(new Error('EIO: i/o error'), { code: 'EIO' }));
+    await expect(
+      runTraversalScan({ root: tree.root, plans: [REPOSITORY_AGENTS_PLAN] }),
+    ).rejects.toThrow('EIO');
+  });
+});
+
+describe('withdrawn authority mid-walk (data-model.md \u00a7 ScanAttempt)', () => {
+  it('starts no further readdir or candidate read once continueScan answers false', async () => {
+    // "Stops new scheduling" without a cancellation signal: the walk asks
+    // before each directory listing and each candidate read, so a disable or
+    // shutdown that lands mid-walk ends it at the next operation while the
+    // one read in flight finishes.
+    const readdirMock = vi.mocked(fsIo.readdir);
+    const readFileMock = vi.mocked(fsIo.readFile);
+    readdirMock.mockClear();
+    readFileMock.mockClear();
+    const result = await runTraversalScan({
+      root: tree.root,
+      plans: [REPOSITORY_AGENTS_PLAN],
+      // Authority holds until the first directory has been listed, then
+      // leaves: however many pre-walk checks the pipeline grows, exactly one
+      // readdir may run and no candidate read follows.
+      continueScan: () => readdirMock.mock.calls.length === 0,
+    });
+    if (result.kind !== 'scanned') {
+      throw new Error(`expected a scanned result, got ${result.kind}`);
+    }
+    expect(readdirMock).toHaveBeenCalledTimes(1);
+    expect(readFileMock).not.toHaveBeenCalled();
+  });
+
+  it('starts no per-entry stat or realpath once continueScan answers false', async () => {
+    // The walk re-asks between the entries of one listed directory too: each
+    // entry's stat and realpath is its own filesystem promise, and revocation
+    // stops new scheduling at that grain (data-model.md § ScanAttempt), not
+    // only at the next directory.
+    const statMock = vi.mocked(fsIo.stat);
+    const realpathMock = vi.mocked(fsIo.realpath);
+    const readdirMock = vi.mocked(fsIo.readdir);
+    readdirMock.mockClear();
+    statMock.mockClear();
+    realpathMock.mockClear();
+    // Snapshots the stat/realpath tally at the first refusal: everything
+    // after that moment would be a newly scheduled per-entry operation.
+    let atRevocation = -1;
+    const result = await runTraversalScan({
+      root: tree.root,
+      plans: [REPOSITORY_AGENTS_PLAN],
+      // Authority leaves the moment the first directory has been listed:
+      // whatever that listing held, no entry of it may schedule a stat or a
+      // realpath afterwards.
+      continueScan: () => {
+        if (readdirMock.mock.calls.length === 0) {
+          return true;
+        }
+        if (atRevocation === -1) {
+          atRevocation = statMock.mock.calls.length + realpathMock.mock.calls.length;
+        }
+        return false;
+      },
+    });
+    if (result.kind !== 'scanned') {
+      throw new Error(`expected a scanned result, got ${result.kind}`);
+    }
+    expect(readdirMock).toHaveBeenCalledTimes(1);
+    expect(atRevocation).not.toBe(-1);
+    expect(statMock.mock.calls.length + realpathMock.mock.calls.length).toBe(atRevocation);
+  });
+});
+
 describe('per-file reading (T020)', () => {
   it('classifies binary, replacement-decoded, and BOM files per the closed outcomes', async () => {
     const result = await scanTree(tree.root);

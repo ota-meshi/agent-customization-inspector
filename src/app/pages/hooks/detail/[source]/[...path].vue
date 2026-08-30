@@ -24,22 +24,14 @@
 // referenced script is read, and nothing projects trust, review state, or
 // precedence: what the vendor documents stays in its maintained contract
 // (FR-009).
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
+  familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
@@ -51,11 +43,12 @@ import {
 import type { SourceKind } from '../../../../../shared/api-types';
 import { hookComparisonRouteFor } from '../../../../composables/hook-comparison';
 import { usePageOwnership } from '../../../../composables/page-ownership';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
-import { HOOK_CARRIER_FORM_TEXT } from '../../../../../shared/api-text';
+import { HOOK_CARRIER_FORM_TEXT, SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 import {
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
@@ -66,13 +59,7 @@ import {
   pathPresentationLabel,
 } from '../../../../../shared/entities';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
@@ -129,6 +116,14 @@ const sessionSources = useSessionSources();
  * same-path carrier in another Source is a different file (FR-030).
  */
 const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
+
+// The open file's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source (`source-facts.ts`).
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
 
 /**
  * The declared event the URL selects, or null for the carrier view.
@@ -290,7 +285,14 @@ const carrierFormText = computed(() =>
  * ({@link ownerText}).
  */
 const overviewText = computed(() =>
-  [ownerText.value, CUSTOMIZATION_KIND_TEXT.hook, carrierFormText.value ?? '']
+  [
+    // The family leads, exactly where every path-addressed detail states it
+    // (FR-007 "show its source"; `source-facts.ts`).
+    sourceFamilyText.value ?? '',
+    ownerText.value,
+    CUSTOMIZATION_KIND_TEXT.hook,
+    carrierFormText.value ?? '',
+  ]
     .filter((part) => part !== '')
     .join(' · '),
 );
@@ -310,13 +312,6 @@ const carrierFieldsJsonText = computed(() => {
 });
 
 /**
- * The comparison one event's row leads to from this carrier: that event's
- * declarations in this file and in the first other carrier the row lists, or
- * null when the row holds no counterpart — a comparison needs two distinct
- * files (FR-011). The compare route's own pickers step to any further carrier
- * of the row, so this link composes one pair rather than a menu.
- */
-/**
  * The family the open file's Source is of: the family a comparison entry
  * built on this page stays inside, because a pair never spans two families
  * (contracts/http-api.md § Host requirements #5).
@@ -325,6 +320,13 @@ const openFamily = computed<SourceKind>(() =>
   sideFamilyOf({ source: openSource.value, sourceRelativePath: openPath.value }),
 );
 
+/**
+ * The comparison one event's row leads to from this carrier: that event's
+ * declarations in this file and in the first other carrier the row lists, or
+ * null when the row holds no counterpart — a comparison needs two distinct
+ * files (FR-011). The compare route's own pickers step to any further carrier
+ * of the row, so this link composes one pair rather than a menu.
+ */
 function compareRouteForEvent(event: string): ReturnType<typeof hookComparisonRouteFor> | null {
   const row = (snapshot.value?.hooks ?? []).find((entry) => entry.event === event);
   // The counterpart is any carrier of the row that is not this page's own and
@@ -473,8 +475,7 @@ watch(
   [
     openPath,
     openEventName,
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
-    (): number | null => snapshot.value?.globalGeneration ?? null,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step between two Sources' details at one path leaves the path
     // identical and the file different, so without this the page would keep
@@ -503,7 +504,7 @@ function focusHeading(): void {
 }
 
 onMounted(focusHeading);
-watch([openPath, openEventName], () => void nextTick(focusHeading));
+watch([openSource, openPath, openEventName], () => void nextTick(focusHeading));
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2); the same
@@ -522,9 +523,16 @@ const titleSubject = computed<string | null>(() => {
       : 'Hook declaration could not be loaded';
   }
   if (openEventName.value !== null) {
-    return eventNameIsSpelledOut.value ? null : openEventName.value;
+    // The carrier's path rides in the title too: two carriers of one Source
+    // can declare one lifecycle event, and their tabs must not read
+    // identically (WCAG 2.4.2).
+    return eventNameIsSpelledOut.value
+      ? null
+      : `${openEventName.value} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
   }
-  return pathIsSpelledOut.value ? null : openPath.value;
+  return pathIsSpelledOut.value
+    ? null
+    : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount cannot
@@ -667,6 +675,13 @@ onBeforeUnmount(() => {
              entry so the page and the list agree, beside the kind's own
              caption and the carrier's documented form (FR-007). -->
         <p class="aci-hook-detail__recognition">{{ overviewText }}</p>
+
+        <!-- Which directory the carrier was in, where its family holds more
+             than one: an escaped presentation of the admitted root, never a
+             path anything can open (FR-002). -->
+        <p v-if="sourceRootText !== null" class="aci-hook-detail__root aci-note">
+          <span class="aci-authored-text">{{ sourceRootText }}</span>
+        </p>
         <!-- The declaration view states its owner-carrier identity — the
              record's own second line, linking to the carrier's file-unit
              view. -->

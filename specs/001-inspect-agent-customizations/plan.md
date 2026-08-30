@@ -25,9 +25,10 @@ as an adversary, and all inspected-source filesystem I/O lives only under
 the fixed inspection-path allowlist with per-file diagnostics for entries it cannot use.
 The browser presents complete authored
 source in a read-only Monaco editor and uses Monaco's diff editor for source comparison;
-tool recognition is compared per tool, and declared metadata — the file's one parse per
-kind — is matched by kind/field and compares the values the parsers resolved, in
-ordinary Vue components.
+tool recognition is compared per tool, and declared metadata is compared once —
+serialized to one canonical document per side, which the diff editor mounts beside the
+source. The parse behind it runs once per `(file, kind)` for the Markdown kinds and once
+per `(file, tool)` for the custom-agent kind.
 
 Root selection is simple and lexical: the CLI captures `process.cwd()` exactly once and
 accepts `--root <path>`, resolving a repeated option to the parser's last value. An absolute option is kept as given, a relative option
@@ -1510,8 +1511,8 @@ SKILL.md's source-relative path>` names `skills` rather than the file: what a de
 skill's declarations, its instructions, and its directory, and another kind's detail
 answers different questions with a different layout. Which file of that directory is being
 read is a `file` query beside the address, so the subject stays the customization the page
-describes. Every shipped inspection rule recognizes `skill`, so that is the one detail route;
-the phase that recognizes a second kind brings that kind's route and page with it. The `src/server/cli.ts` entry
+describes. Every recognized kind with a detail surface ships its own route of this shape, and a
+phase that recognizes a new kind brings that kind's route and page with it. The `src/server/cli.ts` entry
 starts with the exact BOM-free, LF-terminated first line `#!/usr/bin/env node`, tsdown
 preserves that shebang in the packaged `dist/cli.mjs`, and `package.json.bin` maps to it
 directly with no separate bootstrap wrapper: same-tarball artifacts are never re-verified
@@ -1637,9 +1638,8 @@ no build or package quality gate may be scheduled before they exist.
 Setup therefore configures the formatter and scaffolds the CLI entry plus every referenced assembly
 script before it configures or executes package commands, tsdown entries, or CI quality
 gates. The Setup stage is not considered runnable until those paths exist.
-Production `dependencies` is the caret-declared direct set `devframe`, `gunshi`, `h3`,
-`open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and
-`yaml`, asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
+Production `dependencies` is the caret-declared direct set `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`,
+asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
 devframe's and `open`'s transitives are lockfile-owned.
 Nuxt/Vue/Vite/tsdown, Monaco, Playwright, and other build/test tooling remain development-
 only.
@@ -1758,18 +1758,21 @@ configuration.
   with its file-scoped diagnostic and no fallback (FR-035).
 - Static matchers and the vendors' configuration readers — one per shipped
   `bounded-derived-candidate` rule — are the only candidate read authorities. The one read they do not cover is a
-  census-listed companion's, which no admission authorizes and no path outside an admitted
-  candidate's own directory can reach (contracts/inspection-path-allowlist.md § Bounded
-  companion census) — which is how a skill's sibling `agents/openai.yaml` is published
-  (contracts/vendors/openai-codex.md § Derived Repository rules). The derivation schema pins a static seed
+  census-listed file's, which no admission authorizes and which stays inside one of two
+  bounds: the admitted candidate's own directory, or the Source-relative plugin root a
+  validated catalog entry's local source names — validated against the vendor's documented
+  local form and contained in the same Source (contracts/inspection-path-allowlist.md
+  § Bounded companion census) — which is how a skill's sibling `agents/openai.yaml` and a
+  declared plugin's files are published (contracts/vendors/openai-codex.md § Derived
+  Repository rules). The derivation schema pins a static seed
   provenance/rule/kind, closed declaration field/syntax, seed-relative or source-root base,
   fixed placement/suffix, and deterministic target construction; callback, arbitrary path join, free-form expression,
   glob, and recursive derivation are unrepresentable. Derived segments pass the host-independent closed spelling grammar
   and must resolve to exactly one enumerated allowlisted entry before read,
   so ADS, device, and trailing-dot/space spellings
   are rejected before the file is opened. FR-015 through
-  FR-018 continue to limit Global reads to the three instruction sets even when the vendor
-  behavior registry records other supported User customizations.
+  FR-018 and FR-045 limit Global reads to the four members' frozen rule catalogs even when
+  the vendor behavior registry records other supported User customizations.
 - Tool recognizers attach exactly one `ToolRecognition` per `(file, tool, kind)` and sort
   them by the closed tool/kind order. Compatible admissions merge provenances; incompatible
   parsed meanings fail only that recognition's all-or-nothing extraction. A recognition retains every accepted independent
@@ -1889,9 +1892,11 @@ configuration.
   top level. Global consent uses a no-I/O lexical preview retained server-side as the one
   record identified by its opaque `previewId`. Each new unconsented preview reads `COPILOT_HOME`,
   `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once in that order, treats only `undefined`
-  as absent, and calls imported `node:os.homedir()` exactly once if any is absent. It uses
-  active-platform `node:path.join` with fixed `.copilot`, `.claude`, and `.codex` suffixes
-  only for absent entries and never independently chooses `HOME` or `USERPROFILE`.
+  as absent, and calls imported `node:os.homedir()` exactly once per preview — the shared
+  agent home always derives from it (FR-013, FR-045). It uses active-platform
+  `node:path.join` with the fixed `.copilot`, `.claude`, and `.codex` suffixes only for
+  absent tool entries, derives `.agents` from the same one capture, and never
+  independently chooses `HOME` or `USERPROFILE`.
   Proposed roots are represented and escaped with the supported
   Node.js, browser, and platform string/path facilities rather than product-defined byte
   ceilings. If that environment cannot represent, escape, retain, or serialize a
@@ -1951,9 +1956,10 @@ configuration.
   the Markdown kinds and once per `(file, tool)` for the custom-agent kind, whose split is
   the admitting rule's own reading.
   Repository comparison acceptance first uses two distinct readable current-generation customization files from the
-  same Repository Source; only after a successful Global commit does US4 verify a readable
-  Repository file against a readable Global file while retaining each owning Source and
-  Source-relative namespace.
+  same Repository Source; only after a successful Global commit does US4 verify two
+  consented homes' readable files of one row against each other while retaining each
+  owning Source and Source-relative namespace — a comparison stays inside one Source
+  family, so no pair spans Repository and Global.
   Automatically updating Repository and Global scan/status information shown beside other
   content uses one keyboard-operable pause/resume plus on-demand-refresh control. Pausing
   freezes the presented/live-region status at its last value without stopping the underlying
@@ -2022,12 +2028,12 @@ configuration.
   the Inspector defines no command-slot, queue-depth, handle-count, or admission-byte quota.
   Global disable is a priority security barrier that is accepted independently of ordinary
   work and may join an existing disable transaction.
-  One consent record always previews the fixed closed-order tuple `[copilot, claude, codex]`
+  One consent record always previews the fixed closed-order tuple `[copilot, claude, codex, agents]`
   and offers one all-tools confirmation action with no UI or API per-tool selector.
   `confirmedTools` is that complete tuple, including a frozen entry whose lexical preview is
   invalid; eligibility never narrows consent. The server owns one internal
   `GlobalToolControl` for each tuple member. After non-I/O request/`previewId` validation, an
-  initial enable keeps the frozen consent and all three controls operation-local and
+  initial enable keeps the frozen consent and all four controls operation-local and
   unobservable throughout root admission; it creates no session `globalControl` or pending
   state yet. A retry instead uses the existing active consent/control state as its exact
   pre-operation snapshot. New root contexts and candidate Source/boundary IDs remain
@@ -2176,13 +2182,13 @@ configuration.
 
 | Input/phase | Internal transition | I/O and public result |
 |---|---|---|
-| Tool-home setting is captured as `undefined` | `preview-default` | From the one request-wide `node:os.homedir()` capture, use active-platform `node:path.join` with that tool's fixed `.copilot`/`.claude`/`.codex` suffix and zero filesystem I/O, then classify the resulting exact string through the ordered rows below; retain this tool in the fixed three-entry confirmation and create no authority |
-| Captured environment setting has length zero | `inputState: present-empty` / `preview-invalid` | Apply this first and only to an environment-origin value; retain the entry in the fixed three-entry confirmation, perform no fallback or filesystem/network I/O, and create no root, Source, job, or generation for it |
+| Tool-home setting is captured as `undefined` | `preview-default` | From the one request-wide `node:os.homedir()` capture, use active-platform `node:path.join` with that tool's fixed `.copilot`/`.claude`/`.codex` suffix and zero filesystem I/O, then classify the resulting exact string through the ordered rows below; retain this tool in the fixed four-entry confirmation and create no authority |
+| Captured environment setting has length zero | `inputState: present-empty` / `preview-invalid` | Apply this first and only to an environment-origin value; retain the entry in the fixed four-entry confirmation, perform no fallback or filesystem/network I/O, and create no root, Source, job, or generation for it |
 | Otherwise the exact string contains U+0000 or an unpaired UTF-16 surrogate | `inputState: invalid` / `preview-invalid` | Reject before `path.isAbsolute`, retaining only the invalid preview entry with zero filesystem/network I/O and no authority |
 | Otherwise active-platform `node:path.isAbsolute` returns false | `inputState: relative` / `preview-invalid` | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority |
-| Otherwise the string is absolute, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Escape and retain the stored exact raw lexical value in the server-retained preview record with zero filesystem/network I/O, keep it in the fixed three-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
+| Otherwise the string is absolute, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Escape and retain the stored exact raw lexical value in the server-retained preview record with zero filesystem/network I/O, keep it in the fixed four-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
 | Consent names a stale, replayed, or superseded `previewId` | `consent-rejected` | Perform zero proposed-root I/O; create no authority |
-| A consented root is missing or is not a readable directory | `absent` or `root-rejected` | Record that member as absent or failed without creating its Source and without blocking sibling members; continue partitioning the current server-owned set—all three tools initially or exact `retryableTools` on retry |
+| A consented root is missing or is not a readable directory | `absent` or `root-rejected` | Record that member as absent or failed without creating its Source and without blocking sibling members; continue partitioning the current server-owned set—all four members initially or exact `retryableTools` on retry |
 | Any proposed-root operation throws or rejects unexpectedly | Ordinary-error propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
 | Post-consent admission succeeds for one or more roots | `root-admitted` batch subset | Atomically attach all admitted contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
 
@@ -2200,7 +2206,7 @@ configuration.
 |---|---|---|
 | Complete traversal; every file complete, including readable `utf-8-replaced` results; assembly/serialization succeed; authority current | `committable-complete`, coordinator | Commit one `complete` generation of the owning sequence and a complete response; an initial/retry Global batch publishes every admitted tool-specific Source together in this one Global-sequence commit, touching no Repository state |
 | Complete traversal; one or more files have only file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete | `committable-partial`, scan assembler then coordinator | Commit one `partial` generation of the owning sequence with affected-file diagnostics and complete unaffected results; an initial/retry Global batch still publishes its whole committable admitted subset in this one Global-sequence commit |
-| Fixed-three Global admission deterministically rejects every root | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every existing committed ID exactly |
+| Fixed-four Global admission deterministically rejects every root | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every existing committed ID exactly |
 | The selected Repository root does not exist or cannot be read as a directory | Deterministic fatal outcome, coordinator | Fail the attempt with the source-scoped `root-unreadable` diagnostic while the session stays usable; commit nothing, publish no partial inventory, and retain the prior snapshot; if and only if the attempt is an explicit rescan, mark the retained snapshot stale for that Source |
 | The attempt fails before commit for any other reason not confined to one file | `failed` for that `scanRequestId`, owning session-API request boundary | Commit nothing from the attempt, including every tentative Global batch sibling; report the failed request's error ordinarily (`scanRequestId` is null before job acceptance); retain any prior committed snapshot; if and only if the accepted job is an explicit rescan, create or replace that Source's stale overlay storing that error's message; keep the process/session available |
 | Automatic startup work with no request owner fails | Propagation to the process top level | Publish no attempt result or generation; make no process/session survival guarantee; the runtime's ordinary uncaught-error reporting applies |

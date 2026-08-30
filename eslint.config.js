@@ -17,6 +17,9 @@ export default withNuxt()
       'playwright-report/**',
       'test-results/**',
       '.tmp/**',
+      // Other sessions' worktree checkouts of this repository; linting
+      // through them would report on files mid-edit under another session.
+      '.claude/worktrees/**',
     ],
   })
   // Config entries are named for the file unit they cover, one entry per

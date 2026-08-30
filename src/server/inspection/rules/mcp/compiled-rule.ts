@@ -20,8 +20,9 @@ import type { CompiledInspectionRule } from '../registry';
  * not a member of {@link CompiledRule}, for the same reason: how declarations
  * are read out of a carrier is the admitting vendor's own contract — Codex's
  * TOML `[mcp_servers.*]` tables, Claude's strict-JSON `mcpServers` map, the
- * Copilot CLI's two strict-JSON schemas, and VS Code's JSONC `servers` map —
- * so a skill or instruction rule must not be asked for it.
+ * Copilot CLI's two schemas read as the `(tool, path)` pair's JSON mode
+ * fixes, and VS Code's JSONC `servers` map — so a skill or instruction rule
+ * must not be asked for it.
  *
  * The extraction produces the wire declaration shape directly
  * ({@link McpServerDeclarationDto}): what the one scan-time parse resolved is

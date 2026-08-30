@@ -12,9 +12,9 @@
 // selection can change while it is still arriving. The generation counter
 // below is what keeps that from showing the wrong file: only the newest
 // request may write to the editor.
-import { inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { SourceViewerHandle } from '../../composables/monaco';
-import { SESSION_VIEW_STATE } from '../../session/view-state';
+import { useSessionViewState } from '../../composables/session-view-state';
 
 const props = defineProps<{
   /**
@@ -126,10 +126,11 @@ let unmounted = false;
 // owner the view state must clear synchronously — on the central purge
 // (FR-027) and before a greater generation is adopted (data-model.md
 // § BrowserState): the reactive unmount that follows either is one render
-// flush later, a window in which everything else is already gone. Optional,
-// because this component's contract is its props — a harness that renders it
-// without the shell simply has no owner registry to join.
-const sessionViewState = inject(SESSION_VIEW_STATE, undefined);
+// flush later, a window in which everything else is already gone.
+// The registration is unconditional — the shell always provides the
+// session (`useSessionViewState`) — because a mount that skipped it
+// would hold authored content the central purge cannot clear.
+const sessionViewState = useSessionViewState();
 /** Drops this viewer's model and its fallback text; see the registrations below. */
 const dropContent = (): void => {
   // Supersede any mount still in flight before disposing: a mount resolving
@@ -148,7 +149,7 @@ const dropContent = (): void => {
 // both; see the prop's own doc for why joining both breaks the focus rescue.
 const unregisterContentOwner =
   props.registerContentOwner === undefined
-    ? sessionViewState?.registerOpenContentOwner(dropContent)
+    ? sessionViewState.registerOpenContentOwner(dropContent)
     : props.registerContentOwner(dropContent);
 
 /** Disposes the mounted editor and its model; safe to call twice. */
@@ -167,6 +168,11 @@ function disposeViewer(): void {
 async function showCurrentSource(): Promise<void> {
   requestedSource += 1;
   const requested = requestedSource;
+  // A new source reclaims a purged instance: the purge condemned the
+  // previous text, and Vue can hand this same component the next one
+  // without an unmount, so a fallback render after a later mount failure
+  // would otherwise stay blank for content the purge never touched.
+  purged.value = false;
   const { sourceText, sourceRelativePath: path, contentLabel, contentLanguage } = props;
   if (viewer.value === null) {
     const element = host.value;
@@ -258,7 +264,7 @@ watch(
 
 onBeforeUnmount(() => {
   unmounted = true;
-  unregisterContentOwner?.();
+  unregisterContentOwner();
   disposeViewer();
 });
 </script>

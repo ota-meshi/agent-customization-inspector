@@ -61,7 +61,7 @@ shadowing、combination、またはunresolved-condition metadataを生成する�
 | Input domain | Vendor runtime model | Inspector model |
 |---|---|---|
 | Repository | Vendorはruntime rootを探索し、applicable fileを選択し、Repository inputをcombineできる | 受理した各fileはRepository candidate provenanceを保持する。Strategyはcandidateを関連付けられるがallowlistを拡張しない |
-| User | VendorはUser settings、instruction、skill、agent、hook、MCP、stateをRepository inputとcombineできる | Repository Sourceと0から3つのtool固有Global Sourceは別々のまま。Selectorを持たない1回のsession-wide consentで固定3-tool entryをすべて評価した後、admit済みrootのfrozen Global instruction ruleだけがUser fileをreadでき、その他のUser inputはunavailable factのまま |
+| User | VendorはUser settings、instruction、skill、agent、hook、MCP、stateをRepository inputとcombineできる | Repository Sourceと0から4つのmember Global Sourceは別々のまま。Selectorを持たない1回のsession-wide consentで固定4-member entryをすべて評価した後、admit済みrootのfrozen member Global rule catalogだけがUser fileをreadでき、それらのcatalog外のUser inputはunavailable factのまま |
 | Hosted、organization、enterprise、managed | Hosted surfaceはservice-side inputをrepository checkoutとcombineできる | これらは`shared.relationship.runtime`または`shared.excluded.managed-remote-state`で表し、local scan rootにしない |
 | Plugin、hook、MCP、import、arbitrary path | Vendorはruntime check後にactivate、execute、connect、followし得る | Authored declarationとrelationshipはinert。独立したstaticまたはbounded-derived ruleが同じtargetを受理した場合だけreadできる |
 
@@ -230,6 +230,6 @@ Vendor固有excluded ruleは各vendor contractで規範定義し、ここでは�
 このcontractは3 vendor contractが参照する正確に39個のstrategy IDを定義する。内訳はGitHub Copilot
 20個、Claude Code 11個、OpenAI Codex 8個である。Explicit prompt invocationやexcluded experimental
 surfaceなど、vendor contractでstrategyなしと明記されたrowに架空のstrategyを追加しない。また、
-staged allowlist/vendor contractの全14個のrelationship-only IDと1個のshared non-read exclusionを
+staged allowlist/vendor contractの全12個のrelationship-only IDと1個のshared non-read exclusionを
 定義する。新しいIDへの将来の参照は、同じ変更でこのcontractの英語・日本語definitionを追加しなければ
 ならない。

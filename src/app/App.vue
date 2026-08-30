@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The SPA shell (T049, extended by T071). The shell owns exactly three
 // things: the one RPC connection, the session view state derived from it, and
-// which of the three surfaces — booting, the inspection route, or the ended
-// view — is on screen. Everything the inspection route renders lives in
+// which of the four surfaces — booting, the inspection route, the fenced
+// control-only recovery (FR-042), or the ended view — is on screen. Everything the inspection route renders lives in
 // `pages/index.vue` and the inventory components it composes.
 //
 // The view state is provided rather than passed, because a Nuxt route takes
@@ -38,8 +38,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { connectDevframe, isCallableStatus } from 'devframe/client';
 import ColorSchemeSwitch from './components/ColorSchemeSwitch.vue';
 import { pageKey } from './router.options';
+import GlobalFenceRecovery from './components/consent/GlobalFenceRecovery.vue';
 import { SESSION_VIEW_STATE, SessionViewState, type SessionView } from './session/view-state';
-import { CUSTOMIZATION_KIND_TEXT, escapeControlCharacters } from '../shared/entities';
+import { CUSTOMIZATION_KIND_TEXT, inlinePresentationLabel } from '../shared/entities';
 import './styles/main.css';
 
 /** The product name, used for both the page heading and the document title. */
@@ -76,7 +77,19 @@ const route = useRoute();
 // viewport it restores (router.options.ts).
 // Boot is deliberately not a navigation: content arriving asynchronously must
 // not yank focus off the heading the user is already on.
-useRouter().afterEach((to, from, failure) => {
+// A post-purge adoption lands on the inventory (data-model.md
+// § RecoveryViewState: the recovery restores no prior detail and starts at
+// the default inventory). The route move is the shell's, because the router
+// is: the view state only counts the requests.
+const router = useRouter();
+watch(
+  () => sessionViewState.inventoryResumeRequests.value,
+  () => {
+    void router.replace({ path: '/' });
+  },
+);
+
+router.afterEach((to, from, failure) => {
   // Only when the page itself changes. `pageKey` — shared with the router's
   // scroll behavior (router.options.ts), so scroll and focus decide "did the
   // page change" once and can never part ways — is what decides that, so
@@ -124,7 +137,12 @@ const routeTitle = computed(() =>
                       ? CUSTOMIZATION_KIND_TEXT['output style']
                       : route.path.startsWith('/settings-and-configuration')
                         ? CUSTOMIZATION_KIND_TEXT['settings/config']
-                        : 'Inspection',
+                        : route.path.startsWith('/global-consent')
+                          ? // The consent page is no kind's, so no kind table
+                            // names it; its title is the decision it puts in
+                            // front of the reader — the page's own heading.
+                            'Personal setup consent'
+                          : 'Inspection',
 );
 
 const startupErrorMessage = shallowRef<string | null>(null);
@@ -135,6 +153,16 @@ let unbindConnection: (() => void) | null = null;
 
 const view = computed<SessionView>(() =>
   startupErrorMessage.value === null ? sessionViewState.view.value : 'ended',
+);
+/**
+ * Whether the booting view is the disable command's own interlude: the
+ * command purges and drops the view to 'booting' before its request settles
+ * (`view-state.ts` § requestGlobalDisable), and presenting that as
+ * "Connecting" would report a running destruction as a connection fault
+ * (FR-042; WCAG 2.4.2 for the title below).
+ */
+const disabling = computed(
+  () => view.value === 'booting' && sessionViewState.globalDisableState.value === 'submitting',
 );
 // The shell reports the session's own failures. A detail request's failure
 // belongs to the route that made it, which shows it beside the retry that
@@ -148,9 +176,18 @@ const errorMessage = computed(
 const statusAnnouncement = computed(() => {
   switch (view.value) {
     case 'booting':
-      return 'Connecting to the local inspection session.';
+      return disabling.value
+        ? 'Personal inspection is being disabled. Inspection data is unavailable until it finishes.'
+        : 'Connecting to the local inspection session.';
     case 'inspection':
       return 'Inspection session ready.';
+    case 'fenced':
+      // The failed barrier is its own state to a reader who cannot see the
+      // page: announcing "being disabled" over a retained failure would
+      // contradict the retry the body offers (FR-042).
+      return sessionViewState.fenceRecovery.value?.globalDisableInProgress.state === 'failed'
+        ? 'Disabling personal inspection failed. You can retry from this page.'
+        : 'Personal inspection is being disabled. Inspection data is unavailable until it finishes.';
     case 'ended':
       return 'Session ended. The local inspection session is no longer reachable.';
     default: {
@@ -167,7 +204,9 @@ const statusAnnouncement = computed(() => {
 const documentTitle = computed(() => {
   switch (view.value) {
     case 'booting':
-      return `Connecting — ${APP_NAME}`;
+      return disabling.value
+        ? `Disabling personal inspection — ${APP_NAME}`
+        : `Connecting — ${APP_NAME}`;
     case 'inspection': {
       // The route is part of what the page is, and a title that never changed
       // would leave a screen-reader user on a detail page hearing the
@@ -183,8 +222,17 @@ const documentTitle = computed(() => {
       // an authored PDI closes it from inside — so the subject's own bidi and
       // control characters are spelled out first, the way path labels spell
       // them, and the isolate pair then scopes ordinary right-to-left text.
-      return `\u{2068}${escapeControlCharacters(subject)}\u{2069} — ${APP_NAME}`;
+      // The single-line rule too, and here rather than in each page: a title
+      // collapses whitespace exactly as an inline label does, so a subject
+      // held apart only by leading, trailing, or doubled whitespace is
+      // spelled out whole — every page keeps handing the shell its raw
+      // subject, so the escape-and-disambiguate still happens exactly once.
+      return `\u{2068}${inlinePresentationLabel(subject)}\u{2069} — ${APP_NAME}`;
     }
+    case 'fenced':
+      return sessionViewState.fenceRecovery.value?.globalDisableInProgress.state === 'failed'
+        ? `Disabling failed — ${APP_NAME}`
+        : `Disabling personal inspection — ${APP_NAME}`;
     case 'ended':
       return `Session ended — ${APP_NAME}`;
     default: {
@@ -235,7 +283,7 @@ onMounted(async () => {
   //
   // `baseURL` is this page's own origin rather than devframe's default
   // `'./'`, which resolves against the current document path. This application
-  // has nested routes — `/skills/<source-relative path>` — and a page loaded directly at one
+  // has nested routes — `/skills/detail/<source>/<source-relative path>` — and a page loaded at one
   // of them would look for the connection metadata under `/skills/` and fail to
   // connect at all. The origin is the right base because the host serves the
   // shell from the site root (`app.baseURL` in nuxt.config.ts); a bare `'/'`
@@ -321,7 +369,11 @@ onBeforeUnmount(() => {
     <p v-if="errorMessage" class="aci-error">Error: {{ errorMessage }}</p>
 
     <template v-if="view === 'booting'">
-      <p class="aci-empty">Connecting to the local inspection session…</p>
+      <!-- The disable command's own interlude reads as what it is; the retry
+           control stays, because a refresh while the barrier runs simply
+           joins it (contracts/http-api.md § disable-global). -->
+      <p v-if="disabling" class="aci-empty">Disabling personal inspection…</p>
+      <p v-else class="aci-empty">Connecting to the local inspection session…</p>
       <!-- The way out of this view, offered whenever the page is in it — the
            first connect included, where it is simply redundant beside the
            request already in flight. The inventory route owns the refresh
@@ -331,7 +383,9 @@ onBeforeUnmount(() => {
            beside this text, while a purge (a session identity the host no
            longer has) clears the error too. A control conditioned on the error
            would be absent for exactly the second one. -->
-      <button type="button" @click="sessionViewState.refresh()">Retry connecting</button>
+      <button type="button" @click="sessionViewState.refresh()">
+        {{ disabling ? 'Refresh status' : 'Retry connecting' }}
+      </button>
     </template>
 
     <!-- Keyed by the route's own path rather than its parameters, so selecting
@@ -342,6 +396,10 @@ onBeforeUnmount(() => {
          and the outgoing instance's teardown would invalidate the request its
          replacement had already issued. -->
     <NuxtPage v-else-if="view === 'inspection'" :page-key="pageKey" />
+
+    <!-- The fenced recovery: the whole surface while a disable barrier is
+         non-complete, because everything else was purged (FR-042). -->
+    <GlobalFenceRecovery v-else-if="view === 'fenced'" />
 
     <template v-else>
       <h2>Session ended</h2>

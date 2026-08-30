@@ -708,7 +708,7 @@ describe('the pure User-only facts the consent exclusions need (T931)', () => {
    * The facts owned here, each with the official-sources row its citation must
    * resolve to: the User surfaces no Global rule admits, which the Global
    * exclusions have to name. The widened members took the rest — Codex's
-   * deprecated prompts are admitted by `codex.global.prompts` (T1126), so the
+   * deprecated prompts are admitted by `codex.global.prompts` (T1139), so the
    * remaining pure facts are the generated and UI-preference surfaces alone.
    */
   const PURE_USER_FACTS = [
@@ -766,7 +766,7 @@ describe('the pure User-only facts the consent exclusions need (T931)', () => {
     // *candidate* rule and no strategy reaches any of them. All four are
     // named by their tool's own User exclusion — Codex's memories by
     // `codex.excluded.user-runtime` and Claude's three by
-    // `claude.excluded.user-runtime` (T970, T1125) — and the frozen
+    // `claude.excluded.user-runtime` (T970, T1138) — and the frozen
     // eighty-one-rule list in `inspection-rules.test.ts` is the other half of
     // that statement.
     for (const [behaviorId] of PURE_USER_FACTS) {
@@ -790,14 +790,14 @@ describe('the pure User-only facts the consent exclusions need (T931)', () => {
     }
   });
 
-  it('partitions the Claude User set between the Global rules and the exclusion (T966, T1125)', () => {
+  it('partitions the Claude User set between the Global rules and the exclusion (T966, T1138)', () => {
     // The consent boundary is measured against the frozen behavior set: the
     // nine Global rules accept their surfaces and
     // `claude.excluded.user-runtime` declines the rest, and neither side is
     // allowed to have introduced a behavior of its own. The set is frozen
     // here so a record added to make an exclusion look complete fails rather
     // than passes; the widening adds exactly the keybindings and themes
-    // records the contract carries (T1125).
+    // records the contract carries (T1138).
     const claudeUserBehaviors = Object.keys(VENDOR_BEHAVIOR_STATEMENTS)
       .filter((behaviorId) => behaviorId.startsWith('claude.behavior.user.'))
       .toSorted();

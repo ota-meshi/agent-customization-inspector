@@ -10,8 +10,9 @@
 // than beside the session classes because pages reach it through the
 // `usePageOwnership` composable, per Vue idiom, the way `useInventoryFilters`
 // wraps `InventoryFilterView`.
-import { inject, onUnmounted } from 'vue';
-import { SESSION_VIEW_STATE, type SessionViewState } from '../session/view-state';
+import { onUnmounted } from 'vue';
+import type { SessionViewState } from '../session/view-state';
+import { useSessionViewState } from './session-view-state';
 import type { PluginCarrierDetailParams, SourceSelector } from '../../shared/api-types';
 
 /**
@@ -145,13 +146,7 @@ export class PageOwnership {
  * the DOM left.
  */
 export function usePageOwnership(): PageOwnership {
-  const sessionViewState = inject(SESSION_VIEW_STATE);
-  if (sessionViewState === undefined) {
-    // The shell always provides it before rendering a route; its absence is a
-    // wiring bug, and failing loudly beats a page with no session behind it.
-    throw new Error('the session view state was not provided by the shell');
-  }
-  const ownership = new PageOwnership(sessionViewState);
+  const ownership = new PageOwnership(useSessionViewState());
   onUnmounted(() => {
     ownership.close();
     ownership.releaseSubject();

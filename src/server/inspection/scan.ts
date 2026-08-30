@@ -51,6 +51,7 @@ import { CODEX_REPOSITORY_RULES, readCodexConfiguredFallbackPlans } from './rule
 import { listCompanionFiles } from './companion-census';
 import { readdir } from './fs-io';
 import {
+  hasExcludedDirectorySegment,
   pathUnderRoot,
   readCandidate,
   rethrowIfResourceExhaustion,
@@ -88,6 +89,7 @@ export const REPOSITORY_INSPECTION_RULES: readonly CompiledStaticCandidateRule[]
  */
 export const REPOSITORY_CONFIGURATION_READERS: readonly ((
   root: string,
+  continueScan?: () => boolean,
 ) => Promise<ConfigurationReadResult>)[] = [readCodexConfiguredFallbackPlans];
 
 /**
@@ -125,6 +127,13 @@ export type ScanPublication =
       readonly candidateFiles: number;
       /** Bytes the attempt accepted, as counted while reading. */
       readonly readBytes: number;
+      /**
+       * Census roots whose real path escaped the Source, in the recognitions'
+       * own `pluginRoot` spelling: the session refuses plugin membership
+       * below them (contracts/inspection-path-allowlist.md § Bounded
+       * companion census; session.ts § pluginRootFilesOf).
+       */
+      readonly censusEscapedDirectories: readonly string[];
     }
   /** An unreadable Source root that fails without a generation commit. */
   | {
@@ -159,6 +168,13 @@ export interface ScanProgressUpdate {
 export interface ScanPublicationInput {
   /** The scanned Source every published record belongs to. */
   readonly sourceId: string;
+  /**
+   * Whether the attempt may still publish, asked before each companion read
+   * — the one filesystem operation this assembly performs; see
+   * {@link SourceScanInput.authorityHolds}. Absent means authority always
+   * holds.
+   */
+  readonly authorityHolds?: () => boolean;
   /**
    * The retained raw selected root the traversal ran from. A candidate's raw
    * segments are relative to it, so it is what turns them back into the
@@ -336,13 +352,13 @@ export async function assembleScanPublication(
         // rather than inside it.
         const byKind = Map.groupBy(fileRecognitions, (recognition) => recognition.details.kind);
         for (const group of byKind.values()) {
-          // The production recognizer's groups are uniformly parsed or
-          // failed — shared extraction for the Markdown kinds, one parser
-          // family for the MCP kind's per-tool readings — so the
-          // per-recognition check below only keeps an injected test
-          // recognizer honest: the traversal suite drives mixed statuses
-          // through the `recognize` seam, and a parsed recognition must not
-          // reference a failure.
+          // A mixed group is production's own case, not just an injected
+          // test recognizer's: which JSON format a carrier is read as
+          // belongs to the `(tool, path)` pair, so Copilot's JSONC reading
+          // of a commented root `.mcp.json` parses while Claude's strict
+          // reading of the same bytes fails (`parsers/json.ts`
+          // § acceptsComments). The per-recognition mapping below is what
+          // keeps a parsed recognition from referencing the failure record.
           if (!group.some((recognition) => recognition.parseStatus === 'failed')) {
             recognitions.push(...group);
             continue;
@@ -432,8 +448,29 @@ export async function assembleScanPublication(
   const entryNamesByDirectory = new Map<string, readonly string[]>();
   // Every directory a recognized customization occupies, enumerated once each:
   // the set is what makes a directory two candidates share get walked once.
+  const authorityHolds = (): boolean => input.authorityHolds?.() ?? true;
+  // Census roots whose real path escaped the Source, in the same public
+  // spelling the recognitions' `pluginRoot` uses; committed with the
+  // generation so the session honours the verdict.
+  const censusEscapedDirectories: string[] = [];
   for (const directory of occupiedDirectories) {
+    if (!authorityHolds()) {
+      // See {@link ScanPublicationInput.authorityHolds}: a census directory's
+      // own spelling checks, stat, and enumeration are new filesystem
+      // operations, and none starts once authority is gone.
+      break;
+    }
     const segments = directory.slice(0, -1).split('/');
+    // A declared source spelling an excluded directory — `./.git/pkg`,
+    // `./node_modules/pkg` — is refused before anything is enumerated. The
+    // census returns nothing for it anyway (companion-census.ts
+    // § isExcludedDirectory), and the spelling check below reads each
+    // ancestor: without this gate it would enumerate inside the excluded
+    // directory, and a permission error there would fail the whole scan over
+    // a place the inventory never reports (FR-029).
+    if (hasExcludedDirectorySegment(segments)) {
+      continue;
+    }
     // Every segment has to be an entry name its parent actually holds. A
     // skill's directory came out of the walk and always is one; a plugin root
     // is a path a catalog spelled, and a filesystem that compares names
@@ -455,9 +492,16 @@ export async function assembleScanPublication(
     // rule exists to avoid.
     if (
       input.scope === 'repository' &&
-      !(await holdsEveryEntryName(input.root, segments, entryNamesByDirectory))
+      !(await holdsEveryEntryName(input.root, segments, entryNamesByDirectory, authorityHolds))
     ) {
       continue;
+    }
+    if (!authorityHolds()) {
+      // Authority left after the spelling check: this directory's stat is a
+      // new filesystem promise the revocation stops (data-model.md
+      // § ScanAttempt), and the loop head above ends the census on the next
+      // directory either way.
+      break;
     }
     const absoluteDirectory = pathUnderRoot(input.root, segments);
     let target;
@@ -487,7 +531,17 @@ export async function assembleScanPublication(
     if (!target.isDirectory) {
       continue;
     }
-    for (const listed of await listCompanionFiles(input.root, absoluteDirectory)) {
+    const census = await listCompanionFiles(input.root, absoluteDirectory, authorityHolds);
+    if (!census.rootContained) {
+      // The verdict travels into the commit: a root whose real path escapes
+      // the Source belongs to no Source, so the session must not rebuild a
+      // membership below its spelling from independently admitted files
+      // (contracts/inspection-path-allowlist.md § Bounded companion census;
+      // session.ts § pluginRootFilesOf).
+      censusEscapedDirectories.push(directory);
+      continue;
+    }
+    for (const listed of census.files) {
       companions.set(`${directory}${listed.censusRelativePath}`, listed.absolutePath);
     }
   }
@@ -515,6 +569,11 @@ export async function assembleScanPublication(
   // traversal's would understate what the scan actually read.
   let companionReadBytes = 0;
   for (const [publicPath, absolutePath] of companions) {
+    if (!(input.authorityHolds?.() ?? true)) {
+      // See {@link ScanPublicationInput.authorityHolds}: no further
+      // companion read starts once authority is gone.
+      break;
+    }
     const outcome = await readCandidate(absolutePath);
     if (outcome.kind === 'readable' || outcome.kind === 'binary') {
       companionReadBytes += outcome.sizeBytes;
@@ -584,6 +643,7 @@ export async function assembleScanPublication(
 
   return {
     kind: 'publishable',
+    censusEscapedDirectories,
     outcome: hasFileConfinedOutcome ? 'partial' : 'complete',
     files,
     // Stamped here, once, on the way out: the Source is the scan's own fact,
@@ -631,7 +691,10 @@ export interface SourceScanInput {
    * declared. Forgetting to pass readers must therefore mean reading less,
    * never more (FR-016 through FR-018).
    */
-  readonly configurationReaders?: readonly ((root: string) => Promise<ConfigurationReadResult>)[];
+  readonly configurationReaders?: readonly ((
+    root: string,
+    continueScan?: () => boolean,
+  ) => Promise<ConfigurationReadResult>)[];
   /** The vendor recognizer dispatch; see {@link ScanPublicationInput.recognize}. */
   readonly recognize?: (input: RecognitionInput) => Promise<CandidateRecognition>;
   /**
@@ -639,6 +702,16 @@ export interface SourceScanInput {
    * where it is. The attempt ignores what it returns.
    */
   readonly onProgress?: (update: ScanProgressUpdate) => void;
+  /**
+   * Whether the attempt may still publish, asked before each new filesystem
+   * operation — the configuration reads, the walk's own operations through
+   * {@link TraversalScanInput.continueScan}, and each companion read. Not a
+   * cancellation signal: disable or shutdown "stops new scheduling" while
+   * the one read already in flight finishes (data-model.md § ScanAttempt;
+   * contracts/http-api.md § Concurrency and lifecycle). Absent means
+   * authority always holds.
+   */
+  readonly authorityHolds?: () => boolean;
 }
 
 /**
@@ -665,11 +738,20 @@ async function holdsEveryEntryName(
   root: string,
   segments: readonly string[],
   entryNamesByDirectory: Map<string, readonly string[]>,
+  authorityHolds: () => boolean,
 ): Promise<boolean> {
   let parent = root;
   for (const segment of segments) {
     let entries = entryNamesByDirectory.get(parent);
     if (entries === undefined) {
+      if (!authorityHolds()) {
+        // Authority left mid-check (the census caller's authorityHolds): the
+        // ancestor readdir is a new filesystem promise the revocation stops
+        // (data-model.md § ScanAttempt). "Not held" skips this directory, and
+        // the census loop ends at its own head — a late answer the commit
+        // gates discard either way.
+        return false;
+      }
       try {
         entries = await readdir(parent);
       } catch (error) {
@@ -700,6 +782,7 @@ async function holdsEveryEntryName(
  * never completed.
  */
 export async function runSourceScan(input: SourceScanInput): Promise<ScanPublication> {
+  const authorityHolds = input.authorityHolds ?? ((): boolean => true);
   const staticRules = input.rules ?? REPOSITORY_INSPECTION_RULES;
   // Stage one: the configuration read (T1090). Configuration decides part of
   // what the scan targets, so each vendor's reader runs before the scan and
@@ -718,7 +801,13 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
     input.configurationReaders ??
     (input.rules === undefined ? REPOSITORY_CONFIGURATION_READERS : []);
   for (const read of configurationReaders) {
-    const contribution = await read(input.root);
+    if (!authorityHolds()) {
+      // Authority left the attempt before this reader's own file read: a new
+      // operation the revocation stops, with the partial stage discarded by
+      // the commit gates like everything else.
+      break;
+    }
+    const contribution = await read(input.root, authorityHolds);
     configured.push(...contribution.plans);
     // The reads stage one performed travel into the walk, so the candidate a
     // reader's file also is — `.codex/config.toml` under `codex.repo.config` —
@@ -746,6 +835,7 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
   });
   const result = await runTraversalScan({
     root: input.root,
+    continueScan: authorityHolds,
     plans: [...staticRules.map((rule) => rule.plan), ...configured.map((entry) => entry.plan)],
     seededReads,
     ...(input.onProgress === undefined ? {} : { onProgress: input.onProgress }),
@@ -767,6 +857,7 @@ export async function runSourceScan(input: SourceScanInput): Promise<ScanPublica
   }
   return assembleScanPublication({
     sourceId: input.sourceId,
+    authorityHolds,
     root: input.root,
     rootFailureOwner: input.rootFailureOwner,
     scope: input.scope,

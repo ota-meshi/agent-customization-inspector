@@ -29,16 +29,7 @@
 // generation all drop the open detail through the same cleanup the skill
 // route uses; only the URL survives a commit, and the page refetches the same
 // path under the new generation.
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -47,16 +38,17 @@ import { frontmatterYamlText } from '../../../../components/inspection/frontmatt
 import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
+  familyGenerationOf,
   asSourceSelector,
   decodeDetailRoutePath,
   type SourceSelector,
 } from '../../../../components/detail-route';
-import { sourceFamilyNameOf, sourceRootOf } from '../../../../components/source-name';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { instructionComparisonRouteFor } from '../../../../composables/instruction-comparison';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { useSessionSources } from '../../../../composables/session-sources';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   fileIdentityKey,
@@ -67,15 +59,10 @@ import {
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../../shared/entities';
+import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
@@ -128,6 +115,9 @@ const detailState = sessionViewState.fileDetailState;
 const detailError = sessionViewState.detailErrorMessage;
 const snapshot = sessionViewState.snapshot;
 
+/** The shared per-Source lookups (`session-sources.ts`). */
+const sessionSources = useSessionSources();
+
 /**
  * The addressed Source's own ID, or null when this session carries no such
  * Source — an address naming a token this product issues for a Global Source
@@ -135,9 +125,6 @@ const snapshot = sessionViewState.snapshot;
  * names a file in each Source that holds it, so an unscoped lookup would state
  * one Source's recognitions under the other's address (FR-030).
  */
-/** The shared per-Source lookups (`session-sources.ts`). */
-const sessionSources = useSessionSources();
-
 const openSourceId = computed(() =>
   openAddress.value.source === null ? null : sessionSources.sourceIdFor(openAddress.value.source),
 );
@@ -178,18 +165,14 @@ const pathText = computed(() => pathPresentationLabel(openPath.value));
  */
 const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacters(openPath.value));
 
-/**
- * The family this page's file is of, or null where that distinguishes nothing
- * ({@link sourceFamilyNameOf}).
- *
- * The address's own Source decides it, so a kept link says which of two
- * same-path files it opened (FR-030): the repository's `AGENTS.md` and a
- * consented home's are one heading and two files.
- */
-const familyText = computed(() => {
-  const kind = openFamily.value;
-  return kind === null ? null : sourceFamilyNameOf(snapshot.value?.sources ?? [], kind);
-});
+// The open file's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source — the shared derivation every
+// path-addressed detail states them through (`source-facts.ts`).
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
 
 /**
  * Which family the addressed Source belongs to, or null when this session
@@ -203,19 +186,6 @@ const openFamily = computed<SourceKind | null>(() => {
     }
   }
   return null;
-});
-
-/**
- * Which directory this file was in, or null where its family holds one Source
- * and the summary panel already says it once ({@link sourceRootOf}). The
- * escaped presentation of the admitted root, never a path anything can open
- * (FR-002).
- */
-const rootText = computed(() => {
-  const kind = openFamily.value;
-  return kind === null || openSourceId.value === null
-    ? null
-    : sourceRootOf(snapshot.value?.sources ?? [], kind, openSourceId.value);
 });
 
 /**
@@ -530,8 +500,7 @@ watch(
   [
     openPath,
     (): boolean => owner.value !== null,
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
-    (): number | null => snapshot.value?.globalGeneration ?? null,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step that changes only the Source leaves the path identical
     // and the file different, and this page instance is reused across it — the
@@ -590,7 +559,9 @@ const titleSubject = computed<string | null>(() => {
   if (detailFailure.value !== null) {
     return 'Instruction file could not be loaded';
   }
-  return pathIsSpelledOut.value ? null : openPath.value;
+  return pathIsSpelledOut.value
+    ? null
+    : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount
@@ -737,15 +708,16 @@ onBeforeUnmount(() => {
              No product is quoted for what it would select or load: existence
              is what an admission proves (FR-009). -->
         <p class="aci-instruction-detail__recognition">
-          <template v-if="familyText !== null">{{ familyText }} · </template>{{ toolsText }} ·
+          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
+          >{{ toolsText }} ·
           {{ CUSTOMIZATION_KIND_TEXT.instructions }}
         </p>
 
         <!-- Which directory the file was in, where its family holds more than
              one: an escaped presentation of the admitted root, never a path
              anything can open (FR-002). -->
-        <p v-if="rootText !== null" class="aci-instruction-detail__root aci-note">
-          <span class="aci-authored-text">{{ rootText }}</span>
+        <p v-if="sourceRootText !== null" class="aci-instruction-detail__root aci-note">
+          <span class="aci-authored-text">{{ sourceRootText }}</span>
         </p>
 
         <!-- The comparison entry for this file (FR-011): present exactly

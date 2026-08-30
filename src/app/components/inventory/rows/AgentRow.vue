@@ -37,7 +37,7 @@ import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text
 import {
   fileIdentityKey,
   SUPPORTED_TOOL_TEXT,
-  inlinePresentationLabel,
+  accessiblePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../shared/entities';
@@ -89,9 +89,9 @@ const nameText = computed(() =>
 const nameIsAuthored = computed(() => props.entry.name !== null && props.entry.name !== '');
 
 /**
- * The row's name as accessible-name text: the single-line label rule, because
- * an accessible name collapses whitespace and would read two invisibly
- * different names as one ({@link inlinePresentationLabel}); the no-name and
+ * The row's name as accessible-name text: it starts with the visible label (WCAG
+ * 2.5.3 Label in Name) and appends the spelled-out presentation where
+ * whitespace would collapse two invisibly different names into one ({@link accessiblePresentationLabel}); the no-name and
  * empty-name cases keep the same copy the visible heading shows.
  */
 const nameAccessibleText = computed(() =>
@@ -99,44 +99,9 @@ const nameAccessibleText = computed(() =>
     ? null
     : props.entry.name === ''
       ? '(empty name)'
-      : inlinePresentationLabel(props.entry.name),
+      : accessiblePresentationLabel(props.entry.name),
 );
 
-/**
- * Each file as the line the row renders for it, holding every recognition that
- * resolves this name in that file — one physical file is one line and one link
- * however many products recognize it, because two links with one accessible
- * name and one destination would be the same control twice (WCAG 2.4.6). Each
- * recognizing product is stated beside the link with the surfaces its
- * admission rests on, exactly as an instruction row states its recognitions.
- * The no-name row's per-file state sentence and the file's own diagnostics —
- * where the extraction-failure record lives (FR-028) — are the file's, shared
- * by its recognitions, because the extraction ran once per file.
- *
- * Derived rather than computed once at setup, because the row's key is its
- * name: a tool filter that drops definitions leaves the key alone, so the
- * component instance is reused and a value read once would keep rendering the
- * definitions the filter removed.
- */
-/**
- * The comparison this row links to — the first two readable files that
- * resolve this name — or null when the name has fewer than two, where a link
- * would open a comparison with nothing to pair. The paths are deduplicated
- * because a row lists one definition per `(file, tool)`, so a
- * `.claude/agents/*.md` two products read appears twice while being one file.
- * The compare route's own pickers take over from there: they hold this row's
- * files, so a reader steps to another pair on the comparison itself rather
- * than composing one here (T575).
- *
- * The no-name row links none, the way the MCP no-name row does: its files
- * share the absence of a name rather than an identity, so a pair drawn from
- * it would assert a relationship the inventory does not have (FR-011,
- * data-model.md § Inventory unit).
- *
- * The pair is drawn from the row's own files rather than from the members a
- * filter left, so the link a reader followed is still there when they come
- * back to the unnarrowed list ({@link NarrowedInventoryRow}).
- */
 /**
  * The comparable identities of this row as route sides, in the row's own
  * order — the set no filter narrows
@@ -182,6 +147,22 @@ const blockCompareRoutes = computed(() => {
   return routes;
 });
 
+/**
+ * Each file as the line the row renders for it, holding every recognition that
+ * resolves this name in that file — one physical file is one line and one link
+ * however many products recognize it, because two links with one accessible
+ * name and one destination would be the same control twice (WCAG 2.4.6). Each
+ * recognizing product is stated beside the link with the surfaces its
+ * admission rests on, exactly as an instruction row states its recognitions.
+ * The no-name row's per-file state sentence and the file's own diagnostics —
+ * where the extraction-failure record lives (FR-028) — are the file's, shared
+ * by its recognitions, because the extraction ran once per file.
+ *
+ * Derived rather than computed once at setup, because the row's key is its
+ * name: a tool filter that drops definitions leaves the key alone, so the
+ * component instance is reused and a value read once would keep rendering the
+ * definitions the filter removed.
+ */
 const fileRows = computed(() => {
   // Grouped by the file's whole identity — Source and Source-relative Path
   // (FR-030): a consented home's file and a same-path file elsewhere are two
@@ -200,8 +181,8 @@ const fileRows = computed(() => {
       // The accessible name goes through the single-line label rule instead: an
       // accessible name is flattened, so authored whitespace that the drawn
       // label legitimately renders would collapse and two different files could
-      // announce identically (FR-025, {@link inlinePresentationLabel}).
-      pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      // announce identically (FR-025, {@link accessiblePresentationLabel}).
+      pathAccessibleText: accessiblePresentationLabel(sourceRelativePath),
       recognitions: definitions.map((definition) => ({
         tool: definition.tool,
         toolText: SUPPORTED_TOOL_TEXT[definition.tool],
@@ -254,7 +235,7 @@ const fileRows = computed(() => {
     <SourceFamilyBlocks
       :members="fileRows"
       :member-key="(file) => file.key"
-      :identities="entry.rowFileIdentities"
+      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: file }">
         <p class="aci-agent-row__owner">
@@ -262,9 +243,12 @@ const fileRows = computed(() => {
             :to="file.detailRoute"
             class="aci-path aci-authored-text"
             :aria-label="
-              nameAccessibleText === null
-                ? file.pathAccessibleText
-                : `${file.pathAccessibleText}: ${nameAccessibleText}`
+              sessionSources.qualifiedLinkName(
+                nameAccessibleText === null
+                  ? file.pathAccessibleText
+                  : `${file.pathAccessibleText}: ${nameAccessibleText}`,
+                file.sourceId,
+              )
             "
             >{{ file.pathText }}</NuxtLink
           >

@@ -34,7 +34,7 @@
 // reach no read (`codex.excluded.plugin-files`). Nothing on this page claims
 // the plugin is installed, enabled, trusted, or loaded — all four are User
 // state this product never reads (FR-009).
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -42,6 +42,7 @@ import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTr
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
+  familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
@@ -53,10 +54,15 @@ import { pluginCarrierDetailRoute } from '../../../../components/plugin-detail-r
 import { pluginComparisonRouteFor } from '../../../../composables/plugin-comparison';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { usePageOwnership } from '../../../../composables/page-ownership';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
-import { PLUGIN_CARRIER_TEXT, PLUGIN_SOURCE_FORM_TEXT } from '../../../../../shared/api-text';
+import {
+  PLUGIN_CARRIER_TEXT,
+  PLUGIN_SOURCE_FORM_TEXT,
+  SOURCE_SELECTOR_TEXT,
+} from '../../../../../shared/api-text';
 import type { PluginSourceForm, SourceKind } from '../../../../../shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../../../shared/entities';
 import {
@@ -74,13 +80,7 @@ import {
 } from '../../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
@@ -136,6 +136,14 @@ const sessionSources = useSessionSources();
  * same-path carrier in another Source is a different file (FR-030).
  */
 const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
+
+// The open file's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source (`source-facts.ts`).
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
 
 /**
  * The family the open file's Source is of: the family a comparison entry
@@ -580,11 +588,15 @@ const compareRoute = computed((): RouteLocationRaw | null => {
 function pluginFileRoute(sourceRelativePath: string): RouteLocationRaw {
   // The product stays what this page is open for: stepping through the
   // plugin's files is not a step to another carrier.
+  // The Source stays this page's too: without it the helper falls back to the
+  // repository token, and a Global plugin's file link would open a
+  // same-path repository carrier — or nothing (FR-030).
   return pluginCarrierDetailRoute(
     carrierPath.value,
     openTool.value ?? SUPPORTED_TOOL_ORDER[0]!,
     openPluginName.value,
     sourceRelativePath,
+    openSource.value,
   );
 }
 
@@ -736,51 +748,62 @@ const openFileRoleKinds = computed((): readonly CustomizationKind[] => {
   }
   // One entry per kind whose rows can name a file, filtered through the closed
   // kind order so two files never read in two orders (`entities.ts`
-  // § CUSTOMIZATION_KIND_ORDER). The plugin kind is not among them: this page
-  // is that row.
+  // § CUSTOMIZATION_KIND_ORDER). Two members are deliberately absent, and the
+  // Exclude keeps the rest compiler-complete: `plugin` because this page is
+  // that row, and `skill metadata` because it publishes no inventory row of
+  // its own — a metadata file reads through its skill's census.
   // Both halves of the identity on every membership (FR-030): a same-path
   // member in another Source is a different file's, so a Repository plugin
   // file must not wear a consented home's independent recognitions.
-  const named: Readonly<Partial<Record<CustomizationKind, boolean>>> = {
-    instructions: held.instructions.some(
-      (row) =>
-        row.sourceId === openId && row.files.some((file) => file.sourceRelativePath === path),
-    ),
-    skill: held.skills.some((row) =>
-      row.definitions.some(
-        (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+  const named: Readonly<Record<Exclude<CustomizationKind, 'plugin' | 'skill metadata'>, boolean>> =
+    {
+      instructions: held.instructions.some(
+        (row) =>
+          row.sourceId === openId && row.files.some((file) => file.sourceRelativePath === path),
       ),
-    ),
-    MCP: held.mcp.some((row) =>
-      row.declarations.some(
-        (declaration) => declaration.sourceId === openId && declaration.sourceRelativePath === path,
+      skill: held.skills.some((row) =>
+        row.definitions.some(
+          (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+        ),
       ),
-    ),
-    agent: held.agents.some((row) =>
-      row.definitions.some(
-        (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+      MCP: held.mcp.some((row) =>
+        row.declarations.some(
+          (declaration) =>
+            declaration.sourceId === openId && declaration.sourceRelativePath === path,
+        ),
       ),
-    ),
-    'prompt/command': held.prompts.some((row) =>
-      row.definitions.some(
-        (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+      agent: held.agents.some((row) =>
+        row.definitions.some(
+          (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+        ),
       ),
-    ),
-    permissions: held.permissions.some(
-      (row) => row.sourceId === openId && row.sourceRelativePath === path,
-    ),
-    hook: held.hooks.some((row) =>
-      row.declarations.some(
-        (declaration) => declaration.sourceId === openId && declaration.sourceRelativePath === path,
+      'prompt/command': held.prompts.some((row) =>
+        row.definitions.some(
+          (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+        ),
       ),
-    ),
-    'output style': held.outputStyles.some((row) =>
-      row.definitions.some(
-        (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+      rule: held.rules.some((row) => row.sourceId === openId && row.sourceRelativePath === path),
+      permissions: held.permissions.some(
+        (row) => row.sourceId === openId && row.sourceRelativePath === path,
       ),
-    ),
-  };
-  return CUSTOMIZATION_KIND_ORDER.filter((kind) => named[kind] === true);
+      hook: held.hooks.some((row) =>
+        row.declarations.some(
+          (declaration) =>
+            declaration.sourceId === openId && declaration.sourceRelativePath === path,
+        ),
+      ),
+      'output style': held.outputStyles.some((row) =>
+        row.definitions.some(
+          (definition) => definition.sourceId === openId && definition.sourceRelativePath === path,
+        ),
+      ),
+      'settings/config': held.settings.some(
+        (row) => row.sourceId === openId && row.sourceRelativePath === path,
+      ),
+    };
+  return CUSTOMIZATION_KIND_ORDER.filter(
+    (kind) => kind !== 'plugin' && kind !== 'skill metadata' && named[kind],
+  );
 });
 
 /** The open file's path as presentation text, escaped like every path. */
@@ -1077,7 +1100,7 @@ watch(
     manifestFile,
     openFilePath,
     (): boolean => carrierResolved.value,
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step between two Sources' details at one path leaves the path
     // identical and the file different, so without this the page would keep
@@ -1100,8 +1123,12 @@ watch(
 onMounted(() => {
   heading.value?.focus();
 });
-watch([carrierPath, openPluginName], () => {
-  heading.value?.focus();
+watch([openSource, carrierPath, openPluginName], () => {
+  // After the DOM update, like every other detail's subject watcher: focusing
+  // pre-flush lands on the outgoing heading, so assistive technology hears
+  // the previous plugin's name and the new heading gets no focus event
+  // (WCAG 2.4.3).
+  void nextTick(() => heading.value?.focus());
 });
 
 /** Set as the route is left, so the focus guards below yield to the next route. */
@@ -1211,8 +1238,17 @@ const titleSubject = computed<string | null>(() => {
   // the page as `\u000A` but title the tab `\u005Cu000A`. Null when the
   // escaped spelling still draws nothing, because a tab titled by it would read
   // as having no subject at all.
-  const subject = openPluginName.value ?? carrierPath.value;
-  return rendersNothingVisible(escapeControlCharacters(subject)) ? null : subject;
+  // The carrier's path rides beside a declared name: two carriers of one
+  // Source — a catalog and a manifest — can declare one plugin name, and
+  // their tabs must not read identically (WCAG 2.4.2). A no-name subject is
+  // already the path, so nothing is stated twice.
+  const subject =
+    openPluginName.value === null
+      ? carrierPath.value
+      : `${openPluginName.value} — ${carrierPath.value}`;
+  return rendersNothingVisible(escapeControlCharacters(subject))
+    ? null
+    : `${subject} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watch(
   titleSubject,
@@ -1294,6 +1330,21 @@ watch(
 
     <template v-else>
       <dl class="aci-definition-grid">
+        <!-- Which family of place the carrier came from, and — where that
+             family holds more than one Source — which consented directory:
+             an escaped presentation of the admitted root, never a path
+             anything can open (FR-002, FR-007). -->
+        <template v-if="sourceFamilyText !== null">
+          <dt>Source</dt>
+          <dd>
+            {{ sourceFamilyText }}
+            <span
+              v-if="sourceRootText !== null"
+              class="aci-plugin-detail__root aci-authored-text"
+              >{{ sourceRootText }}</span
+            >
+          </dd>
+        </template>
         <dt>Declared in</dt>
         <dd class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{ pathText }}</dd>
         <dt>Carrier</dt>
@@ -1435,10 +1486,10 @@ watch(
         </section>
         <!-- What the absence is, rather than one sentence covering every way
              there could be none. An offering naming a Git repository, an npm
-             package, or any other place outside this repository names no
-             directory here at all, so a note about a directory that ships no
-             manifest would report this repository as missing a file the
-             offering never put in it (`api-types.ts` § PluginSourceForm). -->
+             package, or any other remote place names no directory below this
+             file's root at all, so a note about a directory that ships no
+             manifest would report the inspected directory as missing a file
+             the offering never put in it (`api-types.ts` § PluginSourceForm). -->
         <p v-else-if="carrierRoots.length > 0" class="aci-note">
           This scan holds no manifest inside
           <span class="aci-path aci-authored-text">{{ namedRootsText }}</span
@@ -1452,8 +1503,8 @@ watch(
           </template>
         </p>
         <p v-else-if="openDeclarations.length > 0" class="aci-note">
-          These offerings name no directory in this repository, so this scan holds none of this
-          plugin's own files.
+          These offerings name no directory below this file's own root, so this scan holds none of
+          this plugin's own files.
         </p>
 
         <!-- The comparison this plugin's row can open: one name declared in
@@ -1469,7 +1520,7 @@ watch(
         <p class="aci-note">
           A component a manifest points at — bundled skills, an `.mcp.json`, an `.app.json`, hook
           files, assets — is shown as the value the file wrote and is never opened. Whether the
-          plugin is installed, enabled, or trusted is state outside this repository.
+          plugin is installed, enabled, or trusted is state this product does not read.
         </p>
       </div>
 
@@ -1487,8 +1538,9 @@ watch(
              census). -->
         <p v-if="rowFiles.length === 0" class="aci-note">
           This scan found no files for this plugin. The `source` on the offering is where the
-          catalog says the plugin comes from: nothing outside this repository is ever fetched, and a
-          source inside it has files here only when this repository holds the directory it names.
+          catalog says the plugin comes from: nothing outside the inspected directories is ever
+          fetched, and a local source has files here only when the directory it names exists below
+          this file's own root.
         </p>
 
         <template v-else>

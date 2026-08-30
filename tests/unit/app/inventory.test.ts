@@ -28,7 +28,7 @@ import type {
   SessionSnapshot,
   SkillInventoryEntryDto,
   SourceDto,
-  SourceKind,
+  SourceSelector,
 } from '../../../src/shared/api-types';
 import { SUPPORTED_TOOL_ORDER } from '../../../src/shared/entities';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
@@ -187,13 +187,13 @@ function snapshotWith(
 // does and passes it in; the composable returns only what it derives.
 function withSelection(snapshot: Ref<SessionSnapshot | null>) {
   const selection = {
-    sourceKind: ref<SourceKind | null>(null),
+    source: ref<SourceSelector | null>(null),
     tool: ref<SupportedTool | null>(null),
     kind: ref<CustomizationKind | null>(null),
     pathQuery: ref(''),
   };
   const clear = (): void => {
-    selection.sourceKind.value = null;
+    selection.source.value = null;
     selection.tool.value = null;
     selection.kind.value = null;
     selection.pathQuery.value = '';
@@ -213,10 +213,12 @@ describe('inventory filters over the committed snapshot', () => {
     expect(filters.view.availableTools.value).toEqual(['codex']);
     expect(filters.view.availableKinds.value).toEqual(['skill']);
     // The Source axis is the family, not one option per Source: the tool axis
-    // beside it already answers which product recognized a file, and this
-    // selection rides in the inventory's URL where a Source ID would name
-    // nothing after the next launch (`api-text.ts` § SOURCE_KIND_TEXT).
-    expect(filters.view.availableSourceKinds.value).toEqual(['repository']);
+    // beside it cannot separate the shared agent home from a member home,
+    // and this selection rides in the inventory's URL as the launch-stable
+    // selector (`detail-route.ts` § sourceSelectorOf).
+    expect(filters.view.availableSources.value).toEqual([
+      { selector: 'repository', label: 'Repository' },
+    ]);
   });
 
   it('leaves a skill\u2019s own supporting files out of the unrecognized list', () => {
@@ -355,9 +357,9 @@ describe('inventory filters over the committed snapshot', () => {
     // The one published family keeps every recognized row; a family the
     // snapshot does not publish is not an option the dropdown offers, so it is
     // ignored rather than silently emptying the list.
-    filters.sourceKind.value = 'repository';
+    filters.source.value = 'repository';
     expect(filters.view.skillRows.value).toHaveLength(2);
-    filters.sourceKind.value = 'global';
+    filters.source.value = 'global-claude';
     expect(filters.view.skillRows.value).toHaveLength(2);
 
     filters.clear();
@@ -420,7 +422,7 @@ describe('inventory filters over the committed snapshot', () => {
     expect(filters.view.instructionRows.value).toHaveLength(3);
 
     // A Source filter leaves the range standing with the rows it kept.
-    filters.sourceKind.value = 'global';
+    filters.source.value = 'global-codex';
     expect(
       filters.view.instructionRangeGroups.value.map((group) => [
         group.applicabilityRange,
@@ -524,10 +526,10 @@ describe('inventory filters over the committed snapshot', () => {
       filters.view.unrecognizedRows.value.map((row) => [row.sourceId, row.sourceRelativePath]),
     ).toEqual([['src-global-codex', 'AGENTS.md']]);
 
-    // And the Source families narrow it the way they narrow every other row.
-    filters.sourceKind.value = 'repository';
+    // And a Source selection narrows it the way it narrows every other row.
+    filters.source.value = 'repository';
     expect(filters.view.unrecognizedRows.value).toHaveLength(0);
-    filters.sourceKind.value = 'global';
+    filters.source.value = 'global-codex';
     expect(filters.view.unrecognizedRows.value).toHaveLength(1);
   });
 
@@ -560,20 +562,74 @@ describe('inventory filters over the committed snapshot', () => {
       ),
     );
     const filters = withSelection(snapshot);
-    // Both families are offered, in the fixed order.
-    expect(filters.view.availableSourceKinds.value).toEqual(['repository', 'global']);
+    // Every published Source is offered, in the published order.
+    expect(filters.view.availableSources.value).toEqual([
+      { selector: 'repository', label: 'Repository' },
+      { selector: 'global-codex', label: 'OpenAI Codex' },
+    ]);
     expect(filters.view.instructionRows.value).toHaveLength(2);
 
-    filters.sourceKind.value = 'global';
+    filters.source.value = 'global-codex';
     expect(filters.view.instructionRows.value.map((row) => row.sourceId)).toEqual([
       'src-global-codex',
     ]);
-    filters.sourceKind.value = 'repository';
+    filters.source.value = 'repository';
     expect(filters.view.instructionRows.value.map((row) => row.sourceId)).toEqual(['src-repo']);
     expect(filters.view.isNarrowed.value).toBe(true);
 
     filters.clear();
     expect(filters.view.instructionRows.value).toHaveLength(2);
+  });
+
+  it('separates two consented homes as two Source options (FR-006)', () => {
+    // The shared agent home is no tool's, so only a per-Source option can
+    // keep one home's rows alone — a family-level choice could not.
+    const codexHome: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-codex',
+      kind: 'global',
+      member: 'codex',
+      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
+    };
+    const agentsHome: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-agents',
+      kind: 'global',
+      member: 'agents',
+      boundary: { displayRoot: '/home/reader/.agents', origin: 'default-home' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          { ...file('AGENTS.md'), sourceId: 'src-global-codex' },
+          { ...file('AGENTS.md'), sourceId: 'src-global-agents' },
+        ],
+        [],
+        {
+          sources: [REPOSITORY_SOURCE, codexHome, agentsHome],
+          instructions: [
+            {
+              ...instructionEntry('**', [instructionFile('AGENTS.md', 'codex')]),
+              sourceId: 'src-global-codex',
+            },
+            {
+              ...instructionEntry('**', [instructionFile('AGENTS.md', 'codex')]),
+              sourceId: 'src-global-agents',
+            },
+          ],
+        },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.availableSources.value.map((option) => option.selector)).toEqual([
+      'repository',
+      'global-codex',
+      'global-agents',
+    ]);
+    filters.source.value = 'global-agents';
+    expect(filters.view.instructionRows.value.map((row) => row.sourceId)).toEqual([
+      'src-global-agents',
+    ]);
   });
 
   it('matches the path filter case-insensitively without treating it as a locator', () => {
@@ -589,6 +645,24 @@ describe('inventory filters over the committed snapshot', () => {
     // A leading separator is matched as text, not resolved as a path.
     filters.pathQuery.value = '/etc/passwd';
     expect(filters.view.skillRows.value).toEqual([]);
+  });
+
+  it('keeps the query whitespace, so a name held apart by it stays reachable', () => {
+    // An entry name can begin or end in whitespace (FR-024), and trimming the
+    // query would strip the very characters that distinguish such a name —
+    // ' name' must be able to narrow past 'name'.
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [file('.agents/skills/a name/SKILL.md'), file('.agents/skills/aname/SKILL.md')],
+        [
+          skill('spaced', '.agents/skills/a name/SKILL.md'),
+          skill('plain', '.agents/skills/aname/SKILL.md'),
+        ],
+      ),
+    );
+    const filters = withSelection(snapshot);
+    filters.pathQuery.value = ' name';
+    expect(filters.view.skillRows.value).toHaveLength(1);
   });
 
   it('stops applying a selection the current commit no longer offers', () => {

@@ -516,6 +516,15 @@ classification advances in registry order; the first present path stops later
 alternatives even if its later read or parse result is unsuccessful. An ancestor-
 chain placement applies that rule independently at every fixed root-to-narrow placement.
 
+A vendor-documented base under which a catalog resolves a bare entry name — Claude's and
+Copilot's `metadata.pluginRoot` — is anchored to the one `./` prefix and its single
+trailing separator dropped before the name is joined onto it, because that is exactly what
+each client resolves and `plugins`, `./plugins`, and `./plugins/` name one directory to it.
+The grammar above is not relaxed by this: the anchoring produces the authored local path,
+and that joined value is then tokenized whole, so an empty, dot, home-marker, backslash,
+colon, control-character, or unpaired-surrogate segment still rejects the derivation with
+zero target I/O. A base that is absolute, home-anchored, or empty resolves nothing at all.
+
 A path admitted independently by a static traversal simply gains the derived provenance;
 static selector scope is never widened to cover a derived target, and a derived result
 never becomes the seed of another derivation.

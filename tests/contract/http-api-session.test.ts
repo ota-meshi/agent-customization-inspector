@@ -147,6 +147,7 @@ describe('rescan-repository admission', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
       files: [],
       recognitions: [],
       diagnostics: [],
@@ -184,6 +185,7 @@ describe('rescan-repository admission', () => {
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
       files: [],
       recognitions: [],
       diagnostics: [],
@@ -279,6 +281,7 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     visitedEntries: 0,
     candidateFiles: 0,
     readBytes: 0,
+    censusEscapedDirectories: [],
     files: [],
     recognitions: [],
     diagnostics: [],
@@ -439,6 +442,7 @@ describe('the Repository session envelope this release publishes (T916)', () => 
       visitedEntries: 0,
       candidateFiles: 0,
       readBytes: 0,
+      censusEscapedDirectories: [],
     });
     expect(context.session.snapshot().repositoryGeneration).toBe(committed.repositoryGeneration);
   });
@@ -469,5 +473,53 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     ]) {
       expect(payload, word).not.toContain(word);
     }
+  });
+});
+
+describe('the fenced session response (T1018; contracts/http-api.md § get-session)', () => {
+  it('serves the control-only recovery snapshot with no generation result fields', async () => {
+    const context = hostContext();
+    // A cleanup-only barrier over an operation-local enable: the fence is
+    // what selects the response shape, whatever the barrier will remove.
+    context.coordinator.registerGlobalEnable('preview-x', 'initial-enable');
+    const inFlight = Promise.withResolvers<unknown>();
+    context.coordinator.trackInFlight(inFlight.promise);
+    const disposition = context.coordinator.disposeGlobalDisable(() => {});
+    if (disposition.kind !== 'pending') {
+      throw new Error('expected an accepted barrier');
+    }
+    const functions = registerFunctions(context);
+    const fenced = (await functions
+      .get('agent-customization-inspector:get-session')!
+      .handler()) as Record<string, unknown>;
+    // A control result, not a generation snapshot: `{ globalContentEpoch,
+    // data }` with no result-level generation fields at all.
+    expect(Object.keys(fenced).toSorted()).toEqual(['data', 'globalContentEpoch']);
+    const data = fenced['data'] as Record<string, unknown>;
+    expect(Object.keys(data).toSorted()).toEqual([
+      'globalContentEpoch',
+      'globalControl',
+      'globalDisableInProgress',
+      'globalEnableInProgress',
+      'sessionId',
+    ]);
+    // A cleanup-only barrier can have a null control; the fence projection is
+    // the required non-null field.
+    expect(data['globalControl']).toBeNull();
+    expect(data['globalDisableInProgress']).toMatchObject({
+      operationId: disposition.operationId,
+    });
+    inFlight.resolve(null);
+    await disposition.completion;
+    // The fence cleared: the very next session response is the full envelope.
+    const full = (await functions
+      .get('agent-customization-inspector:get-session')!
+      .handler()) as Record<string, unknown>;
+    expect(Object.keys(full).toSorted()).toEqual([
+      'data',
+      'globalContentEpoch',
+      'globalGeneration',
+      'repositoryGeneration',
+    ]);
   });
 });

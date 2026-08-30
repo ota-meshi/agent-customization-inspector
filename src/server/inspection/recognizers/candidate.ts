@@ -83,8 +83,10 @@ import type { RuleDiscoveryClass } from '../../../shared/registries/rule-types';
  * separately rather than collapsed into a recognition-level winner, because
  * two rules admitting the same physical file are two authorizations, and a
  * winner would say one of them did not happen. Internal to the committed
- * generation: no session response carries an admission, and the record exists
- * for the relationship phases that will read it.
+ * generation: no session response carries an admission. What reads it is the
+ * publication, which derives each recognition's surfaces from the rules that
+ * admitted the file — the badges an inventory row and a detail state beside
+ * a product's name (`scan.ts` § recognizingSurfaces, FR-009).
  *
  * A class holding the compiled rule rather than a transcription of its
  * fields: which rule authorized the read is the rule's own fact, so the two

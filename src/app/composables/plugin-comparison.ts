@@ -35,7 +35,7 @@
 // request tokens.
 import { shallowRef } from 'vue';
 import type { SupportedTool } from '../../shared/entities';
-import { toJsonStringBody, type ComparisonSide } from '../components/detail-route';
+import { sideFamilyOf, toJsonStringBody, type ComparisonSide } from '../components/detail-route';
 import type { SessionApiClient } from '../session/api-client';
 import type { ClientDataPurge } from '../session/client-data';
 import type {
@@ -184,6 +184,14 @@ export class PluginComparisonState {
 
   /** Where the one open comparison stands; see {@link PluginComparisonViewStatus}. */
   public readonly status = shallowRef<PluginComparisonViewStatus>('idle');
+  /**
+   * The Source family of the open request, held from dispatch (FR-030): the
+   * adopted details cannot answer it while the pair is still loading or is
+   * one-sided, and the session's generation adoption must close a comparison
+   * exactly when the sequence that owns it advanced — never for the other
+   * sequence's commit.
+   */
+  public readonly openSequence = shallowRef<SourceKind | null>(null);
 
   /** The first compared carrier's adopted detail. Null outside 'ready'. */
   public readonly leftDetail = shallowRef<PluginCarrierDetailDto | null>(null);
@@ -268,6 +276,16 @@ export class PluginComparisonState {
   readonly #openContentOwners = new Set<() => void>();
 
   /**
+   * The owners rendering the selected file pair alone, cleared by
+   * {@link #dropFilePair} so choosing another of the plugin's files disposes
+   * the previous file's models in the same synchronous block that drops its
+   * state (data-model.md § BrowserState) — the shared registry above would
+   * take the carrier and manifest panes with it, which stay open across a
+   * file change.
+   */
+  readonly #openFileContentOwners = new Set<() => void>();
+
+  /**
    * The tail of this view's request chain, so its three pairs are fetched one
    * at a time.
    *
@@ -309,6 +327,16 @@ export class PluginComparisonState {
   }
 
   /**
+   * Registers one owner of the selected file pair's rendered content; see
+   * {@link #openFileContentOwners} for why the file pair has a registry of
+   * its own.
+   */
+  public registerOpenFileContentOwner(disposer: () => void): () => void {
+    this.#openFileContentOwners.add(disposer);
+    return () => this.#openFileContentOwners.delete(disposer);
+  }
+
+  /**
    * Runs one pair's requests after every pair queued before it, and never
    * beside one; see {@link #requestChain}. A task that throws is not this
    * class's to handle — every outcome the client can answer with is settled
@@ -347,9 +375,12 @@ export class PluginComparisonState {
   #dropView(): void {
     this.#requestVersion += 1;
     this.#resetChain();
+    this.#leftCarrierSource = null;
+    this.#rightCarrierSource = null;
     this.leftDetail.value = null;
     this.rightDetail.value = null;
     this.status.value = 'idle';
+    this.openSequence.value = null;
     this.errorMessage.value = null;
     this.#dropFilePair();
     this.#dropManifestPair();
@@ -369,6 +400,13 @@ export class PluginComparisonState {
     this.rightFile.value = null;
     this.fileStatus.value = 'idle';
     this.fileErrorMessage.value = null;
+    // The previous file's models go with its state, in this same synchronous
+    // block (data-model.md § BrowserState): waiting for the render flush to
+    // unmount them would hold the authored text one flush past the state
+    // that showed it.
+    for (const disposer of this.#openFileContentOwners) {
+      disposer();
+    }
   }
 
   /** Drops the manifest pair alone; see {@link #dropFilePair}. */
@@ -412,6 +450,7 @@ export class PluginComparisonState {
     // Dropped now and fetched in turn: the drop is what supersedes, and it
     // must not wait behind a pair the reader has already left.
     this.#dropView();
+    this.openSequence.value = sideFamilyOf(left);
     const requested = this.#requestVersion;
     // Loading from the moment it is queued, not from the moment it runs: the
     // drop above leaves the view idle, which is a state this surface reports
@@ -456,6 +495,8 @@ export class PluginComparisonState {
     // half of it.
     this.leftDetail.value = leftDetail;
     this.rightDetail.value = rightDetail;
+    this.#leftCarrierSource = left.source;
+    this.#rightCarrierSource = right.source;
     this.status.value = 'ready';
   }
 
@@ -479,14 +520,35 @@ export class PluginComparisonState {
    * would then be left holding a document with no request of its own to
    * restore it.
    */
-  #carrierDocument(filePath: string): PluginFileDetailDto | null {
-    for (const detail of [this.leftDetail.value, this.rightDetail.value]) {
-      if (detail?.carrier === 'manifest' && detail.file.sourceRelativePath === filePath) {
+  #carrierDocument(request: PluginComparisonFileRequest): PluginFileDetailDto | null {
+    // Each detail beside the selector its own request named: the response
+    // carries the file's `sourceId` while every request and route spells the
+    // selector, so the pair that produced them relates the two vocabularies.
+    for (const [detail, selector] of [
+      [this.leftDetail.value, this.#leftCarrierSource] as const,
+      [this.rightDetail.value, this.#rightCarrierSource] as const,
+    ]) {
+      // Matched on the whole identity, never the path alone (FR-030): two
+      // consented homes can hold one Source-relative Path, and adopting one
+      // side's document for the other's request would show one file's bytes
+      // under both sides' attribution.
+      if (
+        detail?.carrier === 'manifest' &&
+        detail.file.sourceRelativePath === request.filePath &&
+        selector === request.carrier.source
+      ) {
         return { file: detail.file, diagnostics: detail.diagnostics };
       }
     }
     return null;
   }
+
+  /**
+   * The Source selector each adopted carrier detail was requested for
+   * ({@link #carrierDocument}). Null exactly while its detail is.
+   */
+  #leftCarrierSource: ComparisonSide['source'] | null = null;
+  #rightCarrierSource: ComparisonSide['source'] | null = null;
 
   /**
    * Whether every side of a document pair is in hand already: a side that is
@@ -496,7 +558,7 @@ export class PluginComparisonState {
    * never renders a loading state on the way to it.
    */
   #pairNeedsNoRequest(sides: readonly (PluginComparisonFileRequest | null)[]): boolean {
-    return sides.every((side) => side === null || this.#carrierDocument(side.filePath) !== null);
+    return sides.every((side) => side === null || this.#carrierDocument(side) !== null);
   }
 
   /**
@@ -521,8 +583,8 @@ export class PluginComparisonState {
       // Both copies are in hand: a selected file that is one carrier's own
       // manifest is the document that carrier's response already carried
       // ({@link #carrierDocument}).
-      this.leftFile.value = left === null ? null : this.#carrierDocument(left.filePath);
-      this.rightFile.value = right === null ? null : this.#carrierDocument(right.filePath);
+      this.leftFile.value = left === null ? null : this.#carrierDocument(left);
+      this.rightFile.value = right === null ? null : this.#carrierDocument(right);
       this.fileStatus.value = 'ready';
       return Promise.resolve();
     }
@@ -551,16 +613,14 @@ export class PluginComparisonState {
     const left =
       leftRequest === null
         ? null
-        : (this.#carrierDocument(leftRequest.filePath) ??
-          (await this.#fetchOwnedFile(leftRequest, owns)));
+        : (this.#carrierDocument(leftRequest) ?? (await this.#fetchOwnedFile(leftRequest, owns)));
     if ((leftRequest !== null && left === null) || !owns()) {
       return;
     }
     const right =
       rightRequest === null
         ? null
-        : (this.#carrierDocument(rightRequest.filePath) ??
-          (await this.#fetchOwnedFile(rightRequest, owns)));
+        : (this.#carrierDocument(rightRequest) ?? (await this.#fetchOwnedFile(rightRequest, owns)));
     if ((rightRequest !== null && right === null) || !owns()) {
       return;
     }
@@ -592,8 +652,8 @@ export class PluginComparisonState {
       // Nothing to fetch: each side's manifest is either absent from this scan
       // or a document a carrier response already carried, which is adopted
       // here instead ({@link #carrierDocument}).
-      this.leftManifest.value = left === null ? null : this.#carrierDocument(left.filePath);
-      this.rightManifest.value = right === null ? null : this.#carrierDocument(right.filePath);
+      this.leftManifest.value = left === null ? null : this.#carrierDocument(left);
+      this.rightManifest.value = right === null ? null : this.#carrierDocument(right);
       if (this.leftManifest.value !== null || this.rightManifest.value !== null) {
         this.manifestStatus.value = 'ready';
       }
@@ -622,7 +682,7 @@ export class PluginComparisonState {
     const left =
       leftRequest === null
         ? null
-        : (this.#carrierDocument(leftRequest.filePath) ??
+        : (this.#carrierDocument(leftRequest) ??
           (await this.#fetchOwnedManifest(leftRequest, owns)));
     if ((leftRequest !== null && left === null) || !owns()) {
       return;
@@ -630,7 +690,7 @@ export class PluginComparisonState {
     const right =
       rightRequest === null
         ? null
-        : (this.#carrierDocument(rightRequest.filePath) ??
+        : (this.#carrierDocument(rightRequest) ??
           (await this.#fetchOwnedManifest(rightRequest, owns)));
     if ((rightRequest !== null && right === null) || !owns()) {
       return;

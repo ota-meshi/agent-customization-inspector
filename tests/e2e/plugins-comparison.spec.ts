@@ -199,7 +199,7 @@ test.describe('the plugin comparison surface', () => {
     // Runtime is stated as outside this repository, never as a fact about
     // either side (FR-009).
     await expect(page.locator('body')).toContainText(
-      'installed, registered with a client, enabled, or trusted is state outside this repository',
+      'installed, registered with a client, enabled, or trusted is state this product does not read',
     );
   });
 

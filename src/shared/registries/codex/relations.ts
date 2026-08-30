@@ -75,7 +75,7 @@ import type { CodexRuleId, CodexStrategyId } from '../identifier-types';
 export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, StrategyRelations>> = {
   /**
    * Agent inheritance composes both documented custom-agent scopes: the
-   * project files this product can read and the personal ones it may not.
+   * project files and the personal ones, each in the Source that holds it.
    * Both are listed because the strategy describes Codex's runtime — a
    * personal agent whose name matches takes precedence over a built-in, so
    * omitting the User scope would describe a selection over project files
@@ -90,8 +90,10 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
   },
   /**
    * Config precedence composes the project layers and the User host
-   * configuration. Only the Repository carrier is readable; the edge records
-   * the vendor's documented resolution, and recording it authorizes nothing
+   * configuration. Both carriers are inspectable — the project layer in the
+   * Repository Source and the User one in the consented `CODEX_HOME` — while
+   * the edge records only the vendor's documented resolution, which
+   * authorizes nothing
    * (contracts/runtime-composition.md § "Runtime composition is not Inspector
    * source merging").
    */
@@ -100,7 +102,7 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
   },
   /**
    * Additive hook composition composes every documented hook scope: the
-   * project layers this product can read, the User layer it may not, and the
+   * project layers, the User layer a consented home holds, and the
    * plugin root whose manifest points at the hooks an enabled plugin bundles.
    * All three are listed because the strategy describes Codex's runtime —
    * every active source contributes at once, and the User layer keeps
@@ -150,7 +152,7 @@ export const CODEX_STRATEGY_RELATIONS: Readonly<Record<CodexStrategyId, Strategy
   },
   /**
    * Rule resolution composes both documented rule scopes: the project layers
-   * this product can read and the User layer it may not. Both are listed
+   * in the Repository Source and the User layer a consented home holds. Both are listed
    * because the strategy describes Codex's runtime — the restrictive decision
    * is taken across every active layer at once, so omitting the User layer
    * would describe a combination over the repository alone.

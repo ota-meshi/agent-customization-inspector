@@ -1834,12 +1834,13 @@ export interface PermissionPolicyBlockDetailDto extends PermissionPolicyDetailBa
  * content, which is why FR-027 keeps it behind an explicit request for one
  * file: no inventory or session response may carry it.
  *
- * There is deliberately no `relationships` array yet. A relationship may be
+ * There is deliberately no `relationships` array. A relationship may be
  * emitted only when its kind is listed for the recognized kind *and* its origin
  * is covered by a relationship-only rule in the central registry
- * (contracts/runtime-composition.md § Normative relationship-only registry);
- * no shipped recognition can produce an edge, so the array would be empty in
- * every response this release returns.
+ * (contracts/runtime-composition.md § Normative relationship-only registry) —
+ * and the registry ships no such rule, which the contract suite freezes
+ * (`tests/contract/inspection-rules.test.ts`), so no recognition produces an
+ * edge and the result carries no such array at all.
  *
  * An instruction file never will, whichever product recognizes it. This
  * product does not read references out of prose: no vendor page fixes where an
@@ -1847,10 +1848,10 @@ export interface PermissionPolicyBlockDetailDto extends PermissionPolicyDetailBa
  * product's own invention and a wrong one asserts a reference the reader never
  * wrote. Such a token is source text like any other, and the registry
  * accordingly carries no relationship-only rule an instruction origin could be
- * covered by, so the second gate is closed as well (tasks.md T217, T238). The
- * edges that do arrive with later phases come from declarations a format
- * delimits — a frontmatter value, a JSON or TOML field, a map key — where the
- * boundary is the format's rather than this product's.
+ * covered by, so the second gate is closed as well (tasks.md T217, T238). What
+ * such a rule could ever cover is a declaration a format delimits — a
+ * frontmatter value, a JSON or TOML field, a map key — where the boundary is
+ * the format's rather than this product's.
  * There is no per-tool recognition list
  * either: the parse the detail shows is the file's, and the recognizing tools
  * with their invocation names are published by the inventory the page already
@@ -2293,8 +2294,8 @@ export interface SessionSnapshot {
   readonly globalControl: GlobalControlViewDto | null;
   /** The registered enable operation, or null; see {@link GlobalEnableInProgressDto}. */
   readonly globalEnableInProgress: GlobalEnableInProgressDto | null;
-  /** Global disable-barrier projection (null scaffold until the disable phase). */
-  readonly globalDisableInProgress: null;
+  /** The non-complete disable barrier, or null; its presence is the fence (FR-042). */
+  readonly globalDisableInProgress: GlobalDisableInProgressDto | null;
   /** Increments on the disable purge so clients purge before rendering (FR-042). */
   readonly globalContentEpoch: number;
   /** Session-lifecycle diagnostics — out-of-generation records; each is still
@@ -2336,6 +2337,16 @@ export interface CommandResult<Data> {
   readonly globalContentEpoch: number;
   /** The command's documented result payload. */
   readonly data: Data;
+}
+
+/**
+ * Parameters of `rescan-global` (contracts/http-api.md § rescan-global): the
+ * one enabled member Global Source the command is for, named by its opaque
+ * published ID and never by a path.
+ */
+export interface GlobalRescanParams {
+  /** The published Global Source's opaque ID, exactly as the snapshot lists it. */
+  readonly sourceId: string;
 }
 
 /**
@@ -2587,6 +2598,80 @@ export interface GlobalControlViewDto {
   readonly batchStatus: GlobalBatchStatusDto | null;
   /** The exact server-derived retryable member subset, sorted; empty while `disabling`. */
   readonly retryableTools: readonly GlobalMemberId[];
+}
+
+/**
+ * The non-complete disable barrier's public phase
+ * (contracts/http-api.md § disable-global; data-model.md
+ * § GlobalDisableOperation `status`, minus the terminal `complete`, which is
+ * projected as a null fence rather than a state).
+ */
+export type GlobalDisableState =
+  /** Accepted; revoked continuations and queued Global work are being drained. */
+  | 'draining'
+  /** Drained; the one atomic terminal commit is being prepared. */
+  | 'committing'
+  /** A post-acceptance failure was retained; the fence stays closed until a retry succeeds. */
+  | 'failed';
+
+/**
+ * The read-only projection of a non-complete disable barrier
+ * (contracts/http-api.md § get-session `globalDisableInProgress`): its
+ * presence is the all-inspection-data fence. It exposes neither cleanup
+ * detail nor authority.
+ */
+export interface GlobalDisableInProgressDto {
+  /** The accepted barrier's opaque command ID; joined requests share it. */
+  readonly operationId: string;
+  /** Where the barrier stands; see {@link GlobalDisableState}. */
+  readonly state: GlobalDisableState;
+  /** The failed request's retained error message, present exactly while `state` is `failed`. */
+  readonly message?: string;
+}
+
+/**
+ * Which terminal disposition a disable barrier fixed at first acceptance
+ * (data-model.md § GlobalDisableOperation `commitKind`).
+ */
+export type GlobalDisableCommitKind =
+  /** Cancel and drain an operation-local initial enable that published nothing. */
+  | 'cleanup-only'
+  /** Discard the public Global consent/control/Source state and its whole generation sequence. */
+  | 'remove-active-state';
+
+/**
+ * What one `disable-global` invocation returns
+ * (contracts/http-api.md § disable-global).
+ */
+export interface GlobalDisableResultDto {
+  /** `no-op` mutated nothing; `disabled` is a terminal barrier success. */
+  readonly state: 'disabled' | 'no-op';
+  /** The barrier's operation ID, or null for a no-op that allocated none. */
+  readonly operationId: string | null;
+  /** The disposition the barrier committed, or null for a no-op. */
+  readonly commitKind: GlobalDisableCommitKind | null;
+  /** The unchanged Repository generation: no disposition commits a generation. */
+  readonly repositoryGeneration: number;
+}
+
+/**
+ * The only session response while `globalDisableInProgress` is non-null
+ * (contracts/http-api.md § get-session): the exact control-only recovery
+ * projection, with no generation, Source, file, path, authored value, or
+ * Diagnostic field — the fence exists so no inspection data is public until
+ * terminal success or restart (FR-042).
+ */
+export interface GlobalFenceRecoverySnapshot {
+  /** The host session identity, so a fenced tab still detects a restart. */
+  readonly sessionId: string;
+  /** The already-incremented Global content epoch (FR-042). */
+  readonly globalContentEpoch: number;
+  /** The consent control projection, `disabling`; null for a cleanup-only barrier. */
+  readonly globalControl: GlobalControlViewDto | null;
+  /** The registered enable operation; null once the barrier cancelled it. */
+  readonly globalEnableInProgress: GlobalEnableInProgressDto | null;
+  /** The non-null fence projection this snapshot exists to carry. */
+  readonly globalDisableInProgress: GlobalDisableInProgressDto;
 }
 
 /**

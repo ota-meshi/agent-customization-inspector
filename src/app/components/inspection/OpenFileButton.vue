@@ -37,7 +37,7 @@
 // overflows least where neither side does, which is what keeps it inside the
 // viewport at the reflow width (WCAG 1.4.10) — measuring the room left beside
 // a box is the one thing hand-written positioning cannot do.
-import { computed, inject, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, ref, useId, useTemplateRef, watch } from 'vue';
 import type { Component } from 'vue';
 import ChevronDownIcon from '~icons/lucide/chevron-down';
 import ContainingFolderIcon from '~icons/lucide/folder-open';
@@ -47,7 +47,7 @@ import TerminalEditorIcon from '~icons/lucide/terminal';
 import VisualStudioCodeIcon from '~icons/simple-icons/visualstudiocode';
 import { FILE_OPEN_TARGET_TEXT } from '../../../shared/api-text';
 import type { FileOpenTarget, SourceSelector } from '../../../shared/api-types';
-import { SESSION_VIEW_STATE } from '../../session/view-state';
+import { useSessionViewState } from '../../composables/session-view-state';
 import {
   rememberOpenTarget,
   rememberedOpenTarget,
@@ -66,7 +66,7 @@ const props = defineProps<{
   source: SourceSelector;
 }>();
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
+const sessionViewState = useSessionViewState();
 
 /**
  * The icon each application is shown by, so the button's own face says where a
@@ -128,7 +128,7 @@ const container = useTemplateRef<HTMLElement>('container');
 
 /** The applications this host published for this machine, in its own order. */
 const targets = computed<readonly FileOpenTarget[]>(
-  () => sessionViewState?.snapshot.value?.fileOpenTargets ?? [],
+  () => sessionViewState.snapshot.value?.fileOpenTargets ?? [],
 );
 
 /**
@@ -148,11 +148,6 @@ async function openWith(target: FileOpenTarget): Promise<void> {
     return;
   }
   failure.value = null;
-  // The control is only rendered under an adopted snapshot, which the shell
-  // renders only with the view state provided.
-  if (sessionViewState === undefined) {
-    return;
-  }
   // The file this request is for. One instance of this control serves a
   // sequence of files — a skill's page keeps it while the reader walks the
   // tree — so a settlement is reported only while the page still shows the
@@ -169,6 +164,16 @@ async function openWith(target: FileOpenTarget): Promise<void> {
   requesting.value = false;
   switch (outcome.kind) {
     case 'opened':
+      return;
+    case 'purged':
+      // The launch happened, and the epoch its response carried has already
+      // purged this page's world (FR-042): the view is being replaced, so
+      // there is nothing to say beside a path that is going away.
+      return;
+    case 'discarded':
+      // Settled across a purge: whatever this control was is gone with the
+      // world that pressed it, and the response says nothing about the one
+      // on screen now.
       return;
     case 'rejected':
       // `stale-resource`: the committed generation behind this page no longer

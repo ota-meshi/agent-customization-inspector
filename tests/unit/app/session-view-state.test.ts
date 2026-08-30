@@ -209,6 +209,108 @@ describe('session view state — session loss', () => {
     state.dispose();
   });
 
+  it('adopts a Repository acceptance that settles after a Global dispatch', async () => {
+    // The two explicit-rescan commands commit into independent sequences the
+    // host admits side by side, so each settles in its own token family: a
+    // Global dispatch issued while the Repository admission is still in
+    // flight must not turn that admission into a superseded late response —
+    // that would leave the Repository slot showing `requesting` for a
+    // command the host accepted, with the guard then refusing every retry.
+    const repositoryAdmission = Promise.withResolvers<unknown>();
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.rescanRepository) {
+          return repositoryAdmission.promise;
+        }
+        if (method === SESSION_RPC_FUNCTIONS.rescanGlobal) {
+          return new Promise(() => {}); // still in flight when the first settles
+        }
+        return Promise.resolve(sessionResult(bootstrapSnapshot()));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    const repositoryDispatch = state.requestRescan();
+    void state.rescanGlobalSource('source-global-claude');
+    repositoryAdmission.resolve({
+      globalContentEpoch: 0,
+      data: {
+        scanRequestId: 'scan-1',
+        source: { ...bootstrapSnapshot().sources[0]!, status: 'scanning' },
+      },
+    });
+    await repositoryDispatch;
+    expect(state.rescanState.value).toBe('accepted');
+    expect(state.activeScanRequestId.value).toBe('scan-1');
+    state.dispose();
+  });
+
+  it("keeps every accepted command's correlation when a later press is refused", async () => {
+    // Claude's rescan is accepted, then Codex's; pressing Claude again while
+    // Codex's command runs is refused. The refusal belongs to the pressed row
+    // (`globalRescanSourceId`), and each accepted command's correlation is
+    // its own map entry (`activeGlobalScans`), so a second member's
+    // acceptance never severs the first member's running progress and a
+    // refused press moves neither (FR-030).
+    let rescans = 0;
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.rescanGlobal) {
+          rescans += 1;
+          if (rescans === 1) {
+            return Promise.resolve({
+              globalContentEpoch: 0,
+              data: { scanRequestId: 'req-claude', source: { sourceId: 'source-global-claude' } },
+            });
+          }
+          if (rescans === 2) {
+            return Promise.resolve({
+              globalContentEpoch: 0,
+              data: { scanRequestId: 'req-codex', source: { sourceId: 'source-global-codex' } },
+            });
+          }
+          return Promise.resolve({ error: { code: 'scan-in-progress' } });
+        }
+        return Promise.resolve(sessionResult(bootstrapSnapshot()));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.rescanGlobalSource('source-global-claude');
+    await state.rescanGlobalSource('source-global-codex');
+    await state.rescanGlobalSource('source-global-claude');
+    expect(state.globalRescanRejection.value).toBe('scan-in-progress');
+    expect(state.globalRescanSourceId.value).toBe('source-global-claude');
+    // Both admitted commands stay correlated to their own members: the
+    // coordinator queues the second FIFO rather than replacing the first
+    // (contracts/http-api.md § Concurrency and lifecycle).
+    expect(state.activeGlobalScans.value.get('source-global-claude')).toBe('req-claude');
+    expect(state.activeGlobalScans.value.get('source-global-codex')).toBe('req-codex');
+    state.dispose();
+  });
+
+  it('clears a Global rescan rejection on the refresh that shows the current state', async () => {
+    // The snapshot a refresh adopts is the state the user asked about, so a
+    // stale `scan-in-progress` must not outlive it on a member row — the same
+    // clearing the Repository control's rejection gets, or "wait for it to
+    // finish" would sit beside a Ready member until another command ran.
+    const channel = {
+      call: (method: SessionRpcFunctionName) =>
+        method === SESSION_RPC_FUNCTIONS.rescanGlobal
+          ? Promise.resolve({ error: { code: 'scan-in-progress' } })
+          : Promise.resolve(sessionResult(bootstrapSnapshot())),
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.rescanGlobalSource('source-global-claude');
+    expect(state.globalRescanState.value).toBe('rejected');
+    expect(state.globalRescanRejection.value).toBe('scan-in-progress');
+    await state.refresh();
+    expect(state.globalRescanState.value).toBe('idle');
+    expect(state.globalRescanRejection.value).toBeNull();
+    state.dispose();
+  });
+
   it('never repopulates the view with data captured before a purge', async () => {
     // The client's own guard and this module's assignment are in different
     // microtasks. A purge landing in that gap clears the view; the assignment
@@ -222,6 +324,294 @@ describe('session view state — session loss', () => {
     heldFetch.resolve(sessionResult(bootstrapSnapshot()));
     await started;
     expect(state.snapshot.value).toBeNull();
+    state.dispose();
+  });
+
+  it('refetches after a lost enable response, recovering the accepted batch', async () => {
+    // A delivery failure can hide a confirmation the host accepted
+    // (contracts/http-api.md \u00a7 enable-global: a lost response loses no
+    // batch): the refetch recovers the accepted state \u2014 controls and
+    // `batchStatus` \u2014 while the failed request's own error stays reported.
+    let fetches = 0;
+    const withControl = {
+      ...bootstrapSnapshot(),
+      globalControl: {
+        consentGiven: true,
+        disabling: false,
+        confirmedTools: ['copilot', 'claude', 'codex', 'agents'],
+        controls: [],
+        pendingTools: ['codex'],
+        retryableTools: [],
+        batchStatus: {
+          scanRequestId: 'batch-1',
+          tools: ['codex'],
+          phase: 'waiting',
+          failureRef: null,
+        },
+      },
+    };
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.getGlobalConsentPreview) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            data: {
+              previewId: 'p-1',
+              allowlistVersion: 'v-a',
+              traversalPlanVersion: 'v-t',
+              entries: [],
+              excludedRuleIds: [],
+            },
+          });
+        }
+        if (method === SESSION_RPC_FUNCTIONS.enableGlobal) {
+          return Promise.reject(new Error('enable response lost'));
+        }
+        fetches += 1;
+        return Promise.resolve(
+          sessionResult(fetches === 1 ? bootstrapSnapshot() : (withControl as never)),
+        );
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.loadConsentPreview();
+    await state.confirmGlobalConsent();
+    expect(fetches).toBe(2);
+    expect(state.snapshot.value?.globalControl?.batchStatus?.scanRequestId).toBe('batch-1');
+    expect(state.consentPreviewError.value).toBe('enable response lost');
+    state.dispose();
+  });
+
+  it('releases the enable controls once a snapshot is adopted, whatever it holds', async () => {
+    // A pre-acceptance failure leaves the true state with no control block and
+    // no operation, so reading the adopted snapshot's content would hold the
+    // confirmation open for good on the one path that most needs it back.
+    // Adoption itself is the authoritative answer (FR-042).
+    let enables = 0;
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.getGlobalConsentPreview) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            data: {
+              previewId: 'p-pre',
+              allowlistVersion: 'v-a',
+              traversalPlanVersion: 'v-t',
+              entries: [],
+              excludedRuleIds: [],
+            },
+          });
+        }
+        if (method === SESSION_RPC_FUNCTIONS.enableGlobal) {
+          enables += 1;
+          // A pre-acceptance failure: nothing was accepted, so the refetched
+          // session carries neither a control nor an operation.
+          return Promise.reject(new Error('the enable request failed before acceptance'));
+        }
+        return Promise.resolve(sessionResult(bootstrapSnapshot()));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.loadConsentPreview();
+    await state.confirmGlobalConsent();
+    expect(enables).toBe(1);
+    expect(state.globalEnableState.value).toBe('idle');
+    state.dispose();
+  });
+
+  it('keeps the enable controls submitting until the accepted refetch is adopted', async () => {
+    // An acceptance is not on screen until the refetched snapshot is adopted:
+    // releasing `globalEnableState` at the response re-enables confirm and
+    // recapture over the stale preview, and a second confirmation would take
+    // the in-progress conflict and display a failure over an accepted
+    // operation.
+    let fetches = 0;
+    const refetchGate = Promise.withResolvers<null>();
+
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.getGlobalConsentPreview) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            data: {
+              previewId: 'p-hold',
+              allowlistVersion: 'v-a',
+              traversalPlanVersion: 'v-t',
+              entries: [],
+              excludedRuleIds: [],
+            },
+          });
+        }
+        if (method === SESSION_RPC_FUNCTIONS.enableGlobal) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            data: { state: 'active-no-job', acceptedTools: [], scanRequestId: null },
+          });
+        }
+        fetches += 1;
+        if (fetches === 1) {
+          return Promise.resolve(sessionResult(bootstrapSnapshot()));
+        }
+        // The authoritative refetch carries the activated consent's control
+        // block, which is what releases the accepted hold.
+        return refetchGate.promise.then(() =>
+          Promise.resolve(
+            sessionResult({
+              ...bootstrapSnapshot(),
+              globalControl: {
+                previewId: 'p-hold',
+                confirmedTools: [],
+                controls: [],
+                pendingTools: [],
+                batchStatus: null,
+                retryableTools: [],
+              },
+            } as never),
+          ),
+        );
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.loadConsentPreview();
+    const confirmed = state.confirmGlobalConsent();
+    await Promise.resolve();
+    await Promise.resolve();
+    // The acceptance settled but the authoritative refetch has not: the
+    // controls must still be held.
+    const observedDuringRefetch = state.globalEnableState.value;
+    refetchGate.resolve(null);
+    await confirmed;
+    expect(observedDuringRefetch).toBe('submitting');
+    expect(state.globalEnableState.value).toBe('idle');
+    state.dispose();
+  });
+
+  it('refetches the fresh snapshot when an ordinary command observes a greater epoch', async () => {
+    // FR-042: a greater epoch on any response purges — and the recovery
+    // fetch is automatic, so a tab whose rescan collided with another tab's
+    // completed disable lands on the fresh inventory rather than waiting on
+    // a manual retry in the booting view.
+    let fetches = 0;
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.rescanRepository) {
+          return Promise.resolve({ globalContentEpoch: 5, data: { scanRequestId: 'r-1' } });
+        }
+        fetches += 1;
+        return Promise.resolve(
+          sessionResult(
+            fetches === 1
+              ? bootstrapSnapshot()
+              : ({ ...bootstrapSnapshot(), globalContentEpoch: 5 } as never),
+          ),
+        );
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.requestRescan();
+    await expect.poll(() => state.view.value, { timeout: 2_000 }).toBe('inspection');
+    expect(fetches).toBe(2);
+    expect(state.snapshot.value).not.toBeNull();
+    // The post-purge adoption asks the shell for the inventory: the recovery
+    // restores no prior detail (data-model.md § RecoveryViewState), so the
+    // purged world's route must not remount.
+    expect(state.inventoryResumeRequests.value).toBe(1);
+    state.dispose();
+  });
+
+  it('enters the fenced recovery view when an ordinary command observes the fence', async () => {
+    // FR-042: the fence's fixed conflict on any response purges and enters
+    // control-only recovery — one automatic session fetch adopts the fenced
+    // projection, with no manual retry between the reader and the recovery
+    // controls.
+    const recovery = {
+      sessionId: 'session-a',
+      globalContentEpoch: 4,
+      globalControl: null,
+      globalEnableInProgress: null,
+      globalDisableInProgress: { operationId: 'op-f', state: 'draining' as const },
+    };
+    let fetches = 0;
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.rescanRepository) {
+          return Promise.resolve({ error: { code: 'global-disable-pending' } });
+        }
+        fetches += 1;
+        return Promise.resolve(
+          fetches === 1
+            ? sessionResult(bootstrapSnapshot())
+            : { globalContentEpoch: 4, data: recovery },
+        );
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.requestRescan();
+    await expect.poll(() => state.view.value, { timeout: 2_000 }).toBe('fenced');
+    expect(state.fenceRecovery.value).toEqual(recovery);
+    state.dispose();
+  });
+
+  it('reports a pre-acceptance disable failure beside the recovered ordinary view', async () => {
+    // A disable the host refused before accepting anything leaves no fence:
+    // the recovery fetch adopts the ordinary view — whose success clears
+    // session errors — so the failed request's own error is restated rather
+    // than silently swallowed (contracts/http-api.md § Common results and
+    // errors).
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.disableGlobal) {
+          return Promise.reject(new Error('disable registration blew up'));
+        }
+        return Promise.resolve(sessionResult(bootstrapSnapshot()));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.requestGlobalDisable();
+    expect(state.view.value).toBe('inspection');
+    expect(state.sessionErrorMessage.value).toBe('disable registration blew up');
+    state.dispose();
+  });
+
+  it('restates a Repository command failure past the other sequence\u2019s dispatch', async () => {
+    // The restatement guard is the slot's own dispatch counter, not a shared
+    // one (FR-030 — two independent sequences): a Global dispatch issued
+    // while the failed Repository command's recovery fetch is out must not
+    // suppress the Repository failure's restatement.
+    const recoveryFetch = Promise.withResolvers<unknown>();
+    let fetches = 0;
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.rescanRepository) {
+          return Promise.reject(new Error('rescan lost mid-flight'));
+        }
+        if (method === SESSION_RPC_FUNCTIONS.rescanGlobal) {
+          return new Promise(() => {}); // still in flight throughout
+        }
+        fetches += 1;
+        return fetches === 1
+          ? Promise.resolve(sessionResult(bootstrapSnapshot()))
+          : recoveryFetch.promise;
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    const repositoryDispatch = state.requestRescan();
+    // Let the failure land and its recovery fetch go out, then dispatch the
+    // other sequence's command while that fetch is still unsettled.
+    while (fetches < 2) {
+      await Promise.resolve();
+    }
+    void state.rescanGlobalSource('source-global-claude');
+    recoveryFetch.resolve(sessionResult(bootstrapSnapshot()));
+    await repositoryDispatch;
+    expect(state.sessionErrorMessage.value).toBe('rescan lost mid-flight');
     state.dispose();
   });
 
@@ -504,6 +894,28 @@ describe('session view state — detail ownership across page instances', () => 
     expect(state.fileDetailState.value).toBe('ready');
   });
 
+  it('drops every held slot when a policy detail opens over them', async () => {
+    // The one-open-detail rule in the other direction (#dropOpenDetails,
+    // FR-027): opening a policy drops the whole previous subject — the entry
+    // slot here, and with it the plugin file slots and row key the shared
+    // drop owns — never a hand-picked subset that leaves authored text held.
+    const scripted = channelFrom([
+      sessionResult(bootstrapSnapshot()),
+      detailFor('entry-1'),
+      policyFor('.codex/rules/deploy.rules'),
+    ]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
+
+    await state.openPolicyDetail('.codex/rules/deploy.rules');
+    expect(state.policyDetail.value?.file.sourceRelativePath).toBe('.codex/rules/deploy.rules');
+    expect(state.entryDetail.value).toBeNull();
+    expect(state.pluginManifestFile.value).toBeNull();
+    expect(state.pluginOpenFile.value).toBeNull();
+  });
+
   it('drops a held policy when a file detail opens over it', async () => {
     // The same one-open-detail rule the carrier slot follows: a permission
     // policy is its own function's result about its own subject, so opening a
@@ -764,6 +1176,75 @@ describe('session view state — companion failures stay confined to the pane', 
     state.closeFileDetail();
     expect(stateWhenDisposed).toBe('idle');
     expect(detailWhenDisposed).toBeNull();
+  });
+});
+
+describe("a commit invalidates only its own sequence's open views (FR-030)", () => {
+  it('keeps a loading Repository comparison open across a Global commit', async () => {
+    // The pair is judged by the family its open request named, held from
+    // dispatch: while both detail loads are still in flight nothing adopted
+    // can answer it, and resolving the family from the adopted details would
+    // close this Repository pair over a Global commit it does not read from —
+    // on a page whose own generation never moved, so no route re-requests it.
+    const detailHeld = new Promise(() => {});
+    const sessions = [
+      sessionResult(bootstrapSnapshot()),
+      sessionResult(bootstrapSnapshot({ globalGeneration: 1 })),
+    ];
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.getSession) {
+          return Promise.resolve(sessions.length > 1 ? sessions.shift() : sessions[0]);
+        }
+        return detailHeld;
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    const opened = state.skillComparison.open(
+      { source: 'repository', sourceRelativePath: '.claude/skills/a/SKILL.md' },
+      { source: 'repository', sourceRelativePath: '.agents/skills/a/SKILL.md' },
+    );
+    expect(state.skillComparison.status.value).toBe('loading');
+    expect(state.skillComparison.openSequence.value).toBe('repository');
+    // The Global sequence commits its first generation; the Repository pair
+    // stays exactly where it was, still loading its own sequence's files.
+    await state.refresh();
+    expect(state.snapshot.value?.globalGeneration).toBe(1);
+    expect(state.skillComparison.status.value).toBe('loading');
+    expect(state.skillComparison.openSequence.value).toBe('repository');
+    state.dispose();
+    await Promise.race([opened, Promise.resolve()]);
+  });
+
+  it('closes a loading Repository comparison when its own sequence commits', async () => {
+    const detailHeld = new Promise(() => {});
+    const sessions = [
+      sessionResult(bootstrapSnapshot({ repositoryGeneration: 1 })),
+      sessionResult(bootstrapSnapshot({ repositoryGeneration: 2 })),
+    ];
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.getSession) {
+          return Promise.resolve(sessions.length > 1 ? sessions.shift() : sessions[0]);
+        }
+        return detailHeld;
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    const opened = state.skillComparison.open(
+      { source: 'repository', sourceRelativePath: '.claude/skills/a/SKILL.md' },
+      { source: 'repository', sourceRelativePath: '.agents/skills/a/SKILL.md' },
+    );
+    expect(state.skillComparison.status.value).toBe('loading');
+    await state.refresh();
+    // Its own sequence moved on: the pair drops so the route re-requests it
+    // under the new generation (FR-030).
+    expect(state.skillComparison.status.value).toBe('idle');
+    expect(state.skillComparison.openSequence.value).toBeNull();
+    state.dispose();
+    await Promise.race([opened, Promise.resolve()]);
   });
 });
 

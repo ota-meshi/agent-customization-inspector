@@ -83,11 +83,14 @@ customization-selected destination、別machineへの調査content送信は禁�
    不一致が生むrejectionを文書化する。宣言済みparameterの検証はresolutionであって、
    その前に置くshape guardではない: detailのparameterはいずれもcommit済みgenerationに
    対して解決されるpublished identityであってfilesystem operandではない —
-   `get-file-detail`と`open-file`がそれぞれ取るSourceとpathの組、
-   `get-mcp-carrier-detail`と`get-permission-policy-detail`がそれぞれ取る
-   commit済みSource-relative Path、
-   `get-plugin-carrier-detail`が取るpathとplugin名の
-   組（その答えはinventory row 1件のものである） — であり、invokeされたfunctionが
+   `get-file-detail`、`get-mcp-carrier-detail`、`get-hook-carrier-detail`、
+   `get-permission-policy-detail`がそれぞれ取るSourceとpathの組、
+   その組にclosedなopen targetを加えて`open-file`が取るもの、
+   `get-plugin-carrier-detail`が取るSource・path・認識tool・plugin名の
+   組（その答えはinventory row 1件のものである）、そして
+   `get-plugin-file-detail`が取るcarrierのSourceとpathの組に認識tool、rowの
+   plugin名 — 名前なしrowはnull — と読むfile自身のSource-relative Pathを
+   加えたもの — であり、invokeされたfunctionが
    そのresourceを保持しないあらゆる値は、別の型の値も含めて、どこにも解決されず
    `stale-resource` rejectionになる。
    Global functionのpreview、allowlist-version、consentの各parameterも同じ形で自身の
@@ -234,7 +237,7 @@ Result data:
 SessionSnapshot
 ├── fileOpenTargets[] — このhostがcommit済みfileを渡せるapplication。detail surfaceが
 │   提示する順で、通常のclickが使うものが先頭: このmachineでhostが解決したeditorが並び、
-│   続いてどのmachineも自身のhandlerで満たす`default-application`と
+│   続いてplatform自身のhandler launcherへのhand-offである`default-application`と
 │   `containing-folder`（§ open-fileを参照）
 ├── sessionId, createdAt, repositoryGeneration, globalGeneration, snapshotState, globalContentEpoch,
 │   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
@@ -244,7 +247,7 @@ SessionSnapshot
 │                         batchStatus null | { scanRequestId, tools[], phase, failureRef } },
 │   sessionDiagnosticIds, repositoryFailureDiagnosticId
 ├── sources[]
-│   ├── sourceId, kind, tool, enabled, status, generation, scanRequestId
+│   ├── sourceId, kind, member, enabled, status, generation, scanRequestId, diagnosticIds[]
 │   ├── boundary { displayRoot, origin }
 │   └── progress null | { scanRequestId, phase, visitedEntries, candidateFiles, readBytes,
 │                         diagnosticCount, queuedAt, startedAt }
@@ -254,9 +257,9 @@ SessionSnapshot
 │       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
 │       only; what it was recognized as belongs to a per-kind inventory below
 ├── instructions[]
-│   └── applicabilityRange string | null,
+│   └── sourceId, applicabilityRange string | null,
 │       files[] { sourceRelativePath, recognitions[] { tool, surfaces[] } } —
-│       適用範囲1つにつき1行、その範囲が担当する各 file を、その file の
+│       Sourceと適用範囲の組につき1行 — Sourceはrowのもう半分のidentityである（FR-030）— その範囲が担当する各 file を、その file の
 │       recognition を closed tool order で、各 recognition の product surface を
 │       closed surface order で持つ。null の1行が一覧を閉じ、既知の範囲を
 │       持たない file を持つ
@@ -272,7 +275,7 @@ SessionSnapshot
 │       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
 ├── mcp[]
 │   └── name string | null,
-│       declarations[] { sourceRelativePath, tool, surfaces[], parseStatus,
+│       declarations[] { sourceId, sourceRelativePath, tool, surfaces[], parseStatus,
 │       diagnosticIds[] } —
 │       宣言されたserver名1つにつき1行で、その名前を解決する各宣言を持つ —
 │       各宣言はcarrierをSourceとSource相対Pathで名指し（FR-030）、公開
@@ -636,7 +639,7 @@ Parameters: fileのidentity全体を、functionの単一argumentであるobject�
 すなわちcommit済みSource-relative Pathと、それを保持するSourceである（FR-030）。
 Global commitが第2のSourceをpublishした後は、両者が1つのpathを保持しうるため、
 path単独ではどのfileも指さない。SourceはSource IDではなくselector — `repository`
-または`global-<tool>` — で名指す。IDはそれをmintしたlaunchのものである一方、読み手が
+または`global-<member>` — で名指す。IDはそれをmintしたlaunchのものである一方、読み手が
 保存したlinkはそのlaunchより長く生きなければならないからである。Selectorの検証は
 他のdetail parameterと同じくresolutionであってfilesystem operandではないため、
 commit済みSourceのどれも名乗らないselectorはどこにも解決されず、未知のpathと同じ
@@ -770,17 +773,18 @@ instruction fileの認識toolはそのinventory row（`instructions[]`）、cust
 1つのfileを読む2つのproductは同じbyteを読むため、toolごとのaddressは1つのdocumentに2つのURLを
 与えることになり、productが異なる点 — skillを呼び出す名前 — は、そのfileを抱えるrowから
 pageがまとめて述べるためである。
-Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、relationship
-phaseが読むことになるcommit済みgenerationの内部record（data-model.md § ToolRecognition）
+Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、commit済み
+generationの内部record（data-model.md § ToolRecognition）
 であり、session responseは運ばない — したがって設定済みfallback instruction fileの
-detailは、staticなものと形の上で区別できない。Edge recordの`relationships` arrayも存在しない —
-shipped recognitionはedgeを1つも生成できないため、すべてのresponseで空になる。これは
-それを埋めるrelationship phaseとともに到着する。Instruction fileは、どのproductが認識しても
-1つも生成しない。この製品はprose中から参照を読み取らない: 書かれた`@path`状のtokenがどこで
+detailは、staticなものと形の上で区別できない。Edge recordの`relationships` arrayも存在しない:
+edgeを出せるのはrelationship-only ruleがcoverするoriginだけで、registryはそのruleを1つも
+出荷しないため（contracts/runtime-composition.md § Normative relationship-only registry）、
+どのrecognitionもedgeを生成せず、responseはそのarray自体を運ばない。Instruction fileも、
+どのproductが認識しても1つも生成しない。この製品はprose中から参照を読み取らない: 書かれた`@path`状のtokenがどこで
 終わるかを定めたvendor pageは無く、境界ruleはすべてこの製品自身の発明になり、誤ったruleは
 読者が書いていない参照を主張することになるからである。そのtokenはsource textのままであり、
-instruction originをcoverするrelationship-only ruleも存在しない。後続phaseが公開するedgeは、
-formatが区切る宣言 — frontmatterの値、JSON/TOMLのfield、mapのkey — に由来する。境界を決めるのは
+instruction originをcoverするrelationship-only ruleも存在しない。そうしたruleが将来coverし得るのは、
+formatが区切る宣言 — frontmatterの値、JSON/TOMLのfield、mapのkey — である。境界を決めるのは
 formatであって、この製品ではない。
 
 各frontmatter entryの`keyKind`はclosed union `string | number | boolean | null`であり、
@@ -1239,7 +1243,7 @@ Parameters: fileのidentity全体と、渡す先のapplicationを名指すobject
 ```
 
 commit済みSource-relative Path、それを保持するSource（`get-file-detail`が名指すのと同じ
-`repository`または`global-<tool>`）、そして閉じたtarget集合
+`repository`または`global-<member>`）、そして閉じたtarget集合
 `visual-studio-code | sublime-text | terminal-editor | default-application | containing-folder`の1メンバー。
 
 名指されたfileを、hostが動いているmachine上の名指されたapplicationで開く。絶対pathはhostの
@@ -1271,8 +1275,11 @@ generationへ解決されるため、launchが受け取り得る絶対pathはこ
   求めたのはfolderだからである。
 
 `get-session` snapshotの`fileOpenTargets`は、このmachineでこのfunctionが受理する集合そのもので
-あり、surfaceが提示する順に並ぶ。Hostが解決しなかったeditorはそこに存在しない — したがって
-surfaceは、hostがlaunchできないapplicationを提示しない。Resultはpayloadを持たない: launchを
+あり、surfaceが提示する順に並ぶ。Hostが解決しなかったeditorはそこに存在しない — hostはeditor自身の
+executableを検証するため、surfaceはhostが起動できないeditorを提示しない。2つのhandler targetは
+別である: それぞれはplatform自身のhandler launcherへのhand-offであり常に提示される。fileに対して
+handlerが登録済みかどうかはそのmachine自身の状態で、launchする以外のどのprobeも答えられない。
+launcherが欠けているかhandlerを持たないmachineでは、そのlaunchの通常のerrorとして報告される。Resultはpayloadを持たない: launchを
 要求したことだけを報告し、machineがそのfileをどう扱ったかについては何も述べない。それはその
 machineの領分である。
 
@@ -1577,9 +1584,11 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
   不能にrevokeする。1 fileに限定されたoutcome（FR-028）だけでは、attemptのpublication authority
   をrevokeしない。Revocation後は、late byte、graph record、Diagnostic、DTO resultをすべて
   破棄する。取消不能なkernel operationを物理的にcancelできるとは保証しない。
-- Successfulなcompleteまたはpartial scanはowning sequence内で正確にN+1をcommitし、scanned
-  Sourceと、Global batch commitでは全carried Global Sourceについて、そのsequenceのgeneration
-  所有graph IDを再生成する。Process-lifetimeでstableなSource IDと、他方のsequence全体、すなわち
+- Successfulなcompleteまたはpartial scanはowning sequence内で正確にN+1をcommitし、公開する
+  Source — scanned Sourceと、Global batch commitでは新たに公開する各member Source — について、
+  そのsequenceのgeneration所有graph IDを再生成する。carried Global Sourceはrecordと
+  IDを保ち、snapshot adoptionが置き換えるgenerationを通じてのみ無効化される。Process-lifetimeで
+  stableなSource IDと、他方のsequence全体、すなわち
   そのgeneration、ID、viewは変更しない。
   Scanned Sourceのstale-failure entryと参照先failureだけをclearし、別Sourceの両方をcarryする。
   Fatalな明示rescanはpartial resultを含む全uncommitted resultをdiscardし、owning sequenceのNと

@@ -5,9 +5,10 @@
 // way a Copilot file becomes a candidate, and a candidate is the only thing a
 // rule makes readable (contracts/inspection-path-allowlist.md § "Read
 // authorization and applicability"). Vendor behaviors, strategies, evidence,
-// relationships, and authored file content never grant that authority. Rules
-// arrive with the inventory phase that needs them, so the remaining rows of
-// the vendor contract are deliberately absent until their phase ships.
+// relationships, and authored file content never grant that authority. The
+// catalog below is complete over this vendor's contract: it is typed
+// `Readonly<Record<CopilotRuleId, InspectionRule>>`, so a contract row with
+// no record here is a compile error rather than a silent gap.
 //
 // The instruction phase adds seven read-authorizing records and the catalog's
 // first two non-read exclusions. The instruction records come in two shapes:
@@ -1713,7 +1714,6 @@ export const COPILOT_REPO_CLAUDE_SETTINGS_HOOKS_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
-/** Copilot's contribution to the inspection-rule registry, keyed by `ruleId`. */
 /**
  * Copilot Global personal instructions: the read-authorizing counterpart of
  * `copilot.behavior.cli.user.instructions.root` (FR-015). An exact target, so
@@ -2147,6 +2147,7 @@ export const COPILOT_EXCLUDED_USER_RUNTIME_RULE = {
     : [],
 } as const satisfies InspectionRule;
 
+/** Copilot's contribution to the inspection-rule registry, keyed by `ruleId`. */
 export const COPILOT_INSPECTION_RULES: Readonly<Record<CopilotRuleId, InspectionRule>> = {
   [COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE.ruleId]:
     COPILOT_EXCLUDED_ADDITIONAL_STANDARD_LOCATIONS_RULE,

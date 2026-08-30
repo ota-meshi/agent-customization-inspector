@@ -14,40 +14,66 @@
 // pause/resume control: WCAG 2.2.2 applies to automatically updating content,
 // and there is none to pause (contracts/accessibility-acceptance.md
 // § 2.2.2).
+//
+// The session is joined here rather than threaded down as props: everything
+// this panel shows is a fact about the session's Repository sequence — its
+// Source, the command state, the stale overlay — and passing those through
+// the page made it carry seven values it never read (the reasoning
+// `useSessionSources` records). Renders nothing until a snapshot with the
+// Repository Source is adopted, which is the page's own condition too.
 import { computed } from 'vue';
 import { SOURCE_STATUS_TEXT } from '../../../shared/entities';
 import { SCAN_PROGRESS_PHASE_TEXT } from '../../../shared/api-text';
-import type { RejectionCode } from '../../../shared/rejection-codes';
-import type { SourceDto, StaleSourceFailure } from '../../../shared/api-types';
+import { useSessionViewState } from '../../composables/session-view-state';
 
-const props = defineProps<{
-  /** The Source whose scan status is shown. */
-  source: SourceDto;
-  /**
-   * How many of that Source's committed files kept a file-confined diagnostic
-   * (FR-028) — what the `partial` status reports. Stated here because this is
-   * where a reader meets that status, while the causes themselves are on the
-   * rows of the files that carry them.
-   */
-  diagnosticFileCount: number;
-  /** The request ID of the command this page issued; null before any. */
-  activeScanRequestId: string | null;
-  /** True while the rescan command itself is in flight. */
-  requesting: boolean;
-  /** The closed rejection code of a refused command; null otherwise. */
-  rejection: RejectionCode | null;
-  /** This Source's stale overlay from a failed explicit rescan; null if none. */
-  staleFailure: StaleSourceFailure | null;
-  /** The retained failure text of that overlay, when it is an error message. */
-  staleFailureMessage: string | null;
-}>();
+const sessionViewState = useSessionViewState();
 
-const emit = defineEmits<{
-  /** The user asked to dispatch one explicit rescan. */
-  rescan: [];
-  /** The user asked to refetch the current status and inventory. */
-  refresh: [];
-}>();
+/** The Repository Source whose scan status this panel shows; null before bootstrap adopts one. */
+const source = computed(
+  () =>
+    sessionViewState.snapshot.value?.sources.find((candidate) => candidate.kind === 'repository') ??
+    null,
+);
+
+/** True while the rescan command itself is in flight. */
+const requesting = computed(() => sessionViewState.rescanState.value === 'requesting');
+
+/**
+ * How many of this Source's committed files kept a file-confined diagnostic —
+ * which is what a `partial` status reports (FR-028). Stated here because this
+ * is where a reader asks what "Partial" means, while the causes themselves are
+ * spread across the rows of the files that carry them.
+ *
+ * Counted from the published files rather than from `snapshot.diagnostics`: a
+ * diagnostic is referenced by the file it belongs to, and one file may hold
+ * several, so counting records would report a number no list on this page has.
+ */
+const diagnosticFileCount = computed(() => {
+  const sourceId = source.value?.sourceId;
+  let count = 0;
+  for (const file of sessionViewState.snapshot.value?.files ?? []) {
+    if (file.sourceId === sourceId && file.diagnosticIds.length > 0) {
+      count += 1;
+    }
+  }
+  return count;
+});
+
+/** The Repository Source's stale overlay from a failed explicit rescan; null if none. */
+const staleFailure = computed(() => {
+  const sourceId = source.value?.sourceId;
+  return (
+    sessionViewState.snapshot.value?.staleFailures.find((entry) => entry.sourceId === sourceId) ??
+    null
+  );
+});
+
+// A stale overlay explains itself with either the failed request's real error
+// message or a retained Diagnostic; only the message variant has text of its
+// own, and the Diagnostic variant is already rendered by the diagnostic list.
+const staleFailureMessage = computed(() =>
+  staleFailure.value?.failureRef.kind === 'error' ? staleFailure.value.failureRef.message : null,
+);
 
 /**
  * Dispatches the rescan unless one is already in flight. The guard is here
@@ -57,8 +83,8 @@ const emit = defineEmits<{
  * the button focusable while this guard keeps the duplicate dispatch out.
  */
 function requestRescan(): void {
-  if (!props.requesting) {
-    emit('rescan');
+  if (!requesting.value) {
+    void sessionViewState.requestRescan();
   }
 }
 
@@ -66,24 +92,29 @@ function requestRescan(): void {
 // request — an automatic startup scan, or a command from an earlier client
 // data epoch — is not shown, because attributing it to the active command
 // would report work the user did not request.
-const correlatedProgress = computed(() =>
-  props.activeScanRequestId !== null &&
-  props.source.progress?.scanRequestId === props.activeScanRequestId
-    ? props.source.progress
-    : null,
-);
+const correlatedProgress = computed(() => {
+  const activeScanRequestId = sessionViewState.activeScanRequestId.value;
+  return activeScanRequestId !== null &&
+    source.value?.progress?.scanRequestId === activeScanRequestId
+    ? source.value.progress
+    : null;
+});
 
 const rejectionText = computed(() =>
-  props.rejection === 'scan-in-progress'
+  sessionViewState.rescanRejection.value === 'scan-in-progress'
     ? 'A Repository scan is already running or queued. Wait for it to finish, then rescan.'
-    : props.rejection === null
+    : sessionViewState.rescanRejection.value === null
       ? null
       : 'The local session refused this rescan. Refresh the status and try again.',
 );
 </script>
 
 <template>
-  <section class="aci-scan-progress aci-panel" aria-labelledby="aci-scan-progress-heading">
+  <section
+    v-if="source"
+    class="aci-scan-progress aci-panel"
+    aria-labelledby="aci-scan-progress-heading"
+  >
     <h3 id="aci-scan-progress-heading">Scan status</h3>
     <!-- Status changes are announced, not just repainted (WCAG 4.1.3). It is
          polite rather than assertive: a scan result is not an alert, and every
@@ -131,7 +162,7 @@ const rejectionText = computed(() =>
       <button type="button" :aria-disabled="requesting || undefined" @click="requestRescan">
         {{ staleFailure ? 'Retry scan' : 'Rescan repository' }}
       </button>
-      <button type="button" @click="emit('refresh')">Refresh status</button>
+      <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
     </p>
     <p class="aci-note">
       Nothing on this page updates by itself. Use “Refresh status” to see the result of a scan that

@@ -306,10 +306,11 @@ its schema. Unknown same-name ordering is projected as conditions rather than an
 winner.
 
 The plugin and marketplace static rules do not search repository descendants. Copilot does not activate
-an arbitrary descendant manifest or catalog merely because its filename matches. A
-nested local plugin manifest is admitted only by the closed derivation from an accepted
-marketplace entry below; that derivation is likewise Inspector policy, not product
-discovery or activation.
+an arbitrary descendant manifest or catalog merely because its filename matches. An
+accepted marketplace entry whose local source validates names the plugin's root, and the
+census enumerates that root's files — its manifest among them — under the catalog's own
+row; no rule admits a nested manifest and none derives one, and that census is likewise
+Inspector policy, not product discovery or activation.
 
 At one explicitly established plugin root, the documented manifest recognition order is
 `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, then
@@ -404,7 +405,7 @@ import, installation, or activation authority.
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact supported frontmatter value/item occurrences in an accepted VS Code prompt or root direct-child CLI command; prompt/command invocation names derived from matched paths remain typed provenance, and links or `#file` targets remain inert |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported frontmatter value/item/map-entry occurrences in an accepted agents Markdown file — repository `.github/agents/*.md` or `.claude/agents/*.md`, or consented user `agents/*.agent.md`; body instructions remain `sourceText`, and `hooks` and `mcp-servers` are the agent's own frontmatter declarations, owning neither a hook nor an MCP recognition |
 | `settings/config` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact supported Repository/local, consented user, or cross-tool-compatible settings leaf/item/map-entry occurrences; contained Hook values belong only to the `hook` recognition, and settings never own an MCP recognition |
-| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component-path leaf/item occurrences in an accepted Copilot plugin manifest, and exact catalog and plugin-entry leaf/item occurrences in an accepted marketplace file, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone represents a plain-string source or object `path` leaf and may seed the closed local-manifest derivation, while inline component bodies are never activated; inline Hook/MCP bodies and referenced scripts/assets do not gain plugin metadata IDs, and component paths never create candidates |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component-path leaf/item occurrences in an accepted Copilot plugin manifest, and exact catalog and plugin-entry leaf/item occurrences in an accepted marketplace file, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone represents a plain-string source or object `path` leaf and names the plugin root whose files the census enumerates, while inline component bodies are never activated; inline Hook/MCP bodies and referenced scripts/assets do not gain plugin metadata IDs, and component paths never create candidates |
 | `hook` | `runtime-reference` | Version values, event map keys, matcher values, and exact handler leaf/item/map-entry occurrences in an accepted standalone hook file or the contained `hooks` block of an accepted settings document. The vendor's other documented owners — a custom agent's frontmatter and a plugin's own hook file — declare hooks as part of what they are, and those occurrences belong to their own kind's row; plugin Hook paths remain relationships only |
 
 The `plugin` row's manifest clause — occurrences in an accepted Copilot plugin manifest —

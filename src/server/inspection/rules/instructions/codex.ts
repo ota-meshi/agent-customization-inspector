@@ -19,9 +19,10 @@ import type {
   CompiledDerivedInstructionRule,
   CompiledStaticInstructionRule,
 } from './compiled-rule';
-import { join } from 'node:path';
 import {
+  PATH_CONDITION_FAILURE_CODES,
   isVcsInternalPath,
+  pathUnderRoot,
   readCandidate,
   rethrowIfResourceExhaustion,
   statThroughLink,
@@ -186,11 +187,17 @@ export const CODEX_DERIVED_FALLBACK_RULE = new CodexCompiledDerivedInstructionRu
 async function readConfigurationSeed(
   root: string,
   seedSegments: readonly string[],
+  continueScan: () => boolean,
 ): Promise<{
   readonly sourceText: string | null;
   readonly seededRead: SeededCandidateRead | null;
 }> {
-  const absolutePath = join(root, ...seedSegments);
+  // Appended without normalizing (`pathUnderRoot`), like every walk probe and
+  // the committed-file launch: `join` would collapse a root's `link/..`
+  // lexically while the walk's reads resolve it through the link, so the seed
+  // would configure the scan from a different directory's file than the one
+  // the walk publishes as `codex.repo.config`.
+  const absolutePath = pathUnderRoot(root, seedSegments);
   let target;
   try {
     // Through the link, like every other read (FR-024): a seed reached by a
@@ -204,11 +211,25 @@ async function readConfigurationSeed(
     // candidate and publishes what it finds there, so a seed that could not be
     // read is reported as that file's own outcome (`codex.repo.config`).
     //
-    // The rethrow separates the machine running out of descriptors or memory
-    // from that answer, because reporting exhaustion as "this repository
-    // declares nothing" would commit a complete generation missing every
-    // configured target.
+    // Only a failure stating the seed's own condition configures nothing;
+    // an environmental `EIO`/`ESTALE` propagates as the attempt's ordinary
+    // error (traversal.ts § PATH_CONDITION_FAILURE_CODES), because
+    // reporting the machine's moment as "this repository declares nothing"
+    // would commit a complete generation missing every configured target —
+    // exactly what the resource-exhaustion rethrow already prevents.
     rethrowIfResourceExhaustion(error);
+    const code = (error as { code?: string }).code;
+    if (code === undefined || !PATH_CONDITION_FAILURE_CODES.has(code)) {
+      throw error;
+    }
+    return { sourceText: null, seededRead: null };
+  }
+  if (!continueScan()) {
+    // Authority left while the stat settled (disable or shutdown): the VCS
+    // realpaths and the read below are each their own filesystem promise,
+    // and revocation stops every new one (data-model.md § ScanAttempt). A
+    // seed that configures nothing is a late result the commit gates
+    // discard.
     return { sourceText: null, seededRead: null };
   }
   if (!target.isFile) {
@@ -226,13 +247,39 @@ async function readConfigurationSeed(
     // without this gate, the read that configures the scan would come from
     // the VCS store the walk itself excludes, and the derived plans would
     // rest on bytes no candidate can ever publish.
-    if (isVcsInternalPath(await realpath(root), await realpath(absolutePath))) {
+    //
+    // The judged path is the seed's parent directory, exactly the walk's own
+    // granularity: descent is what the walk resolves, while a *file* entry
+    // that is itself a link is inventoried on its authored location's terms
+    // (FR-024, traversal.ts § walkDirectory) — so a `config.toml` that is a
+    // link into `.git` is still a candidate the walk publishes, and refusing
+    // to read it here would derive nothing from a carrier whose declaration
+    // the inventory shows.
+    const rootReal = await realpath(root);
+    if (!continueScan()) {
+      // See the post-stat check above: the parent realpath is its own
+      // filesystem promise.
+      return { sourceText: null, seededRead: null };
+    }
+    if (
+      isVcsInternalPath(rootReal, await realpath(pathUnderRoot(root, seedSegments.slice(0, -1))))
+    ) {
       return { sourceText: null, seededRead: null };
     }
   } catch (error) {
-    // The same absence window as the stat above: a seed removed between the
-    // probe and the resolution configures nothing.
+    // The same closed judgement as the stat above: a seed removed between
+    // the probe and the resolution configures nothing, while an
+    // environmental failure propagates.
     rethrowIfResourceExhaustion(error);
+    const code = (error as { code?: string }).code;
+    if (code === undefined || !PATH_CONDITION_FAILURE_CODES.has(code)) {
+      throw error;
+    }
+    return { sourceText: null, seededRead: null };
+  }
+  if (!continueScan()) {
+    // See the post-stat check above: the candidate read is its own
+    // filesystem promise.
     return { sourceText: null, seededRead: null };
   }
   const outcome = await readCandidate(absolutePath);
@@ -284,8 +331,9 @@ export function configuredFallbackBasenamesOf(sourceText: string): readonly stri
  */
 export async function readCodexConfiguredFallbackPlans(
   root: string,
+  continueScan: () => boolean = () => true,
 ): Promise<ConfigurationReadResult> {
-  const seed = await readConfigurationSeed(root, ['.codex', 'config.toml']);
+  const seed = await readConfigurationSeed(root, ['.codex', 'config.toml'], continueScan);
   const seededReads = seed.seededRead === null ? [] : [seed.seededRead];
   if (seed.sourceText === null) {
     return { plans: [], seededReads };

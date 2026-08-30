@@ -206,97 +206,31 @@ jobs:
       # The browser suite drives the packaged CLI (dist/cli.mjs serving
       # dist/public), so the build is a prerequisite of this job.
       - run: pnpm run build
-      # The instrumentation that named the ENOSPC above, not a gate, and still
-      # temporary: it stays for one run to show the low-water reports gone now
-      # that the suite step forbids the core dumps, and goes with the next
-      # change to this file.
-      #
-      # It samples during the suite rather than measuring around it because
-      # nothing accumulates — a run that fails with ENOSPC leaves the disk
-      # unchanged either side of it, and /tmp grows by 4 MB over a whole run —
-      # so what takes the runner's 12 GB of free space gives it back within
-      # one run. A file already unlinked holds its blocks while some process
-      # still has it open, which is invisible to `du` and to any measurement
-      # taken once the suite has ended; `lsof +L1` at the low-water moment is
-      # what named the holder.
-      #
-      # Every step here clears the runner's `-e` and `pipefail` first, because
-      # `du`, `lsof`, and `dmesg` all exit non-zero on something they cannot
-      # read — and the failing command would take every measurement after it
-      # down with it, which is the whole output.
-      - name: Disk usage before the suite
-        run: |
-          set +e +o pipefail
-          df -h /
-          df -i /
-          du -xh -d 1 /tmp 2>/dev/null | sort -h | tail -10
       - name: Run primary-workflow and accessibility suite
         run: |
           set +e +o pipefail
           # No core from a browser this suite crashes. WebKit's
           # ThreadedCompositor and SkiaGPUWorker threads segfault a handful of
           # times per run, and `kernel.core_pattern` hands every crash to
-          # systemd-coredump under a size limit of 2^63: three unlinked cores
-          # of 4.5 GB, 1.9 GB, and 1.9 GB were open at once, which is 8 GB of
-          # the runner's 12 GB of free space, and the lowest reading of that
-          # run was 4 kB — one unlucky write away from the ENOSPC this job had
-          # been failing with. The crashes cost the suite nothing on their own,
-          # since it passed all 340 tests through six of them, so what has to
-          # stop is the dumping: at RLIMIT_CORE zero the kernel writes no core
-          # and never reaches systemd-coredump, and every browser process
-          # Playwright spawns inherits the limit.
-          ulimit -c 0
-          samples="$RUNNER_TEMP/disk-samples.tsv"
-          low_water="$RUNNER_TEMP/disk-low-water.log"
-          (
-            while :; do
-              read -r avail iavail <<<"$(df --output=avail,iavail / | tail -1)"
-              printf '%s\t%s\t%s\n' "$avail" "$iavail" "$(date -Is)" >> "$samples"
-              # 4 GiB of the 12 GB the runner starts with: low enough that a
-              # steady suite never reaches it, high enough to still catch the
-              # holder before the write that fails.
-              if [ "$avail" -lt 4194304 ]; then
-                {
-                  printf '=== %s avail_kb=%s inodes_free=%s\n' "$(date -Is)" "$avail" "$iavail"
-                  sudo lsof -n +L1 2>/dev/null | head -30
-                } >> "$low_water"
-              fi
-              sleep 1
-            done
-          ) &
-          sampler=$!
+          # systemd-coredump under a size limit of 2^63: cores of 6.2 GB and
+          # 2.7 GB were open at once against the runner's 12 GB of free space,
+          # which is the ENOSPC this job had been failing with. The crashes cost the
+          # suite nothing on their own, since it passes every test through
+          # them, so what has to stop is the dumping.
+          #
+          # `ulimit -c 0` does not stop it: the kernel ignores RLIMIT_CORE for
+          # a core it pipes to a program, and this pattern is a pipe, so the
+          # dumps kept arriving from a step that had set the limit to zero.
+          # Pointing that pipe at a program which exits without reading does
+          # stop it, and depends on no process's limit — the kernel's write
+          # has nowhere to go, and a pipe is memory, so nothing reaches the
+          # disk. It is restored with the runner.
+          echo '|/bin/false' | sudo tee /proc/sys/kernel/core_pattern > /dev/null
           # No `--` before the flag: Playwright's CLI treats a literal `--`
           # token as the start of its own positional test-file filters, so
           # `pnpm run test:e2e -- --project=x` silently drops the project
           # filter and runs every project's tests instead of just `x`.
           pnpm run test:e2e --project=${{ matrix.browser }}
-          status=$?
-          # The sampler is this step's own background process and never
-          # outlives it, whether the suite passed or failed.
-          kill "$sampler" 2>/dev/null
-          exit "$status"
-      - name: Disk usage after the suite
-        if: always()
-        run: |
-          set +e +o pipefail
-          df -h /
-          df -i /
-          echo '--- the ten lowest readings: avail_kb, inodes_free, time ---'
-          sort -n "$RUNNER_TEMP/disk-samples.tsv" 2>/dev/null | head -10
-          echo '--- every low-water report ---'
-          head -120 "$RUNNER_TEMP/disk-low-water.log" 2>/dev/null
-          # A browser process crashing and dumping a multi-gigabyte core fits
-          # a spike that leaves nothing behind, so this is where its evidence
-          # would be.
-          echo '--- core pattern and crash directories ---'
-          cat /proc/sys/kernel/core_pattern
-          ls -la /var/crash /var/lib/apport/coredump /var/lib/systemd/coredump 2>&1 | head -30
-          echo '--- kernel messages ---'
-          sudo dmesg 2>/dev/null | grep -iE 'segfault|core dump|out of memory|no space' | tail -30
-          echo '--- what is on disk now ---'
-          du -xh -d 1 /tmp 2>/dev/null | sort -h | tail -20
-          du -xh -d 2 "$GITHUB_WORKSPACE" 2>/dev/null | sort -h | tail -20
-
   build:
     name: Development/build baseline (Node.js LTS, ubuntu-latest)
     runs-on: ubuntu-latest

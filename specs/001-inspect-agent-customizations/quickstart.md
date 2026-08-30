@@ -97,8 +97,7 @@ Expected:
   package's own selection policy uses that vendored copy whenever it is executable and
   falls back to the system `xdg-open` otherwise. The generated HTML shell, CSS, JSON files, and required
   documentation/license files are declarative, non-executable artifacts. The direct production dependencies are exactly the eleven
-  packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and
-  `yaml`; devframe's and `open`'s transitive trees are owned by those packages
+  packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`; devframe's and `open`'s transitive trees are owned by those packages
   and the lockfile.
 - Build output contains no fixture, raw customization text, Global content, cache, or
   source-map path that exposes an inspected machine.
@@ -217,8 +216,10 @@ Expected:
   session identity restores previously displayed state.
 - The session is unauthenticated behind the loopback bind: the product adds no
   per-session token,
-  Origin or Host check, or hand-written router, and nothing is stored in browser storage
-  or a cookie. The documented residual limitation is that other local processes and, via
+  Origin or Host check, or hand-written router, and no session identity, credential, or
+  inspected value is stored in browser storage or a cookie — the only stored values are
+  the two FR-044 presentation preferences (colour scheme and open target), which hold no
+  inspected value. The documented residual limitation is that other local processes and, via
   DNS rebinding, a malicious web page can reach the session while the inspector runs.
 
 For ordinary use, the equivalent launch contract is:
@@ -237,11 +238,12 @@ the fixed process-list probe and the fixed tab-reuse script through the OS `osas
 automation host — and otherwise spawns `open`'s fixed OS helper with the printed origin,
 with devframe's bundled opener disabled so only the product's opener runs. That fixed
 startup opening and the reader's own explicit open-in-editor request are the product-initiated child-process surfaces permitted in the
-initial release; every spawned process receives only fixed arguments and the printed
-origin — no inspection-derived content or path, authored value, or
-user-supplied command — and inherits the launch environment unchanged, into which the
-product writes no inspection-derived value; a platform helper honoring the user's own
-`$BROWSER` applies user preference. The CLI's negatable `--open` flag (default true)
+initial release. The startup opener's processes receive only fixed arguments and the
+printed origin. The open-in-editor request passes exactly one more value: the absolute
+path of the one committed file the reader asked to open — that is the feature — and
+never authored content or a user-supplied command. Every spawned process inherits the
+launch environment unchanged, into which the product writes no inspection-derived
+value; a platform helper honoring the user's own `$BROWSER` applies user preference. The CLI's negatable `--open` flag (default true)
 provides `--no-open` suppression. A missing or failing opener leaves the
 server running: the already printed local origin is the FR-001 fallback. Apart from the
 optional single `--root`, there is no repository picker/ancestor-root discovery,
@@ -338,7 +340,7 @@ Expected:
   the final-release test that packs and installs into an isolated fixture and launches
   `npx --no-install` without relying on the working tree or a runtime download.
   The production-graph tests assert exactly the eleven approved direct dependencies
-  `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml` — their resolved versions
+  `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
   `pnpm-lock.yaml` — and negative packaging fixtures prove that a missing or non-regular
   required entry point fails `verify:package` before publish.
@@ -705,12 +707,14 @@ Verify:
 
 ### 4. Opt in to Global inspection
 
-The preview and the Codex and Claude members of the confirmation ship so far. Copilot's
-and the shared agent home's member ports, retry, and disable arrive with the phases that
-bind them, so a confirmation here evaluates the Codex and Claude slots.
+The whole opt-in ships: the preview, the fixed-four confirmation, per-member rescan,
+same-preview retry, and the priority disable barrier that removes every Global result
+again.
 
 ```bash
 pnpm exec playwright test tests/e2e/global-consent-preview.spec.ts
+pnpm exec playwright test tests/e2e/global-consent.spec.ts
+pnpm exec playwright test tests/e2e/global-disable.spec.ts
 pnpm exec playwright test tests/e2e/global-codex-admission.spec.ts
 pnpm exec playwright test tests/e2e/global-claude-admission.spec.ts
 pnpm exec vitest run --project unit tests/unit/host/global-consent.test.ts
@@ -725,7 +729,7 @@ real home directory. Verify:
 1. No Global path is touched before consent; the preview is derived lexically without
    `stat`, `realpath`, enumeration, or file reads. Instrumented capture proves each of
    `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` is captured exactly once in that order; only
-   `undefined` is absent; `node:os.homedir()` is called exactly once iff any is absent; and
+   `undefined` is absent; `node:os.homedir()` is called exactly once per preview — the shared agent home always derives from it; and
    active-platform `node:path.join` applies only the fixed corresponding suffix. No direct
    `HOME`/`USERPROFILE` selection or existence check occurs.
 2. The consent view shows the exact Copilot, Claude, and Codex lexical roots, input
@@ -745,10 +749,11 @@ real home directory. Verify:
    initial/retry transaction appears together in one atomic Global generation — the enable
    commit creates the Global sequence at generation 1 without touching Repository views or
    state — with no observable
-   per-tool commit. Compare one readable Repository
-   file with one readable Global file and verify that each remains under its independently
-   identified owning Source and Source-relative Path without merging roots or producing a
-   semantic verdict.
+   per-tool commit. Compare two consented homes' readable
+   files of one row — a comparison stays inside one Source family, so no Repository file
+   is offered as a side of that pair (spec.md § Clarifications Session 2026-08-28) — and
+   verify that each remains under its independently identified owning Source and
+   Source-relative Path without merging roots or producing a semantic verdict.
 4. Present-empty, relative, and invalid env overrides use fixed preview states/
    messages, create no retained Diagnostic, and never silently fall back; only an absent
    setting uses the documented default. A consented root that is missing or not a readable
@@ -756,7 +761,7 @@ real home directory. Verify:
    tools from committing. An eligible
    absolute root remains eligible even when it is outside the ordinary home; its location
    alone does not reject it or grant pre-consent I/O.
-   An all-invalid preview, or an eligible preview whose three roots are all found absent
+   An all-invalid preview, or an eligible preview whose four roots are all found absent
    after consent, may still receive the one all-tools confirmation and
    deterministically becomes `active-no-job`.
 5. An unexpected injected admission failure aborts the whole transaction;
@@ -771,10 +776,10 @@ real home directory. Verify:
    substitutes for the raw field. Enable uses only the frozen raw value and stored plan; it
    never rereads the environment or reverse-converts `displayRoot`. Escape-collision, control-character, and backslash fixtures
    prove that the record preserves the separate fields and admission uses the stored raw value.
-   A preview with two eligible entries and one invalid entry has no request-side tool
-   selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex]`,
-   evaluates all three, and returns disjoint `acceptedTools`/`rejectedTools` whose union is
-   all three. A `tools` key or other selector-shaped input is rejected. Retry derives the
+   A preview mixing eligible and invalid entries has no request-side tool
+   selector: initial enable derives fixed `confirmedTools: [copilot, claude, codex, agents]`,
+   evaluates all four, and returns disjoint `acceptedTools`/`rejectedTools` whose union is
+   all four. A `tools` key or other selector-shaped input is rejected. Retry derives the
    complete fixed-order `retryableTools` projection—non-pending unpublished `admitted`
    controls plus `same-preview` rejected controls—and excludes published, pending, and lexical
    `new-preview-required` controls; the client cannot add, narrow, or reorder it. Reusing exact
@@ -1756,8 +1761,7 @@ the exact `package.json.files` entries `dist`, `README.md`, `README.ja.md`, and
 the remaining `dist` contents are Nuxt/tsdown build output and are not re-enumerated by a
 product manifest. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`,
 license notices, exact shebang/executable mode, and the published README pair. The direct
-production dependencies are exactly the eleven packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`,
-`smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml`; devframe's and `open`'s transitive
+production dependencies are exactly the eleven packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`; devframe's and `open`'s transitive
 trees are owned by those packages and the lockfile.
 
 There is no host-security or HTTP-API-router contract step to rerun: devframe owns
@@ -1778,8 +1782,7 @@ window, and rollback/support path. Missing or one-language-only evidence fails t
 gate.
 
 Assert the approved production dependency set from `package.json` and the `pnpm-lock.yaml`
-closure: exactly the eleven direct dependencies `devframe`, `env-editor`, `gunshi`, `h3`, `open`,
-`smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, and `yaml`, so a graph change fails the gate until the dependency decision is
+closure: exactly the eleven direct dependencies `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`, so a graph change fails the gate until the dependency decision is
 explicitly revisited. The committed lockfile owns each resolved version and its integrity
 hash, which is what pins every production package's payload bytes. Only generated
 Package-manager-generated `.bin` symlinks and `.cmd`/`.ps1` shims map to the exact declared

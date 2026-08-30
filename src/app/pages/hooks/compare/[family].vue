@@ -22,7 +22,7 @@
 // value (FR-009).
 //
 // The URL carries the model's own coordinates —
-// `/hooks/compare?event=<declared event>&left=<path>&right=<path>` — the row's
+// `/hooks/compare/<family>?event=<declared event>&leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>` — the row's
 // event in the carriers' own spelling (FR-007) and the two carriers by their
 // Source-relative Paths, the identities the inventory rows and the detail
 // route already use (FR-030). A selection the model cannot express — an event
@@ -40,16 +40,7 @@
 // the comparison state owns: leaving the route closes it, a client-data purge
 // clears it, and a commit drops the previous generation's view while this page
 // re-requests the same selection under the new snapshot (FR-030).
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/hook-comparison/RecognitionComparison.vue';
@@ -60,6 +51,7 @@ import {
   fromJsonStringBody,
   querySideOf,
   sideIdentityKeyOf,
+  comparisonTitleSides,
 } from '../../../components/detail-route';
 import {
   comparisonSideOptions,
@@ -67,7 +59,7 @@ import {
   sideValueOf,
 } from '../../../components/comparison-side-picker';
 import { hookComparisonRouteFor } from '../../../composables/hook-comparison';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
 import { useSessionSources } from '../../../composables/session-sources';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
@@ -82,13 +74,7 @@ import { HOOK_CARRIER_FORM_TEXT } from '../../../../shared/api-text';
 import type { HookCarrierDetailDto, SourceKind } from '../../../../shared/api-types';
 import { sourceFactsOf } from '../../../components/source-name';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a comparison page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const comparison = sessionViewState.hookComparison;
 const snapshot = sessionViewState.snapshot;
@@ -465,7 +451,7 @@ const readyView = computed(() => {
  * directory it was in where that family holds more than one Source, its
  * recognized kind, its carrier form, and its read outcome (US3 scenario 1).
  * Per side rather than per pair, because the two sides can be two Sources — a
- * consented home's carrier beside the repository's (FR-002, FR-030).
+ * consented home's carrier beside another member's (FR-002, FR-030).
  */
 function fileFacts(detail: HookCarrierDetailDto): string {
   const facts = [
@@ -632,8 +618,18 @@ const titleSubject = computed<string>(() => {
   }
   switch (status.value) {
     case 'ready':
-    case 'loading':
-      return 'Comparing hook declarations';
+    case 'loading': {
+      // The row and its pair in the title, so two comparison tabs never read
+      // identically (WCAG 2.4.2; `detail-route.ts` § comparisonTitleSides).
+      const sides = comparisonTitleSides(leftSide.value, rightSide.value);
+      if (sides === null) {
+        return 'Comparing hook declarations';
+      }
+      const subject = subjectEvent.value;
+      return subject === null
+        ? `Comparing hook declarations — ${sides}`
+        : `Comparing hook declarations: ${subject} — ${sides}`;
+    }
     case 'stale':
       return 'Link not in this scan';
     case 'failed':

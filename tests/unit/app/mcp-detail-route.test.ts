@@ -10,6 +10,7 @@ import {
   decodeDetailRoutePath,
   detailRoute,
   encodeDetailRoutePath,
+  familyGenerationOf,
   toJsonStringBody,
   fromJsonStringBody,
 } from '../../../src/app/components/detail-route';
@@ -90,5 +91,26 @@ describe('the JSON string body a route carries', () => {
   it('leaves an ordinary path readable in the address bar', () => {
     // Only what JSON escapes is escaped, so an ordinary name is its own text.
     expect(toJsonStringBody('.claude/rules/style.md')).toBe('.claude/rules/style.md');
+  });
+});
+
+describe('familyGenerationOf', () => {
+  // The generation a detail route watches is the one its open Source's
+  // family commits into (FR-030): a Global page must notice its own family's
+  // commit even though the Repository generation never moved, and a
+  // Repository page must not refetch over a Global commit.
+  const snapshot = { repositoryGeneration: 3, globalGeneration: 5 };
+
+  it('reads the family the selector addresses', () => {
+    expect(familyGenerationOf(snapshot, 'repository')).toBe(3);
+    expect(familyGenerationOf(snapshot, 'global-claude')).toBe(5);
+    expect(familyGenerationOf(snapshot, 'global-agents')).toBe(5);
+  });
+
+  it('answers 0 while no snapshot or no Global sequence exists', () => {
+    expect(familyGenerationOf(null, 'repository')).toBe(0);
+    expect(
+      familyGenerationOf({ repositoryGeneration: 1, globalGeneration: null }, 'global-codex'),
+    ).toBe(0);
   });
 });

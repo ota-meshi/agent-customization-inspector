@@ -19,7 +19,7 @@
 // exactly what this page answers.
 //
 // The URL carries the model's own coordinates —
-// `/plugins/compare?name=<plugin name>&left=<path>&right=<path>` — the row's
+// `/plugins/compare/<family>?name=<plugin name>&leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>` — the row's
 // name in the carriers' own spelling (FR-007) and the two carriers by their
 // Source-relative Paths (FR-030). A selection the model cannot express — a
 // name no current row is, one carrier twice, or a carrier the named row does
@@ -28,16 +28,7 @@
 // Like the plugin detail, this surface shows declared values exactly as
 // authored — credentials included, with nothing masked and no control that
 // would uncover a masked value — and it says none of that (FR-027).
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/plugin-comparison/RecognitionComparison.vue';
@@ -54,6 +45,7 @@ import {
   querySideOf,
   sideIdentityKeyOf,
   sourceIdOf,
+  comparisonTitleSides,
 } from '../../../components/detail-route';
 import {
   comparisonSideOptions,
@@ -67,7 +59,7 @@ import {
 } from '../../../composables/plugin-comparison';
 import { usePageOwnership } from '../../../composables/page-ownership';
 import { useSessionSources } from '../../../composables/session-sources';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import { useSessionViewState } from '../../../composables/session-view-state';
 import { PLUGIN_CARRIER_TEXT, PLUGIN_SOURCE_FORM_TEXT } from '../../../../shared/api-text';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
@@ -89,13 +81,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a comparison with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const comparison = sessionViewState.pluginComparison;
 const snapshot = sessionViewState.snapshot;
@@ -123,6 +109,14 @@ const pageOwnership = usePageOwnership();
  */
 const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
   comparison.registerOpenContentOwner(disposer);
+
+/**
+ * The selected file pair's own ownership registry: a file change drops these
+ * models synchronously with the pair's state, while the carrier and manifest
+ * panes stay open (`PluginComparison.registerOpenFileContentOwner`).
+ */
+const registerFileContentOwner = (disposer: () => void): (() => void) =>
+  comparison.registerOpenFileContentOwner(disposer);
 
 /**
  * The page heading, focused on entry so a keyboard user starts at the top and
@@ -159,18 +153,6 @@ function queryParameter(name: string): string | null {
 const subjectName = computed(() => {
   const parameter = queryParameter('name');
   return parameter === null ? null : fromJsonStringBody(parameter);
-});
-
-/** The first compared carrier's Source-relative Path (FR-030). */
-const leftPath = computed(() => {
-  const parameter = queryParameter('left');
-  return parameter === null ? '' : fromJsonStringBody(parameter);
-});
-
-/** The second compared carrier's Source-relative Path (FR-030). */
-const rightPath = computed(() => {
-  const parameter = queryParameter('right');
-  return parameter === null ? '' : fromJsonStringBody(parameter);
 });
 
 /** The first compared carrier's identity: its Source and path (FR-030). */
@@ -239,21 +221,19 @@ function switchTo(left: ComparisonSide, right: ComparisonSide): void {
     return;
   }
   pendingPair.value = { left, right };
-  switchedFile = comparedFile.value;
-  // The file on screen travels with the move, not the one the link happened to
-  // name: a reader stepping a side while reading one of the plugin's files is
-  // changing which copy that file comes from, not leaving the file — and the
-  // panel they are looking at is the files panel, which the `file` coordinate
-  // is what keeps open. A name the new pair does not ship falls back to that
-  // pair's own first file once its rows settle ({@link comparedFile}).
+  // The file on screen travels with the move only while the files panel is
+  // the panel on screen: a reader stepping a side there is changing which
+  // copy that file comes from, not leaving the file, and the `file`
+  // coordinate is what keeps that panel open. Carrying it from the
+  // declarations panel would instead move the reader to a panel they were
+  // not in — and, where the tab decision does not re-run, would leave the URL
+  // naming a file the page is not showing until a reload obeyed it. A name
+  // the new pair does not ship falls back to that pair's own first file once
+  // its rows settle ({@link comparedFile}).
+  const carriedFile = activeTab.value === 'files' ? comparedFile.value : null;
+  switchedFile = carriedFile;
   void router.replace(
-    pluginComparisonRouteFor(
-      family.value,
-      subjectName.value ?? '',
-      left,
-      right,
-      comparedFile.value,
-    ),
+    pluginComparisonRouteFor(family.value, subjectName.value ?? '', left, right, carriedFile),
   );
 }
 
@@ -703,8 +683,12 @@ const manifestRow = computed(() => {
   const leftPath = manifestPathOf(left);
   const rightPath = manifestPathOf(right);
   const leftFetch = leftPath;
-  const rightFetch = rightPath === leftPath ? null : rightPath;
-  return { leftPath, rightPath, leftFetch, rightFetch };
+  // One file, not one spelling: two consented homes can hold one
+  // Source-relative Path, so skipping the second read needs both halves of
+  // the identity to agree (FR-030).
+  const sameFile = rightPath === leftPath && right.file.sourceId === left.file.sourceId;
+  const rightFetch = sameFile ? null : rightPath;
+  return { leftPath, rightPath, leftFetch, rightFetch, sameFile };
 });
 
 // The manifests are the declaration panel's second subject, requested with the
@@ -753,9 +737,10 @@ const manifestPair = computed(() => {
   if (row.leftPath === null && row.rightPath === null) {
     return null;
   }
-  if (row.leftPath === row.rightPath) {
-    // One file behind both carriers: a diff of a manifest with itself shows a
-    // reader nothing, so the section reads it instead.
+  if (row.sameFile) {
+    // One file behind both carriers — the same Source and the same path
+    // (FR-030): a diff of a manifest with itself shows a reader nothing, so
+    // the section reads it instead.
     return null;
   }
   const left = manifestFileOf(comparison.leftDetail.value, comparison.leftManifest.value);
@@ -838,7 +823,7 @@ const sharedManifest = computed(() => {
   if (row === null || (row.leftPath === null && row.rightPath === null)) {
     return null;
   }
-  if (row.leftPath !== row.rightPath) {
+  if (!row.sameFile) {
     // Two manifests, or one against a stated absence: both are diffs
     // (FR-011), and this viewer is for the one file behind both carriers.
     return null;
@@ -883,7 +868,7 @@ const manifestStatement = computed<string | null>(() => {
           ? 'This manifest is not text this product can show. The plugin’s own page states what was found.'
           : `Only the ${only} plugin declares itself with a manifest this scan holds: it is compared against the other plugin’s stated absence, which is the existence difference rather than an empty file.`;
       }
-      if (row.leftPath === row.rightPath) {
+      if (row.sameFile) {
         return sharedManifest.value === null
           ? 'This manifest is not text this product can show. The plugin’s own page states what was found.'
           : 'Both carriers resolve to one manifest file, so this is that file rather than two copies of it.';
@@ -948,10 +933,11 @@ const rootSides = computed(() => {
 
 /**
  * Every file either compared plugin ships, in name order, with each side's
- * own path for it. A name both sides ship is comparable; a name only one
- * ships is listed and stated rather than diffed against an absent side —
- * that file has no counterpart, and its own plugin's page is where it is
- * read.
+ * own path for it. A name both sides ship diffs one copy against the other;
+ * a name only one ships is diffed against the other side's stated absence,
+ * because the existence difference is part of the comparison (FR-011). Only
+ * the one file behind both carriers naming the same directory is read alone,
+ * where a diff of a file with itself would show nothing.
  *
  * Empty while the pair is not adopted: which files a plugin ships is the
  * root its carrier's declaration named, which is what those requests answer.
@@ -966,11 +952,14 @@ const fileRows = computed(() => {
   const rightFiles = shippedFilesOf(right);
   // Which files read as text is the generation's own answer, published beside
   // every file it holds: bytes no reader shows are not a comparison, so such
-  // a copy is listed and said rather than opened (FR-025).
+  // a copy is listed and said rather than opened (FR-025). Joined by both
+  // halves of the identity (FR-030, `entities.ts` § fileIdentityKey): two
+  // Sources can hold one path, and a readable copy elsewhere must not make
+  // this side's binary copy read as comparable.
   const readable = new Set(
     (snapshot.value?.files ?? [])
       .filter((file) => isReadableFile(file))
-      .map((file) => file.sourceRelativePath),
+      .map((file) => fileIdentityKey(file.sourceId, file.sourceRelativePath)),
   );
   return [...new Set([...leftFiles.keys(), ...rightFiles.keys()])]
     .toSorted((first, second) => (first < second ? -1 : 1))
@@ -982,8 +971,8 @@ const fileRows = computed(() => {
         leftPath,
         rightPath,
         comparable:
-          (leftPath === null || readable.has(leftPath)) &&
-          (rightPath === null || readable.has(rightPath)),
+          (leftPath === null || readable.has(fileIdentityKey(left.file.sourceId, leftPath))) &&
+          (rightPath === null || readable.has(fileIdentityKey(right.file.sourceId, rightPath))),
       };
     });
 });
@@ -1076,9 +1065,18 @@ watch([fileRows, selectedFile], () => {
 // stays where the reader put it.
 const tabDecidedFor = ref<string | null>(null);
 watch(
-  [subjectName, leftPath, rightPath],
+  [subjectName, leftSide, rightSide],
   ([name, left, right]) => {
-    const decidingFor = `${name}\u0000${left}\u0000${right}`;
+    // Both halves of each side's identity (FR-030): two consented homes can
+    // hold one path, so a key built from the paths alone would call a switch
+    // between them the same pair and leave the tab decision unmade.
+    const decidingFor = [
+      name,
+      left?.source ?? '',
+      left?.sourceRelativePath ?? '',
+      right?.source ?? '',
+      right?.sourceRelativePath ?? '',
+    ].join('\u0000');
     if (tabDecidedFor.value === decidingFor) {
       return;
     }
@@ -1102,11 +1100,24 @@ const selectedFileRow = computed(
  * one plugin and two catalogs offering it — and a file diffed against itself
  * would draw an empty comparison the reader has to interpret.
  */
-const selectedFileIsShared = computed(
-  () =>
-    selectedFileRow.value !== null &&
-    selectedFileRow.value.leftPath === selectedFileRow.value.rightPath,
-);
+const selectedFileIsShared = computed(() => {
+  const row = selectedFileRow.value;
+  const left = comparison.leftDetail.value;
+  const right = comparison.rightDetail.value;
+  if (row === null || left === null || right === null) {
+    return false;
+  }
+  // Both halves of the identity (FR-030): two consented homes can hold one
+  // Source-relative Path, and reading the path alone would call two members'
+  // files one file — fetching a single side and showing it in place of a
+  // comparison.
+  return (
+    row.leftPath !== null &&
+    row.rightPath !== null &&
+    fileIdentityKey(left.file.sourceId, row.leftPath) ===
+      fileIdentityKey(right.file.sourceId, row.rightPath)
+  );
+});
 
 // The file pane's own effect: which file is open, requested once per
 // selection and dropped when the selection leaves. The adopted pair is a key
@@ -1163,9 +1174,9 @@ watch(
       // rebuild it — losing its scroll position for nothing.
       return;
     }
-    // Neither a one-sided name nor a shared file is diffed — against an absent
-    // side there is nothing to diff, and against itself nothing to show — so
-    // the panel states what it is and reads it (T830, T831).
+    // Reading asks only for files that exist: a one-sided name's absent side
+    // is a stated absence the diff renders without a read, and a shared file
+    // is one file however many carriers name it (T830, T831).
     void comparison.openFilePair(
       fileRequestFor(comparison.leftDetail.value, original),
       fileRequestFor(comparison.rightDetail.value, modified),
@@ -1319,21 +1330,14 @@ const fileStateStatement = computed<string | null>(() => {
     return 'A copy of this file is not text this product can show, so there is nothing to compare. Each plugin’s own page states what was found.';
   }
   switch (comparison.fileStatus.value) {
-    case 'stale': {
-      // Two ways a copy resolves to nothing here, told apart by what the
-      // committed inventory still holds: a file the scan no longer has, and a
-      // file it has whose own row is another kind's — a plugin root that is
-      // also an MCP carrier's or a permission policy's directory — where the
-      // file detail is deliberately not the resource (contracts/http-api.md
-      // § get-file-detail).
-      const committed = new Set(
-        (snapshot.value?.files ?? []).map((file) => file.sourceRelativePath),
-      );
-      const held = [row.leftPath, row.rightPath].filter((path) => path !== null);
-      return held.every((path) => committed.has(path))
-        ? 'A copy of this file is published under another kind’s row, which is where it is read; it is not compared here.'
-        : 'One of these copies is no longer in the current scan. A rescan that brings it back will make this comparison resolve again.';
-    }
+    case 'stale':
+      // The plugin-file function answers for every file the census listed
+      // below the plugin's root — a file another kind's row also publishes
+      // included (contracts/http-api.md § get-plugin-file-detail) — so a
+      // stale answer means exactly one thing: the current commit no longer
+      // resolves this copy. Explaining it from the held snapshot would read
+      // the world the request already outran.
+      return 'One of these copies is no longer in the current scan. A rescan that brings it back will make this comparison resolve again.';
     case 'failed':
       return comparison.fileErrorMessage.value === null
         ? 'This file comparison could not be loaded.'
@@ -1368,9 +1372,9 @@ const fileStateStatement = computed<string | null>(() => {
 
 /**
  * Whether the file pane's statement gets a retry: a failed or recoverable
- * request re-requests the same two copies, while a shared file, a one-sided
- * name, and a stale path describe what the scan holds, which no retry
- * changes.
+ * request re-requests the same copies — a one-sided name's single read and a
+ * shared file's included — while bytes no reader shows and a stale path
+ * describe what the scan holds, which no retry changes.
  */
 const fileRetryable = computed(
   () =>
@@ -1484,16 +1488,20 @@ function fileFacts(detail: PluginCarrierDetailDto): string {
  * products read which side, and a table of two states per tool would spend
  * three rows saying what two lines say.
  */
-function attributionText(path: string): string {
-  return (owningRow.value?.carriers ?? [])
-    .filter((carrier) => carrier.sourceRelativePath === path)
-    .map(
-      (carrier) =>
-        `${SUPPORTED_TOOL_TEXT[carrier.tool]} (${carrier.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', ')})`,
-    )
-    .join(' · ');
+function attributionText(sourceId: string, path: string): string {
+  return (
+    (owningRow.value?.carriers ?? [])
+      // Both halves of the identity (FR-030): two Sources can hold one path,
+      // and the other one's products would otherwise be listed as this side's.
+      .filter((carrier) => carrier.sourceId === sourceId && carrier.sourceRelativePath === path)
+      .map(
+        (carrier) =>
+          `${SUPPORTED_TOOL_TEXT[carrier.tool]} (${carrier.surfaces
+            .map((surface) => VENDOR_SURFACE_TEXT[surface])
+            .join(', ')})`,
+      )
+      .join(' · ')
+  );
 }
 
 /**
@@ -1563,7 +1571,7 @@ const readyView = computed(() => {
       path: detail.file.sourceRelativePath,
       carrierText: PLUGIN_CARRIER_TEXT[detail.carrier],
       factsText: fileFacts(detail),
-      recognitionText: attributionText(detail.file.sourceRelativePath),
+      recognitionText: attributionText(detail.file.sourceId, detail.file.sourceRelativePath),
       readingText: readingTextOf(detail.file.sourceId, detail.file.sourceRelativePath),
       declarationText,
       duplicateNote:
@@ -1769,8 +1777,23 @@ const titleSubject = computed<string>(() => {
   }
   switch (status.value) {
     case 'ready':
-    case 'loading':
-      return 'Comparing plugins';
+    case 'loading': {
+      // The row and its pair in the title, so two comparison tabs never read
+      // identically (WCAG 2.4.2; `detail-route.ts` § comparisonTitleSides).
+      const sides = comparisonTitleSides(leftSide.value, rightSide.value);
+      if (sides === null) {
+        return 'Comparing plugins';
+      }
+      const subject = subjectName.value;
+      const base =
+        subject === null
+          ? `Comparing plugins — ${sides}`
+          : `Comparing plugins: ${subject} — ${sides}`;
+      // The open panel rides in the title too: the manifest pair and each
+      // shipped file show different content under one pair, and two tabs on
+      // two panels must not read identically (WCAG 2.4.2).
+      return comparedFile.value === null ? base : `${base} — ${comparedFile.value}`;
+    }
     case 'stale':
       return 'Link not in this scan';
     case 'failed':
@@ -1957,7 +1980,11 @@ onBeforeUnmount(() => {
                 :source-relative-path="sharedManifest.sourceRelativePath"
                 :register-content-owner="registerComparisonContentOwner"
               />
-              <SourceDiff v-else-if="manifestPair !== null" v-bind="manifestPair" />
+              <SourceDiff
+                v-else-if="manifestPair !== null"
+                v-bind="manifestPair"
+                :register-content-owner="registerComparisonContentOwner"
+              />
               <p v-else-if="comparison.manifestStatus.value === 'loading'" class="aci-empty">
                 Loading this manifest comparison…
               </p>
@@ -1983,8 +2010,8 @@ onBeforeUnmount(() => {
               {{ pathPresentationLabel(side.root) }}
             </p>
             <p v-else class="aci-note">
-              This carrier's offering names no directory in this repository, so this side ships no
-              file.
+              This carrier's offering names no directory below its own file's root, so this side
+              ships no file.
             </p>
             <p class="aci-note">
               declared in
@@ -2034,9 +2061,13 @@ onBeforeUnmount(() => {
               v-if="sharedFile !== null"
               :source-text="sharedFile.sourceText"
               :source-relative-path="sharedFile.sourceRelativePath"
-              :register-content-owner="registerComparisonContentOwner"
+              :register-content-owner="registerFileContentOwner"
             />
-            <SourceDiff v-else-if="openFilePair !== null" v-bind="openFilePair" />
+            <SourceDiff
+              v-else-if="openFilePair !== null"
+              v-bind="openFilePair"
+              :register-content-owner="registerFileContentOwner"
+            />
             <p v-else-if="comparison.fileStatus.value === 'loading'" class="aci-empty">
               Loading this file comparison…
             </p>

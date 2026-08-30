@@ -46,6 +46,7 @@ import {
   isReadableFile,
   pathPresentationLabel,
   rendersNothingVisible,
+  accessiblePresentationLabel,
 } from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
@@ -74,20 +75,6 @@ const props = defineProps<{
 /** The shared per-Source lookups (`session-sources.ts`). */
 const sessionSources = useSessionSources();
 
-/**
- * The comparison this row links to — the first two readable files that
- * resolve this name — or null when the name has fewer than two, where a link
- * would open a comparison with nothing to pair. The paths are deduplicated
- * because a row lists one definition per `(file, tool)`, so a root command
- * file two products read appears twice while being one file. The compare
- * route's own pickers take over from there: they hold this row's files, so a
- * reader steps to another pair on the comparison itself rather than
- * composing one here (T505).
- *
- * The pair is drawn from the row's own files rather than from the members a
- * filter left, so the link a reader followed is still there when they come
- * back to the unnarrowed list ({@link NarrowedInventoryRow}).
- */
 /**
  * The comparable identities of this row as route sides, in the row's own
  * order — the set no filter narrows
@@ -166,7 +153,7 @@ const fileRows = computed(() => {
        * legitimately renders would collapse and two different files could
        * announce identically (WCAG 2.4.4, FR-025).
        */
-      pathAccessibleText: inlinePresentationLabel(sourceRelativePath),
+      pathAccessibleText: accessiblePresentationLabel(sourceRelativePath),
       recognitions: definitions.map((definition) => ({
         tool: definition.tool,
         toolText: SUPPORTED_TOOL_TEXT[definition.tool],
@@ -220,14 +207,14 @@ const fileRows = computed(() => {
     <SourceFamilyBlocks
       :members="fileRows"
       :member-key="(file) => file.key"
-      :identities="entry.rowFileIdentities"
+      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: file }">
         <p class="aci-prompt-row__owner">
           <NuxtLink
             :to="file.detailRoute"
             class="aci-path aci-authored-text"
-            :aria-label="file.pathAccessibleText"
+            :aria-label="sessionSources.qualifiedLinkName(file.pathAccessibleText, file.sourceId)"
             >{{ file.pathText }}</NuxtLink
           >
           <span

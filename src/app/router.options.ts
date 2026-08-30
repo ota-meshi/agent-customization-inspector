@@ -86,7 +86,17 @@ let returnPoint: {
  * the href alone.
  */
 function renderedLinks(followedHref: string): readonly HTMLAnchorElement[] {
-  return [...document.querySelectorAll<HTMLAnchorElement>(`a[href=${CSS.escape(followedHref)}]`)];
+  // Scoped to the containers the inventory marks as holding row links
+  // (`pages/index.vue` § data-aci-inventory-rows): a return point is the row
+  // the reader was on, so chrome links — the Personal setup consent entry —
+  // and any link a later page change adds outside the row containers record
+  // nothing, and leaving through one clears the point (the no-match branch of
+  // {@link recordInventoryReturnPoint}).
+  return [
+    ...document.querySelectorAll<HTMLAnchorElement>(
+      `[data-aci-inventory-rows] a[href=${CSS.escape(followedHref)}]`,
+    ),
+  ];
 }
 
 /**
@@ -154,9 +164,10 @@ if (typeof document !== 'undefined') {
  * not focus a link on click would not answer. Which row of that route the
  * reader followed is the accessible name beside it ({@link sameNameLinks}).
  *
- * A departure matching no rendered link records nothing: every way out of the
- * inventory is one of its own row links today, so this is what a link the page
- * grows later falls back to.
+ * A departure matching no rendered row link clears the point instead of
+ * recording one: the consent entry and any other chrome link are not rows, so
+ * returning from them lands at the ordinary top of the page rather than at a
+ * position among rows the reader was not reading.
  */
 export function recordInventoryReturnPoint(followedHref: string): void {
   const links = renderedLinks(followedHref);

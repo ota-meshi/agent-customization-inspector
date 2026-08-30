@@ -295,7 +295,7 @@ test('shows the filtered empty state without claiming the repository is empty', 
   // and the "nothing was recognized" finding is about the repository, which is
   // a different statement the user can act on differently.
   await expect(page.getByText('No skills match the current filters.')).toBeVisible();
-  await expect(page.getByText('No skills were recognized in this repository.')).toHaveCount(0);
+  await expect(page.getByText('No skills were recognized in this scan.')).toHaveCount(0);
 });
 
 test('rescans on demand and keeps the status tied to that request', async ({ page }) => {

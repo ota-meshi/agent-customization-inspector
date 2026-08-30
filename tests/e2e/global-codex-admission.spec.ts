@@ -184,7 +184,7 @@ test('publishes exactly one Codex instruction file from the home', async ({ page
   }
 });
 
-test('publishes every contracted Codex kind from the one confirmation (T1126)', async ({
+test('publishes every contracted Codex kind from the one confirmation (T1139)', async ({
   page,
 }) => {
   const own = await launchHost(repository, homes.environment);
@@ -315,7 +315,9 @@ test('opens the home’s own file at a path the repository also holds', async ({
     // Two rows at one path, one per Source: aggregating by path alone would
     // have merged them into a row claiming a file neither Source has.
     const panel = page.getByRole('tabpanel');
-    const links = panel.getByRole('link', { name: 'AGENTS.md' });
+    // Prefix-matched: a consented home's link carries its Source qualifier
+    // once the Global family holds more than one Source (WCAG 2.4.6).
+    const links = panel.getByRole('link', { name: /^AGENTS\.md/u });
     await expect(links).toHaveCount(2);
     // The addresses differ in exactly the half that identifies the Source.
     const addresses = await links.evaluateAll((anchors) =>
@@ -366,7 +368,7 @@ test('inspects the personal setup from the command line, with no consent click',
   }
 });
 
-test('filters the inventory by Source family rather than by tool', async ({ page }) => {
+test('filters the inventory by Source rather than by tool', async ({ page }) => {
   // Its own repository and home, both publishing `AGENTS.md`: the axis exists
   // for exactly this, and a fixture where only one family holds instruction
   // files would let a broken filter pass.
@@ -386,19 +388,22 @@ test('filters the inventory by Source family rather than by tool', async ({ page
     await page.goto(own.origin);
     await page.getByRole('tab', { name: /^Instructions/u }).click();
 
-    // The axis is the family: the repository, and the reader's own
-    // configuration directories. Which product recognized a file is the Tool
-    // filter beside it, so no consented home is named here.
+    // The axis is the Source (FR-006): the repository, and each consented
+    // home as its own option — the shared agent home is no tool's, so the
+    // Tool filter beside this one could not separate it from a member home.
     const sourceFilter = page.getByLabel('Source', { exact: true });
     await expect(sourceFilter.locator('option')).toHaveText([
       'All sources',
       'Repository',
-      'Your personal setup',
+      'GitHub Copilot',
+      'Claude Code',
+      'OpenAI Codex',
+      'Shared agent home',
     ]);
 
     // Both families publish `AGENTS.md`, so the path says nothing about which
     // row a filter left: the address does, because it carries the Source.
-    const links = page.getByRole('tabpanel').getByRole('link', { name: 'AGENTS.md' });
+    const links = page.getByRole('tabpanel').getByRole('link', { name: /^AGENTS\.md/u });
     const addresses = async (): Promise<string[]> =>
       links.evaluateAll((anchors) =>
         anchors.map((anchor) => new URL((anchor as HTMLAnchorElement).href).pathname),
@@ -408,12 +413,12 @@ test('filters the inventory by Source family rather than by tool', async ({ page
       '/instructions/detail/repository/AGENTS.md',
     ]);
 
-    await sourceFilter.selectOption({ label: 'Your personal setup' });
+    await sourceFilter.selectOption({ label: 'OpenAI Codex' });
     expect(await addresses()).toEqual(['/instructions/detail/global-codex/AGENTS.md']);
     await sourceFilter.selectOption({ label: 'Repository' });
     expect(await addresses()).toEqual(['/instructions/detail/repository/AGENTS.md']);
-    // The selection rides in the URL as the family, which survives a launch —
-    // a Source ID would not. Awaited rather than read: the query is written by
+    // The selection rides in the URL as the Source selector, which survives a
+    // launch — a Source ID would not. Awaited rather than read: the query is written by
     // a `router.replace` the selection triggers, so reading it in the same tick
     // catches the previous one.
     await expect(page).toHaveURL(/[?&]source=repository(&|$)/u);

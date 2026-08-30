@@ -64,7 +64,7 @@ install a plugin, or change a candidate's source boundary.
 | Input domain | Vendor runtime model | Inspector model |
 |---|---|---|
 | Repository | A vendor can walk runtime roots, select applicable files, and combine Repository inputs. | Each accepted file retains its Repository candidate provenance. A strategy may relate candidates but never expands the allowlist. |
-| User | A vendor can combine User settings, instructions, skills, agents, hooks, MCP, or state with Repository inputs. | The Repository Source and zero to three tool-specific Global Sources remain separate. After the one selector-free session-wide consent evaluates all three frozen tool entries, only the frozen Global instruction rules for admitted roots can read User files; all other User inputs remain unavailable facts. |
+| User | A vendor can combine User settings, instructions, skills, agents, hooks, MCP, or state with Repository inputs. | The Repository Source and zero to four member Global Sources remain separate. After the one selector-free session-wide consent evaluates all four frozen member entries, only the frozen member Global rule catalogs for admitted roots can read User files; every User input outside those catalogs remains an unavailable fact. |
 | Hosted, organization, enterprise, or managed | A hosted surface can combine service-side inputs with a repository checkout. | These inputs are represented by `shared.relationship.runtime` or `shared.excluded.managed-remote-state`; they are never local scan roots. |
 | Plugin, hook, MCP, import, or arbitrary path | A vendor may activate, execute, connect to, or follow it after runtime checks. | Authored declarations and relationships are inert. A target can be read only when an independent static or bounded-derived rule admits that same target. |
 
@@ -242,6 +242,6 @@ This contract defines exactly 39 strategy IDs referenced by the three vendor con
 20 GitHub Copilot strategies, 11 Claude Code strategies, and 8 OpenAI Codex strategies.
 Rows explicitly marked with no strategy in a vendor contract—such as explicit prompt
 invocation or excluded experimental surfaces—do not acquire an invented strategy here.
-It also defines all 14 relationship-only IDs from the staged allowlist/vendor contracts
+It also defines all 12 relationship-only IDs from the staged allowlist/vendor contracts
 and the one shared non-read exclusion. Any future reference to a new ID requires an English
 and Japanese definition in this contract in the same change.

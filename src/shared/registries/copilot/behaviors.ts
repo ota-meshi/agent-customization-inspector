@@ -2234,7 +2234,9 @@ export const COPILOT_CLI_LSP_BEHAVIOR = {
 /**
  * The CLI's User settings layer, a non-authorizing fact: it is one layer of
  * the same cascade `copilot.behavior.cli.settings` records, and it lies
- * outside the Repository Source this release reads.
+ * outside the Repository Source — inside a consented home it is
+ * `copilot.global.settings` that admits the file, and a statement grants no
+ * read of its own.
  */
 export const COPILOT_CLI_USER_SETTINGS_BEHAVIOR = {
   behaviorId: 'copilot.behavior.cli.user.settings',

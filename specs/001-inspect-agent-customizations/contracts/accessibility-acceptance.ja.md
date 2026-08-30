@@ -20,7 +20,7 @@ Release candidateは、下表のWCAG 2.2 Level A/AA成功基準を、4つの主�
 SC-008が合格するのは、Applicableな全行が合格し、Not-applicable rationaleがすべて成立し、4つの
 主要workflowをkeyboardだけで完了でき、Applicableなrowの件数と等しい0件ではないdenominatorが記録された
 場合だけである。Level A/AAの全55基準はinventoryに残し、Not-applicable rowはcriterion固有のrationaleが
-成立している間だけdenominatorから除外する。現在の確定denominatorは38であり、applicability stateを変更する場合は、
+成立している間だけdenominatorから除外する。現在の確定denominatorは37であり、applicability stateを変更する場合は、
 この数と両言語版を同時に更新しなければならない（MUST）。別の「critical defect」による免除やseverity thresholdは設けない。
 Applicableな1基準の失敗、根拠のないNot-applicable判定、未検査のresponsive variation、未完了のkeyboard
 workflowのいずれか1つでもSC-008は失敗する。
@@ -66,7 +66,7 @@ workflowのいずれか1つでもSC-008は失敗する。
 | 2.1.2 No Keyboard Trap | A | Applicable | `AUTO-2.1.2`; `MANUAL-2.1.2` | 標準keyboard操作で全control、dialog、editor、error、consent stateへfocusを出入りさせられる。 |
 | 2.1.4 Character Key Shortcuts | A | Not applicable | `REVIEW-2.1.4` | 単一の印字可能文字でapplication commandを起動しない。Read-only editor defaultも同じ性質か確認する。 |
 | 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` | Visibleなuser taskにtime limitがない。Network settlementとterminal session resetはvisible interactionを期限切れにせず、inspectorの再起動で固定時間内の完了を要求せずにoperableなfresh sessionへ戻れる。 |
-| 2.2.2 Pause, Stop, Hide | A | Applicable | `AUTO-2.2.2`; `MANUAL-2.2.2` | 他contentと並行表示される自動開始scan/status updateをpause、stop、hide、またはuser制御のupdate frequencyへ変更できる。文書化したessential exceptionでは、正確なupdateを識別し、代替ではpurposeを満たせない理由を証明し、releaseの明示承認を得る。 |
+| 2.2.2 Pause, Stop, Hide | A | Not applicable | `REVIEW-2.2.2` | 動く・点滅する・scrollする・自動更新されるものが存在しない: statusは読み手が明示的に開始するrefreshでだけ進み — 本productはtimer、filesystem watcher、server pushを定義しない（`view-state.ts` § refresh、contracts/http-api.md § get-session）— pause・stop・hideの対象になる自動開始updateが存在しない。自動更新するsurfaceが現れたら、この行はApplicableになる。 |
 | 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` | 同梱animation/state transitionはflashせず、調査対象contentをactive media/animationとしてrenderしない。 |
 | 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1`; `MANUAL-2.4.1` | Keyboard/assistive-technology userが反復navigationをskipして主要workflow contentへ移動できる。 |
 | 2.4.2 Page Titled | A | Applicable | `AUTO-2.4.2`; `MANUAL-2.4.2` | 各client routeがstateに合ったdescriptiveなdocument titleを公開する。 |

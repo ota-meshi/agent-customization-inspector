@@ -21,7 +21,7 @@ SC-008 passes only when every Applicable row passes, every Not-applicable ration
 true, all four primary workflows complete using only a keyboard, and the result records a
 nonzero denominator equal to the number of Applicable rows. All 55 Level A/AA criteria
 remain in the inventory; a Not-applicable row is excluded from the denominator only while
-its criterion-specific rationale remains true. The current frozen denominator is 38; any
+its criterion-specific rationale remains true. The current frozen denominator is 37; any
 applicability-state change MUST update that number and both language versions together.
 There is no separate “critical defect”
 escape or severity threshold: one failed Applicable criterion, one unsupported
@@ -71,7 +71,7 @@ does not establish a Not-applicable row.
 | 2.1.2 No Keyboard Trap | A | Applicable | `AUTO-2.1.2`; `MANUAL-2.1.2` | Focus can enter and leave every control, dialog, editor, error, and consent state using standard keyboard operation. |
 | 2.1.4 Character Key Shortcuts | A | Not applicable | `REVIEW-2.1.4` | No single printable character activates an application command; read-only editor defaults are checked for the same property. |
 | 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` | No visible user task has a time limit. Network settlement and terminal session reset do not expire a visible interaction, and restarting the inspector restores an operable fresh session without requiring completion within a fixed time. |
-| 2.2.2 Pause, Stop, Hide | A | Applicable | `AUTO-2.2.2`; `MANUAL-2.2.2` | Automatically started scan/status updates presented in parallel with other content can be paused, stopped, hidden, or changed to a user-controlled update frequency. A documented essential exception must identify the exact update, prove why no alternative satisfies its purpose, and receive explicit release approval. |
+| 2.2.2 Pause, Stop, Hide | A | Not applicable | `REVIEW-2.2.2` | Nothing moves, blinks, scrolls, or auto-updates: status advances only on an explicit reader-initiated refresh — the product defines no timer, filesystem watcher, or server push (`view-state.ts` § refresh; contracts/http-api.md § get-session) — so no automatically started update exists to pause, stop, or hide. If a self-updating surface appears, this row becomes Applicable. |
 | 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` | No shipped animation or state transition flashes; inspected content never renders active media or animation. |
 | 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1`; `MANUAL-2.4.1` | Keyboard and assistive-technology users can bypass repeated navigation and reach the main workflow content. |
 | 2.4.2 Page Titled | A | Applicable | `AUTO-2.4.2`; `MANUAL-2.4.2` | Every client route exposes a descriptive, state-appropriate document title. |

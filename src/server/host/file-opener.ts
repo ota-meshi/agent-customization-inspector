@@ -28,9 +28,10 @@
 // system's own file browser, which is what this action offers.
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { delimiter, dirname } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, normalize, sep } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
-import { defaultEditor, getEditor, type Editor } from 'env-editor';
+import { getEditor, type Editor } from 'env-editor';
 import open from 'open';
 import which from 'which';
 import type { FileOpenTarget } from '../../shared/api-types';
@@ -52,6 +53,48 @@ const EDITOR_TARGETS: readonly { readonly target: FileOpenTarget; readonly edito
 ];
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * How long a default-handler launch listens for the launcher's exit before
+ * treating it as accepted. A registration failure exits non-zero within
+ * milliseconds, so one second catches it with scheduler latency to spare; a
+ * launcher still alive then is the bundled `xdg-open`'s success shape — it
+ * keeps running for the opened application's whole session, which no launch
+ * should wait on (see the default-application branch of
+ * {@link DetectedFileOpener.openFile}).
+ */
+const LAUNCHER_EXIT_GRACE_MILLISECONDS = 1000;
+
+/**
+ * The grace for a launch inside a Flatpak sandbox. There the bundled
+ * `xdg-open` never keeps running: it asks the desktop portal to open the file
+ * with `gdbus call --timeout 5` and exits either way (open/xdg-open
+ * § open_flatpak), so a refusal can arrive as a non-zero exit up to five
+ * seconds in — after the ordinary grace would have answered `opened`. Six
+ * seconds outlasts the portal call's own timeout, and costs nothing on
+ * success, which exits as soon as the portal replies.
+ */
+const FLATPAK_PORTAL_GRACE_MILLISECONDS = 6000;
+
+/**
+ * Whether this process runs inside a Flatpak sandbox. The bundled `xdg-open`
+ * reads `$XDG_RUNTIME_DIR/flatpak-info` for this (open/xdg-open § detectDE);
+ * here the sandbox's `FLATPAK_ID` export answers the same question — Flatpak
+ * sets it for every sandboxed process — without a filesystem read, which the
+ * QR-003 boundary reserves for the inspection modules. Read per launch so a
+ * test can stage it.
+ */
+function insideFlatpakSandbox(): boolean {
+  const flatpakApplicationId = process.env.FLATPAK_ID;
+  return flatpakApplicationId !== undefined && flatpakApplicationId !== '';
+}
+
+/**
+ * The grace race's "no exit yet" outcome. A symbol rather than a number-like
+ * sentinel, because the race's other side yields the launcher's real exit
+ * code and `null` already means "killed by a signal" there.
+ */
+const LAUNCHER_STILL_RUNNING = Symbol('launcher-still-running');
 
 /**
  * The fixed AppleScript that gives a terminal editor a window to run in: it
@@ -105,6 +148,14 @@ export interface FileOpener {
    * for a Markdown or JSON file is often a previewer. Published by the
    * session snapshot so the page offers no application the host could not
    * launch (FR-022).
+   *
+   * The two handler targets are unconditional by design: the contract's
+   * absence rule covers what the host resolves — the editors — while
+   * `default-application` and `containing-folder` are defined as handing
+   * the path to whatever this machine registered, which cannot be probed
+   * reliably per file kind and platform. A machine with no handler answers
+   * the launch itself: the non-zero exit reaches the reader as the failed
+   * request's own error (contracts/http-api.md § open-file).
    */
   readonly targets: readonly FileOpenTarget[];
   /**
@@ -145,16 +196,100 @@ function catalogSearchPath(candidates: readonly string[]): string | null {
  * Removed by the entry's own trailing segments rather than by comparing
  * against a Source root: the probe runs before any Source exists, and the
  * package manager's injection is exactly this shape on every platform.
+ * Judged on the entry's normalized spelling with its trailing separators
+ * dropped, because `node_modules/.bin/.` and `node_modules/.bin/` name the
+ * same directory the package manager prepends — a literal tail test alone
+ * would keep them, and `which`'s own `join` would then resolve right back
+ * into the repository's `.bin`.
  */
 function probeSearchPath(): string | undefined {
   const inherited = process.env['PATH'];
   if (inherited === undefined) {
     return undefined;
   }
-  const kept = inherited
-    .split(delimiter)
-    .filter((entry) => !entry.split(/[\\/]/u).slice(-2).join('/').endsWith('node_modules/.bin'));
+  const kept = inherited.split(delimiter).filter((entry) => {
+    const segments = normalize(unquotePathEntry(entry))
+      .replace(/[\\/]+$/u, '')
+      .split(/[\\/]/u);
+    // Exactly the two trailing segments the package manager prepends: a
+    // string-suffix test would also swallow `/opt/notnode_modules/.bin`, a
+    // legitimate entry whose editors would then be undetectable.
+    return !(segments.at(-2) === 'node_modules' && segments.at(-1) === '.bin');
+  });
   return kept.join(delimiter);
+}
+
+/**
+ * One PATH entry with the surrounding double quotes Windows permits removed —
+ * the same stripping `which` applies to each entry before resolving inside
+ * it. Spelled once and used by both the probe's exclusion and the
+ * named-directory membership below, because the two must read an entry the
+ * same way: a quoted repository `.bin` must not evade the exclusion, and a
+ * quoted legitimate directory must not fail `isAbsolute` and drop the editor
+ * `which` correctly resolved in it.
+ */
+function unquotePathEntry(entry: string): string {
+  return entry.length > 1 && entry.startsWith('"') && entry.endsWith('"')
+    ? entry.slice(1, -1)
+    : entry;
+}
+
+/**
+ * Resolves an executable name on exactly the given search path — and nothing
+ * else. `which` on Windows always prepends the process working directory to
+ * whatever `path` it was given (its cmd.exe emulation), and this process's
+ * working directory is the inspected repository, so a `code.cmd` committed
+ * there would otherwise become the executable this product offers as an
+ * editor and then starts — a destination chosen from inspected content,
+ * which FR-022 forbids. The resolution is therefore accepted only when it
+ * sits in a directory the caller actually named; the membership test spells
+ * each entry through the same `join`-then-`dirname` normalization `which`
+ * itself applies to the path it returns.
+ *
+ * A configured value that names a path rather than a command — one carrying
+ * a separator — never searches: `which` checks it directly, exactly where
+ * the reader pointed, and the working directory plays no part.
+ *
+ * Every match is read (`all`), and the first allowed one wins: the working
+ * directory's injected candidate comes first in `which`'s own order, so
+ * refusing only the first match would also lose the legitimate installation
+ * sitting right behind it on the named path.
+ */
+async function resolveOnSearchPath(
+  binary: string,
+  searchPath: string | undefined,
+): Promise<string | null> {
+  if (binary.includes('/') || binary.includes(sep)) {
+    // Only an absolute spelling is checked directly. `which` resolves a
+    // relative separator-carrying value against this process's working
+    // directory — the inspected repository — and an executable the
+    // repository ships must never become the editor this product offers or
+    // starts (FR-022): the same boundary the named-directory membership
+    // below draws for PATH lookups.
+    if (!isAbsolute(binary)) {
+      return null;
+    }
+    return which(binary, {
+      nothrow: true,
+      ...(searchPath === undefined ? {} : { path: searchPath }),
+    });
+  }
+  const resolved = await which(binary, {
+    all: true,
+    nothrow: true,
+    ...(searchPath === undefined ? {} : { path: searchPath }),
+  });
+  if (resolved === null) {
+    return null;
+  }
+  const allowed = new Set(
+    (searchPath ?? process.env['PATH'] ?? '')
+      .split(delimiter)
+      .map(unquotePathEntry)
+      .filter((entry) => entry !== '' && isAbsolute(entry))
+      .map((entry) => dirname(join(entry, binary))),
+  );
+  return resolved.find((candidate) => allowed.has(dirname(candidate))) ?? null;
 }
 
 /**
@@ -178,27 +313,53 @@ const DEFAULT_TERMINAL_EDITOR = 'vi';
  * an editor in it — and take it away for good where this product has no entry
  * of its own for the editor they named.
  *
+ * One value is read and both classified and run — `$EDITOR`, then `$VISUAL`,
+ * `||`-selected, the catalog's own precedence — because the classification
+ * and the command that runs must be the same selection: classifying from one
+ * variable and running the other would call `EDITOR=vim, VISUAL=code` a
+ * terminal editor and then start VS Code in the Terminal window.
+ *
  * A configured value that is one word is used as it stands, so
  * `EDITOR=/custom/bin/nvim` runs the executable the reader named rather than
  * whatever `nvim` resolves to — `which` takes a path as readily as a name. A
- * value carrying flags (`vim -u NONE`) is not one word, and running it would
- * mean splitting a command line, which is the shell parsing this module exists
- * to avoid; such a value falls back to the catalog's command for the editor it
- * names, and the flags are not honoured.
+ * value carrying whitespace reads two ways that no lexical test can tell
+ * apart: an absolute path with spaces in it (`/Applications/My
+ * Editor.app/...`) and a command carrying flags (`vim -u NONE`). Both
+ * candidates are therefore returned in order — the exact configured value
+ * first, then the catalog's command for the editor it names — and the
+ * resolution decides: `which` checks a separator-carrying value directly, so
+ * a real executable at the exact spelling wins, while a flags-carrying value
+ * resolves nowhere and falls back. Running a split command line would be the
+ * shell parsing this module exists to avoid, so flags are never honoured.
  */
-function terminalEditorCommand(): string {
-  const configured = process.env['VISUAL'] ?? process.env['EDITOR'] ?? '';
-  let editor: Editor;
-  try {
-    editor = defaultEditor();
-  } catch {
-    // The catalog throws when neither variable is set.
-    return DEFAULT_TERMINAL_EDITOR;
+function terminalEditorCommands(): readonly string[] {
+  const configured = process.env['EDITOR'] || process.env['VISUAL'] || '';
+  if (configured === '') {
+    // Neither variable is set, which is the ordinary state of a macOS
+    // install: the POSIX default is what a terminal launch then runs.
+    return [DEFAULT_TERMINAL_EDITOR];
   }
+  // Classified by the executable's own name rather than the whole configured
+  // value. The catalog resolves a bare `vi` through its keywords but reads
+  // `/custom/bin/vi` as an unknown editor — its lookup takes the last path
+  // segment as an *id* and no entry is named `vi` — and an unknown editor is
+  // reported as non-terminal, which would discard the reader's own
+  // executable and run whatever `vi` PATH offers instead. The value that
+  // runs stays the configured one; only the classification reads the name.
+  const editor: Editor = getEditor(configured.split(/[\\/]/u).at(-1) ?? configured);
   if (!editor.isTerminalEditor) {
-    return DEFAULT_TERMINAL_EDITOR;
+    return [DEFAULT_TERMINAL_EDITOR];
   }
-  return configured !== '' && !/\s/u.test(configured) ? configured : editor.binary;
+  // A value that cannot run as written still names the editor, so the
+  // catalog's own command follows it as the fallback: flags carry
+  // whitespace, and a relative separator-carrying spelling is refused by
+  // {@link resolveOnSearchPath} because it would resolve against the
+  // inspected repository.
+  const relativeWithSeparator =
+    (configured.includes('/') || configured.includes(sep)) && !isAbsolute(configured);
+  return /\s/u.test(configured) || relativeWithSeparator
+    ? [configured, editor.binary]
+    : [configured];
 }
 
 /**
@@ -213,7 +374,20 @@ async function resolveTerminalEditor(): Promise<string | null> {
   if (process.platform !== 'darwin') {
     return null;
   }
-  return which(terminalEditorCommand(), { nothrow: true });
+  // The same search-path discipline as the editor probes: `node_modules/.bin`
+  // entries removed, and the resolution accepted only from a named directory,
+  // so an inspected repository that ships a `vi` of its own cannot become the
+  // executable this product offers as "Terminal editor" and then starts
+  // (FR-022; see {@link probeSearchPath}, {@link resolveOnSearchPath}). An
+  // absolute configured value is unaffected — a separator-carrying command is
+  // checked directly, exactly where the reader pointed.
+  for (const command of terminalEditorCommands()) {
+    const resolved = await resolveOnSearchPath(command, probeSearchPath());
+    if (resolved !== null) {
+      return resolved;
+    }
+  }
+  return null;
 }
 
 /**
@@ -257,7 +431,7 @@ export class DetectedFileOpener implements FileOpener {
   public static async probe(): Promise<DetectedFileOpener> {
     const launchers = new Map<FileOpenTarget, string>();
     for (const { target, editor } of EDITOR_TARGETS) {
-      const onPath = await which(editor.binary, { nothrow: true, path: probeSearchPath() });
+      const onPath = await resolveOnSearchPath(editor.binary, probeSearchPath());
       if (onPath !== null) {
         launchers.set(target, onPath);
         continue;
@@ -266,7 +440,7 @@ export class DetectedFileOpener implements FileOpener {
       if (catalogPath === null) {
         continue;
       }
-      const bundled = await which(editor.binary, { nothrow: true, path: catalogPath });
+      const bundled = await resolveOnSearchPath(editor.binary, catalogPath);
       if (bundled !== null) {
         launchers.set(target, bundled);
       }
@@ -282,10 +456,13 @@ export class DetectedFileOpener implements FileOpener {
   }
 
   public get targets(): readonly FileOpenTarget[] {
-    // The editors this machine has, in catalog order, then the two targets
-    // every machine satisfies through its own handlers. A reader inspecting
-    // the files an agent reads is reading them to edit them, so an editor
-    // leads whenever there is one.
+    // The editors this machine has, in catalog order, then the two hand-offs
+    // to the platform's own handler launcher — always offered, because
+    // whether a handler is registered for a file is the machine's own state
+    // and no probe short of launching answers it; a missing launcher reports
+    // as that launch's ordinary error (contracts/http-api.md § open-file). A
+    // reader inspecting the files an agent reads is reading them to edit
+    // them, so an editor leads whenever there is one.
     return [...this.#launchers.keys(), 'default-application', 'containing-folder'];
   }
 
@@ -298,22 +475,84 @@ export class DetectedFileOpener implements FileOpener {
       // own file manager; nothing is selected inside it, because what the
       // reader asked for is the folder.
       //
-      // The launcher's own exit is awaited and reported: it is a launcher
-      // rather than the application, so it exits as soon as it has handed the
-      // path over, and a machine with no handler registered for the file type
-      // — a headless Linux without `xdg-open`'s target, most plainly — exits
-      // non-zero. Answering `opened` for that would tell the reader something
-      // happened when nothing did.
+      // The launcher's own exit is awaited and reported: a machine with no
+      // handler registered for the file type — a headless Linux without
+      // `xdg-open`'s target, most plainly — exits non-zero within
+      // milliseconds, and answering `opened` for that would tell the reader
+      // something happened when nothing did.
+      //
+      // The wait is bounded, because on Linux a *successful* launch is
+      // exactly when the launcher keeps running: the bundled `xdg-open`
+      // deliberately does not fork the application off, so it lives as long
+      // as the application does (open/xdg-open § "In case of success").
+      // Waiting for that exit would hold this call — and every choice on the
+      // page's open control, behind its own in-flight guard — until the
+      // reader closes the application. A launcher still alive after the
+      // grace period has accepted the handoff, and its eventual exit code
+      // describes the application's session rather than the handoff, so the
+      // launch resolves as requested — the contract {@link FileOpener.openFile}
+      // states — and the process is released.
       const launched = await open(
         target === 'containing-folder' ? dirname(absolutePath) : absolutePath,
       );
       // Read before awaited: a launcher that already exited emitted `exit`
       // before this line could listen for it, and awaiting the event then
       // would wait for one that has been and gone.
-      const code = launched.exitCode ?? ((await once(launched, 'exit')) as [number | null])[0];
-      if (code !== null && code !== 0) {
+      const graceWatch = new AbortController();
+      // Both halves of the exit, because Node reports them separately: a
+      // launcher killed by a signal exits with a null code and a non-null
+      // signal, which reading the code alone would take for a clean exit
+      // (nodejs.org/api/child_process.html#event-exit).
+      const settled:
+        { code: number | null; signal: NodeJS.Signals | null } | typeof LAUNCHER_STILL_RUNNING =
+        launched.exitCode !== null || launched.signalCode !== null
+          ? { code: launched.exitCode, signal: launched.signalCode }
+          : await Promise.race([
+              once(launched, 'exit', { signal: graceWatch.signal })
+                .then((values) => {
+                  // Node emits `exit` with both arguments; a listener that
+                  // received only the code reads the second as undefined,
+                  // which is the same "no signal" the null spelling means.
+                  const [code, signal] = values as [
+                    number | null,
+                    NodeJS.Signals | null | undefined,
+                  ];
+                  return { code, signal: signal ?? null };
+                })
+                // Rejected by the abort below when the grace side settled the
+                // race first; nothing awaits this listener any more.
+                .catch((): typeof LAUNCHER_STILL_RUNNING => LAUNCHER_STILL_RUNNING),
+              delay(
+                // Inside Flatpak the launcher exits either way once the portal
+                // replies, so the longer wait ends on the reply rather than
+                // holding the page — see {@link FLATPAK_PORTAL_GRACE_MILLISECONDS}.
+                insideFlatpakSandbox()
+                  ? FLATPAK_PORTAL_GRACE_MILLISECONDS
+                  : LAUNCHER_EXIT_GRACE_MILLISECONDS,
+                LAUNCHER_STILL_RUNNING,
+                {
+                  signal: graceWatch.signal,
+                  // The timer must not hold the process open past the launch
+                  // that started it.
+                  ref: false,
+                },
+              ).catch((): typeof LAUNCHER_STILL_RUNNING => LAUNCHER_STILL_RUNNING),
+            ]);
+      graceWatch.abort();
+      if (settled === LAUNCHER_STILL_RUNNING) {
+        launched.unref();
+        return;
+      }
+      if (settled.signal !== null) {
+        // A launcher the machine killed opened nothing, and its null code is
+        // not a clean exit.
         throw new Error(
-          `this machine's handler for that path exited with code ${code}, so nothing was opened`,
+          `this machine's handler for that path was terminated by ${settled.signal}, so nothing was opened`,
+        );
+      }
+      if (settled.code !== null && settled.code !== 0) {
+        throw new Error(
+          `this machine's handler for that path exited with code ${settled.code}, so nothing was opened`,
         );
       }
       return;

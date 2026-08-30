@@ -8,10 +8,14 @@
 // module each component answered them with a local copy, and eleven copies of
 // one lookup are eleven places for it to drift; here each answer is written
 // once and injected everywhere it is read.
-import { computed, inject, type ComputedRef } from 'vue';
-import { SESSION_VIEW_STATE } from '../session/view-state';
+import { computed, type ComputedRef } from 'vue';
+import { useSessionViewState } from './session-view-state';
 import { sourceIdOf, sourceSelectorOf, type SourceSelector } from '../components/detail-route';
-import { fileSourceRootOf, sourceFamilyNameOf } from '../components/source-name';
+import {
+  fileSourceRootOf,
+  sourceFamilyNameOf,
+  fileSourceQualifierOf,
+} from '../components/source-name';
 import type { SourceDto, SourceKind } from '../../shared/api-types';
 
 /**
@@ -98,6 +102,26 @@ export class SessionSources {
   }
 
   /**
+   * The accessible Source qualifier of one file's link name, or null where
+   * its family holds one Source (`source-name.ts` § fileSourceQualifierOf).
+   */
+  public sourceQualifierOf(sourceId: string): string | null {
+    return fileSourceQualifierOf(this.sources.value, sourceId);
+  }
+
+  /**
+   * One link's accessible name with its Source qualifier appended where the
+   * file's family holds more than one Source
+   * ({@link SessionSources.sourceQualifierOf}): the visible label stays the
+   * name's prefix (WCAG 2.5.3), and two same-path files of two consented
+   * homes stop announcing identically in a links list (WCAG 2.4.6).
+   */
+  public qualifiedLinkName(label: string, sourceId: string): string {
+    const qualifier = this.sourceQualifierOf(sourceId);
+    return qualifier === null ? label : `${label} (${qualifier})`;
+  }
+
+  /**
    * The Source ID one route token names, or null when the snapshot lists no
    * Source answering to it — a hand-written address, or a link made while a
    * Global Source this session no longer carries was published
@@ -112,7 +136,7 @@ export class SessionSources {
    * published Source order the list already carries: the repository's members
    * and the consented homes' are two statements rather than one merged list —
    * the grouping the instruction blocks render, kept for every kind a member
-   * publishes (FR-030, tasks.md T1127). The heading names a block only where
+   * publishes (FR-030, tasks.md T1140). The heading names a block only where
    * the session holds more than one Source
    * ({@link SessionSources.familyNameOf}).
    */
@@ -129,11 +153,23 @@ export class SessionSources {
       }
       block.push(member);
     }
-    return [...byFamily].map(([kind, blockMembers]) => ({
-      kind,
-      familyText: this.familyNameOf(kind),
-      members: blockMembers,
-    }));
+    return (
+      [...byFamily]
+        .map(([kind, blockMembers]) => ({
+          kind,
+          familyText: this.familyNameOf(kind),
+          members: blockMembers,
+        }))
+        // The published family order — the Repository family first — whatever
+        // order the narrowed member list arrived in: a filter that dropped
+        // every Repository member must not float the Global block above where
+        // the inventory reads it everywhere else (FR-030,
+        // `#inventorySourceOrder`).
+        .toSorted(
+          (left, right) =>
+            (left.kind === 'repository' ? 0 : 1) - (right.kind === 'repository' ? 0 : 1),
+        )
+    );
   }
 }
 
@@ -145,6 +181,6 @@ export class SessionSources {
  * never read.
  */
 export function useSessionSources(): SessionSources {
-  const sessionViewState = inject(SESSION_VIEW_STATE);
-  return new SessionSources(computed(() => sessionViewState?.snapshot.value?.sources ?? []));
+  const sessionViewState = useSessionViewState();
+  return new SessionSources(computed(() => sessionViewState.snapshot.value?.sources ?? []));
 }

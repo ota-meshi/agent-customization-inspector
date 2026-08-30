@@ -285,9 +285,10 @@ export class GlobalConsentPreview {
    * Global-scoped, not every exclusion: a Repository exclusion says nothing
    * about what consent to read a home directory covers, and putting one in
    * front of a reader deciding that would describe the wrong boundary. The
-   * three `*.excluded.user-runtime` rules arrive with Phases 96–98, so this
-   * list is empty until then and the consent page states its scope in plain
-   * language either way.
+   * list holds whatever Global-scoped exclusions the shipped catalog
+   * carries — the consent page states its scope in plain language either
+   * way, so an empty list would state a scope with no per-tool rows rather
+   * than fail.
    */
   public readonly excludedRuleIds: readonly RuleId[];
 
@@ -343,10 +344,10 @@ export class GlobalConsentPreview {
  * on read would hand the reader a different preview than the one an in-flight
  * enable is bound to.
  *
- * The freeze conditions (active consent, a registered initial enable, a
- * non-null disable fence) arrive with the phases that create those states.
- * Until then no state can freeze a preview, so {@link capture} is always
- * permitted and the host's conflict checks have nothing to report.
+ * The freeze conditions are the session's own states: an active consent, a
+ * registered enable operation, or a non-null disable fence. While one holds,
+ * {@link capture} is refused and the host answers the conflict its own
+ * checks name (contracts/http-api.md § create-global-consent-preview).
  */
 export class GlobalConsentDomain {
   /** The current preview, or null when none has been captured in this process. */
@@ -386,6 +387,16 @@ export class GlobalConsentDomain {
   public current(): GlobalConsentPreview | null {
     return this.#current;
   }
+
+  /**
+   * Releases the frozen preview. Called only inside the disable barrier's
+   * terminal success commit (contracts/http-api.md § disable-global): the
+   * preview stays retrievable — frozen — through every failed cleanup, and a
+   * later capture may replace it only once the barrier is gone.
+   */
+  public release(): void {
+    this.#current = null;
+  }
 }
 
 /**
@@ -407,8 +418,8 @@ export class GlobalConsentDomain {
  * authorizes is the member's own, and that lives in its rule catalog
  * (`GLOBAL_RULES_BY_MEMBER`), never here.
  */
-export const admitGlobalMemberRoot: GlobalMemberPort = async (lexicalRoot) => {
-  const admission = await admitGlobalRoot(lexicalRoot);
+export const admitGlobalMemberRoot: GlobalMemberPort = async (lexicalRoot, stillAuthorized) => {
+  const admission = await admitGlobalRoot(lexicalRoot, stillAuthorized);
   return admission.kind === 'admitted'
     ? { kind: 'admitted', root: lexicalRoot }
     : { kind: 'rejected', failureCode: admission.reason };
@@ -431,7 +442,7 @@ export const PRODUCTION_GLOBAL_MEMBER_PORTS: Readonly<
   claude: admitGlobalMemberRoot,
   /** Bound by T951, through the same. */
   codex: admitGlobalMemberRoot,
-  /** Bound by T1124, through the same (FR-045). */
+  /** Bound by T1137, through the same (FR-045). */
   agents: admitGlobalMemberRoot,
 };
 
@@ -463,14 +474,26 @@ function lexicalRejection(entry: GlobalPreviewEntry): GlobalResolvedOutcome | nu
  * outcome, which is what leaves it out of both partitions and out of the
  * controls. Every port call runs before any disposition, so a throw aborts the
  * transaction with nothing activated.
+ *
+ * `stillAuthorized` is checked before each member's probe: the disable
+ * barrier cancels the enable operation it drains, and starting the next
+ * member's filesystem read after that acceptance would be new I/O the
+ * contract's abort covers (contracts/http-api.md § disable-global). A
+ * cancellation mid-loop stops the walk; the caller's own post-admission
+ * re-check answers the fixed conflict, so the partial result activates
+ * nothing.
  */
 export async function resolveGlobalMembers(
   preview: GlobalConsentPreview,
   ports: Readonly<Record<GlobalMemberId, GlobalMemberPort | null>>,
   members?: readonly GlobalMemberId[],
+  stillAuthorized?: () => boolean,
 ): Promise<{ readonly member: GlobalEnableMember; readonly outcome: GlobalResolvedOutcome }[]> {
   const resolved: { member: GlobalEnableMember; outcome: GlobalResolvedOutcome }[] = [];
   for (const entry of preview.entries) {
+    if (stillAuthorized !== undefined && !stillAuthorized()) {
+      break;
+    }
     // A retry resolves only the server-derived retryable subset
     // (contracts/http-api.md § enable-global): a published member's root is
     // neither re-read nor re-dispositioned. The initial enable passes no
@@ -490,7 +513,16 @@ export async function resolveGlobalMembers(
       port,
     };
     const lexical = lexicalRejection(entry);
-    resolved.push({ member, outcome: lexical ?? (await port(entry.lexicalRoot)) });
+    const outcome = lexical ?? (await port(entry.lexicalRoot, stillAuthorized));
+    if (lexical === null && stillAuthorized !== undefined && !stillAuthorized()) {
+      // The transaction was revoked while this member's probes ran: its
+      // outcome is a late result the settle gate would refuse anyway
+      // (devframe-app.ts § runGlobalEnable), so it is dropped here and the
+      // loop head stops the next member — revocation is permanent, so no
+      // fabricated outcome can reach a disposition.
+      break;
+    }
+    resolved.push({ member, outcome });
   }
   return resolved;
 }

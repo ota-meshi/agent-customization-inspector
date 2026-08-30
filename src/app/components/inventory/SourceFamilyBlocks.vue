@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="Member extends { readonly sourceId: string }">
 // One row's members grouped into one block per Source family (FR-030,
-// tasks.md T1127).
+// tasks.md T1140).
 //
 // One component for every row, the instruction row included, because the
 // block is chrome: a heading where the session holds more than one Source,
@@ -13,6 +13,7 @@
 import { computed } from 'vue';
 import { useSessionSources } from '../../composables/session-sources';
 import type { SourceFamilyBlock } from '../../composables/session-sources';
+import type { SourceKind } from '../../../shared/api-types';
 
 const props = defineProps<{
   /** The row's members, in the row's own published order. */
@@ -23,15 +24,15 @@ const props = defineProps<{
    */
   memberKey: (member: Member) => string;
   /**
-   * The row's own file identities — the set no filter narrows
-   * (`filters.ts` § NarrowedInventoryRow.rowFileIdentities). They decide
-   * which families exist as blocks, so a narrowing that empties a family's
-   * members does not take its block — or the comparison entry the block can
-   * still make — with it, exactly as the instruction blocks survive one.
-   * Omitted by a caller with no block-level entries; the members alone then
-   * decide the blocks.
+   * The families whose comparison entries the owning row can still offer —
+   * the keys of its per-block compare routes. A narrowing that empties such
+   * a family's members does not take its block with it, so the entry stays
+   * reachable; a family with no comparable pair is deliberately absent, so
+   * an all-filtered family never leaves a bare heading behind. Omitted by a
+   * caller with no block-level entries; the members alone then decide the
+   * blocks.
    */
-  identities?: readonly { readonly sourceId: string }[];
+  entryKinds?: readonly SourceKind[];
 }>();
 
 defineSlots<{
@@ -50,21 +51,26 @@ const sessionSources = useSessionSources();
 /**
  * The members grouped into family blocks
  * ({@link SessionSources.familyBlocksOf}), extended with the families only
- * {@link props.identities} holds: a family every member of which a narrowing
- * dropped still renders its block, so its entry stays reachable.
+ * {@link props.entryKinds} holds: a family every member of which a narrowing
+ * dropped still renders its block exactly when its comparison entry has
+ * something to offer.
  */
 const blocks = computed(() => {
   const grouped = sessionSources.familyBlocksOf(props.members);
   const present = new Set(grouped.map((block) => block.kind));
   const extended = [...grouped];
-  for (const identity of props.identities ?? []) {
-    const kind = sessionSources.familyKindOf(identity.sourceId);
+  for (const kind of props.entryKinds ?? []) {
     if (!present.has(kind)) {
       present.add(kind);
       extended.push({ kind, familyText: sessionSources.familyNameOf(kind), members: [] });
     }
   }
-  return extended;
+  // The same published family order the grouping itself keeps: an extension
+  // appended for an all-filtered family must slot where the family reads,
+  // not after whichever blocks survived the narrowing.
+  return extended.toSorted(
+    (left, right) => (left.kind === 'repository' ? 0 : 1) - (right.kind === 'repository' ? 0 : 1),
+  );
 });
 </script>
 

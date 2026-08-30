@@ -308,8 +308,8 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 - そもそもruleを移動できるかを決めるのは、selectorのsubject — `scoped` がcomponentのdata属性を
   付ける、最も右のcompound — です。そのsubjectを1つ以外のcomponentも描画しているときに限り、
   ruleはglobal sheetに属します。scopedにすると一致しなくなり、その失敗は例外ではなく沈黙として
-  現れるからです。`h2` の基準値がその例で、3つのcomponentが `h2` を描画するため、どれか1つの
-  中では `h2[data-v-…]` となって残り2つに届かなくなります。
+  現れるからです。`h2` の基準値がその例で、多くのcomponentが `h2` を描画するため、どれか1つの
+  中では `h2[data-v-…]` となって残りに届かなくなります。
 - `:deep()` を使えばcomponentの中からでもそうしたselectorは再び一致しますが、この用途の答えでは
   ありません。すべてのpageが依存する基準値を、escape hatchの裏で1つのcomponentへ移すことになり、
   それはこの方針が防ごうとしている配置そのものです。componentが子へ渡すmarkupを本当にstyleする

@@ -52,16 +52,7 @@
 // path names the same file in the new generation, and the page refetches it,
 // so the link survives the rescan, and only a path the new generation does
 // not hold is reported as dead.
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
@@ -70,6 +61,7 @@ import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import { LEADING_SKILL_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
+  familyGenerationOf,
   familyComparisonPairsOf,
   sideFamilyOf,
   asSourceSelector,
@@ -84,8 +76,9 @@ import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-t
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { skillComparisonRouteFor } from '../../../../composables/skill-comparison';
 import { usePageOwnership } from '../../../../composables/page-ownership';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import type {
   SkillDefinitionDto,
   SkillInventoryEntryDto,
@@ -104,14 +97,9 @@ import {
   rendersNothingVisible,
   type SupportedTool,
 } from '../../../../../shared/entities';
+import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 /**
@@ -166,6 +154,16 @@ const sessionSources = useSessionSources();
  * another Source is a different skill (FR-030).
  */
 const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
+
+// The open skill's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source (`source-facts.ts`). One line for the
+// page rather than one per invocation, because which place the directory came
+// from is the skill's fact, not a product's.
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
 
 /**
  * The file of this skill the reader has open: the `file` query's path, or the
@@ -573,7 +571,10 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * do is pull the reader out of the list they are using, so the branches below
  * decide per case instead of resetting the strip on every change.
  *
- * Decided once per (skill, open file), and only once the detail is in hand: a
+ * Decided once per (Source, skill, open file), and only once the detail is
+ * in hand — the Source is the identity's other half (FR-030): two consented
+ * homes can hold one `skills/<name>/SKILL.md`, and a history step between
+ * their two details keeps both paths identical while the skill is not. A
  * skill with nothing in it yet is not a skill with nothing to declare, and
  * deciding from that moment would open every skill on its files and then move
  * the reader when the declarations arrived.
@@ -582,7 +583,7 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * the new generation (FR-030), so a rescan while the reader is reading takes
  * the detail away and brings the same one back. That round trip decides
  * nothing: the gap is skipped because nothing is in hand, and the return
- * matches the (skill, open file) already decided for — which is what keeps a
+ * matches the (Source, skill, open file) already decided for — which is what keeps a
  * reader who had opened the files list from being sent back to the
  * declarations. Leaving the route drops the memory with the component.
  */
@@ -602,25 +603,27 @@ const tabDecidedFor = ref<string | null>(null);
 const skillLedFor = ref<string | null>(null);
 watch(
   [
+    openSource,
     () => owner.value?.definition.sourceRelativePath,
     () => openPath.value,
     () => skillPresentation.value !== null,
     () => entryDetail.value !== null,
   ],
-  ([entryPathValue, openPathValue, hasPresentation, entryHeld]) => {
+  ([sourceValue, entryPathValue, openPathValue, hasPresentation, entryHeld]) => {
     if (entryPathValue === undefined || !entryHeld) {
       // Nothing is in hand: the first render before the detail arrives, and
       // the gap a rescan opens. There is no tab to decide between yet, and the
       // strip keeps whatever the reader last chose until there is.
       return;
     }
-    const decidingFor = `${entryPathValue}\u0000${openPathValue}`;
+    const decidingFor = `${sourceValue}\u0000${entryPathValue}\u0000${openPathValue}`;
     if (tabDecidedFor.value === decidingFor) {
       return;
     }
     tabDecidedFor.value = decidingFor;
-    const skillArrived = skillLedFor.value !== entryPathValue;
-    skillLedFor.value = entryPathValue;
+    const ledFor = `${sourceValue}\u0000${entryPathValue}`;
+    const skillArrived = skillLedFor.value !== ledFor;
+    skillLedFor.value = ledFor;
     // A companion is shown in the files panel, so that is where the reader has
     // to be to see it — however they arrived. Keying only on the skill left a
     // history step to another of its files changing the URL and the tree's
@@ -802,8 +805,7 @@ watch(
     // change is what re-requests the same path under the new snapshot
     // instead of leaving the page on the closed state. A refresh that adopts
     // the same generations changes neither key and re-requests nothing.
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
-    (): number | null => snapshot.value?.globalGeneration ?? null,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step between two Sources' details at one path leaves the path
     // identical and the file different, so without this the page would keep
@@ -872,7 +874,7 @@ const titleSubject = computed<string | null>(() => {
   if (directory === '' || rendersNothingVisible(escapeControlCharacters(directory))) {
     return null;
   }
-  return directory;
+  return `${directory} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount
@@ -900,7 +902,7 @@ onMounted(focusHeading);
 // so it is announced, and the patch that puts the new skill's name there has
 // not run yet — focusing first announces the skill they just left.
 watch(
-  () => owner.value?.definition.sourceRelativePath,
+  [openSource, () => owner.value?.definition.sourceRelativePath],
   () => void nextTick(focusHeading),
 );
 
@@ -1037,6 +1039,16 @@ onBeforeUnmount(() => {
 
     <template v-else-if="entryDetail">
       <div class="aci-skill-detail__overview">
+        <!-- Which family of place the skill came from, and — where that
+             family holds more than one Source — which consented directory:
+             an escaped presentation of the admitted root, never a path
+             anything can open (FR-002, FR-007). -->
+        <p v-if="sourceFamilyText !== null" class="aci-skill-detail__source-family">
+          {{ sourceFamilyText }}
+        </p>
+        <p v-if="sourceRootText !== null" class="aci-skill-detail__root aci-note">
+          <span class="aci-authored-text">{{ sourceRootText }}</span>
+        </p>
         <!-- What each recognizing product invokes this skill by, with the
              surfaces of the documented behaviors its admitting rules rest on
              beside it (FR-007, FR-009). Two products reading one `SKILL.md`

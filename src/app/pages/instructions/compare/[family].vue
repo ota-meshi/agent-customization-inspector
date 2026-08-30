@@ -39,30 +39,26 @@
 // the comparison state owns: leaving the route closes it, a client-data
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same pair under the new snapshot (FR-030).
-import { sourceIdOf, type ComparisonSide, querySideOf } from '../../../components/detail-route';
+import {
+  sourceIdOf,
+  type ComparisonSide,
+  querySideOf,
+  comparisonTitleSides,
+} from '../../../components/detail-route';
 import {
   comparisonSideOptions,
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
 import { sourceFactsOf } from '../../../components/source-name';
-import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/instruction-comparison/RecognitionComparison.vue';
 import SourceDiff from '../../../components/instruction-comparison/SourceDiff.vue';
 import { InstructionRecognitionComparison } from '../../../components/instruction-comparison/recognition-comparison';
 import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -79,13 +75,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a comparison page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const comparison = sessionViewState.instructionComparison;
 const snapshot = sessionViewState.snapshot;
@@ -665,8 +655,14 @@ const titleSubject = computed<string>(() => {
   }
   switch (status.value) {
     case 'ready':
-    case 'loading':
-      return 'Comparing instruction files';
+    case 'loading': {
+      // The pair in the title, so two comparison tabs never read identically
+      // (WCAG 2.4.2; `detail-route.ts` § comparisonTitleSides).
+      const sides = comparisonTitleSides(leftSide.value, rightSide.value);
+      return sides === null
+        ? 'Comparing instruction files'
+        : `Comparing instruction files — ${sides}`;
+    }
     case 'stale':
       return 'Link not in this scan';
     case 'same-path':

@@ -18,17 +18,18 @@
 // tab strip beside this section.
 import { nextTick, useTemplateRef } from 'vue';
 import { SUPPORTED_TOOL_TEXT, isSupportedTool, type SupportedTool } from '../../../shared/entities';
-import { SOURCE_KIND_TEXT } from '../../../shared/api-text';
-import type { SourceKind } from '../../../shared/api-types';
+import type { SourceSelector } from '../../../shared/api-types';
 
 const props = defineProps<{
   /**
-   * The Source families the current generation published, in the fixed order
-   * (`filters.ts`). A family rather than one option per Source: the Tool filter
-   * beside this one already answers which product recognized a file, so naming
-   * each consented home here asked the same question twice.
+   * One option per published Source, in the fixed order (`filters.ts`
+   * § availableSources): the repository, then each consented home under its
+   * member's name. Per Source rather than per family, because which Source
+   * holds a file is the question this filter answers (FR-006) — the Tool
+   * filter beside it answers which product recognized one, and a family
+   * option could not separate two homes of one family.
    */
-  availableSourceKinds: readonly SourceKind[];
+  availableSources: readonly { readonly selector: SourceSelector; readonly label: string }[];
   /** The tools the current inventory actually recognizes. */
   availableTools: readonly SupportedTool[];
   /** How many rows the current filters admit, for the result summary. */
@@ -75,7 +76,7 @@ async function clearFilters(): Promise<void> {
 }
 
 /** Selected Source family, or null for every Source. */
-const sourceKind = defineModel<SourceKind | null>('sourceKind', { required: true });
+const source = defineModel<SourceSelector | null>('source', { required: true });
 /** Selected recognizing tool, or null for every tool. */
 const tool = defineModel<SupportedTool | null>('tool', { required: true });
 /** Case-insensitive Source-relative-path substring. */
@@ -90,8 +91,8 @@ const pathQuery = defineModel<string>('pathQuery', { required: true });
  * declared a family the inventory has no rows for. The comparison is what
  * narrows the type, so no assertion is made about the string.
  */
-function sourceKindFromSelection(value: string): SourceKind | null {
-  for (const candidate of props.availableSourceKinds) {
+function sourceFromSelection(value: string): SourceSelector | null {
+  for (const { selector: candidate } of props.availableSources) {
     if (candidate === value) {
       return candidate;
     }
@@ -115,16 +116,20 @@ function toSelectValue(value: string | null): string {
            a reader confirms it — and there the control's two options would name
            the same population, which is a question with one answer put in front
            of every reader who has not asked it. -->
-      <p v-if="availableSourceKinds.length > 1">
+      <p v-if="availableSources.length > 1">
         <label for="aci-inventory-filters-source">Source</label>
         <select
           id="aci-inventory-filters-source"
-          :value="toSelectValue(sourceKind)"
-          @change="sourceKind = sourceKindFromSelection(($event.target as HTMLSelectElement).value)"
+          :value="toSelectValue(source)"
+          @change="source = sourceFromSelection(($event.target as HTMLSelectElement).value)"
         >
           <option value="">All sources</option>
-          <option v-for="candidate in availableSourceKinds" :key="candidate" :value="candidate">
-            {{ SOURCE_KIND_TEXT[candidate] }}
+          <option
+            v-for="candidate in availableSources"
+            :key="candidate.selector"
+            :value="candidate.selector"
+          >
+            {{ candidate.label }}
           </option>
         </select>
       </p>

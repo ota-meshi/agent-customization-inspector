@@ -137,13 +137,6 @@ import type { CopilotRuleId, CopilotStrategyId } from '../identifier-types';
 /** What each Copilot strategy composes. What documents it is its own `evidence`. */
 export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, StrategyRelations>> = {
   /**
-   * CLI instruction layering composes every instruction location the surface
-   * documents, Repository and User alike. The User scopes are listed for the
-   * same reason as in the skill selections: the strategy describes Copilot's
-   * runtime, and leaving them out would misdescribe a combination of
-   * repository and personal files as a combination of repository files alone.
-   */
-  /**
    * CLI custom-agent selection composes the project layers the surface walks
    * and the User scope it also reads. Both are listed for the reason the skill
    * selections list theirs: the strategy describes Copilot's runtime, where
@@ -153,6 +146,13 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
   [COPILOT_CLI_AGENTS_SELECTION_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_CLI_AGENTS_BEHAVIOR, COPILOT_CLI_USER_AGENTS_BEHAVIOR],
   },
+  /**
+   * CLI instruction layering composes every instruction location the surface
+   * documents, Repository and User alike. The User scopes are listed for the
+   * same reason as in the skill selections: the strategy describes Copilot's
+   * runtime, and leaving them out would misdescribe a combination of
+   * repository and personal files as a combination of repository files alone.
+   */
   [COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -179,14 +179,6 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
     consumesBehaviors: [COPILOT_CLI_MCP_BEHAVIOR, COPILOT_CLI_USER_MCP_BEHAVIOR],
   },
   /**
-   * Cloud instruction layering composes the four Repository locations and the
-   * hosted organization layer they precede — the origin-file-less fact listed
-   * exactly like a located behavior, because what it lacks is a path, not a
-   * place in the documented composition. Hosted personal Chat instructions are
-   * deliberately absent: the support matrix does not list them as a
-   * Cloud-agent layer, so composing them would be an inference.
-   */
-  /**
    * Cloud custom-agent selection composes the Repository scope and the
    * organization scope the same surface reads; the enterprise scope its
    * documented order also names has no behavior of its own, because no file
@@ -195,6 +187,14 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
   [COPILOT_CLOUD_AGENTS_SELECTION_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_CLOUD_AGENTS_BEHAVIOR, COPILOT_CLOUD_ORGANIZATION_AGENTS_BEHAVIOR],
   },
+  /**
+   * Cloud instruction layering composes the four Repository locations and the
+   * hosted organization layer they precede — the origin-file-less fact listed
+   * exactly like a located behavior, because what it lacks is a path, not a
+   * place in the documented composition. Hosted personal Chat instructions are
+   * deliberately absent: the support matrix does not list them as a
+   * Cloud-agent layer, so composing them would be an inference.
+   */
   [COPILOT_CLOUD_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       COPILOT_CLOUD_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -205,16 +205,16 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
     ],
   },
   /**
-   * VS Code instruction layering composes the workspace locations and the
-   * personal ones documented above them in the layer order.
-   */
-  /**
    * VS Code custom-agent selection composes the workspace scope and the User
    * profile scope, which is where its unresolved same-name precedence lies.
    */
   [COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_VSCODE_AGENTS_BEHAVIOR, COPILOT_VSCODE_USER_AGENTS_BEHAVIOR],
   },
+  /**
+   * VS Code instruction layering composes the workspace locations and the
+   * personal ones documented above them in the layer order.
+   */
   [COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY.strategyId]: {
     consumesBehaviors: [
       COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -272,10 +272,10 @@ export const COPILOT_STRATEGY_RELATIONS: Readonly<Record<CopilotStrategyId, Stra
     consumesBehaviors: [COPILOT_VSCODE_MCP_BEHAVIOR, COPILOT_VSCODE_USER_MCP_BEHAVIOR],
   },
   /**
-   * CLI settings precedence composes the Repository cascade layer this
-   * product reads and the User layer it may not: the order is the vendor's
-   * runtime, and omitting the User layer would describe a cascade with a
-   * step missing.
+   * CLI settings precedence composes the Repository cascade layer and the
+   * User layer a consented `COPILOT_HOME` holds: the order is the vendor's
+   * runtime, and omitting either layer would describe a cascade with a step
+   * missing.
    */
   [COPILOT_CLI_SETTINGS_PRECEDENCE_STRATEGY.strategyId]: {
     consumesBehaviors: [COPILOT_CLI_SETTINGS_BEHAVIOR, COPILOT_CLI_USER_SETTINGS_BEHAVIOR],
@@ -390,13 +390,6 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
     explainedByStrategies: [],
   },
   /**
-   * The extra-directories exclusion cites the behaviors whose documented
-   * lookups a runtime-supplied root would extend — three instruction
-   * locations, because `COPILOT_CUSTOM_INSTRUCTIONS_DIRS` supplies additional
-   * `AGENTS.md` files as well as `*.instructions.md` ones, and two skill
-   * locations — which is why the record names no single kind.
-   */
-  /**
    * The settings rule is based on the one documented lookup that locates the
    * documents it publishes as settings — the CLI's, which names all four
    * files — and is explained by that surface's precedence, which owns the
@@ -434,6 +427,13 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
     basedOnBehaviors: [COPILOT_CLI_LSP_BEHAVIOR],
     explainedByStrategies: [],
   },
+  /**
+   * The extra-directories exclusion cites the behaviors whose documented
+   * lookups a runtime-supplied root would extend — three instruction
+   * locations, because `COPILOT_CUSTOM_INSTRUCTIONS_DIRS` supplies additional
+   * `AGENTS.md` files as well as `*.instructions.md` ones, and two skill
+   * locations — which is why the record names no single kind.
+   */
   [COPILOT_EXCLUDED_EXTRA_DIRECTORIES_RULE.ruleId]: {
     basedOnBehaviors: [
       COPILOT_CLI_INSTRUCTIONS_AGENTS_BEHAVIOR,
@@ -537,14 +537,6 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
     explainedByStrategies: [COPILOT_CLI_INSTRUCTIONS_LAYERING_STRATEGY],
   },
   /**
-   * The Repository skill rule is based on the three Repository surface
-   * behaviors alone — User, command, and hosted scopes are different Source
-   * boundaries this rule may not read — and is explained by all three
-   * selection strategies, one per surface, because no single strategy is true
-   * of the product (FR-009). The grouped inventory row derives its same-name
-   * statement from exactly these three (`skill-resolution.ts`).
-   */
-  /**
    * The CLI workspace MCP rule is based on the workspace lookup alone — the
    * User configuration, session additions, plugin servers, and hosted state
    * are different boundaries this rule may not read — and is explained by the
@@ -608,6 +600,14 @@ export const COPILOT_RULE_RELATIONS: Readonly<Record<CopilotRuleId, RuleRelation
       COPILOT_VSCODE_AGENTS_SELECTION_STRATEGY,
     ],
   },
+  /**
+   * The Repository skill rule is based on the three Repository surface
+   * behaviors alone — User, command, and hosted scopes are different Source
+   * boundaries this rule may not read — and is explained by all three
+   * selection strategies, one per surface, because no single strategy is true
+   * of the product (FR-009). The grouped inventory row derives its same-name
+   * statement from exactly these three (`skill-resolution.ts`).
+   */
   [COPILOT_REPO_SKILL_RULE.ruleId]: {
     basedOnBehaviors: [
       COPILOT_CLI_SKILLS_BEHAVIOR,

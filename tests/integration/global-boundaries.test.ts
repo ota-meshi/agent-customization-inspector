@@ -26,8 +26,9 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { access, constants } from 'node:fs/promises';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import * as fsIo from '../../src/server/inspection/fs-io';
 import { admitGlobalRoot } from '../../src/server/inspection/global-admission';
 import { CLAUDE_GLOBAL_RULES } from '../../src/server/inspection/rules/claude';
 import type { CompiledStaticCandidateRule } from '../../src/server/inspection/rules/registry';
@@ -51,6 +52,23 @@ import {
   observeTree,
   type CodexInstructionCaseName,
 } from '../fixtures/global-homes/build-fixtures';
+
+// A transparent pass-through wrap of every filesystem entry point the
+// inspection module owns, so the disable suite below can assert the barrier
+// performs zero enumeration and zero reads of its own (T1020). Every other
+// suite in this file runs through the same wraps unchanged.
+vi.mock('../../src/server/inspection/fs-io', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../src/server/inspection/fs-io')>();
+  return {
+    ...real,
+    access: vi.fn(real.access),
+    lstat: vi.fn(real.lstat),
+    readFile: vi.fn(real.readFile),
+    readdir: vi.fn(real.readdir),
+    realpath: vi.fn(real.realpath),
+    stat: vi.fn(real.stat),
+  };
+});
 
 const cleanups: (() => void)[] = [];
 
@@ -100,6 +118,7 @@ async function commitRepositoryScan(
     visitedEntries: publication.visitedEntries,
     candidateFiles: publication.candidateFiles,
     readBytes: publication.readBytes,
+    censusEscapedDirectories: publication.censusEscapedDirectories,
   });
 }
 
@@ -147,6 +166,10 @@ async function commitCodexGlobalScan(
       recognitions: publication.recognitions,
       diagnostics: publication.diagnostics,
       outcome: publication.outcome,
+      visitedEntries: publication.visitedEntries,
+      candidateFiles: publication.candidateFiles,
+      readBytes: publication.readBytes,
+      censusEscapedDirectories: publication.censusEscapedDirectories,
     },
   ]);
 }
@@ -345,6 +368,15 @@ describe('what a consented Codex scan touches (T947)', () => {
     cleanups.push(() => rmSync(homes.base, { recursive: true, force: true }));
     expect(await admitGlobalRoot(homes.homes.codex)).toEqual({ kind: 'admitted' });
 
+    // The disable barrier or host shutdown revokes the enable transaction
+    // between the root's two probes (data-model.md § ScanAttempt): the
+    // `access` never starts, and a directory that would have been admitted is
+    // refused instead — a late result the settle gate discards either way.
+    expect(await admitGlobalRoot(homes.homes.codex, () => false)).toEqual({
+      kind: 'rejected',
+      reason: 'root-unreadable',
+    });
+
     // A path that does not exist, and one that is a file rather than a
     // directory: both are this tool's `root-unreadable` rejection, which the
     // other tools' admissions are unaffected by (FR-014).
@@ -525,7 +557,7 @@ describe('the Claude Global instruction file (T963, T964)', () => {
   });
 });
 
-describe('the widened Copilot member and the shared agent home (T977, T978, T1124)', () => {
+describe('the widened Copilot member and the shared agent home (T977, T978, T1137)', () => {
   it('serves each same-path skill detail from its own member (FR-030)', async () => {
     // The Copilot home and the shared agent home both admit
     // `skills/<name>/SKILL.md`, so the one Global generation holds two
@@ -597,6 +629,10 @@ describe('the widened Copilot member and the shared agent home (T977, T978, T112
         recognitions: publication.recognitions,
         diagnostics: publication.diagnostics,
         outcome: publication.outcome,
+        visitedEntries: publication.visitedEntries,
+        candidateFiles: publication.candidateFiles,
+        readBytes: publication.readBytes,
+        censusEscapedDirectories: publication.censusEscapedDirectories,
       });
     }
     coordinator.completeGlobalBatch(settled.scanRequestId, results);
@@ -779,6 +815,7 @@ describe('a Global batch beside the Repository sequence (T947)', () => {
       visitedEntries: repositoryPublication.visitedEntries,
       candidateFiles: repositoryPublication.candidateFiles,
       readBytes: repositoryPublication.readBytes,
+      censusEscapedDirectories: [],
     });
     const repositoryBefore = session.snapshot();
 
@@ -819,6 +856,10 @@ describe('a Global batch beside the Repository sequence (T947)', () => {
         recognitions: globalPublication.recognitions,
         diagnostics: globalPublication.diagnostics,
         outcome: globalPublication.outcome,
+        visitedEntries: globalPublication.visitedEntries,
+        candidateFiles: globalPublication.candidateFiles,
+        readBytes: globalPublication.readBytes,
+        censusEscapedDirectories: [],
       },
     ]);
 
@@ -1028,6 +1069,10 @@ describe('the one fixed-four transaction over real roots (T991)', () => {
         recognitions: publication.recognitions,
         diagnostics: publication.diagnostics,
         outcome: publication.outcome,
+        visitedEntries: publication.visitedEntries,
+        candidateFiles: publication.candidateFiles,
+        readBytes: publication.readBytes,
+        censusEscapedDirectories: publication.censusEscapedDirectories,
       });
     }
     coordinator.completeGlobalBatch(settled.scanRequestId, results);
@@ -1094,5 +1139,76 @@ describe('the one fixed-four transaction over real roots (T991)', () => {
     );
     expect(after.repositoryGeneration).toBe(before.repositoryGeneration);
     expect(after.files).toEqual(before.files);
+  });
+});
+
+describe('what the disable barrier touches (T1020)', () => {
+  it('performs zero filesystem work, retains nothing, and completes after the drain', async () => {
+    const homes = buildGlobalHomeFixture();
+    cleanups.push(() => rmSync(homes.base, { recursive: true, force: true }));
+    const repositoryRoot = mkdtempSync(join(tmpdir(), 'inspector-disable-io-'));
+    cleanups.push(() => rmSync(repositoryRoot, { recursive: true, force: true }));
+    writeFileSync(join(repositoryRoot, 'AGENTS.md'), REPOSITORY_AGENTS_TEXT, 'utf8');
+    const session = new InspectionSession({
+      invocationCwd: repositoryRoot,
+      rootOptionValue: null,
+      fileOpener: new RecordingFileOpener(),
+    });
+    const coordinator = new SessionCoordinator(session);
+    await commitRepositoryScan(session, coordinator);
+    await commitCodexGlobalScan(session, coordinator, homes.homes.codex);
+    const diagnosticsBefore = session.snapshot().diagnostics.length;
+    const homeBefore = observeTree(homes.homes.codex);
+
+    // One in-flight execution the drain must wait out: the completion order
+    // below is what "completes only after affected resources are closed"
+    // means at this boundary — the barrier never guesses a closure, it waits
+    // for the work's own settlement.
+    const inFlight = Promise.withResolvers<unknown>();
+    coordinator.trackInFlight(inFlight.promise);
+    const order: string[] = [];
+    const disposition = coordinator.disposeGlobalDisable(() => {});
+    if (disposition.kind !== 'pending') {
+      throw new Error('expected an accepted barrier');
+    }
+    const completion = disposition.completion.then(() => {
+      order.push('completed');
+    });
+    // The barrier is a zero-I/O operation from acceptance on: nothing below
+    // may enumerate or read anything.
+    for (const spied of [
+      fsIo.access,
+      fsIo.lstat,
+      fsIo.readFile,
+      fsIo.readdir,
+      fsIo.realpath,
+      fsIo.stat,
+    ]) {
+      vi.mocked(spied).mockClear();
+    }
+    order.push('released');
+    inFlight.resolve(null);
+    await completion;
+    expect(order).toEqual(['released', 'completed']);
+    for (const spied of [
+      fsIo.access,
+      fsIo.lstat,
+      fsIo.readFile,
+      fsIo.readdir,
+      fsIo.realpath,
+      fsIo.stat,
+    ]) {
+      expect(vi.mocked(spied)).not.toHaveBeenCalled();
+    }
+    // Expected cancellation created no Diagnostic and retained no error, and
+    // the homes' bytes are exactly as the harness wrote them (FR-023).
+    const snapshot = session.snapshot();
+    expect(snapshot.diagnostics.length).toBeLessThanOrEqual(diagnosticsBefore);
+    expect(snapshot.staleFailures).toEqual([]);
+    const homeAfter = observeTree(homes.homes.codex);
+    expect([...homeAfter.keys()].toSorted()).toEqual([...homeBefore.keys()].toSorted());
+    for (const [path, observed] of homeAfter) {
+      expect(observed, path).toEqual(homeBefore.get(path));
+    }
   });
 });

@@ -97,36 +97,6 @@ function codexPluginNameOf(fields: readonly DeclaredEntryDto[]): string | null {
 }
 
 /**
- * What one catalog entry's `source` names, in the kinds every vendor's forms
- * share, with the Source-relative segments of its directory when it names one
- * (`registry.ts` § DeclaredPluginSource).
- *
- * The documented forms and nothing else (`openai.codex.plugins` § Marketplace
- * metadata): the local form is the object with `source: 'local'` and a `path`,
- * or the plain string path a local entry may use instead, which the page
- * requires to start with `./` and stay inside the marketplace root. A `url`,
- * `git-subdir`, or `npm` entry also writes a `path` or a `package`, so the
- * discriminant is read rather than the presence of a path. Everything else is
- * a form this vendor does not document, and stays unrecognized rather than
- * being guessed at (FR-004, FR-024).
- *
- * The discriminant alone decides the form, and an object writing nothing else
- * is that form written incompletely rather than another form: which kind of
- * place a source is, is what the discriminant says, and which place it is, is
- * what the remaining fields say — a `url` object with no `url` names a Git
- * repository this scan cannot name, exactly as a local object with no `path`
- * names a directory it cannot name. Whether the entry carries enough for its
- * own product to resolve it is that product's answer, and checking it here
- * would be validating the file (FR-032).
- *
- * `./` is relative to the marketplace root, which for a repository catalog is
- * the Source root itself — the personal pattern the same page documents,
- * `./.codex/plugins/<name>` beside a catalog at `~/.agents/plugins/`, resolves
- * against the home directory rather than against the catalog's own directory,
- * and the repository half of that rule is the root
- * (contracts/vendors/openai-codex.md § Derived Repository rules).
- */
-/**
  * Whose census a Codex catalog's `./` local sources feed: the repository
  * catalog's resolve against the Repository root and their directories are
  * enumerated, while the personal catalog at `~/.agents/plugins/marketplace.json`
@@ -157,6 +127,36 @@ function codexLocalRootInSource(
   return scope === 'repository' ? localPluginRootSegments(declaredPath) : null;
 }
 
+/**
+ * What one catalog entry's `source` names, in the kinds every vendor's forms
+ * share, with the Source-relative segments of its directory when it names one
+ * (`registry.ts` § DeclaredPluginSource).
+ *
+ * The documented forms and nothing else (`openai.codex.plugins` § Marketplace
+ * metadata): the local form is the object with `source: 'local'` and a `path`,
+ * or the plain string path a local entry may use instead, which the page
+ * requires to start with `./` and stay inside the marketplace root. A `url`,
+ * `git-subdir`, or `npm` entry also writes a `path` or a `package`, so the
+ * discriminant is read rather than the presence of a path. Everything else is
+ * a form this vendor does not document, and stays unrecognized rather than
+ * being guessed at (FR-004, FR-024).
+ *
+ * The discriminant alone decides the form, and an object writing nothing else
+ * is that form written incompletely rather than another form: which kind of
+ * place a source is, is what the discriminant says, and which place it is, is
+ * what the remaining fields say — a `url` object with no `url` names a Git
+ * repository this scan cannot name, exactly as a local object with no `path`
+ * names a directory it cannot name. Whether the entry carries enough for its
+ * own product to resolve it is that product's answer, and checking it here
+ * would be validating the file (FR-032).
+ *
+ * `./` is relative to the marketplace root, which for a repository catalog is
+ * the Source root itself — the personal pattern the same page documents,
+ * `./.codex/plugins/<name>` beside a catalog at `~/.agents/plugins/`, resolves
+ * against the home directory rather than against the catalog's own directory,
+ * and the repository half of that rule is the root
+ * (contracts/vendors/openai-codex.md § Derived Repository rules).
+ */
 function codexPluginSourceOf(
   scope: CodexCatalogScope,
   entryFields: readonly DeclaredEntryDto[],

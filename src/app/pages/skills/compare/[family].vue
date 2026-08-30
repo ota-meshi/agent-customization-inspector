@@ -43,26 +43,21 @@ import {
   type ComparisonSide,
   type SourceSelector,
   querySideOf,
+  comparisonTitleSides,
 } from '../../../components/detail-route';
-import { comparisonOptionLabel } from '../../../components/comparison-side-picker';
-import { sourceFactsOf } from '../../../components/source-name';
 import {
-  computed,
-  inject,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+  comparisonOptionLabel,
+  comparisonSourceQualifierOf,
+} from '../../../components/comparison-side-picker';
+import { sourceFactsOf } from '../../../components/source-name';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/skill-comparison/RecognitionComparison.vue';
 import SourceDiff from '../../../components/skill-comparison/SourceDiff.vue';
 import { SkillRecognitionComparison } from '../../../components/skill-comparison/recognition-comparison';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
-import { SESSION_VIEW_STATE } from '../../../session/view-state';
+import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -80,13 +75,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a comparison page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const comparison = sessionViewState.skillComparison;
 const snapshot = sessionViewState.snapshot;
@@ -284,36 +273,6 @@ class SkillCopy {
 type CopyPopulation = ReadonlyMap<string, SkillCopy>;
 
 /**
- * The copy a path of one Source belongs to, out of a name's copies: the
- * deepest one whose published membership contains the path, never merely
- * the first. Membership rather than a prefix test, because which files are
- * a copy's is the census's published fact — the traversal can commit a file
- * under a copy's prefix that the census does not attribute to it, a
- * symbolically linked subdirectory's contents above all — and a second
- * derivation could disagree with the one publication. Deepest rather than
- * first, because two copy directories of one name can nest — a nested
- * skill's root-relative prefixed name can collide with a name another file
- * authors — and the outer copy's census lists the nested copy's files too,
- * the same reason the detail page's owner resolution takes the innermost
- * census. The Source scopes the membership: a copy only ever attributes
- * paths of its own Source, so copies of two Sources never compete here and
- * the depth comparison stays within one Source's directories.
- */
-function copyOf(sourceId: string, path: string, population: CopyPopulation): SkillCopy | undefined {
-  let owner: SkillCopy | undefined;
-  for (const copy of population.values()) {
-    if (
-      copy.sourceId === sourceId &&
-      copy.members.has(path) &&
-      (owner === undefined || copy.directory.length > owner.directory.length)
-    ) {
-      owner = copy;
-    }
-  }
-  return owner;
-}
-
-/**
  * The committed readable files by identity — the comparison-eligible files
  * (FR-025). Keyed by Source and path, because two Sources can hold one
  * spelling and only one of them may be readable (FR-030).
@@ -478,27 +437,20 @@ const composedRightPath = computed(() =>
 
 /**
  * The copy-relative paths readable among one copy's attributed files, the
- * entry file first and the census's own sorted order after it. Attributed,
- * not merely a member: a nested copy's files are members of the outer
- * copy's census too, and offering one as an outer-relative option would
- * compose a pair that re-resolves under the inner copy — the same
- * deepest-owner rule {@link copyOf} applies. A nested skill of a
- * *different* name stays offered: its files are this copy's own census
- * companions — the same set the skill detail's file tree shows — and
- * comparing the copies' corresponding files is this model whatever a
- * companion happens to contain (FR-011).
+ * entry file first and the census's own sorted order after it. Membership is
+ * the copy's own published file list — the entry plus its census
+ * (api-types.ts § SkillDefinitionDto.companionFiles), the same set the skill
+ * detail's file tree shows — never a re-attribution among the row's copies:
+ * a nested copy's companions are members of the outer copy's census too, and
+ * that is the publication, so both copies offer them at their own relative
+ * paths, exactly as both copies' file trees list them. The copy itself is
+ * already settled by the side's entry identity ({@link copyOfSide}), so an
+ * offered file never moves the pair to another copy (FR-011, FR-030).
  */
 function readableRelatives(copy: SkillCopy): readonly string[] {
-  const files = population.value;
-  if (files === null) {
-    return [];
-  }
   const relatives: string[] = [];
   for (const path of copy.members) {
-    if (
-      readablePaths.value.has(fileIdentityKey(copy.sourceId, path)) &&
-      copyOf(copy.sourceId, path, files) === copy
-    ) {
+    if (readablePaths.value.has(fileIdentityKey(copy.sourceId, path))) {
       relatives.push(path.slice(copy.directory.length));
     }
   }
@@ -506,16 +458,12 @@ function readableRelatives(copy: SkillCopy): readonly string[] {
 }
 
 /**
- * Whether one copy owns a file at `relative`, readable or not — attributed
- * to that copy by the same deepest-owner rule the option lists apply
- * ({@link copyOf}), never mere census membership: a nested copy's file is a
- * member of the outer copy's census too, and treating it as the outer
- * copy's own would compose a pair that re-resolves under the inner copy and
- * drops the switchers mid-step.
+ * Whether one copy's published membership holds a file at `relative`,
+ * readable or not; see {@link readableRelatives} for why membership is the
+ * census's own fact rather than a re-attribution.
  */
 function ownedIn(copy: SkillCopy, relative: string): boolean {
-  const files = population.value;
-  return files !== null && copyOf(copy.sourceId, copy.directory + relative, files) === copy;
+  return copy.members.has(copy.directory + relative);
 }
 
 /** Whether one copy owns a readable file at `relative`; see {@link ownedIn}. */
@@ -523,6 +471,26 @@ function readableIn(copy: SkillCopy, relative: string): boolean {
   return (
     ownedIn(copy, relative) &&
     readablePaths.value.has(fileIdentityKey(copy.sourceId, copy.directory + relative))
+  );
+}
+
+/**
+ * Whether a copy can be the opposite side of a comparison at `relative`: it
+ * owns a readable file there, or it owns nothing there at all — the stated
+ * absence a one-sided comparison shows (FR-011).
+ *
+ * An owned copy whose bytes no reader shows is neither: a binary counterpart
+ * is not comparison-eligible (FR-025), and calling it an absence would say
+ * the copy ships no such file while its own page lists one. Distinct from
+ * {@link standsAt}, which asks whether a *named* file belongs to the model at
+ * all — a hand-written link to a binary counterpart is inside the model and
+ * settles as this surface's own not-readable statement.
+ */
+function opposableAt(copy: SkillCopy, relative: string): boolean {
+  return (
+    readableIn(copy, relative) ||
+    (!ownedIn(copy, relative) &&
+      !committedPaths.value.has(fileIdentityKey(copy.sourceId, copy.directory + relative)))
   );
 }
 
@@ -591,8 +559,9 @@ class ComparedFileOption {
  * own. The union rather than the intersection, because a file only one copy
  * ships is itself a difference between the copies (FR-011): stepping to it
  * shows the present side's complete content against its stated absence. A
- * file readable in neither copy is not offered — there is nothing to show
- * (FR-025).
+ * file no reader shows is not offered on either side — a copy's own binary
+ * file is not comparison-eligible, and neither is a readable file whose
+ * counterpart is one ({@link opposableAt}, FR-025).
  */
 const fileOptions = computed<readonly ComparedFileOption[]>(() => {
   const left = leftCopy.value;
@@ -603,16 +572,22 @@ const fileOptions = computed<readonly ComparedFileOption[]>(() => {
   const committed = committedPaths.value;
   const options: ComparedFileOption[] = [];
   const offer = (relative: string, other: SkillCopy, onlyIn: 'left' | 'right'): void => {
-    if (ownedIn(other, relative)) {
+    if (readableIn(other, relative)) {
       options.push(new ComparedFileOption(relative, null));
-    } else if (!committed.has(fileIdentityKey(other.sourceId, other.directory + relative))) {
+    } else if (
+      !ownedIn(other, relative) &&
+      !committed.has(fileIdentityKey(other.sourceId, other.directory + relative))
+    ) {
       options.push(new ComparedFileOption(relative, onlyIn));
     }
-    // A committed file at the corresponding path that the other copy does
-    // not own — a symbolically linked subtree's independently committed
-    // contents — is neither a counterpart nor an absence: no option is
-    // offered, and a hand-written `file` coordinate naming it is rejected
-    // by the same predicate through pairFault (FR-011).
+    // Two corresponding paths offer nothing. A committed file the other copy
+    // does not own — a symbolically linked subtree's independently committed
+    // contents — is neither a counterpart nor an absence, and a hand-written
+    // `file` coordinate naming it is rejected by the same predicate through
+    // pairFault. A counterpart the other copy owns but no reader shows is
+    // not comparison-eligible either (FR-025), and it is not an absence: the
+    // copy does ship the file, so offering it as one-sided would say
+    // otherwise ({@link opposableAt}).
   };
   for (const relative of readableRelatives(left)) {
     offer(relative, right, 'left');
@@ -667,7 +642,7 @@ function standsAt(copy: SkillCopy, relative: string): boolean {
  * The file a pair keeps when one side moves to `directory`, its other side
  * staying on `otherDirectory`: the currently compared file whenever one of
  * those two copies still owns it readably and the other can stand opposite
- * it ({@link standsAt}) — a copy that owns nothing there makes the pair
+ * it ({@link opposableAt}) — a copy that owns nothing there makes the pair
  * one-sided, which is a difference this surface states rather than a pair
  * to steer around (FR-011), and the reader's chosen file is not changed
  * under them. Only when the current file cannot be kept does the switch
@@ -680,8 +655,8 @@ function fileFor(copy: SkillCopy, otherCopy: SkillCopy): string | null {
   const current = comparedFile.value;
   if (
     current !== null &&
-    ((readableIn(copy, current) && standsAt(otherCopy, current)) ||
-      (readableIn(otherCopy, current) && standsAt(copy, current)))
+    ((readableIn(copy, current) && opposableAt(otherCopy, current)) ||
+      (readableIn(otherCopy, current) && opposableAt(copy, current)))
   ) {
     return current;
   }
@@ -887,7 +862,7 @@ function definitionsOf(file: FileDetailDto['file']): readonly SkillDefinitionDto
  * directory it was in where that family holds more than one Source, its
  * recognized kind, and its read outcome (US3 scenario 1). Per side rather
  * than per pair, because the two sides can be two Sources — a consented
- * home's copy beside the repository's is the pair this route now expresses —
+ * home's copy beside another member's is the pair this route expresses —
  * and a pair labelled once would say the same thing about both (FR-002,
  * FR-030).
  */
@@ -917,29 +892,6 @@ function diffText(detail: FileDetailDto | null): string | null {
 }
 
 /**
- * The whole ready view as one derivation, null outside 'ready': the two
- * identity sides (each side's requested path with its adopted detail, or a
- * null detail for the stated absence of a one-sided comparison), the diff
- * input (the requested paths with the complete texts, guarded by the same
- * readable-variant check the comparison state enforces so `sourceText` is
- * never reached on a variant that lacks it), and the recognition
- * comparison — built for a one-sided pair too, whose present side's
- * recognitions and declarations stand beside the stated absence (FR-011,
- * T203).
- *
- * One computed rather than one per projection, because its release is its
- * next read: a dirty computed retains its previous value until then, and a
- * per-projection computed that only the ready branch reads would keep the
- * last pair's authored content cached behind an error statement for as long
- * as the page shows one (FR-027). Bundled here and read by the template's
- * first branch condition on every render, the view re-derives to null on
- * the first render after leaving 'ready' — the same flush that takes the
- * rendered content out of the DOM. The externally reachable holders of
- * authored text — the Monaco models and the fallback DOM — keep their
- * synchronous disposal through the purge's owner registry; this cache is
- * reachable only through the read that re-derives it.
- */
-/**
  * Whether a switch has requested coordinates the route has not reflected
  * yet. Module scope, because {@link readyView} shadows the route computeds
  * with its own row-composed locals. A pending value equal to the route is
@@ -963,6 +915,29 @@ const pendingDiffersFromRoute = computed(() => {
   );
 });
 
+/**
+ * The whole ready view as one derivation, null outside 'ready': the two
+ * identity sides (each side's requested path with its adopted detail, or a
+ * null detail for the stated absence of a one-sided comparison), the diff
+ * input (the requested paths with the complete texts, guarded by the same
+ * readable-variant check the comparison state enforces so `sourceText` is
+ * never reached on a variant that lacks it), and the recognition
+ * comparison — built for a one-sided pair too, whose present side's
+ * recognitions and declarations stand beside the stated absence (FR-011,
+ * T203).
+ *
+ * One computed rather than one per projection, because its release is its
+ * next read: a dirty computed retains its previous value until then, and a
+ * per-projection computed that only the ready branch reads would keep the
+ * last pair's authored content cached behind an error statement for as long
+ * as the page shows one (FR-027). Bundled here and read by the template's
+ * first branch condition on every render, the view re-derives to null on
+ * the first render after leaving 'ready' — the same flush that takes the
+ * rendered content out of the DOM. The externally reachable holders of
+ * authored text — the Monaco models and the fallback DOM — keep their
+ * synchronous disposal through the purge's owner registry; this cache is
+ * reachable only through the read that re-derives it.
+ */
 const readyView = computed(() => {
   if (status.value !== 'ready') {
     return null;
@@ -1099,7 +1074,7 @@ const retryable = computed(
 function copyLabel(copy: SkillCopy): string {
   return comparisonOptionLabel(
     inlinePresentationLabel(copy.directory),
-    sessionSources.rootTextOf(copy.sourceId),
+    comparisonSourceQualifierOf(sources.value, copy.sourceId),
   );
 }
 
@@ -1243,8 +1218,23 @@ const titleSubject = computed<string>(() => {
   }
   switch (status.value) {
     case 'ready':
-    case 'loading':
-      return 'Comparing skill files';
+    case 'loading': {
+      // The row and its pair in the title, so two comparison tabs never read
+      // identically (WCAG 2.4.2; `detail-route.ts` § comparisonTitleSides).
+      const sides = comparisonTitleSides(leftSide.value, rightSide.value);
+      if (sides === null) {
+        return 'Comparing skill files';
+      }
+      const subject = rowNameParameter.value === '' ? null : rowNameParameter.value;
+      // The compared file rides in the title too: stepping the pair through
+      // its files changes what the page shows, and two tabs on two files of
+      // one pair must not read identically (WCAG 2.4.2).
+      const base =
+        subject === null
+          ? `Comparing skill files — ${sides}`
+          : `Comparing skill files: ${subject} — ${sides}`;
+      return `${base} — ${requestedFile.value}`;
+    }
     case 'stale':
       return 'Link not in this scan';
     case 'same-path':

@@ -6,9 +6,10 @@
 // makes readable (contracts/inspection-path-allowlist.md § "Read authorization
 // and applicability"). The one read no rule authorizes is a companion's, which
 // a recognized kind's census bounds to an admitted candidate's own directory. Vendor behaviors, strategies, evidence, relationships, and
-// authored file content never grant that authority. Rules arrive with the
-// inventory phase that needs them, so the remaining rows of the vendor
-// contract are deliberately absent until their phase ships.
+// authored file content never grant that authority. The catalog below is
+// complete over this vendor's contract: it is typed
+// `Readonly<Record<CodexRuleId, InspectionRule>>`, so a contract row with no
+// record here is a compile error rather than a silent gap.
 //
 // Each rule is its own `export const` so a relation can name it directly.
 // Each record is declared with `satisfies` rather than a type annotation, and
@@ -231,8 +232,11 @@ export const CODEX_REPO_CONFIG_RULE = {
  * Two rules over one path add no read: the walk merges them into one candidate
  * with both provenances, exactly as any two plans admitting one file do.
  *
- * The matcher is shared with the carrier rule rather than restated, because it
- * is the same location and a second spelling of it could drift.
+ * The matcher deliberately restates the carrier rule's spelling in full —
+ * base and selectors both — because which location a rule reaches belongs in
+ * its record (AGENTS.md § Implementation simplicity policy), and the
+ * conformance fixture pins each spelling, so the two agreeing is frozen
+ * rather than trusted.
  *
  * The kind's inventory unit is the file (data-model.md § Inventory unit), so
  * this recognition reads nothing out of the document: its detail is the TOML
@@ -360,8 +364,11 @@ export const CODEX_REPO_HOOKS_RULE = {
  * Three rules over one path add no read: the walk merges them into one
  * candidate with all three provenances.
  *
- * The matcher is shared with the carrier rule rather than restated, because it
- * is the same location and a second spelling of it could drift.
+ * The matcher deliberately restates the carrier rule's spelling in full —
+ * base and selectors both — because which location a rule reaches belongs in
+ * its record (AGENTS.md § Implementation simplicity policy), and the
+ * conformance fixture pins each spelling, so the two agreeing is frozen
+ * rather than trusted.
  *
  * Its own rule rather than a second selector on {@link CODEX_REPO_HOOKS_RULE},
  * because the two carriers are read differently: this one's declarations are a
@@ -662,10 +669,10 @@ export const CODEX_REPO_AGENT_RULE = {
  * and this file is a carrier of them the way `.mcp.json` carries server
  * declarations without being a row itself (data-model.md § Inventory unit).
  *
- * Admitting the catalog also seeds the one closed derivation below: an entry
- * whose source is a validated `./` local path names a plugin root inside this
- * repository, and that root's own manifest is the second carrier of the same
- * row.
+ * An entry whose source is a validated `./` local path names a plugin root
+ * inside this repository, and the census enumerates that root's files — its
+ * manifest among them — under this catalog's own row; no rule admits the
+ * manifest and none derives one.
  */
 export const CODEX_REPO_MARKETPLACE_RULE = {
   ruleId: 'codex.repo.marketplace',
@@ -821,7 +828,7 @@ export const CODEX_GLOBAL_INSTRUCTIONS_RULE = {
       [{ kind: 'literal', value: 'AGENTS.md' }],
     ],
   },
-  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-016', 'FR-018', 'QR-005'] : [],
+  policyRefs: SHIPS_MAINTENANCE_DATA ? ['FR-013', 'FR-014', 'FR-017', 'FR-018', 'QR-005'] : [],
   precedenceGroup: null,
   documentationStatus: 'documented',
   lifecycleQualifiers: [],

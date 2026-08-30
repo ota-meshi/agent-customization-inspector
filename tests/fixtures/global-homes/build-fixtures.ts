@@ -362,7 +362,7 @@ export function buildGlobalHomeFixture(
   // row then holds two declarations inside one consented home, so the
   // personal-setup block of that row can offer a comparison pair of its own —
   // and the cross-source fixture's repository hook files declare the same
-  // event, giving the row a pair on each side (T1127, FR-030).
+  // event, giving the row a pair on each side (T1140, FR-030).
   write(
     homes.copilot,
     'hooks/notify-team.json',
@@ -496,7 +496,7 @@ export function buildGlobalHomeFixture(
   // The same skill name — and the same path spelling — the Copilot home
   // writes above: one name row then spans two members at one Source-relative
   // Path, which is the cross-Source pair the comparison surfaces express by
-  // naming each side's own Source (T1127, FR-030).
+  // naming each side's own Source (T1140, FR-030).
   write(
     homes.claude,
     'skills/changelog/SKILL.md',
@@ -513,7 +513,7 @@ export function buildGlobalHomeFixture(
   // The same agent name the Codex home declares in `agents/deploy-bot.toml`
   // below: the `deploy-bot` row then holds two personal declarations, so its
   // personal-setup block can offer a comparison pair — the agent half of the
-  // cross-source groups the fixture publishes (T1127, FR-030).
+  // cross-source groups the fixture publishes (T1140, FR-030).
   write(
     homes.claude,
     'agents/deploy-bot.md',
@@ -549,7 +549,7 @@ export function buildGlobalHomeFixture(
   // The same invocation name the Codex home's `prompts/draftpr.md` resolves
   // to: the `draftpr` row then holds two personal files, so its
   // personal-setup block can offer a comparison pair — the prompt half of the
-  // cross-source groups (T1127, FR-030).
+  // cross-source groups (T1140, FR-030).
   write(
     homes.claude,
     'commands/draftpr.md',
@@ -624,7 +624,7 @@ export function buildGlobalHomeFixture(
       // The same server name the Copilot home's mcp-config.json declares: the
       // `tickets` row then holds two personal declarations, so its
       // personal-setup block can offer a comparison pair — the MCP half of
-      // the cross-source groups (T1127, FR-030).
+      // the cross-source groups (T1140, FR-030).
       '[mcp_servers.tickets]',
       'command = "npx"',
       'args = ["-y", "mcp-tickets"]',

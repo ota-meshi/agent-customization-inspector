@@ -34,7 +34,7 @@ import { detailRoute } from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
   SUPPORTED_TOOL_TEXT,
-  inlinePresentationLabel,
+  accessiblePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
@@ -74,7 +74,14 @@ const route = computed(() =>
  * label keeps two paths differing only in spacing from announcing identically
  * (WCAG 2.4.4, FR-025).
  */
-const pathAccessibleText = computed(() => inlinePresentationLabel(props.entry.sourceRelativePath));
+const pathAccessibleText = computed(() =>
+  // The Source qualifier keeps two same-path links of two consented homes
+  // apart in a links list ({@link SessionSources.qualifiedLinkName}).
+  sessionSources.qualifiedLinkName(
+    accessiblePresentationLabel(props.entry.sourceRelativePath),
+    props.entry.sourceId,
+  ),
+);
 
 /**
  * Each product that recognized the file, with the surfaces its admissions

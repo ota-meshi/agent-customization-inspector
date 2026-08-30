@@ -23,22 +23,14 @@
 // or probes a declared server, and nothing projects trust, precedence, or a
 // selected winner: what the vendor documents stays in its maintained contract
 // (FR-009).
-import {
-  computed,
-  inject,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-  watchEffect,
-} from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
+  familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
@@ -49,9 +41,10 @@ import {
 } from '../../../../components/detail-route';
 import type { SourceKind } from '../../../../../shared/api-types';
 import { usePageOwnership } from '../../../../composables/page-ownership';
+import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
-import { SESSION_VIEW_STATE } from '../../../../session/view-state';
+import { useSessionViewState } from '../../../../composables/session-view-state';
 import { mcpComparisonRouteFor } from '../../../../composables/mcp-comparison';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
@@ -63,14 +56,9 @@ import {
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../../shared/entities';
+import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 
-const sessionViewState = inject(SESSION_VIEW_STATE);
-if (sessionViewState === undefined) {
-  // The shell always provides it before rendering a route; its absence is a
-  // wiring bug, and failing loudly beats rendering a detail page with no
-  // session behind it.
-  throw new Error('the session view state was not provided by the shell');
-}
+const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
@@ -127,6 +115,14 @@ const sessionSources = useSessionSources();
  * carrier in another Source is a different file (FR-030).
  */
 const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
+
+// The open file's Source facts (FR-007 "show its source"): the family name
+// where more than one family is inspected, and the consented directory where
+// the family holds more than one Source (`source-facts.ts`).
+const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+  () => snapshot.value?.sources ?? [],
+  () => openSourceId.value,
+);
 
 /**
  * The declared server name the URL selects, or null for the carrier view.
@@ -206,6 +202,15 @@ const carrierListed = computed(() =>
 );
 
 /**
+ * The family the open file's Source is of: the family a comparison entry
+ * built on this page stays inside, because a pair never spans two families
+ * (contracts/http-api.md § Host requirements #5).
+ */
+const openFamily = computed<SourceKind>(() =>
+  sideFamilyOf({ source: openSource.value, sourceRelativePath: openPath.value }),
+);
+
+/**
  * The comparison entry for one of this carrier's declared names (FR-011):
  * that name's declaration here beside the same name's declaration in the
  * first other carrier of its row — the comparison never leaves the name's
@@ -216,15 +221,6 @@ const carrierListed = computed(() =>
  * holds no second carrier; the comparison surface's own pickers take over
  * from there.
  */
-/**
- * The family the open file's Source is of: the family a comparison entry
- * built on this page stays inside, because a pair never spans two families
- * (contracts/http-api.md § Host requirements #5).
- */
-const openFamily = computed<SourceKind>(() =>
-  sideFamilyOf({ source: openSource.value, sourceRelativePath: openPath.value }),
-);
-
 function compareRouteForName(name: string): ReturnType<typeof mcpComparisonRouteFor> | null {
   const row = (snapshot.value?.mcp ?? []).find((entry) => entry.name === name);
   // The counterpart is any carrier of the row that is not this page's own and
@@ -506,8 +502,7 @@ watch(
     openPath,
     openServerName,
     (): boolean => linkResolved.value,
-    (): number => snapshot.value?.repositoryGeneration ?? 0,
-    (): number | null => snapshot.value?.globalGeneration ?? null,
+    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
     // The Source is a key beside the path, because it is the other half of the
     // identity: a step between two Sources' details at one path leaves the path
     // identical and the file different, so without this the page would keep
@@ -536,7 +531,7 @@ function focusHeading(): void {
 }
 
 onMounted(focusHeading);
-watch([openPath, openServerName], () => void nextTick(focusHeading));
+watch([openSource, openPath, openServerName], () => void nextTick(focusHeading));
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2); the same
@@ -555,9 +550,16 @@ const titleSubject = computed<string | null>(() => {
       : 'MCP server declaration could not be loaded';
   }
   if (openServerName.value !== null) {
-    return serverNameIsSpelledOut.value ? null : openServerName.value;
+    // The carrier's path rides in the title too: two carriers of one Source
+    // can declare one server name, and their tabs must not read identically
+    // (WCAG 2.4.2).
+    return serverNameIsSpelledOut.value
+      ? null
+      : `${openServerName.value} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
   }
-  return pathIsSpelledOut.value ? null : openPath.value;
+  return pathIsSpelledOut.value
+    ? null
+    : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 watchEffect(() => {
   // Reported as this page instance's own, so an outgoing page's unmount
@@ -700,7 +702,15 @@ onBeforeUnmount(() => {
              entry so the page and the list agree, beside the kind's own
              caption (FR-007). -->
         <p class="aci-mcp-detail__recognition">
-          {{ ownerText }} · {{ CUSTOMIZATION_KIND_TEXT.MCP }}
+          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
+          >{{ ownerText }} · {{ CUSTOMIZATION_KIND_TEXT.MCP }}
+        </p>
+
+        <!-- Which directory the carrier was in, where its family holds more
+             than one: an escaped presentation of the admitted root, never a
+             path anything can open (FR-002). -->
+        <p v-if="sourceRootText !== null" class="aci-mcp-detail__root aci-note">
+          <span class="aci-authored-text">{{ sourceRootText }}</span>
         </p>
         <!-- The declaration view's comparison entry (FR-011): present
              exactly when this name's row holds another readable carrier to

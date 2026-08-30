@@ -228,6 +228,13 @@ Above Expediency) to day-to-day coding decisions:
 - Use the non-mutating array methods when the mutating one is the reason for a copy.
   `array.toSorted(compare)` is the operation `[...array].sort(compare)` was spelling out;
   the same holds for `toReversed` and `with`.
+- The rules above are about mechanism and do not apply to the correctness of a value
+  already published. A shipped contract value must be true as itself today: "nothing
+  consumes it yet" answers who is harmed, not whether the statement holds. A scope
+  documented as a glob was published unescaped because its declaring side had no
+  consumer, and the `packages/[api]` directory thereby published a pattern that means a
+  character class. What was wrong was not the moment something first read it — it was
+  the publication.
 - When a specification mandates redundant complexity, correct the specification — in both
   languages, in the same change — instead of implementing it as written.
 
@@ -544,9 +551,9 @@ What a move has to check:
   compound, which is where `scoped` stamps the component's data attribute. A rule
   belongs in the global sheet exactly when components other than one render that
   subject, because scoping it would stop it matching, and the move then fails silently
-  rather than loudly. The `h2` baseline is the case: three components render an `h2`,
+  rather than loudly. The `h2` baseline is the case: many components render an `h2`,
   so inside any one of them the rule would become `h2[data-v-…]` and stop reaching the
-  other two.
+  rest.
 - `:deep()` makes such a selector match from inside a component again, and is not the
   answer for one: it would move a baseline every page depends on into one component
   behind an escape hatch, which is the arrangement this policy exists to prevent. Reach
