@@ -9,7 +9,16 @@
 // Source the first scan reads is the one bootstrap already created, and the
 // root it reads is the retained raw selection — never the escaped display
 // boundary, which grants no read authority.
-import { chmodSync, linkSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 // The builtin behind the fs-io seam: an injection that passes every other
 // path through must call this, not the spy it is installed on.
 import { readFile as realReadFile } from 'node:fs/promises';
@@ -2100,12 +2109,22 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     writeFileSync(join(base, 'resolved/LEXICAL.md'), '# the other file\n', 'utf8');
     symlinkSync(join(base, 'resolved/inner'), join(base, 'link'));
 
+    const root = [base, 'link', '..'].join(sep);
+    // Which resolution the running platform performs is the case itself, so
+    // it is measured rather than assumed: where `..` is applied after the
+    // link is followed, this root names `<base>/resolved` and the seed below
+    // it exists. Windows collapses the two lexically and lands on `<base>`,
+    // which carries no seed — there the disagreement under test does not
+    // exist and there is nothing to assert.
+    if (!existsSync([root, '.codex', 'config.toml'].join(sep))) {
+      return;
+    }
     const publication = await runSourceScan({
       sourceId: 'src-linkdot-root',
       // Concatenated, never `join`ed: `join` collapses the `..` lexically —
       // the exact behavior under test — so it would hand the scan the plain
       // base directory instead of the link-crossing spelling.
-      root: [base, 'link', '..'].join(sep),
+      root,
       rootFailureOwner: 'repository',
       scope: 'repository',
     });
@@ -2629,6 +2648,16 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     const vscodeAbsolute = join(fixture.root, '.vscode', 'mcp.json');
     chmodSync(vscodeAbsolute, 0o000);
     cleanups.push(() => chmodSync(vscodeAbsolute, 0o644));
+    // A mode of zero withholds the read only where the platform enforces it.
+    // Windows keeps the file readable through it, so the unreadable carrier
+    // this case observes cannot be built there — measured on the file itself
+    // rather than assumed from the platform's name.
+    try {
+      readFileSync(vscodeAbsolute);
+      return;
+    } catch {
+      // Unreadable, which is the state the rest of this case is about.
+    }
     const context = bootstrap(fixture.root);
     await scanOnce(context);
     const snapshot = context.session.snapshot();

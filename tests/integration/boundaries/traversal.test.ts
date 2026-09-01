@@ -6,7 +6,15 @@
 // aborts the attempt with nothing committed, external fixture mutation is
 // not a product mutation, and late results after revocation are discarded
 // without hard-cancellation claims (FR-002, FR-029, FR-030).
-import { mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -961,6 +969,14 @@ describe("the admitted root string stays the operating system's to resolve (FR-0
       // deep/real. The lexical collapse would be <base>/real, which does not
       // exist.
       const root = `${base}/lnk/../real`;
+      // Which of the two the running platform performs is what this case is
+      // about, so it is measured rather than assumed: Windows applies `..`
+      // without following the link, landing on the lexical <base>/real that
+      // was just described as absent. There the disagreement under test does
+      // not exist and there is nothing to assert.
+      if (!existsSync(root)) {
+        return;
+      }
       const rules = [
         codexSkillRule(
           TraversalPlan.fromPrograms({ kind: 'repository' }, [['siblings', /\.md$/u]]),
