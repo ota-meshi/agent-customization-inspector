@@ -1,5 +1,5 @@
-// T025: Node.js-only production policy — the production dependency closure
-// derived from pnpm-lock.yaml is exactly the ten approved roots, and the
+// T025/T1044: Node.js-only production policy — the production dependency
+// closure derived from pnpm-lock.yaml is exactly the eleven approved roots, and the
 // CLI uses only gunshi's root API (research.md § 3, plan.md
 // § Technical Context). Versions, registry integrity, and installed payload
 // digests are not asserted here: the committed lockfile owns them, and a test
@@ -71,12 +71,13 @@ function splitClosureKey(closureKey: string): { name: string; version: string } 
 describe('production closure policy', () => {
   const closure = productionClosure();
 
-  it('resolves the closure from the ten approved roots', () => {
+  it('resolves the closure from the eleven approved roots', () => {
     const names = new Set(closure.map((key) => splitClosureKey(key).name));
     for (const root of [
       'devframe',
       'env-editor',
       'gunshi',
+      'h3',
       'open',
       'smol-toml',
       'strip-json-comments',

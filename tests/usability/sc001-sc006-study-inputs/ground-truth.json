@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "truthLocale": "en",
+  "criterion": "SC-006",
+  "designatedFile": "AGENTS.md",
+  "fields": {
+    "source": {
+      "expected": "Repository",
+      "accepted": [
+        "Repository",
+        "the repository",
+        "this repository",
+        "the project"
+      ]
+    },
+    "recognizing-tools": {
+      "expected": [
+        "GitHub Copilot",
+        "OpenAI Codex"
+      ],
+      "matchRule": "both, in any order; a response naming only one, or naming Claude Code, is incorrect",
+      "accepted": [
+        "GitHub Copilot",
+        "Copilot",
+        "OpenAI Codex",
+        "Codex"
+      ]
+    },
+    "file-type": {
+      "expected": "Instructions",
+      "accepted": [
+        "Instructions",
+        "instruction file",
+        "an instruction file"
+      ]
+    }
+  },
+  "scoringNote": "Every field is scored against the label the page displays. Wording may differ; the identified source, tool set, and kind may not.",
+  "workflows": {
+    "comparison": {
+      "completedWhen": "The two changelog skill copies are on screen side by side and the participant names one difference between them.",
+      "theTwoCopies": [
+        ".claude/skills/changelog/SKILL.md",
+        ".agents/skills/changelog/SKILL.md"
+      ],
+      "differencesEitherOfWhichCounts": [
+        "the description: 'from the staged diff' against 'from recent commits'",
+        "the instructions: 'the staged changes' against 'the latest commits'"
+      ],
+      "unsuccessful": "No side-by-side view was reached, or no difference was named."
+    },
+    "consent": {
+      "completedWhen": "The personal-setup page is on screen and the participant names the directories it says it will read before reading them.",
+      "expectedDirectories": [
+        "~/.claude",
+        "~/.codex",
+        "~/.copilot",
+        "~/.agents"
+      ],
+      "matchRule": "All four, in any order. The equipment may point the first three elsewhere through CLAUDE_CONFIG_DIR, CODEX_HOME, and COPILOT_HOME; the page then names those, and those are what counts.",
+      "unsuccessful": "The page was not reached, or the directories were not named."
+    }
+  }
+}

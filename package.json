@@ -22,6 +22,7 @@
   },
   "files": [
     "dist",
+    "docs/images",
     "README.md",
     "README.ja.md",
     "LICENSE"
@@ -33,6 +34,7 @@
     "start": "node dist/cli.mjs",
     "start:fixture": "node scripts/serve-fixture.ts",
     "build-and-start": "pnpm run build && pnpm run start",
+    "check:official-sources": "node scripts/check-official-sources.ts",
     "verify:package": "node scripts/verify-package-files.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -43,6 +45,7 @@
     "test:integration": "vitest run --project integration",
     "test:security": "vitest run --project security",
     "test:package": "vitest run --project package",
+    "test:docs": "vitest run --project documentation",
     "test:performance": "vitest run --project performance",
     "test:coverage": "vitest run --project coverage --coverage",
     "test:e2e": "playwright test"

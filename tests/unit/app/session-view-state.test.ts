@@ -699,16 +699,14 @@ describe('session view state — session loss', () => {
     expect(state.snapshot.value?.sessionId).toBe('session-a');
 
     // Epochs cannot be ordered across host sessions. The lower epoch from B
-    // therefore purges A and leaves the shell empty.
+    // therefore purges A and leaves the shell empty — and a host answering as
+    // another session is not this session's host, so what the purge leaves is
+    // the ended view, alongside channel loss and an unsupported protocol
+    // (contracts/http-api.md § Concurrency and lifecycle: a session mismatch
+    // "purges before an ended view"; data-model.md § RecoveryViewState).
     await state.start();
-    expect(state.view.value).toBe('booting');
+    expect(state.view.value).toBe('ended');
     expect(state.snapshot.value).toBeNull();
-
-    // The purge also cleared the API client's identity/epoch/generation
-    // baseline, so a fresh response from B establishes the new baseline.
-    await state.start();
-    expect(state.view.value).toBe('inspection');
-    expect(state.snapshot.value?.sessionId).toBe('session-b');
     state.dispose();
   });
 });
@@ -1437,6 +1435,38 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
     expect(state.entryDetail.value).toBeNull();
     expect(state.openCompanion.value).toBeNull();
     expect(state.fileDetailState.value).toBe('idle');
+  });
+
+  it('reads a stamp inherited across a reload as pre-purge, and only after a purge', async () => {
+    // The hole this closes: an entry stamped by an earlier document carries a
+    // token this load never issued, and comparing tokens can only ever say
+    // "unknown". Applied filters, a navigation, a reload, a purge, and Back
+    // then landed on that entry with its narrowing intact — the filters the
+    // purge exists to drop (data-model.md § RecoveryViewState).
+    const inherited = 'stamp-from-an-earlier-document';
+    const scripted = channelFrom([sessionResult(bootstrapSnapshot())]);
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+
+    // Before any purge there is nothing to predate, so an inherited stamp
+    // keeps its entry's narrowing (T1122).
+    expect(state.filterGenerationPredatesPurge(inherited)).toBe(false);
+    expect(state.filterGenerationPredatesPurge(state.filterGeneration())).toBe(false);
+
+    const beforePurge = state.filterGeneration();
+    state.reportChannelLost(null);
+    expect(state.clientDataPurges.value).toBe(1);
+    expect(state.filterGeneration()).not.toBe(beforePurge);
+
+    // After it, both non-current stamps are pre-purge: the one this load
+    // issued and then replaced, and the one it inherited.
+    expect(state.filterGenerationPredatesPurge(beforePurge)).toBe(true);
+    expect(state.filterGenerationPredatesPurge(inherited)).toBe(true);
+    // The stamp written after the purge is not.
+    expect(state.filterGenerationPredatesPurge(state.filterGeneration())).toBe(false);
+    // A missing stamp is not a stamp.
+    expect(state.filterGenerationPredatesPurge(undefined)).toBe(false);
+    state.dispose();
   });
 
   it('persists nothing anywhere the page could reload it from', async () => {

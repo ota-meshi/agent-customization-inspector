@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "rubricLocale": "ja",
+  "criteria": {
+    "SC-001": {
+      "successCondition": "定型文の提示から2分以内に、見つかった1ファイルのソースまたは詳細ビューが実際に開いて操作できる状態になっている。",
+      "timerStart": "定型文を提示した時点",
+      "timerStop": "そのビューが開いて操作できる状態になった時点",
+      "limitSeconds": 120,
+      "included": [
+        "起動コマンドの入力",
+        "用意されたルートからの起動",
+        "ブラウザが開かないときの表示URLの利用"
+      ],
+      "excluded": [
+        "リポジトリルートの選択"
+      ],
+      "threshold": 19
+    },
+    "SC-006": {
+      "successCondition": "3項目すべてを2分以内に提出し、すべてが正解と一致している。",
+      "timerStart": "準備済みの状態が整い定型文を提示した時点",
+      "timerStop": "用紙を提出した時点",
+      "limitSeconds": 120,
+      "partialCredit": false,
+      "threshold": 18
+    },
+    "comparison": {
+      "successCondition": "2つの写しが左右に並び、違いが1つ挙げられている。",
+      "limitSeconds": null,
+      "threshold": null
+    },
+    "consent": {
+      "successCondition": "個人設定のページに到達し、そこに示されたディレクトリを読み上げられている。",
+      "limitSeconds": null,
+      "threshold": null
+    }
+  },
+  "unsuccessful": [
+    "回答項目の欠落または誤り",
+    "2分の超過",
+    "試行を妨げた、または中断させた機材・環境・製品の不具合"
+  ],
+  "moderatorPolicy": "定型文はそのまま繰り返してよい。コマンド、画面遷移、操作のヒントは、2つの基準でも計測しないワークフロータスクでも与えない。"
+}

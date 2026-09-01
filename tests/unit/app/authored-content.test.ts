@@ -168,6 +168,7 @@ describe('authored file content in the browser', () => {
       // exists precisely so a reader can decide before anything is read.
       'captureConsentPreview',
       'carrierDetail',
+      'clientDataPurges',
       'closeFileDetail',
       // The confirmation. It sends the preview's own two identities and no tool
       // list, so it can neither narrow the consent nor name a file; what it
@@ -192,6 +193,8 @@ describe('authored file content in the browser', () => {
       'entryDetailError',
       'fenceRecovery',
       'fileDetailState',
+      'filterGeneration',
+      'filterGenerationPredatesPurge',
       // What the confirmation returned, and whether one is in flight. The
       // result names tools rather than files, so it carries no authored
       // content: consent is about which directories may be read at all.

@@ -606,6 +606,15 @@ export class SessionViewState {
   #globalCommandVersion = { value: 0 };
 
   /**
+   * How many consent confirmations this page has sent. A refresh captures it
+   * and releases the confirmation hold only if it has not moved: a fetch that
+   * began before the confirm carries an answer from before it, and releasing
+   * the hold on that answer would re-enable Confirm while the real one is
+   * still in flight.
+   */
+  #globalEnableVersion = { value: 0 };
+
+  /**
    * Whether the purge-recovery fetch is already scheduled, so the recovery
    * fetch's own fenced answer — which purges again by design — does not
    * schedule an endless chain of identical fetches (see the constructor's
@@ -628,6 +637,58 @@ export class SessionViewState {
    * than a flag, so two recoveries in one session both navigate.
    */
   public readonly inventoryResumeRequests = shallowRef(0);
+
+  /**
+   * Bumped by every client-data purge, whatever its reason. It is a different
+   * fact from {@link inventoryResumeRequests}, which asks the shell to
+   * navigate and fires for two of the reasons only: a surface that needs to
+   * know its own state predates a purge — the inventory's filter generation —
+   * reads this, because inferring "a purge happened" from "a navigation was
+   * requested" misses every purge that does not navigate.
+   */
+  public readonly clientDataPurges = shallowRef(0);
+
+  /**
+   * The token stamped into each inventory history entry, so an entry left
+   * before a purge can be told from one made after it (FR-042; the recovery
+   * contract starts the inventory at the default filters, data-model.md
+   * § RecoveryViewState). It lives here rather than on the inventory page
+   * because a purge confirmed from another route must rotate it too, and
+   * because a page instance is remounted by ordinary navigation while this
+   * state is the session's.
+   *
+   * A reload starts a fresh token, and nothing carries the old one across:
+   * FR-044 closes what this application may store on the reader's machine to
+   * the open-target and colour-scheme preferences. So an inherited stamp is
+   * never compared with a token this load knows — it is judged by whether
+   * this load has purged at all, which {@link filterGenerationPredatesPurge}
+   * does.
+   */
+  #filterGeneration = crypto.randomUUID();
+
+  /** The token to stamp into an inventory history entry written now. */
+  public filterGeneration(): string {
+    return this.#filterGeneration;
+  }
+
+  /**
+   * Whether a history entry's stamp was written before the last purge. Any
+   * stamp other than the current one was, and the two cases reach that answer
+   * for different reasons: a stamp this load issued has been superseded, which
+   * only a purge does; and a stamp this load never issued was written by an
+   * earlier document, so it predates everything that happened in this one.
+   * Before the first purge there is nothing to predate, which is why the
+   * purge count is the question rather than the token — an entry inherited
+   * across a reload then keeps its narrowing (T1122 — Back, a reload, and a
+   * pasted link render the same narrowed list).
+   */
+  public filterGenerationPredatesPurge(stamp: unknown): boolean {
+    return (
+      typeof stamp === 'string' &&
+      stamp !== this.#filterGeneration &&
+      this.clientDataPurges.value > 0
+    );
+  }
 
   /**
    * The one in-flight session refresh, or null. Concurrent callers — the boot
@@ -702,6 +763,13 @@ export class SessionViewState {
       if (this.view.value !== 'ended') {
         this.view.value = 'booting';
       }
+    });
+    this.#clientData.register(() => {
+      this.clientDataPurges.value += 1;
+      // Every entry stamped before this moment is pre-purge, so the token is
+      // replaced rather than counted: the replacement is what makes an entry
+      // written after this purge distinguishable from one written before it.
+      this.#filterGeneration = crypto.randomUUID();
     });
     this.#clientData.register((reason) => {
       // Recovery from a Global-content purge is automatic (FR-042): observing
@@ -830,20 +898,26 @@ export class SessionViewState {
    * itself and there is no automatic update to pause.
    */
   public refresh(): Promise<void> {
-    this.#refreshInFlight ??= this.#refreshOnce().finally(() => {
-      this.#refreshInFlight = null;
-    });
-    return this.#refreshInFlight;
+    const started = (this.#refreshInFlight ??= this.#refreshOnce().finally(() => {
+      // Only its own slot: a fetch that settles after {@link #refreshFreshly}
+      // has already opened a newer one must not clear that newer one.
+      if (this.#refreshInFlight === started) {
+        this.#refreshInFlight = null;
+      }
+    }));
+    return started;
   }
 
   /**
-   * Waits out any in-flight fetch, then issues one that starts now. The
-   * rescan recovery needs a request that began after its failure — an
-   * in-flight fetch may predate the commit the recovery must observe — so
-   * joining {@link refresh}'s coalesced request is not enough.
+   * Issues a fetch that starts now. The rescan recovery needs a request that
+   * began after its failure — an in-flight fetch may predate the commit the
+   * recovery must observe — so joining {@link refresh}'s coalesced request is
+   * not enough. The in-flight one is abandoned rather than awaited: a purge
+   * revokes its settlement authority but does not settle the RPC itself, so
+   * waiting for it would tie this fetch to a response that may never come.
    */
   async #refreshFreshly(): Promise<void> {
-    await this.#refreshInFlight;
+    this.#refreshInFlight = null;
     await this.refresh();
   }
 
@@ -857,6 +931,7 @@ export class SessionViewState {
     const capturedEpoch = this.#clientData.epoch();
     const capturedRepositoryCommandVersion = this.#repositoryCommandVersion.value;
     const capturedGlobalCommandVersion = this.#globalCommandVersion.value;
+    const capturedGlobalEnableVersion = this.#globalEnableVersion.value;
     const outcome = await this.#client.fetchSession();
     // Every branch below writes state the purge owns, so the check belongs
     // ahead of all of them. A fatal failure is the one exception: it purges on
@@ -948,7 +1023,10 @@ export class SessionViewState {
         // neither, which is the true state after a pre-acceptance failure.
         // Reading the answer's content instead would leave confirm and
         // recapture disabled for good on exactly that path.
-        if (this.globalEnableState.value === 'submitting') {
+        if (
+          this.globalEnableState.value === 'submitting' &&
+          this.#globalEnableVersion.value === capturedGlobalEnableVersion
+        ) {
           this.globalEnableState.value = 'idle';
         }
         return;
@@ -977,6 +1055,16 @@ export class SessionViewState {
         this.#sessionError.value = null;
         return;
       case 'purged':
+        if (outcome.reason === 'session-identity-lost') {
+          // A host that answers with another session is not this session's
+          // host: the contract lands a session mismatch on the ended view
+          // after the central purge, alongside channel loss and an
+          // unsupported protocol (data-model.md § RecoveryViewState). Without
+          // this the purge disposer's `booting` would stand, and nothing
+          // refetches — the recovery fetch is the fence and epoch reasons'.
+          this.view.value = 'ended';
+          return;
+        }
         // The purge disposer already scheduled the one recovery fetch for
         // the epoch and fence reasons (see the constructor's recovery
         // disposer); a second pass here would fetch the same snapshot
@@ -1155,6 +1243,9 @@ export class SessionViewState {
       return;
     }
     this.globalEnableState.value = 'submitting';
+    // Moved before the request goes out, so a fetch already in flight cannot
+    // be mistaken for this confirmation's own answer.
+    this.#globalEnableVersion.value += 1;
     this.consentPreviewRejection.value = null;
     this.consentPreviewError.value = null;
     const capturedEpoch = this.#clientData.epoch();

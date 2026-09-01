@@ -148,6 +148,24 @@ jobs:
       - run: pnpm run verify:package
       - run: pnpm run test:package
 
+  documentation:
+    # The bilingual cross-artifact gate (tests/documentation/, T1041): runnable
+    # commands, the ordered CI job list this file declares, the trace matrix,
+    # and English/Japanese task parity. It reads the repository's own files, so
+    # it needs no build and no browser.
+    name: Documentation tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:docs
+
   performance:
     # The T183 SC-002 smoke pass: harness integrity is gated, the recorded
     # timings are not. The suite drives the packaged CLI through a rendered
@@ -246,6 +264,16 @@ jobs:
       # Packaged-artifact verification is a CI/release gate, not part of
       # every local build (Implementation simplicity policy).
       - run: pnpm run verify:package
+      # One tarball, packed once here, is what the six certification jobs
+      # receive. Packing per sample would certify six sets of bytes and prove
+      # nothing about the one that gets published (T1047).
+      - name: Pack the tarball the certification samples receive
+        run: pnpm pack --pack-destination "${{ runner.temp }}/tarball"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: certification-tarball
+          path: ${{ runner.temp }}/tarball/*.tgz
+          if-no-files-found: error
 
   certify-lower-bounds:
     name: Certify Node.js ${{ matrix.node }} on ${{ matrix.os }}
@@ -253,6 +281,12 @@ jobs:
     # OS targets (ubuntu-latest, macos-latest, windows-latest). See the
     # header note: the declared Node.js 24/26 ranges remain the compatibility
     # contract, not these samples.
+    #
+    # Each receives the identical tarball the build job packed, installs it
+    # from those bytes into an empty directory, and launches it. What this
+    # certifies is the artifact a user would download, not a source tree that
+    # happens to sit beside it (T1047).
+    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -266,6 +300,40 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: certification-tarball
+          path: tarball
+      # The record this sample contributes: which runner image ran it and
+      # which Node.js the range actually resolved to, beside the digest of the
+      # bytes every sample received.
+      - name: Record the sample environment and the tarball digest
+        shell: bash
+        run: |
+          echo "runner image: ${{ runner.os }} ${{ matrix.os }} (${ImageOS:-unrecorded})"
+          echo "node: $(node --version)"
+          echo "pnpm: $(pnpm --version)"
+          node -e "const {createHash}=require('node:crypto');const {readdirSync,readFileSync}=require('node:fs');const [f]=readdirSync('tarball');console.log('tarball:',f,createHash('sha256').update(readFileSync('tarball/'+f)).digest('hex'))"
       - run: pnpm install --frozen-lockfile
       - run: pnpm run dev:prepare
       - run: pnpm run test:unit
+      # The two suites whose behaviour is the operating system's rather than
+      # this repository's: directory traversal, per-file diagnostics, the
+      # one-read rule, and byte decoding. A lower bound that ran only the unit
+      # suite would certify the Node floor without certifying the filesystem
+      # semantics the three runners actually differ on (T1051).
+      - name: Certify filesystem traversal and read semantics on this runner
+        run: >-
+          pnpm exec vitest run --project integration
+          tests/integration/boundaries/traversal.test.ts
+          tests/integration/repository-scan.test.ts
+      # The packed bytes, installed and launched as a user would get them.
+      - name: Launch the packed tarball
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p "${RUNNER_TEMP}/install"
+          cd "${RUNNER_TEMP}/install"
+          npm init -y > /dev/null
+          npm install "${GITHUB_WORKSPACE}"/tarball/*.tgz
+          npx --no-install agent-customization-inspector --help

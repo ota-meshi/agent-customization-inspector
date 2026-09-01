@@ -1791,8 +1791,12 @@ const titleSubject = computed<string>(() => {
           : `Comparing plugins: ${subject} — ${sides}`;
       // The open panel rides in the title too: the manifest pair and each
       // shipped file show different content under one pair, and two tabs on
-      // two panels must not read identically (WCAG 2.4.2).
-      return comparedFile.value === null ? base : `${base} — ${comparedFile.value}`;
+      // two panels must not read identically (WCAG 2.4.2). Only while the
+      // files panel is the panel on screen, though — the declarations panel
+      // shows no file, so naming the files panel's default there would title
+      // the tab with a subject nobody is looking at.
+      const file = activeTab.value === 'files' ? comparedFile.value : null;
+      return file === null ? base : `${base} — ${file}`;
     }
     case 'stale':
       return 'Link not in this scan';

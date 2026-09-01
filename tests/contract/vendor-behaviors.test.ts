@@ -297,6 +297,18 @@ describe('evidence citations', () => {
   // the built artifact (see `src/shared/registries/evidence-types.ts`).
   const cited = [...behaviors, ...strategies, ...Object.values(INSPECTION_RULES)];
 
+  it('cites exactly the 52 source records the registries maintain', () => {
+    // T1042: the final count. A source record is one page this repository has
+    // reviewed, and the number of them is a fact about the maintained registry
+    // rather than a derivation, so the literal is written here and a citation
+    // added to or dropped from a record fails until the count is decided again.
+    const sourceIds = new Set<string>();
+    for (const record of cited) {
+      for (const citation of record.evidence) sourceIds.add(citation.sourceId);
+    }
+    expect(sourceIds.size).toBe(52);
+  });
+
   it('gives every maintained record at least one citation', () => {
     // A maintained interpretation with no cited basis is an opinion.
     for (const record of cited) {
@@ -879,6 +891,29 @@ describe('the pure User-only facts the consent exclusions need (T931)', () => {
       const behavior = VENDOR_BEHAVIOR_STATEMENTS[behaviorId];
       expect(behavior.lifecycleQualifiers, behaviorId).toEqual([]);
       expect(behavior.documentationStatus, behaviorId).toBe('documented');
+    }
+  });
+});
+
+describe('final registry counts and maintenance-only reach', () => {
+  it('ships exactly 105 behaviors, 81 rules, and 39 strategies', () => {
+    // T1042: the frozen sizes of the three registries. They are spelled out
+    // rather than derived so that a record added without deciding to add one
+    // fails here (AGENTS.md § freeze).
+    expect(behaviors).toHaveLength(105);
+    expect(Object.values(INSPECTION_RULES)).toHaveLength(81);
+    expect(strategies).toHaveLength(39);
+  });
+
+  it('keeps the maintenance fields off every wire DTO', () => {
+    // `documentationStatus` and `lifecycleQualifiers` are maintenance records on
+    // the registry: they say how well a vendor documents something, not what
+    // this scan found. Naming either in the wire vocabulary would give a
+    // fabricated `stable`, or a `documentation-conflict` status alias, a route
+    // to a response (T1042, data-model.md § DocumentationStatus).
+    const wireVocabulary = readFileSync('src/shared/api-types.ts', 'utf8');
+    for (const field of ['documentationStatus', 'lifecycleQualifiers']) {
+      expect(wireVocabulary, field).not.toContain(field);
     }
   });
 });

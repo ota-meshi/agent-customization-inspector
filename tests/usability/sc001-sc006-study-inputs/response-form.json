@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "formLocale": "en",
+  "criterion": "SC-006",
+  "fields": [
+    {
+      "fieldId": "source",
+      "prompt": "Where does this file come from?"
+    },
+    {
+      "fieldId": "recognizing-tools",
+      "prompt": "Which tools read it? List every one shown."
+    },
+    {
+      "fieldId": "file-type",
+      "prompt": "What kind of file is it?"
+    }
+  ],
+  "submissionRule": "All three fields must be submitted within two minutes. A missing field is an unsuccessful result."
+}

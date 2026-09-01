@@ -31,6 +31,10 @@ policy agreed in conversation and left there is a policy the next session does n
 - When a user corrects a factual mistake, audit the reasoning pattern that produced it and recheck
   the other findings that used the same shortcut before continuing. Correcting only the reported
   instance leaves the same failure ready to recur.
+- A correction to one sentence is a correction to that sentence. A rule generalized from it is
+  your own inference: hold it as yours, and never cite it back as something the user decided.
+  An inference presented as their decision ends the conversation that would have corrected it,
+  and it is how work gets declined on authority nobody gave.
 - Read the whole clause before saying what it requires. A requirement here is often one
   long sentence-chain, so its opening is not a summary of it: characterizing FR-007 from
   its first lines produced the claim that it does not fix the inventory row unit, which is
@@ -41,6 +45,13 @@ policy agreed in conversation and left there is a policy the next session does n
   conflicting answer to a settled question — and the settled answer is usually the better
   one, because it was made with the whole contract in view. Ask only what the artifacts
   leave open, and say which artifact you checked.
+- An agent-driven run is recorded as one. When something here is measured with subagents in
+  place of people — a first-use evaluation, a review panel, a walkthrough — the record names
+  the method and never presents the result as a human one. What agents establish is whether
+  the product's own guidance and surfaces are sufficient; how a person experiences the same
+  thing is not in that evidence and cannot be claimed from it. A criterion whose text says
+  "participant" is amended to say what is actually run, in both languages, in the change that
+  runs it.
 
 ## Documentation content policy
 
@@ -79,6 +90,39 @@ policy agreed in conversation and left there is a policy the next session does n
 - When practical, link each language version to its counterpart near the top of the document.
 - Before completing a documentation change, compare both versions for omissions, stale statements, and inconsistent technical details.
 - This policy applies to new documents and to existing documents whenever they are modified. Generated files and vendored third-party documentation are excluded.
+
+## Readme policy
+
+The readme's body is written for one person: someone deciding whether to run
+`npx agent-customization-inspector`, or reading the page it opened. Its contributor section is
+written for someone changing this repository. A specification requirement, a review finding,
+and a contract clause are none of those people, and answering one of them in the readme's
+prose is how the readme stops being read.
+
+- A requirement is satisfied by the artifact that owns the material, not by prose in the
+  readme. A requirement that names "documentation" without naming an artifact names one, in
+  both languages, in the same change that settles which it is. Example: the exact
+  inspection-path allowlist and the surfaces this release leaves out are the vendor contracts',
+  which state each per rule beside its evidence, so the readme carries neither (QR-004).
+- A question the readme must not answer still has a reader, and a specification artifact is
+  not where that reader is sent: `specs/` holds contracts, not user documentation. When the
+  answer is genuinely a user's, it is written for them on a page under `docs/`, linked from
+  the readme and in both languages, in the vocabulary the product shows rather than the one
+  a rule is authored in. Example: `docs/which-files-are-listed.md` carries the
+  locations that are read, per tool and per kind, in prose — no selector program, no
+  `ANY_DIRECTORIES`, no link into a vendor contract, and nothing beside the list. Prose
+  cannot be derived from the rules, so the gate that keeps it honest is containment: every
+  literal segment a shipped rule admits at must be named by both languages.
+- A claim that is too broad is narrowed, not annotated. An exception appended to a sentence
+  interrupts the sentence that had to land and answers a misreading nobody was making — so
+  when the narrower claim would still need one, the claim goes instead. The test is who is
+  harmed by not knowing: a reader, or a reviewer. Example: the fields a row shows are not
+  promised in the file's own order, because a skill's documented keys lead; and a comparison
+  pair, which never spans the repository and the personal setup, costs no clause, because the
+  reader who holds one simply sees no diff link.
+- Accuracy is not completeness. The readme never says something false and owes no reader
+  everything true: a sentence is wrong when acting on it would be wrong, not when a case it
+  does not cover can be named.
 
 ## Vendored agent customizations
 
@@ -643,18 +687,21 @@ Registry records cite official vendor documentation through `EvidenceCitation`, 
 `sections` field holds exact rendered heading texts. Verifying those citations is
 documentation work with its own failure modes:
 
-- Read the page's raw bytes. Fetch it with `curl` and extract headings with a regex over
-  `<h1>`–`<h4>`, or over `^#{1,4} ` — the trailing space matters, since `#####` and
-  `####text` are neither — when the cited URL is a `.md` variant. A summarizer's
-  inventory of a page's headings is not evidence: one reports real content headings as
-  absent often enough to turn a correct citation into a wrong "fix".
-- Distinguish content headings from site navigation. These documentation sites render
-  navigation with the same heading tags; a content heading carries an `id` slug matching
-  its own text.
-- A heading missing from the served HTML is not automatically drift. A client-rendered page
-  ships only its table of contents, so the heading exists but no `<h*>` element does; the
-  anchor slug in the table of contents is the evidence. `code.claude.com/docs/en/changelog`
-  behaves this way for its per-version headings.
+- `pnpm run check:official-sources -- --network` performs every check a script can
+  decide, over the whole registry: that each recorded URL still answers `200` directly on
+  its own official host without redirecting, and that each cited section resolves — as
+  exactly one served `<h1>`–`<h4>`, or, on a client-rendered page that serves no such
+  element, as its table-of-contents anchor slug appearing exactly once. It reports and
+  changes nothing, and it is outside every build, start, test, and CI chain: it is the one
+  command here that makes an outbound request, so it runs when you ask it to. Do not
+  re-do those checks by hand; a summarizer's inventory of a page's headings is not
+  evidence either way.
+- Two judgments are not the command's and stay yours. What a vanished heading means — the
+  page moved, the section was renamed, the content is gone — the command cannot decide, so
+  it reports the section as missing and leaves the conclusion open. Whether the cited
+  sections still establish the maintained paraphrase is a reading, not a lookup: a heading
+  that still exists over rewritten text is exactly the drift a digest and an anchor both
+  miss.
 - Name a page by its full URL or its rendered title, never by a bare path segment. Writing
   "the memory page" for `https://code.claude.com/docs/en/memory` reads as a claim about the
   assistant's own memory rather than about a page that was actually fetched.

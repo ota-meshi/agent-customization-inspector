@@ -181,7 +181,13 @@ async function shutdown(launched: LaunchedCli): Promise<number> {
 describe('packed manifest fields', () => {
   it('declares exactly the contracted bin, files, type, and engines', () => {
     expect(packageJson.bin).toEqual({ 'agent-customization-inspector': 'dist/cli.mjs' });
-    expect(packageJson.files).toEqual(['dist', 'README.md', 'README.ja.md', 'LICENSE']);
+    expect(packageJson.files).toEqual([
+      'dist',
+      'docs/images',
+      'README.md',
+      'README.ja.md',
+      'LICENSE',
+    ]);
     expect(packageJson.type).toBe('module');
     expect(packageJson.engines.node).toBe('^24.11.0 || ^26.0.0');
     // No lifecycle build/download hooks may run at install time.

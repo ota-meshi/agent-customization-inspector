@@ -859,6 +859,15 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
     // whole. Classification, not enumeration: the no-root-enumeration
     // guarantee holds (contracts/inspection-path-allowlist.md § Global least
     // privilege).
+    if (!continueScan()) {
+      // The `stat` above suspended this attempt; a disable or shutdown
+      // accepted while it ran revoked the authority this `access` would start
+      // new Source I/O under (T1007). Asked here rather than only before the
+      // `stat`, because the revocation the check exists for arrives during an
+      // await — and answered with the same empty walk the pre-stat check
+      // gives, never the root-unreadable verdict of a root nobody looked at.
+      return { kind: 'scanned', files: [], visitedEntries: 0, candidateFiles: 0, readBytes: 0 };
+    }
     await access(input.root, fsConstants.R_OK | fsConstants.X_OK);
   } catch (error) {
     // Only a failure that is about this root makes the Source unreadable

@@ -568,6 +568,15 @@ export class DetectedFileOpener implements FileOpener {
       // The editor has no window of its own, so one is opened for it through
       // the operating system's `osascript` automation host, which runs the
       // fixed script above with the editor and the file as its arguments.
+      //
+      // By name, resolved through `PATH`, exactly as Vite invokes it. Naming
+      // it `/usr/bin/osascript` instead has been proposed on the grounds that
+      // an inspected repository could ship a `node_modules/.bin/osascript`;
+      // that is the adversarial-workspace model FR-019 rejects, and the
+      // machinery it asks for is what FR-019 forbids adding. A reader who does
+      // not trust the workspace should not run the tool there (spec.md
+      // § Assumptions), and the editor launcher this hands over was resolved
+      // under the same assumption.
       await execFileAsync('osascript', ['-e', TERMINAL_EDITOR_SCRIPT, launcher, absolutePath]);
       return;
     }

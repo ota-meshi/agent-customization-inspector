@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "stateLocale": "en",
+  "designatedFile": {
+    "sourceRelativePath": "AGENTS.md",
+    "openView": "source"
+  },
+  "launchRoot": "repository",
+  "studyBrowserProfile": {
+    "profileId": "playwright-1.61.1-chromium-1228",
+    "playwrightVersion": "1.61.1",
+    "browserEngine": "chromium",
+    "browserRevision": "1228",
+    "browserVersion": "149.0.7827.55",
+    "browserDistribution": "chrome-for-testing",
+    "headed": true,
+    "contextPersistence": "fresh-nonpersistent",
+    "extensionSet": [],
+    "proxyConfigurationScope": "browser-context-only",
+    "proxyAuthenticationMode": "single-407-basic"
+  },
+  "moderatorNote": "Open the designated file before presenting the SC-006 prompt. Every participant starts here, whatever happened in SC-001."
+}

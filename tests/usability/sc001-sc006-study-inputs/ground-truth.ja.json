@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "truthLocale": "ja",
+  "criterion": "SC-006",
+  "designatedFile": "AGENTS.md",
+  "fields": {
+    "source": {
+      "expected": "Repository",
+      "accepted": [
+        "Repository",
+        "リポジトリ",
+        "このリポジトリ",
+        "プロジェクト"
+      ]
+    },
+    "recognizing-tools": {
+      "expected": [
+        "GitHub Copilot",
+        "OpenAI Codex"
+      ],
+      "matchRule": "順不同で両方。片方だけ、または Claude Code を挙げた回答は不正解とする。",
+      "accepted": [
+        "GitHub Copilot",
+        "Copilot",
+        "OpenAI Codex",
+        "Codex"
+      ]
+    },
+    "file-type": {
+      "expected": "Instructions",
+      "accepted": [
+        "Instructions",
+        "指示",
+        "指示ファイル"
+      ]
+    }
+  },
+  "scoringNote": "各項目はページが表示するラベルと突き合わせる。言い回しは違ってよいが、指している出どころ・ツールの集合・種類が違ってはならない。",
+  "workflows": {
+    "comparison": {
+      "completedWhen": "changelog スキルの2つの写しが左右に並んで表示され、参加者がその違いを1つ挙げた。",
+      "theTwoCopies": [
+        ".claude/skills/changelog/SKILL.md",
+        ".agents/skills/changelog/SKILL.md"
+      ],
+      "differencesEitherOfWhichCounts": [
+        "description の違い。「from the staged diff」と「from recent commits」",
+        "本文の違い。「the staged changes」と「the latest commits」"
+      ],
+      "unsuccessful": "左右差分に到達しなかった、または違いを挙げられなかった。"
+    },
+    "consent": {
+      "completedWhen": "個人設定のページが表示され、読み取る前に読むと書かれているディレクトリを参加者が挙げた。",
+      "expectedDirectories": [
+        "~/.claude",
+        "~/.codex",
+        "~/.copilot",
+        "~/.agents"
+      ],
+      "matchRule": "順不同で4つすべて。機材が CLAUDE_CONFIG_DIR・CODEX_HOME・COPILOT_HOME で最初の3つを別の場所へ向けている場合は、ページが示すその場所が正解になる。",
+      "unsuccessful": "ページに到達しなかった、またはディレクトリを挙げられなかった。"
+    }
+  }
+}

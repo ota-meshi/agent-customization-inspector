@@ -3125,27 +3125,36 @@ export class SessionCoordinator {
   }
 
   /**
-   * Runs one Global-sequence transaction that owns no scan attempt — the
-   * enable batch — in the same FIFO the sequence's commands use
+   * Runs one Global-sequence job that owns no scan attempt — the enable
+   * admission and the enable batch — in the same FIFO the sequence's commands
+   * use
    * (contracts/http-api.md § rescan-global "same FIFO ... applied within the
    * Global sequence"), tracked for the disable barrier's drain
    * (§ disable-global): the barrier must wait out a batch already reading,
    * and a retry batch must never run beside an explicit member rescan. The
    * fence check at dequeue is the barrier's queued-work cancellation for
-   * this shape — a batch that has not started when the barrier accepts runs
-   * nothing, which is expected cancellation with nothing retained.
+   * this shape — work that has not started when the barrier accepts runs
+   * nothing, which is expected cancellation with nothing retained, reported
+   * to the caller as `undefined`.
+   *
+   * The enable admission runs here too: plan.md § Concurrency has one
+   * coordinator serialize a `GlobalEnableOperation`'s admission along with its
+   * batch, the Repository scans, and the Global rescans, so the admission's
+   * own reads never run beside a scan.
    */
-  public runGlobalTransaction(job: () => Promise<void>): Promise<void> {
+  public runGlobalTransaction<T>(job: () => Promise<T>): Promise<T | undefined> {
     const previous = this.#executionChain;
     this.#globalTransactionsPending += 1;
     const run = previous.then(async () => {
       if (this.#session.globalDisableInProgress !== null || this.#allPublicationRevoked) {
         // The disable fence and the shutdown revocation both cancel a queued
         // batch at dequeue: starting its reads after either would be new
-        // I/O the revocation stops (data-model.md § ScanAttempt).
-        return;
+        // I/O the revocation stops (data-model.md § ScanAttempt). The caller
+        // sees `undefined`, which is the cancellation it already answers for:
+        // the barrier cleared the operation it would have settled.
+        return undefined;
       }
-      await job();
+      return await job();
     });
     void run.then(
       () => (this.#globalTransactionsPending -= 1),

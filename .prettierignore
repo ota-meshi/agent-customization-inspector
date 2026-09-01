@@ -36,6 +36,13 @@ test-results/
 # meaning-bearing bytes.
 *.md
 
+# The SC-001/SC-006 study-input bundle: every member's exact bytes are frozen by a
+# recorded SHA-256 in its manifest (contracts/usability-study-evidence.md § Closed
+# study-input bundle), so a formatter rewriting one would break the manifest without
+# anyone deciding to change it. The root is a closed 16-member directory, so the
+# directory is the unit.
+tests/usability/sc001-sc006-study-inputs/
+
 # Files their owning tools generate and rewrite.
 pnpm-lock.yaml
 skills-lock.json

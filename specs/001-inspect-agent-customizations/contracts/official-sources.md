@@ -314,12 +314,14 @@ frozen release candidate and whenever a material upstream change to a supported 
 becomes known:
 
 ```sh
-pnpm run check:official-sources
+pnpm run check:official-sources -- --network
 ```
 
 The command sends no credentials, cookies, repository contents, or other local state. It
-accepts only UTF-8 HTML or Markdown, and every redirect hop must retain the row's exact
-`officialHost`. Request, response, redirect, and decoding capacity comes from Node.js and
+accepts only UTF-8 HTML or Markdown, and follows no redirect: a row records the URL that
+answers, so a `3xx` is reported for review rather than followed. Following one would make the
+recorded URL a starting point instead of the address the citation names, and a relocation is
+a citation change the reviewer makes. Request, response, redirect, and decoding capacity comes from Node.js and
 the execution environment; a recoverable environment failure fails closed. An HTTPS
 downgrade, cross-host redirect, wrong content type, decoding failure, or missing or duplicate
 heading is a hard failure. A client-rendered page is the one exception, and only for the
@@ -328,9 +330,7 @@ heading exists while no element carrying it does. The command accepts a cited he
 anchor slug appears exactly once in the served table of contents, and reports which headings
 were established that way. Without that carve-out the check would report drift for every
 citation on a client-rendered page — a hard failure the maintainer can only ever dismiss,
-which is how a gate stops being read. A different
-final URL on the same host is reported for review and never silently replaces
-`canonicalUrl`.
+which is how a gate stops being read. A redirect is never silently followed into a new `canonicalUrl`.
 
 Normalization version `1` selects every listed heading through the next heading of equal
 or higher level, removes document chrome and `script`/`style` nodes, preserves prose and

@@ -87,7 +87,7 @@ to load.
 The `verify:package` check runs in CI and the release gate rather than inside every local build,
 because packaged-artifact assertions belong to that layer. Set
 `package.json.files` exactly to
-`["dist", "README.md", "README.ja.md", "LICENSE"]`; npm's automatic
+`["dist", "docs/images", "README.md", "README.ja.md", "LICENSE"]`; npm's automatic
 `package.json` plus those entries are the complete tarball allowlist. Set `package.json.bin`
 exactly to `{ "agent-customization-inspector": "dist/cli.mjs" }` — the tsdown bundle
 preserves the entry shebang, and the package manager makes the linked bin executable at
@@ -105,15 +105,15 @@ exactly the eleven packages `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `s
 Assert the approved direct production dependency set — exactly those eleven names and no
 others — from `package.json` and the `pnpm-lock.yaml` closure, so any new production
 dependency fails until the § 3 decision is explicitly revisited. Payload content scans — `os`/`cpu`/`libc` selectors, bundled/optional native
-   packages, native/binary/Wasm magic or ELF/Mach-O/PE magic, `binding.gyp`, Rust/C/C++
-   source, `prebuilds`, non-Node shebangs, shell helpers, executable non-JavaScript
-   payloads — along with lifecycle-disabled and network-disabled install runs, the
-   cross-OS shim audit, and per-dependency version and integrity-hash assertions are out
-   of scope: the committed lockfile already pins every resolved version with its
-   integrity hash, so a test that restates those values only duplicates the lockfile,
-   re-scanning hash-fixed content is the redundant re-verification Constitution
-   Principle I removes, and install-time lifecycle and network enforcement belongs to
-   the package manager's own configuration.
+packages, native/binary/Wasm magic or ELF/Mach-O/PE magic, `binding.gyp`, Rust/C/C++
+source, `prebuilds`, non-Node shebangs, shell helpers, executable non-JavaScript
+payloads — along with lifecycle-disabled and network-disabled install runs, the
+cross-OS shim audit, and per-dependency version and integrity-hash assertions are out
+of scope: the committed lockfile already pins every resolved version with its
+integrity hash, so a test that restates those values only duplicates the lockfile,
+re-scanning hash-fixed content is the redundant re-verification Constitution
+Principle I removes, and install-time lifecycle and network enforcement belongs to
+the package manager's own configuration.
 
 **Rationale**: Emitting directly into `dist/` removes the copy steps a staging design
 needs; the single pipeline-owned clean step guarantees a fresh `dist/`, so every emitted
@@ -199,32 +199,32 @@ SemVer permits a breaking change in any release — so replacing a package, cros
 major, or moving a pre-1.0 caret range still reaches this gate (AGENTS.md § Release
 policy).
 
-| Area | Selected version | Reason |
-|---|---:|---|
-| Node.js | Active LTS development/build baseline; engines `^24.11.0 || ^26.0.0` = `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0` | Declares runtime compatibility across the Node 24/26 ranges while the release matrix certifies each lower bound and excludes other majors |
-| TypeScript | 6.0.3 | Newest compiler supported by the current Vue/Volar and typescript-eslint toolchain |
-| Nuxt / Vue | 4.4.8 / 3.5.39 | Current stable releases |
-| Vue Router | 5.2.0 | Current stable release; satisfies Nuxt 4.4.8's declared `^5.1.0` range; no separate router abstraction |
-| tsdown | 0.22.8 | Current stable release; supports Node 24.11+ |
-| Vite | 7.3.6 | Newest version in Nuxt 4.4.8's declared `^7.3.3` builder range |
-| pnpm | 11.13.0 | Current stable package manager |
-| Local host | `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution (§ 8), while its bundled opener stays disabled because the product owns browser opening through `open` (§ 3); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x |
-| CLI | `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range |
-| Browser opener | `open` 11.0.1 | Current stable cross-platform opener behind the startup opener's fallback (FR-001): passes the bound loopback origin to the OS default handler, best-effort, whenever the macOS Chromium tab reuse does not apply or fails (§ 3), with devframe's bundled opener disabled so only the product's opener runs; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3) |
-| Host HTTP app | `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the detail families' shell fallbacks devframe's extension-guarded SPA fallback cannot serve — one family per shipped kind detail (§ 3), each detail URL ending with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself |
-| Parsers | `yaml` 2.9.0, `smol-toml` 1.7.0 | Current stable inert data parsers; strict JSON is the platform's `JSON.parse` |
-| JSONC pre-parse | `strip-json-comments` 5.0.3 | Blanks JSONC comments and trailing commas to whitespace so the remainder goes through the same `JSON.parse` as strict JSON — one resolution for the whole JSON family. A lenient parser that builds its own objects is rejected because it cannot hold an authored `__proto__` key as an own property, which would drop a `.vscode/mcp.json` server of that name with no diagnostic |
-| Frontmatter | `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2 |
-| File opening | `which` 6.0.1, `env-editor` 1.3.0 | The detail surfaces' open control (FR-022). `which` resolves the editor command a launch would run, so what the host offers and what it can start are one fact rather than two that can disagree; `env-editor` supplies where an installation puts that command when it is not on `PATH`, keeping those locations a maintained third-party fact instead of a table this repository would have to follow each editor's packaging with. `which` stays on 6.x because 7.0.0 declares `^24.15.0`, which excludes part of this project's own supported Node range; the launch itself reuses `open`, already listed above. A package that finds installed applications generally (`locate-app`) is rejected: it is CommonJS-only and pulls a prompt-engineering package and `crypto-js` into a production closure this project audits |
-| Icons | `unplugin-icons` 23.0.1, `@iconify-json/lucide` 1.2.124, `@iconify-json/simple-icons` 1.2.93 | Build-time icon compilation: each `~icons/<collection>/<name>` import becomes a component carrying that icon's own SVG, so the page fetches nothing and no icon runtime ships — the arrangement FR-022 requires, and the reason Iconify's API-backed runtime (`@nuxt/icon`, `@iconify/vue`) is rejected. Both collections ship their icon data with no license file of their own, so this repository carries each set's upstream text under `licenses/` for the notice document to read (FR-043) |
-| Source view/diff | `monaco-editor` 0.55.1, `@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency. Monaco ships no TOML grammar and `.codex/config.toml` is a customization format this product opens, so the `toml` id is registered from the syntaxes package: a Monarch grammar and a language configuration — what a basic language is — with no language service and no worker behind them. That package ships no license file of its own, so this repository carries its upstream text under `licenses/` for the notice document to read (FR-043) |
-| Colour-scheme control | `shine-and-bright` 0.3.0 | The switch the reader chooses the page's colour scheme with, drawn by the stylesheet that package ships: the component renders the markup those class names select and sets the package's own custom properties, so the sliding knob and the sun-to-moon transition are the package's rather than this repository's. A devDependency whose CSS the client bundle carries, like the icon and grammar packages above; it ships its own license file, so the notice document reads that text where those carry theirs under `licenses/` (FR-043). With forced colours active every `box-shadow` is dropped, which takes the sun and the moon with it while the button's and the knob's borders repaint and the knob still slides — measured 2026-08-25, and the control's accessible name is what states its purpose there (WCAG 1.4.11) |
-| Lint | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core |
-| Unit/integration | Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness |
-| Components/DOM | Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers |
-| Browser/a11y | Playwright 1.61.1, `@axe-core/playwright` 4.12.1 | Current stable browser and accessibility tooling |
-| Types | `@types/node` 24.13.3, `vue-tsc` 3.3.7 | Latest compatible types for the Node 24 baseline and Vue |
-| Release | `@changesets/cli` 3.0.1, `@changesets/changelog-github` 1.0.0 | Changesets owns the version bump, the changelog, and the publish: a pull request carrying a change a user receives adds a `.changeset/` entry, and a push to main either opens or updates the release pull request or publishes what that pull request versioned. devDependencies, because the release runs in CI and the published package imports neither. The GitHub changelog generator is selected so each entry links the pull request it came from, and it is one of the two values `.changeset/config.json` states at all — a copied default is a value that has stopped tracking the default it was copied from. `.github/workflows/Release.yml` drives that action's sub-actions rather than the combined action, which is what lets `id-token: write` — what npm trusted publishing exchanges for a publish token — sit on the publishing job alone (AGENTS.md § Release policy) |
+| Area                  |                                                                             Selected version | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------------- | -------------------------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node.js               |                                     Active LTS development/build baseline; engines `^24.11.0 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | ^26.0.0`=`>=24.11.0 <25.0.0 |     | >=26.0.0 <27.0.0` | Declares runtime compatibility across the Node 24/26 ranges while the release matrix certifies each lower bound and excludes other majors |
+| TypeScript            |                                                                                        6.0.3 | Newest compiler supported by the current Vue/Volar and typescript-eslint toolchain                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Nuxt / Vue            |                                                                               4.4.8 / 3.5.39 | Current stable releases                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Vue Router            |                                                                                        5.2.0 | Current stable release; satisfies Nuxt 4.4.8's declared `^5.1.0` range; no separate router abstraction                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| tsdown                |                                                                                       0.22.8 | Current stable release; supports Node 24.11+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Vite                  |                                                                                        7.3.6 | Newest version in Nuxt 4.4.8's declared `^7.3.3` builder range                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| pnpm                  |                                                                                      11.13.0 | Current stable package manager                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Local host            |                                                                             `devframe` 0.7.5 | Local-tool host framework behind `@eslint/config-inspector`; serves the packaged SPA from `cli.distDir` and carries the session API as its RPC channel with authentication disabled; owns port/host resolution (§ 8), while its bundled opener stays disabled because the product owns browser opening through `open` (§ 3); pre-1.0, so the committed lockfile pins the reviewed baseline and the manifest's caret range stays within 0.7.x                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| CLI                   |                                                                              `gunshi` 0.37.0 | Current zero-runtime-dependency ESM CLI framework; its Node.js `>=22` engine requirement fits the declared range                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Browser opener        |                                                                                `open` 11.0.1 | Current stable cross-platform opener behind the startup opener's fallback (FR-001): passes the bound loopback origin to the OS default handler, best-effort, whenever the macOS Chromium tab reuse does not apply or fails (§ 3), with devframe's bundled opener disabled so only the product's opener runs; its vendored POSIX-shell `xdg-open` — used whenever executable on Linux, the system helper otherwise — is the recorded FR-038 closure exception (§ 3)                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Host HTTP app         |                                                                             `h3` 2.0.1-rc.22 | The host builds the H3 app devframe mounts onto, carrying the detail families' shell fallbacks devframe's extension-guarded SPA fallback cannot serve — one family per shipped kind detail (§ 3), each detail URL ending with the file's own last segment, such as `SKILL.md`, and percent-encoding is no alternative because devframe decodes before its extension test. Declared as a caret range like every other direct dependency, with the lockfile resolving it to devframe's own h3 so both resolve one module instance; the dependency leaves with the host shim once devframe can serve extension-ful client-route misses itself                                                                                                                                                                                                                                                  |
+| Parsers               |                                                              `yaml` 2.9.0, `smol-toml` 1.7.0 | Current stable inert data parsers; strict JSON is the platform's `JSON.parse`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| JSONC pre-parse       |                                                                  `strip-json-comments` 5.0.3 | Blanks JSONC comments and trailing commas to whitespace so the remainder goes through the same `JSON.parse` as strict JSON — one resolution for the whole JSON family. A lenient parser that builds its own objects is rejected because it cannot hold an authored `__proto__` key as an own property, which would drop a `.vscode/mcp.json` server of that name with no diagnostic                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Frontmatter           |                                                          `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| File opening          |                                                            `which` 6.0.1, `env-editor` 1.3.0 | The detail surfaces' open control (FR-022). `which` resolves the editor command a launch would run, so what the host offers and what it can start are one fact rather than two that can disagree; `env-editor` supplies where an installation puts that command when it is not on `PATH`, keeping those locations a maintained third-party fact instead of a table this repository would have to follow each editor's packaging with. `which` stays on 6.x because 7.0.0 declares `^24.15.0`, which excludes part of this project's own supported Node range; the launch itself reuses `open`, already listed above. A package that finds installed applications generally (`locate-app`) is rejected: it is CommonJS-only and pulls a prompt-engineering package and `crypto-js` into a production closure this project audits                                                             |
+| Icons                 | `unplugin-icons` 23.0.1, `@iconify-json/lucide` 1.2.124, `@iconify-json/simple-icons` 1.2.93 | Build-time icon compilation: each `~icons/<collection>/<name>` import becomes a component carrying that icon's own SVG, so the page fetches nothing and no icon runtime ships — the arrangement FR-022 requires, and the reason Iconify's API-backed runtime (`@nuxt/icon`, `@iconify/vue`) is rejected. Both collections ship their icon data with no license file of their own, so this repository carries each set's upstream text under `licenses/` for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                                                                                            |
+| Source view/diff      |                         `monaco-editor` 0.55.1, `@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency. Monaco ships no TOML grammar and `.codex/config.toml` is a customization format this product opens, so the `toml` id is registered from the syntaxes package: a Monarch grammar and a language configuration — what a basic language is — with no language service and no worker behind them. That package ships no license file of its own, so this repository carries its upstream text under `licenses/` for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                             |
+| Colour-scheme control |                                                                     `shine-and-bright` 0.3.0 | The switch the reader chooses the page's colour scheme with, drawn by the stylesheet that package ships: the component renders the markup those class names select and sets the package's own custom properties, so the sliding knob and the sun-to-moon transition are the package's rather than this repository's. A devDependency whose CSS the client bundle carries, like the icon and grammar packages above; it ships its own license file, so the notice document reads that text where those carry theirs under `licenses/` (FR-043). With forced colours active every `box-shadow` is dropped, which takes the sun and the moon with it while the button's and the knob's borders repaint and the knob still slides — measured 2026-08-25, and the control's accessible name is what states its purpose there (WCAG 1.4.11)                                                       |
+| Lint                  |                      ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Unit/integration      |                                         Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Components/DOM        |                                                     Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Browser/a11y          |                                             Playwright 1.61.1, `@axe-core/playwright` 4.12.1 | Current stable browser and accessibility tooling                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Types                 |                                                       `@types/node` 24.13.3, `vue-tsc` 3.3.7 | Latest compatible types for the Node 24 baseline and Vue                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Release               |                                `@changesets/cli` 3.0.1, `@changesets/changelog-github` 1.0.0 | Changesets owns the version bump, the changelog, and the publish: a pull request carrying a change a user receives adds a `.changeset/` entry, and a push to main either opens or updates the release pull request or publishes what that pull request versioned. devDependencies, because the release runs in CI and the published package imports neither. The GitHub changelog generator is selected so each entry links the pull request it came from, and it is one of the two values `.changeset/config.json` states at all — a copied default is a value that has stopped tracking the default it was copied from. `.github/workflows/Release.yml` drives that action's sub-actions rather than the combined action, which is what lets `id-token: write` — what npm trusted publishing exchanges for a publish token — sit on the publishing job alone (AGENTS.md § Release policy) |
 
 **Rationale**: The selected set is the newest stable combination whose published peer and
 builder ranges agree, so the first implementation can be reproduced without forcing
@@ -460,7 +460,13 @@ mixed path matrix:
    [official sources](contracts/official-sources.md) — canonical official URL, exact
    bounded section anchors, review dates, affected contract IDs, assertions, and semantic
    fingerprints. A record cites them in its own `evidence` array rather than through a
-   parallel registry, so the basis sits beside the claim it supports.
+   parallel registry, so the basis sits beside the claim it supports. Checking those
+   records is `pnpm run check:official-sources -- --network`, a maintainer-only command
+   outside every default chain: it decides what a script can — a direct `200` from the
+   record's own host with no redirect followed, and each cited section resolving as one
+   served heading or as a client-rendered page's single table-of-contents anchor slug — and
+   leaves the two readings that are not a lookup to the reviewer. What each review
+   concluded is recorded in [validation.md](validation.md).
 
 **Evidence-status decision:** documentation completeness and upstream lifecycle are
 orthogonal. Every atomic behavior, rule, and strategy owns its own `documentationStatus`
@@ -894,7 +900,7 @@ time cutoff. If Monaco or the browser reports a recoverable failure, retain the 
 read-only side-by-side source and a diagnostic. Tool recognition is compared per tool,
 while a file's declared metadata is compared once, because a tool is not a
 coordinate of a declaration: each side serializes to one canonical document and the two
-documents diff in Monaco. The exception is a side whose carrier *is* the declaration: a
+documents diff in Monaco. The exception is a side whose carrier _is_ the declaration: a
 plugin manifest declares its plugin with its whole content and is strict JSON already, so
 that side is the file as written — re-serializing it would put the same document one round
 trip further from what the author wrote, which is why no surface parses a manifest for
@@ -1390,667 +1396,42 @@ a source-scoped Diagnostic never fabricates a path to satisfy a display or order
 
 The 2026-07-17 measurable-outcome revalidation fixes the following objective protocols:
 
-- **SC-001** uses exactly 20 participants who use Git and a command-line interface in their
-  normal development work but have never used or contributed to the Inspector. At least 19
-  must succeed within 2 minutes using only the provided product guidance. The timer starts with the
-  standardized task prompt and ends when one discovered file's source/details view is
-  visibly open and operable. Before the prompt, the equipment prepares the intended Repository
-  root as the verified distribution `repository/` working directory. The timed participant
-  actions begin by entering the fixed fd6 line
-  `npx --no-install agent-customization-inspector --no-open` and include launch plus the
-  deliberate printed-URL fallback in the pinned certified browser. Changing directory or
-  supplying `--root` is not a participant action in this study and remains a product capability
-  verified by the automated User Story 1 tests. SC-001 runs before SC-006 with the same cohort.
-  Moderators may only repeat the prompt verbatim. Every
-  enrolled participant remains in the fixed denominator and is never replaced. An equipment,
-  environment, or product failure counts as unsuccessful, including before timer start, when
-  it prevents or interrupts criterion completion. The sole scoring carveout is a handled
-  automatic-browser-opening condition: record it, require the printed-URL fallback in a pinned
-  certified browser, keep the original two-minute timer running without pause or reset, and
-  count a no-hints completion inside that original interval as successful rather than
-  unsuccessful. Prevention or interruption of that fallback remains unsuccessful.
-- **SC-002** reuses one unchanged deterministic 100,000-entry/500-match fixture for exactly
-  10 measured runs on one versioned, published reference-environment profile. The checked-in
-  profile records the exact OS image/version, processor architecture/model and logical count,
-  memory, storage/filesystem, application runtime, benchmark command/configuration, and
-  fixture manifest/digest; the result records actual values while omitting only personal
-  identifiers and absolute user paths. A profile change starts a non-comparable set.
-  Fixture construction, setup, `npx` download/installation, process start, and the automatic
-  initial Repository scan are outside the timers. Each fresh process waits for that automatic
-  scan to reach a terminal state, then the browser dispatches exactly one explicit Repository
-  rescan and both timers start. Its admission response supplies the opaque `scanRequestId`.
-  Within 1 second, a status carrying that same ID must visibly and accessibly say queued, name an active scan phase, or
-  report complete/`partial` (the file-confined outcome only)/failed; a failure includes a practical next step. A generic spinner,
-  loading label, unchanged control, acknowledgement without scan state, or prior-request
-  status does not qualify. The complete operable inventory from the generation committed by
-  that same request must render within 10 seconds; an earlier status, snapshot, or automatic-
-  scan generation never qualifies. The result records the request ID and committed generation.
-  After the inventory becomes operable in each run, perform one
-  standardized filter action and one standardized item-selection action, timing each from
-  browser input dispatch until the corresponding filtered results or selected-state feedback
-  is visibly rendered and operable. At least 9 runs must individually meet both scan
-  thresholds and keep both interactions below 100 milliseconds. Each run uses a new Inspector
-  process without application-memory or prior-snapshot reuse. The operating
-  system filesystem cache follows its natural evolving state and is not deliberately
-  cleared. The result is specific to its published profile rather than a portable guarantee.
-- **SC-006** uses the same 20 participants after SC-001, regardless of their earlier result,
-  starting from the same prepared Inspector state with the same designated file open. Its
-  timer starts when that state is ready and the standardized prompt is presented. A
-  standardized response form requires source, recognizing tools, and file type; success
-  requires all three fields within
-  2 minutes and an exact match to predefined ground truth. At least 18 must succeed using
-  only the provided product guidance under the SC-001 moderator policy. Moderators record
-  objective workflow outcomes and predefined safety events. Study equipment runs the SC-004
-  product network/URL/MCP instrumentation, an exact-authority Inspector-server request ledger,
-  and study-browser request capture continuously from Inspector launch before SC-001 through
-  all four workflow observations. The prepared state selects fixed profile
-  `playwright-1.61.1-chromium-ubuntu-24.04-x64-node-24.18.0`: Playwright 1.61.1 Chromium on
-  Ubuntu 24.04 x64/Node.js 24.18.0, headed, with a fresh nonpersistent context, no
-  extensions, a browser-context-only proxy, and `single-407-basic`. Proxy and server project
-  Chromium-controlled Fetch Metadata plus exact Origin/Referer independently and discard raw
-  inputs. Metadata is consistency only; participant additionally requires an armed supervisor-
-  owned navigation grant and exact authorized-static target. Exact authorized participant/bundled-SPA
-  requests alone forward. Extension, missing-secret other-host, and invalid-secret unknown
-  rows are unrelated with N/A IDs; a remaining valid-secret unknown row instead receives the
-  open binding IDs and is product-attributable/prohibited. Observable OS-mediated mounted/
-  mapped-source traffic is separately recorded as the FR-022 limitation. Every unintended execution,
-  inspected-source mutation, prohibited direct product-issued outbound request or MCP
-  connection as defined by FR-022, request outside its two exact authorized internal loopback
-  classes, or disclosure of inspected content to another machine is automatically critical.
-  Those closed classes are neither outbound nor MCP and are not this event.
-  Recorded OS-mediated traffic for a pre-mounted/mapped source remains the FR-022 limitation,
-  not this automatic connection event. An ACKed correlation is only an eligible failure link:
-  success stays all N/A while its automatic issue is counted separately; candidate-bearing
-  failure requires the exact same-context `automatic-critical` link without review; and only
-  candidate-free failure receives two isolated hidden one-use classifications. Two `product-caused-blocker` votes produce
-  `reviewer-confirmed-critical`, two `not-product-caused-blocker` votes produce
-  `reviewer-cleared`, and one of each produces `reviewer-disagreement-critical`. The published
-  governance plan names the reviewer roster and a separate access-controlled administrative
-  record audits one unique human pair per case until consent-policy destruction; identity,
-  assignment, notes, communication, human/process/case-assignment reuse, and a third reviewer remain forbidden from
-  runtime collectors, repository inputs, capture, and evidence. Only
-  `reviewer-confirmed-critical` or `reviewer-disagreement-critical` uses `workflow-blocker`.
-  The acceptable tagged, de-duplicated union of `automatic:<correlationId>` and
-  `reviewer:<subjectId>:<workflowClass>` is empty, and an automatic-linked workflow row is never
-  counted again.
-  At capture start the supervisor therefore creates exactly twenty fresh, unique, cryptographically random, run-local
-  unlinkable participant tokens, each made from exactly 32 random bytes (256 bits) and encoded
-  as exactly 43 unpadded base64url characters. `subjectId` is the sole allowed pseudonymous
-  human evidence and has no identity, distribution, response, or retained external mapping. The
-  supervisor keeps their order only for the run and sends only the next token in an attempt
-  binding; the scheduling harness neither creates nor selects tokens.
-  Participant observations use one token and other observations use literal `not-applicable`.
-  The study-browser stream alone records one
-  terminal success/failure for each token crossed with discovery, inspection, comparison, and
-  Global consent—exactly 80 outcomes—so the 19/20 and 18/20 equations and the same-cohort rule
-  are mechanically checkable. Arbitrary nonterminal/request messages remain allowed. Exact-80
-  cardinality/canonicality is independent of the success thresholds: 80 valid terminal records
-  permit verification, stop, finalize, witness, and seal even if discovery or inspection misses
-  its target. A miss blocks the release criterion but neither invalidates evidence nor becomes
-  automatic critical; protocol, cardinality, authentication, or privacy violations fail closed
-  separately.
-  Capture start is run-level only: the existing materialization-created supervisor launches the
-  harness, moderator, and three adapters; each adapter launches its watchdog, yielding exactly
-  eight internal long-lived descendants/processes with watchdogs as adapter children. Participants 1–19 sequentially complete all four workflows
-  and close; participant 20 completes discovery before checkpoint and, unless terminalized,
-  remains the sole open attempt for the remaining three workflows in continuation. If already
-  terminalized, a post-anchor heartbeat supplies continuation progress. All attempt-local
-  profile/marker/bootstrap work happens after streams are live and immediately before that
-  attempt's `npx` and first capturable request.
-  The study harness owns attempt scheduling and the scoring moderator owns call-local raw
-  response/rubric input. The runtime-only `StudyCurrentSubjectScoringContext` adds
-  `automaticIssueCorrelationId` and `terminalizationClass`. No context exists during launch/
-  bootstrap/buffering. Process binding and ordered release precede both open-binding ACKs;
-  discovery-context ACK then precedes readiness, grant/navigation, and task. Buffered events use
-  workflow/process/link N/A and cannot link later. Only N/A→the first exact same-context
-  candidate after supervisor validation and current-workflow tagging before canonical safe-payload
-  serialization, followed by applicable downstream adapter/watchdog ACKs make it accepted, and
-  none→mapped cause, are permitted one-way updates. The supervisor owns the safe current-workflow
-  mirror, serializes a source that cannot self-assert workflow exactly once with the tag, waits for
-  those ACKs, counts it accepted, then sends an ACKed updated `scoring-context` to the moderator
-  before release/outcome. Accepted retained observations are immutable: later workflow-tag mutation
-  or backfill is forbidden, and pre-ready/context-free N/A stays permanent. That value is an eligible failure-link candidate,
-  not an outcome decision; accepted automatic issues remain separately counted. Destroy each
-  accepted outcome's context and ACK the next before its prompt/timer/task. The exact-once
-  `StudyWorkflowOutcomeSubmission` adds `automaticIssueCorrelationId` before the review
-  fields. Success stays all N/A even with a candidate. Failure with a candidate requires the
-  exact ACKed same-context `automatic-critical` link and no review; only candidate-free failure
-  is reviewed. Before each attempt, distinct human pairs are assigned per
-  subject/workflow from the published reviewer roster; a separate governed access-controlled
-  administrative record outside repository/work-root/candidate/runtime/capture/evidence state
-  audits each unique pair and is destroyed under the consent policy without affecting scoring.
-  They directly observe the same live attempt, including terminal events, without
-  recording/IPC or reuse of a human, collector process/component-run identity, or case assignment.
-  Literal reviewer slots and sanitized terminal surfaces may be drained, reset, and freshly
-  remapped for a later case. After failure only, the moderator sends byte-identical
-  `StudySafetyReviewCase` payloads to two fresh isolated one-use vote collectors. Only after each
-  case is fully displayed are its slot-isolated inputs enabled; each collector reads exactly one
-  LF-terminated ASCII `product-caused-blocker | not-product-caused-blocker` enum with no echo,
-  history, recording, logging, or cross-slot output, wipes it call-locally, and the first vote stays
-  hidden from reviewer two. Two non-
-  product votes yield `reviewer-cleared`, two product votes
-  `reviewer-confirmed-critical`, and a split `reviewer-disagreement-critical`. Both collectors
-  exit before acceptance. Moderator→supervisor→browser-adapter→watchdog is the sole outcome path.
-  On the supervisor→browser-adapter edge, `safe-payload` is nonworkflow-browser-only and cannot
-  carry/bypass an outcome. The supervisor alone tags/constructs it; the adapter validates the
-  stored candidate and returns semantic ACK only after watchdog ACK. Browser-only release waits for that ACK, and joined-pair
-  release waits for both browser/server safe ACKs.
-  Raw scoring or reviewer material never crosses IPC or enters retention, hashing, logs, or
-  output. The authorized materialize caller supplies four pairwise-distinct bidirectional
-  nonrecording/no-echo/no-history external terminal-equipment handles—fd6 participant, fd7
-  moderator, fd8 reviewer one, fd9 reviewer two—and the materializer verifies their stable identity,
-  distinctness, and properties before supervisor launch. They are not internal evidence IPC. The
-  supervisor retains fd6, passes fd7–9 to the moderator, and closes its copies. For each normally
-  completed open context, fd7 carries exactly one compact canonical UTF-8 `StudyModeratorInput`
-  JSON frame plus exactly one LF, root order `schemaVersion`, `studyRunId`, `subjectId`,
-  `inspectorProcessId`, `workflowClass`, `response`, `timing`, `groundTruth`, `rubric`; timing is a
-  canonical nonnegative decimal string and the other three raw values are canonical JSON strings.
-  EOF, parse/extra/trailing input, replay, or cross-context routing fails; input is enabled only for
-  that context and wiped after use/abort. Terminalization-synthesized remaining workflows accept
-  zero records and reject late input without fabricated empty response/timing. Negative tests vary every field, review branch, both process-ID branches, and exact-
-  once submission.
-  During the exact readiness transition for each successfully launched participant Inspector
-  process, before returning the response, the supervisor assigns one fresh opaque
-  `inspectorProcessId` made from exactly 32 cryptographically
-  random bytes (256 bits) and encoded as exactly 43 unpadded base64url
-  characters, distinct from OS PIDs, subject IDs, and watchdog/capture identifiers. It is
-  non-human launch correlation only, never pseudonymous human evidence. The same ID propagates across the
-  request, effect, and workflow records for that launch and is never reused for another launch;
-  a failure before launch/readiness uses literal `not-applicable` for the process ID.
-  Terminalization preserves accepted rows and creates mapped-class contexts, one terminal
-  failure, and required reviews only for missing workflows in fixed order. This safely binds
-  all twenty attempts to their observed product processes without retaining a real process ID.
+- **SC-001** uses exactly 20 independent first-use sessions, each driven by an autonomous
+  agent given the origin one running Inspector printed and the standardized task prompt and
+  nothing else. At least 19 must open one discovered customization file within two minutes,
+  timed from the prompt to the moment that file's source or details view is open and
+  operable. Reaching the Inspector through the printed URL is part of the provided guidance
+  and never pauses or restarts the timer. Selecting a root is a product capability the
+  automated User Story 1 tests verify rather than a timed action here. Every enrolled session
+  stays in the fixed denominator and is never replaced; an environment or product failure
+  that prevents or interrupts completion is unsuccessful.
 
-The 20-person study is initial-release evidence because automation and project-familiar
-contributors cannot establish first-use discoverability or interpretation without project
-context; its fixed denominator is not a population-level statistical claim. The maintainer
-  team publishes a bilingual plan naming the accountable study owner, recruitment and
-  compensation-funding owner, moderation staff and required reviewer roster, schedule/support contact, consent/privacy
-and anonymized-retention process, supplied repository/equipment/session support, and
-  accessibility accommodations. A separately governed access-controlled assignment record outside
-  the repository bundle, work root, candidate, runtime IPC, capture, and evidence audits one
-  unique human pair per case and is destroyed under that consent-retention process; it cannot
-  affect scoring bytes. Ordinary contributors do not recruit, fund, moderate, or
-review participants. Missing study resources block the release claim, not review of an
-otherwise conforming contribution; material workflow/guidance/fixture/rubric changes trigger
-the next study. During kit authoring, maintainers materialize and contract-test the exact
-repository-owned member set under `tests/usability/sc001-sc006-study-inputs/`, its candidate-
-independent versioned manifest, and companion. The manifest adds exact `bundleRoot` between
-`manifestVersion` and `inputs`; entries retain fixed `inputId`/`role`/`path`/`sha256` order,
-raw-UTF-16 input-ID sorting, all-role nonzero coverage, unique paths below the root, separate
-bilingual IDs, raw-byte digests, and the exact Node.js pretty-JSON serializer. The recursive
-regular-file set must equal both the contract member set and manifest path set. Links, aliases,
-non-regular or identity-unverifiable objects, path escape, distribution drift, and any extra
-local/remote/printed/ad hoc input fail. Only the repository-owned builder may create a
-distribution, and the independent verifier must accept it. Immediately before SC-001, the
-verifier re-enumerates the source bundle and all twenty actual distributions without rewriting
-them, reading candidate authority or bytes, calling `stat` on the candidate, hashing it, or
-freezing it; a successful inputs phase freezes
-only the verified canonical study-input-manifest digest and exact-set state. After the candidate
-exists, `capture -- start` is the first phase that reads its authority, reopens/stats/hashes it,
-freezes its identity and SHA-256 before capture, and binds them to that manifest digest. Any candidate byte or bundle-member
-change invalidates both criteria and requires the complete paired protocol unless the final
-candidate/manifest pair exactly matches valid evidence.
+  Agents rather than people because twenty first-use participants are not available to this
+  project. That bounds what the criterion establishes — whether the product's own guidance is
+  sufficient — and every record of a run says so.
+- **The performance suite** reuses one unchanged deterministic 100,000-entry/500-match
+  fixture for a single non-gating smoke pass. It asserts no timing threshold: measuring one
+  means naming a frozen host and recording its exact processor model, image revision, memory,
+  and storage before the run, because the same figures taken elsewhere describe that machine
+  rather than this product. What the pass proves is that the harness still expands the
+  manifest's declarative rules, walks the built tree, and recomputes every entry and content
+  digest, so a builder change or a stray file invalidates it instead of quietly measuring a
+  different repository.
+- **SC-006** uses the same 20 sessions after SC-001, regardless of their earlier result,
+  each beginning from the same designated file. Three fields — source, recognizing tools,
+  file type — must be submitted within two minutes and must all match the checked-in ground
+  truth, with no partial credit; at least 18 must succeed. All 20 then attempt the comparison
+  and personal-setup tasks under the same no-hint policy, which with SC-001's discovery
+  observation covers the four primary workflows.
 
-The paired evaluation-fixture JSON files are deterministic virtual file-tree descriptors that
-fix every derived repository path, encoding, exact byte representation, and digest. A separate
-repository-owned builder materializes exactly twenty fresh repositories; the independent
-verifier recomputes every derived set/byte. Both descriptors bind the builder, verifier, and
-capture-controller script paths and digests, while the focused contract, integration, and
-security suite results are release evidence, so generated fixture bytes do not create an
-unmanifested-input escape. Each distribution root is closed to exact direct-child directories
-`study-inputs/` and `repository/`: the first holds byte-identical copies of the sixteen source
-members, the second holds the complete descriptor output tree, and no other top-level member,
-sidecar, collision, alias/reused identity, or escape is accepted. Candidate and
-equipment/runtime bindings remain outside that root.
-
-The three public builder, capture, and verifier harnesses are each one self-contained source
-file whose source may contain only literal static imports of `node:` built-ins. Local/package
-imports or helpers, dynamic `import()`, `require`, `createRequire`, `eval`, `Function`, `vm`,
-`process.dlopen`, another loader hook, and alternate worker/child entries are forbidden, so each descriptor digest covers the complete executable
-implementation. The builder may execute only the digest-verified capture file in materialize's
-internal supervisor mode; that file may re-execute only itself in exact `supervisor`,
-`study-harness`, `scoring-moderator`, `reviewer-one`, `reviewer-two`, three named adapter,
-and three named watchdog modes. The product probe is a distinct import mode. Every child is
-gated by authenticated inherited parent IPC and a fresh one-use bootstrap nonce.
-
-**Inherited-capture IPC decision**: Each parent/child edge uses two unidirectional anonymous
-inherited pipes, parent-to-child and child-to-parent, not environment, argv, or files. After
-child verification, the parent-to-child pipe starts with an exact 96-byte bootstrap prefix
-containing a fresh seed, nonce, and `channelId`, then remains open and carries LF-framed parent-
-to-child messages on that same pipe; no bootstrap EOF is sent. EOF before byte 96 fails, and all
-post-prefix bytes enter canonical frame parsing. The child-to-parent pipe first sends the
-authenticated one-use `ready` frame at sequence 0. A verified child derives direction-separated
-keys with domain-separated HMAC. Each LF-terminated canonical frame has exact root order
-`schemaVersion`, `channelId`, `sequence`, `direction`, `senderRole`, `receiverRole`,
-`messageType`, `authenticationTag`, `payload`. Authentication reconstructs compact
-canonical JSON with a null tag and no LF; only the populated transmitted frame appends LF. It
-compares in constant time. Both directions start at sequence 0 and
-increment by one; the role/message matrix and one-use ready transition are closed. Every parse,
-authentication, sequence, role, pipe, child, abort, crash, or exit failure wipes material and
-fails closed without a new control command. This was selected because it binds the verified
-child and direction before accepting payloads without exposing bootstrap authority through
-ambient process configuration. Environment/argv/file bootstrap was rejected because it creates
-observable and inheritable residue; a shared bidirectional pipe was rejected because it weakens
-direction and close-state reasoning.
-
-The materializer edge adds exactly one post-ready authenticated `runtime-bootstrap` carrying
-`StudySupervisorRuntimeBootstrap` root `schemaVersion`, `workRootLexicalValue`,
-`workRootCanonicalValue`, `workRootIdentity`, `controlEndpoint`, `controlToken`. The supervisor
-validates root, binds endpoint, loads token, ACKs, and wipes the frame before any root mutation;
-then authenticated lifecycle close/ACK detaches the materializer edge while the supervisor stays
-live. Failure aborts it. Those authorities never use child env/argv and exist only in that frame,
-supervisor memory, and later authenticated control.
-
-Process provenance uses exact `process-lifecycle-attestation`/
-`StudyProcessLifecycleAttestation` root `schemaVersion`, `processRole`, `streamRole`,
-`componentRunId`, `instanceId`, `processRunId`, `event`, `exitCode`, `signal`, with event
-`registered | exited`. Adapter self-registration is not exit observation. Direct parents OS-observe
-before forwarding/creating reports: adapters forward matching watchdog registration and report its
-directly observed clean exit, moderator reports ready reviewer registration and directly observed
-clean exit, and supervisor directly observes adapters/harness/moderator. Reverse ACK is only for the immediately
-preceding attestation on the applicable supervisor/moderator, supervisor/adapter, and adapter/
-watchdog edges. Supervisor ACK of adapter registration precedes writer-binding relay; watchdog
-registration receives adapter and supervisor ACK before start, reviewer-exit ACK
-precedes outcome, watchdog-exit ACK precedes adapter exit. Start waits for six registrations;
-stop combines three watchdog attestations with direct adapter/orchestrator exits; reviewer count
-uses moderator-observed attested distinct clean exits. Nonclean `lifecycle: child-exit` invalidates
-and contributes no witness fact.
-
-Stream phase transport uses exact `StudyStreamControl` root `schemaVersion`, `controlSessionId`,
-`studyRunId`, `workRootIdentityCommitment`, `candidateIdentityCommitment`, `candidateSha256`,
-`studyInputManifestSha256`, `streamRole`, `command`, `checkpointRequestId`, `handoffSha256`, with
-immutable bindings repeated and command `start | checkpoint | anchor-handoff | stop`; exact
-`StudyStreamControlResult` root is `schemaVersion`, `controlSessionId`, `studyRunId`, `streamRole`,
-`command`, `checkpointRequestId`, `sequence`, `monotonicNs`, `envelopeSha256`. Byte-identical
-`stream-control` goes supervisor→adapter→watchdog and the semantic result returns as
-`stream-control-result` in reverse; all three
-results gate each phase. Start result follows capture-start plus first heartbeat and uses N/A
-`checkpointRequestId`. The supervisor creates/validates each stream and passes one dedicated
-append-only handle only through exact spawn inheritance as fd5. A path-free runtime-only
-`StudyStreamWriterRuntimeBinding` binds expected adapter component/instance/process identities to
-fd5 stable handle identity, `nlink`, and append mode. After supervisor ACK of adapter registration,
-the adapter relays binding/handle and gets binding ACK; the watchdog independently validates,
-registers, and gets adapter plus supervisor ACK. All three writer barriers/all six registrations
-precede proxy-binding ACK, which precedes stream start. The handle occupies the contract-fixed
-child-visible writer slot beside the two fixed IPC slots. The slot is absent for nonstream roles and
-is not a third pipe. Adapter only transfers/closes after watchdog registration; supervisor closes
-after complete downstream ACK; extra/duplicate copies are forbidden and watchdog becomes sole
-holder/writer. Stop is result→handle close→exit, and every failure closes all copies and invalidates.
-
-The executable protocol uses a phase matrix. `INSPECTOR_STUDY_WORK_ROOT`, external
-`INSPECTOR_STUDY_CONTROL_ENDPOINT`, and a fresh per-run `INSPECTOR_STUDY_CONTROL_TOKEN` made from
-exactly 32 cryptographically random bytes (256 bits) and encoded as exactly 43 unpadded
-base64url characters are required from materialize through finalize. Materialize and
-input verification ignore and do not require `INSPECTOR_STUDY_CANDIDATE_TARBALL`; start first
-requires it and every later client resends it through finalize. The candidate may preexist—the
-materializer creates distributions, not that file. At materialization, authorized setup fixes an
-identity-pinned `npx` on sanitized equipment PATH plus one reserved initially empty candidate-
-launch store-bin slot outside work root/distributions; materializer/inputs does not read it. After
-successful input verification and before start, setup alone provisions that same known slot from
-the candidate tarball plus frozen production graph into a fresh network-disabled/scripts-disabled
-store and digest-binds it. Start revalidates the inherited slot and resolves only its sole audited
-bin through pinned `npx --no-install`; raw tarball path never enters child env/argv, and no new
-environment/control field exists. Distribution mutation and cache/network/install/alternate-PATH/
-global/fallback resolution are forbidden. Abort/stop/finalize destroy this runtime/evidence-external
-store and gate completion on verified absence. The work root is one stable absolute empty
-ordinary-local workspace supplied by study setup, explicit platform network spellings fail
-before I/O, and indistinguishable pre-mounted/mapped filesystems remain the FR-022 limitation.
-
-A fourth runtime-only input, `INSPECTOR_STUDY_BROWSER_PROXY_AUTHORITY`, is required only from
-start through stop and has exact `127.0.0.1:<port>` form. Materialize, input verification, and
-finalize do not read it; pre-stop checkpoint and continuation require it. Study setup configures it as the
-fresh browser context's proxy only, never a browser-wide or system proxy, and the study-browser
-adapter binds the exact listener. Participant candidates use their supervisor-owned grant
-correlation; only other browser traffic receives a proxy-generated fresh opaque correlation.
-Another local client remains unrelated and is
-not product-attributed without actor/process correlation. Authority and proxy configuration do
-not enter evidence, hashing, logs, diagnostics, or output. The exact raw route is authorized
-start-through-stop caller transient input → authenticated runtime-control `StudyLiveBinding` →
-supervisor dedicated memory → one-use `browser-proxy-binding` → adapter dedicated memory →
-attempt-local DevTools control request/browser context. Caller/control/frame/request buffers wipe
-after ACK. Only after all six registrations and writer-binding barriers are supervisor-ACKed does
-the already-ready/registered adapter receive exact
-`StudyBrowserProxyRuntimeBinding` root `schemaVersion`, `studyRunId`, `browserProxyAuthority`,
-validates/binds/ACKs; before that ACK, `stream-control:start`, capture-start, and start completion are
-forbidden. Supervisor/adapter dedicated memory and the live context are the only post-ACK holders
-through stop/failure cleanup; checkpoint/continuation require equality and stop closes/wipes it. No
-child env/argv or evidence carries it.
-
-The endpoint is transient and outside the work root and distributions. On POSIX it is an
-absolute Unix-domain-socket pathname. On Windows it is exactly
-`\\.\pipe\agent-customization-inspector-study-` followed by 32 lowercase hexadecimal
-characters. TCP, UDP, DNS, every network transport, remote/network named-pipe spelling, and
-work-root sidecars are rejected. The
-materializer starts the sole digest-verified capture file as an internal supervisor, completes the
-post-ready one-use runtime bootstrap before root mutation, then detaches its edge while the
-supervisor remains live. At start that existing supervisor spawns the long-lived harness,
-moderator, and adapters; adapters spawn watchdogs, while the moderator alone
-spawns two ephemeral reviewer collectors after each reviewed failure. A token-authenticated
-hello/challenge protocol keeps it alive to finalize. Only authenticated
-runtime-control messages whose authentication tag covers the exact canonical payload are
-accepted. A transient non-retained HMAC of runtime-control path values is allowed only for
-channel integrity; evidence commitments/hashes remain path-free. Initial work-root authority uses
-only exact runtime bootstrap; later authenticated runtime-control IPC and supervisor memory carry work-root/candidate lexical and canonical
-authority values, allowing every later client to resend the values and independently stat/hash
-the candidate. Apart from the exact transient control-message HMAC, capture-evidence IPC, raw
-commitment input, retained artifacts, logs, and output never carry a path, the HMAC key, or the
-token. The supervisor remembers initial work-root
-identity, start candidate identity/digest, checkpoint positions, the original handoff anchor,
-three direct adapter exits, three adapter-observed authenticated watchdog exit attestations, two
-direct orchestrator exits, and moderator-observed attested distinct-clean reviewer exit count. Path-free HMAC commitments plus one
-`controlSessionId` bind start, handoff, continuity witness, and seal; all authority values and
-secrets are destroyed during finalize.
-
-Canonical control requests/responses retain `requestId` and closed response `errorCode`, never
-the raw token. The materialized supervisor generates one fresh run-scoped `controlSessionId` and
-keeps it stable through finalize. Hello starts with null session/challenge/tag/payload, returns
-that stable session ID, and creates only a fresh one-use HMAC-authenticated `challengeId`; later
-direction-separated HMACs cover complete canonical messages with a null tag and use each
-challenge/request ID once. The closed commands are `hello |
-verify-inputs | start | checkpoint | read-checkpoint | anchor-handoff |
-verify-continuation | stop | finalize-prepare | finalize-commit | abort |
-register-pre-readiness-probe | buffer-pre-readiness-product-event | register-product-probe |
-submit-product-event | close-product-probe`. Finalize-prepare performs
-the supervisor's internal current-binding, continuity, and exit checks, prepares complete witness
-material while the endpoint remains live, and returns literal `null`; the continuity key never
-leaves supervisor memory. A separately authenticated finalize-commit connection then causes the
-supervisor to begin listener teardown and return the exact `StudyContinuityWitness` over that
-already-open connection before key destruction and exit. The verifier requires the complete
-response followed by EOF and reconnection failure, then writes and re-reads the witness pair
-followed by the seal pair.
-
-The workspace closes retained state to twenty named distributions, three alternating
-envelope/safe-payload ledgers, the verifier-only canonical handoff/digest pair, and, after
-successful finalize, exact `capture/study-continuity-witness.json`/`.sha256` and
-`capture/study-capture-seal.json`/`.sha256` pairs. No other sidecar is retained. Each writer
-atomically snapshots an immutable checkpoint prefix then immediately resumes heartbeat/event
-appends. After the verifier writes that handoff, it sends the run/request/digest through the
-supervisor and each watchdog appends exactly one matching `handoff-anchor` record after its
-checkpoint and before stop while normal append/heartbeat scheduling continues without pause.
-An ordinary post-prefix pair already queued at checkpoint may precede the anchor. Continuation
-validates every intervening pair, the sole matching anchor, and at least one later ordinary heartbeat or
-payload on that uninterrupted chain. Stops and
-seal bind the same digest and literal-one counts, so replacing both handoff files with another
-internally valid prefix fails even when later links are recomputed.
-
-The evidence design uses exactly three roles, each with a distinct capture adapter and a
-distinct watchdog that is the sole envelope writer. An adapter inspects raw traffic only in
-memory, derives a closed safe event, discards all raw values before IPC, and never hashes or
-retains raw header names, framing, wire or encoded representations, or any noncanonical derivative,
-bodies, content/metadata, participant responses, paths, URLs/authority values, capabilities,
-environment values, or raw errors. The sole header-derived exception is the strictly validated
-decoded canonical safe ID retained as `correlationId` in the canonical payload and its digest
-chain; captured wire/browser/Inspector bytes are not hash preimages. One IPC message carries exactly one safe
-payload, but one primary-workflow observation may produce any number of counted/chained event
-messages. Only fixed codes, protocol-owner-generated opaque
-IDs, booleans/enums, safe integers, and evidence digests enter canonical safe-payload bytes.
-Each request additionally uses the exact privacy-safe target classifier `targetClass`:
-`static-manifested-asset | static-spa-shell | static-client-route-fallback |
-connection-discovery-metadata | rpc-channel-upgrade | rpc-get-session | rpc-get-file-detail | rpc-get-mcp-carrier-detail |
-rpc-get-permission-policy-detail | rpc-open-file |
-rpc-rescan-repository | rpc-get-global-consent-preview | rpc-create-global-consent-preview |
-rpc-enable-global | rpc-rescan-global | rpc-disable-global | rpc-devframe-framework |
-other-loopback | remote | mcp |
-unclassifiable | not-applicable`. A closed truth table allows only the authorized-static and authorized-rpc combinations across authority,
-target, method, origin, same-host, attribution, request class, and prohibited
-status; the session channel's RPC invocations are classified Inspector-side at the dispatch
-boundary as the dispatched function's row, with not-applicable method and origin. Every row has
-`eventCode: observation`, not-applicable workflow class, observed outcome class,
-correlation-context subject/process IDs, and fresh event/correlation IDs. The exact authorized
-static/RPC table rows alone use effect `none` and prohibited false. A product-attributable
-exact-issued request outside the tables uses a request observation, participant/bundled-SPA/
-Inspector actor as applicable,
-exact-issued authority, prohibited request class, observed closed target/method/origin,
-unauthorized-request, and true same-host/attribution/prohibited. Other-loopback uses
-other-loopback authority/target, prohibited request class, observed closed method,
-not-applicable origin, unauthorized-request, and the same three true booleans. Remote
-uses remote authority/target, prohibited request class, observed closed method, not-applicable
-origin, prohibited-outbound-request, false same-host, and true
-attribution/prohibited. A fully unclassifiable product-correlated request uses unknown actor and
-unclassifiable authority/request/target/method/origin, unauthorized-request, false
-same-host, and true attribution/prohibited. MCP uses an MCP observation, Inspector actor, target
-`mcp`, not-applicable authority/request/method/origin, mcp-connection, false same-host,
-and true attribution/prohibited. For browser traffic, proxy and server independently project
-exact Chromium-controlled `Sec-Fetch-Dest`, `Sec-Fetch-Mode`, `Sec-Fetch-Site`, and
-`Sec-Fetch-User` plus Origin/Referer, discard the raw signals, and require the same projection.
-Fetch Metadata is not human attestation. After product readiness and immediately before initial
-navigation, the supervisor creates an armed runtime-only `StudyParticipantNavigationGrant`
-with run, attempt, fresh correlation, and state:
-
-| Secret/projection | Actor/binding | Decision |
-|---|---|---|
-| Valid; navigate/document/`?1`; missing Origin; site none/same-origin; exact authorized-static; current armed grant | `participant`; open binding | Adapter reserves without state change; supervisor validates/stores pending while canonical grant stays armed; sole one-use `candidate-forward` accepts and atomically consumes canonical grant; adapter validates it before copy consume/forward. |
-| Valid; not participant; missing user; exact-issued Origin or missing Origin plus exact-issued Referer | `bundled-spa`; open binding | Forward only exact authorized static/RPC; all other requests are product-attributable/prohibited and blocked. |
-| Valid; extension Origin | `browser-extension`; N/A IDs | Always unrelated and blocked. |
-| Remaining valid projection | `unknown`; open binding | Product-attributable/prohibited; blocked. |
-| Missing after bootstrap | `other-host-process`; N/A IDs | Unrelated; blocked. |
-| Invalid, duplicate, malformed, noncanonical, unknown, stale, or mismatched | `unknown`; N/A IDs | Unrelated; blocked. |
-
-A fresh participant-shaped HTTP request without the exact armed grant, including nonexact target,
-post-consumption request, or user-activated page-script navigation, is open-binding `unknown` with
-a fresh proxy correlation, product-attributable/prohibited and blocked without consuming or
-invalidating the grant. The browser cannot see the grant before proxy injection. The adapter
-reserves without state change; the supervisor validates grant/correlation/attempt/candidate and
-stores pending while the canonical grant remains armed, then sends sole exact one-use
-`browser-broker-decision: candidate-forward`. No separate candidate ACK exists. That decision
-alone accepts the candidate and atomically consumes the canonical grant; only after validating the
-matching decision may the adapter consume its copy and forward. Duplicate/replayed/stale
-authenticated candidate/grant IPC, simultaneous second consumption, or skipped/mismatched
-decision/ACK forwards nothing and invalidates the run; close destroys the grant.
-
-Only forwarded exact authorized participant/bundled-SPA traffic produces a browser/server join
-and claim. Every blocked row is browser-only; no extension/other-host/unknown N/A-claim branch
-exists. Direct Inspector exact-issued requests use product+server; nonexact Inspector requests,
-OS/effects, and MCP use product only; workflow outcomes use browser only. Field-by-field tests
-reject every changed projection, binding, role, or boolean. Study-browser capture is
-the capture script's Node-built-in-only deny-by-default local HTTP/CONNECT proxy rather than
-Playwright/unbound instrumentation. It forwards only an exact authorized loopback request. It
-classifies `other-loopback`, `remote`, and `unclassifiable` targets and every CONNECT request as
-prohibited, blocks them before DNS lookup, socket connection, request-body forwarding, or
-response-content exposure, and never establishes a CONNECT tunnel. A participant candidate uses
-its supervisor-owned grant's fresh correlation; only other browser events receive a fresh
-32-byte/43-character unpadded-base64url `X-Inspector-Study-Correlation` from the adapter/proxy. The browser proxy removes/replaces an existing value and the
-Inspector probe assigns it. The non-capability is never auth/routing input. Server
-instrumentation rejects duplicate/invalid grammar and sends only the same safe ID to its
-ledger; adapters discard the header/raw fields before IPC. The raw header name, framing, wire,
-encoded value, and noncanonical derivative are never retained, hashed, or logged; after strict grammar/canonical validation,
-only the decoded canonical safe-ID value may be retained as `correlationId`. Other local clients
-stay unrelated without actor/process correlation. Required roles agree on
-safe classifications, `subjectId`, and `inspectorProcessId`; missing, duplicate, malformed,
-reused, or mismatched propagation fails the gate.
-
-The evidence contract/data model own exact schemas for `StudyBrowserAttemptBinding`,
-`StudyBrowserRequestCandidate`, `StudyServerCorrelationClaim`,
-`StudyParticipantNavigationGrant`, and `StudyBrowserBrokerDecision`. The supervisor/broker
-creates each attempt/binding, sends byte-identical prepared/open/closed snapshots to harness and
-browser adapter, and requires both ACKs. Open ACKs precede readiness/grants/candidates;
-ordered pre-readiness release and discovery-context ACK also precede readiness;
-terminalization-decision moves both copies to terminalizing. The adapter destroys browser/grant/
-marker/reservation/candidate/pending state but retains its terminalizing binding through closed
-ACK; the harness retains its terminalizing binding and fixed remaining schedule through synthesis.
-Closed dual ACK then precedes canonical destruction/next attempt. The exact state is
-`prepared | open | terminalizing | closed`.
-
-The supervisor is the sole participant-launch controller/direct OS child observer and sole
-product-exit source, including pre-bootstrap exit; the harness only schedules and binds. On probe
-close, serialized child state yields product-exit when already exited, premature-probe-close while
-live, and no terminalization after normal four-outcome/zero-pending close. The browser adapter is
-the sole attempt-bound equipment observer: browser exit means actual browser process/context exit,
-while equipment failure means an external browser/OS/environment bootstrap failure with healthy
-controller/proxy/auth. Adapter/proxy/controller/CDP/auth/marker/IPC/implementation/child-management
-fault invalidates rather than synthesizes. First
-valid cause wins and later causes are rejected; premature probe close maps to scoring
-`equipment-failure`. Terminalization freezes accepted rows/joins; the supervisor opens/mirrors/
-routes only missing contexts and the moderator constructs their failures/reviews/outcomes in fixed
-order, while the harness retains schedule/orchestration only. Evidence-role failure invalidates the
-run and synthesizes nothing. Byte-identical terminalization decisions go to harness and adapter;
-the adapter clears the listed browser-local state, retains its terminalizing binding until closed
-ACK, and stays alive; the harness retains binding/schedule until closed dual ACK. Browser broker decisions go only
-supervisor→adapter, with exact decision enum
-`candidate-forward | browser-only-released | joined-pair-released`. Attempt IDs remain only in
-supervisor/broker/harness/adapter memory, frames, grants, and candidates—not the actual browser,
-requests, application, evidence, or logs.
-Valid-marker bound browser-only decisions use the open attempt ID; only missing/invalid-marker
-unrelated branches use N/A. A pre-readiness terminal submission, review case, and both votes repeat
-the same N/A process ID.
-
-**Browser-profile and marker decision**: Actual capture uses the prepared-state-selected fixed
-profile `playwright-1.61.1-chromium-ubuntu-24.04-x64-node-24.18.0`: Playwright 1.61.1
-`chromium` revision `1228`, browserVersion `149.0.7827.55`, title `Chrome for Testing`, Ubuntu
-24.04 x64, Node.js 24.18.0, headed, a fresh nonpersistent context, no extensions, a
-browser-context-only proxy, and `single-407-basic`. The browser adapter directly spawns and
-OS-observes the digest/identity-verified pinned Chromium through a fixed anonymous
-`--remote-debugging-pipe`, browser-equipment control outside internal evidence IPC. Pinned DevTools
-uses `Target.createBrowserContext` with exact proxy, `disposeOnDetach: true`, empty bypass;
-`Fetch.enable(handleAuthRequests: true)`; exactly one `Fetch.continueWithAuth` ProvideCredentials
-for the `study`/marker challenge; and exact 407→retry→204 verification. The supervisor creates a separate fresh
-`browserProxyMarkerSecret` and sends install directly to the adapter. It remains prepared until
-the actual-browser bootstrap succeeds and ACKs, then both sides activate atomically; failure
-destroys it without activation. After run streams start and immediately before that attempt's
-`npx`/first capturable request, the context requests exact proxy-local URI
-`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`, receives one bodyless 407 whose
-only headers are `Proxy-Authenticate: Basic realm="inspector-study"` and
-`Connection: close`, performs one canonical Basic retry, and receives bodyless 204 with sole
-`Connection: close` header. The
-exchange performs no DNS/connect, application, correlation, candidate, forwarding, or evidence
-effect. During capture every study request has exactly one canonical Basic marker.
-
-The marker authenticates only transport. Its validity never determines actor, product
-attribution, or forwarding. Raw secrets exist only in adapter attempt-local control/auth request
-buffers, never browser environment/argv/profile/history/log/evidence. The secret, raw Basic, encoded/noncanonical derivative, and proxy
-configuration never enter hashes/evidence, logs/output, files, environment, argv, persistent
-profile/history/cache/keychain or other credential stores, or application requests; the sole
-preimage exception is transient marker-install frame authentication. Marker-install and DevTools
-request buffers wipe after ACK; normal completion, abort, crash, terminalization, controller
-failure, and child exit dispose context/process and wipe all marker material. Adapter crash or
-DevTools EOF must leave no orphan: after adapter exit, the supervisor blocks next attempt/finalize
-until every browser-equipment descendant/context terminates and fresh profile cleanup is verified;
-the pinned build's pipe-disconnect contract invokes `CloseBrowserSoon` and integration verifies
-that path. Any additional platform containment belongs to study equipment/setup, not a synthetic
-internal Node.js-built-in-only capture role;
-runtime OS observer data is not evidence. Actual-browser tests inspect isolated HOME/XDG, profile/history/
-cache, and credential stores after each path and require zero marker, encoded Basic, or
-`browserAttemptId` residue.
-
-This fixed profile was selected because it makes browser-controlled Fetch Metadata and proxy
-challenge behavior reproducible while keeping the context disposable and extension-free.
-Marker-only actor attribution was rejected because any process using the marked context could
-present the same transport credential. A system-wide or browser-wide proxy was rejected because
-it would capture unrelated host traffic and persist configuration outside the study context.
-Using `browserAttemptId` as the password was rejected because it would expose the binding ID to
-browser state and collapse two independently scoped authorities.
-
-For an exact authorized participant/bundled-SPA request, the adapter reserves without state change;
-the supervisor validates/stores one complete candidate pending while the canonical grant remains
-armed, then sole authenticated `browser-broker-decision: candidate-forward` accepts/atomically
-consumes canonical grant. The adapter validates it before copy consume/forward; no separate
-candidate ACK exists. The probe strips correlation,
-constructs the only permitted claim, and receives broker acknowledgement before application
-handling. The `submit-product-event` outer root is only `inspectorProcessId`, `destinationRole`,
-`payload`, and its process equals the registered probe. Claim payload subject/process IDs must
-equal the open binding and that outer process. The broker validates one candidate plus one claim, obtains both browser/server safe-
-payload ACKs, releases the two records through `joined-pair-released`, and only then acknowledges
-completion; mismatch emits zero records. There is no claim for any blocked or
-unrelated row.
-
-**Join decision**: The broker is lifecycle-bound and timer-free. It fails only when the HTTP
-transaction/request ends, aborts, errors, or closes; relevant inherited IPC, probe, attempt, or
-binding closes; capture stops; or the verified child exits. Duplicate, replay, mismatch,
-unexpected role/order, second join, residue, or late input also fails closed, wipes pending
-state, emits no partial record, and rejects later input. Lifecycle-order/race tests cover these
-interleavings without deadlines. A claim timeout was rejected because scheduler latency is not
-evidence of a protocol failure and a time threshold creates a nondeterministic partial-pair race;
-transaction and process lifecycle already provide exhaustive terminal conditions.
-
-For each subject, the supervisor enables fd6 for exactly one LF-terminated ASCII
-`npx --no-install agent-customization-inspector --no-open` line, rejects/wipes other or extra input,
-uses no shell, and directly spawns/OS-observes the sanitized-PATH sole audited candidate-bound bin
-in that verified distribution's `repository/` cwd. Child environment is limited to the bound
-`NODE_OPTIONS` probe, control endpoint/token, and minimum safe run/subject IDs; candidate/proxy
-authority never enters terminal/env/argv. This fresh participant process/context is external
-ephemeral equipment outside the eight internal long-lived descendants. After each attempt the
-supervisor closes it and drains/resets/clears fd6 so no prior input/output/history crosses attempts.
-For product instrumentation, study setup injects only the digest/identity-bound capture script
-itself as exact `NODE_OPTIONS=--import=<bound-capture-script-file-url>` into each participant's
-`npx` Inspector process from
-start to stop. The exact 32-byte/43-character `inspectorProcessId` distinct from OS
-PID/subject/capture IDs binds that launch's request/effect/workflow records. A pre-readiness
-failure instead uses `not-applicable`; terminalization preserves accepted rows and creates
-mapped-class outcomes/reviews only for missing workflows. The candidate has only a dormant optional readiness hook.
-At bootstrap, block body execution and send exact `StudyPreReadinessBootstrapProof`
-`schemaVersion,productId,bootstrapEventId` through `register-pre-readiness-probe`
-(`studyRunId,subjectId,bootstrapProof`) to get `preReadinessProbeId`. Maintain exact
-`StudyPreReadinessProductBuffer` `schemaVersion,studyRunId,subjectId,preReadinessProbeId,state`
-with `open | readiness-bound | terminalization-bound | destroyed`. Canonical N/A observations
-use `buffer-pre-readiness-product-event` (`preReadinessProbeId,destinationRole,payload`);
-supervisor ACK precedes product effect and raw discard is immediate.
-`register-product-probe` takes `studyRunId,preReadinessProbeId,readinessProof,
-requestedDestinationRoles`; process binding plus ordered-release ACK precedes both open-binding
-ACKs and discovery-context ACK, and only then may readiness return.
-Exit before bootstrap is ordinary terminalization; after bootstrap it binds/releases N/A first.
-Helpers emit/register nothing; identity/register/ACK failure invalidates the run. Because it
-cannot inherit the supervisor descriptor, the probe uses endpoint/token environment only for
-`register-pre-readiness-probe`, `buffer-pre-readiness-product-event`, `register-product-probe`,
-`submit-product-event`, and `close-product-probe`. The supervisor routes each safe event/process ID to the distinct
-product or server adapter/watchdog. Only `submit-product-event` with `destinationRole: inspector-server-ledger`
-carries the exact `StudyServerCorrelationClaim` payload variant. Its outer root is only
-`inspectorProcessId`, `destinationRole`, `payload`; the outer process authenticates the registered
-probe and payload subject/process IDs equal the participant/bundled-SPA claim and binding IDs.
-The probe assigns the closed correlation header
-before raw discard, and the browser helper strips probe/control environment.
-Missing/tampered/alternate/duplicate probes, raw IPC, retained probe configuration, or unsafe
-process-ID propagation are critical.
-This gate was selected because candidate effects can occur after bootstrap but before readiness;
-safe buffering plus effect-before-ACK ordering closes that attribution interval without inventing
-a process ID. Discarding all pre-readiness observations was rejected because it can hide an
-automatic safety event, while assigning the final process ID before readiness was rejected
-because it makes a failed launch appear ready.
-The envelope adds `schemaVersion`, stream role, and pairwise-distinct watchdog/capture instance
-and process-run IDs before sequence, kind, monotonic time, prior digest, and safe-payload digest.
-The closed start/heartbeat/handoff-anchor/stop payloads bind both study digests, observed process/IPC health,
-the prior envelope, final sequence, and kind counts. A nominal 1,000-ms scheduler setting and
-the sole 1,500,000,000-ns ceiling for start/heartbeat, consecutive-heartbeat,
-heartbeat/checkpoint, and heartbeat/stop gaps are separate assertions; payloads cannot mask a
-missed heartbeat. The
-repository-owned controller and independent verifier execute through the exact package
-commands, with deterministic schema/privacy/fake-clock tests plus real child-process/IPC
-failure tests. Start returns six stream processes plus two separately ordered orchestrators.
-Stop requires zero live reviewer, terminates all eight long-lived internal descendants, and leaves the supervisor alive.
-Finalize independently checks every safe payload/envelope, commitment, original anchor,
-terminal-outcome equation, role matrix, three direct adapter exits, three adapter-observed
-authenticated watchdog exit attestations, two direct orchestrator exits, and the moderator-
-observed attested equation `ephemeralReviewerProcessExitCount == reviewVoteCount`, then completes
-finalize-prepare while the endpoint remains live. A separately authenticated finalize-commit
-connection receives the exact witness after listener teardown begins but before supervisor key
-destruction and exit. The verifier requires the complete response, EOF, and failed reconnection
-to prove endpoint removal, then writes and re-reads the witness pair followed by the seal pair. The witness
-binds control session, both commitments, original handoff, eight long-lived exits, and reviewer
-exit count. The seal binds its digest,
-the handoff digest, exactly three final roots/counts, both study digests, and exact aggregate
-summary `automaticCriticalIssueCount,suspectedWorkflowBlockerCount,reviewVoteCount,reviewDisagreementCount,reviewerCriticalIssueCount,criticalIssueCount,zeroCriticalIssueGate`.
-The verifier derives exact `automatic:<correlationId>` IDs and recomputes
-`reviewVoteCount = 2 × suspectedWorkflowBlockerCount`, where suspected includes every reviewed
-nonautomatic failure; reviewer-critical IDs are exact
-`reviewer:<subjectId>:<workflowClass>` for confirmed/disagreement rows; total critical is the
-cardinality of the tagged, de-duplicated union of `automatic:<correlationId>` and
-`reviewer:<subjectId>:<workflowClass>`. Automatic-critical workflow rows add no second issue.
-Zero gate requires both an empty union and the complete exact 20-by-4 terminal set; the success
-thresholds remain independent. Contract tests own
-phase/env/token rules, workflow cardinality, request truth table, role matrix, and privacy;
-source-structure tests own the single-file/no-import boundary; OS-specific integration/security
-tests own authenticated endpoint lifecycle, safe-ID/process-ID propagation, the initially empty
-candidate-launch slot, post-input digest-bound provisioning, sole audited-bin resolution,
-network/scripts/cache/global/fallback rejection and teardown absence, secret/path
-non-retention, commitments/exits, crash-after-0-through-4 terminalization, and alternate-valid-prefix rewrite. A prohibited value or
-combination, process/watchdog/supervisor discontinuity, excessive gap, identity/chain/count/
-digest/commitment/anchor mismatch, truncation, early stop, failed teardown/verifier, missing
-role/witness/seal, or stitch is automatic critical.
+  The safety half is what an automated run measures best: a session observes prohibited
+  effects from the requests its own browser issued and from the state of the inspected tree,
+  and the automated FR-022 and User Story suites assert the same property under their own
+  gates. No separate instrumentation, proxy, or reviewer process exists for it.
 
 **Rationale**: The constitution treats passing tests as evidence rather than proof, so the
-suite combines objective automation with full-diff review, manual accessibility checks,
-documentation parity checks, a release tarball inspection, fixed participant scoring, and
-repeatable versioned-profile-specific performance measurement.
+suite combines objective automation with full-diff review, documentation parity checks, a
+release tarball inspection, and the fixed scoring of an agent-driven first-use run.
 
 **Alternatives considered**:
 
@@ -2088,10 +1469,10 @@ the following rules into every later design artifact:
 5. Source-relative Path is the cross-source display/filter/diagnostic term. Repository-
    relative path is used only for the Repository Source rooted at the selected Repository
    root.
-6. SC-001, SC-002, and SC-006 use the objective protocols in Section 10. SC-002 uses one
-   checked-in versioned reference profile and publishes the profile ID, fixture digest, and
-   actual non-personal environment fields with each result; results from changed profile IDs
-   are not directly comparable.
+6. SC-001 and SC-006 use the objective protocols in Section 10, over twenty independent
+   autonomous-agent sessions rather than a participant cohort: what they measure is whether the
+   product's own guidance is sufficient, and evidence from them is recorded as an agent-driven
+   run rather than as a human-subject study.
 
 **Rationale**: These decisions leave no multi-root Source, masking/reveal, fatal-result,
 path-terminology, or outcome-measurement ambiguity, while preserving the product's
@@ -2110,9 +1491,8 @@ read-only, local, non-executing boundary.
   truthful committed state.
 - Using repository-relative path for Global files was rejected because a Global Source is
   not rooted at the selected Repository root.
-- A mutable unpublished reference environment was rejected because it prevents another
-  maintainer from reproducing the protocol or interpreting a changed baseline. SC-002 remains
-  profile-specific rather than a portable performance guarantee.
+- A published performance threshold was rejected: asserting one requires a frozen measurement
+  host nobody has designated, and a figure taken anywhere else measures that machine.
 
 ## 12. Specification revalidation decisions (2026-07-19)
 
@@ -2138,41 +1518,34 @@ read-only, local, non-executing boundary.
    only in complete source text and is never inferred or promoted across source forms. A
    kind's declarations pass no such gate: a skill's are the keys its file wrote, and an
    authored key set is not closed.
-3. SC-002 includes the standardized filter and item-selection measurements defined in
-   Section 10; the same at least 9 individual runs must each pass both scan thresholds and
-   both interaction thresholds.
-4. Dependency revalidation is a planning gate. Any accepted package or version change synchronizes all
+3. Dependency revalidation is a planning gate. Any accepted package or version change synchronizes all
    dependency-baseline-bearing English/Japanese design and task artifacts and reruns planning plus task
    generation before implementation proceeds, excepting the updates Renovate automerges, which
    ci.yml gates instead.
-5. The SC-002 environment is a checked-in versioned published profile with an objective
-   current-request status stop condition; private local-machine identity is not part of the
-   contract.
-6. Origin-file-less hosted/runtime inputs are out of scope. The product reports the
+4. Origin-file-less hosted/runtime inputs are out of scope. The product reports the
    customization files it found; behavior no file originates belongs to the vendor's own
    documentation, and no surface explains it.
-7. The maintainer team owns the initial-release participant study, funding, support, privacy,
-   accessibility, and defined review protocol. Ordinary contributors do not carry those
-   obligations.
-8. `engines.node` is the complete Node 24/26 runtime compatibility range; the six exact floor
+5. The maintainer team owns the initial-release first-use evaluation. Ordinary contributors
+   do not carry that obligation.
+6. `engines.node` is the complete Node 24/26 runtime compatibility range; the six exact floor
    jobs are lower-bound certification samples and the active LTS Node.js is the
    development/build baseline. The pinned three Playwright revisions are the automated browser-certification
    baseline, while the startup helper delegates to an unverified OS default handler and always
    retains the printed/manual-open fallback.
-9. Repository and Global keep independent generation sequences. A successful initial or
+7. Repository and Global keep independent generation sequences. A successful initial or
    retry Global admitted-subset batch commit creates or advances only the Global sequence,
    invalidates only its own sequence's views, and never touches Repository state.
-10. SC-008 uses the maintained bilingual 55-row WCAG 2.2 Level A/AA applicability matrix.
-    Stable check IDs bind every expected observation, and the closed manual matrix forbids
-    sampling applicable locale/platform/viewport/mode/scenario/input cells. Every Applicable
-    row, every Not-applicable rationale recheck, all four keyboard workflows, and every
-    required responsive variation must pass; `validation.md` and `validation.ja.md`
-    record the nonzero Applicable-row denominator, zero failed Applicable rows, and complete
-    evidence. There is no axe-only or severity-based escape.
-11. Diagnostic scope is a closed `file | source` union. Only file scope carries
-    `sourceRelativePath`; source scope carries `sourceId` without a path, and no pathless
-    scope exists. There is no separate outer-boundary error
-    entity: an unexpected failure is reported ordinarily and never becomes a Diagnostic.
+8. SC-008 uses the maintained bilingual 55-row WCAG 2.2 Level A/AA applicability matrix.
+   Stable check IDs bind every expected observation, and the closed manual matrix forbids
+   sampling applicable locale/platform/viewport/mode/scenario/input cells. Every Applicable
+   row, every Not-applicable rationale recheck, all four keyboard workflows, and every
+   required responsive variation must pass; `validation.md` and `validation.ja.md`
+   record the nonzero Applicable-row denominator, zero failed Applicable rows, and complete
+   evidence. There is no axe-only or severity-based escape.
+9. Diagnostic scope is a closed `file | source` union. Only file scope carries
+   `sourceRelativePath`; source scope carries `sourceId` without a path, and no pathless
+   scope exists. There is no separate outer-boundary error
+   entity: an unexpected failure is reported ordinarily and never becomes a Diagnostic.
 
 **Rationale**: These rules make the child-process boundary, presentation scope, performance
 denominator, runtime-fact model, participation ownership, compatibility/certification split,
@@ -2239,9 +1612,9 @@ tasks:
 3. The coordinator serializes Source scans, Global enable, and disable without exposing a
    product-defined slot or queue capacity. Disable remains a priority security barrier, and
    enable/disable races resolve atomically without late mutation.
-4. Every scan receives a `scanRequestId`. SC-002 waits for the automatic first Repository
-   scan, times one explicit rescan, and accepts only status and the committed inventory
-   generation carrying that request ID.
+4. Every scan receives a `scanRequestId`. The performance smoke pass waits for the automatic
+   first Repository scan, exercises one explicit rescan, and accepts only status and the
+   committed inventory generation carrying that request ID.
 5. Disable, shutdown, or generation replacement revokes publication authority independent of
    elapsed time. Late results are discarded and cleanup follows the underlying Node.js/OS
    operation; no hard kernel-I/O cancellation or OOM recovery is claimed.

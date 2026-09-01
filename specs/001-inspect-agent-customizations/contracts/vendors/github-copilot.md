@@ -405,7 +405,7 @@ import, installation, or activation authority.
 | `prompt/command` | `skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact supported frontmatter value/item occurrences in an accepted VS Code prompt or root direct-child CLI command; prompt/command invocation names derived from matched paths remain typed provenance, and links or `#file` targets remain inert |
 | `agent` | `agent-reference`<br>`skill-resource`<br>`context-inheritance`<br>`runtime-reference` | Exact supported frontmatter value/item/map-entry occurrences in an accepted agents Markdown file — repository `.github/agents/*.md` or `.claude/agents/*.md`, or consented user `agents/*.agent.md`; body instructions remain `sourceText`, and `hooks` and `mcp-servers` are the agent's own frontmatter declarations, owning neither a hook nor an MCP recognition |
 | `settings/config` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`runtime-reference` | Exact supported Repository/local, consented user, or cross-tool-compatible settings leaf/item/map-entry occurrences; contained Hook values belong only to the `hook` recognition, and settings never own an MCP recognition |
-| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component-path leaf/item occurrences in an accepted Copilot plugin manifest, and exact catalog and plugin-entry leaf/item occurrences in an accepted marketplace file, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone represents a plain-string source or object `path` leaf and names the plugin root whose files the census enumerates, while inline component bodies are never activated; inline Hook/MCP bodies and referenced scripts/assets do not gain plugin metadata IDs, and component paths never create candidates |
+| `plugin` | `plugin-source`<br>`declared-component`<br>`skill-resource`<br>`agent-reference`<br>`runtime-reference` | Exact metadata and component-path leaf/item occurrences in an accepted Copilot plugin manifest, and exact catalog and plugin-entry leaf/item occurrences in an accepted marketplace file, which carries the plugin names its entries resolve; `marketplace.plugin.source` alone represents a plain-string source or object `path` leaf and may seed the closed local-manifest derivation, while inline component bodies are never activated; inline Hook/MCP bodies and referenced scripts/assets do not gain plugin metadata IDs, and component paths never create candidates |
 | `hook` | `runtime-reference` | Version values, event map keys, matcher values, and exact handler leaf/item/map-entry occurrences in an accepted standalone hook file or the contained `hooks` block of an accepted settings document. The vendor's other documented owners — a custom agent's frontmatter and a plugin's own hook file — declare hooks as part of what they are, and those occurrences belong to their own kind's row; plugin Hook paths remain relationships only |
 
 The `plugin` row's manifest clause — occurrences in an accepted Copilot plugin manifest —
@@ -413,7 +413,11 @@ describes a source form no rule admits: a manifest below a catalog's local root 
 the files that plugin ships, and one at a repository's own root is a plugin that repository
 publishes (§ Repository Inspector matcher rules). It is frozen, digest-recorded design
 input with no consumer, and changing it is a digest-recorded change under the
-official-source contract's stop-and-regenerate rule. What the row governs is its other
+official-source contract's stop-and-regenerate rule. The row's derivation clause —
+`marketplace.plugin.source` alone seeding a closed local-manifest derivation — is frozen on
+the same terms and describes a derivation no rule performs: an accepted marketplace entry
+whose local source validates names the plugin's root, and the census enumerates that root's
+files under the catalog's own row. What the row governs is its other
 half: the catalog and plugin-entry occurrences `copilot.repo.marketplace` admits.
 
 No Copilot recognition uses the shared `rule`, `output style`, or `skill metadata` kind

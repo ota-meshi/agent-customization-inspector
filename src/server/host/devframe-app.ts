@@ -401,22 +401,33 @@ export async function runGlobalEnable(
     // operation-local initial enable (contracts/http-api.md
     // § disable-global), so a disable accepted mid-admission waits these
     // reads out instead of committing beside them.
-    const admission = resolveGlobalMembers(
-      preview,
-      PRODUCTION_GLOBAL_MEMBER_PORTS,
-      retryableTools ?? undefined,
-      // Checked before each member's probe: the barrier cancels this
-      // operation on acceptance, and the next member's read must not start
-      // after that (contracts/http-api.md § disable-global).
-      () => context.session.globalEnableInProgress?.operationId === registered.operationId,
+    // Through the same FIFO the batch and every scan use: plan.md
+    // § Concurrency has one coordinator serialize this admission with them,
+    // so its `stat`/`access` reads never run beside a Repository scan or a
+    // member rescan. A disable accepted while it waits cancels it at dequeue,
+    // which the operation check below already answers.
+    const admission = context.coordinator.runGlobalTransaction(() =>
+      resolveGlobalMembers(
+        preview,
+        PRODUCTION_GLOBAL_MEMBER_PORTS,
+        retryableTools ?? undefined,
+        // Checked before each member's probe: the barrier cancels this
+        // operation on acceptance, and the next member's read must not start
+        // after that (contracts/http-api.md § disable-global).
+        () => context.session.globalEnableInProgress?.operationId === registered.operationId,
+      ),
     );
-    context.coordinator.trackInFlight(admission);
     resolved = await admission;
   } catch (cause: unknown) {
     context.coordinator.abandonGlobalEnable(registered.operationId);
     throw cause;
   }
-  if (context.session.globalEnableInProgress?.operationId !== registered.operationId) {
+  if (
+    resolved === undefined ||
+    context.session.globalEnableInProgress?.operationId !== registered.operationId
+  ) {
+    // `undefined` is the coordinator's dequeue cancellation: the barrier
+    // accepted while this admission was queued, so it read nothing at all.
     // The barrier cancelled this operation while its admissions ran
     // (expected cancellation — nothing was activated). The settle below
     // would throw that cancellation as an ordinary error; the contract's
@@ -1142,11 +1153,28 @@ export function createInspectorDevframe(
             // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
             return { error: { code: 'global-disable-pending' } };
           }
+          // Captured before the launch, revalidated after it: this is the one
+          // handler whose payload work spans an await, so the contract's
+          // capture-construct-revalidate order has to be written out rather
+          // than inherited from a synchronous coordinator turn
+          // (contracts/http-api.md § Result shapes).
+          const capturedEpoch = context.session.globalContentEpoch;
           const opened = await context.session.openCommittedFile(
             request?.sourceRelativePath,
             request?.source,
             request?.target,
           );
+          if (
+            context.session.globalDisableInProgress !== null ||
+            context.session.globalContentEpoch !== capturedEpoch
+          ) {
+            // A disable accepted while the launcher ran: the result is
+            // discarded rather than bound under the epoch that replaced the
+            // one it was authorized under. The launch itself already happened
+            // — it is the reader's own machine opening their own file — and
+            // what the fence governs is the answer this session publishes.
+            return { error: { code: 'global-disable-pending' } };
+          }
           if (!opened) {
             // No committed generation of the named Source holds the path —
             // never scanned, removed by the commit that replaced the snapshot
@@ -1161,7 +1189,7 @@ export function createInspectorDevframe(
           // comes from the O(1) envelope rather than a full snapshot
           // projection built for one scalar.
           return {
-            globalContentEpoch: context.session.dataEnvelope().globalContentEpoch,
+            globalContentEpoch: capturedEpoch,
             data: null,
           };
         },

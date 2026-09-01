@@ -1,0 +1,1182 @@
+{
+  "manifestVersion": 3,
+  "fixtures": {
+    "filesystem": {
+      "kind": "deterministic-builder",
+      "path": "tests/fixtures/filesystem/build-filesystem-fixtures.ts",
+      "sha256": "032c72a9c53f2608e772580bca25137fc33357547ff286397a5eb55c6a564713"
+    },
+    "global-homes": {
+      "kind": "deterministic-builder",
+      "path": "tests/fixtures/global-homes/build-fixtures.ts",
+      "sha256": "0a8492abe133eed5dbf439c0c43724f8c2cf12dfb40a3eaf0c1aa3c12c0b8520"
+    },
+    "repositories": {
+      "kind": "deterministic-builder",
+      "path": "tests/fixtures/repositories/build-fixtures.ts",
+      "sha256": "da86592716a2da4593929079ccfe94b70c2c0bc815f096cc625a1f90a9b92d3f"
+    },
+    "secrets": {
+      "kind": "deterministic-builder",
+      "path": "tests/fixtures/secrets/build-fixtures.ts",
+      "sha256": "56622a679125058876471d2f25d1f3d0f728ff51dd45ee9c30581638682cbce4"
+    },
+    "tests/contract/host-startup.test.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/contract/host-startup.test.ts",
+      "sha256": "fea5c8ed3248cb11687a5aac0666c96595845842ba67a0abb605e65bfb92d5b0"
+    },
+    "tests/contract/http-api-session.test.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/contract/http-api-session.test.ts",
+      "sha256": "952e15753e4af41400510cc7fbf5e493d89777c1d5810a984d71b8f996f94aaf"
+    },
+    "tests/e2e/claude-commands-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-commands-detail.spec.ts",
+      "sha256": "a98fee4110193942266a6b68380de358d750c1c4f9c0ac16797b464a1265112d"
+    },
+    "tests/e2e/claude-commands-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-commands-inventory.spec.ts",
+      "sha256": "ea76fa3598eb5b2a391fdcd108fd1372d97697c82e575d7c2271fb1b9c9a8ff0"
+    },
+    "tests/e2e/claude-custom-agents-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-custom-agents-detail.spec.ts",
+      "sha256": "bbbf5a69eea04ad7e0393afc3be7984a452e75876bd460bb5fdff3fa49d4f325"
+    },
+    "tests/e2e/claude-custom-agents-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-custom-agents-inventory.spec.ts",
+      "sha256": "7568a21359cb630c8688763b84cb00e779b33d347c442ec7ad1dba478ba1b629"
+    },
+    "tests/e2e/claude-hooks-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-hooks-detail.spec.ts",
+      "sha256": "f95bc4b7660ade92c856f236db886843697fa6ac44501ea6f2d1b0d6ba03f07f"
+    },
+    "tests/e2e/claude-hooks-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-hooks-inventory.spec.ts",
+      "sha256": "a22b867355dad6c95879b3214f36197bc502319a653740f406a44f028eb5200f"
+    },
+    "tests/e2e/claude-instructions-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-instructions-detail.spec.ts",
+      "sha256": "c854bff46bdaa73bde072e8e418c0f3036aebd9e91a009aad779b2033a87505d"
+    },
+    "tests/e2e/claude-instructions-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-instructions-inventory.spec.ts",
+      "sha256": "8dd5fda84809aec6a4319f8a6b72438cf509fbd03e436e870bd22f871cfd0724"
+    },
+    "tests/e2e/claude-mcp-files-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-mcp-files-detail.spec.ts",
+      "sha256": "5b9063de37c2fe3502ea7de5ff9f965901820022bab86c6e220745425cf71126"
+    },
+    "tests/e2e/claude-mcp-files-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-mcp-files-inventory.spec.ts",
+      "sha256": "dd643fcd9dabc14bfe8ddd5f132f2f7ee3281fc1132d2884e38f501367af7736"
+    },
+    "tests/e2e/claude-permissions.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-permissions.spec.ts",
+      "sha256": "6a9285d420eefe473df4ee6c44afba6032c52109c6e3096d8489f32523610a4b"
+    },
+    "tests/e2e/claude-plugins-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-plugins-detail.spec.ts",
+      "sha256": "bad34a18d71f2dd781591fd8331bdcdea923966b250dc6f407b342101b07b12f"
+    },
+    "tests/e2e/claude-plugins-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-plugins-inventory.spec.ts",
+      "sha256": "c89987803b18ccfd929ba6cdc9e4b4225154c535f128d46f62571f9d6e72d914"
+    },
+    "tests/e2e/claude-rules-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-rules-detail.spec.ts",
+      "sha256": "0c86c69564c14e70e123d4f3104cc38314f7cc8864dd44e5d132319bf5dac727"
+    },
+    "tests/e2e/claude-rules-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-rules-inventory.spec.ts",
+      "sha256": "854da0a7b904125c21f03baef7badc475f6a4d1d5b92fc7d3830391a07592bfe"
+    },
+    "tests/e2e/claude-settings-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-settings-detail.spec.ts",
+      "sha256": "a6eb9db65e4144e82acf00ffca0fe44461068b6c5a3c85952492b8506ef3512d"
+    },
+    "tests/e2e/claude-settings-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-settings-inventory.spec.ts",
+      "sha256": "06c7ed33e6582f633a64d20f1ce8c2807edf6e9ee815d809ea6ee5e49d15927c"
+    },
+    "tests/e2e/claude-skills-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-skills-detail.spec.ts",
+      "sha256": "58f5cd32c4c0ee4900004d770089b28a020f5809ce1ef26d964db0b1942c775a"
+    },
+    "tests/e2e/claude-skills-list.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/claude-skills-list.spec.ts",
+      "sha256": "b2b7ce4d886d22bd6cc4fca43d30ee5d7f7161db0a9187c4be7cbb68867884a8"
+    },
+    "tests/e2e/codex-config-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-config-detail.spec.ts",
+      "sha256": "d3f076385ad90cad136ca64938dc9c287ae5598af479999d5f4bdcc947ea537b"
+    },
+    "tests/e2e/codex-config-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-config-inventory.spec.ts",
+      "sha256": "607760e63ee9082ebf8e4b325bae3a452520803bd271a721bc20da6fdeb0fd91"
+    },
+    "tests/e2e/codex-custom-agents-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-custom-agents-detail.spec.ts",
+      "sha256": "9a90b824dbb52bb149cde70746e778a102e54e070198ef0247076b044890e98e"
+    },
+    "tests/e2e/codex-custom-agents-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-custom-agents-inventory.spec.ts",
+      "sha256": "c1ebb691a01b3f82624d4602b3e39701f070bdb9df85ddada9609c4e52cd37cf"
+    },
+    "tests/e2e/codex-hooks-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-hooks-detail.spec.ts",
+      "sha256": "d6e713b37b4a8d047379463c13bd6d9c93eae94790a7d5f184e409b4f8923338"
+    },
+    "tests/e2e/codex-hooks-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-hooks-inventory.spec.ts",
+      "sha256": "e542139b670dfe16096baeb91681f926a00b3f50c87351f63fe227c884de1070"
+    },
+    "tests/e2e/codex-instructions-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-instructions-detail.spec.ts",
+      "sha256": "a96056c4522a058236e5a7465a723df6059ce0fde71733549d094dbd5d5ac1ba"
+    },
+    "tests/e2e/codex-instructions-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-instructions-inventory.spec.ts",
+      "sha256": "cb914902c7b935625039c7c5f514de0dd037fe238d2fe0144a1ce1a04fdc431b"
+    },
+    "tests/e2e/codex-mcp-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-mcp-detail.spec.ts",
+      "sha256": "b20976bb7f9e567e4976d6c9e976ad580c66f24215feb6b432ce83ed162420b5"
+    },
+    "tests/e2e/codex-mcp-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-mcp-inventory.spec.ts",
+      "sha256": "d68e9b05d48410ace18c83f7384d028da221ecc86243a518a3b679486be3578c"
+    },
+    "tests/e2e/codex-permissions-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-permissions-detail.spec.ts",
+      "sha256": "f8827c07b6244be2cbd337d9c3ef4c8b405585270e5954f99952604a6a7ba9f9"
+    },
+    "tests/e2e/codex-permissions-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-permissions-inventory.spec.ts",
+      "sha256": "b73ee1194b85f313de01b653ed24d1c5535be78e620d1dbf3b4e86395e4b21e9"
+    },
+    "tests/e2e/codex-plugins-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-plugins-detail.spec.ts",
+      "sha256": "a9d52869d52258b4180082dc7e85817fb57c687a9c1055db269517d5e52e9c4b"
+    },
+    "tests/e2e/codex-plugins-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-plugins-inventory.spec.ts",
+      "sha256": "8434d9fecd1842d6bba7309891530b8d61e77f04abd4ef2559c0a1e39f63101b"
+    },
+    "tests/e2e/codex-skills-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-skills-detail.spec.ts",
+      "sha256": "6f4705694080ad14fcb68d1090e524874c8a360cb7401efd9a72ef5d2491d435"
+    },
+    "tests/e2e/codex-skills-list.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/codex-skills-list.spec.ts",
+      "sha256": "1b12e7dba1be556dd8f7c72bf267c1ff6157bf5f7dfd8e01fc34dbaea89b0fd6"
+    },
+    "tests/e2e/comparison.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/comparison.spec.ts",
+      "sha256": "c43a55fd3444b69d46c5f7ddc23a8e0d1b9000e100bad1083e043501f9cc02be"
+    },
+    "tests/e2e/copilot-commands-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-commands-detail.spec.ts",
+      "sha256": "3dbd2437effbfdf65069c1b7265e3e30346489cbe40f16e0bd345870155b6263"
+    },
+    "tests/e2e/copilot-commands-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-commands-inventory.spec.ts",
+      "sha256": "82df065744be61fd30435fb173775b176ce7c1ff59b0d7ec4bcacbadeb91de95"
+    },
+    "tests/e2e/copilot-custom-agents-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-custom-agents-detail.spec.ts",
+      "sha256": "e0f23e3f7566f5aef8f5a31903337beaffb88c9fa0b53780434f43dc23344fc6"
+    },
+    "tests/e2e/copilot-custom-agents-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-custom-agents-inventory.spec.ts",
+      "sha256": "9b11f2aa5c7d183f73fbaeb5d70dfc8b10ab7db33b06dd26fed00bf7951ee157"
+    },
+    "tests/e2e/copilot-hooks-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-hooks-detail.spec.ts",
+      "sha256": "505385dc79b265526687e27d908192db8b82ce0a1c38d773ee4e5c5f286923db"
+    },
+    "tests/e2e/copilot-hooks-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-hooks-inventory.spec.ts",
+      "sha256": "a8e3a943b18f616cddb1fb30d7b3ee0645b54fa334d014eeabee46f9cf846233"
+    },
+    "tests/e2e/copilot-instructions-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-instructions-detail.spec.ts",
+      "sha256": "68ad08891ca2d4a2b540418795ef1715e0859ebf52d82dc33accd20dc75aef60"
+    },
+    "tests/e2e/copilot-instructions-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-instructions-inventory.spec.ts",
+      "sha256": "ac785934bf537d88cb917fa54e78eaed1f46fd04857cbbe738a65aa50c517cfb"
+    },
+    "tests/e2e/copilot-plugins-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-plugins-detail.spec.ts",
+      "sha256": "b26a32ca558cb9e3648fe882463245296417ebf1558d900ae9a8af3222f7b298"
+    },
+    "tests/e2e/copilot-plugins-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-plugins-inventory.spec.ts",
+      "sha256": "4941217860d48c7c36e76876a47c4c7ccbf1cdd56572f5e55239dc136d1c7d01"
+    },
+    "tests/e2e/copilot-settings-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-settings-detail.spec.ts",
+      "sha256": "d44bf97c28cb3a51dbeb75a447a97397933dd1f40ffc1292a7f87b7f08679d95"
+    },
+    "tests/e2e/copilot-settings-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-settings-inventory.spec.ts",
+      "sha256": "2d6dee54d2357407de36bbdb2d40fe841b251fa26af99f863db6e1964106c228"
+    },
+    "tests/e2e/copilot-skills-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-skills-detail.spec.ts",
+      "sha256": "fc1c9d53b8600ed4d21eb91937194ec10ed92bba435a5a44f8b77937f326c7e8"
+    },
+    "tests/e2e/copilot-skills-list.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-skills-list.spec.ts",
+      "sha256": "8a0e8c2dbd12dfc76729459ce9ca6da3351ab0342567329ff165849a5ce729c2"
+    },
+    "tests/e2e/copilot-vscode-mcp-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-vscode-mcp-detail.spec.ts",
+      "sha256": "b352029e2ba567171b0e4cf4163f0ad5375cf3a5c0710c3815eede9ceeaeeeb1"
+    },
+    "tests/e2e/copilot-vscode-mcp-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/copilot-vscode-mcp-inventory.spec.ts",
+      "sha256": "7bb33ca508ab21f529bb30154a1204621c0461bfc16c07a7d142f2aa9ae22d37"
+    },
+    "tests/e2e/global-same-path-skill.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/global-same-path-skill.spec.ts",
+      "sha256": "6f57f4f5c5943c09e039001ff50ba47e4f2792698e9d76ba6c36101eff535814"
+    },
+    "tests/e2e/inspection-safety.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/inspection-safety.spec.ts",
+      "sha256": "aea679d242a1fe2189326de73cc73ab581b06d2f0f534788ad071245f6a35aee"
+    },
+    "tests/e2e/mcp-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/mcp-inventory.spec.ts",
+      "sha256": "b367eb1c09074a200b41d7b858641dc06e0cf91abb9cde8f88387ba2f0f6ba9b"
+    },
+    "tests/e2e/output-styles-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/output-styles-detail.spec.ts",
+      "sha256": "4f035e8c7ac0de78b282c58c8c81577b3061a14f1ea24face5bb8e8f17054e45"
+    },
+    "tests/e2e/output-styles-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/output-styles-inventory.spec.ts",
+      "sha256": "e3d2376c3aab55265baf1f397cac8e9c6cba359766b5f84fc4f8112da18a1262"
+    },
+    "tests/e2e/prompts-detail.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/prompts-detail.spec.ts",
+      "sha256": "1303df1e9574a3c8b85f95ff65e48bdb02cbd1d998886e32fe8c47afa08671ee"
+    },
+    "tests/e2e/prompts-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/prompts-inventory.spec.ts",
+      "sha256": "4001fabcb510d270e758b730d9c16ec075a64a2f6de11cae7e6a1f1376a9d13e"
+    },
+    "tests/e2e/settings-config-inventory.spec.ts": {
+      "kind": "inline-fixture-suite",
+      "path": "tests/e2e/settings-config-inventory.spec.ts",
+      "sha256": "6cdeeb1469bb909a4e9c70e6e005824919b504158b1a3aa520b88eeb5614c850"
+    }
+  },
+  "criteria": [
+    {
+      "criterion": "SC-003",
+      "requiredClasses": [
+        {
+          "classId": "supported-source-row",
+          "minimumCases": 1
+        },
+        {
+          "classId": "rejected-selector-family",
+          "minimumCases": 1
+        },
+        {
+          "classId": "shared-file-attribution",
+          "minimumCases": 1
+        },
+        {
+          "classId": "global-source-form",
+          "minimumCases": 1
+        }
+      ],
+      "cases": [
+        {
+          "caseId": "sc003.row.claude.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-mcp-files-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code MCP candidate the shipped rules admit at the Repository boundary is recognized and published in the MCP inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-mcp-files-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-custom-agents-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code agent candidate the shipped rules admit at the Repository boundary is recognized and published in the agent inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-custom-agents-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-hooks-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code hook candidate the shipped rules admit at the Repository boundary is recognized and published in the hook inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-hooks-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-instructions-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code instructions candidate the shipped rules admit at the Repository boundary is recognized and published in the instructions inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-instructions-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.output-style",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/output-styles-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code output style candidate the shipped rules admit at the Repository boundary is recognized and published in the output style inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/output-styles-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.permissions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-permissions.spec.ts"],
+          "expectedOutcome": "Every Claude Code permissions candidate the shipped rules admit at the Repository boundary is recognized and published in the permissions inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-permissions.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.plugin",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-plugins-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code plugin candidate the shipped rules admit at the Repository boundary is recognized and published in the plugin inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-plugins-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.prompt-command",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-commands-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code prompt/command candidate the shipped rules admit at the Repository boundary is recognized and published in the prompt/command inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-commands-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.rule",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-rules-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code rule candidate the shipped rules admit at the Repository boundary is recognized and published in the rule inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-rules-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-settings-inventory.spec.ts"],
+          "expectedOutcome": "Every Claude Code settings/config candidate the shipped rules admit at the Repository boundary is recognized and published in the settings/config inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-settings-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.claude.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-skills-list.spec.ts"],
+          "expectedOutcome": "Every Claude Code skill candidate the shipped rules admit at the Repository boundary is recognized and published in the skill inventory with Claude Code among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/claude-skills-list.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-mcp-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex MCP candidate the shipped rules admit at the Repository boundary is recognized and published in the MCP inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-mcp-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-custom-agents-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex agent candidate the shipped rules admit at the Repository boundary is recognized and published in the agent inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-custom-agents-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-hooks-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex hook candidate the shipped rules admit at the Repository boundary is recognized and published in the hook inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-hooks-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-instructions-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex instructions candidate the shipped rules admit at the Repository boundary is recognized and published in the instructions inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-instructions-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.permissions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-permissions-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex permissions candidate the shipped rules admit at the Repository boundary is recognized and published in the permissions inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-permissions-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.plugin",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-plugins-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex plugin candidate the shipped rules admit at the Repository boundary is recognized and published in the plugin inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-plugins-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.prompt-command",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/prompts-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex prompt/command candidate the shipped rules admit at the Repository boundary is recognized and published in the prompt/command inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/prompts-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-config-inventory.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex settings/config candidate the shipped rules admit at the Repository boundary is recognized and published in the settings/config inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-config-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.codex.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-skills-list.spec.ts"],
+          "expectedOutcome": "Every OpenAI Codex skill candidate the shipped rules admit at the Repository boundary is recognized and published in the skill inventory with OpenAI Codex among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/codex-skills-list.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-vscode-mcp-inventory.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot MCP candidate the shipped rules admit at the Repository boundary is recognized and published in the MCP inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-vscode-mcp-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-custom-agents-inventory.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot agent candidate the shipped rules admit at the Repository boundary is recognized and published in the agent inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-custom-agents-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-hooks-inventory.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot hook candidate the shipped rules admit at the Repository boundary is recognized and published in the hook inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-hooks-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-instructions-inventory.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot instructions candidate the shipped rules admit at the Repository boundary is recognized and published in the instructions inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-instructions-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.plugin",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-plugins-inventory.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot plugin candidate the shipped rules admit at the Repository boundary is recognized and published in the plugin inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-plugins-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.prompt-command",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-commands-inventory.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot prompt/command candidate the shipped rules admit at the Repository boundary is recognized and published in the prompt/command inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-commands-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-settings-inventory.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot settings/config candidate the shipped rules admit at the Repository boundary is recognized and published in the settings/config inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-settings-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.row.copilot.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-skills-list.spec.ts"],
+          "expectedOutcome": "Every GitHub Copilot skill candidate the shipped rules admit at the Repository boundary is recognized and published in the skill inventory with GitHub Copilot among its recognizing tools, and no path outside those rules is.",
+          "verifiedBy": ["tests/e2e/copilot-skills-list.spec.ts"]
+        },
+        {
+          "caseId": "sc003.near-miss.exact",
+          "requiredClasses": ["rejected-selector-family"],
+          "fixtureRefs": ["filesystem", "repositories"],
+          "expectedOutcome": "A path one segment away from a `exact` program (one exact path relative to the source root) is neither admitted nor interpreted: the scan issues no intentional read for it and publishes no recognition of it.",
+          "verifiedBy": [
+            "tests/integration/boundaries/traversal.test.ts",
+            "tests/integration/repository-scan.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc003.near-miss.direct-child",
+          "requiredClasses": ["rejected-selector-family"],
+          "fixtureRefs": ["filesystem", "repositories"],
+          "expectedOutcome": "A path one segment away from a `direct-child` program (matching direct children of one root-relative directory) is neither admitted nor interpreted: the scan issues no intentional read for it and publishes no recognition of it.",
+          "verifiedBy": [
+            "tests/integration/boundaries/traversal.test.ts",
+            "tests/integration/repository-scan.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc003.near-miss.descendant-inventory",
+          "requiredClasses": ["rejected-selector-family"],
+          "fixtureRefs": ["filesystem", "repositories"],
+          "expectedOutcome": "A path one segment away from a `descendant-inventory` program (the inventory at the anchor and every directory below it) is neither admitted nor interpreted: the scan issues no intentional read for it and publishes no recognition of it.",
+          "verifiedBy": [
+            "tests/integration/boundaries/traversal.test.ts",
+            "tests/integration/repository-scan.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc003.near-miss.recursive-subtree",
+          "requiredClasses": ["rejected-selector-family"],
+          "fixtureRefs": ["filesystem", "repositories"],
+          "expectedOutcome": "A path one segment away from a `recursive-subtree` program (the recursive inventory below one root-relative subtree) is neither admitted nor interpreted: the scan issues no intentional read for it and publishes no recognition of it.",
+          "verifiedBy": [
+            "tests/integration/boundaries/traversal.test.ts",
+            "tests/integration/repository-scan.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-agents-md",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["repositories"],
+          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-root-claude-md",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["repositories"],
+          "expectedOutcome": "The repository-root `CLAUDE.md` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-agents-skill",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["repositories"],
+          "expectedOutcome": "A repository `.agents/skills/<name>/SKILL.md` is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/skills-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-claude-skill",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["repositories"],
+          "expectedOutcome": "A repository `.claude/skills/<name>/SKILL.md` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/skills-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-claude-settings",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["tests/e2e/settings-config-inventory.spec.ts"],
+          "expectedOutcome": "The repository `.claude/settings.json` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/settings-config-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-root-mcp-json",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["tests/e2e/mcp-inventory.spec.ts"],
+          "expectedOutcome": "The repository-root `.mcp.json` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/mcp-inventory.spec.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.repository-marketplace-json",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["repositories"],
+          "expectedOutcome": "The repository `.claude-plugin/marketplace.json` is attributed to Claude Code and OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/integration/repository-scan.test.ts"]
+        },
+        {
+          "caseId": "sc003.shared-file.global-shared-agent-home-skill",
+          "requiredClasses": ["shared-file-attribution"],
+          "fixtureRefs": ["tests/e2e/global-same-path-skill.spec.ts"],
+          "expectedOutcome": "A `skills/<name>/SKILL.md` held by two consented Global member boundaries at once is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "verifiedBy": ["tests/e2e/global-same-path-skill.spec.ts"]
+        },
+        {
+          "caseId": "sc003.global-source-form.claude",
+          "requiredClasses": ["global-source-form"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "At the Global boundary, Claude Code's consented member locations are admitted and published as their own Source, and no path outside that member's allowlist is.",
+          "verifiedBy": ["tests/e2e/global-claude-admission.spec.ts"]
+        },
+        {
+          "caseId": "sc003.global-source-form.codex",
+          "requiredClasses": ["global-source-form"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "At the Global boundary, OpenAI Codex's consented member locations are admitted and published as their own Source, and no path outside that member's allowlist is.",
+          "verifiedBy": ["tests/e2e/global-codex-admission.spec.ts"]
+        },
+        {
+          "caseId": "sc003.global-source-form.copilot",
+          "requiredClasses": ["global-source-form"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "At the Global boundary, GitHub Copilot's consented member locations are admitted and published as their own Source, and no path outside that member's allowlist is.",
+          "verifiedBy": ["tests/e2e/global-copilot-admission.spec.ts"]
+        }
+      ]
+    },
+    {
+      "criterion": "SC-004",
+      "requiredClasses": [
+        {
+          "classId": "supported-tool",
+          "minimumCases": 1
+        },
+        {
+          "classId": "prohibited-effect",
+          "minimumCases": 1
+        },
+        {
+          "classId": "out-of-bound-selector",
+          "minimumCases": 1
+        },
+        {
+          "classId": "detectable-file-read-change",
+          "minimumCases": 1
+        },
+        {
+          "classId": "directory-mutation-during-enumeration",
+          "minimumCases": 1
+        },
+        {
+          "classId": "close-result",
+          "minimumCases": 1
+        }
+      ],
+      "cases": [
+        {
+          "caseId": "sc004.tool.claude",
+          "requiredClasses": ["supported-tool"],
+          "fixtureRefs": ["repositories", "tests/e2e/inspection-safety.spec.ts"],
+          "expectedOutcome": "Inspecting a repository whose customizations Claude Code recognizes causes no prohibited effect of any class on any instrumented surface.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/e2e/inspection-safety.spec.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.tool.codex",
+          "requiredClasses": ["supported-tool"],
+          "fixtureRefs": ["repositories", "tests/e2e/inspection-safety.spec.ts"],
+          "expectedOutcome": "Inspecting a repository whose customizations OpenAI Codex recognizes causes no prohibited effect of any class on any instrumented surface.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/e2e/inspection-safety.spec.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.tool.copilot",
+          "requiredClasses": ["supported-tool"],
+          "fixtureRefs": ["repositories", "tests/e2e/inspection-safety.spec.ts"],
+          "expectedOutcome": "Inspecting a repository whose customizations GitHub Copilot recognizes causes no prohibited effect of any class on any instrumented surface.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/e2e/inspection-safety.spec.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.prohibited-effect.command-execution",
+          "requiredClasses": ["prohibited-effect"],
+          "fixtureRefs": ["filesystem", "repositories", "secrets"],
+          "expectedOutcome": "The instrumented execution surfaces observe no customization-derived command or code execution for the whole inspection.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/integration/security/zero-activation.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.prohibited-effect.child-process",
+          "requiredClasses": ["prohibited-effect"],
+          "fixtureRefs": ["filesystem", "repositories", "secrets"],
+          "expectedOutcome": "The instrumented process surfaces observe no child process spawned from customization-derived content.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/integration/security/zero-activation.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.prohibited-effect.mcp-connection",
+          "requiredClasses": ["prohibited-effect"],
+          "fixtureRefs": ["filesystem", "repositories", "secrets"],
+          "expectedOutcome": "The instrumented MCP surfaces observe no connection attempt; a declared server is recorded as an authored fact and never contacted.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/integration/security/zero-activation.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.prohibited-effect.direct-outbound-request",
+          "requiredClasses": ["prohibited-effect"],
+          "fixtureRefs": ["filesystem", "repositories", "secrets"],
+          "expectedOutcome": "No direct product-issued outbound request as defined by FR-022 is made; the only requests observed are the two exact authorized internal loopback classes at the issued `localhost` authority.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/integration/security/zero-activation.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.prohibited-effect.source-mutation",
+          "requiredClasses": ["prohibited-effect"],
+          "fixtureRefs": ["filesystem", "repositories", "secrets"],
+          "expectedOutcome": "No product-issued mutation of an inspected source occurs: content, length, identity, link state, mode, and modification/change time are unchanged, and a read-semantics access-time change is recorded separately.",
+          "verifiedBy": [
+            "tests/integration/inspection-safety.test.ts",
+            "tests/integration/security/zero-activation.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc004.out-of-bound.repository",
+          "requiredClasses": ["out-of-bound-selector"],
+          "fixtureRefs": ["filesystem"],
+          "expectedOutcome": "A selector rejected as outside the enabled repository source boundary produces zero intentional read requests.",
+          "verifiedBy": ["tests/integration/boundaries/traversal.test.ts"]
+        },
+        {
+          "caseId": "sc004.out-of-bound.global",
+          "requiredClasses": ["out-of-bound-selector"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "A selector rejected as outside the enabled global source boundary produces zero intentional read requests.",
+          "verifiedBy": ["tests/integration/global-boundaries.test.ts"]
+        },
+        {
+          "caseId": "sc004.file-read-change.external-writer",
+          "requiredClasses": ["detectable-file-read-change"],
+          "fixtureRefs": ["filesystem"],
+          "expectedOutcome": "A fixture rewritten by an external writer while the scan is reading another file leaves the instrumented product surfaces read-only: the change is attributed to that writer and to no product request.",
+          "verifiedBy": ["tests/integration/boundaries/traversal.test.ts"]
+        },
+        {
+          "caseId": "sc004.directory-mutation.during-enumeration",
+          "requiredClasses": ["directory-mutation-during-enumeration"],
+          "fixtureRefs": ["filesystem"],
+          "expectedOutcome": "A directory removed, renamed, or created while the walk is enumerating leaves the attempt publishable: an entry whose directory went away publishes as its own file-confined outcome, the directories that stayed are read normally, and the product issues no write.",
+          "verifiedBy": ["tests/integration/boundaries/traversal.test.ts"]
+        },
+        {
+          "caseId": "sc004.close-result.late-discard",
+          "requiredClasses": ["close-result"],
+          "fixtureRefs": ["filesystem"],
+          "expectedOutcome": "A result arriving after its authority was revoked is discarded without any hard-cancellation claim, and a recoverable resource failure at enumerate, resolve, or read aborts the attempt rather than being blamed on one file.",
+          "verifiedBy": ["tests/integration/boundaries/traversal.test.ts"]
+        }
+      ]
+    },
+    {
+      "criterion": "SC-005",
+      "requiredClasses": [
+        {
+          "classId": "supported-source-row",
+          "minimumCases": 1
+        },
+        {
+          "classId": "display-surface",
+          "minimumCases": 1
+        },
+        {
+          "classId": "credential-class",
+          "minimumCases": 1
+        },
+        {
+          "classId": "referenced-variable-state",
+          "minimumCases": 1
+        }
+      ],
+      "cases": [
+        {
+          "caseId": "sc005.row.claude.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-mcp-files-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code MCP file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-mcp-files-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-custom-agents-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code agent file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-custom-agents-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-hooks-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code hook file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-hooks-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-instructions-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code instructions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-instructions-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.output-style",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/output-styles-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code output style file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/output-styles-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.permissions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-permissions.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code permissions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-permissions.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.plugin",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-plugins-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code plugin file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-plugins-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.prompt-command",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-commands-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code prompt/command file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-commands-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.rule",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-rules-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code rule file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-rules-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-settings-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code settings/config file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-settings-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.claude.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/claude-skills-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable Claude Code skill file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/claude-skills-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-mcp-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex MCP file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-mcp-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-custom-agents-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex agent file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-custom-agents-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-hooks-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex hook file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-hooks-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-instructions-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex instructions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-instructions-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.permissions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-permissions-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex permissions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-permissions-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.plugin",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-plugins-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex plugin file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-plugins-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.prompt-command",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/prompts-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex prompt/command file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/prompts-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-config-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex settings/config file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-config-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.codex.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/codex-skills-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable OpenAI Codex skill file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/codex-skills-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.mcp",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-vscode-mcp-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot MCP file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-vscode-mcp-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.agent",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-custom-agents-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot agent file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-custom-agents-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.hook",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-hooks-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot hook file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-hooks-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.instructions",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-instructions-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot instructions file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-instructions-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.plugin",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-plugins-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot plugin file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-plugins-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.prompt-command",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-commands-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot prompt/command file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-commands-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.settings-config",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-settings-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot settings/config file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-settings-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.row.copilot.skill",
+          "requiredClasses": ["supported-source-row"],
+          "fixtureRefs": ["tests/e2e/copilot-skills-detail.spec.ts"],
+          "expectedOutcome": "The detail surface for a readable GitHub Copilot skill file renders its authored bytes exactly as written, with no masking, redaction, reveal control, or environment-variable substitution.",
+          "verifiedBy": ["tests/e2e/copilot-skills-detail.spec.ts"]
+        },
+        {
+          "caseId": "sc005.surface.source",
+          "requiredClasses": ["display-surface"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "The source surface renders the authored bytes exactly, with no masking or reveal control.",
+          "verifiedBy": ["tests/integration/global-literal-display.test.ts"]
+        },
+        {
+          "caseId": "sc005.surface.comparison",
+          "requiredClasses": ["display-surface"],
+          "fixtureRefs": ["tests/e2e/comparison.spec.ts"],
+          "expectedOutcome": "The comparison surface renders both sides' authored bytes exactly, with no masking or reveal control.",
+          "verifiedBy": ["tests/e2e/comparison.spec.ts"]
+        },
+        {
+          "caseId": "sc005.credential.literal",
+          "requiredClasses": ["credential-class"],
+          "fixtureRefs": ["global-homes", "repositories"],
+          "expectedOutcome": "A literal credential-shaped value appears unmasked and unchanged, and never reaches an inventory summary.",
+          "verifiedBy": [
+            "tests/integration/global-literal-display.test.ts",
+            "tests/integration/repository-scan.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc005.credential.environment-reference",
+          "requiredClasses": ["credential-class"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "An environment-variable reference appears as its authored text; no referenced process-environment value is introduced into displayed content.",
+          "verifiedBy": ["tests/integration/global-literal-display.test.ts"]
+        },
+        {
+          "caseId": "sc005.referenced-variable.set",
+          "requiredClasses": ["referenced-variable-state"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "With the referenced variable set to a sentinel in the product process, the displayed text is still the authored reference and never the sentinel.",
+          "verifiedBy": ["tests/integration/global-literal-display.test.ts"]
+        },
+        {
+          "caseId": "sc005.referenced-variable.unset",
+          "requiredClasses": ["referenced-variable-state"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "With the referenced variable unset, the displayed text is unchanged from the set state and carries no empty-substitution artifact.",
+          "verifiedBy": ["tests/integration/global-literal-display.test.ts"]
+        }
+      ]
+    },
+    {
+      "criterion": "SC-007",
+      "requiredClasses": [
+        {
+          "classId": "file-confined-outcome",
+          "minimumCases": 1
+        },
+        {
+          "classId": "failure-class",
+          "minimumCases": 1
+        }
+      ],
+      "cases": [
+        {
+          "caseId": "sc007.file-confined.malformed-content",
+          "requiredClasses": ["file-confined-outcome"],
+          "fixtureRefs": ["repositories", "secrets"],
+          "expectedOutcome": "The file keeps its complete source and range while its extraction fails; its actionable diagnostic is published and the generation may commit partial without affecting other files.",
+          "verifiedBy": [
+            "tests/integration/repository-scan.test.ts",
+            "tests/contract/http-api-files.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc007.file-confined.binary-content",
+          "requiredClasses": ["file-confined-outcome"],
+          "fixtureRefs": ["repositories", "secrets"],
+          "expectedOutcome": "A NUL-carrying file publishes as `binary` with its diagnostic, gains no recognition, and does not prevent other files from publishing.",
+          "verifiedBy": [
+            "tests/integration/repository-scan.test.ts",
+            "tests/contract/http-api-files.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc007.file-confined.utf-8-replacement",
+          "requiredClasses": ["file-confined-outcome"],
+          "fixtureRefs": ["repositories", "secrets"],
+          "expectedOutcome": "Invalid non-NUL UTF-8 is processed as readable `utf-8-replaced` text and does not by itself make the scan partial.",
+          "verifiedBy": [
+            "tests/integration/repository-scan.test.ts",
+            "tests/contract/http-api-files.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc007.file-confined.unreadable-file",
+          "requiredClasses": ["file-confined-outcome"],
+          "fixtureRefs": ["repositories", "secrets"],
+          "expectedOutcome": "An unreadable file, a broken symbolic link included, yields its actionable diagnostic and does not affect other files.",
+          "verifiedBy": [
+            "tests/integration/repository-scan.test.ts",
+            "tests/contract/http-api-files.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc007.failure.pre-acceptance-rejection",
+          "requiredClasses": ["failure-class"],
+          "fixtureRefs": ["repositories", "tests/contract/http-api-session.test.ts"],
+          "expectedOutcome": "A session-API request rejected before job acceptance creates no `scanRequestId`, commits nothing, and leaves the last successfully committed snapshot available.",
+          "verifiedBy": [
+            "tests/contract/http-api-session.test.ts",
+            "tests/integration/runtime-failures.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc007.failure.post-acceptance-failure",
+          "requiredClasses": ["failure-class"],
+          "fixtureRefs": ["repositories", "tests/contract/http-api-session.test.ts"],
+          "expectedOutcome": "A failure after an accepted session-API job commits no new or partial result, retains the last successfully committed snapshot, and marks it stale with the failed request's error.",
+          "verifiedBy": [
+            "tests/integration/runtime-failures.test.ts",
+            "tests/contract/http-api-session.test.ts"
+          ]
+        },
+        {
+          "caseId": "sc007.failure.startup-failure",
+          "requiredClasses": ["failure-class"],
+          "fixtureRefs": ["tests/contract/host-startup.test.ts"],
+          "expectedOutcome": "A startup failure ends the launch with an actionable message and serves nothing.",
+          "verifiedBy": ["tests/contract/host-startup.test.ts"]
+        },
+        {
+          "caseId": "sc007.failure.initial-global-enable-failure",
+          "requiredClasses": ["failure-class"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "A failed initial Global enable preserves any pre-existing snapshot state and creates neither a Global Source nor a Global generation.",
+          "verifiedBy": ["tests/contract/http-api-global.test.ts"]
+        },
+        {
+          "caseId": "sc007.failure.global-disable-post-acceptance-failure",
+          "requiredClasses": ["failure-class"],
+          "fixtureRefs": ["global-homes"],
+          "expectedOutcome": "A post-acceptance Global-disable failure leaves the REST process alive with all inspection data fenced, a retained retry/join control, and a restart next step.",
+          "verifiedBy": [
+            "tests/contract/http-api-global.test.ts",
+            "tests/integration/global-boundaries.test.ts"
+          ]
+        }
+      ]
+    }
+  ]
+}

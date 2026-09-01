@@ -178,6 +178,11 @@ async function reuseChromiumTab(
     // fixed-list application is running and nothing about the resolved OS
     // handler's identity or version, so a successful reuse stays
     // non-evidentiary for the certification baseline (FR-001).
+    // `ps` and the `osascript` below are named, not spelled as absolute system
+    // paths: this is Vite's own tab-reuse invocation, and pinning them has
+    // been proposed against a repository that ships its own — the
+    // adversarial-workspace model FR-019 rejects, whose machinery FR-019
+    // forbids adding.
     const { stdout } = await execFileAsync('ps', ['cax'], {
       timeout: PROCESS_PROBE_TIMEOUT_MILLISECONDS,
       // Shutdown interrupts a probe already waiting instead of waiting it
@@ -246,5 +251,12 @@ export async function openStartupBrowser(
   if (!shouldProceed()) {
     return;
   }
+  // The last gate this function can hold: `open@11.0.1` resolves the platform's
+  // handler asynchronously before it spawns, and exposes no signal or hook in
+  // that window, so a shutdown accepted after this check can still be followed
+  // by a browser opening. Nothing here can recall it either — on macOS the
+  // launch is handed to LaunchServices, so killing the returned child would not
+  // undo it. The residual window is accepted rather than defended with a check
+  // that cannot close it.
   await open(url);
 }

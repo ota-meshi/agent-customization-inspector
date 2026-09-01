@@ -2125,3 +2125,40 @@ describe('the composition subgraph this release owns (T920)', () => {
     }
   });
 });
+
+describe('normative relationship-only registry', () => {
+  // T1042: the contract defines twelve relationship-only rule IDs and the
+  // registry ships none of them. Both halves are the claim: the IDs exist so a
+  // later release can add the rule that emits an edge, and nothing emits one
+  // today (contracts/runtime-composition.md § Normative relationship-only
+  // registry; contracts/http-api.md).
+  const contract = readFileSync(
+    'specs/001-inspect-agent-customizations/contracts/runtime-composition.md',
+    'utf8',
+  );
+  const declared = [...contract.matchAll(/^\| `([a-z]+\.relationship\.[a-z-]+)` \|/gmu)].map(
+    (match) => match[1]!,
+  );
+
+  it('defines exactly twelve relationship-only rule IDs', () => {
+    expect(declared).toHaveLength(12);
+    expect(new Set(declared).size).toBe(12);
+  });
+
+  it('ships none of them as a rule', () => {
+    const shipped = new Set(Object.keys(INSPECTION_RULES));
+    for (const ruleId of declared) {
+      expect(shipped.has(ruleId), ruleId).toBe(false);
+    }
+  });
+
+  it('states them in both languages', () => {
+    const japanese = readFileSync(
+      'specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md',
+      'utf8',
+    );
+    for (const ruleId of declared) {
+      expect(japanese, ruleId).toContain(`\`${ruleId}\``);
+    }
+  });
+});

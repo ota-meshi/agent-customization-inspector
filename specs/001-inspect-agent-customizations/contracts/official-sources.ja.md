@@ -282,14 +282,16 @@ Networkを使用するdrift reviewはmaintainerだけが明示実行し、少な
 supported surfaceへのmaterialなupstream変更を認知した時点で実行する。
 
 ```sh
-pnpm run check:official-sources
+pnpm run check:official-sources -- --network
 ```
 
 このcommandはcredential、cookie、Repository contents、その他local stateを送信しない。UTF-8 HTMLまたはMarkdownだけを
-受理し、全redirect hopはrowのexact `officialHost`を維持しなければならない。Request、response、redirect、decodeの
+受理し、redirectは追跡しない。Rowが記録するのは応答するURLであるため、`3xx`は追跡せずreview対象として
+報告する。追跡すれば記録済みURLはcitationが名指すaddressではなく起点になってしまい、移転はreviewerが
+行うcitationの変更である。Request、response、redirect、decodeの
 capacityはNode.jsと実行環境から継承し、recoverableなenvironment failureはfail closedする。HTTPS downgrade、
 cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。ただしclient-renderedなページだけは例外とし、その例外はheading checkにのみ適用する。そうしたページはtable of contentsだけを配信して`<h*>` elementを一切出さないため、headingは存在するのにそれを担うelementが存在しない。Commandは、引用されたheadingのanchor slugが配信されたtable of contents内にちょうど1回現れる場合にそのheadingを受理し、その方法で確認したheadingを報告する。この例外がないと、client-renderedなページ上の全citationに対してdriftを報告することになる。Maintainerが却下する以外にないhard failureは、gateが読まれなくなる原因そのものである。同一host上の
-異なるfinal URLはreview対象として報告し、`canonicalUrl`を黙って置き換えない。
+Redirectを黙って追跡して新しい`canonicalUrl`にすることはない。
 
 Normalization version `1`は、列挙した各headingから同level以上の次heading直前までを選択し、document
 chromeと`script`/`style` nodeを除去し、prose/code textを保持し、entity decode、Unicode NFC、LF ending、

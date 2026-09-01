@@ -58,6 +58,19 @@ export default defineConfig({
       },
       {
         test: {
+          // The bilingual cross-artifact gate. Its own directory rather than a
+          // file under `tests/contract/`: every suite here is separated by
+          // where its tests live, so a documentation test inside the contract
+          // root would run in the contract and coverage jobs too, leaving this
+          // job verifying nothing those had not already verified — unless two
+          // projects carried an exclusion for one file (T1041).
+          name: 'documentation',
+          environment: 'node',
+          include: ['tests/documentation/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'performance',
           // Node like the package project. The one smoke pass — packaged CLI
           // driven through a rendered Chromium page over the 100,000-entry

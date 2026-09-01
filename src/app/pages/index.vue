@@ -115,62 +115,7 @@ const tool = ref<SupportedTool | null>(toolFromQuery(route.query.tool));
 const pathQuery = ref(queryText(route.query.path) ?? '');
 const kind = ref<CustomizationKind | null>(kindFromQuery(route.query.kind));
 
-/**
- * The purge generation this page's history entries are written under,
- * persisted in `sessionStorage` so it survives a reload: a process-local
- * counter would reset to zero and re-validate every pre-purge entry the
- * moment the tab reloaded. The stored value is an opaque token replaced
- * whenever a purge's recovery re-adopts the inventory (FR-042;
- * `SessionViewState.inventoryResumeRequests`), because the recovery contract
- * starts that inventory at the default filters (data-model.md
- * § RecoveryViewState). Stamped into each entry's `history.state`: an entry
- * the reader left before the purge — a narrowed inventory behind the consent
- * page, say — is not unmounted by it and would otherwise hand its pre-purge
- * narrowing back through the browser's Back button. Wrapped in try/catch
- * because storage can be unavailable; the page then behaves as before the
- * stamp existed.
- */
-const FILTER_GENERATION_KEY = 'aci-filter-generation';
-
-/**
- * The token this page instance uses when `sessionStorage` cannot hold one.
- * It rotates on the same purge recovery the stored token does, so a browser
- * with site data blocked still tells a pre-purge entry apart for as long as
- * the page lives — which is every Back within one session, the case the
- * stamp exists for. What it cannot survive is a reload, where nothing this
- * page could write persists at all.
- */
-let inPageFilterGeneration = crypto.randomUUID();
-
-function filterGeneration(): string {
-  try {
-    const held = window.sessionStorage.getItem(FILTER_GENERATION_KEY);
-    if (held !== null) {
-      return held;
-    }
-    window.sessionStorage.setItem(FILTER_GENERATION_KEY, inPageFilterGeneration);
-    return inPageFilterGeneration;
-  } catch {
-    return inPageFilterGeneration;
-  }
-}
-watch(
-  () => sessionViewState.inventoryResumeRequests.value,
-  () => {
-    // A purge recovery re-adopted the inventory: every entry stamped before
-    // this moment is pre-purge, so the token is replaced rather than counted.
-    // Both spellings rotate, because the stored one may be unwritable and the
-    // in-page one is then what every stamp reads.
-    inPageFilterGeneration = crypto.randomUUID();
-    try {
-      window.sessionStorage.setItem(FILTER_GENERATION_KEY, inPageFilterGeneration);
-    } catch {
-      // Storage unavailable: the in-page token above is the whole mechanism.
-    }
-  },
-);
-
-/** Whether this history entry's filters predate the last purge recovery. */
+/** Whether this history entry's filters predate the last purge. */
 function queryPredatesPurge(): boolean {
   const hasSelection =
     route.query.source !== undefined ||
@@ -181,14 +126,16 @@ function queryPredatesPurge(): boolean {
     return false;
   }
   const state = window.history.state as { aciFilterGeneration?: unknown } | null;
-  // An entry that carries no stamp key at all is a fresh arrival — a typed or
-  // shared URL — whose filters are the reader's own ask; the selection
-  // watcher stamps it on the first write. A stamp that disagrees — an older
-  // token, or the retired numeric counter — is a pre-purge entry.
-  if (state === null || !('aciFilterGeneration' in state)) {
+  // An entry carrying no stamp is a fresh arrival — a typed or shared URL —
+  // whose filters are the reader's own ask; the selection watcher stamps it on
+  // the first write. A stamp this page load never issued belongs to an earlier
+  // load, which a reload is, and is likewise the reader's own ask. Only a
+  // stamp this load issued and then replaced marks an entry the purge left
+  // behind.
+  if (state === null) {
     return false;
   }
-  return state.aciFilterGeneration !== filterGeneration();
+  return sessionViewState.filterGenerationPredatesPurge(state.aciFilterGeneration);
 }
 
 /** Strips a pre-purge entry's filters, restamping it in the current generation. */
@@ -201,7 +148,7 @@ function dropPrePurgeQuery(): void {
       path: undefined,
       kind: undefined,
     },
-    state: { aciFilterGeneration: filterGeneration() },
+    state: { aciFilterGeneration: sessionViewState.filterGeneration() },
   });
 }
 
@@ -214,14 +161,16 @@ watch([sourceFilter, tool, pathQuery, kind], () => {
       path: pathQuery.value === '' ? undefined : pathQuery.value,
       kind: kind.value ?? undefined,
     },
-    state: { aciFilterGeneration: filterGeneration() },
+    state: { aciFilterGeneration: sessionViewState.filterGeneration() },
   });
 });
 
 if (queryPredatesPurge()) {
-  // Mounted straight onto a pre-purge entry — a reload, or Back into a page
-  // the purge had already unmounted: the narrowing goes the same way the
-  // unmount path below sends it.
+  // Mounted straight onto a pre-purge entry — Back into a page the purge had
+  // already unmounted: the narrowing goes the same way the unmount path below
+  // sends it. Every other arrival is left as it is: a stamp this load never
+  // issued is already read as pre-purge once a purge has happened, so there
+  // is nothing an arrival could restamp that would change a later answer.
   dropPrePurgeQuery();
 }
 

@@ -125,6 +125,39 @@ test('restores nothing that was purged: an old Global link resolves to no scan',
   await expect(main).not.toContainText('The personal deploy skill.');
 });
 
+test('drops a narrowing the reader left before a reload, on Back after a disable', async ({
+  page,
+}) => {
+  // The purge stamps the inventory's history entry so a later Back can tell a
+  // pre-purge narrowing from the reader's own ask. A reload throws the
+  // stamp's issuer away: the entry left behind carries a token from a
+  // document that no longer exists, and Back into it after a disable used to
+  // land on the narrowing the purge exists to drop (FR-027, data-model.md
+  // § RecoveryViewState).
+  await page.goto(host.origin);
+  const main = page.locator('main');
+  await page.getByRole('tab', { name: /Instructions/u }).click();
+  await expect(page).toHaveURL(/kind=instructions/u);
+
+  // Into a file, then a reload: from here on, the document running the
+  // disable is not the one that stamped the inventory entry behind it.
+  await page.getByRole('tabpanel').getByRole('link').first().click();
+  await expect(page).not.toHaveURL(/kind=instructions/u);
+  await page.reload();
+
+  // A fresh inventory entry in this document, and the disable there.
+  await main.getByRole('link', { name: 'Back to the inventory' }).click();
+  await expect(page).toHaveURL(/kind=instructions/u);
+  await page.getByRole('button', { name: 'Disable personal inspection' }).click();
+  await expect(main).not.toContainText('Your personal setup');
+
+  // Back through the file into the entry the earlier document stamped.
+  await page.goBack();
+  await expect(main).toContainText('Back to the inventory');
+  await page.goBack();
+  await expect(page).not.toHaveURL(/kind=instructions/u);
+});
+
 test('a second tab observes the disable on its next refresh', async ({ browser }) => {
   const observer = await (await browser.newContext()).newPage();
   await observer.goto(host.origin);

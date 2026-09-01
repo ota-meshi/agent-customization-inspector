@@ -253,11 +253,12 @@ every required check for every Applicable row passes, every Not-applicable ratio
 revalidated, all four keyboard workflows pass, and the English/Japanese records remain
 semantically equivalent; severity labels cannot waive a failure. Criterion-specific stable
 IDs bind automated checks to exact E2E test titles and manual checks to each row's expected
-observation. The closed manual matrix uses the packed tarball, all three
-supported OS/browser/assistive-technology cells, exact responsive/zoom/spacing profiles,
-visual modes, workflow states, and input profiles. Actual version/revision values are frozen
-before execution; any release or matrix change reruns every manual check, and no applicable
-cell may be sampled or silently omitted. SC-003, SC-004, SC-005, and SC-007 use
+observation. The manual matrix states the shape a `MANUAL-*`
+check is defined over — three OS/assistive-technology cells, the responsive/zoom/spacing
+profiles, visual modes, workflow states, and input profiles — and this release executes none
+of it: every `MANUAL-*` ID is recorded as unexecuted rather than as passed, because executing
+it needs three operating systems with three screen readers that no run available here can
+produce. SC-003, SC-004, SC-005, and SC-007 use
 the checked-in `tests/fixtures/outcomes/manifest.json` and canonical
 `tests/fixtures/outcomes/manifest.sha256` as one versioned, closed release-evidence
 denominator. Each manifest case has a unique stable ID, criterion and required-class
@@ -283,686 +284,17 @@ exact tool/kind/source rows, source/comparison surfaces, literal-credential/envi
 reference classes, and set/unset referenced-variable states for SC-005; every file-confined
 outcome class and failure class for SC-007. Release records
 name the manifest version and digest plus every executed case ID; missing, omitted,
-unexecuted, or mismatched evidence fails the affected criterion. The maintained usability
-study kit uses one 20-person first-time cohort for SC-001 then SC-006, fixed prompts
-and moderator limits, no replacement, unsuccessful scoring for failures that prevent or
-interrupt completion, the handled SC-001 automatic-open distinction, the defined timer
-boundaries, and a three-field SC-006 response form scored against fixed ground truth.
-After that timed response, the same participants attempt standardized comparison and Global-
-consent tasks. Moderators record objective workflow outcomes and predefined safety events.
-Study equipment uses the one prepared profile
-`playwright-1.61.1-chromium-ubuntu-24.04-x64-node-24.18.0`: Playwright 1.61.1 Chromium on
-Ubuntu 24.04 x64 and Node.js 24.18.0, a headed fresh nonpersistent browser context with no
-extensions, a browser-context-only proxy, and the `single-407-basic` bootstrap. Chromium-
-controlled Fetch Metadata plus exact Origin/Referer values are reduced independently at the
-proxy and server and discarded, but are consistency signals rather than human attestation.
-Participant classification additionally requires the one current armed navigation grant and
-the exact authorized-static target; a participant-shaped request without that grant is an open-
-binding, product-attributable/prohibited `unknown` row. Extensions, missing-secret other-host
-traffic, and invalid-secret unknown rows use N/A IDs and are blocked. A valid transport marker
-is necessary but never sufficient for actor, product-attribution, or forwarding decisions.
-An ACKed context correlation is only an eligible failure link. Success remains all N/A while
-its automatic issue is counted separately. Candidate-bearing failure MUST use the exact same-
-run/subject/process/workflow `automatic-critical` link without review; only candidate-free
-failure receives two isolated hidden one-use votes. Both
-`product-caused-blocker` votes yield `reviewer-confirmed-critical`; both
-`not-product-caused-blocker` votes yield `reviewer-cleared`; a mismatch yields
-`reviewer-disagreement-critical`. The published bilingual governance plan names the reviewer
-roster, while a separate access-controlled administrative record audits one unique human pair per
-case and is destroyed under the consent-retention policy; no identity, assignment, note, or third
-reviewer enters runtime collectors, repository study inputs, capture, or evidence. Only
-`reviewer-confirmed-critical`/`reviewer-disagreement-critical` results use
-`workflow-blocker`. The gate passes only after all 20 participants attempt all four primary
-workflows and the verifier recomputes an empty tagged, de-duplicated union of
-`automatic:<correlationId>` and `reviewer:<subjectId>:<workflowClass>`, without counting an
-automatic-linked workflow row again. The maintainer team,
-not ordinary contributors, owns recruitment, compensation funding, moderation, review,
-consent/privacy handling, supplied equipment/session support, bilingual materials, and
-accessibility accommodations through a published study plan that includes the required reviewer
-roster. The unique-pair administrative assignment record remains outside the repository bundle,
-work root, candidate, capture, evidence, and runtime IPC and cannot affect scoring bytes. Each study session records the
-actual default handler or its unavailability and, when resolvable, the actual browser family
-and revision. If automatic opening is disabled, unsupported, or fails; the handler or resolved
-browser is unavailable or cannot be identified; or the resolved browser falls outside the
-release-certification baseline, the same enrolled session uses and records the documented
-manual-opening fallback in a certified browser, remains in the fixed denominator, and does
-not replace the participant. The automatic-open condition is recorded but is not itself an
-unsuccessful result when the participant completes the fallback without prohibited hints
-inside the original two-minute interval; fallback never pauses or restarts that timer, and an
-inability or interruption that prevents completion is unsuccessful. The default handler
-itself need not be certified.
-
-Study-kit authoring materializes and contract-tests the candidate-independent closed bundle
-`tests/usability/sc001-sc006-study-inputs/`, its versioned manifest, and companion; it does not
-freeze a candidate. The exact repository-owned member set is fixed in
-`contracts/usability-study-evidence.md`. Every participant-, moderator-, or scorer-consumed
-input byte other than the separately bound candidate and equipment/runtime comes only from a
-repository-owned builder distribution that the independent verifier accepts. `manifestVersion` is a positive safe integer
-starting at 1, `bundleRoot` is that exact `/`-terminated literal, `inputs` is nonempty, and every
-closed role has nonzero coverage. Exact root-property order is `manifestVersion`, `bundleRoot`,
-`inputs`; entry-property order is `inputId`, `role`, `path`, `sha256`; entries use ascending raw
-UTF-16-code-unit `inputId` order. The roles are `guidance`, `task-prompt`, `evaluation-fixture`,
-`prepared-state`, `response-form`, `ground-truth`, and `scoring-rubric`. Paths are unique
-`/`-normalized repository-relative paths below the root, bilingual bytes have distinct IDs,
-and each lowercase digest covers referenced raw bytes. Construct new objects in those orders
-without Unicode normalization and serialize exact bytes as
-`Buffer.from(JSON.stringify(canonicalValue, null, 2) + '\n', 'utf8')`; byte equality fixes
-Node.js 24/26 string escaping and number spelling. The companion is exactly 64 lowercase
-digest characters plus LF. The verifier recursively compares the actual regular-file set with
-both the contract member set and manifest path set, rejects links, aliases, non-regular objects,
-unusable identity/link metadata, path escape, and destination drift, and is the only delivery
-path. Missing, extra, duplicate, unordered, unreadable, non-canonical, invalid-path, empty-role,
-mismatched, or otherwise supplied-but-unmanifested input fails both criteria.
-
-Each materialized participant distribution is a closed root with exactly two direct-child
-directories and no other direct child. `study-inputs/` contains the exact sixteen source-bundle
-members under the same direct-child names and bytes; `repository/` contains the descriptor's
-complete derived file set and only its implied directories. Descriptor paths are relative to
-`repository/`, so they cannot address or overwrite `study-inputs/`. The separately bound
-candidate and equipment/runtime remain outside the distribution. The verifier rejects any
-extra top-level member, sidecar, namespace collision, alias or reused file identity, or escape.
-
-The paired `evaluation-fixture.json` members are closed deterministic file-tree descriptors:
-each derived entry fixes its output path, encoding, exact byte representation, and lowercase
-digest. The builder, verifier, and capture-controller script paths and digests are bound in
-both descriptors. Focused contract, integration, and security suites verify those bindings,
-and their executed results are release evidence. The builder alone creates the twenty fresh
-fixture repositories, and the independent verifier requires every derived output set and byte
-to match both descriptors before enrollment and again at finalization.
-
-Those three public harness scripts are each a self-contained single file whose source may use
-only literal static imports of `node:` built-ins. Reject local/package imports or helpers,
-dynamic `import()`, `require`, `createRequire`, `eval`, `Function`, `vm`, `process.dlopen`, any
-other loader hook, and alternate worker/child entry files. During materialization the builder may internally execute only the exact
-descriptor-bound and digest-verified capture script in supervisor mode. The capture script may
-re-execute only itself in exact modes `supervisor`, `study-harness`, `scoring-moderator`,
-`reviewer-one`, `reviewer-two`, the three named adapters, and the three named watchdogs.
-The product probe is a distinct import mode. Every internal role requires authenticated
-inherited parent IPC plus a fresh one-use bootstrap nonce; no other executable entry can
-participate in the evidence chain.
-
-Each parent/child edge uses two unidirectional inherited anonymous pipes—parent-to-child and
-child-to-parent—and no environment, argv, or file bootstrap. After child verification, the
-parent-to-child pipe begins with an exact 96-byte bootstrap prefix containing a fresh seed,
-nonce, and `channelId`, then remains open and carries LF-framed parent-to-child messages on the
-same pipe; EOF does not delimit the prefix. EOF before byte 96 fails, and all post-prefix bytes
-enter canonical frame parsing. The child-to-parent pipe's first message is authenticated
-one-use `ready` at sequence 0. The child derives direction-separated keys with domain-separated HMAC.
-Every LF-terminated canonical frame has exact root order `schemaVersion`, `channelId`,
-`sequence`, `direction`, `senderRole`, `receiverRole`, `messageType`, `authenticationTag`,
-`payload`. The HMAC preimage is compact canonical JSON with `authenticationTag: null` and no
-LF; only the populated transmitted frame appends one LF. Verification is constant-time. Each direction begins at sequence 0 and
-increments by one, the role/message matrix is closed, and readiness consumes the bootstrap
-once. Premature EOF, unexpected post-bootstrap bytes, truncation, replay, gap, wrong role/direction/message/channel/tag, child mismatch, pipe
-close, abort, crash, or exit fails closed and wipes seeds, nonces, keys, and buffered frames.
-This inherited protocol adds no runtime-control command.
-
-The materializer-to-supervisor edge uses one additional exact message after authenticated child
-`ready`: one-use `runtime-bootstrap` carries `StudySupervisorRuntimeBootstrap` root
-`schemaVersion`, `workRootLexicalValue`, `workRootCanonicalValue`, `workRootIdentity`,
-`controlEndpoint`, `controlToken`. Before root mutation the supervisor independently validates the
-root, binds the endpoint, loads the token, ACKs, and wipes the frame buffer; only then may the
-materializer write. Success uses an authenticated role-specific lifecycle close/ACK to detach and
-wipe that edge while the supervisor remains live, and failure aborts/exits it. These authorities
-never enter supervisor child environment/argv and exist only in that transient bootstrap,
-supervisor memory, and later authenticated runtime-control.
-
-Descendant reporting uses `process-lifecycle-attestation` with exact
-`StudyProcessLifecycleAttestation` root `schemaVersion`, `processRole`, `streamRole`,
-`componentRunId`, `instanceId`, `processRunId`, `event`, `exitCode`, `signal`; event is
-`registered | exited`. Adapter self-registration to the supervisor is not an exit observation.
-Direct parents OS-observe before forwarding/creating child reports: adapters forward matching
-watchdog registration and later report directly observed clean exit, the moderator reports
-reviewer registration after ready and exit after direct observation, and the supervisor directly
-observes adapters/harness/moderator. Reverse
-`acknowledgement` is allowed only for the immediately preceding valid attestation on supervisor/
-moderator, supervisor/adapter, and adapter/watchdog edges, never for candidate/terminal reports.
-Adapter registration supervisor ACK precedes writer-binding relay; watchdog registration receives
-adapter and supervisor ACK before start, reviewer exit ACK precedes outcome, and watchdog exit ACK
-precedes adapter exit. Start waits for all six stream registrations;
-stop waits for three adapter-observed watchdog exit attestations plus direct adapter/orchestrator
-exits. Reviewer count uses moderator-observed attested distinct clean exits. A nonclean child uses
-`lifecycle: child-exit`, invalidates the run, and never enters the witness.
-
-Stream phases use exact `StudyStreamControl` root `schemaVersion`, `controlSessionId`,
-`studyRunId`, `workRootIdentityCommitment`, `candidateIdentityCommitment`, `candidateSha256`,
-`studyInputManifestSha256`, `streamRole`, `command`, `checkpointRequestId`, `handoffSha256`,
-repeating immutable bindings for command `start | checkpoint | anchor-handoff | stop`. Exact
-`StudyStreamControlResult` root is `schemaVersion`, `controlSessionId`, `studyRunId`, `streamRole`,
-`command`, `checkpointRequestId`, `sequence`, `monotonicNs`, `envelopeSha256`. Byte-identical
-`stream-control` travels supervisor→adapter→watchdog and semantic `stream-control-result` returns
-the reverse route; all three fixed-role results gate each phase. Start result follows that
-watchdog's capture-start plus first heartbeat, reports the current position, and uses N/A
-`checkpointRequestId`. The supervisor creates/validates each stream and passes one dedicated
-append-only handle only through exact spawn inheritance as fd5. A path-free runtime-only
-`StudyStreamWriterRuntimeBinding` binds adapter component/instance/process identities to expected
-fd5 stable handle identity, `nlink`, and append mode. After supervisor ACKs adapter registration,
-the adapter relays binding/handle and obtains binding ACK; the watchdog independently validates,
-registers, and receives adapter plus supervisor ACK. All three such barriers/all six registrations
-precede browser-proxy binding ACK, which precedes stream start. The handle travels
-in the contract-fixed child-visible evidence-writer slot, alongside the separately fixed parent-
-to-child and child-to-parent IPC slots, never path/cwd/env/argv. The writer slot is absent for
-every nonstream role and is not a third IPC pipe. The adapter only transfers it and closes after
-watchdog registration; the supervisor closes its copy after complete downstream registration ACK.
-Extra/duplicate copies are forbidden, so the watchdog is sole holder/writer. This writer authority is not IPC bootstrap/channel authority.
-Stop order is result→handle close→clean exit; any failure closes every copy and invalidates.
-
-Immediately before SC-001, the independent verifier re-enumerates the source bundle and all
-twenty actual distributions and requires exact-set and byte equality without rewriting an
-input, reading candidate authority or bytes, calling `stat` on the candidate, hashing it, or
-freezing it. That successful inputs phase
-freezes only the verified canonical study-input-manifest digest and exact-set state. After the
-release candidate exists, `capture -- start` is the first phase that reads its authority; it
-reopens, stats, hashes, and freezes the candidate identity and SHA-256 before capture begins and
-binds them to the already verified manifest digest. The evidence record and capture handoff
-carry both digests. Any
-packed-candidate byte change, or any material primary-workflow or enumerated-input change,
-invalidates both SC-001 and SC-006 evidence. The final release gate must reproduce both
-recorded digests or rerun the complete paired protocol against the final packed candidate.
-
-The exact stream roles are `product-instrumentation`, `inspector-server-ledger`, and
-`study-browser`. Each role has one separate capture adapter and one separate watchdog process;
-the watchdog is the sole envelope writer and owns sequence, monotonic time, and hashing.
-Adapters inspect raw traffic only ephemerally, convert it to the contract's closed safe event,
-discard all raw values before local IPC, and never log, hash, or retain them. Each authenticated
-IPC message carries exactly one canonical safe payload; any number of messages may occur within
-one primary-workflow observation, and every accepted message is counted and chained. Persisted
-payloads contain only allowlisted fixed codes, protocol-owner-generated opaque IDs, booleans/enums,
-safe integers, and evidence digests. Raw header names, framing, wire or encoded representations,
-every noncanonical derivative, bodies, inspected/authored content or metadata, participant
-responses, paths, URLs/authority values, capabilities, environment values, raw errors, and
-exception text are forbidden. The sole header-derived exception is the strictly validated
-decoded canonical safe ID retained as `correlationId`; it appears in the retained canonical
-payload and its digest chain. No captured wire, browser, or Inspector byte is itself a hash
-preimage.
-
-At capture start the supervisor generates exactly twenty fresh, unique, cryptographically random, run-local
-unlinkable participant tokens, each made from exactly 32 random bytes (256 bits) and encoded as
-exactly 43 unpadded base64url characters. A participant-specific `subjectId` is exactly one of
-those tokens and a non-participant observation uses literal `not-applicable`. `subjectId` is the
-only permitted pseudonymous human evidence: it encodes no identity, distribution slot,
-response, or participant property, and has no retained external mapping. The supervisor keeps the
-ordered token set only for the run, sends only the next token in each authenticated attempt
-binding, and keeps no identity/distribution map; the harness schedules but never creates or
-selects tokens. It is freshly generated for every run; verification checks within-run uniqueness and keeps no cross-run registry.
-`study-browser` is the sole workflow-outcome authority and records exactly one terminal
-`success | failure` for every token crossed with `discovery`, `inspection`, `comparison`, and
-`global-consent`: 80 terminal outcomes with no missing, duplicate, extra, or mismatched pair.
-Discovery requires at least 19 successes and inspection at least 18, both over the same exact
-twenty-token denominator. Arbitrarily many nonterminal and request-event messages remain valid.
-Exact-80 cardinality/canonicality is independent of those success thresholds: 80 valid terminal
-records permit verification, stop, finalize, witness, and seal even when discovery or inspection
-misses its target. A target miss blocks the release criterion but neither invalidates evidence
-nor becomes automatic critical; protocol, cardinality, authentication, and privacy violations
-fail closed separately.
-
-`capture -- start` is run-level only: through the existing materialization-created supervisor it
-binds the listener/proxy, launches the study harness, scoring moderator, and three adapters,
-requires each adapter to launch its watchdog, yielding exactly eight internal long-lived
-descendants/processes below the supervisor with watchdogs as adapter children, and produces three stream starts, but
-creates no attempt profile, bootstrap, marker, grant, candidate, correlation, or workflow row.
-Attempts run sequentially. Participants 1–19 each complete all four workflows and close before
-the next attempt; participant 20 completes discovery before checkpoint/handoff and, unless
-terminalized, remains the sole open attempt while the remaining three workflows complete during
-continuation. A terminalized participant 20 uses a post-anchor heartbeat for continuation
-progress. This yields all 20 SC-001 outcomes at checkpoint with at most one live attempt. Every
-attempt receives fresh binding/profile/marker/bootstrap only after streams are live and
-immediately before its `npx` and first capturable request.
-
-The authorized materialize caller/study setup supplies four pairwise-distinct bidirectional
-nonrecording external terminal-equipment handles: fd6 participant, fd7 moderator, fd8 reviewer-one,
-and fd9 reviewer-two. They are not internal evidence IPC. Before launching the supervisor, the
-materializer verifies stable identity, distinctness, bidirectionality, no echo, no history, and no
-recording. The supervisor keeps fd6, passes fd7–9 to the moderator, and closes its fd7–9 copies.
-
-The study harness owns schedule and attempt orchestration; the scoring moderator owns raw
-response/rubric input and exact outcome construction. Exactly one runtime-only
-`StudyCurrentSubjectScoringContext` has root `schemaVersion`, `studyRunId`, `subjectId`,
-`inspectorProcessId`, `workflowClass`, `automaticIssueCorrelationId`,
-`terminalizationClass`, `state`. No context exists during launch/bootstrap or pre-readiness
-buffering. Fresh process binding, ordered buffer release, and both open-binding ACKs precede
-discovery-context creation; the supervisor obtains moderator ACK for that context before
-returning readiness, and only then permits the grant, navigation, prompt/timer, and task. A
-buffered pre-readiness event is workflow/process/link N/A, cannot update a later context, and
-remains separately counted when automatic. Correlation begins N/A and terminalization class
-begins `none`. The only one-way updates are correlation N/A to the first exact same-run/subject/
-process/workflow candidate after supervisor validation and current-workflow tagging before
-canonical safe-payload serialization, followed by applicable adapter/watchdog
-ACK or ACKs make it accepted, and class `none` to one mapped terminalization cause;
-post-terminalization missing-workflow contexts initialize with that class. The supervisor owns
-the safe context mirror/current workflow, serializes that candidate once with the tag because
-sources cannot self-assert workflow, waits for downstream ACKs, marks/counts it accepted, resends the updated `scoring-context` to
-the moderator, and requires ACK before release decision or outcome submission. That
-value is an eligible failure-link candidate, not an outcome decision. Accepted retained
-observations are immutable; later tag mutation/backfill is forbidden, and pre-ready/context-free
-N/A is permanent. Raw response, timing, ground truth, rubric, and reviewer input stay moderator-
-call-local. For each normally completed open context fd7 accepts exactly one external runtime-only
-`StudyModeratorInput`: compact canonical UTF-8 JSON plus one LF, exact root `schemaVersion`,
-`studyRunId`, `subjectId`, `inspectorProcessId`, `workflowClass`, `response`, `timing`,
-`groundTruth`, `rubric`; timing is a canonical nonnegative decimal string and the last three raw
-values are canonical JSON strings. EOF, parse/extra/trailing input, replay, and cross-context
-routing fail; echo/history/recording/logging are disabled and the raw frame is wiped after use or
-abort. A terminalization-synthesized remaining workflow accepts no record, rejects late input, and
-derives failure only from the terminalization decision without invented empty fields. After an accepted outcome,
-destroy its context and open/ACK the next one before the next workflow prompt, timer, or task.
-
-The moderator constructs and submits each exact `StudyWorkflowOutcomeSubmission` with root
-`schemaVersion`, `studyRunId`, `subjectId`, `inspectorProcessId`, `workflowClass`,
-`outcomeClass`, `automaticIssueCorrelationId`, `reviewDisposition`,
-`reviewerOneClassification`, `reviewerTwoClassification`. Success remains all N/A even when its
-context has an eligible candidate; the accepted automatic issue is counted separately. A failure
-with an ACKed eligible candidate MUST use that exact correlation as `automatic-critical` without
-review; only a failure with no candidate is reviewed. Missing, mismatched, reused, optionalized,
-or cross-workflow links are rejected. Before each attempt, a distinct human pair is procedurally assigned
-out of band to each subject/workflow, with no human/collector-process/component-run identity/case-
-assignment reuse. Literal reviewer slots and sanitized terminal-equipment surfaces may be drained,
-reset, and remapped for later cases. The published bilingual
-plan names the reviewer roster; a separate governed access-controlled administrative record outside
-repository/work-root/candidate/runtime/capture/evidence state audits the unique pair per case and
-is destroyed under the consent-retention policy without affecting scoring bytes. They directly observe
-the same live attempt/workflow, including pre-workflow terminal events, without recording or
-IPC. Only after failure does the moderator create byte-identical `StudySafetyReviewCase`
-payloads for two fresh isolated one-use vote-collector processes; only after both cases are fully
-displayed are fd8/fd9 enabled. Each collector reads one exact LF-terminated ASCII
-`product-caused-blocker | not-product-caused-blocker` enum from its slot-isolated surface, with no
-echo/history/recording/log/cross-slot output, and wipes the raw input. Success creates none.
-Both non-product votes yield `reviewer-cleared`, both product votes
-`reviewer-confirmed-critical`, and a split `reviewer-disagreement-critical`; only the latter
-two use `workflow-blocker`. Both processes exit before submission acceptance. Identities and
-assignments never enter collectors, outcomes, repository study-input artifacts, runtime IPC,
-capture, or evidence; notes, communication, human/process/assignment reuse, and third review are not permitted.
-The moderator sends the submission to the supervisor, which validates and forwards
-`workflow-outcome` to the browser adapter; that adapter canonicalizes the workflow payload for
-its watchdog. `safe-payload` on this edge is limited to nonworkflow browser observations and
-cannot carry or bypass a workflow outcome. For those observations, only the supervisor tags the
-current workflow (or N/A), constructs the canonical safe payload, and sends it to the adapter;
-the adapter validates it against the stored candidate and returns its semantic ACK only after the
-watchdog ACK. That ACK must
-precede `browser-only-released`; both browser and server safe-payload ACKs must precede
-`joined-pair-released`.
-
-Request payloads use the contract's closed privacy-safe target, method, capability, origin,
-authority, request, effect, attribution, and prohibition classes. Those closed literals and
-their truth table are owned by `contracts/usability-study-evidence.md` and
-`contracts/usability-study-evidence.ja.md`; the plan does not restate them. For browser traffic, the
-proxy and server independently project exact Chromium-controlled `Sec-Fetch-Dest`,
-`Sec-Fetch-Mode`, `Sec-Fetch-Site`, and `Sec-Fetch-User` plus Origin/Referer to closed classes,
-discard raw inputs, and require identical projections. Fetch Metadata is not human attestation.
-After product-probe readiness and immediately before the sole expected initial navigation, the
-supervisor creates the fresh runtime-only `StudyParticipantNavigationGrant` root
-`schemaVersion`, `studyRunId`, `browserAttemptId`, `correlationId`, `state`, where state
-is `armed | consumed | destroyed`, and sends it to the browser adapter. The ordered table is:
-
-| Marker and projection | Actor and binding | Decision |
-|---|---|---|
-| Valid secret; navigate/document/`?1`; missing Origin; site none or same-origin; exact authorized-static target; current armed grant | `participant`; open binding | Reserve without state change, store pending while canonical grant stays armed, then let sole exact one-use `browser-broker-decision: candidate-forward` accept and atomically consume the canonical grant; validate it before adapter-copy consume/forward. |
-| Valid secret; not participant; missing user; exact-issued Origin or missing Origin plus exact-issued Referer | `bundled-spa`; open binding | Forward only exact authorized static or RPC; every other request is product-attributable/prohibited and blocked. |
-| Valid secret; extension Origin | `browser-extension`; N/A IDs | Always unrelated and blocked. |
-| Remaining valid-secret projection | `unknown`; open binding | Fail closed as product-attributable/prohibited and block. |
-| Missing secret after bootstrap | `other-host-process`; N/A IDs | Unrelated and blocked. |
-| Invalid, duplicate, malformed, noncanonical, unknown, stale, or mismatched secret | `unknown`; N/A IDs | Unrelated and blocked. |
-
-A fresh participant-shaped HTTP request without the exact armed grant—including a nonexact
-target, post-consumption request, or user-activated page-script navigation—is `unknown` with open
-binding IDs and a fresh proxy correlation, product-attributable/prohibited and blocked without
-consuming or invalidating the grant. The browser/page never sees the grant before proxy injection.
-The supervisor is canonical owner: the adapter reserves without state change; the supervisor
-validates grant/correlation/attempt/candidate and stores pending while the canonical grant remains
-armed, then sends sole exact one-use `browser-broker-decision: candidate-forward`; there is no
-separate candidate ACK. That decision alone accepts and atomically consumes the canonical grant,
-and only a validated matching decision permits adapter-copy consume/forward. Duplicate/replayed/stale authenticated
-candidate/grant IPC, simultaneous second consumption, or skipped/mismatched decision/ACK forwards
-nothing and invalidates the run; close destroys the grant. The broker independently validates the grant and correlation.
-
-Only forwarded exact authorized participant or bundled-SPA requests produce the browser/server
-two-stream join and server claim. Blocked rows are browser-only; there is no N/A-claim join for
-extension, other-host, or unknown actors. Direct Inspector exact-issued requests still use the
-product/server pair; nonexact Inspector requests, OS/effects, and MCP are product-only; workflow
-outcomes are browser-only. Field-by-field contract and security tests reject every changed
-projection, binding, role, and boolean. The
-capture script supplies a Node-built-in-only deny-by-default local HTTP/CONNECT proxy, fixed by
-study equipment and independent of Playwright/unbound modules. It forwards only an exact
-authorized loopback request. It classifies `other-loopback`, `remote`, and `unclassifiable`
-targets and every CONNECT request as prohibited, blocks them before DNS lookup, socket
-connection, request-body forwarding, or response-content exposure, and never establishes a
-CONNECT tunnel. A participant candidate uses the fresh correlation ID generated with its
-supervisor-owned grant; only every other logical browser event receives a fresh 32-byte/
-43-character unpadded-base64url `X-Inspector-Study-Correlation` from the adapter/proxy. It removes/replaces an existing header and the
-Inspector probe assigns it. This non-capability never controls auth/routing. Server
-instrumentation rejects duplicates or invalid grammar and sends only the same safe ID to its
-ledger; adapters discard the header/raw fields before IPC. The raw header name, framing, and
-representation are never retained, hashed, or logged; after strict grammar/canonical validation,
-only the decoded canonical safe-ID value may be retained as `correlationId`. Another local client
-stays unrelated without actor/process correlation. Required
-roles' safe classifications, `subjectId`, and `inspectorProcessId` must match. Missing,
-duplicate, extra, malformed, or semantically mismatched safe-ID propagation fails verification.
-
-The evidence contract/data model own exact schemas for `StudyBrowserAttemptBinding`,
-`StudyBrowserRequestCandidate`, `StudyServerCorrelationClaim`,
-`StudyParticipantNavigationGrant`, and `StudyBrowserBrokerDecision`. The supervisor/broker
-generates each fresh binding/attempt ID and distributes runtime-only `attempt-binding` to the
-study harness and browser adapter. Prepared/open/closed snapshots are byte-identical and require
-both ACKs. Ordered pre-readiness release, both open ACKs, and discovery-context ACK all precede
-the readiness response; grants/candidates are permitted only after readiness.
-terminalization-decision changes both copies to terminalizing. The adapter destroys only browser/
-grant/marker/reservation/candidate/pending state and retains its terminalizing binding until closed
-ACK; the harness retains its terminalizing binding and fixed remaining schedule through synthesis.
-Both closed ACKs then permit canonical destruction and the next attempt. At most one binding is prepared/open/terminalizing; state is
-exactly `prepared | open | terminalizing | closed`. Readiness supplies the process ID and opens
-the binding. A valid product/browser/equipment/premature-probe-close cause atomically wins;
-later causes are rejected. The supervisor is sole participant-launch controller/direct OS process
-observer and sole `product-exit` source, including pre-bootstrap exit; the harness schedules/binds
-only. The browser adapter is the sole browser-equipment observer: `browser-exit` means actual
-browser process/context exit, and `equipment-failure` means an external browser/OS/environment
-bootstrap failure while controller/proxy/auth are healthy. Adapter/proxy/controller/CDP/auth/
-marker/IPC/implementation/child-management fault invalidates instead of synthesizing. On probe
-close, serialized child state yields product-exit if already exited, premature-probe-close if live,
-and no terminalization after normal four-outcome/zero-pending close. The first three map to same-name scoring classes and
-premature probe close maps to `equipment-failure`.
-
-Terminalization freezes accepted rows and pending joins. In fixed order the supervisor opens,
-mirrors, and routes only missing contexts; the moderator alone constructs their failure/review/
-outcome, while the harness retains schedule/orchestration only. Exactly four outcomes are required before close/wipe.
-Evidence-role failure invalidates the run and never synthesizes rows. The supervisor fans out
-byte-identical `terminalization-decision` to harness and browser adapter; the adapter destroys
-browser/grant/marker/reservation/candidate/pending state, retains the terminalizing binding until
-closed ACK, and remains alive; the harness retains its binding/schedule through closed dual ACK. Child failure reports use
-`attempt-terminalization`; `browser-broker-decision` is supervisor-to-browser-adapter only.
-`StudyBrowserBrokerDecision` root is `schemaVersion`, `studyRunId`, `browserAttemptId`,
-`correlationId`, `decision` with
-`candidate-forward | browser-only-released | joined-pair-released`. `browserAttemptId` is limited to supervisor/broker/harness/adapter
-memory, authenticated frames, grants, and safe candidates, never the actual browser, profile,
-configuration, credentials, request, application, evidence, or logs.
-Valid-marker bound browser-only decisions use the open attempt ID; only missing/invalid-marker
-unrelated branches use N/A. A pre-readiness terminal submission, case, and both votes repeat the
-same N/A process ID.
-
-Every actual capture uses the prepared-state-selected fixed profile
-`playwright-1.61.1-chromium-ubuntu-24.04-x64-node-24.18.0`: Playwright 1.61.1 `chromium`
-revision `1228`, browserVersion `149.0.7827.55`, title `Chrome for Testing`, on Ubuntu 24.04
-x64 and Node.js 24.18.0, headed, with a fresh nonpersistent browser context, an
-empty extension set, a browser-context-only proxy, and `single-407-basic`. The browser adapter
-directly spawns and OS-observes the digest/identity-verified pinned Chromium binary through its
-fixed anonymous `--remote-debugging-pipe`, which is browser-equipment control outside the internal
-evidence-IPC matrix. It uses pinned DevTools `Target.createBrowserContext` with exact
-`proxyServer`, `disposeOnDetach: true`, and empty bypass, plus
-`Fetch.enable(handleAuthRequests: true)` and one `Fetch.continueWithAuth` `ProvideCredentials`
-response for the exact Proxy Basic challenge. The supervisor
-creates a separate fresh `browserProxyMarkerSecret` and sends `proxy-marker-install` directly
-to the browser adapter. It stays `prepared` until the adapter completes the exact actual-browser
-bootstrap and ACKs; only then do both sides atomically activate it. Failure destroys it without
-activation. After run-level capture start and immediately before that attempt's `npx`/first
-capturable request, the context requests exact proxy-local URI
-`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`. The proxy returns one
-bodyless 407 with exactly `Proxy-Authenticate: Basic realm="inspector-study"` and
-`Connection: close`, and no other header; one canonical Basic retry receives a bodyless 204
-whose sole header is `Connection: close`. This bootstrap performs no
-DNS/connect, application, correlation, candidate, forwarding, or evidence effect. During capture
-each study request carries exactly one canonical Basic marker.
-
-The marker is transport authentication only: even a valid marker cannot determine actor,
-product attribution, or forwarding. The secret exists only in adapter attempt-local controller/
-auth buffers and the exact DevTools auth request, never browser/child environment or argv. The
-secret, raw Basic field, encoded or noncanonical derivative, and proxy configuration are forbidden
-from hashes/evidence, logs/output, files, persistent profile/history/cache/keychain or other
-credential store, and application requests. Marker-install and DevTools request buffers wipe after
-ACK. Normal completion, abort, crash, terminalization, controller failure, and child exit dispose
-the context, close equipment pipe/process, and wipe state. The pinned build's pipe-disconnect
-contract invokes `CloseBrowserSoon`, and integration verifies that close-on-disconnect path. Any
-further platform containment is supplied by study equipment/setup, not synthesized as an internal
-Node.js-built-in-only capture role. Adapter crash or DevTools-pipe EOF must
-leave no orphan: after observing adapter exit, the supervisor blocks next-attempt/finalize until
-all browser-equipment descendants/contexts terminate and the fresh profile is cleaned; this
-runtime OS-observer state is not evidence. Actual-browser integration tests inspect an isolated
-HOME/XDG tree, context/profile, history, cache, and credential stores after all three paths and
-require zero marker, encoded Basic value, or `browserAttemptId` residue.
-
-For an exact authorized participant or bundled-SPA request, the adapter reserves without state
-change; the supervisor validates and stores the complete safe `StudyBrowserRequestCandidate`
-pending while canonical grant remains armed, then sends sole exact one-use authenticated
-`browser-broker-decision: candidate-forward` as acceptance and canonical consume. The adapter
-validates it before consuming its copy/forwarding; there is no separate candidate ACK. The Inspector probe strips the correlation header, constructs the sole permitted
-`StudyServerCorrelationClaim`, and receives broker acknowledgement before application handling.
-The `submit-product-event` outer root is only `inspectorProcessId`, `destinationRole`, `payload`;
-the outer process equals the registered probe. The claim is permitted only for participant/
-bundled-SPA and requires its payload subject/process IDs to equal the current open binding and
-that outer process. The broker keyed by
-`studyRunId + correlationId` validates one candidate plus one claim, obtains both browser/server
-safe-payload ACKs, releases the two correlated records through `joined-pair-released`, and only
-then acknowledges completion. Any mismatch emits zero records.
-
-The join has no timeout, clock, or deadline. It fails only when the HTTP transaction/request
-ends, aborts, errors, or closes; the relevant inherited IPC, probe, attempt, or binding closes;
-capture stops; or the verified child exits. Duplicate, replay, mismatch, unexpected role/order,
-second join, residue, and late input also fail closed. Every failure wipes the pending pair and
-marker material, emits no partial record, and rejects later input. Lifecycle-order and race tests
-exercise every interleaving without deadline assertions. The existing inherited IPC carries
-these operations; no join-specific study-control command is added.
-
-During the exact readiness transition for each successfully launched participant Inspector
-process, before returning the readiness response, the supervisor
-assigns one fresh opaque `inspectorProcessId` made from exactly 32 cryptographically random
-bytes (256 bits) and encoded as exactly 43 unpadded base64url
-characters, distinct from OS PID, subject, watchdog, and capture IDs. It is non-human launch
-correlation only and is never pseudonymous participant evidence. It is reused only across
-request/effect/workflow records for that launch and never across launches. A failure before
-launch/readiness uses literal `not-applicable` for the process ID. Pre- and post-readiness
-terminalization preserves accepted outcomes and creates a mapped-class context, one failure,
-and the required review only for each missing workflow, without duplicate rows. This binds exactly twenty attempts
-without retaining OS identities. For each subject the supervisor enables fd6 for exactly one
-LF-terminated ASCII `npx --no-install agent-customization-inspector --no-open` line, rejects any
-other/extra line, wipes it, and uses no shell. It spawns the candidate-bound local no-install npx
-as a directly observed child in that subject's verified distribution `repository/` cwd with a
-sanitized environment containing only the bound `NODE_OPTIONS` probe, control endpoint/token, and
-minimum safe run/subject IDs. Candidate/proxy authority never enters terminal/env/argv. This
-external ephemeral participant equipment is outside the eight long-lived internal descendants.
-After every attempt the supervisor closes the fresh child/context and drains/resets/clears fd6 so
-no prior input/output/history reaches the next fresh npx/Inspector process/context. The
-candidate owns only a dormant optional bootstrap-readiness hook. On reaching bootstrap, block
-the body and send exact `StudyPreReadinessBootstrapProof`
-`schemaVersion,productId,bootstrapEventId` through `register-pre-readiness-probe`
-(`studyRunId,subjectId,bootstrapProof`) to receive `preReadinessProbeId`. Maintain exact
-runtime-only `StudyPreReadinessProductBuffer`
-`schemaVersion,studyRunId,subjectId,preReadinessProbeId,state`, state
-`open | readiness-bound | terminalization-bound | destroyed`. Send canonical N/A draft
-observations through `buffer-pre-readiness-product-event`
-(`preReadinessProbeId,destinationRole,payload`), require supervisor ACK before each product
-effect, and discard raw input immediately. `register-product-probe` takes
-`studyRunId,preReadinessProbeId,readinessProof,requestedDestinationRoles`; fresh process-ID
-binding plus ordered-release ACK precedes both open-binding ACKs and discovery-context ACK, and
-only that complete sequence permits the readiness response. Exit before bootstrap is ordinary
-terminalization; exit after bootstrap binds N/A and releases before terminalization. Helpers
-never register/emit; bootstrap identity/register/ACK failure invalidates the run. Because the
-participant process cannot inherit the supervisor descriptor, the probe uses endpoint/token
-environment only for `register-pre-readiness-probe`, `buffer-pre-readiness-product-event`,
-`register-product-probe`, `submit-product-event`, and `close-product-probe`. The supervisor routes
-each safe event plus `inspectorProcessId` to the distinct product or server adapter/watchdog.
-Only `submit-product-event` with `destinationRole: inspector-server-ledger` carries the exact
-`StudyServerCorrelationClaim` payload variant. Its outer root is only `inspectorProcessId`,
-`destinationRole`, `payload`; the outer process authenticates the registered probe, while the
-claim payload's subject/process IDs MUST equal the participant/bundled-SPA open binding and outer process.
-The Inspector probe assigns the same closed correlation header before discarding raw fields.
-The browser helper strips probe/control environment. Missing/tampered/alternate/duplicate probe,
-unsafe raw IPC, path/options/environment retention, or process-ID propagation failure is
-critical.
-
-The watchdog generates pairwise-distinct opaque watchdog-instance, watchdog-process-run,
-capture-instance, and capture-process-run IDs. Sequence starts at 0 and advances by one.
-Canonical envelope bytes are `Buffer.from(JSON.stringify(canonicalEnvelope) + '\n', 'utf8')`
-for a newly constructed, non-normalized object with exact order `schemaVersion`, `streamRole`,
-`watchdogInstanceId`, `watchdogProcessRunId`, `captureInstanceId`, `captureProcessRunId`,
-`sequence`, `recordKind`, `monotonicNs`, `priorDigest`, `payloadSha256`; there are no extra keys.
-`recordKind` is `capture-start | payload | heartbeat | handoff-anchor | capture-stop`, and each kind has the
-closed canonical safe-payload schema in `contracts/usability-study-evidence.md`. Start and stop
-bind both study digests; heartbeat binds observed adapter/IPC health; stop binds the preceding
-envelope digest plus final sequence and kind counts. Lowercase SHA-256 uses 64 zeroes as the
-first prior value, then hashes the preceding exact envelope; every payload digest is recomputed
-from retained safe bytes. Sequence 0 is the sole start. The scheduler targets a heartbeat every
-1,000 ms. Independently of that nominal scheduling assertion, the one observed continuity
-ceiling is 1,500,000,000 ns for start-to-first-heartbeat, consecutive-heartbeat,
-latest-heartbeat-to-checkpoint/handoff, and last-heartbeat-to-stop gaps; intervening payload
-records cannot conceal a missing heartbeat, and only a larger gap fails continuity.
-
-The command phase matrix requires `INSPECTOR_STUDY_WORK_ROOT`,
-`INSPECTOR_STUDY_CONTROL_ENDPOINT`, and a fresh per-run
-`INSPECTOR_STUDY_CONTROL_TOKEN` made from exactly 32 cryptographically random bytes (256 bits)
-and encoded as exactly 43 unpadded base64url characters for every materialize-through-finalize command. Materialize and
-`verify -- inputs` ignore and do not require `INSPECTOR_STUDY_CANDIDATE_TARBALL`; it first
-becomes required at `capture -- start` and is resent by every later client through finalize.
-The candidate file may preexist materialization—the builder creates distributions, not the
-candidate. At materialization, authorized setup fixes an identity-pinned `npx` on the sanitized
-equipment PATH and one reserved initially empty candidate-launch store-bin slot outside the work
-root and distributions; materializer/inputs never reads that slot. After successful
-`verify -- inputs` and before start, authorized study setup alone provisions that same known slot
-from the candidate tarball plus frozen production graph into a fresh network-disabled,
-scripts-disabled store and digest-binds it. At start the supervisor revalidates the inherited fixed
-slot and resolves only its sole audited bin through pinned `npx --no-install`. The raw tarball path
-never enters child env/argv, no new environment/control field is added, and distribution mutation,
-cache/network/install, alternate PATH, global, or fallback resolution is forbidden. The store is
-outside runtime/evidence and is destroyed with an absence barrier after abort, stop, or finalize.
-At materialization the work root is an absolute existing empty ordinary-local
-directory supplied by study setup, and active-platform explicit UNC/server-share/device/network
-spellings fail before I/O. A lexically indistinguishable pre-mounted or mapped filesystem
-remains the documented FR-022 limitation and is never claimed as proven local.
-
-`INSPECTOR_STUDY_BROWSER_PROXY_AUTHORITY` is a separate start-through-stop-only runtime input
-with exact `127.0.0.1:<port>` form. Materialize, input verification, and finalize neither read
-nor require it; pre-stop checkpoint and continuation require it. The exact raw route is authorized
-start-through-stop caller transient input → authenticated runtime-control `StudyLiveBinding` →
-supervisor dedicated memory → one-use `browser-proxy-binding` → adapter dedicated memory →
-attempt-local DevTools control request/browser context. Caller/control/frame/request buffers wipe
-after ACK. Only after all six adapter/watchdog registrations and writer-binding barriers are
-supervisor-ACKed does the study-browser adapter receive the one authenticated one-use binding
-carrying exact `StudyBrowserProxyRuntimeBinding` root `schemaVersion`, `studyRunId`,
-`browserProxyAuthority`, validates and binds that exact listener, ACKs, and wipes the frame. Only
-that ACK permits `stream-control: start`, capture-start, or start completion. Supervisor/adapter
-dedicated memory and the live attempt-local browser context are the only holders through stop;
-checkpoint/continuation require equality, and stop/failure closes/wipes all. No browser/child
-env/argv, profile/history, or evidence carries it. The adapter installs it only on the fresh browser context, never
-as a browser-wide or system proxy. Participant traffic uses its supervisor-owned grant
-correlation; the proxy assigns/replaces a fresh safe opaque ID only for other browser traffic.
-Another local client remains unrelated and is not product-attributed
-without required actor/process correlation. Except for exact runtime-control/frame authentication
-and the transient attempt-local DevTools configuration, the authority and browser proxy configuration do not enter retained
-evidence, hashing, logs, diagnostics, or output.
-
-The control endpoint is transient and external to the work root and every distribution. On
-POSIX it is an absolute Unix-domain-socket pathname. On Windows it is exactly
-`\\.\pipe\agent-customization-inspector-study-` followed by 32 lowercase hexadecimal
-characters. TCP, UDP, DNS, every network transport, remote/network named-pipe spelling, and
-work-root sidecars are invalid. Materialization starts the sole digest-verified capture script as
-an internal supervisor, sends exact one-use `StudySupervisorRuntimeBootstrap` after ready and
-before root mutation, waits for ACK, then detaches the materializer edge while the supervisor
-remains live. At start, that existing supervisor spawns long-lived study-harness, scoring-moderator,
-and three adapters; each adapter spawns its watchdog, and only the moderator spawns two ephemeral reviewer collectors per
-reviewed failure after failure determination. Token-authenticated hello/challenge sessions keep
-the supervisor alive through finalize.
-Every runtime-control authentication tag covers the exact canonical message payload. A
-transient non-retained HMAC of runtime-control path values is permitted only for channel
-integrity; evidence commitments and hashes stay path-free. Initial work-root authority crosses
-only exact `runtime-bootstrap`; later work-root/candidate lexical and canonical authority uses
-only runtime-control and supervisor memory so later clients can resend it and independently
-stat/hash the candidate. Apart from exact transient control-message HMAC, `runtime-bootstrap`,
-`browser-proxy-binding`, and their dedicated in-memory holders, capture-evidence
-IPC, commitments/hashes as raw input, retained files, logs, diagnostics, and output never carry
-those paths, the in-memory HMAC key, or the control
-token. The supervisor retains the initial work-root identity, start candidate identity/digest,
-checkpoint positions, original handoff anchor, three directly observed adapter exits, three
-adapter-observed authenticated watchdog exit attestations, two directly observed orchestrator
-exits, and the moderator-observed attested distinct-clean reviewer exit count until finalize,
-then destroys all authority values and secrets. Path-free HMAC work-root/candidate identity
-commitments and one `controlSessionId` bind start, handoff, continuity witness, and seal.
-
-The contract fixes canonical request/response order, retains `requestId` and closed response
-`errorCode`, and never transmits the raw token. The materialized supervisor generates one fresh
-run-scoped `controlSessionId` and keeps it stable through finalize. Hello uses null
-session/challenge/tag/payload; its response returns that stable session ID, creates only a fresh
-one-use `challengeId`, and authenticates the response. Later direction-separated HMACs cover the
-complete canonical message with a null tag, and challenges/request IDs are single-use. The
-closed internal command set is `hello | verify-inputs | start | checkpoint | read-checkpoint |
-anchor-handoff | verify-continuation | stop | finalize-prepare | finalize-commit | abort |
-register-pre-readiness-probe | buffer-pre-readiness-product-event | register-product-probe |
-submit-product-event | close-product-probe`. Finalize-prepare performs
-the supervisor's internal current-binding, continuity, and exit checks, prepares complete witness
-material while the endpoint stays live, and returns literal `null`; the continuity key never
-leaves supervisor memory. The verifier then opens a separately authenticated finalize-commit
-connection. After accepting it, the supervisor begins listener teardown and returns the exact
-`StudyContinuityWitness` over that already-open authenticated connection before destroying keys
-and exiting. The verifier requires the complete response followed by EOF and reconnection
-failure, then writes and re-reads the witness pair followed by the seal pair.
-
-Retained work-root state is closed to `distributions/participant-01` through
-`participant-20`, the three fixed `capture/streams/<role>.ndjson` ledgers with one envelope
-line immediately followed by its safe payload line per sequence,
-`capture/study-capture-handoff.json` and `capture/study-capture-handoff.sha256`, and, after
-successful finalize only, `capture/study-continuity-witness.json`,
-`capture/study-continuity-witness.sha256`, `capture/study-capture-seal.json`, and
-`capture/study-capture-seal.sha256`. No other retained sidecar exists, and the endpoint and all
-runtime-control state are gone before the witness and seal are written.
-
-The controller's checkpoint command makes each sole writer atomically snapshot an immutable
-prefix position and monotonic value, then immediately resume appends without pausing heartbeat;
-it does not write or accept the handoff. The independent verifier alone writes its canonical
-file and companion from that prefix while later pairs may continue to append. The contract's
-canonical handoff binds the checkpoint/study identities, both frozen study digests,
-`controlSessionId`, both identity commitments, and the exact fixed-order stream prefix state.
-After writing it, the verifier sends the run ID, checkpoint request ID, and exact handoff digest
-through the authenticated supervisor. Every watchdog appends exactly one matching
-`handoff-anchor` payload record after its checkpoint sequence and before stop while normal
-append and heartbeat scheduling continue without pause. An ordinary post-prefix pair already
-queued at checkpoint may precede the anchor. Continuation validates every intervening pair,
-the sole matching anchor, and at least one subsequent ordinary heartbeat or payload on the
-same uninterrupted chain. Stops and the final seal bind that digest and require a literal
-anchor count of one per stream. Continuation recomputes the complete bound prefix and original
-anchor before accepting the first later record's exact next sequence/prior digest. Replacing the
-handoff and companion with a different valid prefix fails even when the replacement digest and
-later links are recomputed.
-
-`pnpm run study:evidence:inputs -- materialize` invokes the repository-owned descriptor-driven
-builder in `scripts/build-usability-study-inputs.mjs` to create exactly twenty fresh
-distributions. `pnpm run study:evidence:capture -- <start|checkpoint|stop>` invokes the repository-owned
-capture controller in `scripts/run-usability-study-capture.mjs`.
-`pnpm run study:evidence:verify -- <inputs|checkpoint|continuation|finalize>` invokes the
-structurally independent read-only/recomputing verifier in
-`scripts/verify-usability-study-evidence.mjs`. Start returns six stream processes plus a separate
-ordered field containing exactly two long-lived orchestrators. Stop requires zero live reviewer,
-ends all eight long-lived internal descendants, and leaves the supervisor/endpoint alive. Finalize independently
-verifies the complete streams, commitments, original handoff anchor, 80 terminal outcomes, role
-matrix, three directly observed adapter exits, three adapter-observed authenticated watchdog exit
-attestations, two directly observed orchestrator exits, and the moderator-observed attested equation
-`ephemeralReviewerProcessExitCount == reviewVoteCount`, then completes finalize-prepare while the endpoint remains live. A separately
-authenticated finalize-commit connection receives the exact witness after listener teardown
-begins but before supervisor key destruction and exit. The verifier requires the complete
-response, EOF, and failed reconnection to prove endpoint removal, then writes and re-reads the
-canonical continuity-witness pair followed by the cross-stream seal pair. The
-witness binds the control session, work-root/candidate commitments, original handoff digest,
-eight long-lived exits, and the ephemeral reviewer exit count. The seal binds the witness and handoff digests, both study digests, and exactly
-three fixed-order first/final stream roots and counts; verified terminal stops and envelope
-counts bind terminal sequences. It also binds the exact aggregate summary
-`automaticCriticalIssueCount,suspectedWorkflowBlockerCount,reviewVoteCount,reviewDisagreementCount,reviewerCriticalIssueCount,criticalIssueCount,zeroCriticalIssueGate`.
-The verifier derives automatic issue IDs as `automatic:<correlationId>` and recomputes
-`reviewVoteCount = 2 × suspectedWorkflowBlockerCount`,
-where suspected count includes every reviewed nonautomatic failure, plus the reviewer-critical
-issue-ID set as exact `reviewer:<subjectId>:<workflowClass>` for confirmed or
-disagreement rows, and `criticalIssueCount` as the cardinality of the tagged, de-duplicated
-union of `automatic:<correlationId>` and `reviewer:<subjectId>:<workflowClass>` IDs. An
-`automatic-critical` workflow row adds no second issue. `zeroCriticalIssueGate` is true exactly
-when that union is empty and the exact 20-by-4 terminal set is complete; the 19/20 and 18/20
-success thresholds stay independent.
-
-Contract tests own canonical schemas, phase/env/token validation, subject cardinality and
-workflow equations, request truth-table and role-matrix rejection, and privacy rejection.
-Static/source-structure tests reject imports/helpers and alternate child entries; deterministic
-fake-clock tests own the 1,000-ms scheduler and 1,500,000,000-ns boundary; real OS-specific
-child-process/control-endpoint integration and security tests own token hello/challenge,
-safe-ID propagation, initially-empty candidate-launch slot, post-input digest-bound provisioning,
-sole audited-bin resolution, network/scripts/cache/global/fallback rejection and teardown absence,
-endpoint placement/teardown, path/secret non-retention, pause/death/restart,
-identity and commitment change, eight long-lived exit witnesses and reviewer-exit equality,
-crashes after zero through four accepted workflows with exact missing-row terminalization, prohibited combinations, truncation,
-corruption, alternate-valid-prefix handoff rewrite, premature stop, and stitch cases. Every
-command returns zero only for its complete expected state. Any failure is automatic critical
-and streams are never stitched.
+unexecuted, or mismatched evidence fails the affected criterion. The first-use evaluation of
+SC-001 and SC-006 is twenty independent autonomous-agent sessions run once for the release
+candidate: each is given the origin one running Inspector printed and the standardized task
+prompt and nothing else, attempts discovery, inspection, comparison, and personal-setup
+consent, and is recorded without exclusion or replacement. There is no participant cohort,
+moderator, reviewer, or capture harness — gathering twenty first-use participants is not
+available to this project, so the evaluation asserts what an automated run establishes and
+every record of it says it was agent-driven. Its material is the guidance, four task
+prompts, response form, ground truth, and scoring rubric under
+`tests/usability/sc001-sc006-study-inputs/`, and how a run is performed is in
+`tests/usability/sc001-sc006-study-kit.md` and its Japanese companion.
 
 **Target Platform**: The supported runtime contract is the complete declared Node.js 24/26
 engine range on `ubuntu-latest`, `macos-latest`, and `windows-latest`. The exact
@@ -1000,42 +332,13 @@ HTML/CSS, JSON manifests, documentation, and the license are permitted declarati
 artifacts. This FR-038 boundary does not misclassify third-party development/test tooling as
 published application code.
 
-**Performance Goals**: On the versioned, published profile in
-`tests/performance/sc002-reference-profile.json`, visibly render a current-request status
-that says queued, names an active phase, or reports complete/`partial`/failed and is exposed to
-assistive technology within 1 second, and render the complete inventory with its primary
-list controls operable for one unchanged deterministic fixture containing 100,000 filesystem
-entries and 500 matching files within 10 seconds in at least 9 of exactly 10 fresh-process
-runs. A spinner, generic loading label, acknowledgement without scan state, unchanged
-control, or prior-request status does not qualify. In each fresh process, wait for the
-automatic initial Repository scan to reach a terminal state outside the measurement, then
-dispatch exactly one explicit Repository rescan. Start both timers at that browser request,
-capture its opaque `scanRequestId`, and stop them only for a qualifying status carrying that
-ID and the operable inventory generation committed by that same request. An earlier status,
-snapshot, or automatic-scan generation never qualifies. Exclude fixture construction,
-`npx` download/install/process startup, and the automatic initial scan; do not deliberately
-reset the operating-system filesystem cache between runs, and record the profile ID, exact
-actual environment fields, fixture-manifest digest, request ID, and committed generation while omitting only personal
-identifiers and absolute user paths. Any profile-field change starts a new non-comparable
-measurement set.
-The profile binds `tests/performance/sc002-fixture-manifest.json` by version and the canonical
-SHA-256 in `tests/performance/sc002-fixture-manifest.sha256`. The manifest fixes every
-generated entry and each content-bearing file digest through its declarative expansion rules
-and the canonical entry-listing SHA-256 they expand to; a raw hundred-thousand-line
-enumeration would be a second copy of what the rules and digest already determine. The
-validator expands the rules, walks the built tree, recomputes every entry, content digest,
-and the canonical listing digest immediately before run 1 and after each
-run; a missing entry or any mismatch invalidates the complete ten-run set, and each run record
-repeats the same profile ID, manifest version, and canonical digest.
-After the complete
-inventory becomes operable in each run, perform one standardized filter action and one
-standardized item-selection action. Measure each from browser input dispatch until the
-corresponding filtered results or selected-state feedback is visibly rendered and operable;
-at least 9 of the same 10 runs must keep both interactions below 100 ms.
-SC-002 passes only if one common subset of at least 9 of those exact 10 runs satisfies all
-four thresholds: current-request status within 1 second, complete operable inventory within
-10 seconds, filter feedback below 100 ms, and selection feedback below 100 ms. Separate
-9-of-10 subsets for different thresholds do not qualify.
+**Performance Goals**: None are asserted as a release threshold. Measuring scan timing or
+interaction latency means naming one frozen host and recording its exact processor model,
+image revision, memory, and storage before the run, because the same figures taken elsewhere
+describe that machine rather than this product; no such host is designated. What remains is
+`tests/performance/`, a non-gating smoke pass over the deterministic 100,000-entry fixture
+`tests/performance/sc002-fixture-manifest.json` binds by version and canonical SHA-256. It
+proves the harness still expands, walks, and digests that fixture, and asserts no threshold.
 
 **Constraints**: Inspected customization must cause no execution, child process, dynamic
 import, prohibited direct product-issued network request as defined by FR-022, MCP connection, or product-issued source mutation.
@@ -1167,7 +470,7 @@ execution environment rather than a product-defined item ceiling.
 
 ## Constitution Check
 
-*GATE: Passed before Phase 0 research and re-checked after Phase 1 design.*
+_GATE: Passed before Phase 0 research and re-checked after Phase 1 design._
 
 - [x] **Root-cause design**: One package and exactly one immutable root per Source solve the
       launch and inspection problem without a workspace split, repository picker, root
@@ -1202,8 +505,7 @@ execution environment rather than a product-defined item ceiling.
       are ci.yml's own jobs.
       The test layout covers unit, contract, integration,
       security, package, performance, end-to-end, error, boundary, and accessibility
-      scenarios, including all four user stories, the published SC-002 profile/status
-      request/generation protocol, the ordinary-error failure model (a file-confined
+      scenarios, including all four user stories, the ordinary-error failure model (a file-confined
       failure becomes that file's diagnostic in a `partial` generation per FR-028; any
       other failure commits nothing, retains the prior snapshot, and reports the failed
       request's error per FR-030),
@@ -1211,10 +513,9 @@ execution environment rather than a product-defined item ceiling.
       the product-wide FR-032 negative boundary, the complete bilingual 55-row WCAG Level
       A/AA acceptance matrix, the
       versioned digest-bound nonzero release-evidence denominators for SC-003/004/005/007,
-      and the repository-owned usability-evidence bundle/capture/verifier protocol. Its
-      deterministic contract tests, fake-clock heartbeat boundaries, real child-process/IPC
-      integration tests, privacy-negative security tests, and independent final-seal
-      recomputation run before human evidence may be accepted.
+      and the task material the first-use evaluation is scored against. That evaluation is
+      twenty autonomous-agent sessions rather than a participant cohort, so no capture,
+      seal, or reviewer protocol stands between running it and recording it.
 - [x] **Documentation parity**: Every Phase 0/1 artifact has an English canonical file and
       a semantically equivalent `*.ja.md` companion. Implementation must update both user
       and contributor guides, all vendor/Repository/User/Global/surface tables, official
@@ -1252,9 +553,6 @@ execution environment rather than a product-defined item ceiling.
       discards
       revoked/late bytes, and records the physically uncancellable-I/O residual risk with
       its resolution path.
-      The four external terminal descriptors, supervisor-owned product child, adapter-owned pinned
-      Chromium/DevTools pipe, bound fd5 writer authority, and external candidate-launch store are
-      explicit closed study-equipment boundaries; none is a Constitution exception or waiver.
 - [x] **Welcoming participation**: One-package setup, reproducible pinned tooling,
       objective expected results, keyboard-first workflows, actionable errors, and
       automated plus manual accessibility gates keep the project approachable. The
@@ -1336,8 +634,6 @@ specs/001-inspect-agent-customizations/
 │   ├── official-sources.ja.md
 │   ├── runtime-composition.md
 │   ├── runtime-composition.ja.md
-│   ├── usability-study-evidence.md
-│   ├── usability-study-evidence.ja.md
 │   └── vendors/
 │       ├── github-copilot.md
 │       ├── github-copilot.ja.md
@@ -1428,19 +724,14 @@ src/
 tests/
 ├── unit/
 ├── contract/
-│   └── usability-study-evidence.test.ts
 ├── integration/
-│   └── usability-study-evidence.test.ts
 ├── security/
-│   └── usability-study-evidence.test.ts
 ├── package/
 ├── performance/
 ├── e2e/
 ├── usability/
 │   ├── sc001-sc006-study-kit.md
 │   ├── sc001-sc006-study-kit.ja.md
-│   ├── sc001-sc006-study-inputs.json
-│   ├── sc001-sc006-study-inputs.sha256
 │   └── sc001-sc006-study-inputs/
 │       ├── guidance.md
 │       ├── guidance.ja.md
@@ -1448,8 +739,10 @@ tests/
 │       ├── task-prompt-sc001.ja.md
 │       ├── task-prompt-sc006.md
 │       ├── task-prompt-sc006.ja.md
-│       ├── evaluation-fixture.json
-│       ├── evaluation-fixture.ja.json
+│       ├── task-prompt-comparison.md
+│       ├── task-prompt-comparison.ja.md
+│       ├── task-prompt-consent.md
+│       ├── task-prompt-consent.ja.md
 │       ├── prepared-state.json
 │       ├── prepared-state.ja.json
 │       ├── response-form.json
@@ -1475,9 +768,6 @@ scripts/
 ├── clean-build-output.mjs
 ├── verify-package-files.mjs
 ├── check-official-sources.ts
-├── build-usability-study-inputs.mjs
-├── run-usability-study-capture.mjs
-└── verify-usability-study-evidence.mjs
 
 .github/workflows/
 ├── ci.yml
@@ -1626,11 +916,7 @@ assert the approved production-leaf set; the locked versions and their integrity
 by the committed lockfile, and no separate production-graph script or evidence file exists. Its `typecheck` script runs the strict
 TypeScript type check over the application, shared, source, script, and test code configured
 in `tsconfig.json` and is a required quality gate in local verification and in its own
-independent CI job. `study:evidence:inputs` invokes only
-`node scripts/build-usability-study-inputs.mjs`, `study:evidence:capture` invokes only
-`node scripts/run-usability-study-capture.mjs`, and `study:evidence:verify` invokes only
-`node scripts/verify-usability-study-evidence.mjs`; none belongs to a default build/start/test
-chain, and only the explicit initial-release study protocol may invoke them. CI runs `format:check`
+independent CI job. CI runs `format:check`
 as its own job. `check:official-sources` is the only
 documented network-enabled evidence-drift command. The `src/server/cli.ts` entry,
 `tsdown.config.ts`, assembly scripts, and these package scripts are foundation prerequisites:
@@ -1662,7 +948,7 @@ The `verify:package` gate requires exactly the two packaged entry points —
 before `npm pack`; the rest of `dist/` is owned by the clean → `nuxt build` → tsdown
 pipeline that just produced it, so no recursive re-verification duplicates that
 ownership. No install-time build or download occurs. `package.json.files` is exactly
-`["dist", "README.md", "README.ja.md", "LICENSE"]`; npm also includes
+`["dist", "docs/images", "README.md", "README.ja.md", "LICENSE"]`; npm also includes
 `package.json`, so the tarball allowlist is `dist/` plus those four entries and their
 contents, with no source, fixtures, or planning artifacts. The package is CLI-only:
 `package.json.bin` is exactly `{ "agent-customization-inspector": "dist/cli.mjs" }`, while
@@ -2180,38 +1466,38 @@ configuration.
 
 #### Global root admission
 
-| Input/phase | Internal transition | I/O and public result |
-|---|---|---|
-| Tool-home setting is captured as `undefined` | `preview-default` | From the one request-wide `node:os.homedir()` capture, use active-platform `node:path.join` with that tool's fixed `.copilot`/`.claude`/`.codex` suffix and zero filesystem I/O, then classify the resulting exact string through the ordered rows below; retain this tool in the fixed four-entry confirmation and create no authority |
-| Captured environment setting has length zero | `inputState: present-empty` / `preview-invalid` | Apply this first and only to an environment-origin value; retain the entry in the fixed four-entry confirmation, perform no fallback or filesystem/network I/O, and create no root, Source, job, or generation for it |
-| Otherwise the exact string contains U+0000 or an unpaired UTF-16 surrogate | `inputState: invalid` / `preview-invalid` | Reject before `path.isAbsolute`, retaining only the invalid preview entry with zero filesystem/network I/O and no authority |
-| Otherwise active-platform `node:path.isAbsolute` returns false | `inputState: relative` / `preview-invalid` | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority |
-| Otherwise the string is absolute, including one outside the ordinary home | `inputState: eligible` / `preview-eligible` | Escape and retain the stored exact raw lexical value in the server-retained preview record with zero filesystem/network I/O, keep it in the fixed four-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission |
-| Consent names a stale, replayed, or superseded `previewId` | `consent-rejected` | Perform zero proposed-root I/O; create no authority |
-| A consented root is missing or is not a readable directory | `absent` or `root-rejected` | Record that member as absent or failed without creating its Source and without blocking sibling members; continue partitioning the current server-owned set—all four members initially or exact `retryableTools` on retry |
-| Any proposed-root operation throws or rejects unexpectedly | Ordinary-error propagation | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot |
-| Post-consent admission succeeds for one or more roots | `root-admitted` batch subset | Atomically attach all admitted contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit |
+| Input/phase                                                                | Internal transition                             | I/O and public result                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool-home setting is captured as `undefined`                               | `preview-default`                               | From the one request-wide `node:os.homedir()` capture, use active-platform `node:path.join` with that tool's fixed `.copilot`/`.claude`/`.codex` suffix and zero filesystem I/O, then classify the resulting exact string through the ordered rows below; retain this tool in the fixed four-entry confirmation and create no authority |
+| Captured environment setting has length zero                               | `inputState: present-empty` / `preview-invalid` | Apply this first and only to an environment-origin value; retain the entry in the fixed four-entry confirmation, perform no fallback or filesystem/network I/O, and create no root, Source, job, or generation for it                                                                                                                   |
+| Otherwise the exact string contains U+0000 or an unpaired UTF-16 surrogate | `inputState: invalid` / `preview-invalid`       | Reject before `path.isAbsolute`, retaining only the invalid preview entry with zero filesystem/network I/O and no authority                                                                                                                                                                                                             |
+| Otherwise active-platform `node:path.isAbsolute` returns false             | `inputState: relative` / `preview-invalid`      | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority                                                                                                                                                                                                           |
+| Otherwise the string is absolute, including one outside the ordinary home  | `inputState: eligible` / `preview-eligible`     | Escape and retain the stored exact raw lexical value in the server-retained preview record with zero filesystem/network I/O, keep it in the fixed four-entry confirmation, and await the one all-tools consent action; only this row can reach post-consent admission                                                                   |
+| Consent names a stale, replayed, or superseded `previewId`                 | `consent-rejected`                              | Perform zero proposed-root I/O; create no authority                                                                                                                                                                                                                                                                                     |
+| A consented root is missing or is not a readable directory                 | `absent` or `root-rejected`                     | Record that member as absent or failed without creating its Source and without blocking sibling members; continue partitioning the current server-owned set—all four members initially or exact `retryableTools` on retry                                                                                                               |
+| Any proposed-root operation throws or rejects unexpectedly                 | Ordinary-error propagation                      | Abort the whole Global transaction, discard every provisional sibling context/result, publish no admitted subset, and retain the prior snapshot                                                                                                                                                                                         |
+| Post-consent admission succeeds for one or more roots                      | `root-admitted` batch subset                    | Atomically attach all admitted contexts/IDs to their controls and transfer them together to the one `GlobalBatchScan`; create no public Source or graph before its single atomic commit                                                                                                                                                 |
 
 #### Byte decoding
 
-| Byte condition | `encoding` | Source and recognition state |
-|---|---|---|
-| Any `0x00` byte | `binary` | No `sourceText`, parser dispatch, recognition extraction, or comparison eligibility. An admitted candidate is diagnostic-only with the file-scoped `file-content-binary` diagnostic and makes an otherwise publishable generation `partial`; a census-listed companion is the ordinary fact of an asset, with no diagnostic |
-| No NUL and all bytes decode without replacement | `utf-8` | Record and remove one leading BOM when present; preserve complete `sourceText`; parse it in-process |
-| No NUL and one or more invalid UTF-8 sequences, with or without one leading BOM | `utf-8-replaced` | Decode exactly once with replacement semantics, record/remove the leading BOM when present, preserve every resulting `U+FFFD`, and use that complete garbled text for parsing, extraction, display, and comparison; this condition alone remains complete |
+| Byte condition                                                                  | `encoding`       | Source and recognition state                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Any `0x00` byte                                                                 | `binary`         | No `sourceText`, parser dispatch, recognition extraction, or comparison eligibility. An admitted candidate is diagnostic-only with the file-scoped `file-content-binary` diagnostic and makes an otherwise publishable generation `partial`; a census-listed companion is the ordinary fact of an asset, with no diagnostic |
+| No NUL and all bytes decode without replacement                                 | `utf-8`          | Record and remove one leading BOM when present; preserve complete `sourceText`; parse it in-process                                                                                                                                                                                                                         |
+| No NUL and one or more invalid UTF-8 sequences, with or without one leading BOM | `utf-8-replaced` | Decode exactly once with replacement semantics, record/remove the leading BOM when present, preserve every resulting `U+FFFD`, and use that complete garbled text for parsing, extraction, display, and comparison; this condition alone remains complete                                                                   |
 
 #### Scan publication and failure ownership
 
-| Terminal condition | Internal outcome and owner | Atomic public result |
-|---|---|---|
-| Complete traversal; every file complete, including readable `utf-8-replaced` results; assembly/serialization succeed; authority current | `committable-complete`, coordinator | Commit one `complete` generation of the owning sequence and a complete response; an initial/retry Global batch publishes every admitted tool-specific Source together in this one Global-sequence commit, touching no Repository state |
-| Complete traversal; one or more files have only file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete | `committable-partial`, scan assembler then coordinator | Commit one `partial` generation of the owning sequence with affected-file diagnostics and complete unaffected results; an initial/retry Global batch still publishes its whole committable admitted subset in this one Global-sequence commit |
-| Fixed-four Global admission deterministically rejects every root | `active-no-job`, Global coordinator | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every existing committed ID exactly |
-| The selected Repository root does not exist or cannot be read as a directory | Deterministic fatal outcome, coordinator | Fail the attempt with the source-scoped `root-unreadable` diagnostic while the session stays usable; commit nothing, publish no partial inventory, and retain the prior snapshot; if and only if the attempt is an explicit rescan, mark the retained snapshot stale for that Source |
-| The attempt fails before commit for any other reason not confined to one file | `failed` for that `scanRequestId`, owning session-API request boundary | Commit nothing from the attempt, including every tentative Global batch sibling; report the failed request's error ordinarily (`scanRequestId` is null before job acceptance); retain any prior committed snapshot; if and only if the accepted job is an explicit rescan, create or replace that Source's stale overlay storing that error's message; keep the process/session available |
-| Automatic startup work with no request owner fails | Propagation to the process top level | Publish no attempt result or generation; make no process/session survival guarantee; the runtime's ordinary uncaught-error reporting applies |
-| Disable/shutdown/supersession/failure revokes authority | `revoked`, coordinator | Discard all late bytes, extraction, diagnostics, DTOs, and graph mutations; commit nothing from the revoked request |
-| Transport fails after atomic commit | Existing committed outcome, host | Never relabel or expose a truncated body as partial; allow refetch of the already committed generation over the loopback session API |
+| Terminal condition                                                                                                                                                                                                                                                              | Internal outcome and owner                                             | Atomic public result                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Complete traversal; every file complete, including readable `utf-8-replaced` results; assembly/serialization succeed; authority current                                                                                                                                         | `committable-complete`, coordinator                                    | Commit one `complete` generation of the owning sequence and a complete response; an initial/retry Global batch publishes every admitted tool-specific Source together in this one Global-sequence commit, touching no Repository state                                                                                                                                                    |
+| Complete traversal; one or more files have only file-confined outcomes (unreadable, an admitted candidate's binary content, parse failure — a census-listed companion's binary bytes are its ordinary fact and confine nothing, FR-025) while every unaffected file is complete | `committable-partial`, scan assembler then coordinator                 | Commit one `partial` generation of the owning sequence with affected-file diagnostics and complete unaffected results; an initial/retry Global batch still publishes its whole committable admitted subset in this one Global-sequence commit                                                                                                                                             |
+| Fixed-four Global admission deterministically rejects every root                                                                                                                                                                                                                | `active-no-job`, Global coordinator                                    | Retain active consent/controls, create no `scanRequestId`, batch, Source, or generation, and preserve every existing committed ID exactly                                                                                                                                                                                                                                                 |
+| The selected Repository root does not exist or cannot be read as a directory                                                                                                                                                                                                    | Deterministic fatal outcome, coordinator                               | Fail the attempt with the source-scoped `root-unreadable` diagnostic while the session stays usable; commit nothing, publish no partial inventory, and retain the prior snapshot; if and only if the attempt is an explicit rescan, mark the retained snapshot stale for that Source                                                                                                      |
+| The attempt fails before commit for any other reason not confined to one file                                                                                                                                                                                                   | `failed` for that `scanRequestId`, owning session-API request boundary | Commit nothing from the attempt, including every tentative Global batch sibling; report the failed request's error ordinarily (`scanRequestId` is null before job acceptance); retain any prior committed snapshot; if and only if the accepted job is an explicit rescan, create or replace that Source's stale overlay storing that error's message; keep the process/session available |
+| Automatic startup work with no request owner fails                                                                                                                                                                                                                              | Propagation to the process top level                                   | Publish no attempt result or generation; make no process/session survival guarantee; the runtime's ordinary uncaught-error reporting applies                                                                                                                                                                                                                                              |
+| Disable/shutdown/supersession/failure revokes authority                                                                                                                                                                                                                         | `revoked`, coordinator                                                 | Discard all late bytes, extraction, diagnostics, DTOs, and graph mutations; commit nothing from the revoked request                                                                                                                                                                                                                                                                       |
+| Transport fails after atomic commit                                                                                                                                                                                                                                             | Existing committed outcome, host                                       | Never relabel or expose a truncated body as partial; allow refetch of the already committed generation over the loopback session API                                                                                                                                                                                                                                                      |
 
 ## Complexity Tracking
 
@@ -2224,14 +1510,10 @@ HTTP router, or a static-manifest/CSP pipeline. With no log-content rule and no 
 operational-log/telemetry machinery, so the table carries no row for those either.
 The remaining unavoidable implementation costs are tracked explicitly:
 
-| Complexity | Why it is required | Simpler option rejected |
-|---|---|---|
+| Complexity                                                                                                                   | Why it is required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Simpler option rejected                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Lockfile-pinned pre-1.0 devframe 0.7.5 host with lockfile-owned transitives (including the h3 2.0.1-rc.22 release candidate) | Reuse the config-inspector-proven local-tool host for static serving and the RPC session API instead of maintaining a hand-written router, token authentication, and static-manifest pipeline; within this repository's own development and CI, the committed lockfile — which the published package does not carry — holds pre-1.0 API churn and the RC transitive at one reviewed baseline for every build and test run, and the manifest's `^0.7.5` only declares the range a deliberate update may move within here (a pre-1.0 caret stays below 0.8.0). A published-package consumer's package manager resolves that same `^0.7.5` fresh against the registry at install time, exactly as it does for any other pre-1.0 dependency; nothing in the package pins a runtime baseline for them | An exact manifest pin would duplicate, for this repository's own builds, the resolution the committed lockfile already owns there — every version move is a reviewed lockfile change either way — without changing what a package consumer resolves, since the published tarball carries no lockfile either way; re-implementing the host in-repo re-creates the complexity devframe already owns |
-| Publication-authority revocation with cleanup-only late continuations | Prevent work completed after disable, shutdown, or cancellation from mutating a newer session state | Treating cancellation as physical kernel-I/O termination would make an unsupported guarantee |
-| Four fixed external terminal-equipment descriptors and supervisor-owned participant launch | Give participant, moderator, and two isolated reviewer slots deterministic nonrecording/no-echo ingress and give the sole product-exit source a real child handle | Implicit shared stdin cannot isolate votes or contexts; a harness without the product process handle cannot attest exit |
-| Adapter-owned pinned Chromium plus anonymous DevTools equipment pipe | Configure attempt-local proxy/auth without env/argv/profile persistence and ground browser/context exit in a direct OS observer | Browser authority in argv, environment, or a persistent profile violates the privacy boundary; an unowned browser has no trustworthy equipment observer |
-| Runtime-only `StudyStreamWriterRuntimeBinding` for fd5 | Bind the inherited append-only handle to authenticated adapter identities and stable handle metadata before watchdog registration | An unbound fd5 can be swapped, aliased, duplicated, or accepted by the wrong role |
-| Identity-pinned, network/scripts-disabled candidate-launch store outside work root/distributions | Make the exact frozen packed candidate the sole `npx --no-install` resolution without mutating participant repositories or exposing tarball authority to the child | Global/cache/fallback resolution is not candidate-bound; installing into each distribution changes the study input and provenance boundary |
+| Publication-authority revocation with cleanup-only late continuations                                                        | Prevent work completed after disable, shutdown, or cancellation from mutating a newer session state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Treating cancellation as physical kernel-I/O termination would make an unsupported guarantee                                                                                                                                                                                                                                                                                                      |
 
 These controls are required boundary implementations, not Constitution exceptions or waivers.
 They preserve the existing closed authority, privacy, provenance, and verification principles; the

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "formLocale": "ja",
+  "criterion": "SC-006",
+  "fields": [
+    {
+      "fieldId": "source",
+      "prompt": "このファイルはどこから来ていますか。"
+    },
+    {
+      "fieldId": "recognizing-tools",
+      "prompt": "どのツールが読みますか。表示されているものをすべて書いてください。"
+    },
+    {
+      "fieldId": "file-type",
+      "prompt": "どんな種類のファイルですか。"
+    }
+  ],
+  "submissionRule": "3項目すべてを2分以内に提出する。欠けた項目があれば失敗とする。"
+}
