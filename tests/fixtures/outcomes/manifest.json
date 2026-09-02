@@ -34,7 +34,7 @@
     "tests/e2e/claude-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-commands-detail.spec.ts",
-      "sha256": "7b89501a24f1bc9eeedaf064c850ec589ee1f8229cf84a07cc201c8b595010fe"
+      "sha256": "655e27fe1873f65ff83a40b01d95371192e2d8ac609d9ddfec0f3dd6c8b609f3"
     },
     "tests/e2e/claude-commands-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -44,7 +44,7 @@
     "tests/e2e/claude-custom-agents-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-custom-agents-detail.spec.ts",
-      "sha256": "325bd6a59bf76f9ac1100bec389dfda0ffa8628f79be2b6844a5b27dc23bab4e"
+      "sha256": "5c34fb7882664e9ca6d5eca44cbfc4f7c5d6b095a4df95589cd57155397e497e"
     },
     "tests/e2e/claude-custom-agents-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -119,7 +119,7 @@
     "tests/e2e/claude-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-detail.spec.ts",
-      "sha256": "39a26d383f5568dc95d0501ab3ff94b200b5b17cd62cc862582c192c388ac02d"
+      "sha256": "f1f8612d7ad8fa1224c7feea3142c7d6fdf8371557aed7a7024abc851afca014"
     },
     "tests/e2e/claude-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -139,7 +139,7 @@
     "tests/e2e/codex-custom-agents-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-custom-agents-detail.spec.ts",
-      "sha256": "4e6581704e522bac55503e5872185b5730e41e90748e1030093de1967fecc70d"
+      "sha256": "558a2d6767f99ac22c34d98e3c5147e31021285ee6d4c229b2814dd29797cae5"
     },
     "tests/e2e/codex-custom-agents-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -154,7 +154,7 @@
     "tests/e2e/codex-hooks-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-hooks-inventory.spec.ts",
-      "sha256": "0c4316c5549484ce43273daabe5017c39cb84e9f2fcf3e92261e1a6c94c7e937"
+      "sha256": "baa4f9ce28078da7b7831b150355f8d90c0e6983560c9d94d1796fe7e9e707c3"
     },
     "tests/e2e/codex-instructions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -199,7 +199,7 @@
     "tests/e2e/codex-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-skills-detail.spec.ts",
-      "sha256": "ddfa029a1bfc010c91d3cf22bfe4b81be41ee11bcf65e41631eda96be4c8f675"
+      "sha256": "3d52b00cd8822ca7dd2d39abf682808812efd2276efdde9f2fc6050e2612d56a"
     },
     "tests/e2e/codex-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -214,7 +214,7 @@
     "tests/e2e/copilot-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-commands-detail.spec.ts",
-      "sha256": "250b3b77bc56f6ce6bdf30d008143ae873e66b57aeb0a274df72342e50d843c6"
+      "sha256": "0dc6695b7d25af3d8506c06431d5a9e54300d309845c09dac9c2f17212e3d86e"
     },
     "tests/e2e/copilot-commands-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -224,7 +224,7 @@
     "tests/e2e/copilot-custom-agents-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-custom-agents-detail.spec.ts",
-      "sha256": "ea9c9d78f7e6de0d07b38dad8514bf46aa1e063ea19f77d57093226f4baf5bb6"
+      "sha256": "5ecaa4342698b8b8ec05ee1ddf4bb41f0c1df13f56b6567e2aced001f7279863"
     },
     "tests/e2e/copilot-custom-agents-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -309,7 +309,7 @@
     "tests/e2e/output-styles-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/output-styles-detail.spec.ts",
-      "sha256": "66896983cb5add6d6dd50e85230fb5790f21ae832523a6992e53ce691cc28bf2"
+      "sha256": "f21e5f88f2517bc4de1e4ae91e48866b9689ac335566d55d2645e41cbf2eb946"
     },
     "tests/e2e/output-styles-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -319,7 +319,7 @@
     "tests/e2e/prompts-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/prompts-detail.spec.ts",
-      "sha256": "e144f34c30081db27dbb4b4c3827813dbd211c7db0792ca70c3317d01315801b"
+      "sha256": "139e93e609fc8f25f2fa18099c78ba2ceb4359b28f1facdc3748db9972824d31"
     },
     "tests/e2e/prompts-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -594,56 +594,56 @@
           "caseId": "sc003.shared-file.repository-agents-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-root-claude-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `CLAUDE.md` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `CLAUDE.md` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-agents-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "A repository `.agents/skills/<name>/SKILL.md` is attributed to OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "A repository `.agents/skills/<name>/SKILL.md` is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/skills-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-claude-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "A repository `.claude/skills/<name>/SKILL.md` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "A repository `.claude/skills/<name>/SKILL.md` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/skills-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-claude-settings",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["tests/e2e/settings-config-inventory.spec.ts"],
-          "expectedOutcome": "The repository `.claude/settings.json` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository `.claude/settings.json` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/settings-config-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-root-mcp-json",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["tests/e2e/mcp-inventory.spec.ts"],
-          "expectedOutcome": "The repository-root `.mcp.json` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `.mcp.json` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/mcp-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-marketplace-json",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository `.claude-plugin/marketplace.json` is attributed to Claude Code and OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository `.claude-plugin/marketplace.json` is attributed to Claude Code and OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/integration/repository-scan.test.ts"]
         },
         {
           "caseId": "sc003.shared-file.global-shared-agent-home-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["tests/e2e/global-same-path-skill.spec.ts"],
-          "expectedOutcome": "A `skills/<name>/SKILL.md` held by two consented Global member boundaries at once is attributed to OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "A `skills/<name>/SKILL.md` held by two consented Global member boundaries at once is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/global-same-path-skill.spec.ts"]
         },
         {

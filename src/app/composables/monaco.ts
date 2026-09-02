@@ -362,7 +362,9 @@ export class SourceViewerHandle {
    * an authored URL into something clickable, and `contextmenu: false` removes
    * the menu whose entries act on a document this view does not own.
    * `accessibilitySupport: 'auto'` lets Monaco detect a screen reader — its own
-   * documentation says to leave it there rather than force it. The surface is
+   * documentation says to leave it there rather than force it, and forcing
+   * `'on'` was measured to change nothing about which element holds Tab. The
+   * surface is
    * named by {@link SourceViewerHandle.showSource} rather than here, because a
    * label fixed at mount would keep naming the first file after the reader moved
    * to another one. `accessibilityVerbose` is not among them:

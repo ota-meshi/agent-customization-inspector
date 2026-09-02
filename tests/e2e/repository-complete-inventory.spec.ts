@@ -137,8 +137,17 @@ test('keeps the bar and the rail on screen as the document scrolls', async ({ pa
   // token because CSS cannot read the bar's own height, so the two are asserted
   // to agree here: a bar that grew without the token following it would hide
   // the rail's first entries (`main.css` § --aci-sticky-bar).
-  expect(after.token).toBeGreaterThanOrEqual(after.barHeight);
-  expect(after.entriesTop).toBe(after.token);
+  //
+  // Within a pixel, because the two reach the same box by different routes —
+  // a resolved custom property and a measured rectangle — and an engine that
+  // rounds them apart by a fraction of one covers nothing a reader could see.
+  // What this still catches is a bar that outgrew its token by a visible
+  // amount, which is the failure the assertion is for.
+  expect(after.token).toBeGreaterThanOrEqual(after.barHeight - 1);
+  // To within a pixel, for the same reason as the bound above: what matters
+  // is that the entries start where the token says, not that two measurements
+  // of one edge agree to the last representable fraction.
+  expect(after.entriesTop).toBeCloseTo(after.token, 1);
 
   // What sticks is the entries, not the surface behind them: the rail's panel
   // is as tall as the rows beside it, so it runs to the foot of the list rather
