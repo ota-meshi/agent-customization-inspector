@@ -120,7 +120,12 @@ async function openSkill(page: import('@playwright/test').Page, path: string): P
   await page.goto(host.origin);
   const links = page
     .locator('.aci-source-family-blocks__members > li')
-    .locator(`a[href$="/${path}"]`);
+    // The path ends the address or is followed by the row's query: a detail
+    // link carries the name the row resolved (`?name=…`), so the path is the
+    // end of the href only where there is none. Anchored on both rather than
+    // matched loosely, so a path stays a whole trailing segment instead of
+    // something another address merely contains.
+    .locator(`a[href$="/${path}"], a[href*="/${path}?"]`);
   // The rows render together once the snapshot arrives, so waiting for any
   // link is waiting for all of them; clicking before that found nothing.
   await links.first().waitFor();

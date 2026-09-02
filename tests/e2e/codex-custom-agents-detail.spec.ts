@@ -103,7 +103,7 @@ test.describe('the complete literal Codex custom-agent detail', () => {
       .getByRole('link', { name: /docs-researcher\.toml/u })
       .click();
     await expect(page).toHaveURL(
-      /\/agents\/detail\/repository\/\.codex\/agents\/docs-researcher\.toml$/u,
+      /\/agents\/detail\/repository\/\.codex\/agents\/docs-researcher\.toml\?name=docs_researcher$/u,
     );
     await expect(
       page.getByRole('heading', { name: '.codex/agents/docs-researcher.toml' }),

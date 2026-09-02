@@ -11,10 +11,10 @@
 // boundary, which grants no read authority.
 import {
   chmodSync,
-  existsSync,
   linkSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -2112,11 +2112,18 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     const root = [base, 'link', '..'].join(sep);
     // Which resolution the running platform performs is the case itself, so
     // it is measured rather than assumed: where `..` is applied after the
-    // link is followed, this root names `<base>/resolved` and the seed below
-    // it exists. Windows collapses the two lexically and lands on `<base>`,
-    // which carries no seed — there the disagreement under test does not
-    // exist and there is nothing to assert.
-    if (!existsSync([root, '.codex', 'config.toml'].join(sep))) {
+    // link is followed, enumerating this root lands on `<base>/resolved` and
+    // its children are the seed's own. Windows applies `..` to the path
+    // string first and enumerates `<base>`, whose children are neither — so
+    // the disagreement under test does not exist there and there is nothing
+    // to assert.
+    //
+    // Enumerated rather than probed: the walk reaches a root's children by
+    // listing it, and a platform can answer the two differently — a `stat`
+    // of `<root>/.codex/config.toml` succeeding says nothing about what
+    // `readdir` of `<root>` returns. Measuring the operation the walk
+    // performs is what makes this decide the same way the scan below does.
+    if (!readdirSync(root).includes('OS.md')) {
       return;
     }
     const publication = await runSourceScan({

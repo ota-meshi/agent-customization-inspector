@@ -214,10 +214,8 @@ test('states the typed layering and fallback differences per side', async ({ pag
   );
   const metadata = page.locator('.aci-instruction-recognition-comparison');
   const copilotRow = metadata.locator('tr', { hasText: 'GitHub Copilot' });
-  await expect(copilotRow.locator('td').first()).toHaveText('Recognized — surfaces: CLI');
-  await expect(copilotRow.locator('td').nth(1)).toHaveText(
-    'Recognized — surfaces: VS Code, CLI, Cloud agent',
-  );
+  await expect(copilotRow.locator('td').first()).toHaveText('Recognized(CLI)');
+  await expect(copilotRow.locator('td').nth(1)).toHaveText('Recognized(VS Code, CLI, Cloud agent)');
   // A two-file row offers no pick: both files already stand on the two
   // sides, so a selector would be a dead control — the same rule the skill
   // surface applies to a two-copy name.
@@ -235,7 +233,7 @@ test('states the typed layering and fallback differences per side', async ({ pag
     'OpenAI Codex',
   ]);
   const codexRow = metadata.locator('tr', { hasText: 'OpenAI Codex' });
-  await expect(codexRow.locator('td').first()).toHaveText('Recognized — surfaces: Local clients');
+  await expect(codexRow.locator('td').first()).toHaveText('Recognized(Local clients)');
   await expect(codexRow.locator('td').nth(1)).toHaveText('Not recognized');
   await expect(metadata.locator('tr', { hasText: 'Claude Code' }).locator('td').first()).toHaveText(
     'Not recognized',

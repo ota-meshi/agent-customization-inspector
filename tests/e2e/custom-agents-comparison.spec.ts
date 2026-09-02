@@ -147,7 +147,9 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
   // files' bytes beside them, because two formats have none to assert. Each
   // file whole is on the page all the same, as its own viewer (FR-027).
   await expect(page.locator('.aci-custom-agent-source-diff')).toHaveCount(2);
-  await expect(page.getByRole('heading', { name: 'Source comparison' })).toHaveCount(0);
+  // The third block is headed but is not a third diff: `Source comparison`
+  // introduces one viewer per file, which is what the section below counts.
+  await expect(page.getByRole('heading', { name: 'Source comparison' })).toHaveCount(1);
   const sources = page.locator('.aci-custom-agent-compare__sources');
   await expect(sources.locator('section')).toHaveCount(2);
   // The authored spellings each format wraps its halves in are here and
@@ -224,18 +226,12 @@ test('renders the per-tool agent names and the serialized declarations', async (
   // Two surfaces, not three: the Cloud agent documents `.github/agents/`
   // alone, so a `.claude/agents/*.md` rests on the editor and CLI behaviors
   // and derives no hosted surface (`copilot.repo.agent.claude`).
-  await expect(copilotRow.locator('td').nth(1)).toHaveText(
-    'Named reviewer — surfaces: VS Code, CLI',
-  );
+  await expect(copilotRow.locator('td').nth(1)).toHaveText('Named reviewer (VS Code, CLI)');
   const claudeRow = toolTable.locator('tr', { hasText: 'Claude Code' });
   await expect(claudeRow.locator('td').first()).toHaveText('Not recognized');
-  await expect(claudeRow.locator('td').nth(1)).toHaveText(
-    'Named reviewer — surfaces: CLI and IDE clients',
-  );
+  await expect(claudeRow.locator('td').nth(1)).toHaveText('Named reviewer (CLI and IDE clients)');
   const codexRow = toolTable.locator('tr', { hasText: 'OpenAI Codex' });
-  await expect(codexRow.locator('td').first()).toHaveText(
-    'Named reviewer — surfaces: Local clients',
-  );
+  await expect(codexRow.locator('td').first()).toHaveText('Named reviewer (Local clients)');
   await expect(codexRow.locator('td').nth(1)).toHaveText('Not recognized');
 
   // The declared metadata is one canonical YAML document per side — the
@@ -295,10 +291,10 @@ test('compares two agent files one product names identically', async ({ page }) 
   const toolTable = page.locator('.aci-custom-agent-recognition-comparison table').first();
   await expect(toolTable.locator('tbody th')).toHaveText(['GitHub Copilot']);
   await expect(toolTable.locator('td').first()).toHaveText(
-    'Named planner — surfaces: VS Code, CLI, Cloud agent',
+    'Named planner (VS Code, CLI, Cloud agent)',
   );
   await expect(toolTable.locator('td').nth(1)).toHaveText(
-    'Named planner — surfaces: VS Code, CLI, Cloud agent',
+    'Named planner (VS Code, CLI, Cloud agent)',
   );
   // Both files parsed, so the serialized documents are two parses rather than
   // a stated failure.

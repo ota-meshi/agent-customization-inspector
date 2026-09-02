@@ -85,7 +85,7 @@ test.describe('the complete literal Copilot command detail', () => {
       .getByRole('link', { name: '.claude/commands/deploy.md' })
       .click();
     await expect(page).toHaveURL(
-      /\/prompts-and-commands\/detail\/repository\/\.claude\/commands\/deploy\.md$/u,
+      /\/prompts-and-commands\/detail\/repository\/\.claude\/commands\/deploy\.md\?name=deploy$/u,
     );
 
     const main = page.locator('main');

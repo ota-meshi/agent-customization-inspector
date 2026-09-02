@@ -75,7 +75,12 @@ test('the bar carries the search and the scheme control everywhere, and the inve
   await expect(page).toHaveURL(/\/repository$/u);
   await expect(search(page)).toBeVisible();
   await expect(page.getByRole('switch', { name: 'Dark theme' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Rescan repository' })).toHaveCount(1);
+  // The page's command names no Source — its heading already does — so the
+  // bar's `Rescan repository` is gone and `Rescan` is what stands here
+  // (`ScanProgress.vue`, `App.vue`). Exactly one of each: the same operation
+  // offered twice is what this asserts against.
+  await expect(page.getByRole('button', { name: 'Rescan repository' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Rescan', exact: true })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Refresh status' })).toHaveCount(1);
 });
 

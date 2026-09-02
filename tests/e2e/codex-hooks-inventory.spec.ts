@@ -112,8 +112,10 @@ test.describe('Codex hooks declared by a repository layer', () => {
     // The summary counts rows against the kind's own unfiltered inventory: a
     // kind whose total went unanswered would read "3 of 0" here. It is in the
     // rail beside the two filters it summarizes rather than around the panel,
-    // so it is addressed on its own section.
-    await expect(page.locator('.aci-inventory-filters')).toContainText('Showing 3 of 3 rows');
+    // so it is addressed on its own section. The unit is the kind's own — a
+    // hooks row is one declared event — so the summary says `events` where
+    // another kind's says what that kind counts by (`InventoryFilters.vue`).
+    await expect(page.locator('.aci-inventory-filters')).toContainText('Showing 3 of 3 events');
     await expect(items.filter({ hasText: 'SessionStart' })).toHaveCount(1);
     await expect(items.filter({ hasText: 'PreToolUse' })).toHaveCount(1);
     await expect(items.filter({ hasText: 'UserPromptSubmit' })).toHaveCount(1);

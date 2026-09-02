@@ -128,7 +128,7 @@ test.describe('the complete literal Claude subagent detail', () => {
       .getByRole('link', { name: /browser-tester\.md/u })
       .click();
     await expect(page).toHaveURL(
-      /\/agents\/detail\/repository\/\.claude\/agents\/browser-tester\.md$/u,
+      /\/agents\/detail\/repository\/\.claude\/agents\/browser-tester\.md\?name=browser-tester$/u,
     );
     await expect(
       page.getByRole('heading', { name: '.claude/agents/browser-tester.md' }),

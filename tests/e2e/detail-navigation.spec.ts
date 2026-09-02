@@ -222,8 +222,11 @@ test('moves to the neighbouring row a declaration kind lists, not its carrier', 
     await expect(page.locator(root), kind).toBeVisible();
 
     // Both moves exist, which they do not when the page matched the wrong row.
-    const next = page.getByRole('link', { name: new RegExp(`^Next in ${kind}: `, 'u') });
-    const previous = page.getByRole('link', { name: new RegExp(`^Previous in ${kind}: `, 'u') });
+    // No space is required after the colon: a neighbour a carrier declares
+    // under an empty name labels the move `Previous in MCP:` and nothing
+    // more, and requiring the separator would read that as an absent move.
+    const next = page.getByRole('link', { name: new RegExp(`^Next in ${kind}:`, 'u') });
+    const previous = page.getByRole('link', { name: new RegExp(`^Previous in ${kind}:`, 'u') });
     await expect(next, kind).toBeVisible();
     await expect(previous, kind).toBeVisible();
     // And the next move opens the declaration its label names rather than the
@@ -231,7 +234,7 @@ test('moves to the neighbouring row a declaration kind lists, not its carrier', 
     expect(await next.getAttribute('aria-label'), kind).toBe(`Next in ${kind}: ${third}`);
     await next.click();
     await expect(page.locator(`${root} .aci-detail-title`), kind).toHaveText(third);
-    await page.getByRole('link', { name: new RegExp(`^Previous in ${kind}: `, 'u') }).click();
+    await page.getByRole('link', { name: new RegExp(`^Previous in ${kind}:`, 'u') }).click();
     await expect(page.locator(`${root} .aci-detail-title`), kind).toHaveText(second);
   }
 });

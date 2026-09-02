@@ -166,11 +166,11 @@ test('renders the per-tool invocation names and the serialized declarations', as
   // Copilot reaches the one name two ways and the cells say which; Claude
   // reads the command file and nothing in the editor's prompts directory.
   const copilotRow = toolTable.locator('tr', { hasText: 'GitHub Copilot' });
-  await expect(copilotRow.locator('td').first()).toHaveText('Invoked as deploy — surfaces: CLI');
-  await expect(copilotRow.locator('td').nth(1)).toHaveText('Invoked as deploy — surfaces: VS Code');
+  await expect(copilotRow.locator('td').first()).toHaveText('Invoked as deploy (CLI)');
+  await expect(copilotRow.locator('td').nth(1)).toHaveText('Invoked as deploy (VS Code)');
   const claudeRow = toolTable.locator('tr', { hasText: 'Claude Code' });
   await expect(claudeRow.locator('td').first()).toHaveText(
-    'Invoked as deploy — surfaces: CLI and IDE clients',
+    'Invoked as deploy (CLI and IDE clients)',
   );
   await expect(claudeRow.locator('td').nth(1)).toHaveText('Not recognized');
 
@@ -200,10 +200,10 @@ test('compares two command files one product invokes by one name', async ({ page
   const toolTable = page.locator('.aci-prompt-recognition-comparison table').first();
   await expect(toolTable.locator('tbody th')).toHaveText(['Claude Code']);
   await expect(toolTable.locator('td').first()).toHaveText(
-    'Invoked as team:review — surfaces: CLI and IDE clients',
+    'Invoked as team:review (CLI and IDE clients)',
   );
   await expect(toolTable.locator('td').nth(1)).toHaveText(
-    'Invoked as team:review — surfaces: CLI and IDE clients',
+    'Invoked as team:review (CLI and IDE clients)',
   );
   // Both files declare nothing, so the serialized documents are two empty
   // parses rather than a stated failure.

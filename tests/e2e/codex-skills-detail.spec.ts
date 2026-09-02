@@ -90,7 +90,12 @@ async function openSkill(page: import('@playwright/test').Page, path: string): P
   // under more than one row opens the same page from any of them.
   const links = page
     .locator('.aci-source-family-blocks__members > li')
-    .locator(`a[href$="/${path}"]`);
+    // The path ends the address or is followed by the row's query: a detail
+    // link carries the name the row resolved (`?name=…`), so the path is the
+    // end of the href only where there is none. Anchored on both rather than
+    // matched loosely, so a path stays a whole trailing segment instead of
+    // something another address merely contains.
+    .locator(`a[href$="/${path}"], a[href*="/${path}?"]`);
   await links.first().waitFor();
   await links.first().click();
   // Waited for, not assumed: a caller's next click must not land on the

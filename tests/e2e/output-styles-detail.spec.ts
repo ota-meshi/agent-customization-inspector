@@ -72,6 +72,10 @@ test('opens a style from its row and heads the page by the file', async ({ page 
   // The file's own address, and beside it the row it was followed from: one
   // file can be listed under two names, and the link records which
   // (`detail-route.ts` § originRowNameQuery).
+  // Awaited before the address is read: a click starts the navigation and
+  // does not wait for it, so reading `page.url()` straight after it answers
+  // with the inventory the page has not left yet.
+  await expect(page).toHaveURL(/\/detail\//u);
   const opened = new URL(page.url());
   expect(opened.pathname).toBe(
     '/output-styles/detail/repository/.claude/output-styles/deploy-notes.md',

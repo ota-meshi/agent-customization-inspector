@@ -119,7 +119,9 @@ test.describe('the complete literal Copilot agent-profile detail', () => {
       .filter({ hasText: 'deployer' })
       .getByRole('link', { name: /deployer\.md/u })
       .click();
-    await expect(page).toHaveURL(/\/agents\/detail\/repository\/\.github\/agents\/deployer\.md$/u);
+    await expect(page).toHaveURL(
+      /\/agents\/detail\/repository\/\.github\/agents\/deployer\.md\?name=deployer$/u,
+    );
     await expect(page.getByRole('heading', { name: '.github/agents/deployer.md' })).toBeVisible();
 
     const main = page.locator('main');

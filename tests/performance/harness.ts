@@ -819,9 +819,22 @@ export async function runSc002MeasuredRun(
         // Resolve the control before starting the clock: the contract starts
         // the timers at the input dispatch, so DOM lookup is setup, not
         // measurement.
-        const rescanButton = buttons().find(
-          (candidate) => textOf(candidate) === 'Rescan repository',
-        )!;
+        // `Rescan`, not `Rescan repository`: this run is on the Repository
+        // page, whose heading already names the Source, so the command does
+        // not repeat it — the bar's command over the inventory is the one that
+        // does (`ScanProgress.vue`, `App.vue`). Named rather than asserted
+        // non-null, because a label this went looking for and did not find is
+        // what a reworded command looks like, and `!` would report it as a
+        // `TypeError` on `undefined` with nothing said about which control was
+        // missing.
+        const rescanButton = buttons().find((candidate) => textOf(candidate) === 'Rescan');
+        if (rescanButton === undefined) {
+          throw new Error(
+            `SC-002 found no "Rescan" command on the Repository page; buttons: ${buttons()
+              .map((candidate) => textOf(candidate))
+              .join(' | ')}`,
+          );
+        }
         const start = performance.now();
         rescanButton.click();
         let lastRefresh = start;
