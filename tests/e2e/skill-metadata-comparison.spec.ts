@@ -160,7 +160,7 @@ test('offers the same comparison entry from the skill detail page', async ({ pag
   await page.goto(host.origin);
   await page
     .locator('.aci-source-family-blocks__members > li', { hasText: AGENTS_SKILL })
-    .locator('.aci-skill-row__owner a')
+    .locator('.aci-row-file a')
     .first()
     .click();
   // A reader deep in a skill's files starts comparing from where they are:
@@ -210,7 +210,7 @@ test('is operable from the keyboard alone', async ({ page }) => {
 test('drops the content when the route leaves the comparison', async ({ page }) => {
   await openCompanionComparison(page);
   await expect(page.locator('.aci-source-diff')).toContainText(AGENTS_SECRET);
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-source-diff')).toHaveCount(0);
   const text = await page.locator('main').innerText();
   expect(text).not.toContain(AGENTS_SECRET);

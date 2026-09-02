@@ -65,7 +65,9 @@ import {
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
-import { sourceFactsOf } from '../../../components/source-name';
+import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
+import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -78,6 +80,7 @@ import {
 import { customAgentComparisonRouteFor } from '../../../composables/custom-agent-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
+import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
   fileIdentityKey,
@@ -558,6 +561,12 @@ const readyView = computed(() => {
   // another file's name for that frame (FR-025, FR-030).
   const leftDetailPath = left.file.sourceRelativePath;
   const rightDetailPath = right.file.sourceRelativePath;
+  // Read once and used twice — beside each side's path, and as the
+  // recognition comparison's side input — so the products a side box names
+  // and the products its rows compare cannot disagree (AGENTS.md
+  // § Implementation simplicity policy).
+  const leftDefinitions = definitionsOf(left.file);
+  const rightDefinitions = definitionsOf(right.file);
   return {
     sides: [
       {
@@ -565,20 +574,47 @@ const readyView = computed(() => {
         path: leftDetailPath,
         detail: left,
         sourceText: left.file.sourceText,
+        recognitions: leftDefinitions.map((entry) => entry.definition),
       },
       {
         caption: 'Second file',
         path: rightDetailPath,
         detail: right,
         sourceText: right.file.sourceText,
+        recognitions: rightDefinitions.map((entry) => entry.definition),
       },
     ] as const,
     recognition: new CustomAgentRecognitionComparison(
-      { detail: left, definitions: definitionsOf(left.file) },
-      { detail: right, definitions: definitionsOf(right.file) },
+      { detail: left, definitions: leftDefinitions },
+      { detail: right, definitions: rightDefinitions },
     ),
   };
 });
+
+/**
+ * The Source family this comparison stands in, as the family's own word, or
+ * null where naming it distinguishes nothing — a session carrying one Source
+ * (`source-name.ts` § sourceFamilyNameOf). The comparison never spans two
+ * families, so one word covers both sides.
+ */
+const crumbFamilyText = computed(() =>
+  family.value === null ? null : sourceFamilyNameOf(sources.value, family.value),
+);
+
+/**
+ * The agent name the two files share, which is what the comparison is of. Null
+ * only where the link names no row, which is where the crumb step would name
+ * nothing.
+ *
+ * The empty name is a name: strict JSON and TOML both accept `''`, so a row is
+ * listed under it and its own comparison link carries it ({@link queryValue}).
+ * Folded to null it took the subject out of the crumbs, out of the line under
+ * the heading, and out of the tab title, which then read `Comparing
+ * custom-agent files:  — …`.
+ */
+const crumbSubject = computed(() =>
+  rowName.value === null ? null : new AuthoredName(rowName.value),
+);
 
 /**
  * What this page says for the state it is in — one value read by both the
@@ -763,7 +799,12 @@ const titleSubject = computed<string>(() => {
       if (sides === null) {
         return 'Comparing custom-agent files';
       }
-      const subject = rowName.value;
+      // A name with nothing to draw is named rather than left blank, exactly
+      // as the crumbs and the subject line name it ({@link AuthoredName}); the
+      // shell escapes a title subject once at the rendering boundary, so an
+      // authored name goes in raw.
+      const name = crumbSubject.value;
+      const subject = name === null ? null : name.isAuthored ? name.authored : name.text;
       return subject === null
         ? `Comparing custom-agent files — ${sides}`
         : `Comparing custom-agent files: ${subject} — ${sides}`;
@@ -799,13 +840,49 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="aci-custom-agent-compare">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the
-         custom-agent list rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=agent">Back to the inventory</NuxtLink></p>
+  <div class="aci-custom-agent-compare aci-route">
+    <!-- The way back, drawn in the bar with every other route's moves
+         (`DetailNavigation.vue`). The kind is URL state, so naming it is what
+         makes the move land on the custom-agents list rather than the kind
+         order's default tab. A comparison has no neighbouring row to step to:
+         what stands beside it is the other copy, which its own pickers
+         choose. -->
+    <DetailNavigation
+      list-route="/?kind=agent"
+      :list-text="CUSTOMIZATION_KIND_TEXT.agent"
+      :previous="null"
+      :next="null"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         kind, the subject the two copies share, and this page's own step. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="crumbFamilyText !== null">{{ crumbFamilyText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.agent }} <span>›</span>
+      <template v-if="crumbSubject !== null"
+        ><span class="aci-path" :class="{ 'aci-authored-text': crumbSubject.isAuthored }">{{
+          crumbSubject.text
+        }}</span>
+        <span>›</span> </template
+      ><span class="aci-detail-crumbs__subject">Compare</span>
+    </p>
 
     <h2 ref="heading" tabindex="-1">Compare custom-agent files</h2>
+
+    <!-- What is being compared, on the line directly below the heading so the
+         two are read together. The heading states the page's purpose, because
+         focus lands there on arrival and a screen reader hears it alone
+         (WCAG 2.4.6); putting the subject in it would give each kind its own
+         sentence, and an applicability range would read as "Compare **". The
+         name is the third crumb above as well, where it says where the page
+         sits rather than what it is showing. -->
+    <p v-if="crumbSubject !== null" class="aci-detail-attributes">
+      <strong
+        class="aci-detail-attributes__subject aci-path"
+        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+        >{{ crumbSubject.text }}</strong
+      >
+    </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
          region that appears together with its message is not reliably read
@@ -825,7 +902,11 @@ onBeforeUnmount(() => {
          recovers from — while a link fault ({@link pairFault}) renders the
          report alone. Native selects, each labelled through `for`/`id`
          rather than a wrapping label (WCAG 2.4.6). -->
-    <div v-if="pickersAvailable" ref="pickersRegion" class="aci-custom-agent-compare__pickers">
+    <div
+      v-if="pickersAvailable"
+      ref="pickersRegion"
+      class="aci-compare-pickers aci-custom-agent-compare__pickers"
+    >
       <div class="aci-custom-agent-compare__picker">
         <label for="aci-custom-agent-compare-first">First custom-agent file</label>
         <select id="aci-custom-agent-compare-first" v-model="leftSelection">
@@ -870,9 +951,9 @@ onBeforeUnmount(() => {
            read outcome — so neither file loses it to the diff
            (US3 scenario 1). The order is the link's: first named, first
            shown. -->
-      <div class="aci-custom-agent-compare__files">
-        <section v-for="side in readyView.sides" :key="side.caption">
-          <h3>{{ side.caption }}</h3>
+      <div class="aci-compare-sides">
+        <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
+          <span class="aci-compare-side__caption">{{ side.caption }}</span>
           <p class="aci-custom-agent-compare__file-path aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
@@ -882,9 +963,9 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
-      <!-- The component owns the section order — the declarations, the
-           instructions, the complete files it takes below through the
-           `source` slot, and last the recognitions (research.md § 7). -->
+      <!-- The component owns the section order — the recognitions, the
+           declarations, the instructions, and last the complete files it takes
+           below through the `source` slot (research.md § 7). -->
       <RecognitionComparison
         :comparison="readyView.recognition"
         :left-path="readyView.sides[0].path"
@@ -897,11 +978,16 @@ onBeforeUnmount(() => {
                no meaningful byte-for-byte alignment to assert. This is also
                all a reader gets when a side's extraction failed, which is
                when the bytes matter most (FR-028). -->
-          <h3>Source</h3>
+          <h3 class="aci-compare-block-title">Source comparison</h3>
+          <p class="aci-note">
+            Each side is the file exactly as written, frontmatter included — one viewer per file
+            rather than one diff, because the two formats have no line-for-line alignment.
+          </p>
           <div class="aci-custom-agent-compare__sources">
             <section v-for="side in readyView.sides" :key="side.caption">
-              <h4>{{ side.caption }}</h4>
               <SourceViewer
+                :panel-heading-level="4"
+                :panel-label="side.caption"
                 :source-text="side.sourceText"
                 :source-relative-path="side.path"
                 :register-content-owner="registerComparisonContentOwner"
@@ -920,15 +1006,17 @@ onBeforeUnmount(() => {
          whether focus sits on a control an automatic refresh is about to
          unmount (WCAG 2.4.3). -->
     <div v-else-if="stateStatement !== null" ref="stateRegion">
-      <p :class="retryable ? 'aci-error' : 'aci-note'">{{ stateStatement }}</p>
-      <p v-if="retryable">
-        <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
-      </p>
-      <p>
-        <NuxtLink to="/?kind=agent"
-          >Return to the inventory and open a comparison from a custom-agent row.</NuxtLink
-        >
-      </p>
+      <SubjectUnavailable :outcome="retryable ? 'error' : 'warning'">
+        {{ stateStatement }}
+        <template #exit>
+          <button v-if="retryable" ref="retryButton" type="button" @click="retryOpen">
+            Try again
+          </button>
+          <NuxtLink to="/?kind=agent"
+            >Return to the inventory and open a comparison from a custom-agent row.</NuxtLink
+          >
+        </template>
+      </SubjectUnavailable>
     </div>
   </div>
 </template>
@@ -945,59 +1033,6 @@ onBeforeUnmount(() => {
 
 .aci-custom-agent-compare h2 {
   margin: 0.25rem 0 0.5rem;
-}
-
-.aci-custom-agent-compare h3 {
-  font-size: 1rem;
-  margin: 0.75rem 0 0.25rem;
-}
-
-/* The two pickers side by side, stacking on a narrow viewport. Each label is
-   a column so the select sits under its name, and the selects shrink inside
-   their columns rather than widening the page (WCAG 1.4.10). */
-.aci-custom-agent-compare__pickers {
-  display: grid;
-  gap: 0.5rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-  margin-block: 0.25rem;
-}
-
-@media (min-width: 52rem) {
-  .aci-custom-agent-compare__pickers {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-custom-agent-compare__picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.aci-custom-agent-compare__pickers select {
-  max-inline-size: 100%;
-}
-
-/* The two identities side by side above the diff, stacking on a narrow
-   viewport (WCAG 1.4.10). */
-.aci-custom-agent-compare__files {
-  display: grid;
-  gap: 0.25rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 52rem) {
-  .aci-custom-agent-compare__files {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-custom-agent-compare__files h3 {
-  margin: 0.5rem 0 0.1rem;
-}
-
-.aci-custom-agent-compare__files p {
-  margin: 0.1rem 0;
 }
 
 /* The two complete sources side by side, stacking on a narrow viewport

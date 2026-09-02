@@ -100,16 +100,19 @@ test.describe('the MCP declaration comparison', () => {
     ).toBeFocused();
 
     const main = page.locator('main');
-    // The comparison's subject is the row's declared name.
-    await expect(main.locator('.aci-mcp-compare__name')).toHaveText('shared');
-    // Each side keeps its identity: path, Source, kind, read outcome, and
-    // the recognizing products the row lists — and no source panel follows
-    // either (FR-007).
+    // The comparison's subject is the row's declared name, stated once on the
+    // line under the heading.
+    await expect(main.locator('.aci-detail-attributes__subject')).toHaveText('shared');
+    // Each side keeps its identity: path, Source, kind, read outcome — and no
+    // source panel follows either (FR-007). Which products read which side is
+    // the recognition table's, where a product that reads neither can be
+    // stated at all.
     await expect(main).toContainText('.codex/config.toml');
     await expect(main).toContainText('.mcp.json');
     await expect(main).toContainText('Repository · MCP');
-    await expect(main).toContainText('OpenAI Codex');
-    await expect(main).toContainText('Claude Code');
+    const recognitions = main.locator('.aci-recognition-table');
+    await expect(recognitions).toContainText('OpenAI Codex');
+    await expect(recognitions).toContainText('Claude Code');
     // The Monaco diff holds both serialized declarations: the fields as
     // JSON, the credentials whole and unmarked, the environment reference as
     // its own characters (FR-025, FR-026).
@@ -215,6 +218,14 @@ test.describe('the MCP declaration comparison', () => {
     await page.goto(
       new URL('/mcp/detail/repository/.mcp.json?server=shared', host.origin).toString(),
     );
+    // The entry sits at the end of the heading's own line: it acts on the
+    // subject that heading names — this server across the carriers that
+    // declare it — rather than on a section below it.
+    await expect(
+      page.locator('.aci-mcp-detail__title').getByRole('link', {
+        name: "Compare this server's declarations",
+      }),
+    ).toBeVisible();
     await page.getByRole('link', { name: "Compare this server's declarations" }).click();
     await expect(page).toHaveURL(/name=shared/u);
   });

@@ -27,7 +27,7 @@ import type {
   SourceKind,
   SourceSelector,
 } from './api-types';
-import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_ORDER, SUPPORTED_TOOL_TEXT } from './entities';
+import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_ORDER } from './entities';
 
 /**
  * What each application a file can be opened in reads as, in the menu and in
@@ -199,13 +199,25 @@ export const GLOBAL_MEMBER_ORDER: readonly GlobalMemberId[] = [...SUPPORTED_TOOL
 
 /**
  * What each Global member reads as wherever a preview row, control, or Source
- * summary names one. The three tools read as themselves — the caption is the
- * tool's own, spread rather than restated so it cannot drift — and the shared
- * agent home is named for what it is: the `~/.agents` directory Codex and
- * Copilot both read (FR-045).
+ * summary names one: a member is a *directory*, so each is named for the
+ * directory it is rather than for a product.
+ *
+ * Not the tools' own captions, which is what a member label spread from
+ * `SUPPORTED_TOOL_TEXT` used to be. A member says where a file came from and a
+ * recognition says which product reads it, and those are different questions
+ * with different answers: `~/.agents` is one directory that Codex and Copilot
+ * both read (FR-045), so no product names it — and on a row that states both,
+ * a product-named member said the same product twice while meaning something
+ * else by it.
  */
 export const GLOBAL_MEMBER_TEXT: Readonly<Record<GlobalMemberId, string>> = {
-  ...SUPPORTED_TOOL_TEXT,
+  /** `~/.config/github-copilot` and its siblings: Copilot's own directory. */
+  copilot: 'Copilot home',
+  /** `~/.claude`: Claude Code's own directory. */
+  claude: 'Claude home',
+  /** `~/.codex`: Codex's own directory. */
+  codex: 'Codex home',
+  /** `~/.agents`: the directory Codex and Copilot both read (FR-045). */
   agents: 'Shared agent home',
 };
 

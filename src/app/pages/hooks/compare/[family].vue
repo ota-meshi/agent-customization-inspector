@@ -43,6 +43,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
+import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import RecognitionComparison from '../../../components/hook-comparison/RecognitionComparison.vue';
 import {
   comparisonFamilyOf,
@@ -61,18 +63,20 @@ import {
 import { hookComparisonRouteFor } from '../../../composables/hook-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
+import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
   fileIdentityKey,
-  SUPPORTED_TOOL_TEXT,
-  pathPresentationLabel,
 } from '../../../../shared/entities';
 import { HOOK_CARRIER_FORM_TEXT } from '../../../../shared/api-text';
-import type { HookCarrierDetailDto, SourceKind } from '../../../../shared/api-types';
-import { sourceFactsOf } from '../../../components/source-name';
+import type {
+  HookCarrierDetailDto,
+  HookDeclarationDto,
+  SourceKind,
+} from '../../../../shared/api-types';
+import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 
 const sessionViewState = useSessionViewState();
 
@@ -371,46 +375,15 @@ const rightSelection = computed({
 });
 
 /**
- * The subject line's text: the declared event through the shared label rule,
- * with the empty event noted the way the inventory row heads it — strict JSON
- * accepts the empty string as an event name (FR-025). Null while the URL
- * carries no event, where the fault statement is the page.
+ * One side's recognitions: each product whose recognition the row lists for
+ * that carrier, with the surfaces its admission rests on — the inventory row's
+ * own statements, repeated per side so neither declaration loses which product
+ * reads it (FR-009: naming a surface never claims it ran the hook).
  */
-const subjectEventText = computed(() =>
-  subjectEvent.value === null
-    ? null
-    : subjectEvent.value === ''
-      ? '(empty name)'
-      : pathPresentationLabel(subjectEvent.value),
-);
-
-/**
- * Whether {@link subjectEventText} is the authored spelling rather than this
- * product's note, which decides the authored-text styling.
- */
-const subjectEventIsAuthored = computed(
-  () => subjectEvent.value !== null && subjectEvent.value !== '',
-);
-
-/**
- * One side's recognition attribution: each product whose recognition the row
- * lists for that carrier, with the surfaces its admission rests on — the
- * inventory row's own statements, repeated per side so neither declaration
- * loses which product reads it (FR-009: naming a surface never claims it ran
- * the hook).
- */
-function attributionText(sourceId: string, path: string): string {
-  return (owningRow.value?.declarations ?? [])
-    .filter(
-      (declaration) => declaration.sourceId === sourceId && declaration.sourceRelativePath === path,
-    )
-    .map(
-      (declaration) =>
-        `${SUPPORTED_TOOL_TEXT[declaration.tool]} (${declaration.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', ')})`,
-    )
-    .join(' · ');
+function recognitionsOf(sourceId: string, path: string): readonly HookDeclarationDto[] {
+  return (owningRow.value?.declarations ?? []).filter(
+    (declaration) => declaration.sourceId === sourceId && declaration.sourceRelativePath === path,
+  );
 }
 
 /**
@@ -439,8 +412,8 @@ const readyView = computed(() => {
     event: subjectEvent.value,
     left,
     right,
-    leftAttribution: attributionText(left.file.sourceId, left.file.sourceRelativePath),
-    rightAttribution: attributionText(right.file.sourceId, right.file.sourceRelativePath),
+    leftRecognitions: recognitionsOf(left.file.sourceId, left.file.sourceRelativePath),
+    rightRecognitions: recognitionsOf(right.file.sourceId, right.file.sourceRelativePath),
     leftFactsText: fileFacts(left),
     rightFactsText: fileFacts(right),
   };
@@ -465,6 +438,30 @@ function fileFacts(detail: HookCarrierDetailDto): string {
   }
   return facts.join(' · ');
 }
+
+/**
+ * The Source family this comparison stands in, as the family's own word, or
+ * null where naming it distinguishes nothing — a session carrying one Source
+ * (`source-name.ts` § sourceFamilyNameOf). The comparison never spans two
+ * families, so one word covers both sides.
+ */
+const crumbFamilyText = computed(() =>
+  family.value === null ? null : sourceFamilyNameOf(sources.value, family.value),
+);
+
+/**
+ * The hook event the two carriers declare, which is what the comparison is of.
+ * Null before the pair resolves, where the crumb step would name nothing.
+ *
+ * The empty name is an event name: strict JSON and TOML both accept `""` as an event key, so a row is listed
+ * under it and its comparison link carries it. Drawn through the shared unit,
+ * so the crumb and the subject line note it the way the inventory row and the
+ * detail do, instead of leaving their place on the page blank
+ * ({@link AuthoredName}).
+ */
+const crumbSubject = computed(() =>
+  subjectEvent.value === null ? null : new AuthoredName(subjectEvent.value),
+);
 
 /**
  * What this page says for the state it is in — one value read by both the
@@ -625,7 +622,13 @@ const titleSubject = computed<string>(() => {
       if (sides === null) {
         return 'Comparing hook declarations';
       }
-      const subject = subjectEvent.value;
+      // A name whose characters draw nothing is titled by the note the crumb
+      // and the subject line show, never left blank: spliced in raw it put a
+      // doubled space in the title, which the shell then spelled out whole
+      // (`App.vue` § documentTitle). An authored name goes in raw, because the
+      // shell escapes a title subject once at its own boundary.
+      const name = crumbSubject.value;
+      const subject = name === null ? null : name.isAuthored ? name.authored : name.text;
       return subject === null
         ? `Comparing hook declarations — ${sides}`
         : `Comparing hook declarations: ${subject} — ${sides}`;
@@ -657,23 +660,48 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="aci-hook-compare">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the hook list
-         rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=hook">Back to the inventory</NuxtLink></p>
+  <div class="aci-hook-compare aci-route">
+    <!-- The way back, drawn in the bar with every other route's moves
+         (`DetailNavigation.vue`). The kind is URL state, so naming it is what
+         makes the move land on the hook list rather than the kind
+         order's default tab. A comparison has no neighbouring row to step to:
+         what stands beside it is the other copy, which its own pickers
+         choose. -->
+    <DetailNavigation
+      list-route="/?kind=hook"
+      :list-text="CUSTOMIZATION_KIND_TEXT.hook"
+      :previous="null"
+      :next="null"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         kind, the subject the two copies share, and this page's own step. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="crumbFamilyText !== null">{{ crumbFamilyText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.hook }} <span>›</span>
+      <template v-if="crumbSubject !== null"
+        ><span class="aci-path" :class="{ 'aci-authored-text': crumbSubject.isAuthored }">{{
+          crumbSubject.text
+        }}</span>
+        <span>›</span> </template
+      ><span class="aci-detail-crumbs__subject">Compare</span>
+    </p>
 
     <h2 ref="heading" tabindex="-1">Compare hook declarations</h2>
 
-    <!-- The comparison's subject: the declared event whose row owns it, in the
-         carriers' own spelling (FR-007) — the same heading rule its inventory
-         row uses. -->
-    <p
-      v-if="subjectEventText !== null && pairFault === null"
-      class="aci-hook-compare__event"
-      :class="subjectEventIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-    >
-      {{ subjectEventText }}
+    <!-- What is being compared, on the line directly below the heading so the
+         two are read together. The heading states the page's purpose, because
+         focus lands there on arrival and a screen reader hears it alone
+         (WCAG 2.4.6); putting the subject in it would give each kind its own
+         sentence, and an applicability range would read as "Compare **". The
+         name is the third crumb above as well, where it says where the page
+         sits rather than what it is showing. -->
+    <p v-if="crumbSubject !== null" class="aci-detail-attributes">
+      <strong
+        class="aci-detail-attributes__subject aci-path"
+        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+        >{{ crumbSubject.text }}</strong
+      >
     </p>
 
     <!-- Stable rather than inserted with the state it reports, because a region
@@ -688,7 +716,11 @@ onBeforeUnmount(() => {
          side — the same per-side motion as the sibling surfaces, under the same
          rule: only a row with more than two comparable carriers offers a move.
          Native selects, each labelled through `for`/`id` (WCAG 2.4.6). -->
-    <div v-if="pickersAvailable" ref="pickersRegion" class="aci-hook-compare__pickers">
+    <div
+      v-if="pickersAvailable"
+      ref="pickersRegion"
+      class="aci-compare-pickers aci-hook-compare__pickers"
+    >
       <div class="aci-hook-compare__picker">
         <label for="aci-hook-compare-first">First hook file</label>
         <select id="aci-hook-compare-first" v-model="leftSelection">
@@ -732,8 +764,8 @@ onBeforeUnmount(() => {
         :event="readyView.event"
         :left-detail="readyView.left"
         :right-detail="readyView.right"
-        :left-attribution="readyView.leftAttribution"
-        :right-attribution="readyView.rightAttribution"
+        :left-recognitions="readyView.leftRecognitions"
+        :right-recognitions="readyView.rightRecognitions"
         :left-facts-text="readyView.leftFactsText"
         :right-facts-text="readyView.rightFactsText"
       />
@@ -747,15 +779,17 @@ onBeforeUnmount(() => {
          whether focus sits on a control an automatic refresh is about to
          unmount (WCAG 2.4.3). -->
     <div v-else-if="stateStatement !== null" ref="stateRegion">
-      <p :class="retryable ? 'aci-error' : 'aci-note'">{{ stateStatement }}</p>
-      <p v-if="retryable">
-        <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
-      </p>
-      <p>
-        <NuxtLink to="/?kind=hook"
-          >Return to the inventory and open a comparison from a hook row.</NuxtLink
-        >
-      </p>
+      <SubjectUnavailable :outcome="retryable ? 'error' : 'warning'">
+        {{ stateStatement }}
+        <template #exit>
+          <button v-if="retryable" ref="retryButton" type="button" @click="retryOpen">
+            Try again
+          </button>
+          <NuxtLink to="/?kind=hook"
+            >Return to the inventory and open a comparison from a hook row.</NuxtLink
+          >
+        </template>
+      </SubjectUnavailable>
     </div>
   </div>
 </template>
@@ -772,37 +806,5 @@ onBeforeUnmount(() => {
 
 .aci-hook-compare h2 {
   margin: 0.25rem 0 0.5rem;
-}
-
-/* The subject line reads as the row heading it repeats: the declared event,
-   emphasized over the state copy around it. */
-.aci-hook-compare__event {
-  font-weight: 600;
-  margin: 0 0 0.25rem;
-}
-
-/* The two pickers side by side, stacking on a narrow viewport; the selects
-   shrink inside their columns rather than widening the page (WCAG 1.4.10). */
-.aci-hook-compare__pickers {
-  display: grid;
-  gap: 0.5rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-  margin-block: 0.25rem;
-}
-
-@media (min-width: 52rem) {
-  .aci-hook-compare__pickers {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-hook-compare__picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.aci-hook-compare__pickers select {
-  max-inline-size: 100%;
 }
 </style>

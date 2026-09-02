@@ -32,8 +32,14 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
+import LeavesIcon from '~icons/lucide/arrow-right';
+import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
+import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
+import { otherCopiesOf } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
@@ -41,12 +47,15 @@ import {
   familyGenerationOf,
   asSourceSelector,
   decodeDetailRoutePath,
+  detailNeighbours,
+  detailRoute,
   type SourceSelector,
 } from '../../../../components/detail-route';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { instructionComparisonRouteFor } from '../../../../composables/instruction-comparison';
 import { usePageOwnership } from '../../../../composables/page-ownership';
+import { ApplicabilityRange } from '../../../../components/applicability-range';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
@@ -54,13 +63,13 @@ import {
   fileIdentityKey,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
-  SUPPORTED_TOOL_TEXT,
+  accessiblePresentationLabel,
+  applicabilityRangePresentation,
   escapeControlCharacters,
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
-import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
 const sessionViewState = useSessionViewState();
 
@@ -150,6 +159,95 @@ const owner = computed(
 );
 
 /**
+ * The published row this file belongs to: the range it governs, of its own
+ * Source. It is what the range attribute and the strip of other files below it
+ * are read from (FR-030).
+ */
+const ownerRow = computed(
+  () =>
+    (snapshot.value?.instructions ?? []).find(
+      (entry) =>
+        entry.sourceId === openSourceId.value &&
+        entry.files.some((file) => file.sourceRelativePath === openPath.value),
+    ) ?? null,
+);
+
+/**
+ * What this file governs, in the presentation form the inventory shows: a
+ * range spanning lines cannot read as two, and the backslashes a range uses to
+ * spell a literal directory name stay the glob syntax they are
+ * ({@link applicabilityRangePresentation}). The no-range copy says none is
+ * known rather than none is declared, because a file whose declarations could
+ * not be read may well declare one (FR-028).
+ */
+const rangeText = computed(() =>
+  ownerRow.value === null || ownerRow.value.applicabilityRange === null
+    ? 'No known applicability range'
+    : applicabilityRangePresentation(ownerRow.value.applicabilityRange),
+);
+
+/**
+ * The other files governing the same range, across every Source that governs
+ * it: what the strip offers, so the next file of the range is one move rather
+ * than a return to the list (FR-007). The one on screen is excluded by the
+ * strip itself ({@link otherCopiesOf}).
+ */
+const rangeCopies = computed(() =>
+  (snapshot.value?.instructions ?? [])
+    .filter((entry) => entry.applicabilityRange === ownerRow.value?.applicabilityRange)
+    .flatMap((entry) =>
+      entry.files.map((file) => ({
+        key: fileIdentityKey(entry.sourceId, file.sourceRelativePath),
+        sourceId: entry.sourceId,
+        pathText: pathPresentationLabel(file.sourceRelativePath),
+        opens: {
+          accessibleText: sessionSources.qualifiedLinkName(
+            accessiblePresentationLabel(file.sourceRelativePath),
+            entry.sourceId,
+          ),
+          route: detailRoute(
+            'instructions',
+            file.sourceRelativePath,
+            sessionSources.selectorOf(entry.sourceId),
+          ),
+        },
+        recognitions: file.recognitions,
+        carrierText: null,
+      })),
+    ),
+);
+
+/** The strip's own entries: every copy but the one this page shows. */
+const otherCopies = computed(() =>
+  otherCopiesOf(rangeCopies.value, fileIdentityKey(openSourceId.value ?? '', openPath.value)),
+);
+
+/**
+ * The ranges either side of this file's in the list's own order, so the next
+ * range is one move rather than a return to the inventory (FR-007). The
+ * neighbours are ranges rather than files, because a range is what the list's
+ * rows are.
+ */
+const listNeighbours = computed(() => {
+  const rows = (snapshot.value?.instructions ?? []).map((entry) => ({
+    // The single-line rule, as every other kind's moves use: the control does
+    // not render its own whitespace and its accessible name collapses it, so
+    // `**` and ` **` would otherwise name one move twice
+    // ({@link ApplicabilityRange}; `DetailNavigation.vue`).
+    label: new ApplicabilityRange(entry.applicabilityRange).singleLineText,
+    route: detailRoute(
+      'instructions',
+      entry.files[0]?.sourceRelativePath ?? '',
+      sessionSources.selectorOf(entry.sourceId),
+    ),
+  }));
+  return detailNeighbours(
+    rows,
+    (snapshot.value?.instructions ?? []).findIndex((entry) => entry === ownerRow.value),
+  );
+});
+
+/**
  * The path as the heading shows it, through the one label rule every surface
  * that draws a path uses ({@link pathPresentationLabel}).
  */
@@ -169,7 +267,7 @@ const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacte
 // where more than one family is inspected, and the consented directory where
 // the family holds more than one Source — the shared derivation every
 // path-addressed detail states them through (`source-facts.ts`).
-const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
   () => snapshot.value?.sources ?? [],
   () => openSourceId.value,
 );
@@ -194,16 +292,7 @@ const openFamily = computed<SourceKind | null>(() => {
  * recognitions are already in the closed tool order and each one's surfaces in
  * the closed surface order.
  */
-const toolsText = computed(() =>
-  (owner.value?.recognitions ?? [])
-    .map(
-      (recognition) =>
-        `${SUPPORTED_TOOL_TEXT[recognition.tool]} (${recognition.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', ')})`,
-    )
-    .join(', '),
-);
+const recognitions = computed(() => owner.value?.recognitions ?? []);
 
 /** Which family one published Source belongs to, for the block below. */
 function familyOf(sourceId: string): SourceKind | null {
@@ -638,14 +727,29 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-instruction-detail">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the
+  <div ref="pageRoot" class="aci-instruction-detail aci-route">
+    <!-- The way back and the ranges either side of this file's, drawn in the
+         bar with every other route's moves (`DetailNavigation.vue`). The kind
+         is URL state, so naming it is what makes the move land on the
          instructions list rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=instructions">Back to the inventory</NuxtLink></p>
+    <DetailNavigation
+      list-route="/?kind=instructions"
+      :list-text="CUSTOMIZATION_KIND_TEXT.instructions"
+      :previous="listNeighbours.previous"
+      :next="listNeighbours.next"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         Source family, the kind, and this page's own subject. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="sourceFamilyCrumbText !== null"
+        >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.instructions }} <span>›</span>
+      <span class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
+    </p>
 
     <div class="aci-instruction-detail__title">
-      <h2 ref="heading" tabindex="-1">
+      <h2 ref="heading" tabindex="-1" class="aci-detail-title">
         <!-- The file's path heads the page — the row's own identity, in the
            same spelling the inventory lists: escaped for presentation, never
            a locator anything can open (FR-024, FR-030). A path whose escaped
@@ -659,15 +763,18 @@ onBeforeUnmount(() => {
           pathText
         }}</span>
       </h2>
-      <!-- Beside the path, because the path is what it opens. Outside the
-         heading so it does not join the heading's accessible name: a reader
-         hearing the page's landmarks should hear the file, not an action on
-         it (WCAG 2.4.6). -->
-      <OpenFileButton
-        v-if="openDetail !== null"
-        :source-relative-path="openDetail.file.sourceRelativePath"
-        :source="openSource"
-      />
+      <!-- The comparison this file's range can make (FR-011), at the end of
+           the heading's own line — where every kind whose subject is the
+           heading puts its own (`agents/detail`, `mcp/detail`). On the tabs'
+           row it read as a control on what the tabs select, which is one half
+           of the file rather than the file this comparison is of. -->
+      <NuxtLink
+        v-if="comparePairRoute !== null"
+        :to="comparePairRoute"
+        class="aci-button aci-button--primary aci-instruction-detail__title-end"
+        >Compare this instruction file
+        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
     </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -681,13 +788,13 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-else-if="detailState === 'stale' || owner === null">
-      <p class="aci-error">
+      <SubjectUnavailable outcome="warning">
         Nothing in the current scan sits at this link's path. The inventory may have changed since
         the link was made; a rescan that brings the path back will make it resolve again.
-      </p>
-      <p>
-        <NuxtLink to="/?kind=instructions">Return to the inventory and open it again.</NuxtLink>
-      </p>
+        <template #exit>
+          <NuxtLink to="/?kind=instructions">Return to the inventory and open it again.</NuxtLink>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -695,39 +802,62 @@ onBeforeUnmount(() => {
          the shell reports what happened to the session, so neither hides or
          repeats the other. -->
     <template v-else-if="openDetail === null">
-      <p class="aci-error">{{ detailFailure }}</p>
-      <p>
-        <button type="button" @click="retryOpen">Try again</button>
-      </p>
+      <SubjectUnavailable outcome="error">
+        {{ detailFailure }}
+        <template #exit>
+          <button type="button" @click="retryOpen">Try again</button>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <template v-else>
-      <div class="aci-instruction-detail__overview">
-        <!-- Which products recognize the file, restated from the row so the
-             page and the list agree, beside the kind's own caption (FR-007).
-             No product is quoted for what it would select or load: existence
-             is what an admission proves (FR-009). -->
-        <p class="aci-instruction-detail__recognition">
-          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
-          >{{ toolsText }} ·
-          {{ CUSTOMIZATION_KIND_TEXT.instructions }}
-        </p>
+      <!-- What this customization is, on one line: what the file governs, how
+           it read, which products recognize it and where they document reading
+           it, and the command that opens it. Restated from the row so the page
+           and the list agree (FR-007); no product is quoted for what it would
+           select or load, because existence is what an admission proves
+           (FR-009). -->
+      <p class="aci-detail-attributes">
+        <span
+          >Applies to <strong class="aci-path aci-authored-text">{{ rangeText }}</strong></span
+        >
+        <span
+          >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
+          }}<template v-if="openDetail.file.encoding !== 'unknown'">
+            · {{ openDetail.file.sizeBytes }} bytes</template
+          ></span
+        >
+        <RecognitionMarks :recognitions="recognitions" named />
+        <!-- The command that opens the file, at the end of the line that
+             states that file's facts — the one place every kind puts it, so a
+             reader who found it on one detail finds it on the next. Outside
+             the heading so it does not join the heading's accessible name: a
+             reader hearing the page's landmarks should hear the file, not an
+             action on it (WCAG 2.4.6). -->
+        <span class="aci-detail-attributes__end">
+          <OpenFileButton
+            :source-relative-path="openDetail.file.sourceRelativePath"
+            :source="openSource"
+          />
+        </span>
+      </p>
 
-        <!-- Which directory the file was in, where its family holds more than
-             one: an escaped presentation of the admitted root, never a path
-             anything can open (FR-002). -->
-        <p v-if="sourceRootText !== null" class="aci-instruction-detail__root aci-note">
-          <span class="aci-authored-text">{{ sourceRootText }}</span>
-        </p>
+      <!-- Which directory the file was in, where its family holds more than
+           one: an escaped presentation of the admitted root, never a path
+           anything can open (FR-002). -->
+      <p v-if="sourceRootText !== null" class="aci-instruction-detail__root aci-note">
+        <span class="aci-authored-text">{{ sourceRootText }}</span>
+      </p>
 
-        <!-- The comparison entry for this file (FR-011): present exactly
-             when the current scan holds another readable instruction file to
-             stand opposite it. The comparison surface's own pickers take
-             over from there. -->
-        <p v-if="comparePairRoute !== null" class="aci-instruction-detail__compare">
-          <NuxtLink :to="comparePairRoute">Compare this instruction file</NuxtLink>
-        </p>
-      </div>
+      <!-- The other files governing the same range, one line whatever the
+           count (`FileStrip.vue`). Nothing here states an order or a winner:
+           which file a session loads turns on runtime this tool does not
+           observe (FR-009). -->
+      <FileStrip
+        :open-source-id="openSourceId"
+        :entries="otherCopies"
+        :label="`Other files applying to ${rangeText}`"
+      />
 
       <!-- Two subjects, two tabs: what the parse read out of the file, and
            the complete file itself. A real `tablist`, with the roving
@@ -777,7 +907,6 @@ onBeforeUnmount(() => {
         </ul>
 
         <div v-if="presentation" class="aci-instruction-detail__declarations">
-          <h3>Frontmatter</h3>
           <p v-if="presentation.frontmatter.length === 0" class="aci-note">
             This file declares none.
           </p>
@@ -789,16 +918,15 @@ onBeforeUnmount(() => {
                (FR-025, FR-026, FR-033). -->
           <SourceViewer
             v-else
+            panel-label="Frontmatter"
             :source-text="frontmatterText"
             :source-relative-path="openPath"
             content-label="Frontmatter of"
             content-language="yaml"
-            fit-content
           />
         </div>
 
         <div v-if="presentation" class="aci-instruction-detail__instructions">
-          <h3>Instructions</h3>
           <p v-if="bodyIsEmpty" class="aci-note">This file has none.</p>
           <!-- The same read-only viewer the file tab uses, given the file's
                own path so the body is highlighted as the Markdown it is.
@@ -806,6 +934,7 @@ onBeforeUnmount(() => {
                large, no link becomes clickable, and no image loads (FR-033). -->
           <SourceViewer
             v-else
+            panel-label="Instructions"
             :source-text="presentation.bodyText"
             :source-relative-path="openPath"
             content-label="Instructions of"
@@ -848,6 +977,7 @@ onBeforeUnmount(() => {
              source to show and its diagnostic above says why. -->
         <SourceViewer
           v-if="isReadableFile(openDetail.file)"
+          panel-label="Source"
           :source-text="openDetail.file.sourceText"
           :source-relative-path="openDetail.file.sourceRelativePath"
         />
@@ -880,7 +1010,7 @@ onBeforeUnmount(() => {
 }
 
 .aci-instruction-detail__overview {
-  border-bottom: 1px solid var(--aci-border);
+  border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
 }
 
@@ -906,7 +1036,14 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  column-gap: 0.75rem;
   margin-block-end: 0.5rem;
+}
+
+/* The comparison closes the heading's line, as it does on every kind whose
+   subject is the heading. */
+.aci-instruction-detail__title-end {
+  margin-inline-start: auto;
 }
 
 .aci-instruction-detail h2 {

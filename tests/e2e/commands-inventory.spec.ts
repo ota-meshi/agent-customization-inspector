@@ -60,7 +60,7 @@ test.describe('one command inventory for both products', () => {
     await page.getByRole('tab', { name: /Prompt \/ Command/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
 
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'deploy',
       'frontend:deploy',
       'release',
@@ -72,7 +72,7 @@ test.describe('one command inventory for both products', () => {
     for (const name of ['deploy', 'release']) {
       const row = items.filter({ hasText: name }).first();
       await expect(row.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
-      await expect(row.locator('.aci-prompt-row__tool')).toHaveCount(2);
+      await expect(row.locator('.aci-recognition-marks__one')).toHaveCount(2);
       await expect(row.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
       await expect(row.locator('.aci-source-family-blocks__members')).toContainText(
         'GitHub Copilot',
@@ -104,7 +104,7 @@ test.describe('one command inventory for both products', () => {
     // Copilot's keeps the root direct children, and narrows the shared rows to
     // its own definition rather than dropping the other product's row.
     await page.getByLabel('Tool').selectOption('copilot');
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText(['deploy', 'release']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['deploy', 'release']);
     for (const row of await items.all()) {
       await expect(row.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
       await expect(row.locator('.aci-source-family-blocks__members')).toContainText(
@@ -133,11 +133,17 @@ test.describe('one command inventory for both products', () => {
     await expect(shared).toContainText('GitHub Copilot');
     await expect(shared).toContainText('Claude Code');
     await shared.getByRole('link', { name: '.claude/commands/deploy.md' }).click();
+    // The row the link was followed from rides in the query, because one file
+    // can be listed under two names and the detail's moves step the row rather
+    // than the file (`detail-route.ts` § originRowNameQuery).
     await expect(page).toHaveURL(
-      /\/prompts-and-commands\/detail\/repository\/\.claude\/commands\/deploy\.md$/u,
+      /\/prompts-and-commands\/detail\/repository\/\.claude\/commands\/deploy\.md\?name=deploy$/u,
     );
     // And the page states both products, because both recognize the file.
-    await expect(page.locator('main')).toContainText('GitHub Copilot (CLI)');
-    await expect(page.locator('main')).toContainText('Claude Code (CLI and IDE clients)');
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('CLI');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
   });
 });

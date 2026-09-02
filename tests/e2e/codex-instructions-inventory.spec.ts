@@ -76,7 +76,7 @@ test.describe('instruction rows with an admitted carrier', () => {
     // unit) — and the nested `AGENTS.md` Copilot alone recognizes has a row of
     // its own.
     await expect(items).toHaveCount(2);
-    await expect(items.locator('.aci-instruction-row__range')).toHaveText(['**', 'docs/**']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['**', 'docs/**']);
     // Files are in Source-relative Path order under each range, and each states
     // its recognizing product. The configured fallback the carrier declares
     // lists beside the static pair; the absent declared name derives nothing.
@@ -109,11 +109,16 @@ test.describe('instruction rows with an admitted carrier', () => {
   test('shows the carrier under its own tabs, with no declaration rows', async ({ page }) => {
     await page.goto(host.origin);
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
-    // The carrier's two candidacies add two tabs beside Instructions: the MCP
-    // tab for the declarations inside the file (`codex.repo.config`) and the
-    // settings tab for the document they sit in (`codex.repo.settings`). The
-    // instruction rows still never name it.
-    await expect(page.getByRole('tab')).toHaveCount(3);
+    // The carrier's two candidacies add two entries beside Instructions: the
+    // MCP entry for the declarations inside the file (`codex.repo.config`) and
+    // the settings entry for the document they sit in (`codex.repo.settings`).
+    // The two lists that belong to no kind are always in the rail beside them,
+    // so the kinds are counted by name rather than by the strip's length.
+    await expect(page.getByRole('tab', { name: /^Instructions/u })).toHaveCount(1);
+    await expect(page.getByRole('tab', { name: /^MCP/u })).toHaveCount(1);
+    await expect(page.getByRole('tab', { name: /^Settings \/ Config/u })).toHaveCount(1);
+    await expect(page.getByRole('tab')).toHaveCount(5);
+    // The instruction rows still never name the carrier.
     const instructionsText = await page.getByRole('tabpanel').innerText();
     expect(instructionsText).not.toContain('config.toml');
     // Under the MCP tab the carrier is the one grouping, stating that it
@@ -162,7 +167,7 @@ test.describe('instruction rows with an admitted carrier', () => {
 
     // Path composes over the same population, narrowing the files inside the
     // range rather than the range itself.
-    await page.getByLabel('Path contains').fill('override');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('override');
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(1);
     await expect(fileEntries).toHaveCount(1);
     await expect(page.getByRole('tabpanel').locator('.aci-item').first()).toContainText(
@@ -227,7 +232,7 @@ test.describe('the kind tab as URL state', () => {
 
     // And the detail page's own link names the kind it returns to.
     await page.locator('.aci-source-family-blocks__members > li').locator('a').first().click();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page.getByRole('tab', { selected: true })).toContainText('Skill');
   });
 });
@@ -263,7 +268,7 @@ test.describe('a binary instruction candidate', () => {
     // The binary candidate is in no kind's inventory; its own row under
     // "Files in no kind" states its path and read outcome, which is what a
     // `partial` generation naming its cause looks like on this page.
-    await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^Files in no kind/u })).toBeVisible();
     const unclassified = (await openNoKindDisclosure(page))
       .locator('.aci-item')
       .filter({ hasText: 'AGENTS.override.md' })

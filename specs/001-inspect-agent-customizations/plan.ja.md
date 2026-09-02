@@ -505,6 +505,7 @@ src/
 │   │   └── view-state.ts
 │   ├── pages/
 │   │   ├── index.vue
+│   │   ├── repository.vue
 │   │   ├── global-consent.vue
 │   │   ├── skills/compare/[family].vue
 │   │   └── skills/detail/[source]/[...path].vue
@@ -632,7 +633,9 @@ LICENSE
 認識済みkindに属する。`/skills/detail/<source>/<SKILL.mdのSource相対パス>`がfileではなく`skills`を名乗るのはそのためである: detailが示すのはskillの宣言、
 指示、directoryであり、別kindのdetailは別のlayoutで別の問いに答える。そのdirectoryのどのfileを読んでいるかは
 addressの傍らの`file` queryであり、主題はpageが記述するcustomizationのままとなる。detail surfaceを持つ認識済みの各kindがこの形のrouteを1つずつ出荷しており、
-新しいkindを認識するphaseがそのkindのrouteとpageを併せて追加する。`src/server/cli.ts` entryは
+新しいkindを認識するphaseがそのkindのrouteとpageを併せて追加する。Source自身の状態も同格のrouteである:
+`/repository`はRepository Sourceのroot、status、generation、rescanを述べ、`/global-consent`は個人設定の
+それを既に述べている。2つのうち新設が前者だけであるのはそのためである（FR-030）。`src/server/cli.ts` entryは
 BOMなし、LF終端の正確な先頭行`#!/usr/bin/env node`で始まり、tsdownがpackaged `dist/cli.mjs`でそのshebangを
 保持し、`package.json.bin`は別のbootstrap wrapperなしでそれを直接指す。同時に配布されるartifact同士を
 user runtimeで相互検証せず、packaged entry pointは`verify:package` CI/release gateがenforceする。
@@ -649,6 +652,37 @@ connection-status signalと、残りをカバーするresponse経路のepoch/fen
 これらはいずれもVue composableではなく、instance-localなstate（`#`-private）を持ち1度だけ構築されるclassであるため、
 `use*` reactivityを約束する名前のdirectory配下に置くと実態を誤って説明することになる。よって
 `src/app/composables/`の外に置く。
+
+スクロールcontainerはdocument1つであり、shellの2つの枠はfixedではなくstickyで画面に残す。fixedは
+flowの外に出るため、pageに2つ目のscrollerができてしまう。barはdocumentの上端に、railはそのすぐ下に
+留まるので、検索・scan command・kindの一覧は60行スクロールした先でも届く。barはpage側のtop paddingの
+中に座るのではなく自分のspacingを持つ。stickyな要素の上のpaddingは、pinされるまでにその要素が移動する
+距離であり、読み手には最初のスクロールでheaderが跳ぶように見えるからである。railのoffsetはtokenで持つ
+— CSSはbarの高さを読めない — 両者が一致することはブラウザーのsuiteで検証する。focusされた要素はbarの
+下に潜らないよう `scroll-padding-block-start` で避ける（WCAG 2.4.11）。2カラムをやめる幅より下では
+railはrowの上へ戻り、stickyも解除する。短いviewportで追従するrailは、選んだ先の行を自分で覆うからで
+ある。
+
+Shellはbarの下にrailを置き、その横にrowを並べる。Barはすべてのrouteに適用されるもの — product名、1つの検索、
+colour-scheme control — に加えて、一覧自身のscan commandを持つ。一覧は自前のpanelを持たない唯一のsurface
+だからである: 各Sourceの状態surfaceは自分のscanを述べ、そこで命じるので、そのrouteでbarにcommandを置けば
+1つの画面に同じcontrolが2つ並ぶ。Railは画面上にどのrowがあるかを決めるものを持つ: statusと
+各familyの状態surfaceへの導線を伴うSource family、次にclosedなkind catalog、次にkindの一覧ではないが
+fileの一覧ではある2つ、`Files in no kind`と`Diagnostics`である。Railの構成員はこの1つの試験から従う:
+fileの一覧はrailの項目であり、Sourceの状態はrouteである。Railの項目はiconを持たない — `Rule`や`Hook`の
+傍らのmarkは、読み手が語より先に得る情報を足さず、すべてのlabelを共有の左端から押し出す。railは縦に走査
+されるものであり、それこそが失われる — したがってこのUIが出荷するiconは意味を運ぶものだけである:
+vendorのmarkと、検索・rescan・colour-scheme・開閉・pageを出る各controlの操作glyphである。
+
+Paletteは3段のsurface、1つのproduct accent、そしてborder tokenであり、literalな値として定義し、
+system colourのpaletteはforced-colorsのfallbackとして残す。System colourだけのpaletteでは、shellは
+`Canvas`と`CanvasText`から混色した2段のsurfaceしか持たず、panelもrowもpageも1つの平面として描かれ、
+読み手はその境界をhairlineを辿って見つけることになる。そしてOSに追従する`AccentColor`は、それらのsurfaceに
+対するcontrastが機械ごとに別の数値になるaccentであり、それについて測定した判断は測定した場所以外では
+成り立たない。Literalな値は、境界と選択状態のcontrastを、このrepositoryが測定し維持できる1つの数値にする
+（WCAG 1.4.11）。そして`forced-colors`はpalette全体を読み手自身のsystem colourへ戻す。そこでは読み手の
+選択がproductの選択に優先する。Vendorのmarkはcolourをinheritしない唯一の場所であり、その理由と限界は
+Iconの方針（AGENTS.md）が持つ。
 
 User-visible UI copyはそれを描画するcomponentに書き、message catalogは持たない。
 UIは1言語だけ出荷するため、QR-004の二言語義務はuser/contributor documentationとWCAG applicability matrixに掛かり、

@@ -81,7 +81,9 @@ test.describe('the complete literal Copilot settings detail', () => {
     ).toBeVisible();
 
     const main = page.locator('main');
-    await expect(main).toContainText('GitHub Copilot (CLI) · Settings / Config');
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('CLI');
     await expect(main).toContainText('Readable text');
 
     // The complete authored document, in the author's own key order, with the
@@ -126,7 +128,7 @@ test.describe('the complete literal Copilot settings detail', () => {
         host.origin,
       ).toString(),
     );
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=settings%2Fconfig$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Settings / Config');
   });

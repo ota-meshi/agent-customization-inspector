@@ -130,9 +130,6 @@ export class PromptToolRecognitionRow {
   /** The tool whose recognition this row compares. */
   public readonly tool: SupportedTool;
 
-  /** The recognized kind; every recognition this surface compares is this kind's. */
-  public readonly kind: 'prompt/command';
-
   /**
    * This tool's definition of the first file, or null when the tool attaches
    * none. The definition carries both typed facts the cell states — the
@@ -154,7 +151,6 @@ export class PromptToolRecognitionRow {
     right: PromptComparisonSideInput,
   ) {
     this.tool = tool;
-    this.kind = 'prompt/command';
     this.left = definitionOf(left, tool);
     this.right = definitionOf(right, tool);
   }

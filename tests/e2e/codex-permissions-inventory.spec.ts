@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus } from './repository-status';
 import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /** A literal credential in a declared pattern, used to prove it never lists. */
@@ -98,9 +99,7 @@ test.describe('rule files at the root configuration layer', () => {
       '.codex/rules/deploy.rules',
     ]);
     for (const index of [0, 1]) {
-      await expect(items.nth(index).locator('.aci-permissions-row__owner')).toContainText(
-        'OpenAI Codex',
-      );
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('OpenAI Codex');
     }
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
       'Showing 2 of 2',
@@ -143,15 +142,15 @@ test.describe('rule files at the root configuration layer', () => {
     await expect(items).toHaveCount(2);
 
     // Path: the filter applies to the row's own path, which is its identity.
-    await page.getByLabel('Path contains').fill('deploy');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('deploy');
     await expect(items).toHaveCount(1);
     await expect(items.locator('.aci-path')).toHaveText(['.codex/rules/deploy.rules']);
 
-    await page.getByLabel('Path contains').fill('no-such-rule');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('no-such-rule');
     await expect(items).toHaveCount(0);
     await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(2);
   });
 });
@@ -190,17 +189,19 @@ test.describe('a rule file whose bytes cannot be read', () => {
 
     // The scan status says how many files kept a diagnostic, which is what its
     // `Partial` value reports; the causes themselves are on those files' rows.
-    await expect(page.locator('.aci-scan-progress')).toContainText(
-      '1 file(s) kept a diagnostic of their own',
+    // The count of files that kept a diagnostic is the Repository Source's own
+    // state, which is a surface of its own now (FR-030).
+    await expect(await openRepositoryStatus(page)).toContainText(
+      '1 file kept a diagnostic of its own',
     );
+    await page.getByRole('link', { name: /Back to /u }).click();
 
     // The unreadable candidate is still reachable, and is where a `partial`
-    // generation says which file made it partial. The section arrives closed,
-    // stating its count on the summary, so a reader who is not looking for it
-    // is not given the whole list under the tab they are reading (T1124).
-    await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
-    await expect(page.locator('.aci-inventory-page__no-kind-count')).toHaveText('1');
-    await expect(page.locator('.aci-inventory-page__no-kind .aci-item')).toBeHidden();
+    // generation says which file made it partial. The rail entry states its
+    // count without being selected, so a reader who is not looking for it is
+    // not given the whole list under the entry they are reading (T1124).
+    await expect(page.getByRole('tab', { name: 'Files in no kind 1' })).toBeVisible();
+    await expect(page.locator('#aci-kind-panel-files-in-no-kind')).toHaveCount(0);
 
     const unclassifiedRows = (await openNoKindDisclosure(page)).locator('.aci-item');
     await expect(unclassifiedRows).toHaveCount(1);

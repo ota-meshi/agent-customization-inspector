@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus } from './repository-status';
 
 /** A literal credential inside a declared block, used to prove it never lists. */
 const FIXTURE_SECRET = 'ghp_E2EALLAGENTS0000000000000000000000000';
@@ -126,7 +127,7 @@ test.describe('every product’s custom agents in one inventory', () => {
     // `security-reviewer` is Claude Code's alone, and `shared`/`shared-reviewer`
     // are the two names one file has. The null-named row closes the list with
     // the file whose declarations Claude Code could not read.
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'broken',
       'debugger',
       'docs_researcher',
@@ -187,16 +188,16 @@ test.describe('every product’s custom agents in one inventory', () => {
     await expect(items).toHaveCount(8);
 
     await page.getByLabel('Tool').selectOption('codex');
-    await expect(items.locator('.aci-agent-row__name')).toHaveText(['docs_researcher']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['docs_researcher']);
     await page.getByLabel('Tool').selectOption('claude');
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'debugger',
       'security-reviewer',
       'shared-reviewer',
       'No known agent name',
     ]);
     await page.getByLabel('Tool').selectOption('copilot');
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'broken',
       'debugger',
       'planner',
@@ -206,8 +207,8 @@ test.describe('every product’s custom agents in one inventory', () => {
     // Path: the filter applies to each definition's own file path, and a row
     // with no matching definition is dropped rather than emptied.
     await page.getByLabel('Tool').selectOption('');
-    await page.getByLabel('Path contains').fill('.github/');
-    await expect(items.locator('.aci-agent-row__name')).toHaveText(['planner']);
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.github/');
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['planner']);
 
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(8);
@@ -215,9 +216,12 @@ test.describe('every product’s custom agents in one inventory', () => {
 
   test('states the malformed file’s diagnostic beside the rows that hold it', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.locator('.aci-scan-progress')).toContainText(
-      '1 file(s) kept a diagnostic of their own',
+    // The count of files that kept a diagnostic is the Repository Source's own
+    // state, which is a surface of its own now (FR-030).
+    await expect(await openRepositoryStatus(page)).toContainText(
+      '1 file kept a diagnostic of its own',
     );
+    await page.getByRole('link', { name: /Back to /u }).click();
     await page.getByRole('tab', { name: /Agent/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
     // The file's own diagnostic travels with every row it is a definition of,

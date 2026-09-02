@@ -93,7 +93,7 @@ test.describe('command files under the root .claude/commands directory', () => {
     // One row per name a reader invokes, in name order. A direct child is its
     // file name; a nested one carries the subdirectories as its namespace, so
     // the two `deploy.md` files are two rows.
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'deploy',
       'frontend:component',
       'frontend:deploy',
@@ -157,15 +157,17 @@ test.describe('command files under the root .claude/commands directory', () => {
     await page.getByLabel('Tool').selectOption('claude');
     await expect(items).toHaveCount(5);
     await page.getByLabel('Tool').selectOption('copilot');
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText(['deploy', 'release']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['deploy', 'release']);
     await expect(page.getByLabel('Tool').locator('option')).not.toContainText(['OpenAI Codex']);
 
     await page.getByRole('button', { name: 'Clear filters' }).click();
     // Path: a namespace is a directory in the row's own path, so filtering by
     // it is how a reader narrows to one namespace.
-    await page.getByLabel('Path contains').fill('commands/frontend/');
+    await page
+      .getByRole('searchbox', { name: 'Search names and paths' })
+      .fill('commands/frontend/');
     await expect(items).toHaveCount(2);
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'frontend:component',
       'frontend:deploy',
     ]);
@@ -176,10 +178,11 @@ test.describe('command files under the root .claude/commands directory', () => {
   }) => {
     await page.goto(host.origin);
     // The excluded locations are not admitted bytes the scan could not use:
-    // nothing reads them at all, so the section that names the files a
-    // `partial` generation is missing stays absent (FR-028). Located by the
-    // section itself rather than by its heading text, which is what the
-    // suites that open it use (`no-kind-disclosure.ts`).
-    await expect(page.locator('.aci-inventory-page__no-kind')).toHaveCount(0);
+    // nothing reads them at all, so the entry that lists the files a `partial`
+    // generation is missing has nothing in it (FR-028). The entry itself is
+    // always in the rail — its membership rule is absence, so a reader has to
+    // be able to ask — and its count is what says this fixture put nothing
+    // there (`no-kind-disclosure.ts`).
+    await expect(page.getByRole('tab', { name: 'Files in no kind 0' })).toBeVisible();
   });
 });

@@ -100,7 +100,7 @@ test.describe('Copilot plugins declared by the repository own catalogs', () => {
     await page.getByRole('tab', { name: /Plugin/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
 
-    await expect(items.locator('.aci-plugin-row__name')).toContainText([
+    await expect(items.locator('.aci-row-head__name')).toContainText([
       'quality-review@inspector-examples',
       'release-notes@inspector-github',
       'shorthand-helper@inspector-examples',
@@ -110,20 +110,20 @@ test.describe('Copilot plugins declared by the repository own catalogs', () => {
     // files below it — the manifest and the skill it bundles — are the plugin's.
     const review = items.filter({ hasText: 'quality-review@inspector-examples' });
     await expect(review.locator('.aci-path').first()).toHaveText('marketplace.json');
-    await expect(review.locator('.aci-plugin-row__carrier').first()).toHaveText('Catalog entry');
-    await expect(review).toContainText('2 file(s) in this plugin');
+    await expect(review.locator('.aci-carrier-kind').first()).toHaveText('Catalog entry');
+    await expect(review).toContainText('Ships 2 files');
 
     // A catalog at another documented location carries its own rows.
     const notes = items.filter({ hasText: 'release-notes@inspector-github' });
     await expect(notes.locator('.aci-path').first()).toHaveText('.github/plugin/marketplace.json');
-    await expect(notes).toContainText('1 file(s) in this plugin');
+    await expect(notes).toContainText('Ships 1 file');
 
     // A string entry source is a path, so this one names the directory
     // `octo-org/plugin-repo` — which this repository does not carry, so the row
     // ships nothing. The `owner/repo` shorthand belongs to the CLI's
     // marketplace-add command instead.
     const shorthand = items.filter({ hasText: 'shorthand-helper@inspector-examples' });
-    await expect(shorthand).not.toContainText('file(s) in this plugin');
+    await expect(shorthand).not.toContainText('file in this plugin');
   });
 
   test('lists neither a CLI extension nor the plugin this repository publishes', async ({

@@ -399,6 +399,25 @@ is written.
   with the text around it. A fixed-colour brand logo stays bright inside a muted control,
   which is why the editors are named by their single-colour brand glyphs rather than their
   full-colour logos.
+- The vendor marks are the exception, and the colour is the reason they exist. A
+  recognizing product is stated beside more rows than anything else this product shows,
+  and a reader scanning an inventory for one of them follows a colour far faster than
+  they tell three 15px silhouettes apart; under `currentColor` all three marks are the
+  same colour, so finding one becomes shape discrimination at the size where shapes are
+  least distinguishable. Each vendor's own single-colour glyph is therefore drawn in that
+  vendor's own colour. The values are desaturated until they read against both grounds
+  rather than taken from the vendors' published brand colours, so a mark sits inside a
+  muted row instead of shouting from it — which is what the `currentColor` default was
+  protecting, kept here by the value rather than by inheritance. Nothing rests on the
+  colour alone (WCAG 1.4.1): each mark keeps its own shape, the product is named in the
+  legend, and the surfaces beside each mark are text — so a forced-colors or monochrome
+  rendering loses the scanning aid and no information.
+- A mark that identifies something carries its name as text that is not drawn. It is the
+  only thing on a row that says which product, so it is non-text content conveying
+  information rather than decoration and owes an equivalent accessible name
+  (contracts/accessibility-acceptance.md § 1.1.1); the legend is a key, not a text
+  alternative. A caller whose own words already name the product hides the whole mark
+  instead — which is the legend itself, where the glyph stands beside the name it means.
 
 ## Formatting policy
 

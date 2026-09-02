@@ -420,9 +420,9 @@ describe('instruction recognition comparison rows (T276)', () => {
         [COPILOT_ALL, CODEX],
       ),
     );
-    expect(comparison.tools.map((row) => [row.tool, row.kind, row.left, row.right])).toEqual([
-      ['copilot', 'instructions', 'recognized', 'recognized'],
-      ['codex', 'instructions', 'recognized', 'recognized'],
+    expect(comparison.tools.map((row) => [row.tool, row.left, row.right])).toEqual([
+      ['copilot', 'recognized', 'recognized'],
+      ['codex', 'recognized', 'recognized'],
     ]);
     // One canonical document per side — every key sorted, with no leading
     // identity pair, because an instruction file declares no identity this
@@ -542,7 +542,6 @@ describe('instruction recognition comparison rows (T276)', () => {
     ]);
     for (const row of comparison.tools) {
       expect(Object.keys(row).sort()).toEqual([
-        'kind',
         'left',
         'leftSurfaces',
         'right',

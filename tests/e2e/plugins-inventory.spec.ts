@@ -150,7 +150,7 @@ test.describe('the unified plugin inventory', () => {
 
     // Six names, six rows — the shared catalog's three, each product's own, and
     // the placement-loaded one — in name order.
-    await expect(items.locator('.aci-plugin-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'changelog@skills-dir',
       'formatter@shared-tools',
       'packager@shared-tools',
@@ -159,26 +159,41 @@ test.describe('the unified plugin inventory', () => {
       'remote-linter@shared-tools',
     ]);
 
-    // One catalog file, three products, one row: each recognizing tool is a
-    // carrier of the same name, in the closed tool order.
+    // One catalog file, three products, one line: a plugin carrier is one
+    // `(file, tool)` pair on the wire, but a row's line is a file, so the three
+    // readings stand on the file's own line in the closed tool order. The path
+    // is the link, as it is in every other kind's list — this list shows no
+    // per-product difference — and it opens the reading of the first product
+    // in the closed order that recognizes the file. The marks stay marks.
     const shared = items.filter({ hasText: 'formatter@shared-tools' });
-    await expect(shared.locator('.aci-plugin-row__tool')).toHaveText([
-      /GitHub Copilot/u,
-      /Claude Code/u,
-      /OpenAI Codex/u,
-    ]);
-    await expect(shared.locator('.aci-path')).toHaveText([
-      '.claude-plugin/marketplace.json',
-      '.claude-plugin/marketplace.json',
-      '.claude-plugin/marketplace.json',
+    await expect(shared.locator('.aci-row-file')).toHaveCount(1);
+    await expect(shared.locator('.aci-row-head__count')).toHaveText('1 file');
+    await expect(shared.locator('.aci-path')).toHaveText(['.claude-plugin/marketplace.json']);
+    await expect(shared.locator('.aci-recognition-marks__opens')).toHaveCount(0);
+    const sharedPath = shared.locator('a.aci-path');
+    await expect(sharedPath).toHaveCount(1);
+    await expect(sharedPath).toHaveAttribute(
+      'href',
+      '/plugins/detail/repository/.claude-plugin/marketplace.json?tool=copilot&plugin=formatter@shared-tools',
+    );
+    // The link names the file and the plugin it carries, and no product: it
+    // opens the file, and the marks beside it state what recognized it.
+    await expect(sharedPath).toHaveAttribute(
+      'aria-label',
+      '.claude-plugin/marketplace.json: formatter@shared-tools',
+    );
+    await expect(shared.locator('.aci-recognition-marks__one')).toHaveText([
+      /VS Code, CLI/u,
+      /CLI and IDE clients/u,
+      /Desktop app and plugin CLI/u,
     ]);
     // The files below the root it names are the plugin's own, both manifest
     // forms and the skill it bundles among them.
-    await expect(shared).toContainText('3 file(s) in this plugin');
+    await expect(shared).toContainText('Ships 3 files');
 
     // A source outside this repository ships nothing here.
     const remote = items.filter({ hasText: 'remote-linter@shared-tools' });
-    await expect(remote).not.toContainText('file(s) in this plugin');
+    await expect(remote).not.toContainText('Ships');
   });
 
   test('narrows the consolidated rows with the tool filter', async ({ page }) => {
@@ -190,21 +205,21 @@ test.describe('the unified plugin inventory', () => {
     // Selecting one product keeps the rows it resolves: the shared catalog's
     // three under any of them, plus that product's own.
     await page.getByLabel('Tool', { exact: true }).selectOption('codex');
-    await expect(items.locator('.aci-plugin-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'formatter@shared-tools',
       'packager@shared-tools',
       'release-notes@codex-tools',
       'remote-linter@shared-tools',
     ]);
     await page.getByLabel('Tool', { exact: true }).selectOption('claude');
-    await expect(items.locator('.aci-plugin-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'changelog@skills-dir',
       'formatter@shared-tools',
       'packager@shared-tools',
       'remote-linter@shared-tools',
     ]);
     await page.getByLabel('Tool', { exact: true }).selectOption('copilot');
-    await expect(items.locator('.aci-plugin-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'formatter@shared-tools',
       'packager@shared-tools',
       'pr-summary@copilot-tools',

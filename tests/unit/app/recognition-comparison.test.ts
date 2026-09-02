@@ -349,7 +349,6 @@ describe('recognition and declared-metadata comparison', () => {
       // The surfaces each recognizing side states beside its recognition
       // (FR-009); nothing else joins the row.
       expect(Object.keys(row).toSorted()).toEqual([
-        'kind',
         'left',
         'leftSurfaces',
         'right',

@@ -37,19 +37,15 @@
 // deliberately no standing toggle to it.
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { SourceDiffHandle } from '../../composables/monaco';
+import {
+  SOURCE_VIEWER_LANGUAGE_GRAMMAR,
+  type SourceViewerLanguage,
+} from '../inspection/source-viewer-language';
 import { useSessionViewState } from '../../composables/session-view-state';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
 
 const props = defineProps<{
-  /**
-   * The first side's text, exactly as this comparison holds it. Not the file's
-   * complete source: this kind's comparison mounts one of the two halves each
-   * file's own rule split it into — the declared metadata serialized to a
-   * canonical document, or the instructions taken out of the format that held
-   * them — and never the file's own bytes, which two formats give no
-   * byte-for-byte alignment to diff. Each file whole is beside these diffs in
-   * its own `SourceViewer` (FR-027, `pages/agents/compare/[family].vue`).
-   */
+  /** The first side's complete decoded source, exactly as committed. */
   readonly originalText: string;
   /** The first side's Source-relative Path: language choice and label. */
   readonly originalPath: string;
@@ -58,26 +54,18 @@ const props = defineProps<{
   /** The second side's Source-relative Path: language choice and label. */
   readonly modifiedPath: string;
   /**
-   * The language id both models are created with, set when the compared
-   * texts are one canonical serialization rather than the files' own bytes
-   * (`SourceComparisonInput.contentLanguage`). Omitted, each side's language
-   * resolves from its own path.
-   */
-  readonly contentLanguage?: string;
-  /**
-   * Sizes the diff to its taller document instead of the fixed reading box,
-   * capped by this component's stylesheet (`SourceDiffHandle.mount`
-   * § fitContent). Set by the serialized-frontmatter diff, whose documents
-   * are usually short.
-   */
-  readonly fitContent?: boolean;
-  /**
    * What of each file the sides show, spliced into each side's accessible
    * name (`SourceComparisonInput.contentLabel`) — `frontmatter of` on the
    * serialized-frontmatter diff — so a serialized slice is never announced
    * as the whole file (FR-025). Omitted, the sides are the files.
    */
   readonly contentLabel?: string;
+  /**
+   * The language both sides are tokenized in, overriding what their paths
+   * claim: a serialized document is the format this surface serialized it to
+   * rather than the format of the file it came from (`monaco.ts` § showSource).
+   */
+  readonly contentLanguage?: SourceViewerLanguage;
 }>();
 
 /** The element Monaco takes over; empty until the editor is mounted. */
@@ -179,10 +167,15 @@ async function showCurrentPair(): Promise<void> {
       modifiedAbsent: false,
       // Spread conditionally: `exactOptionalPropertyTypes` keeps an absent
       // language distinct from an undefined one on the mount input.
-      ...(props.contentLanguage === undefined ? {} : { contentLanguage: props.contentLanguage }),
+      // The grammar the named format is coloured by, not the name itself: the
+      // mount input takes a registered Monaco id
+      // (`source-viewer-language.ts` § SOURCE_VIEWER_LANGUAGE_GRAMMAR).
+      ...(props.contentLanguage === undefined
+        ? {}
+        : { contentLanguage: SOURCE_VIEWER_LANGUAGE_GRAMMAR[props.contentLanguage] }),
       ...(props.contentLabel === undefined ? {} : { contentLabel: props.contentLabel }),
     },
-    { fitContent: props.fitContent === true },
+    { fitContent: true },
   ).catch(() => null);
   if (mounted === null) {
     // The editor chunk or its construction failed. Neither source is lost —
@@ -240,12 +233,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-show="!mountError"
-    ref="host"
-    class="aci-custom-agent-source-diff"
-    :class="{ 'aci-custom-agent-source-diff--fit': fitContent }"
-  />
+  <!-- The box keeps the width its side-by-side rendering needs and this
+       wrapper scrolls it, so a narrow viewport scrolls the diff rather than
+       the page (WCAG 1.4.10). -->
+  <div v-show="!mountError" class="aci-custom-agent-source-diff__scroller" tabindex="0">
+    <div ref="host" class="aci-custom-agent-source-diff" />
+  </div>
   <!-- Stable rather than inserted with the failure it reports, because a
        region that appears together with its message is not reliably read. -->
   <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
@@ -293,20 +286,41 @@ onBeforeUnmount(() => {
 /* Monaco lays out inside a sized box and collapses to nothing without a
    definite height; the same sizing contract as the single-file viewer. */
 .aci-custom-agent-source-diff {
-  block-size: 28rem;
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
-  inline-size: 100%;
-}
-
-/* The fit-content variant: the mounted handle writes the taller document's
-   height to the element (`SourceDiffHandle.mount` § fitContent) and this cap
-   keeps a long document from taking the page — past it, the diff scrolls
-   inside its box exactly like the fixed variant. */
-.aci-custom-agent-source-diff--fit {
   block-size: auto;
   max-block-size: 28rem;
-  min-block-size: 3rem;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  /* The corners are the box's, so what it holds is clipped to them: Monaco
+     paints an opaque square panel, and without this it filled all four rounded
+     corners — a frame that looked broken rather than rounded. It does not
+     reach the editor's own scrolling, which happens inside
+     `.monaco-scrollable-element`. `box-sizing` because the width is `100%` and
+     the border is a pixel: on the content box the two made the element two
+     pixels wider than the box holding it, so every diff sat two pixels
+     short of its own right border. */
+  box-sizing: border-box;
+  overflow: hidden;
+  inline-size: 100%;
+  /* The width the side-by-side rendering needs. Monaco's diff editor drops to
+     one inline column below its own 900px breakpoint
+     (`renderSideBySideInlineBreakpoint`, which `monaco.ts` leaves at the
+     default), and a comparison shown as one column is no longer a comparison:
+     the two files stop standing opposite each other. Measured on the pinned
+     revisions: a 960px page gives a 920px editor and keeps two columns, while
+     940px gives 900 and collapses. Below that the wrapper scrolls this box
+     sideways rather than the page — a side-by-side diff is content that
+     requires a two-dimensional layout for its meaning, which is what WCAG
+     1.4.10 excepts, and keeping the scroll inside the box is what keeps the
+     page itself reflowing. */
+  min-inline-size: 60rem;
+}
+
+/* The scroller that holds the box above at its own width without widening the
+   page (WCAG 1.4.10). `tabindex` because WebKit does not make a scrollable
+   overflow container keyboard focusable on its own, so a reader with no
+   pointer could reach the diff's text and never scroll it (WCAG 2.1.1). */
+.aci-custom-agent-source-diff__scroller {
+  overflow-x: auto;
 }
 
 /* The two complete sources side by side, stacking on a narrow viewport where
@@ -331,8 +345,8 @@ onBeforeUnmount(() => {
 /* `pre` keeps the authored line structure; long lines scroll inside the block
    rather than widening the page. */
 .aci-custom-agent-source-diff__fallback-source {
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
   margin: 0;
   max-block-size: 28rem;
   overflow: auto;

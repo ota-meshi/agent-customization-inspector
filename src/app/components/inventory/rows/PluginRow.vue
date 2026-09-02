@@ -29,19 +29,19 @@
 // ships are served by the carrier's own detail, one file at a time (FR-027).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
 import { pluginCarrierDetailRoute } from '../../plugin-detail-route';
 import { familyComparisonPairsOf, type ComparisonSide } from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
 import { pluginComparisonRouteFor } from '../../../composables/plugin-comparison';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import { PLUGIN_CARRIER_TEXT } from '../../../../shared/api-text';
 import {
+  SUPPORTED_TOOL_ORDER,
   escapeControlCharacters,
   fileIdentityKey,
-  SUPPORTED_TOOL_TEXT,
   accessiblePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
@@ -52,6 +52,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
+import { AuthoredName } from '../../authored-name';
 
 const props = defineProps<{
   /** The committed plugin entry to render: one declared plugin name, or the null row. */
@@ -70,31 +71,12 @@ const props = defineProps<{
 const sessionSources = useSessionSources();
 
 /**
- * The row's heading text: the declared name through the shared label rule, so
- * a name built only from invisible code points still identifies its row
- * ({@link pathPresentationLabel}). Null for the no-name row, whose heading is
- * fixed copy. An authored empty name — strict JSON accepts `""` — gets its own
- * note, because the label rule has no characters to spell out and the row
- * would otherwise be headed by nothing.
+ * The declared name this row is headed by, as every surface of the row needs
+ * it — what is drawn, whether those are the file's characters, and what the
+ * links announce ({@link AuthoredName}). Null for the no-name row, whose heading is fixed copy.
  */
-const nameText = computed(() =>
-  props.entry.name === null
-    ? null
-    : props.entry.name === ''
-      ? '(empty name)'
-      : pathPresentationLabel(props.entry.name),
-);
-
-/** Whether {@link nameText} is the authored spelling rather than this product's note. */
-const nameIsAuthored = computed(() => props.entry.name !== null && props.entry.name !== '');
-
-/**
- * The row's name as accessible-name text: the single-line label rule, because
- * an accessible name is flattened and authored whitespace a drawn label
- * legitimately renders would collapse (WCAG 2.4.4).
- */
-const nameAccessibleText = computed(() =>
-  props.entry.name === null ? null : accessiblePresentationLabel(props.entry.name),
+const name = computed(() =>
+  props.entry.name === null ? null : new AuthoredName(props.entry.name),
 );
 
 /**
@@ -123,6 +105,22 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * do. The comparison surface's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
+/**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close (`SourceFamilyBlocks.vue`).
+ */
+const headCompareRoute = computed(() => {
+  const routes = [...blockCompareRoutes.value.values()];
+  // Exactly when the row draws no family line to close: the entry lives on one
+  // of the two lines and never on neither, so both read the one rule
+  // (`session-sources.ts` § familyLineShownFor).
+  const headed = sessionSources.familyLineShownFor(carrierRows.value, [
+    ...blockCompareRoutes.value.keys(),
+  ]);
+  return headed || routes.length !== 1 ? null : routes[0]!;
+});
+
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof pluginComparisonRouteFor>>();
   const name = props.entry.name;
@@ -155,49 +153,102 @@ const shippedFileCount = computed(
     ).size,
 );
 
-const carrierRows = computed(() =>
-  props.entry.carriers.map((carrier) => ({
-    /**
-     * The tool leads the key so the pair cannot collide: a tool is a closed
-     * enum with no space or U+0000 in it, and the carrier's Source joins the
-     * halves because a consented home's carrier and a same-path carrier
-     * elsewhere are two files (FR-030).
-     */
-    key: carrier.tool + '\u0000' + fileIdentityKey(carrier.sourceId, carrier.sourceRelativePath),
-    /** The member's Source: what the family blocks and its directory line derive from. */
-    sourceId: carrier.sourceId,
-    /**
-     * The carrier's path through the shared label rule rather than plain
-     * escaping ({@link pathPresentationLabel}): a name built only from
-     * whitespace or default-ignorable code points draws nothing, and this line
-     * is what says which file the declaration is in.
-     */
-    pathText: pathPresentationLabel(carrier.sourceRelativePath),
-    /** The link's accessible name; see {@link nameAccessibleText} for the rule. */
-    pathAccessibleText: accessiblePresentationLabel(carrier.sourceRelativePath),
-    /** What this file is to the plugin — its manifest, or a catalog listing it. */
-    carrierText: PLUGIN_CARRIER_TEXT[carrier.carrier],
-    toolText: SUPPORTED_TOOL_TEXT[carrier.tool],
-    surfacesText: carrier.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-    /**
-     * The carrier's own detail, addressed by the file's path with the name
-     * this row is headed by: a catalog carries every plugin it lists, so the
-     * detail needs to know which of them the reader followed (FR-030). The
-     * null row's carriers name no plugin, so their detail is the file's alone.
-     */
-    detailRoute: pluginCarrierDetailRoute(
-      carrier.sourceRelativePath,
-      carrier.tool,
-      props.entry.name,
-      null,
-      sessionSources.selectorOf(carrier.sourceId),
-    ),
-    /** The kind's extraction diagnostics for this file (FR-028). */
-    diagnosticIds: carrier.diagnosticIds,
-    /** The census paths this carrier's offering reached, for {@link affectedShippedFiles}. */
-    files: carrier.files,
-  })),
-);
+/**
+ * The files that carry this plugin, one line each, with every product that
+ * reads that file stated on it.
+ *
+ * Grouped by the file rather than published as the wire does. A
+ * `PluginCarrierDto` is one `(file, tool)` pair — its `tool` is the recognition
+ * the carrier is — so a catalog three products read arrives as three carriers
+ * of one file, and listing them as published put the same path on three lines.
+ * A row's line is a file wherever this product lists one, and its count says
+ * how many files (FR-007).
+ *
+ * What differs per product is where the line goes: a plugin's detail is that
+ * product's own reading of the carrier, so each mark opens its own and the
+ * path opens nothing. Every other kind has one detail per file and keeps the
+ * path as the link (`RecognitionMarks.vue`).
+ */
+const carrierRows = computed(() => {
+  // Grouped by the file's whole identity — Source and Source-relative Path
+  // (FR-030): a consented home's carrier and a same-path carrier elsewhere are
+  // two files however identical their spelling. U+0000 joins the halves
+  // because no Source ID contains it.
+  const byFile = Map.groupBy(props.entry.carriers, (carrier) =>
+    fileIdentityKey(carrier.sourceId, carrier.sourceRelativePath),
+  );
+  return [...byFile.values()].map((carriers) => {
+    const { sourceId, sourceRelativePath } = carriers[0]!;
+    const pathAccessibleText = accessiblePresentationLabel(sourceRelativePath);
+    return {
+      key: fileIdentityKey(sourceId, sourceRelativePath),
+      /** The member's Source: what the family blocks and its home badge derive from. */
+      sourceId,
+      /**
+       * The carrier's path through the shared label rule rather than plain
+       * escaping ({@link pathPresentationLabel}): a name built only from
+       * whitespace or default-ignorable code points draws nothing, and this
+       * line is what says which file the declarations are in.
+       */
+      pathText: pathPresentationLabel(sourceRelativePath),
+      /**
+       * What this file is to the plugin — its manifest, or a catalog listing
+       * it. The form is the file's, so the first carrier answers for it: a
+       * file is one form whichever product read it.
+       */
+      carrierText: PLUGIN_CARRIER_TEXT[carriers[0]!.carrier],
+      /**
+       * The file's own detail, opened at the reading of the first product in
+       * the closed tool order that recognizes it. The path is the link here as
+       * it is in every other kind's list, because this list shows no
+       * per-product difference — which product's reading a page answers for
+       * changes the shipped-file count on the detail, and that is where the
+       * other readings are reached from (`plugins/detail`). A reader who
+       * learned to press the path in ten lists presses it in the eleventh.
+       */
+      detailRoute: pluginCarrierDetailRoute(
+        sourceRelativePath,
+        SUPPORTED_TOOL_ORDER.find((tool) => carriers.some((carrier) => carrier.tool === tool)) ??
+          carriers[0]!.tool,
+        props.entry.name,
+        null,
+        sessionSources.selectorOf(sourceId),
+      ),
+      /**
+       * What a screen reader announces the path link as: the file and the
+       * plugin it is a carrier of, since one carrier declares several and the
+       * row's own name is what tells this link from the others (WCAG 2.4.4).
+       * No product is named — the link opens the file, and the marks beside it
+       * state what recognized it.
+       */
+      pathAccessibleText: sessionSources.qualifiedLinkName(
+        `${pathAccessibleText}${name.value === null ? '' : `: ${name.value.accessibleText}`}`,
+        sourceId,
+      ),
+      /**
+       * Each product that reads the file, with the surfaces its admission
+       * rests on. Marks rather than links: what the list shows of this file
+       * does not vary by product ({@link RecognitionMarks}).
+       */
+      recognitions: carriers.map((carrier) => ({
+        tool: carrier.tool,
+        surfaces: carrier.surfaces,
+      })),
+      /**
+       * The kind's extraction diagnostics for this file, deduplicated: one
+       * extraction per `(file, kind)` means every carrier of one file points
+       * at the same record (FR-028).
+       */
+      diagnosticIds: [...new Set(carriers.flatMap((carrier) => carrier.diagnosticIds))],
+      /**
+       * The census paths this file's offerings reached, for
+       * {@link affectedShippedFiles}. Deduplicated across the products, which
+       * name the same root and so reach the same files.
+       */
+      files: [...new Set(carriers.flatMap((carrier) => carrier.files))],
+    };
+  });
+});
 
 /**
  * The shipped files of one carrier that carry a diagnostic, each with the
@@ -250,22 +301,37 @@ function affectedShippedFiles(carrier: {
          declaration is listed below it, and a carrier whose declarations could
          not be read, whose diagnostic says so beside it (FR-028). Copy denying
          the declarations would contradict the ones on the row. -->
-    <p
-      v-if="nameText !== null"
-      class="aci-plugin-row__name"
-      :class="nameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-    >
-      {{ nameText }}
+    <p class="aci-row-head">
+      <span
+        v-if="name !== null"
+        class="aci-row-head__name"
+        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+        >{{ name.text }}</span
+      >
+      <span v-else class="aci-row-head__name">No plugin name resolved</span>
+      <span class="aci-row-head__count"
+        >{{ carrierRows.length }} {{ carrierRows.length === 1 ? 'file' : 'files' }}</span
+      >
+      <!-- The comparison entry, where this row has one family and so no family
+           line of its own to close (`SourceFamilyBlocks.vue`). -->
+      <span v-if="headCompareRoute" class="aci-row-head__end">
+        <NuxtLink
+          :to="headCompareRoute"
+          :aria-label="`Compare this plugin with another copy: ${name?.accessibleText ?? ''}`"
+          >Compare</NuxtLink
+        >
+      </span>
     </p>
-    <p v-else class="aci-plugin-row__name">No plugin name resolved</p>
 
     <!-- The carriers resolving this name, each linking to its own detail. The
          path is the link because it is what tells two carriers apart, and the
          accessible name adds the row's subject so links of several rows never
          announce identically (WCAG 2.4.6; label-in-name keeps the visible path
-         as the prefix). What the file is to the plugin, which product
-         recognizes it, and the surfaces that recognition rests on follow the
-         link; naming a surface never claims it loaded the file (FR-009). -->
+         as the prefix). What the file is to the plugin stands beside the path,
+         because a plugin declaration lives in a file that is not its own, and
+         the recognizing product is drawn by its mark with the surfaces that
+         recognition rests on; naming a surface never claims it loaded the file
+         (FR-009). -->
     <!-- One block per Source family (`SourceFamilyBlocks.vue`), each member
          rendered by this row. -->
     <SourceFamilyBlocks
@@ -274,43 +340,28 @@ function affectedShippedFiles(carrier: {
       :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: carrier }">
-        <p class="aci-plugin-row__owner">
-          <NuxtLink
-            :to="carrier.detailRoute"
-            class="aci-path aci-authored-text"
-            :aria-label="
-              sessionSources.qualifiedLinkName(
-                nameAccessibleText === null
-                  ? carrier.pathAccessibleText
-                  : `${carrier.pathAccessibleText}: ${nameAccessibleText}`,
-                carrier.sourceId,
-              )
-            "
-            >{{ carrier.pathText }}</NuxtLink
-          >
-          <span class="aci-plugin-row__carrier aci-muted">{{ carrier.carrierText }}</span>
-          <span class="aci-plugin-row__tool aci-muted"
-            >{{ carrier.toolText }}
-            <span class="aci-plugin-row__surfaces">{{ carrier.surfacesText }}</span></span
-          >
-        </p>
-
-        <SourceRootLine :source-id="carrier.sourceId" />
-        <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
-
-        <!-- Shipped files whose read kept a diagnostic, named by path so the
-             reader knows which file to open — the skill row's companion rule
-             ({@link affectedShippedFiles}). -->
-        <ul
-          v-if="affectedShippedFiles(carrier).length > 0"
-          class="aci-plugin-row__shipped-file-diagnostics"
-          role="list"
-        >
-          <li v-for="shipped in affectedShippedFiles(carrier)" :key="shipped.path">
-            <span class="aci-path aci-authored-text">{{ shipped.path }}</span>
-            <RowDiagnostics :diagnostic-ids="shipped.diagnosticIds" :diagnostics="diagnostics" />
-          </li>
-        </ul>
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <SourceHomeBadge :source-id="carrier.sourceId" />
+            <NuxtLink
+              :to="carrier.detailRoute"
+              class="aci-path aci-authored-text"
+              :aria-label="carrier.pathAccessibleText"
+              >{{ carrier.pathText }}</NuxtLink
+            >
+            <span class="aci-carrier-kind">{{ carrier.carrierText }}</span>
+            <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
+            <!-- Shipped files whose read kept a diagnostic, named by path so
+                 the reader knows which file to open — the skill row's companion
+                 rule ({@link affectedShippedFiles}). -->
+            <template v-for="shipped in affectedShippedFiles(carrier)" :key="shipped.path">
+              <span class="aci-path aci-authored-text">{{ shipped.path }}</span>
+              <RowDiagnostics :diagnostic-ids="shipped.diagnosticIds" :diagnostics="diagnostics" />
+            </template>
+          </span>
+          <RecognitionMarks :recognitions="carrier.recognitions" />
+          <span class="aci-row-file__end" />
+        </div>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a
@@ -319,68 +370,29 @@ function affectedShippedFiles(carrier: {
            shape. The accessible name carries the row's identity always, and
            the family where two blocks each offer one (WCAG 2.4.6). -->
       <template #entry="{ block }">
-        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-plugin-row__compare">
-          <NuxtLink
-            :to="blockCompareRoutes.get(block.kind)!"
-            :aria-label="`Compare this plugin with another copy: ${nameAccessibleText ?? ''}${
-              blockCompareRoutes.size > 1 && block.familyText !== null
-                ? ` (${block.familyText})`
-                : ''
-            }`"
-            >Compare this plugin</NuxtLink
-          >
-        </p>
+        <NuxtLink
+          v-if="blockCompareRoutes.get(block.kind)"
+          :to="blockCompareRoutes.get(block.kind)!"
+          :aria-label="`Compare this plugin with another copy: ${name?.accessibleText ?? ''}${
+            block.familyText !== null ? ` (${block.familyText})` : ''
+          }`"
+          >Compare</NuxtLink
+        >
       </template>
     </SourceFamilyBlocks>
 
     <!-- What the plugin ships, stated as a count rather than listed: the files
          are the plugin's content, and the offering's own detail is where they
          are read. Stated even so, because the scan read them and a file the
-         scan read is a file the reader can account for. -->
-    <p v-if="shippedFileCount > 0" class="aci-note">
-      {{ shippedFileCount }} file(s) in this plugin
+         scan read is a file the reader can account for.
+
+         `Ships` rather than a second `N files`: the head above already counts
+         this row's own files — the carriers that declare the plugin, the same
+         count every name-headed row states — and two counts of different things
+         in the same word, one line apart, read as one number contradicting
+         itself. -->
+    <p v-if="shippedFileCount > 0" class="aci-row-note">
+      Ships {{ shippedFileCount }} {{ shippedFileCount === 1 ? 'file' : 'files' }}
     </p>
   </li>
 </template>
-
-<style scoped>
-/* The comparison entry sits last, under everything the row states: it is a
-   step out of the inventory rather than one of the row's own facts. */
-.aci-plugin-row__compare {
-  margin: 0.35rem 0 0;
-}
-
-/* The name leads the row, as every name-headed row's does: it is what a reader
-   looks for, and the carriers that resolve it follow underneath. */
-.aci-plugin-row__name {
-  font-weight: 600;
-  margin: 0;
-}
-
-.aci-plugin-row__owner {
-  margin: 0;
-}
-
-.aci-plugin-row__carrier,
-.aci-plugin-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-plugin-row__carrier::before,
-.aci-plugin-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-.aci-plugin-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-plugin-row__surfaces::before {
-  content: '(';
-}
-
-.aci-plugin-row__surfaces::after {
-  content: ')';
-}
-</style>

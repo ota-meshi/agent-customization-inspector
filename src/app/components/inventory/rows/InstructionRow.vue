@@ -31,21 +31,20 @@
 // never as a locator anything can open (FR-024).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
 import { detailRoute, familyComparisonPairsOf } from '../../detail-route';
+import { ApplicabilityRange } from '../../applicability-range';
 import { useSessionSources } from '../../../composables/session-sources';
 import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
 import {
-  SUPPORTED_TOOL_TEXT,
-  applicabilityRangePresentation,
   fileIdentityKey,
   isReadableFile,
   pathPresentationLabel,
   accessiblePresentationLabel,
 } from '../../../../shared/entities';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
   CustomizationFileSummaryDto,
   SerializedDiagnostic,
@@ -74,17 +73,10 @@ const sessionSources = useSessionSources();
  * The range in its presentation form (data-model.md § Inventory unit): a name
  * spanning lines cannot make one range read as two, while the backslashes the
  * range uses to spell a literal directory name stay the glob syntax they are
- * ({@link applicabilityRangePresentation}). The no-range group gets plain
- * copy, because there is no glob to show. The copy says no range is known
- * rather than that none is declared, because the group also holds files whose
- * declarations could not be read at all — such a file may well declare one,
- * and its own diagnostic below says why nothing could be read (FR-028).
+ * ({@link ApplicabilityRange}), including the no-range group, which has no
+ * glob to show and takes this product's copy instead.
  */
-const rangeText = computed(() =>
-  props.group.applicabilityRange === null
-    ? 'No known applicability range'
-    : applicabilityRangePresentation(props.group.applicabilityRange),
-);
+const range = computed(() => new ApplicabilityRange(props.group.applicabilityRange));
 
 /**
  * Every file of every row in the range, in the published family-major order
@@ -124,13 +116,7 @@ const rowFiles = computed(() =>
        * context, through the whitespace-safe label (WCAG 2.4.4, FR-025).
        */
       pathAccessibleText: accessiblePresentationLabel(file.sourceRelativePath),
-      recognitions: file.recognitions.map((recognition) => ({
-        tool: recognition.tool,
-        toolText: SUPPORTED_TOOL_TEXT[recognition.tool],
-        surfacesText: recognition.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', '),
-      })),
+      recognitions: file.recognitions,
       diagnosticIds: filesByPath?.get(file.sourceRelativePath)?.diagnosticIds ?? [],
     }));
   }),
@@ -149,6 +135,22 @@ const rowFiles = computed(() =>
  * compare route's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
+/**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close (`SourceFamilyBlocks.vue`).
+ */
+const headCompareRoute = computed(() => {
+  const routes = [...blockCompareRoutes.value.values()];
+  // Exactly when the row draws no family line to close: the entry lives on one
+  // of the two lines and never on neither, so both read the one rule
+  // (`session-sources.ts` § familyLineShownFor).
+  const headed = sessionSources.familyLineShownFor(rowFiles.value, [
+    ...blockCompareRoutes.value.keys(),
+  ]);
+  return headed || routes.length !== 1 ? null : routes[0]!;
+});
+
 const blockCompareRoutes = computed(() => {
   const comparable = props.group.fileIdentities.flatMap((identity) => {
     const published = props.filesBySource.get(identity.sourceId)?.get(identity.sourceRelativePath);
@@ -171,9 +173,25 @@ const blockCompareRoutes = computed(() => {
 
 <template>
   <li class="aci-item">
-    <!-- What the group's files govern, rendered exactly as derived and never as
-         a locator anything can open (FR-024). -->
-    <p class="aci-instruction-row__range aci-authored-text">{{ rangeText }}</p>
+    <p class="aci-row-head">
+      <!-- What the group's files govern, rendered exactly as derived and never
+           as a locator anything can open (FR-024). -->
+      <span class="aci-row-head__name" :class="{ 'aci-authored-text': range.isDeclared }">{{
+        range.text
+      }}</span>
+      <span class="aci-row-head__count"
+        >{{ rowFiles.length }} {{ rowFiles.length === 1 ? 'file' : 'files' }}</span
+      >
+      <!-- The comparison entry, where this row has one family and so no family
+           line of its own to close (`SourceFamilyBlocks.vue`). -->
+      <span v-if="headCompareRoute" class="aci-row-head__end">
+        <NuxtLink
+          :to="headCompareRoute"
+          :aria-label="`Compare this range's files: ${range.singleLineText}`"
+          >Compare</NuxtLink
+        >
+      </span>
+    </p>
 
     <SourceFamilyBlocks
       :members="rowFiles"
@@ -194,28 +212,23 @@ const blockCompareRoutes = computed(() => {
              in a subdirectory names the CLI's alone. It is where a product
              documents reading the file, never a claim that a session loaded it
              (FR-009). -->
-        <p class="aci-instruction-row__owner">
-          <NuxtLink
-            :to="file.detailRoute"
-            class="aci-path aci-authored-text"
-            :aria-label="sessionSources.qualifiedLinkName(file.pathAccessibleText, file.sourceId)"
-            >{{ file.pathText }}</NuxtLink
-          >
-          <span
-            v-for="recognition in file.recognitions"
-            :key="recognition.tool"
-            class="aci-instruction-row__tool aci-muted"
-            >{{ recognition.toolText }}
-            <span class="aci-instruction-row__surfaces">{{ recognition.surfacesText }}</span></span
-          >
-        </p>
-
-        <!-- Which directory the file was in, where its family holds more than
-             one Source: an escaped presentation of the admitted root, never a
-             path anything can open (FR-002, FR-030). -->
-        <SourceRootLine :source-id="file.sourceId" />
-
-        <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <!-- Which home the file came from, where its family holds more than
+                 one Source: the member's own name, never a path anything can
+                 open (FR-002, FR-030). -->
+            <SourceHomeBadge :source-id="file.sourceId" />
+            <NuxtLink
+              :to="file.detailRoute"
+              class="aci-path aci-authored-text"
+              :aria-label="sessionSources.qualifiedLinkName(file.pathAccessibleText, file.sourceId)"
+              >{{ file.pathText }}</NuxtLink
+            >
+            <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+          </span>
+          <RecognitionMarks :recognitions="file.recognitions" />
+          <span class="aci-row-file__end" />
+        </div>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a
@@ -224,59 +237,15 @@ const blockCompareRoutes = computed(() => {
            blocks carry. The accessible name carries the range always, and the
            family where two blocks each offer one (WCAG 2.4.6). -->
       <template #entry="{ block }">
-        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-instruction-row__compare">
-          <NuxtLink
-            :to="blockCompareRoutes.get(block.kind)!"
-            :aria-label="`Compare this range's files: ${rangeText}${
-              blockCompareRoutes.size > 1 && block.familyText !== null
-                ? ` (${block.familyText})`
-                : ''
-            }`"
-            >Compare this range's files</NuxtLink
-          >
-        </p>
+        <NuxtLink
+          v-if="blockCompareRoutes.get(block.kind)"
+          :to="blockCompareRoutes.get(block.kind)!"
+          :aria-label="`Compare this range's files: ${range.singleLineText}${
+            block.familyText !== null ? ` (${block.familyText})` : ''
+          }`"
+          >Compare</NuxtLink
+        >
       </template>
     </SourceFamilyBlocks>
   </li>
 </template>
-
-<style scoped>
-.aci-instruction-row__range {
-  margin: 0;
-  font-weight: 600;
-}
-
-/* The path and the products that recognize it on one line, the way an MCP or
-   agent row lays out a carrier and its recognitions: the path is the subject
-   and the products qualify it. */
-.aci-instruction-row__owner {
-  margin: 0;
-}
-
-.aci-instruction-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-instruction-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-.aci-instruction-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-instruction-row__surfaces::before {
-  content: '(';
-}
-
-.aci-instruction-row__surfaces::after {
-  content: ')';
-}
-
-/* The comparison entry under the files it is about, set off by space rather
-   than by an indent: it belongs to the block, not to any one file. */
-.aci-instruction-row__compare {
-  margin: 0.3rem 0 0;
-}
-</style>

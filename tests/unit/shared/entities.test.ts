@@ -6,8 +6,10 @@ import { describe, expect, it } from 'vitest';
 import {
   applicabilityRangePresentation,
   CUSTOMIZATION_KIND_ORDER,
+  CUSTOMIZATION_KIND_TEXT,
   LIFECYCLE_QUALIFIER_ORDER,
   SUPPORTED_TOOL_ORDER,
+  SUPPORTED_TOOL_TEXT,
   createOpaqueId,
   createSourceBoundaryDto,
   decodeSourceBytes,
@@ -347,5 +349,27 @@ describe('closed-catalog predicates', () => {
       expect(isCustomizationKind(value)).toBe(false);
       expect(isSupportedTool(value)).toBe(false);
     }
+  });
+});
+
+describe('closed order arrays', () => {
+  // T1142: the interface renders these catalogs by walking them — the tool
+  // legend, the kind rail, and the two filter selects each iterate one — so a
+  // member missing from an array is a product or a kind the reader never sees,
+  // and a repeated one is a row drawn twice. The compiler does not catch
+  // either: a `Readonly<Record<Union, T>>` is exhaustiveness-checked, and a
+  // `readonly Union[]` is not, so the arrays are what needs a gate. The
+  // label tables are the union's own membership here, being the values the
+  // compiler does check.
+  it.each([
+    ['SUPPORTED_TOOL_ORDER', SUPPORTED_TOOL_ORDER as readonly string[], SUPPORTED_TOOL_TEXT],
+    [
+      'CUSTOMIZATION_KIND_ORDER',
+      CUSTOMIZATION_KIND_ORDER as readonly string[],
+      CUSTOMIZATION_KIND_TEXT,
+    ],
+  ])('%s covers its union exactly once', (_name, order, text) => {
+    expect(order.toSorted()).toEqual(Object.keys(text).toSorted());
+    expect(new Set(order).size).toBe(order.length);
   });
 });

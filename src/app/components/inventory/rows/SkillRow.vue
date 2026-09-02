@@ -32,9 +32,15 @@ import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
+import RecognitionMarks from '../RecognitionMarks.vue';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
 import { skillRowFiles, type SkillRowFile } from './skill-row-files';
-import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
+import {
+  familyComparisonPairsOf,
+  detailRoute,
+  originRowNameQuery,
+  type ComparisonSide,
+} from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import {
@@ -44,10 +50,8 @@ import {
   escapeControlCharacters,
   inlinePresentationLabel,
   isReadableFile,
-  rendersNothingVisible,
   accessiblePresentationLabel,
 } from '../../../../shared/entities';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
   CustomizationFileSummaryDto,
   SerializedDiagnostic,
@@ -55,6 +59,15 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
+import { AuthoredName } from '../../authored-name';
+
+/**
+ * The row's declared name, as every surface of the row needs it: the reader's
+ * own characters, with this product's note beside them where they draw nothing
+ * ({@link AuthoredName}). Never empty — the name comes from a file or
+ * directory — so the substituting spelling is not the one this kind uses.
+ */
+const name = computed(() => new AuthoredName(props.entry.name));
 
 const props = defineProps<{
   /** The committed skill entry to render: one resolved name. */
@@ -115,6 +128,23 @@ const comparableEntrySides = computed<readonly ComparisonSide[]>(() => {
  * do. The comparison surface's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
+/**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close. Null where a family line does exist — there the entry belongs to that
+ * line, because a comparison never spans families.
+ */
+const headCompareRoute = computed(() => {
+  const routes = [...blockCompareRoutes.value.values()];
+  // Exactly when the row draws no family line to close: the entry lives on one
+  // of the two lines and never on neither, so both read the one rule
+  // (`session-sources.ts` § familyLineShownFor).
+  const headed = sessionSources.familyLineShownFor(rowFiles.value, [
+    ...blockCompareRoutes.value.keys(),
+  ]);
+  return headed || routes.length !== 1 ? null : routes[0]!;
+});
+
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof skillComparisonRouteFor>>();
   for (const [kind, [first, second]] of familyComparisonPairsOf(comparableEntrySides.value)) {
@@ -161,23 +191,32 @@ function affectedCompanions(
          unit): a lookup and selection identity must read as what it is. Every
          row has a name — a file that declares none, or declares it empty, is
          named by its skill directory (FR-007). -->
-    <p class="aci-skill-row__name">
-      <!-- A resolved name that draws nothing — whitespace, or code points such
-           as U+200B that are not whitespace and survive a trim — gets its own
-           label rather than a blank line: the name is kept exactly, and saying
-           it is invisible is not the same as showing nothing. Rendered with
-           the note beside it: two skills whose names differ only in whitespace
-           are two rows, and one phrase for both would show them as the same
-           row twice (FR-025). -->
-      <template v-if="rendersNothingVisible(entry.name)"
-        ><span class="aci-authored-text aci-authored-atomic">{{
-          escapeControlCharacters(entry.name)
-        }}</span>
-        <span class="aci-muted">(name with no visible characters)</span></template
+    <p class="aci-row-head">
+      <!-- A name that draws nothing — whitespace, or code points such as
+           U+200B that are not whitespace and survive a trim — is spelled out
+           in full rather than left blank, so two such names stay two rows on
+           the screen ({@link AuthoredName}). The spelled form is this
+           product's characters, so it takes the muted treatment the other
+           rows give theirs rather than the authored one. -->
+      <span
+        class="aci-row-head__name"
+        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+        >{{ name.text }}</span
       >
-      <template v-else
-        ><span class="aci-authored-text">{{ escapeControlCharacters(entry.name) }}</span></template
+      <!-- How many files resolve to this name. A count rather than a repeated
+           path: the files themselves are the lines below. -->
+      <span class="aci-row-head__count"
+        >{{ rowFiles.length }} {{ rowFiles.length === 1 ? 'file' : 'files' }}</span
       >
+      <!-- The comparison entry, where this row has one family and so no family
+           line of its own to close (`SourceFamilyBlocks.vue`). -->
+      <span v-if="headCompareRoute" class="aci-row-head__end">
+        <NuxtLink
+          :to="headCompareRoute"
+          :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}`"
+          >Compare</NuxtLink
+        >
+      </span>
     </p>
 
     <!-- One block per Source family that resolves the name
@@ -214,69 +253,78 @@ function affectedCompanions(
              them: a surface set narrows what reads the file even when it
              holds one member (FR-009), and naming one is never a claim that
              the surface loaded the skill. -->
-        <p class="aci-skill-row__owner">
-          <NuxtLink
-            :to="
-              detailRoute(
-                'skill',
-                file.sourceRelativePath,
-                sessionSources.selectorOf(file.sourceId),
-              )
-            "
-            class="aci-path aci-authored-text"
-            :aria-label="
-              sessionSources.qualifiedLinkName(
-                `${accessiblePresentationLabel(file.sourceRelativePath)}: ${inlinePresentationLabel(
-                  entry.name,
-                )}`,
-                file.sourceId,
-              )
-            "
-            >{{ file.pathText }}</NuxtLink
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <!-- Which directory the file was in, where its family holds more
+                 than one Source: the home's short name, never a path anything
+                 can open (FR-002, FR-030). -->
+            <SourceHomeBadge :source-id="file.sourceId" />
+            <!-- The row it is followed from rides in the query: this file may
+                 be listed under another name too, and the moves to the
+                 previous and next row step from the row the reader was
+                 reading (`detail-route.ts` § originRowNameQuery). -->
+            <NuxtLink
+              :to="{
+                path: detailRoute(
+                  'skill',
+                  file.sourceRelativePath,
+                  sessionSources.selectorOf(file.sourceId),
+                ),
+                query: originRowNameQuery(entry.name),
+              }"
+              class="aci-path aci-authored-text"
+              :aria-label="
+                sessionSources.qualifiedLinkName(
+                  `${accessiblePresentationLabel(
+                    file.sourceRelativePath,
+                  )}: ${inlinePresentationLabel(entry.name)}`,
+                  file.sourceId,
+                )
+              "
+              >{{ file.pathText }}</NuxtLink
+            >
+            <!-- The extraction-failure record this file's recognitions
+                 reference. One record however many products recognize the file
+                 — the parse ran once (FR-028) — so it is stated for the file
+                 rather than once per recognition, which would read as several
+                 failures. -->
+            <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+            <!-- A supporting file this scan could not use. Named rather than
+                 counted: the reader has to know which file to open in the
+                 skill's tree, and the path is the only thing that says so. It
+                 belongs to the file whose directory holds it rather than to any
+                 one of that file's recognitions. -->
+            <template v-for="companion in affectedCompanions(file)" :key="companion.path">
+              <span class="aci-path aci-authored-text">{{ companion.path }}</span>
+              <RowDiagnostics
+                :diagnostic-ids="companion.diagnosticIds"
+                :diagnostics="diagnostics"
+              />
+            </template>
+          </span>
+          <RecognitionMarks :recognitions="file.definitions" />
+          <!-- What ships beside the `SKILL.md`, where anything does. The census
+               says the skill has supporting files, not that a product loads
+               them; the detail view is where the directory itself can be
+               opened.
+
+               The unit is drawn rather than hidden, because a bare integer at
+               the end of a row is a column with no heading. And a row with no
+               companion says nothing: most skills ship none — 18 of the 21 rows
+               in the all-kinds fixture — so a drawn `0 supporting files` is one
+               phrase repeated down the list to report an absence, and at 375px
+               it took a third of every file line to do it. The column is held
+               open by the empty span, so the counts that are there keep one
+               right edge. -->
+          <span class="aci-row-file__end"
+            ><template v-if="file.companionFiles.length > 0"
+              >{{ file.companionFiles.length }}
+              {{
+                file.companionFiles.length === 1 ? 'supporting file' : 'supporting files'
+              }}</template
+            ></span
           >
-          <span
-            v-for="definition in file.definitions"
-            :key="definition.tool"
-            class="aci-skill-row__tool aci-muted"
-            >{{ SUPPORTED_TOOL_TEXT[definition.tool] }}
-            <span class="aci-skill-row__surfaces">{{
-              definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
-            }}</span></span
-          >
-        </p>
-
-        <!-- Which directory the file was in, where its family holds more than
-             one Source: an escaped presentation of the admitted root, never a
-             path anything can open (FR-002, FR-030). -->
-        <SourceRootLine :source-id="file.sourceId" />
-        <!-- What ships beside the `SKILL.md`. The census says the skill has
-             supporting files, not that a product loads them; the detail view
-             is where the directory itself can be opened. It is stated even at
-             zero, because how many a skill ships is a fact about it and
-             "none" is part of that fact. -->
-        <p class="aci-note">{{ file.companionFiles.length }} supporting file(s)</p>
-
-        <!-- The extraction-failure record this file's recognitions reference.
-             One record however many products recognize the file — the parse
-             ran once (FR-028) — so it is stated for the file rather than once
-             per recognition, which would read as several failures. -->
-        <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
-
-        <!-- A supporting file this scan could not use. Named rather than
-             counted: the reader has to know which file to open in the skill's
-             tree, and the path is the only thing that says so. It belongs to
-             the file whose directory holds it rather than to any one of that
-             file's recognitions, which is why it sits here and not above. -->
-        <ul
-          v-if="affectedCompanions(file).length > 0"
-          class="aci-skill-row__companion-diagnostics"
-          role="list"
-        >
-          <li v-for="companion in affectedCompanions(file)" :key="companion.path">
-            <span class="aci-path aci-authored-text">{{ companion.path }}</span>
-            <RowDiagnostics :diagnostic-ids="companion.diagnosticIds" :diagnostics="diagnostics" />
-          </li>
-        </ul>
+        </div>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a
@@ -285,24 +333,21 @@ function affectedCompanions(
            The accessible name carries the row's name always, and the family
            where two blocks each offer one (WCAG 2.4.6). -->
       <template #entry="{ block }">
-        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-skill-row__compare">
-          <NuxtLink
-            :to="blockCompareRoutes.get(block.kind)!"
-            :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}${
-              blockCompareRoutes.size > 1 && block.familyText !== null
-                ? ` (${block.familyText})`
-                : ''
-            }`"
-            >Compare this skill's files</NuxtLink
-          >
-        </p>
+        <NuxtLink
+          v-if="blockCompareRoutes.get(block.kind)"
+          :to="blockCompareRoutes.get(block.kind)!"
+          :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}${
+            block.familyText !== null ? ` (${block.familyText})` : ''
+          }`"
+          >Compare</NuxtLink
+        >
       </template>
     </SourceFamilyBlocks>
 
     <!-- Present only when several definitions share the name; one definition
          resolves nothing. -->
     <ul v-if="entry.sameNameResolutions.length > 0" class="aci-skill-row__resolutions" role="list">
-      <li v-for="statement in entry.sameNameResolutions" :key="statement.tool">
+      <li v-for="statement in entry.sameNameResolutions" :key="statement.tool" class="aci-row-note">
         {{ SUPPORTED_TOOL_TEXT[statement.tool] }}
         {{ SAME_NAME_SKILL_RESOLUTION_TEXT[statement.resolution] }}
       </li>
@@ -311,62 +356,9 @@ function affectedCompanions(
 </template>
 
 <style scoped>
-.aci-skill-row__owner {
-  margin: 0;
-}
-
-/* Each recognizing product trails the file on the same line, set apart by a
-   separator, matching how an instruction row states its recognitions. */
-.aci-skill-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-skill-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-/* The surfaces qualify their own product within the same span: the product
-   alone does not say where it reads the file from once two surfaces document
-   different lookup bases. */
-.aci-skill-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-skill-row__surfaces::before {
-  content: '(';
-}
-
-.aci-skill-row__surfaces::after {
-  content: ')';
-}
-
 .aci-skill-row__resolutions {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-/* The statements describe the row as a whole, so they sit apart from the
-   definitions they are about rather than inside any one of them. */
-.aci-skill-row__resolutions {
-  margin-block-start: 0.5rem;
-  font-size: 0.875rem;
-  opacity: 0.8;
-}
-/* The resolved name heads the row — it is the row's identity — and the paths
-   beneath identify its definitions, because two files may resolve to one name
-   (data-model.md § Inventory unit). Names have no break opportunities of
-   their own, so a long one wraps rather than scrolling the page sideways
-   (WCAG 1.4.10). */
-.aci-skill-row__name {
-  font-weight: 600;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-/* The row-level comparison link, set apart from the files it spans, the way
-   an agent row's and a prompt row's are. */
-.aci-skill-row__compare {
-  margin: 0.3rem 0 0;
 }
 </style>

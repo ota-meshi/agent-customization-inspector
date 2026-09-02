@@ -22,6 +22,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus, waitForInventory } from './repository-status';
 
 let fixture: string;
 let host: LaunchedHost;
@@ -42,15 +43,7 @@ test.afterEach(async () => {
 
 test('shows one enabled Repository Source with an empty inventory', async ({ page }) => {
   await page.goto(host.origin);
-  await expect(page.getByRole('heading', { name: 'Repository' })).toBeVisible();
-  // The launch URL is published only after the automatic first scan commits,
-  // so the one-fetch shell cannot become stranded on generation 0.
-  await expect(page.locator('.aci-scan-progress')).toContainText('Ready');
-  // The escaped, non-authorizing root presentation: display-only, and the
-  // page states as much beside it. The fixture is selected with --root, so the
-  // boundary reports that origin rather than the invocation directory.
-  await expect(page.locator('.aci-inventory-page__display-root')).toContainText('--root option');
-  await expect(page.locator('.aci-note').first()).toContainText('grants no read access');
+  await waitForInventory(page);
   // The fixture holds no Codex skill, so the committed inventory is empty and
   // the shell says so instead of rendering an empty list.
   // Vendor-neutral on purpose: the sentence reports the finding, so it stays
@@ -58,14 +51,26 @@ test('shows one enabled Repository Source with an empty inventory', async ({ pag
   await expect(
     page.getByText('No customization files were recognized in this scan.'),
   ).toBeVisible();
+  await page.getByRole('tab', { name: /^Diagnostics/u }).click();
   await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
+
+  // The Source's own state is its own surface (FR-002, FR-030). The launch URL
+  // is published only after the automatic first scan commits, so the one-fetch
+  // shell cannot become stranded on generation 0.
+  const status = await openRepositoryStatus(page);
+  await expect(status).toContainText('Ready');
+  // The escaped, non-authorizing root presentation: display-only, and the
+  // page states as much beside it. The fixture is selected with --root, so the
+  // boundary reports that origin rather than the invocation directory.
+  await expect(page.locator('.aci-repository-page__display-root')).toContainText('--root option');
+  await expect(page.locator('.aci-note').first()).toContainText('grants no read access');
 });
 
 test('never displays an escaped label that could be mistaken for a usable path', async ({
   page,
 }) => {
-  await page.goto(host.origin);
-  const label = await page.locator('.aci-inventory-page__display-root').first().innerText();
+  await page.goto(new URL('/repository', host.origin).href);
+  const label = await page.locator('.aci-repository-page__display-root').first().innerText();
   // The presentation encoding copies only ASCII letters, digits, and
   // `.`/`/`/`:`/`_`/`-`; anything else is a `\uXXXX` escape.
   expect(label.replace(/\s*\(.*\)$/u, '')).toMatch(/^(?:[A-Za-z0-9./:_-]|\\u[0-9A-F]{4})+$/u);
@@ -101,13 +106,13 @@ test('offers no Repository picker or ancestor discovery', async ({ page }) => {
 
 test('ends the session as soon as the host goes away', async ({ page }) => {
   await page.goto(host.origin);
-  await expect(page.locator('.aci-inventory-page__display-root')).toHaveCount(1);
+  await waitForInventory(page);
   // No interaction, no lifecycle event, no probe: the closed loopback socket
   // is pushed to the page and the ended view appears on its own.
   await stopHost(host);
   await expect(page.getByRole('heading', { name: 'Session ended' })).toBeVisible();
   await expect(page.getByRole('status').first()).toContainText('Session ended');
-  await expect(page.locator('.aci-inventory-page__display-root')).toHaveCount(0);
+  await expect(page.getByRole('tablist', { name: 'Customization files' })).toHaveCount(0);
   // Re-launched only so the shared afterEach teardown has a live handle.
   host = await launchHost(fixture);
 });

@@ -15,6 +15,8 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { waitForInventory } from './repository-status';
+import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /** A credential shape no environment can resolve; it must reach the page whole. */
 const SECRET = 'ghp_E2EDETAIL0000000000000000000000000000';
@@ -120,13 +122,11 @@ test('shows replaced text whole, and a binary file as its diagnostic alone', asy
 
   // A binary `SKILL.md` is recognized by nothing — its extraction cannot even
   // be attempted — so it is listed under the files no kind lists, which is
-  // where its own read outcome is stated. The section is closed by default,
-  // because a `partial` generation must not put a reader's unrecognized file
-  // on screen unasked.
+  // where its own read outcome is stated. The list is a rail entry the reader
+  // selects, because a `partial` generation must not put a reader's
+  // unrecognized file on screen unasked.
   await page.goto(host.origin);
-  const noKind = page.locator('details.aci-inventory-page__no-kind');
-  await expect(noKind).toHaveCount(1);
-  await noKind.locator('summary').click();
+  const noKind = await openNoKindDisclosure(page);
   await expect(noKind).toContainText('.claude/skills/binary/SKILL.md');
   // NUL bytes make the file binary: the row states that and no text, because
   // none travelled (FR-025).
@@ -151,10 +151,10 @@ test('reports a link this scan does not hold, and offers the way back', async ({
   await page.goto(
     new URL('/skills/detail/repository/.claude/skills/absent/SKILL.md', host.origin).toString(),
   );
-  await expect(page.locator('.aci-error')).toContainText('current scan');
+  await expect(page.locator('.aci-subject-unavailable')).toContainText('current scan');
   await page
     .getByRole('link', { name: /Return to the inventory|Back to the inventory/u })
     .first()
     .click();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await waitForInventory(page);
 });

@@ -94,7 +94,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   // link addresses the same file detail, so the first one opens it (T224).
   await page
     .locator('.aci-source-family-blocks__members > li', { hasText: path })
-    .locator('.aci-instruction-row__owner a')
+    .locator('.aci-row-file a')
     .first()
     .click();
 }
@@ -104,9 +104,11 @@ test('opens complete inert static instruction detail from the inventory', async 
   // The page is headed by the file's path — the row's own identity — with
   // the recognizing product and the kind beside it.
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText('AGENTS.md');
-  await expect(page.locator('.aci-instruction-detail__recognition')).toHaveText(
-    'GitHub Copilot (VS Code, CLI, Cloud agent), OpenAI Codex (Local clients) · Instructions',
-  );
+  const attributes = page.locator('.aci-detail-attributes');
+  await expect(attributes).toContainText('GitHub Copilot');
+  await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
+  await expect(attributes).toContainText('OpenAI Codex');
+  await expect(attributes).toContainText('Local clients');
   // The declarations lead, in authored order — scope, endpoint, api_key is
   // the file's own order, not a sort — with the credential and the
   // environment reference exactly as written.
@@ -197,7 +199,7 @@ test('reports an unparseable frontmatter with its diagnostic while the source st
 test('drops the content when the route leaves the file', async ({ page }) => {
   await openInstruction(page, 'AGENTS.md');
   await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-instruction-detail')).toHaveCount(0);
   // The detail-state cleanup took the authored content with it: nothing on
   // the inventory carries a value the reader navigated away from (FR-027).

@@ -25,8 +25,9 @@
 //
 // This component owns the landmark and the scroll box; the nesting is drawn by
 // the branch below it, which is recursive because the structure is.
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
+import FolderIcon from '~icons/lucide/folder';
 import DirectoryFileTreeBranch from './DirectoryFileTreeBranch.vue';
 import { buildDirectoryTree } from './directory-file-tree-nodes';
 
@@ -49,27 +50,116 @@ const props = defineProps<{
    * in (WCAG 2.4.1).
    */
   readonly label: string;
+  /**
+   * What the entry point's own row is separated from the rest by, where the
+   * customization has a word for the rest. A skill does — its inventory row
+   * calls them supporting files — so its tree names the divider with it. A
+   * plugin has no such word, passes none, and gets no divider rather than a
+   * word this product invented for it.
+   */
+  readonly supportingLabel?: string;
   /** The route one of these files opens at; see the branch's own prop. */
   readonly routeFor: (sourceRelativePath: string) => RouteLocationRaw;
 }>();
 
 /** The tree's own nodes, derived from the paths the snapshot published. */
 const nodes = computed(() => buildDirectoryTree(props.files, props.directory));
+
+/**
+ * The entry point's node and everything below the divider. The incoming order
+ * is the entry point followed by the census (`directory-file-tree-nodes.ts`),
+ * so the split is the first node and the rest — and with no divider label, or
+ * nothing after it, the whole tree is drawn as one run.
+ */
+const entryNodes = computed(() => nodes.value.slice(0, 1));
+const supportingNodes = computed(() => nodes.value.slice(1));
+
+/** Names the visible heading the landmark takes its own accessible name from. */
+const headingId = useId();
 </script>
 
 <template>
-  <nav class="aci-directory-file-tree" :aria-label="label">
-    <DirectoryFileTreeBranch :nodes="nodes" :selected-path="selectedPath" :route-for="routeFor" />
+  <!-- Named by its own visible heading rather than by a duplicate `aria-label`:
+       the head states whose files these are, so the landmark and the reader are
+       told the same thing once (WCAG 2.4.1). -->
+  <nav class="aci-directory-file-tree" :aria-labelledby="headingId">
+    <p :id="headingId" class="aci-directory-file-tree__head">
+      <FolderIcon class="aci-directory-file-tree__head-icon" aria-hidden="true" />
+      {{ label }}
+    </p>
+    <div class="aci-directory-file-tree__scroll">
+      <template v-if="supportingLabel !== undefined && supportingNodes.length > 0">
+        <DirectoryFileTreeBranch
+          :nodes="entryNodes"
+          :selected-path="selectedPath"
+          :route-for="routeFor"
+        />
+        <!-- The one file a product actually reads stands above the divider, and
+             what the customization ships beside it below. A caption rather than
+             a heading: it labels the run under it inside a landmark that is
+             already named. -->
+        <p class="aci-directory-file-tree__divider">{{ supportingLabel }}</p>
+        <DirectoryFileTreeBranch
+          :nodes="supportingNodes"
+          :selected-path="selectedPath"
+          :route-for="routeFor"
+        />
+      </template>
+      <DirectoryFileTreeBranch
+        v-else
+        :nodes="nodes"
+        :selected-path="selectedPath"
+        :route-for="routeFor"
+      />
+    </div>
   </nav>
 </template>
 
 <style scoped>
+/* A box of its own, like every other region of a detail page: without a frame
+   the file names sit directly on the page beside the viewer's own panel, and
+   which of the two a row belongs to is left to the gap between them. */
+.aci-directory-file-tree {
+  border: 1px solid var(--aci-line);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.aci-directory-file-tree__head {
+  align-items: center;
+  background: var(--aci-surface-sunken);
+  border-block-end: 1px solid var(--aci-line);
+  color: var(--aci-muted);
+  display: flex;
+  font-size: 0.6875rem;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0.3125rem 0.625rem;
+}
+
+.aci-directory-file-tree__head-icon {
+  block-size: 0.6875rem;
+  inline-size: 0.6875rem;
+}
+
 /* The tree is capped rather than unbounded: a skill that ships fifty files
    would otherwise push its own contents off the screen, and the cap keeps the
    two columns beside each other. Below the cap it is its natural height, so a
    three-file skill shows three files and no empty scroller. */
-.aci-directory-file-tree {
-  max-height: 24rem;
+.aci-directory-file-tree__scroll {
+  max-block-size: 24rem;
   overflow-y: auto;
+  padding-block: 0.1875rem;
+}
+
+/* What the run below it is, set as quietly as the head above: it names a group
+   of rows rather than titling a section. The rule is what separates it from the
+   entry point above. */
+.aci-directory-file-tree__divider {
+  border-block-start: 1px solid var(--aci-hairline);
+  color: var(--aci-muted);
+  font-size: 0.625rem;
+  margin: 0.1875rem 0 0;
+  padding: 0.3125rem 0.625rem 0.1875rem;
 }
 </style>

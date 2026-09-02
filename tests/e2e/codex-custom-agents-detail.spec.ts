@@ -110,9 +110,12 @@ test.describe('the complete literal Codex custom-agent detail', () => {
     ).toBeVisible();
 
     const main = page.locator('main');
-    // The file's identity restated from its row, beside the kind's caption
-    // and the name the row is grouped under.
-    await expect(main).toContainText('OpenAI Codex (Local clients) · Agent');
+    // The file's identity restated from its row: the product that recognizes it
+    // and the surfaces its admitting rules rest on, on the customization's own
+    // attribute line.
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('OpenAI Codex');
+    await expect(attributes).toContainText('Local clients');
     await expect(main).toContainText('Agent name: docs_researcher');
 
     // The parse tab leads, with the metadata as one YAML document in the
@@ -120,8 +123,15 @@ test.describe('the complete literal Codex custom-agent detail', () => {
     // in (FR-007).
     await expect(page.getByRole('tab', { name: 'Agent', selected: true })).toBeVisible();
     // The declarations lead the two halves, and this kind's comparison leads
-    // with the same half, so the two surfaces read alike.
-    await expect(main.locator('h3')).toHaveText(['Metadata', 'Instructions']);
+    // with the same half, so the two surfaces read alike. Each half's name is
+    // the band of the panel holding it, with the format the text is in at the
+    // band's end (`SourceViewer.vue` § panelLabel); the File tab's own panel is
+    // attached behind the unselected tab.
+    await expect(main.locator('h3')).toHaveText([
+      'Metadata YAML',
+      'Instructions Markdown',
+      'Source',
+    ]);
     await expect(page.locator('.monaco-editor').first()).toBeVisible();
     await expect(main).toContainText('name: docs_researcher');
     await expect(main).toContainText('model_reasoning_effort: medium');
@@ -195,7 +205,7 @@ test.describe('the complete literal Codex custom-agent detail', () => {
       new URL('/agents/detail/repository/.codex/agents/reviewer.toml', host.origin).toString(),
     );
     await expect(page.getByRole('heading', { name: '.codex/agents/reviewer.toml' })).toBeVisible();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=agent$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Agent');
   });

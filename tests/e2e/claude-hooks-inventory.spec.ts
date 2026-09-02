@@ -148,11 +148,11 @@ test.describe('Claude hooks declared inside accepted owners', () => {
     const panel = page.getByRole('tabpanel');
     // Narrowing to a path no hook carrier has empties the list; narrowing to
     // the settings document keeps its row.
-    await page.getByLabel('Path contains').fill('SKILL.md');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('SKILL.md');
     await expect(panel.locator('.aci-item')).toHaveCount(0);
-    await page.getByLabel('Path contains').fill('settings.json');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('settings.json');
     await expect(panel.locator('.aci-item')).toHaveCount(1);
-    await page.getByLabel('Path contains').fill('');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('');
     // Nothing on the page runs, enables, or trusts a hook (FR-009, FR-020).
     for (const forbidden of [/^Run/u, /^Enable/u, /^Trust/u, /^Review/u]) {
       await expect(page.getByRole('button', { name: forbidden })).toHaveCount(0);

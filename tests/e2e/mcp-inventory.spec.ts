@@ -98,7 +98,7 @@ test.describe('the priority cross-vendor MCP inventory', () => {
     const items = page.getByRole('tabpanel').locator('.aci-item');
     // Every explicit carrier's names, in name order, and nothing else.
     await expect(items).toHaveCount(5);
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'codex-db',
       'gh-actions',
       'root-only',
@@ -109,7 +109,7 @@ test.describe('the priority cross-vendor MCP inventory', () => {
     // declarations — attributing every recognizing product without ordering
     // them (FR-009).
     const shared = items.nth(3);
-    await expect(shared.locator('.aci-mcp-row__owner')).toHaveCount(4);
+    await expect(shared.locator('.aci-row-file')).toHaveCount(4);
     await expect(shared).toContainText('.codex/config.toml');
     await expect(shared).toContainText('.github/mcp.json');
     await expect(shared).toContainText('.vscode/mcp.json');
@@ -136,17 +136,17 @@ test.describe('the priority cross-vendor MCP inventory', () => {
     // Tool: each vendor keeps exactly the rows one of its declarations
     // resolves.
     await page.getByLabel('Tool').selectOption('codex');
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['codex-db', SHARED_NAME]);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['codex-db', SHARED_NAME]);
     await page.getByLabel('Tool').selectOption('claude');
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['root-only', SHARED_NAME]);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['root-only', SHARED_NAME]);
     await page.getByRole('button', { name: 'Clear filters' }).click();
 
     // Path: the filter applies to the carriers the declarations live in.
-    await page.getByLabel('Path contains').fill('.codex');
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['codex-db', SHARED_NAME]);
-    await page.getByLabel('Path contains').fill('no-such-carrier');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.codex');
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['codex-db', SHARED_NAME]);
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('no-such-carrier');
     await expect(items).toHaveCount(0);
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(5);
   });
 
@@ -165,9 +165,11 @@ test.describe('the priority cross-vendor MCP inventory', () => {
     // Reach the path filter in the page's real Tab order, type the query,
     // and clear it — focus lands on the result summary when the clear
     // control removes itself (WCAG 2.4.3).
-    expect(await tabUntilFocused(page, page.getByLabel('Path contains'))).toBe(true);
+    expect(
+      await tabUntilFocused(page, page.getByRole('searchbox', { name: 'Search names and paths' })),
+    ).toBe(true);
     await page.keyboard.type('.vscode/');
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText([SHARED_NAME, 'vs-docs']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText([SHARED_NAME, 'vs-docs']);
     expect(await tabUntilFocused(page, page.getByRole('button', { name: 'Clear filters' }))).toBe(
       true,
     );

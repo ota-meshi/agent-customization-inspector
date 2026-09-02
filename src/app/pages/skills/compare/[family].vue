@@ -49,7 +49,9 @@ import {
   comparisonOptionLabel,
   comparisonSourceQualifierOf,
 } from '../../../components/comparison-side-picker';
-import { sourceFactsOf } from '../../../components/source-name';
+import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
+import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -59,8 +61,10 @@ import { SkillRecognitionComparison } from '../../../components/skill-comparison
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
+import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
+  CUSTOMIZATION_KIND_TEXT,
   fileIdentityKey,
   escapeControlCharacters,
   FILE_ENCODING_TEXT,
@@ -601,11 +605,24 @@ const fileOptions = computed<readonly ComparedFileOption[]>(() => {
 });
 
 /**
- * Whether the switchers render: a row owns the pair — the only comparable
- * state the URL scheme can express — and the current copies offer at least
- * one comparable file.
+ * Whether the switchers render at all: a row owns the pair — the only
+ * comparable state the URL scheme can express — and the current copies offer
+ * at least one comparable file.
  */
 const switchersAvailable = computed(() => owningRow.value !== null && fileOptions.value.length > 0);
+
+/**
+ * Whether the compared-file switcher renders: only where the skill holds more
+ * than one comparable file. With one, every option it could offer is the file
+ * already on screen — a control that changes nothing, which reads the same as
+ * one that is broken. The two side cards name that file, so nothing is lost by
+ * leaving it out. The same rule the per-side copy switchers follow
+ * ({@link copySwitchersShown}).
+ */
+const fileSwitcherShown = computed(() => switchersAvailable.value && fileOptions.value.length > 1);
+
+/** Whether the per-side copy switchers render; see {@link copySwitchersShown}. */
+const copySwitchersRendered = computed(() => switchersAvailable.value && copySwitchersShown.value);
 
 /**
  * The compared-file switcher binding: choosing a file moves the `file`
@@ -964,10 +981,16 @@ const readyView = computed(() => {
   const right = comparison.rightDetail.value;
   const originalText = diffText(left);
   const modifiedText = diffText(right);
+  // Read once and used twice — beside each side's path, and as the
+  // recognition comparison's side input — so the products a side box names
+  // and the products its rows compare cannot disagree (AGENTS.md
+  // § Implementation simplicity policy).
+  const leftDefinitions = left === null ? [] : definitionsOf(left.file);
+  const rightDefinitions = right === null ? [] : definitionsOf(right.file);
   return {
     sides: [
-      { caption: 'First file', path: leftPath, detail: left },
-      { caption: 'Second file', path: rightPath, detail: right },
+      { caption: 'First file', path: leftPath, detail: left, recognitions: leftDefinitions },
+      { caption: 'Second file', path: rightPath, detail: right, recognitions: rightDefinitions },
     ] as const,
     diff:
       originalText === null || modifiedText === null
@@ -986,11 +1009,37 @@ const readyView = computed(() => {
     // A one-sided pair passes its absent side as null: the present side's
     // recognitions and declarations stand beside the stated absence (T203).
     recognition: new SkillRecognitionComparison(
-      left === null ? null : { detail: left, definitions: definitionsOf(left.file) },
-      right === null ? null : { detail: right, definitions: definitionsOf(right.file) },
+      left === null ? null : { detail: left, definitions: leftDefinitions },
+      right === null ? null : { detail: right, definitions: rightDefinitions },
     ),
   };
 });
+
+/**
+ * The Source family this comparison stands in, as the family's own word, or
+ * null where naming it distinguishes nothing — a session carrying one Source
+ * (`source-name.ts` § sourceFamilyNameOf). The comparison never spans two
+ * families, so one word covers both sides.
+ */
+const crumbFamilyText = computed(() =>
+  family.value === null ? null : sourceFamilyNameOf(sources.value, family.value),
+);
+
+/**
+ * The invocation name the two copies share, which is what the comparison is
+ * of. Null before the pair resolves, where the crumb step would name nothing —
+ * which the empty parameter means here: no row was named, rather than a row
+ * named nothing.
+ *
+ * Drawn through the shared unit, so a name whose characters draw nothing is
+ * spelled out on the crumb and the subject line the way this kind's row and
+ * detail spell it ({@link AuthoredName};
+ * `SkillRow.vue`). A skill name is a directory name, so it has no empty case
+ * and never takes the substituting spelling the declared kinds use.
+ */
+const crumbSubject = computed(() =>
+  rowNameParameter.value === '' ? null : new AuthoredName(rowNameParameter.value),
+);
 
 /**
  * What this page says for the state it is in — one value read by both the
@@ -1087,7 +1136,10 @@ const readyRegion = ref<HTMLElement | null>(null);
 /** The error/state statement's region; watched by the same focus guard. */
 const stateRegion = ref<HTMLElement | null>(null);
 
-/** The switchers' region; what the pickers focus guard below watches. */
+/**
+ * The compared-file switcher's region; what the pickers focus guard below
+ * watches together with the two copy pickers, which stand over the cards.
+ */
 const pickersRegion = ref<HTMLElement | null>(null);
 
 /**
@@ -1136,14 +1188,14 @@ watch(
   { flush: 'sync' },
 );
 
-// The same rescue for the switchers themselves: a committed generation can
-// take the population away — the name lost a copy, or a compared file
-// stopped being readable — and unmount the very select the reader is
-// operating (WCAG 2.4.3). Synchronous for the same reason as above.
+// The same rescue for the compared-file switcher: a committed generation can
+// take the population away — the name lost a copy, or a compared file stopped
+// being readable — and unmount the very select the reader is operating
+// (WCAG 2.4.3). Synchronous for the same reason as above.
 watch(
-  switchersAvailable,
-  (available) => {
-    if (!available && !leaving && pickersRegion.value?.contains(document.activeElement) === true) {
+  fileSwitcherShown,
+  (shown) => {
+    if (!shown && !leaving && pickersRegion.value?.contains(document.activeElement) === true) {
       heading.value?.focus();
     }
   },
@@ -1173,7 +1225,7 @@ watch(
 // the two copy pickers, because the file switcher stays mounted and focus
 // on it must not be yanked.
 watch(
-  copySwitchersShown,
+  copySwitchersRendered,
   (shown) => {
     if (
       !shown &&
@@ -1225,7 +1277,10 @@ const titleSubject = computed<string>(() => {
       if (sides === null) {
         return 'Comparing skill files';
       }
-      const subject = rowNameParameter.value === '' ? null : rowNameParameter.value;
+      // The name goes in raw: the shell escapes a title subject once at its own
+      // rendering boundary, and spells out a name that draws nothing there
+      // (`App.vue` § documentTitle).
+      const subject = crumbSubject.value?.authored ?? null;
       // The compared file rides in the title too: stepping the pair through
       // its files changes what the page shows, and two tabs on two files of
       // one pair must not read identically (WCAG 2.4.2).
@@ -1266,13 +1321,68 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="aci-skill-compare">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the skill
-         list rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=skill">Back to the inventory</NuxtLink></p>
+  <div class="aci-skill-compare aci-route">
+    <!-- The way back, drawn in the bar with every other route's moves
+         (`DetailNavigation.vue`). The kind is URL state, so naming it is what
+         makes the move land on the skill list rather than the kind
+         order's default tab. A comparison has no neighbouring row to step to:
+         what stands beside it is the other copy, which its own pickers
+         choose. -->
+    <DetailNavigation
+      list-route="/?kind=skill"
+      :list-text="CUSTOMIZATION_KIND_TEXT.skill"
+      :previous="null"
+      :next="null"
+    />
 
-    <h2 ref="heading" tabindex="-1">Compare skill files</h2>
+    <!-- Where the page sits, which is location rather than a way out: the
+         kind, the subject the two copies share, and this page's own step. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="crumbFamilyText !== null">{{ crumbFamilyText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.skill }} <span>›</span>
+      <template v-if="crumbSubject !== null"
+        ><span class="aci-path" :class="{ 'aci-authored-text': crumbSubject.isAuthored }">{{
+          crumbSubject.text
+        }}</span>
+        <span>›</span> </template
+      ><span class="aci-detail-crumbs__subject">Compare</span>
+    </p>
+
+    <!-- The heading and the switcher that changes which file of the skill both
+         sides show, on one row. It belongs to neither side — stepping it moves
+         both — so it stands with the page's own heading rather than over one of
+         the two cards, where the per-side switchers are
+         (`main.css` § .aci-compare-pickers). -->
+    <div class="aci-skill-compare__head">
+      <h2 ref="heading" tabindex="-1">Compare skill files</h2>
+      <div v-if="fileSwitcherShown" ref="pickersRegion" class="aci-skill-compare__picker">
+        <label for="aci-skill-compare-file">Compared file</label>
+        <select id="aci-skill-compare-file" v-model="fileSelection">
+          <!-- Every file either current copy ships readably. One a single
+               copy ships says so in its own label, and stepping to it shows
+               the present content against its stated absence — the existence
+               difference is part of the comparison (FR-011). -->
+          <option v-for="option in fileOptions" :key="option.relative" :value="option.relative">
+            {{ option.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- What is being compared, on the line directly below the heading so the
+         two are read together. The heading states the page's purpose, because
+         focus lands there on arrival and a screen reader hears it alone
+         (WCAG 2.4.6); putting the subject in it would give each kind its own
+         sentence, and an applicability range would read as "Compare **". The
+         name is the third crumb above as well, where it says where the page
+         sits rather than what it is showing. -->
+    <p v-if="crumbSubject !== null" class="aci-detail-attributes">
+      <strong
+        class="aci-detail-attributes__subject aci-path"
+        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+        >{{ crumbSubject.text }}</strong
+      >
+    </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
          region that appears together with its message is not reliably read
@@ -1295,54 +1405,41 @@ onBeforeUnmount(() => {
          control's own value into a wrapping label's text, so a wrapped
          select would announce itself with its options mixed into its name
          (WCAG 2.4.6). -->
-    <div v-if="switchersAvailable" ref="pickersRegion" class="aci-skill-compare__pickers">
-      <div class="aci-skill-compare__picker">
-        <label for="aci-skill-compare-file">Compared file</label>
-        <select id="aci-skill-compare-file" v-model="fileSelection">
-          <!-- Every file either current copy ships readably. One a single
-               copy ships says so in its own label, and stepping to it shows
-               the present content against its stated absence — the existence
-               difference is part of the comparison (FR-011). -->
-          <option v-for="option in fileOptions" :key="option.relative" :value="option.relative">
-            {{ option.label }}
+
+    <!-- The per-side copy switchers appear only when the name has more than
+         two copies: with exactly two, both already stand on the two sides and
+         each selector would offer nothing but its own value — dead controls
+         (T200). Each stands directly over the card it changes. -->
+    <div v-if="copySwitchersRendered" class="aci-compare-pickers aci-skill-compare__pickers">
+      <div ref="firstCopyPicker" class="aci-skill-compare__picker">
+        <label for="aci-skill-compare-first-copy">First skill directory</label>
+        <select id="aci-skill-compare-first-copy" v-model="leftCopySelection">
+          <!-- The other side's copy is unselectable — the two sides would
+               hold one file (FR-011) — as is a copy sharing no comparable
+               file with it. -->
+          <option
+            v-for="copy in copies ?? []"
+            :key="copy.key"
+            :value="copy.key"
+            :disabled="copy !== leftCopy && copyDisabled(copy, rightCopy)"
+          >
+            {{ copyLabel(copy) }}
           </option>
         </select>
       </div>
-      <!-- The per-side copy switchers appear only when the name has more
-           than two copies: with exactly two, both already stand on the two
-           sides and each selector would offer nothing but its own value —
-           dead controls (T200). -->
-      <template v-if="copySwitchersShown">
-        <div ref="firstCopyPicker" class="aci-skill-compare__picker">
-          <label for="aci-skill-compare-first-copy">First skill directory</label>
-          <select id="aci-skill-compare-first-copy" v-model="leftCopySelection">
-            <!-- The other side's copy is unselectable — the two sides would
-                 hold one file (FR-011) — as is a copy sharing no comparable
-                 file with it. -->
-            <option
-              v-for="copy in copies ?? []"
-              :key="copy.key"
-              :value="copy.key"
-              :disabled="copy !== leftCopy && copyDisabled(copy, rightCopy)"
-            >
-              {{ copyLabel(copy) }}
-            </option>
-          </select>
-        </div>
-        <div ref="secondCopyPicker" class="aci-skill-compare__picker">
-          <label for="aci-skill-compare-second-copy">Second skill directory</label>
-          <select id="aci-skill-compare-second-copy" v-model="rightCopySelection">
-            <option
-              v-for="copy in copies ?? []"
-              :key="copy.key"
-              :value="copy.key"
-              :disabled="copy !== rightCopy && copyDisabled(copy, leftCopy)"
-            >
-              {{ copyLabel(copy) }}
-            </option>
-          </select>
-        </div>
-      </template>
+      <div ref="secondCopyPicker" class="aci-skill-compare__picker">
+        <label for="aci-skill-compare-second-copy">Second skill directory</label>
+        <select id="aci-skill-compare-second-copy" v-model="rightCopySelection">
+          <option
+            v-for="copy in copies ?? []"
+            :key="copy.key"
+            :value="copy.key"
+            :disabled="copy !== rightCopy && copyDisabled(copy, leftCopy)"
+          >
+            {{ copyLabel(copy) }}
+          </option>
+        </select>
+      </div>
     </div>
 
     <!-- The ready view leads the branch chain so its one bundled projection
@@ -1357,9 +1454,9 @@ onBeforeUnmount(() => {
            shown. The absent side of a one-sided comparison states the
            absence in the same place: which copy has no file at this path is
            the difference the reader came to see. -->
-      <div class="aci-skill-compare__files">
-        <section v-for="side in readyView.sides" :key="side.caption">
-          <h3>{{ side.caption }}</h3>
+      <div class="aci-compare-sides">
+        <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
+          <span class="aci-compare-side__caption">{{ side.caption }}</span>
           <p class="aci-skill-compare__file-path aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
@@ -1373,11 +1470,11 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
-      <!-- The component owns the section order — the declarations, the
-           instructions, the complete files it takes below through the
-           `source` slot, and last the recognitions (research.md § 7). What
-           the source diff is stays this page's, because the absent side of a
-           one-sided comparison is this page's model. -->
+      <!-- The component owns the section order — the recognitions, the
+           declarations, the instructions, and last the complete files it takes
+           below through the `source` slot (research.md § 7). What the source
+           diff is stays this page's, because the absent side of a one-sided
+           comparison is this page's model. -->
       <RecognitionComparison
         :comparison="readyView.recognition"
         :left-path="readyView.sides[0].path"
@@ -1389,7 +1486,11 @@ onBeforeUnmount(() => {
                  view sit at one heading level and the editor-failure fallback's
                  own captions nest under a heading rather than beside one
                  (WCAG 1.3.1). -->
-            <h3>Source comparison</h3>
+            <h3 class="aci-compare-block-title">Source comparison</h3>
+            <!-- What the diff holds, said before it, as each block above says
+                 what its own two sides are: this one is the files themselves,
+                 with nothing removed or reordered (FR-027). -->
+            <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
             <SourceDiff v-bind="readyView.diff" />
           </div>
         </template>
@@ -1404,15 +1505,17 @@ onBeforeUnmount(() => {
          whether focus sits on a control an automatic refresh is about to
          unmount (WCAG 2.4.3). -->
     <div v-else-if="stateStatement !== null" ref="stateRegion">
-      <p :class="retryable ? 'aci-error' : 'aci-note'">{{ stateStatement }}</p>
-      <p v-if="retryable">
-        <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
-      </p>
-      <p>
-        <NuxtLink to="/?kind=skill"
-          >Return to the inventory and open a comparison from a skill's row.</NuxtLink
-        >
-      </p>
+      <SubjectUnavailable :outcome="retryable ? 'error' : 'warning'">
+        {{ stateStatement }}
+        <template #exit>
+          <button v-if="retryable" ref="retryButton" type="button" @click="retryOpen">
+            Try again
+          </button>
+          <NuxtLink to="/?kind=skill"
+            >Return to the inventory and open a comparison from a skill's row.</NuxtLink
+          >
+        </template>
+      </SubjectUnavailable>
     </div>
   </div>
 </template>
@@ -1431,57 +1534,8 @@ onBeforeUnmount(() => {
   margin: 0.25rem 0 0.5rem;
 }
 
-.aci-skill-compare h3 {
-  font-size: 1rem;
-  margin: 0.75rem 0 0.25rem;
-}
-
-/* The three switchers side by side, stacking on a narrow viewport. Each
-   label is a column so the select sits under its name, and the selects
-   shrink inside their columns rather than widening the page (WCAG 1.4.10). */
-.aci-skill-compare__pickers {
-  display: grid;
-  gap: 0.5rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-  margin-block: 0.25rem;
-}
-
-@media (min-width: 52rem) {
-  .aci-skill-compare__pickers {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.aci-skill-compare__picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
 .aci-skill-compare__pickers select {
   max-inline-size: 100%;
-}
-
-/* The two identities side by side above the diff, stacking on a narrow
-   viewport (WCAG 1.4.10). */
-.aci-skill-compare__files {
-  display: grid;
-  gap: 0.25rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 52rem) {
-  .aci-skill-compare__files {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-skill-compare__files h3 {
-  margin: 0.5rem 0 0.1rem;
-}
-
-.aci-skill-compare__files p {
-  margin: 0.1rem 0;
 }
 
 /* An authored path has no break opportunities of its own; wrapping keeps the

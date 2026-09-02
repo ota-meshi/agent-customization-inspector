@@ -73,7 +73,7 @@ test.describe('Claude instruction rows at every depth', () => {
     // form among them, because `.claude` is where Claude keeps the file rather
     // than what it governs — and the `packages/api` subtree.
     await expect(items).toHaveCount(2);
-    await expect(page.getByRole('tabpanel').locator('.aci-instruction-row__range')).toHaveText([
+    await expect(page.getByRole('tabpanel').locator('.aci-row-head__name')).toHaveText([
       '**',
       'packages/api/**',
     ]);
@@ -140,7 +140,7 @@ test.describe('Claude instruction rows at every depth', () => {
 
     // Path composes over the same population, and a range whose every file the
     // filter drops is not a row.
-    await page.getByLabel('Path contains').fill('packages/');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('packages/');
     await expect(items).toHaveCount(1);
     await expect(items.first()).toContainText('packages/api/CLAUDE.md');
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
@@ -196,6 +196,9 @@ test.describe('a Claude instruction file whose declarations cannot be parsed', (
     await expect(fileEntries.filter({ hasText: 'CLAUDE.local.md' })).not.toContainText(
       'This file could not be parsed',
     );
+    // The Source-level list is its own rail entry now: a record that belongs to
+    // a file is on that file's row, so this one stays empty (FR-028).
+    await page.getByRole('tab', { name: /^Diagnostics/u }).click();
     await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
   });
 });

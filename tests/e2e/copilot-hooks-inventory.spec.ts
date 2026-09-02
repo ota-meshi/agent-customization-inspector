@@ -178,11 +178,11 @@ test.describe('Copilot hook files and the blocks inside settings', () => {
     await expect(panel).not.toContainText('unreferenced.sh');
     // Narrowing by path keeps the rows whose carrier matches and empties the
     // list for a path no carrier has.
-    await page.getByLabel('Path contains').fill('.github/hooks');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.github/hooks');
     await expect(panel.locator('.aci-item')).toHaveCount(2);
-    await page.getByLabel('Path contains').fill('does-not-exist');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('does-not-exist');
     await expect(panel.locator('.aci-item')).toHaveCount(0);
-    await page.getByLabel('Path contains').fill('');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('');
     // Nothing on the page runs, enables, or trusts a hook (FR-009, FR-020).
     for (const forbidden of [/^Run/u, /^Enable/u, /^Trust/u, /^Review/u]) {
       await expect(page.getByRole('button', { name: forbidden })).toHaveCount(0);

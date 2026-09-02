@@ -26,7 +26,7 @@
 // registered for that file type, and a machine may register a handler that
 // executes what it opens — the same outcome as opening the file from the
 // system's own file browser, which is what this action offers.
-import { execFile, spawn } from 'node:child_process';
+import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { delimiter, dirname, isAbsolute, join, normalize, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -53,6 +53,33 @@ const EDITOR_TARGETS: readonly { readonly target: FileOpenTarget; readonly edito
 ];
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * The exit of the process `open` spawned, as an ordinary failure when it is
+ * not a success.
+ *
+ * Only for the macOS handoff, where that process is `/usr/bin/open`: it hands
+ * the document to LaunchServices and exits, so its status is the answer to
+ * "did this open". Everywhere else the spawned process is the editor itself and
+ * waiting for it would wait for the reader to close the window.
+ */
+async function handoffOf(handoff: ChildProcess): Promise<void> {
+  // Read before it is waited for: `/usr/bin/open` can be gone by the time the
+  // promise that spawned it resolves, and a listener attached after `close`
+  // has already fired never runs.
+  const [code, signal] =
+    handoff.exitCode === null && handoff.signalCode === null
+      ? ((await once(handoff, 'close')) as [number | null, NodeJS.Signals | null])
+      : [handoff.exitCode, handoff.signalCode];
+  if (code === 0) {
+    return;
+  }
+  throw new Error(
+    `the operating system could not open the file: \`open\` ${
+      signal === null ? `exited with status ${String(code)}` : `was terminated by ${signal}`
+    }`,
+  );
+}
 
 /**
  * How long a default-handler launch listens for the launcher's exit before
@@ -217,6 +244,24 @@ function probeSearchPath(): string | undefined {
     return !(segments.at(-2) === 'node_modules' && segments.at(-1) === '.bin');
   });
   return kept.join(delimiter);
+}
+
+/**
+ * The application name macOS knows one editor target by, as `env-editor`
+ * publishes it — `Visual Studio Code`, `Sublime Text`. It is what `open -a`
+ * takes, so no path is resolved to launch an editor there.
+ *
+ * Total over the targets that reach it: only a target this catalog names is
+ * ever published as an editor, and the terminal editor returns before the
+ * caller below.
+ */
+function editorNameOf(target: FileOpenTarget): string {
+  for (const candidate of EDITOR_TARGETS) {
+    if (candidate.target === target) {
+      return candidate.editor.name;
+    }
+  }
+  throw new Error(`no editor catalog entry names ${target}`);
 }
 
 /**
@@ -581,23 +626,29 @@ export class DetectedFileOpener implements FileOpener {
       return;
     }
     if (process.platform === 'darwin') {
-      // macOS is the one platform whose `open -a` takes an application rather
-      // than an executable, and a launcher resolved above is the editor's own
-      // command-line script inside its bundle. Spawning it directly is what
-      // the script is for; `open` is left to the default-handler branch, which
-      // is the one it can express.
+      // Handed to LaunchServices by application name — the form `open -a`
+      // takes, and the name `env-editor` already publishes for each catalog
+      // entry — rather than by running the editor's own command-line script.
       //
-      // Awaited to the point the child exists, then detached. `events.once` is
-      // the platform's own way to await one: it resolves on `spawn` and
-      // rejects on `error`, which is what a failed launch emits — the probed
-      // launcher deleted or made unexecutable since, a process or descriptor
-      // limit reached. Without that listener the emitter throws the `error`
-      // event instead, ending the host on a reader's click. After `spawn`
-      // Node emits `error` only for a kill or a message this caller never
-      // sends, so nothing is left to listen for.
-      const child = spawn(launcher, [absolutePath], { detached: true, stdio: 'ignore' });
-      await once(child, 'spawn');
-      child.unref();
+      // That script resolves the editor's user data directory from `HOME`, so
+      // a host whose `HOME` is not the reader's own opened nothing: it started
+      // a second instance under that directory instead of reaching the editor
+      // already running. The fixture harness is such a host, because the
+      // consent preview derives the shared agent home from the home directory
+      // itself (FR-013, FR-045) and the harness points it into the built tree.
+      // LaunchServices reads none of that: it hands the document to the
+      // application registered under this name, running or not.
+      //
+      // The handoff is waited for, not the application. `open` resolves as soon
+      // as it has spawned `/usr/bin/open`, so a name LaunchServices has no
+      // application for — this machine has the editor's command-line launcher,
+      // which is what was detected, but not its bundle — exited non-zero after
+      // this call had already reported success, and the page said it had opened
+      // a file nothing opened. `/usr/bin/open` returns as soon as it has handed
+      // the document over, so awaiting it waits for the answer and not for the
+      // reader to close the window (T1123; contracts/http-api.md
+      // § open-file).
+      await handoffOf(await open(absolutePath, { app: { name: editorNameOf(target) } }));
       return;
     }
     // Everywhere else the same `open` package runs the launcher with the path

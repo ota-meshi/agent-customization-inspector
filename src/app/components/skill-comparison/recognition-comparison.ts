@@ -119,9 +119,6 @@ export class ToolRecognitionRow {
   /** The tool whose recognition this row compares. */
   public readonly tool: SupportedTool;
 
-  /** The recognized kind; every shipped recognition of this surface is a skill. */
-  public readonly kind: 'skill';
-
   /** What the first file holds of this tool's recognition. */
   public readonly left: RecognitionSideState;
 
@@ -148,7 +145,6 @@ export class ToolRecognitionRow {
     right: ComparisonSideInput | null,
   ) {
     this.tool = tool;
-    this.kind = 'skill';
     this.left = recognitionState(left, tool);
     this.right = recognitionState(right, tool);
     this.leftSurfaces = recognitionSurfaces(left, tool);

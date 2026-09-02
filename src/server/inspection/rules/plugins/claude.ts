@@ -165,15 +165,19 @@ function claudeBarePluginRootBaseOf(catalogFields: readonly DeclaredEntryDto[]):
   if (declared === null || declared.kind !== 'scalar' || declared.scalarKind !== 'string') {
     return null;
   }
-  const trimmed = declared.text.endsWith('/') ? declared.text.slice(0, -1) : declared.text;
-  if (trimmed === '' || trimmed.startsWith('/') || trimmed.startsWith('~')) {
-    return null;
-  }
   // `./` names the marketplace root itself, where a name joined onto the
   // anchored spelling would read as the `.` segment
-  // {@link localPluginRootSegments} refuses.
-  if (trimmed === '.') {
+  // {@link localPluginRootSegments} refuses. Read before the trailing
+  // separator is dropped, because that is the one spelling the allowlist
+  // anchors: the contract admits the `./` prefix and rejects a dot segment
+  // outright, so a bare `.` is not this case however a client would resolve it
+  // (contracts/inspection-path-allowlist.md § derived bases).
+  if (declared.text === './') {
     return '.';
+  }
+  const trimmed = declared.text.endsWith('/') ? declared.text.slice(0, -1) : declared.text;
+  if (trimmed === '' || trimmed === '.' || trimmed.startsWith('/') || trimmed.startsWith('~')) {
+    return null;
   }
   return trimmed.startsWith('./') ? trimmed : `./${trimmed}`;
 }

@@ -2,7 +2,9 @@
 
 [日本語](which-files-are-listed.ja.md)
 
-Every location the inspector reads, per tool and per kind. It opens nothing else.
+Where a customization file becomes a listed row, per tool and per kind. A file at no location
+below is never opened; two bounded reads inside a customization it did list are named at the
+end.
 
 ## In the repository
 
@@ -39,7 +41,7 @@ Paths are relative to the inspected repository root.
 
 | Kind | Where |
 | --- | --- |
-| Instructions | `AGENTS.md` and `AGENTS.override.md`, at the root |
+| Instructions | `AGENTS.md` and `AGENTS.override.md`, at the root; and, at the root, each name `.codex/config.toml` lists in `project_doc_fallback_filenames` |
 | Skills | `SKILL.md` in each directory under `.agents/skills/` |
 | Agents | any `.toml` file directly in `.codex/agents/` |
 | Permissions | any `.rules` file directly in `.codex/rules/` |
@@ -49,10 +51,13 @@ Paths are relative to the inspected repository root.
 
 ## In your personal setup
 
-Only after you opt in. Paths are relative to each tool's own home directory, which the consent
-page names before anything is read.
+Only after you opt in. There are four directories, not three: each tool's own home, and the
+shared agent home beside them. The consent page names all four before anything is read, and
+each path below is relative to the one it is listed under.
 
-### Claude Code
+### Your Claude Code home
+
+`CLAUDE_CONFIG_DIR`, or `~/.claude`.
 
 | Kind | Where |
 | --- | --- |
@@ -64,7 +69,9 @@ page names before anything is read.
 | Output styles | any `.md` file directly in `output-styles/` |
 | Hooks, permissions, settings | `settings.json` |
 
-### GitHub Copilot
+### Your GitHub Copilot home
+
+`COPILOT_HOME`, or `~/.copilot`.
 
 | Kind | Where |
 | --- | --- |
@@ -75,15 +82,37 @@ page names before anything is read.
 | Hooks | any `.json` file directly in `hooks/`; `settings.json` |
 | Settings | `settings.json` |
 
-### OpenAI Codex
+### Your OpenAI Codex home
+
+`CODEX_HOME`, or `~/.codex`.
 
 | Kind | Where |
 | --- | --- |
 | Instructions | `AGENTS.md` and `AGENTS.override.md` |
-| Skills | `SKILL.md` in each directory under `skills/` |
 | Agents | any `.toml` file directly in `agents/` |
 | Prompts and commands | any `.md` file directly in `prompts/` |
 | Permissions | any `.rules` file directly in `rules/` |
 | MCP, settings | `config.toml` |
 | Hooks | `hooks.json` and `config.toml` |
-| Plugins | `plugins/marketplace.json` |
+
+### The shared agent home
+
+`~/.agents`, which is not any one tool's and does not move with `CODEX_HOME` or
+`COPILOT_HOME`.
+
+| Kind | Where | Read by |
+| --- | --- | --- |
+| Skills | `SKILL.md` in each directory under `skills/` | OpenAI Codex and GitHub Copilot |
+| Plugins | `plugins/marketplace.json` | OpenAI Codex |
+
+## Two reads inside what was listed
+
+A listed customization is more than its entry point, so two bounded reads go with it. Neither
+adds a row of its own, and neither reaches outside the customization it belongs to.
+
+- **A customization's own directory.** A skill is its `SKILL.md` and the scripts, references,
+  and assets beside it, so the files in that directory are enumerated and shown with it.
+- **A plugin's root.** A plugin marketplace entry declares where its plugin lives, and the
+  files under that root are shown as the plugin's. A declared root that resolves outside the
+  source is refused rather than read, and version-control internals and installed-package
+  directories are left out of both.

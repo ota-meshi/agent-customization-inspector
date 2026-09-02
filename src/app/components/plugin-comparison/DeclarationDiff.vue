@@ -252,8 +252,18 @@ onBeforeUnmount(() => {
    definite height; the same sizing contract as the file-comparison
    surfaces. */
 .aci-plugin-declaration-diff {
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  /* The corners are the box's, so what it holds is clipped to them: Monaco
+     paints an opaque square panel, and without this it filled all four rounded
+     corners — a frame that looked broken rather than rounded. It does not
+     reach the editor's own scrolling, which happens inside
+     `.monaco-scrollable-element`. `box-sizing` because the width is `100%` and
+     the border is a pixel: on the content box the two made the element two
+     pixels wider than the box holding it, so every diff sat two pixels
+     short of its own right border. */
+  box-sizing: border-box;
+  overflow: hidden;
   inline-size: 100%;
   /* Content-fit: the mounted handle writes the taller document's height to
      the element (`SourceDiffHandle.mount` § fitContent) and this cap keeps a
@@ -285,8 +295,8 @@ onBeforeUnmount(() => {
 /* `pre` keeps the serialized line structure; long lines scroll inside the
    block rather than widening the page. */
 .aci-plugin-declaration-diff__fallback-source {
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
   margin: 0;
   max-block-size: 28rem;
   overflow: auto;

@@ -13,7 +13,8 @@
 // or a URI, and no value is masked, shortened, or reflowed (FR-025,
 // FR-033); no row or side ranks, orders, or prefers either file (FR-012).
 import SourceDiff from './SourceDiff.vue';
-import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
+import ToolMark from '../ToolMark.vue';
+import { SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import {
   DECLARATION_SIDE_STATE_TEXT,
@@ -33,10 +34,12 @@ defineProps<{
 
 <template>
   <div class="aci-recognition-comparison">
-    <!-- The sections stand in the order a reader needs them: what each file
-         declares, what each file says, then the complete files the page
-         supplies, and last the recognitions — which tool reads which side is
-         context for the rest rather than the subject of the comparison. -->
+    <!-- The sections stand in the order a reader needs them: which products
+         read each side, then what each file declares, what each file says, and
+         last the complete files the page supplies. The recognitions lead
+         because they say who the difference below is a difference for — and
+         because they are the only place a comparison can state that a product
+         reads neither side, which the side cards can only leave unsaid. -->
     <!-- Count-neutral, because a one-sided pair reaches this note too: one
          present file no recognition owns, beside its stated absence
          (FR-011). -->
@@ -46,7 +49,66 @@ defineProps<{
     </p>
     <template v-else>
       <section>
-        <h3>Declared metadata</h3>
+        <h3 class="aci-compare-block-title">Tool recognition</h3>
+        <!-- One row per recognizing tool, in the contracted tool order: each
+             recognition stays distinguishable from the physical file
+             (US3 scenario 2), captioned in words (AGENTS.md § User-visible
+             copy policy). A table rather than sentences: the relationship a
+             screen reader needs — this tool, this file's state, that file's
+             state — is exactly what table headers state. `tabindex` because the box
+             around the table is its own horizontal scroll container on a wide
+             viewport (WCAG 2.1.1). -->
+        <div class="aci-recognition-table" tabindex="0">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Tool</th>
+                <th scope="col">First file</th>
+                <th scope="col">Second file</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in comparison.tools" :key="row.tool">
+                <!-- Decorative, because the row spells the product's name
+                     beside it: the mark is what a reader scanning the column
+                     finds, and its own accessible name would be the same word
+                     twice (`ToolMark.vue`). -->
+                <th scope="row">
+                  <ToolMark decorative :tool="row.tool" />
+                  {{ SUPPORTED_TOOL_TEXT[row.tool] }}
+                </th>
+                <!-- The recognition, and the surfaces of the documented
+                     behaviors its admitting rules rest on: FR-009 states them
+                     beside every recognition, so a side that recognizes the file
+                     says on which surfaces it is documented to be read. A side
+                     with no recognition has none to state. -->
+                <td data-label="First file">
+                  <span :class="row.left === 'recognized' ? undefined : 'aci-muted'">{{
+                    RECOGNITION_SIDE_STATE_TEXT[row.left]
+                  }}</span>
+                  <span v-if="row.leftSurfaces.length > 0" class="aci-muted">
+                    ({{
+                      row.leftSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
+                    }})
+                  </span>
+                </td>
+                <td data-label="Second file">
+                  <span :class="row.right === 'recognized' ? undefined : 'aci-muted'">{{
+                    RECOGNITION_SIDE_STATE_TEXT[row.right]
+                  }}</span>
+                  <span v-if="row.rightSurfaces.length > 0" class="aci-muted">
+                    ({{
+                      row.rightSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
+                    }})
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h3 class="aci-compare-block-title">Declared metadata</h3>
         <!-- The files' declared metadata, not any tool's: the declarations
              are the file's one scan-time parse for the kind (FR-028), so
              they are compared once, under no tool caption (research.md
@@ -83,7 +145,7 @@ defineProps<{
         </template>
       </section>
       <section v-if="comparison.bodyDiff !== null">
-        <h3>Instructions</h3>
+        <h3 class="aci-compare-block-title">Instructions</h3>
         <!-- The other half of the same one parse, diffed on its own: the
              declarations align key by key whatever order each file wrote them
              in, and the instructions align line by line without the
@@ -107,126 +169,14 @@ defineProps<{
         />
       </section>
     </template>
-    <!-- Where the page's complete authored sources land: below the two
-         halves they were split into and above the recognitions. The page owns
-         what that is, because it differs by kind — one diff where both sides
-         share a format, two independent viewers for the custom-agent kind,
-         whose two formats have no meaningful byte-for-byte alignment — while
-         the order is this component's, so every kind's comparison reads the
-         same way. Outside the recognition branch above, because a file every
-         tool fails to recognize still shows its bytes (FR-027). -->
+    <!-- Where the page's complete authored sources land: last, below the two
+         halves they were split into. The page owns what that is, because it
+         differs by kind — one diff where both sides share a format, two
+         independent viewers for the custom-agent kind, whose two formats have
+         no meaningful byte-for-byte alignment — while the order is this
+         component's, so every kind's comparison reads the same way. Outside
+         the recognition branch above, because a file every tool fails to
+         recognize still shows its bytes (FR-027). -->
     <slot name="source" />
-    <section v-if="comparison.tools.length > 0">
-      <h3>Tool recognition</h3>
-      <!-- One row per recognizing tool, in the contracted tool order: each
-           recognition stays distinguishable from the physical file
-           (US3 scenario 2), captioned in words (AGENTS.md § User-visible
-           copy policy). A table rather than sentences: the relationship a
-           screen reader needs — this tool, this file's state, that file's
-           state — is exactly what table headers state. `tabindex` because
-           the table is its own horizontal scroll container on a wide
-           viewport (WCAG 2.1.1). -->
-      <table class="aci-recognition-comparison__table" tabindex="0">
-        <thead>
-          <tr>
-            <th scope="col">Tool</th>
-            <th scope="col">First file</th>
-            <th scope="col">Second file</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in comparison.tools" :key="row.tool">
-            <th scope="row">
-              {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
-            </th>
-            <!-- The recognition, and the surfaces of the documented
-                 behaviors its admitting rules rest on: FR-009 states them
-                 beside every recognition, so a side that recognizes the file
-                 says on which surfaces it is documented to be read. A side
-                 with no recognition has none to state. -->
-            <td data-label="First file">
-              {{ RECOGNITION_SIDE_STATE_TEXT[row.left] }}
-              <span v-if="row.leftSurfaces.length > 0" class="aci-muted">
-                ({{ row.leftSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ') }})
-              </span>
-            </td>
-            <td data-label="Second file">
-              {{ RECOGNITION_SIDE_STATE_TEXT[row.right] }}
-              <span v-if="row.rightSurfaces.length > 0" class="aci-muted">
-                ({{ row.rightSurfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ') }})
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
   </div>
 </template>
-
-<style scoped>
-/* The tables scroll inside themselves when a cell is wide, so the page never
-   scrolls sideways (WCAG 1.4.10). */
-.aci-recognition-comparison__table {
-  border-collapse: collapse;
-  display: block;
-  max-inline-size: 100%;
-  overflow-x: auto;
-}
-
-.aci-recognition-comparison__table th,
-.aci-recognition-comparison__table td {
-  border: 1px solid var(--aci-border);
-  padding: 0.3rem 0.5rem;
-  text-align: start;
-  vertical-align: top;
-}
-
-/* Authored values keep their spelling but wrap rather than widening the row
-   past the viewport; a value with no break opportunities still scrolls
-   inside the table's own box. */
-.aci-recognition-comparison__table td {
-  overflow-wrap: anywhere;
-}
-
-/* On a narrow viewport the columns reflow into one stacked block per row
-   instead of scrolling in two dimensions: the contract allows
-   two-dimensional scrolling only for essential source-code regions
-   (accessibility-acceptance.md § WCAG 1.4.10), and these rows are data, not
-   source. Each cell repeats its column caption from `data-label`, so the
-   association the hidden header row carried stays visible in reading
-   order. */
-@media (width < 52rem) {
-  .aci-recognition-comparison__table thead {
-    display: none;
-  }
-
-  .aci-recognition-comparison__table tbody,
-  .aci-recognition-comparison__table tr,
-  .aci-recognition-comparison__table th[scope='row'],
-  .aci-recognition-comparison__table td {
-    display: block;
-  }
-
-  .aci-recognition-comparison__table tr {
-    border: 1px solid var(--aci-border);
-    border-radius: 4px;
-    margin-block-end: 0.5rem;
-  }
-
-  .aci-recognition-comparison__table th,
-  .aci-recognition-comparison__table td {
-    border: 0;
-    border-block-start: 1px solid var(--aci-border);
-  }
-
-  .aci-recognition-comparison__table tr > :first-child {
-    border-block-start: 0;
-  }
-
-  .aci-recognition-comparison__table td::before {
-    content: attr(data-label);
-    display: block;
-    font-weight: 600;
-  }
-}
-</style>

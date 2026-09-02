@@ -87,9 +87,9 @@ test.describe('a skill whose frontmatter spells mcpServers', () => {
     // row — its one declaration home is the carrier — and `deploy-db` never
     // appears at all.
     await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['context7']);
-    await expect(items.first().locator('.aci-mcp-row__owner')).toHaveCount(1);
-    await expect(items.first().locator('.aci-mcp-row__owner')).toContainText('.mcp.json');
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['context7']);
+    await expect(items.first().locator('.aci-row-file')).toHaveCount(1);
+    await expect(items.first().locator('.aci-row-file')).toContainText('.mcp.json');
     const text = await page.locator('main').innerText();
     expect(text).not.toContain('deploy-db');
     expect(text).not.toContain(FIXTURE_SECRET);
@@ -113,7 +113,12 @@ test.describe('a skill whose frontmatter spells mcpServers', () => {
       .locator('a')
       .first()
       .click();
-    await expect(page).toHaveURL(new RegExp(`/skills/detail/repository/${SKILL_PATH}$`, 'u'));
+    // The file's own address, and beside it the row it was followed from: one
+    // file can be listed under two names, and the link records which
+    // (`detail-route.ts` § originRowNameQuery).
+    const opened = new URL(page.url());
+    expect(opened.pathname).toBe(`/skills/detail/repository/${SKILL_PATH}`);
+    expect(opened.searchParams.get('name')).toBe('deploy');
     await expect(
       page.getByRole('heading', { name: '.claude/skills/deploy/', exact: true }),
     ).toBeVisible();

@@ -8,9 +8,9 @@
 // heading where the session holds more than one Source, and the rows under
 // it — while what a row *is* stays the owning list's, passed through the
 // slot. The in-row counterpart is `SourceFamilyBlocks.vue`: same grammar —
-// members in, one group per family out, the member markup slotted — with the
-// one deliberate difference that a block indents members under its heading
-// while a section's rows keep the flat list's own card spacing.
+// members in, one group per family out, the member markup slotted — and the
+// same result: the list is one bordered box whose rows are separated by
+// hairlines, so a section adds a heading and nothing else.
 import { computed } from 'vue';
 import { useSessionSources } from '../../composables/session-sources';
 
@@ -57,14 +57,12 @@ const sections = computed(() => sessionSources.familyBlocksOf(props.members));
 </template>
 
 <style scoped>
-/* The section's rows keep the card spacing the flat list has: the section
-   wrapper is structure, not chrome. */
+/* The section's rows sit flush inside the list's one box, as the rows of a
+   list with no sections do: the section wrapper is structure, and a gap here
+   would draw a card per family inside a box that is already one list. */
 .aci-source-family-sections__rows {
   list-style: none;
-  margin: 0.25rem 0 0;
+  margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 </style>

@@ -72,7 +72,7 @@ test.describe('Copilot prompt files in the prompts-and-commands inventory', () =
 
     // One row per name: the declared one, the file-name fallback, and the name
     // a prompt and a command both resolve to.
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'deploy',
       'review',
       'scaffold-component',
@@ -88,7 +88,7 @@ test.describe('Copilot prompt files in the prompts-and-commands inventory', () =
       '.github/prompts/deploy.prompt.md',
     ]);
     await expect(shared.locator('.aci-source-family-blocks__members > li')).toHaveCount(2);
-    await expect(shared.locator('.aci-prompt-row__tool')).toHaveCount(3);
+    await expect(shared.locator('.aci-recognition-marks__one')).toHaveCount(3);
     await expect(shared.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
     await expect(shared.locator('.aci-source-family-blocks__members')).toContainText(
       'GitHub Copilot',
@@ -123,13 +123,13 @@ test.describe('Copilot prompt files in the prompts-and-commands inventory', () =
     // Claude reads the command file and no prompt file, so only the name the
     // command resolves survives.
     await page.getByLabel('Tool').selectOption('claude');
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText(['deploy']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['deploy']);
     await expect(items.locator('.aci-path')).toHaveText(['.claude/commands/deploy.md']);
 
     // Copilot reads both locations, so every row returns — and the shared row
     // keeps Copilot's two definitions while dropping Claude's.
     await page.getByLabel('Tool').selectOption('copilot');
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'deploy',
       'review',
       'scaffold-component',

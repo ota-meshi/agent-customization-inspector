@@ -80,7 +80,7 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
       '.codex/rules/deploy.rules',
     ]);
     await expect(
-      rows.filter({ hasText: '.claude/settings.json' }).locator('.aci-permissions-row__owner'),
+      rows.filter({ hasText: '.claude/settings.json' }).locator('.aci-row-file'),
     ).toContainText('Claude Code');
     // The settings file that declares no policy is in no permissions row — the
     // exact row set above is what says so — because a policy nobody wrote is
@@ -105,7 +105,9 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
       .click();
     await expect(page).toHaveURL(/\/permissions\/detail\/repository\/\.claude\/settings\.json$/u);
     const main = page.locator('main');
-    await expect(main).toContainText('Claude Code (CLI and IDE clients) · Permissions');
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
 
     // The block the carrier declares, by the keys the file wrote: every rule
     // string exactly as authored, the credential whole and unmarked, and the
@@ -131,7 +133,9 @@ test.describe('the Claude permission policy a settings carrier declares', () => 
       new URL('/permissions/detail/repository/.codex/rules/deploy.rules', host.origin).toString(),
     );
     const main = page.locator('main');
-    await expect(main).toContainText('OpenAI Codex (Local clients) · Permissions');
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('OpenAI Codex');
+    await expect(attributes).toContainText('Local clients');
     await expect(main).toContainText('prefix_rule');
     await expect(main).toContainText('Readable text');
   });

@@ -369,20 +369,7 @@ export class SourceViewerHandle {
    * in Monaco 0.55 it is a diff-editor option, so it belongs to the comparison
    * surface rather than to this single-file view.
    */
-  public static async mount(
-    container: HTMLElement,
-    options?: {
-      /**
-       * Sizes `container` to the shown text instead of leaving its CSS
-       * height alone: the handle writes the editor's content height to the
-       * element on every content-size change, and the caller's stylesheet
-       * caps it (`max-block-size`). For a surface showing a short derived
-       * document — an MCP declaration, a frontmatter block — a fixed
-       * reading-box height would be mostly empty frame.
-       */
-      readonly fitContent?: boolean;
-    },
-  ): Promise<SourceViewerHandle> {
+  public static async mount(container: HTMLElement): Promise<SourceViewerHandle> {
     const monaco = await loadMonaco();
     const forcedColors = globalThis.matchMedia(FORCED_COLORS_QUERY);
     // ARIA messages go into this module's own element rather than Monaco's
@@ -414,6 +401,19 @@ export class SourceViewerHandle {
       accessibilitySupport: 'auto',
       automaticLayout: true,
       minimap: { enabled: false },
+      // Nothing marks a current line: the editor takes no cursor a reader put
+      // there, so the band Monaco draws across the first line reports a
+      // position nobody chose.
+      renderLineHighlight: 'none',
+      // And no overview ruler: it is the strip that summarizes a document's
+      // decorations, and this editor has none to summarize — errors, warnings,
+      // and search hits all belong to surfaces this product does not offer
+      // (FR-032). Drawn anyway it took fourteen pixels down the right edge and
+      // showed, on a two-line file, as a short dash beside nothing. The diff
+      // editor keeps its ruler, where the strip carries where the changes are.
+      overviewRulerLanes: 0,
+      overviewRulerBorder: false,
+      hideCursorInOverviewRuler: true,
       scrollBeyondLastLine: false,
       // The editor is a bounded box inside a page that scrolls. Monaco's
       // default consumes every wheel event it receives, so a reader scrolling
@@ -442,20 +442,19 @@ export class SourceViewerHandle {
       },
     });
     dropStaleAnnouncementWrappers(announcements);
-    let fitContent: import('monaco-editor/esm/vs/editor/editor.api.js').IDisposable | null = null;
-    if (options?.fitContent === true) {
-      // The container follows the content: every content-size change — the
-      // first model above all — writes the editor's own height back to the
-      // element, and `automaticLayout` re-lays the editor out to the box the
-      // caller's stylesheet caps. Written as a style, because the cap is the
-      // stylesheet's (`max-block-size`) and an inline height alone decides
-      // nothing past it.
-      const fit = (): void => {
-        container.style.blockSize = `${editor.getContentHeight()}px`;
-      };
-      fitContent = editor.onDidContentSizeChange(fit);
-      fit();
-    }
+    // The container follows the content: every content-size change — the
+    // first model above all — writes the editor's own height back to the
+    // element, and `automaticLayout` re-lays the editor out to the box the
+    // caller's stylesheet caps. Written as a style, because the cap is the
+    // stylesheet's (`max-block-size`) and an inline height alone decides
+    // nothing past it. Every single-file surface takes the shown text's own
+    // height: a fixed reading box left a two-line file under an empty frame
+    // (FR-007).
+    const fit = (): void => {
+      container.style.blockSize = `${editor.getContentHeight()}px`;
+    };
+    const fitContent = editor.onDidContentSizeChange(fit);
+    fit();
     return new SourceViewerHandle(monaco, editor, forcedColors, fitContent);
   }
 }
@@ -652,6 +651,10 @@ export class SourceDiffHandle {
       accessibilitySupport: 'auto',
       automaticLayout: true,
       minimap: { enabled: false },
+      // Nothing marks a current line here either; see the viewer handle's
+      // mount. The overview ruler stays, because in a diff the strip is where
+      // the changes are.
+      renderLineHighlight: 'none',
       scrollBeyondLastLine: false,
       // A wheel the diff cannot scroll any further is left to the page; see
       // the viewer handle's mount.

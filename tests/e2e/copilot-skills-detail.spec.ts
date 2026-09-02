@@ -23,6 +23,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { statedInvocations } from './skill-invocations';
 
 /** A literal credential in authored source, shown exactly as written. */
 const FIXTURE_SECRET = 'ghp_E2ECOPILOT0000000000000000000000000000';
@@ -154,8 +155,12 @@ test('leads with the skill directory and the name Copilot invokes it by', async 
   // documentation invokes the skill by: Copilot's is the authored `name`
   // rather than a path-derived command (FR-007).
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.github/skills/ship/');
-  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: github-ship',
+  expect(await statedInvocations(page, 1)).toEqual([
+    {
+      name: 'github-ship',
+      comparable: false,
+      recognitions: [{ product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' }],
+    },
   ]);
   // Every key the file declares, as one YAML document in the read-only
   // viewer, credential-shaped keys included — nothing captioned,
@@ -176,9 +181,17 @@ test('opens a shared .claude file once, naming what each product invokes it by',
   // merging them into a product-neutral record (FR-007).
   await openSkillAt(page, '.claude/skills/lander/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.claude/skills/lander/');
-  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: lander-skill',
-    'Claude Code (CLI and IDE clients) · Skill · Invocation name: lander',
+  expect(await statedInvocations(page, 2)).toEqual([
+    {
+      name: 'lander-skill',
+      comparable: false,
+      recognitions: [{ product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' }],
+    },
+    {
+      name: 'lander',
+      comparable: false,
+      recognitions: [{ product: 'Claude Code', surfaces: 'CLI and IDE clients' }],
+    },
   ]);
 });
 
@@ -187,9 +200,15 @@ test('names both products of a shared .agents file on the one page', async ({ pa
   // is one row and its page names both products against the same name.
   await openSkillAt(page, '.agents/skills/orbit/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/orbit/');
-  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: orbit-skill',
-    'OpenAI Codex (Local clients) · Skill · Invocation name: orbit-skill',
+  expect(await statedInvocations(page, 1)).toEqual([
+    {
+      name: 'orbit-skill',
+      comparable: false,
+      recognitions: [
+        { product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' },
+        { product: 'OpenAI Codex', surfaces: 'Local clients' },
+      ],
+    },
   ]);
 });
 
@@ -207,12 +226,20 @@ test('states nothing about Copilot’s selection, even for a collision', async (
   // The text is read from the whole detail, hidden panel included.
   await openSkillAt(page, '.github/skills/echo/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.github/skills/echo/');
-  // The comparison entry rides on the same line, because this name resolves
-  // two readable copies; it is a link to a diff, never a statement about
-  // which copy a surface would select.
-  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
-    "GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: voyage · Compare this skill's files",
+  expect(await statedInvocations(page, 1)).toEqual([
+    {
+      name: 'voyage',
+      comparable: true,
+      recognitions: [{ product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' }],
+    },
   ]);
+  // The comparison belongs to the name rather than to a product's row: its
+  // route is keyed by the name, so which of two products' rows would carry it
+  // is a question the box's own head settles. It is a link to a diff, never a
+  // statement about which copy a surface would select.
+  await expect(
+    page.getByRole('link', { name: /^Compare this skill's files: voyage$/u }),
+  ).toBeVisible();
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of [
     'depends on the surface',
@@ -236,9 +263,15 @@ test('keeps a malformed shared skill readable while the one parse failure is sta
   // unknown after a failed parse, so it falls back to the same directory —
   // provisional grouping rather than a name Copilot resolved (FR-007,
   // FR-028; `src/shared/skill-collision.ts`).
-  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: broken',
-    'Claude Code (CLI and IDE clients) · Skill · Invocation name: broken',
+  expect(await statedInvocations(page, 1)).toEqual([
+    {
+      name: 'broken',
+      comparable: false,
+      recognitions: [
+        { product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' },
+        { product: 'Claude Code', surfaces: 'CLI and IDE clients' },
+      ],
+    },
   ]);
   // A failed extraction leaves the Skill panel nothing to show, so the page
   // itself selects the Files tab; the source and the failure must be where

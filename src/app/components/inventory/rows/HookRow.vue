@@ -28,17 +28,16 @@
 // activation (FR-009), and inspection never runs a declared command (FR-020).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
 import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
 import { hookEventDetailRoute } from '../../hook-detail-route';
 import { hookComparisonRouteFor } from '../../../composables/hook-comparison';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
   fileIdentityKey,
-  SUPPORTED_TOOL_TEXT,
   accessiblePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
@@ -49,6 +48,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
+import { AuthoredName } from '../../authored-name';
 
 const props = defineProps<{
   /** The committed hook entry to render: one declared event, or the null row. */
@@ -61,40 +61,12 @@ const props = defineProps<{
 const sessionSources = useSessionSources();
 
 /**
- * The row's heading text: the declared event through the shared label rule, so
- * an event name built only from invisible code points still identifies its row
- * ({@link pathPresentationLabel}). Null for the no-event row, whose heading is
- * fixed copy. The empty name — strict JSON and TOML both accept `""` as a
- * key — gets its own note the way an empty declared value does, because the
- * label rule has no characters to spell out and the row would otherwise be
- * headed by nothing.
+ * The declared name this row is headed by, as every surface of the row needs
+ * it — what is drawn, whether those are the file's characters, and what the
+ * links announce ({@link AuthoredName}). Null for the no-event row, whose heading is fixed copy.
  */
-const eventText = computed(() =>
-  props.entry.event === null
-    ? null
-    : props.entry.event === ''
-      ? '(empty name)'
-      : pathPresentationLabel(props.entry.event),
-);
-
-/**
- * Whether {@link eventText} is the authored spelling rather than this
- * product's note, which decides the heading's authored-text styling.
- */
-const eventIsAuthored = computed(() => props.entry.event !== null && props.entry.event !== '');
-
-/**
- * The row's event as accessible-name text: it starts with the visible label (WCAG
- * 2.5.3 Label in Name) and appends the spelled-out presentation where
- * whitespace would collapse two invisibly different names into one ({@link accessiblePresentationLabel}); the no-event and
- * empty-name cases keep the same copy the visible heading shows.
- */
-const eventAccessibleText = computed(() =>
-  props.entry.event === null
-    ? null
-    : props.entry.event === ''
-      ? '(empty name)'
-      : accessiblePresentationLabel(props.entry.event),
+const event = computed(() =>
+  props.entry.event === null ? null : new AuthoredName(props.entry.event),
 );
 
 /**
@@ -132,13 +104,7 @@ const carrierRows = computed(() => {
       // file is one form whichever product read it.
       formText:
         declarations[0] === undefined ? null : HOOK_CARRIER_FORM_TEXT[declarations[0].carrier],
-      recognitions: declarations.map((declaration) => ({
-        tool: declaration.tool,
-        toolText: SUPPORTED_TOOL_TEXT[declaration.tool],
-        surfacesText: declaration.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', '),
-      })),
+      recognitions: declarations,
       detailRoute:
         props.entry.event === null
           ? detailRoute('hook', sourceRelativePath, sessionSources.selectorOf(sourceId))
@@ -195,6 +161,22 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * do. The comparison surface's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
+/**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close (`SourceFamilyBlocks.vue`).
+ */
+const headCompareRoute = computed(() => {
+  const routes = [...blockCompareRoutes.value.values()];
+  // Exactly when the row draws no family line to close: the entry lives on one
+  // of the two lines and never on neither, so both read the one rule
+  // (`session-sources.ts` § familyLineShownFor).
+  const headed = sessionSources.familyLineShownFor(carrierRows.value, [
+    ...blockCompareRoutes.value.keys(),
+  ]);
+  return headed || routes.length !== 1 ? null : routes[0]!;
+});
+
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof hookComparisonRouteFor>>();
   const event = props.entry.event;
@@ -216,14 +198,27 @@ const blockCompareRoutes = computed(() => {
          that says the events are not known rather than not declared, because
          it also holds a carrier whose hook block could not be read
          (FR-028). -->
-    <p
-      v-if="eventText !== null"
-      class="aci-hook-row__event"
-      :class="eventIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-    >
-      {{ eventText }}
+    <p class="aci-row-head">
+      <span
+        v-if="event !== null"
+        class="aci-row-head__name"
+        :class="event.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+        >{{ event.text }}</span
+      >
+      <span v-else class="aci-row-head__name">No known hook declarations</span>
+      <span class="aci-row-head__count"
+        >{{ carrierRows.length }} {{ carrierRows.length === 1 ? 'file' : 'files' }}</span
+      >
+      <!-- The comparison entry, where this row has one family and so no family
+           line of its own to close (`SourceFamilyBlocks.vue`). -->
+      <span v-if="headCompareRoute" class="aci-row-head__end">
+        <NuxtLink
+          :to="headCompareRoute"
+          :aria-label="`Compare this event's declarations: ${event?.accessibleText ?? ''}`"
+          >Compare</NuxtLink
+        >
+      </span>
     </p>
-    <p v-else class="aci-hook-row__event">No known hook declarations</p>
 
     <!-- The carriers declaring this event, each linking to its own detail: the
          groups the file wrote under this key, never the file's bytes (FR-007).
@@ -231,9 +226,10 @@ const blockCompareRoutes = computed(() => {
          declarations of one event, and the accessible name adds the row's
          subject so links of several rows never announce identically (WCAG
          2.4.6; label-in-name keeps the visible path as the prefix). The
-         carrier's documented form and each recognizing product trail the link,
-         the way an instruction row states its recognitions; naming a surface
-         never claims it ran the hook (FR-009). -->
+         carrier's documented form stands beside the path because a hook
+         declaration lives in a file that is not its own, and each recognizing
+         product is drawn by its mark with the surfaces its admission rests on;
+         naming a surface never claims it ran the hook (FR-009). -->
     <!-- One block per Source family (`SourceFamilyBlocks.vue`), each member
          rendered by this row. -->
     <SourceFamilyBlocks
@@ -242,35 +238,34 @@ const blockCompareRoutes = computed(() => {
       :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: carrier }">
-        <p class="aci-hook-row__owner">
-          <NuxtLink
-            :to="carrier.detailRoute"
-            class="aci-path aci-authored-text"
-            :aria-label="
-              sessionSources.qualifiedLinkName(
-                eventAccessibleText === null
-                  ? carrier.carrierAccessibleText
-                  : `${carrier.carrierAccessibleText}: ${eventAccessibleText}`,
-                carrier.sourceId,
-              )
-            "
-            >{{ carrier.carrierText }}</NuxtLink
-          >
-          <span v-if="carrier.formText !== null" class="aci-hook-row__form aci-muted">{{
-            carrier.formText
-          }}</span>
-          <span
-            v-for="recognition in carrier.recognitions"
-            :key="recognition.tool"
-            class="aci-hook-row__tool aci-muted"
-            >{{ recognition.toolText }}
-            <span class="aci-hook-row__surfaces">{{ recognition.surfacesText }}</span></span
-          >
-        </p>
-
-        <SourceRootLine :source-id="carrier.sourceId" />
-        <p v-if="carrier.stateText !== null" class="aci-muted">{{ carrier.stateText }}</p>
-        <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <SourceHomeBadge :source-id="carrier.sourceId" />
+            <NuxtLink
+              :to="carrier.detailRoute"
+              class="aci-path aci-authored-text"
+              :aria-label="
+                sessionSources.qualifiedLinkName(
+                  event === null
+                    ? carrier.carrierAccessibleText
+                    : `${carrier.carrierAccessibleText}: ${event.accessibleText}`,
+                  carrier.sourceId,
+                )
+              "
+              >{{ carrier.carrierText }}</NuxtLink
+            >
+            <span v-if="carrier.formText !== null" class="aci-carrier-kind">{{
+              carrier.formText
+            }}</span>
+            <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
+          </span>
+          <RecognitionMarks :recognitions="carrier.recognitions" />
+          <span class="aci-row-file__end" />
+        </div>
+        <!-- Which of the no-event row's two states this carrier is in: the
+             sentence is the carrier's own, so it sits under the carrier's line
+             rather than on the row (FR-028). -->
+        <p v-if="carrier.stateText !== null" class="aci-row-note">{{ carrier.stateText }}</p>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a
@@ -279,64 +274,15 @@ const blockCompareRoutes = computed(() => {
            shape. The accessible name carries the row's identity always, and
            the family where two blocks each offer one (WCAG 2.4.6). -->
       <template #entry="{ block }">
-        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-hook-row__compare">
-          <NuxtLink
-            :to="blockCompareRoutes.get(block.kind)!"
-            :aria-label="`Compare this event's declarations: ${eventAccessibleText ?? ''}${
-              blockCompareRoutes.size > 1 && block.familyText !== null
-                ? ` (${block.familyText})`
-                : ''
-            }`"
-            >Compare this event's declarations</NuxtLink
-          >
-        </p>
+        <NuxtLink
+          v-if="blockCompareRoutes.get(block.kind)"
+          :to="blockCompareRoutes.get(block.kind)!"
+          :aria-label="`Compare this event's declarations: ${event?.accessibleText ?? ''}${
+            block.familyText !== null ? ` (${block.familyText})` : ''
+          }`"
+          >Compare</NuxtLink
+        >
       </template>
     </SourceFamilyBlocks>
   </li>
 </template>
-
-<style scoped>
-/* The comparison entry sits under the declarations it pairs, as the sibling
-   rows' does. */
-.aci-hook-row__compare {
-  margin: 0.3rem 0 0;
-}
-
-.aci-hook-row__event {
-  margin: 0;
-  font-weight: 600;
-}
-
-.aci-hook-row__owner {
-  margin: 0;
-}
-
-/* The carrier's documented form and each recognizing product trail the
-   carrier on the same line, set apart by a separator, matching how an MCP
-   row's products trail its path. */
-.aci-hook-row__form,
-.aci-hook-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-hook-row__form::before,
-.aci-hook-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-/* The surfaces qualify their own product within the same span: the product
-   alone does not say where it reads the file from once two surfaces document
-   different lookup bases. */
-.aci-hook-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-hook-row__surfaces::before {
-  content: '(';
-}
-
-.aci-hook-row__surfaces::after {
-  content: ')';
-}
-</style>

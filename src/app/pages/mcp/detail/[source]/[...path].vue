@@ -26,37 +26,51 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
+import LeavesIcon from '~icons/lucide/arrow-right';
+import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
+import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
   familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
+  detailNeighbours,
+  detailRoute,
   type ComparisonSide,
   type SourceSelector,
-  detailRoute,
   fromJsonStringBody,
 } from '../../../../components/detail-route';
+import { mcpServerDetailRoute } from '../../../../components/mcp-detail-route';
+import FileStrip from '../../../../components/inspection/FileStrip.vue';
+import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import type { SourceKind } from '../../../../../shared/api-types';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
+import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
 import { useSessionViewState } from '../../../../composables/session-view-state';
 import { mcpComparisonRouteFor } from '../../../../composables/mcp-comparison';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
+  type SupportedTool,
+  SUPPORTED_TOOL_ORDER,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
   SUPPORTED_TOOL_TEXT,
+  accessiblePresentationLabel,
   escapeControlCharacters,
+  fileIdentityKey,
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
+import { AuthoredName } from '../../../../components/authored-name';
 
 const sessionViewState = useSessionViewState();
 
@@ -119,7 +133,7 @@ const openSourceId = computed((): string | null => sessionSources.sourceIdFor(op
 // The open file's Source facts (FR-007 "show its source"): the family name
 // where more than one family is inspected, and the consented directory where
 // the family holds more than one Source (`source-facts.ts`).
-const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
   () => snapshot.value?.sources ?? [],
   () => openSourceId.value,
 );
@@ -221,6 +235,63 @@ const openFamily = computed<SourceKind>(() =>
  * holds no second carrier; the comparison surface's own pickers take over
  * from there.
  */
+/**
+ * The other carriers declaring the name this page is showing, so the next
+ * declaration of it is one move rather than a return to the list (FR-007).
+ * Empty on a carrier view, which has no name to gather by, and on a name one
+ * carrier declares — the strip renders nothing either way
+ * (`FileStrip.vue`).
+ *
+ * One entry per file, with each product that declares the name there beside
+ * it: a carrier two products read is one file, exactly as the copies of a
+ * skill name are ({@link otherCopiesOf} removes the one on screen).
+ */
+const otherCarriers = computed<readonly FileStripEntry[]>(() => {
+  const name = openServerName.value;
+  if (name === null) {
+    return [];
+  }
+  const row = (snapshot.value?.mcp ?? []).find((entry) => entry.name === name);
+  const byFile = new Map<string, FileStripEntry>();
+  for (const declaration of row?.declarations ?? []) {
+    const key = fileIdentityKey(declaration.sourceId, declaration.sourceRelativePath);
+    const existing = byFile.get(key);
+    byFile.set(
+      key,
+      existing === undefined
+        ? {
+            key,
+            sourceId: declaration.sourceId,
+            pathText: pathPresentationLabel(declaration.sourceRelativePath),
+            opens: {
+              accessibleText: sessionSources.qualifiedLinkName(
+                accessiblePresentationLabel(declaration.sourceRelativePath),
+                declaration.sourceId,
+              ),
+              route: mcpServerDetailRoute(
+                declaration.sourceRelativePath,
+                name,
+                sessionSources.selectorOf(declaration.sourceId),
+              ),
+            },
+            recognitions: [{ tool: declaration.tool, surfaces: declaration.surfaces }],
+            carrierText: null,
+          }
+        : {
+            ...existing,
+            recognitions: [
+              ...existing.recognitions,
+              { tool: declaration.tool, surfaces: declaration.surfaces },
+            ],
+          },
+    );
+  }
+  return otherCopiesOf(
+    [...byFile.values()],
+    fileIdentityKey(openSourceId.value ?? '', openPath.value),
+  );
+});
+
 function compareRouteForName(name: string): ReturnType<typeof mcpComparisonRouteFor> | null {
   const row = (snapshot.value?.mcp ?? []).find((entry) => entry.name === name);
   // The counterpart is any carrier of the row that is not this page's own and
@@ -283,17 +354,12 @@ const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacte
 const carrierRoute = computed(() => detailRoute('MCP', openPath.value, openSource.value));
 
 /**
- * The selected declaration's name as the heading shows it, through the same
- * label rule the record uses, or null for the carrier view. The empty name —
- * strict JSON accepts `""` as a server name — gets the same note its
- * inventory row shows, because the label rule has no characters to spell out.
+ * The selected declaration's name as this page needs it, or null for the
+ * carrier view, which is about the file rather than one name it declares
+ * ({@link AuthoredName}).
  */
-const serverNameText = computed(() =>
-  openServerName.value === null
-    ? null
-    : openServerName.value === ''
-      ? '(empty name)'
-      : pathPresentationLabel(openServerName.value),
+const serverName = computed(() =>
+  openServerName.value === null ? null : new AuthoredName(openServerName.value),
 );
 
 /**
@@ -305,22 +371,7 @@ const serverNameText = computed(() =>
 const headingAccessibleText = computed(() =>
   openPath.value === ''
     ? CUSTOMIZATION_KIND_TEXT.MCP
-    : openServerName.value !== null
-      ? openServerName.value === ''
-        ? '(empty name)'
-        : inlinePresentationLabel(openServerName.value)
-      : inlinePresentationLabel(openPath.value),
-);
-
-/**
- * Whether {@link serverNameText} is the spelled-out form rather than the
- * authored key; the spelled form is this product's characters and does not
- * title the tab.
- */
-const serverNameIsSpelledOut = computed(
-  () =>
-    openServerName.value !== null &&
-    serverNameText.value !== escapeControlCharacters(openServerName.value),
+    : (serverName.value?.singleLineText ?? inlinePresentationLabel(openPath.value)),
 );
 
 /**
@@ -333,22 +384,79 @@ const serverNameIsSpelledOut = computed(
  * what it would enable, trust, or connect to: existence is what an admission
  * proves (FR-009).
  */
-const ownerText = computed(() => {
-  const entries = snapshot.value?.mcp ?? [];
-  const declarations = entries
-    .filter((entry) => openServerName.value === null || entry.name === openServerName.value)
-    .flatMap((entry) => entry.declarations)
-    .filter(
-      (declaration) =>
+/**
+ * The products that recognize this carrier and the surfaces they recognize it
+ * on, restated from the row so the page and the list agree (FR-007). One
+ * declaration per `(carrier, tool)`, so the carrier's declarations here are
+ * its recognitions.
+ */
+const recognitions = computed(() => {
+  const byTool = new Map<
+    SupportedTool,
+    { tool: SupportedTool; surfaces: readonly VendorSurface[] }
+  >();
+  for (const entry of snapshot.value?.mcp ?? []) {
+    for (const declaration of entry.declarations) {
+      if (
         declaration.sourceRelativePath === openPath.value &&
-        declaration.sourceId === openSourceId.value,
-    );
-  const byTool = new Map<string, string>();
-  for (const declaration of declarations) {
-    const surfaces = declaration.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ');
-    byTool.set(declaration.tool, `${SUPPORTED_TOOL_TEXT[declaration.tool]} (${surfaces})`);
+        declaration.sourceId === openSourceId.value
+      ) {
+        byTool.set(declaration.tool, { tool: declaration.tool, surfaces: declaration.surfaces });
+      }
+    }
   }
-  return [...byTool.values()].join(', ');
+  return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => byTool.get(tool)!);
+});
+
+/**
+ * The rows either side of this one in the list's own order, so the next
+ * declaration is one move rather than a return to the inventory (FR-007).
+ */
+const listNeighbours = computed(() => {
+  const entries = snapshot.value?.mcp ?? [];
+  const rows = entries.map((entry) => {
+    const declaration = entry.declarations[0];
+    const path = declaration?.sourceRelativePath ?? '';
+    const source = sessionSources.selectorOf(declaration?.sourceId ?? '');
+    return {
+      label:
+        entry.name === null ? 'No known server declarations' : inlinePresentationLabel(entry.name),
+      // A row is one server name, so the move addresses that name's declaration
+      // the way the row's own link does (`rows/McpRow.vue`): the carrier route
+      // alone would open the whole carrier, which is a different page from the
+      // one the move's label names. The no-name row is the exception, being the
+      // carrier itself.
+      route:
+        entry.name === null
+          ? detailRoute('MCP', path, source)
+          : mcpServerDetailRoute(path, entry.name, source),
+    };
+  });
+  // The open row is this carrier *and* this name: a carrier declaring several
+  // servers appears on several rows, so matching the carrier alone lands on
+  // whichever of them comes first and offers that row's neighbours instead of
+  // this one's.
+  // The carrier's own view is on no row of this list: the rows are declared
+  // server names and the carrier is the file they were read from, so it has no
+  // position to step from (FR-007 — a declaration view and a carrier view are
+  // different subjects). Matching on the name alone gave it the row that
+  // publishes none, and folding `null` and an authored `''` together gave it
+  // the empty-named row's neighbours.
+  if (openServerName.value === null) {
+    return detailNeighbours(rows, -1);
+  }
+  return detailNeighbours(
+    rows,
+    entries.findIndex(
+      (entry) =>
+        entry.name === openServerName.value &&
+        entry.declarations.some(
+          (declaration) =>
+            declaration.sourceRelativePath === openPath.value &&
+            declaration.sourceId === openSourceId.value,
+        ),
+    ),
+  );
 });
 
 /**
@@ -377,15 +485,9 @@ const serverBlocks = computed(() =>
     .filter((server) => openServerName.value === null || server.name === openServerName.value)
     .map((server) => ({
       key: server.name,
-      // The empty name gets the same note its inventory row and this page's
-      // heading show; every other name is the authored spelling.
-      nameText: server.name === '' ? '(empty name)' : pathPresentationLabel(server.name),
-      nameIsAuthored: server.name !== '',
-      // The single-line label rule for the heading's accessible name: an
-      // accessible name collapses whitespace, so two invisibly different
-      // authored names would otherwise announce identically (FR-025).
-      nameAccessibleText:
-        server.name === '' ? '(empty name)' : inlinePresentationLabel(server.name),
+      // The declared name as the block's heading and its links need it, which
+      // is the same unit the page's own heading reads ({@link AuthoredName}).
+      name: new AuthoredName(server.name),
       // Which products read this declaration, from the committed inventory —
       // the carrier detail serves the union of the readings, and since the
       // CLI's bare schema exists the readings of one shared file can differ,
@@ -549,13 +651,15 @@ const titleSubject = computed<string | null>(() => {
       ? 'MCP carrier could not be loaded'
       : 'MCP server declaration could not be loaded';
   }
-  if (openServerName.value !== null) {
+  const name = serverName.value;
+  if (name !== null) {
     // The carrier's path rides in the title too: two carriers of one Source
     // can declare one server name, and their tabs must not read identically
-    // (WCAG 2.4.2).
-    return serverNameIsSpelledOut.value
-      ? null
-      : `${openServerName.value} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
+    // (WCAG 2.4.2). A name this product spelled out does not title the tab:
+    // those are its characters, not the file's.
+    return name.isAuthored
+      ? `${name.authored} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`
+      : null;
   }
   return pathIsSpelledOut.value
     ? null
@@ -623,14 +727,41 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-mcp-detail">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the MCP list
+  <div ref="pageRoot" class="aci-mcp-detail aci-route">
+    <!-- The way back and the rows either side of this one, drawn in the bar
+         with every other route's moves (`DetailNavigation.vue`). The kind is
+         URL state, so naming it is what makes the move land on the MCP list
          rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=MCP">Back to the inventory</NuxtLink></p>
+    <DetailNavigation
+      list-route="/?kind=MCP"
+      :list-text="CUSTOMIZATION_KIND_TEXT.MCP"
+      :previous="listNeighbours.previous"
+      :next="listNeighbours.next"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         Source family, the kind, and this page's own subject. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="sourceFamilyCrumbText !== null"
+        >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.MCP }} <span>›</span>
+      <!-- The page's own subject, which is the declared name on a declaration
+           view and the carrier's path on the carrier's own. The trail ended at
+           the carrier either way, so a declaration page's last step named a
+           file while its heading named a server — the only kind whose trail
+           and heading disagreed. Which carrier it was declared in is the
+           `Declared in` line's, said once. -->
+      <span
+        v-if="serverName !== null"
+        class="aci-detail-crumbs__subject"
+        :class="{ 'aci-authored-text': serverName.isAuthored }"
+        >{{ serverName.text }}</span
+      >
+      <span v-else class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
+    </p>
 
     <div class="aci-mcp-detail__title">
-      <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
+      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
         <!-- The record's own identity heads the page: the declared server name
              for a declaration view — the same spelling its inventory record
              shows — and the carrier's path for the file-unit view; either is
@@ -638,23 +769,40 @@ onBeforeUnmount(() => {
              (FR-024, FR-030). -->
         <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.MCP }}</template>
         <span
-          v-else-if="serverNameText !== null"
-          :class="{ 'aci-authored-text': !serverNameIsSpelledOut }"
-          >{{ serverNameText }}</span
+          v-else-if="serverName !== null"
+          :class="{ 'aci-authored-text': serverName.isAuthored }"
+          >{{ serverName.text }}</span
         >
         <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
           pathText
         }}</span>
       </h2>
-      <!-- The carrier view heads itself with the carrier's path, so the link
-           that opens it belongs on that line. A declaration view is headed by
-           a server name and carries the link beside its "Declared in" path
-           below instead. -->
-      <OpenFileButton
-        v-if="openDetail !== null && openServerName === null"
-        :source-relative-path="openDetail.file.sourceRelativePath"
-        :source="openSource"
-      />
+      <!-- The declaration view's comparison entry (FR-011): present exactly
+           when this name's row holds another readable carrier to stand
+           opposite this one. At the end of the heading's own line, because it
+           acts on the subject that heading names rather than on one of the
+           sections below it. The comparison surface's own pickers take over
+           from there. -->
+      <NuxtLink
+        v-if="openServerCompareRoute !== null"
+        class="aci-button aci-button--primary aci-mcp-detail__title-end"
+        :to="openServerCompareRoute"
+        >Compare this server's declarations
+        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
+      <!-- Why there is no comparison, rather than nothing at all: a missing
+           control reads the same as a forgotten one, and the reason is a fact
+           about the subject — this name resolves one carrier here, so there is
+           no pair to make (FR-011). The skill detail says the same of a name
+           with one copy. -->
+      <!-- Said only where there is a subject to say it of: on a link the scan
+           holds nothing at, and before the carrier has loaded, "one carrier
+           here" would be a claim about a name that resolves nothing. -->
+      <span
+        v-else-if="openServerName !== null && openDetail !== null"
+        class="aci-mcp-detail__title-end aci-muted"
+        >This name has one carrier here, so there is nothing to compare</span
+      >
     </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -673,37 +821,82 @@ onBeforeUnmount(() => {
            held carrier that currently publishes no declaration by this name —
            which covers a carrier whose declarations could not be read, whose
            rows are unknown rather than absent (FR-028). -->
-      <p v-if="carrierListed && openServerName !== null" class="aci-error">
-        No declaration named this way is published for this file in the current scan. The carrier
-        may have changed since the link was made — its declarations may even be unreadable right now
-        — and a rescan that brings the name back will make it resolve again.
-      </p>
-      <p v-else class="aci-error">
-        Nothing in the current scan sits at this link's path. The inventory may have changed since
-        the link was made; a rescan that brings the path back will make it resolve again.
-      </p>
-      <p>
-        <NuxtLink to="/?kind=MCP">Return to the inventory and open it again.</NuxtLink>
-      </p>
+      <SubjectUnavailable outcome="warning">
+        <template v-if="carrierListed && openServerName !== null">
+          No declaration named this way is published for this file in the current scan. The carrier
+          may have changed since the link was made — its declarations may even be unreadable right
+          now — and a rescan that brings the name back will make it resolve again.
+        </template>
+        <template v-else>
+          Nothing in the current scan sits at this link's path. The inventory may have changed since
+          the link was made; a rescan that brings the path back will make it resolve again.
+        </template>
+        <template #exit>
+          <NuxtLink to="/?kind=MCP">Return to the inventory and open it again.</NuxtLink>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
          held. This route reports it, because this route made the request. -->
     <template v-else-if="openDetail === null">
-      <p class="aci-error">{{ detailFailure }}</p>
-      <p>
-        <button type="button" @click="retryOpen">Try again</button>
-      </p>
+      <SubjectUnavailable outcome="error">
+        {{ detailFailure }}
+        <template #exit>
+          <button type="button" @click="retryOpen">Try again</button>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <template v-else>
       <div class="aci-mcp-detail__overview">
-        <!-- Which product recognizes the carrier, restated from the inventory
-             entry so the page and the list agree, beside the kind's own
-             caption (FR-007). -->
-        <p class="aci-mcp-detail__recognition">
-          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
-          >{{ ownerText }} · {{ CUSTOMIZATION_KIND_TEXT.MCP }}
+        <!-- Which products recognize the carrier and where they document
+             reading it, restated from the inventory entry so the page and the
+             list agree (FR-007). No product is quoted for what it would
+             connect to, because an admission is not an activation
+             (FR-009). -->
+        <p class="aci-detail-attributes">
+          <!-- The carrier this page read, leading its own facts: the command at
+               the end of this line opens it, and with the path on the line
+               below the control pointed at something the line did not name. On
+               a declaration view it is a link to the carrier's own page; on
+               that page it is the subject itself, which the heading above
+               already names. -->
+          <template v-if="openServerName !== null"
+            >Declared in
+            <NuxtLink :to="carrierRoute" class="aci-path aci-authored-text">{{
+              pathText
+            }}</NuxtLink></template
+          >
+          <!-- What the read produced, on the head's line with the rest of
+               the carrier's own facts rather than below the page's sections:
+               the read outcome and the size are facts about the file this
+               page opened, and a reader deciding whether to trust what is
+               below reads them first (FR-007). Its source text is
+               deliberately not on this page — or on the wire at all: a file
+               admitted so its declarations can be published shows the
+               declarations, never its bytes. -->
+          <span
+            >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
+            }}<template v-if="openDetail.file.encoding !== 'unknown'">
+              · {{ openDetail.file.sizeBytes }} bytes</template
+            ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
+              · byte-order mark removed before decoding</template
+            ></span
+          >
+          <RecognitionMarks :recognitions="recognitions" named />
+          <!-- The command that opens the file, at the end of the line that
+               states that file's facts — the one place every kind puts it, so
+               a reader who found it on one detail finds it on the next.
+               Outside the heading so it does not join the heading's accessible
+               name: a reader hearing the page's landmarks should hear the
+               file, not an action on it (WCAG 2.4.6). -->
+          <span class="aci-detail-attributes__end">
+            <OpenFileButton
+              :source-relative-path="openDetail.file.sourceRelativePath"
+              :source="openSource"
+            />
+          </span>
         </p>
 
         <!-- Which directory the carrier was in, where its family holds more
@@ -712,40 +905,20 @@ onBeforeUnmount(() => {
         <p v-if="sourceRootText !== null" class="aci-mcp-detail__root aci-note">
           <span class="aci-authored-text">{{ sourceRootText }}</span>
         </p>
-        <!-- The declaration view's comparison entry (FR-011): present
-             exactly when this name's row holds another readable carrier to
-             stand opposite this one. The comparison surface's own pickers
-             take over from there. -->
-        <p v-if="openServerCompareRoute !== null" class="aci-mcp-detail__compare">
-          <NuxtLink :to="openServerCompareRoute">Compare this server's declarations</NuxtLink>
-        </p>
-        <!-- The declaration view states its owner-carrier identity — the
-             record's own second line, linking to the carrier's file-unit
-             view. -->
-        <p v-if="openServerName !== null">
-          Declared in
-          <NuxtLink :to="carrierRoute" class="aci-path aci-authored-text">{{ pathText }}</NuxtLink>
-          <!-- Beside the carrier's path, because that is the file it opens —
-               the declaration this page is about lives inside it. -->
-          <OpenFileButton
-            :source-relative-path="openDetail.file.sourceRelativePath"
-            :source="openSource"
-          />
-        </p>
-        <!-- Both views add what the read produced, and nothing else: the
-             carrier's own file facts. Its source text is deliberately not on
-             this page — or on the wire at all: a file admitted so its
-             declarations can be published shows the declarations, never its
-             bytes (FR-007). -->
-        <p class="aci-note">
-          {{ FILE_ENCODING_TEXT[openDetail.file.encoding]
-          }}<template v-if="openDetail.file.encoding !== 'unknown'">
-            · {{ openDetail.file.sizeBytes }} bytes</template
-          ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
-            · byte-order mark removed before decoding</template
-          >
-        </p>
       </div>
+
+      <!-- The other carriers declaring this name, one line whatever the count
+           (`FileStrip.vue`). The kinds whose row is a name all offer it — a
+           skill's copies, an agent's files — and a declaration's carriers are
+           the same move: the next place this name is declared, without
+           returning to the list. Nothing here states an order or a winner:
+           which declaration a session uses turns on runtime this tool does not
+           observe (FR-009). -->
+      <FileStrip
+        :open-source-id="openSourceId"
+        :entries="otherCarriers"
+        label="Other carriers declaring this name"
+      />
 
       <ul v-if="openDiagnostics.length > 0" class="aci-list" role="list">
         <li
@@ -779,10 +952,10 @@ onBeforeUnmount(() => {
       <section v-for="server in serverBlocks" :key="server.key" class="aci-mcp-detail__server">
         <h3
           v-if="openServerName === null"
-          :class="server.nameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-          :aria-label="server.nameAccessibleText"
+          :class="server.name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          :aria-label="server.name.singleLineText"
         >
-          {{ server.nameText }}
+          {{ server.name.text }}
         </h3>
         <!-- The products whose documented reading includes this declaration:
              the readings of one shared carrier can differ by schema, so the
@@ -796,10 +969,12 @@ onBeforeUnmount(() => {
              keeps the visible phrase as the prefix). -->
         <p v-if="server.compareRoute !== null">
           <NuxtLink
+            class="aci-button aci-button--primary"
             :to="server.compareRoute"
-            :aria-label="`Compare this server's declarations: ${server.nameAccessibleText}`"
-            >Compare this server's declarations</NuxtLink
-          >
+            :aria-label="`Compare this server's declarations: ${server.name.singleLineText}`"
+            >Compare this server's declarations
+            <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+          /></NuxtLink>
         </p>
         <!-- The declaration's fields as one read-only JSON document in the
              Monaco viewer — coloured by the `json` tokenizer a `.json`
@@ -810,12 +985,23 @@ onBeforeUnmount(() => {
              FR-026). The accessible name says which declaration of the
              carrier is showing, because a carrier view mounts one viewer
              per declared server (WCAG 2.4.6). -->
+        <!-- What the viewer holds, said before it. The carrier may be TOML or a
+             settings document, and its declaration is shown as JSON this
+             surface serializes rather than as the bytes the file wrote — so a
+             reader who opened a `.toml` and met JSON is told why. The keys are
+             the file's own, in the order it wrote them, because that is what
+             this surface publishes (FR-007; {@link declaredEntriesJsonText}).
+             Only the comparison sorts, and only to align its two sides. -->
+        <p class="aci-note">
+          This is this server's declaration serialized as JSON, with the keys the file wrote in the
+          order it wrote them; the file's own syntax is not shown.
+        </p>
         <SourceViewer
+          panel-label="Declaration"
           :source-text="server.jsonText"
           :source-relative-path="openPath"
-          :content-label="`Declaration ${server.nameAccessibleText} of`"
+          :content-label="`Declaration ${server.name.singleLineText} of`"
           content-language="json"
-          fit-content
         />
       </section>
     </template>
@@ -846,7 +1032,7 @@ onBeforeUnmount(() => {
 }
 
 .aci-mcp-detail__overview {
-  border-bottom: 1px solid var(--aci-border);
+  border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
 }
 
@@ -872,7 +1058,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  gap: 0.5rem 0.75rem;
   margin-block-end: 0.5rem;
+}
+
+/* Whatever closes the heading's line: the comparison of the subject it names. */
+.aci-mcp-detail__title-end {
+  margin-inline-start: auto;
 }
 
 .aci-mcp-detail h2 {

@@ -149,7 +149,7 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
 
   // Each side's identity: path, Source family, recognized kind, read
   // outcome (US3 scenario 1).
-  const files = page.locator('.aci-instruction-compare__files');
+  const files = page.locator('.aci-compare-sides');
   await expect(files).toContainText('AGENTS.md');
   await expect(files).toContainText('CLAUDE.md');
   await expect(files.locator('.aci-instruction-compare__file-facts').first()).toContainText(
@@ -165,16 +165,16 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
   // declares, what each file says, then the complete files, and last the
   // recognitions.
   await expect(metadata.locator('h3')).toHaveText([
+    'Tool recognition',
     'Declared metadata',
     'Instructions',
     'Source comparison',
-    'Tool recognition',
   ]);
   const toolTable = metadata.locator('table').first();
   await expect(toolTable.locator('tbody th')).toHaveText([
-    'GitHub Copilot · Instructions',
-    'Claude Code · Instructions',
-    'OpenAI Codex · Instructions',
+    'GitHub Copilot',
+    'Claude Code',
+    'OpenAI Codex',
   ]);
   // The single-product sides are stated, not fabricated into rows: Claude
   // does not recognize `AGENTS.md`, Codex does not recognize `CLAUDE.md`.
@@ -230,9 +230,9 @@ test('states the typed layering and fallback differences per side', async ({ pag
   // cell stays attributable to its file.
   await page.goto(compareUrl('TEAM_GUIDE.md', 'CLAUDE.md'));
   await expect(metadata.locator('table').first().locator('tbody th')).toHaveText([
-    'GitHub Copilot · Instructions',
-    'Claude Code · Instructions',
-    'OpenAI Codex · Instructions',
+    'GitHub Copilot',
+    'Claude Code',
+    'OpenAI Codex',
   ]);
   const codexRow = metadata.locator('tr', { hasText: 'OpenAI Codex' });
   await expect(codexRow.locator('td').first()).toHaveText('Recognized — surfaces: Local clients');
@@ -268,7 +268,7 @@ test('moves the pair with the pickers among the owning row’s files', async ({ 
   // values.
   await page.getByLabel('Second instruction file').selectOption({ label: 'TEAM_GUIDE.md' });
   await expect(page).toHaveURL(/right=TEAM_GUIDE\.md/u);
-  await expect(page.locator('.aci-instruction-compare__files')).toContainText('TEAM_GUIDE.md');
+  await expect(page.locator('.aci-compare-sides')).toContainText('TEAM_GUIDE.md');
 
   // The other side's current file is unselectable: the two sides must stay
   // two distinct files (FR-011).
@@ -315,6 +315,6 @@ test('enters from the detail page and returns to the instructions tab', async ({
   await page.waitForURL(/\/instructions\/compare\/repository\?/u);
   await expect(page.getByRole('heading', { name: 'Compare instruction files' })).toBeVisible();
   // Back to the inventory's instructions tab, not the kind order's default.
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.getByRole('tab', { selected: true })).toContainText('Instructions');
 });

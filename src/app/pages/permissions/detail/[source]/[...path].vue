@@ -40,10 +40,15 @@ import {
   familyGenerationOf,
   asSourceSelector,
   decodeDetailRoutePath,
+  detailNeighbours,
+  detailRoute,
   type SourceSelector,
 } from '../../../../components/detail-route';
+import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
+import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
@@ -51,14 +56,12 @@ import { useSessionViewState } from '../../../../composables/session-view-state'
 import {
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
-  SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
-import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
 const sessionViewState = useSessionViewState();
 
@@ -121,7 +124,7 @@ const openSourceId = computed((): string | null => sessionSources.sourceIdFor(op
 // The open file's Source facts (FR-007 "show its source"): the family name
 // where more than one family is inspected, and the consented directory where
 // the family holds more than one Source (`source-facts.ts`).
-const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
   () => snapshot.value?.sources ?? [],
   () => openSourceId.value,
 );
@@ -157,6 +160,26 @@ const kindText = CUSTOMIZATION_KIND_TEXT.permissions;
 const inventoryRoute = '/?kind=permissions';
 
 /**
+ * The rows either side of this one in the list's own order, so the next file
+ * is one move rather than a return to the inventory (FR-007). The order is the
+ * snapshot's, which is the order the inventory renders.
+ */
+const listNeighbours = computed(() => {
+  const rows = (snapshot.value?.permissions ?? []).map((entry) => ({
+    label: inlinePresentationLabel(entry.sourceRelativePath),
+    route: detailRoute(
+      'permissions',
+      entry.sourceRelativePath,
+      sessionSources.selectorOf(entry.sourceId),
+    ),
+  }));
+  return detailNeighbours(
+    rows,
+    (snapshot.value?.permissions ?? []).findIndex((entry) => entry === owner.value),
+  );
+});
+
+/**
  * The path as the heading shows it, through the one label rule every surface
  * that draws a path uses ({@link pathPresentationLabel}).
  */
@@ -178,16 +201,7 @@ const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacte
  * row's recognitions are already in the closed tool order and each one's
  * surfaces in the closed surface order.
  */
-const toolsText = computed(() =>
-  (owner.value?.recognitions ?? [])
-    .map(
-      (recognition) =>
-        `${SUPPORTED_TOOL_TEXT[recognition.tool]} (${recognition.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', ')})`,
-    )
-    .join(', '),
-);
+const recognitions = computed(() => owner.value?.recognitions ?? []);
 
 /**
  * The open policy once it is this path's: the fetched detail whose declaring
@@ -426,14 +440,32 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-permission-policy-detail">
+  <div ref="pageRoot" class="aci-permission-policy-detail aci-route">
     <!-- Returns to the tab this page came from: the inventory's kind is URL
          state, so naming it here is what makes the link land on the
          permissions list rather than the kind order's default tab. -->
-    <p><NuxtLink :to="inventoryRoute">Back to the inventory</NuxtLink></p>
+    <!-- The way back and the rows either side of this one, drawn in the bar
+         with every other route's moves (`DetailNavigation.vue`). The kind is
+         URL state, so naming it is what makes the move land on this kind's
+         list rather than the kind order's default tab. -->
+    <DetailNavigation
+      :list-route="inventoryRoute"
+      :list-text="kindText"
+      :previous="listNeighbours.previous"
+      :next="listNeighbours.next"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         Source family, the kind, and this page's own subject. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="sourceFamilyCrumbText !== null"
+        >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{ kindText }} <span>›</span>
+      <span class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
+    </p>
 
     <div class="aci-permission-policy-detail__title">
-      <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
+      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
         <!-- The declaring file's path heads the page — the row's own identity,
            in the same spelling the inventory lists: escaped for presentation,
            never a locator anything can open (FR-024, FR-030). A path whose
@@ -447,15 +479,6 @@ onBeforeUnmount(() => {
           pathText
         }}</span>
       </h2>
-      <!-- Beside the path, because the path is what it opens. Outside the
-         heading so it does not join the heading's accessible name: a reader
-         hearing the page's landmarks should hear the file, not an action on
-         it (WCAG 2.4.6). -->
-      <OpenFileButton
-        v-if="openDetail !== null"
-        :source-relative-path="openDetail.file.sourceRelativePath"
-        :source="openSource"
-      />
     </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -469,13 +492,13 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-else-if="detailState === 'stale' || owner === null">
-      <p class="aci-error">
+      <SubjectUnavailable outcome="warning">
         Nothing in the current scan sits at this link's path. The inventory may have changed since
         the link was made; a rescan that brings the path back will make it resolve again.
-      </p>
-      <p>
-        <NuxtLink :to="inventoryRoute">Return to the inventory and open it again.</NuxtLink>
-      </p>
+        <template #exit>
+          <NuxtLink :to="inventoryRoute">Return to the inventory and open it again.</NuxtLink>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -483,41 +506,46 @@ onBeforeUnmount(() => {
          the shell reports what happened to the session, so neither hides or
          repeats the other. -->
     <template v-else-if="openDetail === null">
-      <p class="aci-error">{{ detailFailure }}</p>
-      <p>
-        <button type="button" @click="retryOpen">Try again</button>
-      </p>
+      <SubjectUnavailable outcome="error">
+        {{ detailFailure }}
+        <template #exit>
+          <button type="button" @click="retryOpen">Try again</button>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <template v-else>
-      <div class="aci-permission-policy-detail__overview">
-        <!-- Which products recognize the policy, restated from the row so the
-             page and the list agree, beside the kind's own caption (FR-007).
-             No product is quoted for what it would decide or enforce:
-             existence is what an admission proves (FR-009). -->
-        <p class="aci-permission-policy-detail__recognition">
-          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
-          >{{ toolsText }} · {{ kindText }}
-        </p>
-
-        <!-- Which directory the file was in, where its family holds more
-             than one: an escaped presentation of the admitted root, never a
-             path anything can open (FR-002). -->
-        <p v-if="sourceRootText !== null" class="aci-permission-policy-detail__root aci-note">
-          <span class="aci-authored-text">{{ sourceRootText }}</span>
-        </p>
-      </div>
-
-      <!-- What the read of the declaring file produced, and nothing else. A
-           viewer that narrated what a policy might contain would be telling
-           the reader about their own repository (FR-027). -->
-      <p class="aci-note">
-        {{ FILE_ENCODING_TEXT[openDetail.file.encoding]
-        }}<template v-if="openDetail.file.encoding !== 'unknown'">
-          · {{ openDetail.file.sizeBytes }} bytes</template
-        ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
-          · byte-order mark removed before decoding</template
+      <!-- What this customization is, on one line: how the file read, which
+           products recognize the policy and where they document reading it, and
+           the command that opens the file. Restated from the row so the page
+           and the list agree (FR-007); no product is quoted for what it would
+           decide or enforce, because existence is what an admission proves (FR-009). -->
+      <p class="aci-detail-attributes">
+        <span
+          >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
+          }}<template v-if="openDetail.file.encoding !== 'unknown'">
+            · {{ openDetail.file.sizeBytes }} bytes</template
+          ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
+            · byte-order mark removed before decoding</template
+          ></span
         >
+        <RecognitionMarks :recognitions="recognitions" named />
+        <!-- Outside the heading so it does not join the heading's accessible
+             name: a reader hearing the page's landmarks should hear the file,
+             not an action on it (WCAG 2.4.6). -->
+        <span class="aci-detail-attributes__end">
+          <OpenFileButton
+            :source-relative-path="openDetail.file.sourceRelativePath"
+            :source="openSource"
+          />
+        </span>
+      </p>
+
+      <!-- Which directory the file was in, where its family holds more
+           than one: an escaped presentation of the admitted root, never a
+           path anything can open (FR-002). -->
+      <p v-if="sourceRootText !== null" class="aci-permission-policy-detail__root aci-note">
+        <span class="aci-authored-text">{{ sourceRootText }}</span>
       </p>
 
       <!-- The whole document, which is what a policy file is. The grammar is
@@ -532,9 +560,10 @@ onBeforeUnmount(() => {
            exists only for a readable file. -->
       <SourceViewer
         v-if="openDetail.form === 'whole-document' && isReadableFile(openDetail.file)"
+        panel-label="Policy"
         :source-text="openDetail.file.sourceText"
         :source-relative-path="openDetail.file.sourceRelativePath"
-        content-language="python"
+        content-language="starlark"
       />
 
       <!-- The declared block, and nothing of the document around it: the
@@ -549,11 +578,11 @@ onBeforeUnmount(() => {
       <template v-else-if="openDetail.form === 'declared-block'">
         <SourceViewer
           v-if="declaredPolicyJson !== null"
+          panel-label="Declared permissions"
           :source-text="declaredPolicyJson"
           :source-relative-path="openDetail.file.sourceRelativePath"
           content-label="Declared permissions of"
           content-language="json"
-          fit-content
         />
         <!-- The block could not be read at all: the carrier stays admitted,
              and the page says so with the extraction's own record rather than
@@ -595,7 +624,7 @@ onBeforeUnmount(() => {
 }
 
 .aci-permission-policy-detail__overview {
-  border-bottom: 1px solid var(--aci-border);
+  border-bottom: 1px solid var(--aci-line);
   margin-block-end: 0.75rem;
   padding-bottom: 0.5rem;
 }

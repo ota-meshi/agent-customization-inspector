@@ -22,6 +22,7 @@
 // substituted (FR-025, FR-026).
 import { computed } from 'vue';
 import DeclarationDiff from './DeclarationDiff.vue';
+import RecognitionTable from '../comparison/RecognitionTable.vue';
 import type { PluginComparisonSide } from './recognition-comparison';
 import { pathPresentationLabel } from '../../../shared/entities';
 
@@ -50,19 +51,21 @@ const right = computed(() => props.sides[1]);
 <template>
   <div class="aci-plugin-recognition-comparison">
     <!-- Each side stated with its own identity — path, what it is to the
-         plugin, the file's own facts, and which products' recognitions the
-         row lists for it — so neither declaration loses its carrier to the
-         diff. The order is the link's: first named, first shown. -->
-    <div class="aci-plugin-recognition-comparison__files">
-      <section v-for="side in sides" :key="side.caption">
-        <h3>{{ side.caption }}</h3>
+         plugin, and the file's own facts — so neither declaration loses its
+         carrier to the diff. Which products read it is the recognition
+         table's, below. The order is the link's: first named, first shown. -->
+    <div class="aci-compare-sides">
+      <section v-for="side in sides" :key="side.caption" class="aci-compare-side">
+        <!-- Which side this is, as a label on the box rather than a heading
+             over it: every other kind's comparison says it the same way, and a
+             heading here put two `h3` steps in the outline before the blocks
+             that are the page's actual sections
+             (`main.css` § .aci-compare-side__caption). -->
+        <span class="aci-compare-side__caption">{{ side.caption }}</span>
         <p class="aci-path aci-authored-text">{{ pathPresentationLabel(side.path) }}</p>
-        <p class="aci-note">{{ side.carrierText }} · {{ side.factsText }}</p>
-        <!-- The products that read this carrier, on one line: they are facts
-             about this file, and a reader comparing two sides reads which
-             products each carries by reading the two lines. A list long
-             enough to wrap wraps; nothing here scrolls the page. -->
-        <p v-if="side.recognitionText !== ''" class="aci-note">{{ side.recognitionText }}</p>
+        <!-- The Source and the kind lead, as they do on every other kind's
+             side card; what the file is to the plugin follows them. -->
+        <p class="aci-note">{{ side.factsText }} · {{ side.carrierText }}</p>
         <!-- Whose reading this side is, where the file has more than one
              product recognizing it: the root and the manifest below are that
              product's answer. -->
@@ -73,8 +76,13 @@ const right = computed(() => props.sides[1]);
       </section>
     </div>
 
+    <!-- Which product reads which side. On the table rather than on the cards
+         above, because only a cell can say that a product reads neither
+         carrier (`RecognitionTable.vue`). -->
+    <RecognitionTable :sides="sides" />
+
     <section>
-      <h3>Declared metadata</h3>
+      <h3 class="aci-compare-block-title">Declared metadata</h3>
       <!-- What the diff holds, said before it. A catalog entry is serialized
            with its keys in one canonical order, so a reader comparing
            against their own file does not read that order as authored; a
@@ -124,26 +132,10 @@ const right = computed(() => props.sides[1]);
   gap: 0.75rem;
 }
 
-/* The two sides side by side, stacking on a narrow viewport where two
-   columns would crush both (WCAG 1.4.10). */
-.aci-plugin-recognition-comparison__files {
-  display: grid;
-  gap: 0.75rem;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 52rem) {
-  .aci-plugin-recognition-comparison__files {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-plugin-recognition-comparison__files h3 {
-  font-size: 1rem;
-  margin: 0 0 0.25rem;
-}
-
-.aci-plugin-recognition-comparison__files p {
+/* The side boxes are the shared ones every comparison draws
+   (`main.css` § .aci-compare-sides); only the spacing between the facts inside
+   one is this kind's, because it states more of them than the others do. */
+.aci-compare-side p {
   margin: 0 0 0.25rem;
 }
 </style>

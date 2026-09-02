@@ -670,6 +670,7 @@ src/
 │   │   └── view-state.ts
 │   ├── pages/
 │   │   ├── index.vue
+│   │   ├── repository.vue
 │   │   ├── global-consent.vue
 │   │   ├── skills/compare/[family].vue
 │   │   └── skills/detail/[source]/[...path].vue
@@ -802,7 +803,10 @@ skill's declarations, its instructions, and its directory, and another kind's de
 answers different questions with a different layout. Which file of that directory is being
 read is a `file` query beside the address, so the subject stays the customization the page
 describes. Every recognized kind with a detail surface ships its own route of this shape, and a
-phase that recognizes a new kind brings that kind's route and page with it. The `src/server/cli.ts` entry
+phase that recognizes a new kind brings that kind's route and page with it. A Source's own
+state is a route of the same standing: `/repository` states the Repository Source's root,
+status, generation, and rescan, and `/global-consent` already states the personal setup's,
+which is why only the first of the two is new (FR-030). The `src/server/cli.ts` entry
 starts with the exact BOM-free, LF-terminated first line `#!/usr/bin/env node`, tsdown
 preserves that shebang in the packaged `dist/cli.mjs`, and `package.json.bin` maps to it
 directly with no separate bootstrap wrapper: same-tarball artifacts are never re-verified
@@ -824,6 +828,45 @@ covers host loss, and the response-path epoch/fence checks, which cover the rest
 outside `src/app/composables/` because none of them is a Vue composable: each is a class
 that owns instance-local state (`#`-private) and is constructed once, so filing them under
 a directory whose name promises `use*` reactivity would misdescribe them.
+
+The document is the one scroll container, and the shell's two frames stay on screen by
+sticking rather than by being fixed: a fixed frame is out of flow, and the page would gain a
+second scroller. The bar sticks to the top of the document and the rail just below it, so the
+search, the scan commands, and the kind list are all reachable sixty rows down. The bar carries
+its own spacing rather than sitting inside the page's top padding, because padding above a
+sticky element is the distance it travels before it pins — which a reader sees as the header
+jumping on the first scroll. What the rail is offset by is a token, since CSS cannot read the
+bar's height; the browser suite asserts the two agree. A focused element is kept clear of the
+bar by `scroll-padding-block-start` (WCAG 2.4.11), and below the two-column width the rail
+returns above the rows and stops sticking, where a following rail would cover the row it was
+used to choose.
+
+The shell is a bar over a rail beside the rows. The bar carries what applies to every route
+— the product name, the one search, and the colour-scheme control — together with the
+inventory's own scan commands, which are there because the inventory is the one surface with
+no panel of its own to carry them: each Source's state surface states its scan and commands
+it there, so a bar command on those routes would be the same control twice on one screen.
+The rail carries what decides which rows are on screen: the Source families with their
+statuses and the way to each family's own state surface, then the closed kind catalog, then
+the two lists that are lists of files without being a kind's inventory, `Files in no kind`
+and `Diagnostics`. Membership of the rail follows from that one test: a list of files is a
+rail entry, and a Source's state is a route. Nothing in the rail carries an icon — a mark
+beside `Rule` or `Hook` adds no information a reader gets before the word, and it moves
+every label off a shared left edge, which is what a rail is scanned down — so the icons
+this UI ships are the ones that carry meaning: the vendor marks, and the operation glyphs
+on the search, rescan, colour-scheme, disclosure, and leave-the-page controls.
+
+The palette is three surfaces, one product accent, and a border token, defined as literal
+values with the system-colour palette kept as the forced-colors fallback. The system-colour
+palette alone gave the shell two surface steps mixed from `Canvas` and `CanvasText`, which
+draws a panel, a row, and the page as one plane whose boundaries a reader has to find by
+following hairlines; and an `AccentColor` that follows the operating system is an accent
+whose contrast against those surfaces is a different number on every machine, so no
+measured judgement about it holds anywhere but where it was measured. Literal values make
+the boundary and selected-state contrast one number this repository can measure and keep
+(WCAG 1.4.11), and `forced-colors` returns the whole palette to the reader's own system
+colours, where their choice outranks the product's. The vendor marks are the one place a
+colour is not inherited, and the reason and its limits are the Icon policy's (AGENTS.md).
 
 User-visible UI copy is written in the component that renders it; there is no message
 catalog. The UI ships one language, so QR-004's bilingual obligation

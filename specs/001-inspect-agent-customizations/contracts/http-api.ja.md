@@ -1258,8 +1258,11 @@ generationへ解決されるため、launchが受け取り得る絶対pathはこ
 各targetが届く先:
 
 - `visual-studio-code`と`sublime-text`は、hostがportをbindする前にこのmachineで解決した
-  editor launcherを実行する — `PATH`上のeditor command、またはcommandが`PATH`に無いときは
-  既知のinstall場所にあるlauncher。
+  editorへ届ける — `PATH`上のeditor command、またはcommandが`PATH`に無いときは既知の
+  install場所にあるlauncher。ただしmacOSでは、そのlauncherではなくapplicationの名前で
+  documentを渡す。editor自身のcommand-line scriptはeditorのuser data directoryを`HOME`から
+  解決するため、`HOME`が読み手自身のものでないhostでは、その配下に2つ目のinstanceを起動し、
+  fileはどこにも開かないからである。
 - `terminal-editor`は、`$EDITOR`または`$VISUAL`が指すeditorを実行するterminal windowを開く。
   どちらもterminal editorを指していないとき — 未設定であるか、指されたeditorが自前のwindowを
   持つとき — はPOSIXが既定とする`vi`を実行する。macOSのinstallはそれらの変数を設定しないためである。

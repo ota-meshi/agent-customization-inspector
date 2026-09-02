@@ -101,7 +101,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   // holding this path offers this file's links.
   await page
     .locator('.aci-source-family-blocks__members > li', { hasText: path })
-    .locator('.aci-instruction-row__owner a')
+    .locator('.aci-row-file a')
     .first()
     .click();
   // The click resolves when the click lands, not when the route has swapped,
@@ -122,9 +122,11 @@ test('opens complete inert instruction detail from the inventory', async ({ page
   // admitting rules rest on: the root `CLAUDE.md` is Claude Code's project
   // instruction file and Copilot's documented agent-instruction alternative,
   // so both stand here and neither is a claim that a session loaded it.
-  await expect(page.locator('.aci-instruction-detail__recognition')).toHaveText(
-    'GitHub Copilot (VS Code, CLI, Cloud agent), Claude Code (CLI and IDE clients) · Instructions',
-  );
+  const attributes = page.locator('.aci-detail-attributes');
+  await expect(attributes).toContainText('GitHub Copilot');
+  await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
+  await expect(attributes).toContainText('Claude Code');
+  await expect(attributes).toContainText('CLI and IDE clients');
   // The declarations lead, in authored order — scope, endpoint, api_key is the
   // file's own order, not a sort — with the credential and the environment
   // reference exactly as written.
@@ -144,9 +146,7 @@ test('opens a subdirectory instruction file exactly as it opens the root one', a
   // `CLAUDE.md` are told apart by the only identity either of them has
   // (FR-030). Depth changes nothing else about the page.
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText('packages/api/CLAUDE.md');
-  await expect(page.locator('.aci-instruction-detail__recognition')).toHaveText(
-    'Claude Code (CLI and IDE clients) · Instructions',
-  );
+  await expect(page.locator('.aci-detail-attributes')).toContainText('Claude Code');
   await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(
     'This file declares none.',
   );
@@ -203,7 +203,7 @@ test('keeps an authored @path token as source text, with no relationship section
   expect(text).not.toMatch(/\bimports?\b/iu);
   // And the file it names is not in this inventory through that token: only a
   // rule admits a file, and no rule admits `docs/setup.md`.
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-instruction-detail')).toHaveCount(0);
   expect(await page.locator('main').innerText()).not.toContain('docs/setup.md');
 });
@@ -229,7 +229,7 @@ test('reports an unparseable frontmatter with its diagnostic while the source st
 test('drops the content when the route leaves the file', async ({ page }) => {
   await openInstruction(page, 'CLAUDE.md');
   await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-instruction-detail')).toHaveCount(0);
   // The detail-state cleanup took the authored content with it: nothing on the
   // inventory carries a value the reader navigated away from (FR-027).

@@ -25,6 +25,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { waitForInventory } from './repository-status';
 
 /** The repository the session is launched against. */
 let repository: string;
@@ -81,34 +82,49 @@ test.afterEach(async () => {
 test('removes every personal-setup result and leaves the Repository page fresh', async ({
   page,
 }) => {
-  await page.goto(host.origin);
+  await page.goto(new URL('/repository', host.origin).href);
   const main = page.locator('main');
-  await expect(main).toContainText('Your personal setup');
-  const rootLabel = await main.locator('.aci-inventory-page__display-root').first().textContent();
+  const rootLabel = await main.locator('.aci-repository-page__display-root').first().textContent();
+  await page.goto(host.origin);
+  await expect(page.getByRole('link', { name: 'Personal setup' })).not.toContainText(
+    'Not inspected',
+  );
 
   // A narrowing before the disable: the fresh default inventory the barrier
   // leaves behind must not restore it from the URL (FR-027, data-model.md
   // § RecoveryViewState — default filters).
-  await page.getByRole('searchbox', { name: 'Path contains' }).fill('skills');
-  await expect(page).toHaveURL(/path=skills/u);
+  await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('skills');
+  await expect(page).toHaveURL(/q=skills/u);
+  // Disabling is offered on the personal setup's own surface, which the rail
+  // reaches (FR-030).
+  await page.getByRole('link', { name: 'Personal setup' }).click();
   await page.getByRole('button', { name: 'Disable personal inspection' }).click();
-  // The terminal fresh snapshot arrives without a manual refresh: the
-  // disabling page itself refetches after the barrier's own result.
-  await expect(main).not.toContainText('Your personal setup');
-  await expect(page).not.toHaveURL(/path=skills/u);
+  // The terminal fresh snapshot arrives without a manual refresh: this surface
+  // is back to proposing, and no member control is left behind.
+  await expect(page.getByRole('button', { name: 'Work out the directories' })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Rescan: /u })).toHaveCount(0);
+  // The narrowing went with the purged session (FR-027): the search is client
+  // data — an authored path fragment typed against the files that session
+  // held — so the bar comes back empty rather than carrying it into the next
+  // one, whichever route the reader was on when the barrier ran.
+  await expect(page.getByRole('searchbox', { name: 'Search names and paths' })).toHaveValue('');
+  await page.goto(host.origin);
+  await waitForInventory(page);
+  await expect(page.getByRole('link', { name: 'Personal setup' })).toContainText('Not inspected');
+  await expect(page).not.toHaveURL(/q=skills/u);
   // The Repository sequence rode through untouched: same root label, same
   // committed generation, same rows.
-  expect(await main.locator('.aci-inventory-page__display-root').first().textContent()).toBe(
+  await page.goto(new URL('/repository', host.origin).href);
+  expect(await main.locator('.aci-repository-page__display-root').first().textContent()).toBe(
     rootLabel,
   );
   await expect(main.locator('dd').filter({ hasText: /^1$/u }).first()).toBeVisible();
+  // Back to the list, where the rows and the rail are.
+  await page.getByRole('link', { name: /Back to /u }).click();
   await page.getByRole('tab', { name: /Instructions/u }).click();
   await expect(page.getByRole('tabpanel')).toContainText('AGENTS.md');
-  // The consent entry is the pre-consent offer again.
-  await expect(
-    page.getByRole('link', { name: 'Inspect your personal setup outside this repository' }),
-  ).toBeVisible();
+  // The rail's entry is the pre-consent offer again (FR-030).
+  await expect(page.getByRole('link', { name: 'Personal setup' })).toContainText('Not inspected');
 });
 
 test('restores nothing that was purged: an old Global link resolves to no scan', async ({
@@ -117,9 +133,9 @@ test('restores nothing that was purged: an old Global link resolves to no scan',
   await page.goto(new URL('/skills/detail/global-claude/skills/deploy/SKILL.md', host.origin).href);
   const main = page.locator('main');
   await expect(main).toContainText('The personal deploy skill.');
-  await page.goto(host.origin);
+  await page.goto(new URL('/global-consent', host.origin).href);
   await page.getByRole('button', { name: 'Disable personal inspection' }).click();
-  await expect(main).not.toContainText('Your personal setup');
+  await expect(page.getByRole('button', { name: 'Work out the directories' })).toBeVisible();
   await page.goto(new URL('/skills/detail/global-claude/skills/deploy/SKILL.md', host.origin).href);
   await expect(main).toContainText('Nothing in the current scan sits at this link’s path.');
   await expect(main).not.toContainText('The personal deploy skill.');
@@ -146,14 +162,20 @@ test('drops a narrowing the reader left before a reload, on Back after a disable
   await page.reload();
 
   // A fresh inventory entry in this document, and the disable there.
-  await main.getByRole('link', { name: 'Back to the inventory' }).click();
+  await main.getByRole('link', { name: /Back to /u }).click();
   await expect(page).toHaveURL(/kind=instructions/u);
+  // The disable is on the personal setup's own surface, reached from the rail,
+  // so the entry it runs from is that route rather than the inventory's.
+  await page.getByRole('link', { name: 'Personal setup' }).click();
   await page.getByRole('button', { name: 'Disable personal inspection' }).click();
-  await expect(main).not.toContainText('Your personal setup');
+  await expect(page.getByRole('button', { name: 'Work out the directories' })).toBeVisible();
 
-  // Back through the file into the entry the earlier document stamped.
+  // Back through the consent route and the file into the entry the earlier
+  // document stamped.
   await page.goBack();
-  await expect(main).toContainText('Back to the inventory');
+  await expect(page).toHaveURL(/kind=instructions/u);
+  await page.goBack();
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
   await page.goBack();
   await expect(page).not.toHaveURL(/kind=instructions/u);
 });
@@ -164,15 +186,20 @@ test('a second tab observes the disable on its next refresh', async ({ browser }
   await expect(observer.locator('main')).toContainText('Your personal setup');
 
   const actor = await (await browser.newContext()).newPage();
-  await actor.goto(host.origin);
+  await actor.goto(new URL('/global-consent', host.origin).href);
   await actor.getByRole('button', { name: 'Disable personal inspection' }).click();
-  await expect(actor.locator('main')).not.toContainText('Your personal setup');
+  await expect(actor.getByRole('button', { name: 'Work out the directories' })).toBeVisible();
 
   // Nothing on the observer updates by itself; its next explicit refresh
   // observes the greater epoch, purges, and renders the fresh
   // Repository-only snapshot.
   await observer.getByRole('button', { name: 'Refresh status' }).click();
-  await expect(observer.locator('main')).not.toContainText('Your personal setup');
+  await expect(observer.getByRole('link', { name: 'Personal setup' })).toContainText(
+    'Not inspected',
+  );
+  // The Repository sequence rode through untouched, stated where that Source's
+  // own facts are (FR-002, FR-030).
+  await observer.goto(new URL('/repository', host.origin).href);
   await expect(observer.locator('main')).toContainText('Selected root');
   await observer.context().close();
   await actor.context().close();

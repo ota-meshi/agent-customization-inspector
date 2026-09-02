@@ -23,14 +23,14 @@
 // deliberately no standing toggle to it.
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { SourceDiffHandle } from '../../composables/monaco';
+import {
+  SOURCE_VIEWER_LANGUAGE_GRAMMAR,
+  type SourceViewerLanguage,
+} from '../inspection/source-viewer-language';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
 
 const props = defineProps<{
-  /**
-   * The first side's complete decoded source, exactly as committed — or,
-   * for a stated absent side (`originalAbsent`), the empty diff operand
-   * that renders the other side's content as the difference.
-   */
+  /** The first side's complete decoded source, exactly as committed. */
   readonly originalText: string;
   /** The first side's Source-relative Path: language choice and label. */
   readonly originalPath: string;
@@ -39,38 +39,13 @@ const props = defineProps<{
   /** The second side's Source-relative Path: language choice and label. */
   readonly modifiedPath: string;
   /**
-   * Whether the first side names a corresponding file its copy does not
-   * ship. The empty text the caller passes for it is diff arithmetic, not an
-   * authored empty file, so the labels and the fallback caption state the
-   * absence instead of naming a file that does not exist (FR-025).
+   * Whether the first side is a one-sided comparison's stated absence rather
+   * than a file: its empty text is diff arithmetic, and the surface labels the
+   * difference rather than showing an empty document (FR-025).
    */
   readonly originalAbsent?: boolean;
-  /** Whether the second side names an absent counterpart; see {@link originalAbsent}. */
+  /** Whether the second side is that absence; see {@link originalAbsent}. */
   readonly modifiedAbsent?: boolean;
-  /**
-   * The language id both models are created with, set when the compared
-   * texts are one canonical serialization rather than the files' own bytes
-   * (`SourceComparisonInput.contentLanguage`). Omitted, each side's language
-   * resolves from its own path.
-   */
-  readonly contentLanguage?: string;
-  /**
-   * Where this pair's content ownership is registered — the comparison's
-   * view-wide registry for the manifest pair, its file registry for the
-   * selected file pair. A prop rather than the self-registration the other
-   * kinds' diff viewers use, because this one component renders two pairs
-   * with two lifetimes: the file pair is dropped by a file change the
-   * manifest pair survives, so the caller names which registry owns each
-   * mount (exactly as `SourceViewer` takes its owner).
-   */
-  readonly registerContentOwner: (disposer: () => void) => () => void;
-  /**
-   * Sizes the diff to its taller document instead of the fixed reading box,
-   * capped by this component's stylesheet (`SourceDiffHandle.mount`
-   * § fitContent). Set by the serialized-frontmatter diff, whose documents
-   * are usually short.
-   */
-  readonly fitContent?: boolean;
   /**
    * What of each file the sides show, spliced into each side's accessible
    * name (`SourceComparisonInput.contentLabel`) — `frontmatter of` on the
@@ -78,6 +53,19 @@ const props = defineProps<{
    * as the whole file (FR-025). Omitted, the sides are the files.
    */
   readonly contentLabel?: string;
+  /**
+   * The language both sides are tokenized in, overriding what their paths
+   * claim: a serialized document is the format this surface serialized it to
+   * rather than the format of the file it came from (`monaco.ts` § showSource).
+   */
+  readonly contentLanguage?: SourceViewerLanguage;
+  /**
+   * The content-owner registry this diff joins instead of the session's, for a
+   * surface that owns the drop: a pick replaces the open pair without a purge,
+   * and the contract orders dispose before replace (data-model.md
+   * § BrowserState).
+   */
+  readonly registerContentOwner: (dispose: () => void) => () => void;
 }>();
 
 /** The element Monaco takes over; empty until the editor is mounted. */
@@ -180,10 +168,15 @@ async function showCurrentPair(): Promise<void> {
       modifiedAbsent: props.modifiedAbsent === true,
       // Spread conditionally: `exactOptionalPropertyTypes` keeps an absent
       // language distinct from an undefined one on the mount input.
-      ...(props.contentLanguage === undefined ? {} : { contentLanguage: props.contentLanguage }),
+      // The grammar the named format is coloured by, not the name itself: the
+      // mount input takes a registered Monaco id
+      // (`source-viewer-language.ts` § SOURCE_VIEWER_LANGUAGE_GRAMMAR).
+      ...(props.contentLanguage === undefined
+        ? {}
+        : { contentLanguage: SOURCE_VIEWER_LANGUAGE_GRAMMAR[props.contentLanguage] }),
       ...(props.contentLabel === undefined ? {} : { contentLabel: props.contentLabel }),
     },
-    { fitContent: props.fitContent === true },
+    { fitContent: true },
   ).catch(() => null);
   if (mounted === null) {
     // The editor chunk or its construction failed. Neither source is lost —
@@ -241,12 +234,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-show="!mountError"
-    ref="host"
-    class="aci-plugin-source-diff"
-    :class="{ 'aci-plugin-source-diff--fit': fitContent }"
-  />
+  <!-- The box keeps the width its side-by-side rendering needs and this
+       wrapper scrolls it, so a narrow viewport scrolls the diff rather than
+       the page (WCAG 1.4.10). -->
+  <div v-show="!mountError" class="aci-plugin-source-diff__scroller" tabindex="0">
+    <div ref="host" class="aci-plugin-source-diff" />
+  </div>
   <!-- Stable rather than inserted with the failure it reports, because a
        region that appears together with its message is not reliably read. -->
   <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
@@ -319,20 +312,41 @@ onBeforeUnmount(() => {
 /* Monaco lays out inside a sized box and collapses to nothing without a
    definite height; the same sizing contract as the single-file viewer. */
 .aci-plugin-source-diff {
-  block-size: 28rem;
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
-  inline-size: 100%;
-}
-
-/* The fit-content variant: the mounted handle writes the taller document's
-   height to the element (`SourceDiffHandle.mount` § fitContent) and this cap
-   keeps a long document from taking the page — past it, the diff scrolls
-   inside its box exactly like the fixed variant. */
-.aci-plugin-source-diff--fit {
   block-size: auto;
   max-block-size: 28rem;
-  min-block-size: 3rem;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  /* The corners are the box's, so what it holds is clipped to them: Monaco
+     paints an opaque square panel, and without this it filled all four rounded
+     corners — a frame that looked broken rather than rounded. It does not
+     reach the editor's own scrolling, which happens inside
+     `.monaco-scrollable-element`. `box-sizing` because the width is `100%` and
+     the border is a pixel: on the content box the two made the element two
+     pixels wider than the box holding it, so every diff sat two pixels
+     short of its own right border. */
+  box-sizing: border-box;
+  overflow: hidden;
+  inline-size: 100%;
+  /* The width the side-by-side rendering needs. Monaco's diff editor drops to
+     one inline column below its own 900px breakpoint
+     (`renderSideBySideInlineBreakpoint`, which `monaco.ts` leaves at the
+     default), and a comparison shown as one column is no longer a comparison:
+     the two files stop standing opposite each other. Measured on the pinned
+     revisions: a 960px page gives a 920px editor and keeps two columns, while
+     940px gives 900 and collapses. Below that the wrapper scrolls this box
+     sideways rather than the page — a side-by-side diff is content that
+     requires a two-dimensional layout for its meaning, which is what WCAG
+     1.4.10 excepts, and keeping the scroll inside the box is what keeps the
+     page itself reflowing. */
+  min-inline-size: 60rem;
+}
+
+/* The scroller that holds the box above at its own width without widening the
+   page (WCAG 1.4.10). `tabindex` because WebKit does not make a scrollable
+   overflow container keyboard focusable on its own, so a reader with no
+   pointer could reach the diff's text and never scroll it (WCAG 2.1.1). */
+.aci-plugin-source-diff__scroller {
+  overflow-x: auto;
 }
 
 /* The two complete sources side by side, stacking on a narrow viewport where
@@ -357,8 +371,8 @@ onBeforeUnmount(() => {
 /* `pre` keeps the authored line structure; long lines scroll inside the block
    rather than widening the page. */
 .aci-plugin-source-diff__fallback-source {
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
   margin: 0;
   max-block-size: 28rem;
   overflow: auto;

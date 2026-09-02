@@ -115,6 +115,46 @@ Cartesian積 — IDあたり`3 × 5 × 3 × 8 × 3 = 1,080`のkeyed cell、36 ID
 実行には3つのoperating systemと3つのscreen readerがすべて要り、それがこのreleaseで自動層を主張する
 理由である（spec.ja.md § Clarifications、Session 2026-09-01）。
 
+## Palette の測定
+
+Shellはplatformのsystem colourではなくliteralな色の値で描く。したがって1.4.3と1.4.11の行が求める
+contrastは、このrepositoryが選んだ数値であり、それゆえこのrepositoryが負う。以下の値は
+`src/app/styles/main.css` が宣言するtokenに対して測定したものである。
+
+線を描くtokenは2つあり、濃さではなく役割で名付けている。`--aci-line` はcomponentまたはその状態を
+識別するもの — controlの縁、選択されたrail項目、source viewer、panel — を描き、それが描かれるすべての
+surfaceに対して3:1を満たす。`--aci-hairline` は、`--aci-line` が既に識別した箱の内側でrow同士を分ける。
+それ自身は何も識別せず、row同士はそのtextで見分けられるため、1.4.11はこれに及ばず、薄い値は不足では
+ない。濃さの名前であれば使うたびに判断が要るが、この2つは1つの答えしかない問いを立てる — この線は
+componentを識別するのか、それとも1つのcomponentの中のrowを分けるだけなのか。
+
+| 組                                  | Light | Dark | 閾値 |
+| ----------------------------------- | ----: | ---: | --------- |
+| `--aci-line` / page surface         |  3.36 | 3.72 | 3:1（1.4.11） |
+| `--aci-line` / raised surface       |  3.57 | 3.40 | 3:1（1.4.11） |
+| `--aci-line` / sunken surface       |  3.18 | 3.15 | 3:1（1.4.11） |
+| `--aci-hairline` / raised surface   |  1.24 | 1.26 | なし: 何も識別しない |
+| `--aci-accent` / page surface       |  7.26 | 7.01 | 3:1（1.4.11） |
+| `--aci-accent` / raised surface     |  7.71 | 6.41 | 3:1（1.4.11） |
+| `--aci-accent` / sunken surface     |  6.87 | 5.93 | 3:1（1.4.11） |
+| `--aci-text` / sunken surface       | 15.86 | 13.56 | 4.5:1（1.4.3） |
+| `--aci-muted` / sunken surface      |  4.87 | 6.36 | 4.5:1（1.4.3） |
+| `--aci-warn` / sunken surface       |  4.96 | 7.32 | 4.5:1（1.4.3） |
+| `--aci-on-accent` / accent          |  7.71 | 7.01 | 4.5:1（1.4.3） |
+
+選択状態はその塗りが運ぶものではない。`--aci-accent-soft` はraised surfaceに対して1.17:1であり、
+forced coloursでは破棄される。よって選択されたrail項目は、accentによる先頭の縁（lightで6.87:1、darkで
+5.93:1）と自身のfont weightによっても識別される（1.4.1）。
+
+`forced-colors: active` ではすべてのtokenがsystem colourへ戻るため、読み手自身のpaletteが上記すべてを
+置き換え、これらの数値はどれも当てはまらない: 3段のsurfaceは`Canvas`へ、2つの線のtokenとmuted textは
+`CanvasText`へ、accentは`LinkText`へ、そして3つのvendor markはまとめて`CanvasText`へ戻る — markの色は
+走査の助けであり、何もそれに依拠していない（AGENTS.md § Iconの方針）。
+
+`tests/e2e/palette-contrast.spec.ts` は上記すべての行を、実engineで、両schemeおよびforced coloursの下で
+再測定し、比をstylesheetから読むのではなく再計算する。これは補助的なevidenceである: `AUTO-1.4.3` と
+`AUTO-1.4.11` は `tests/e2e/accessibility.spec.ts` のテストのままであり、このファイルはそれを置き換えない。
+
 ## 必須execution record
 
 `validation.md`と`validation.ja.md`は、55行それぞれについて、確定state、必須check IDの完全な集合、

@@ -51,20 +51,6 @@ const diagnosticFileCounts = computed(() => {
   return counts;
 });
 
-/** True while this page's one disable command is in flight. */
-const disabling = computed(() => sessionViewState.globalDisableState.value === 'submitting');
-
-/**
- * Sends the priority disable barrier unless one is in flight; the purge and
- * every consequence live in the session state (FR-042). The guard is the
- * same one the rescan buttons use.
- */
-function requestDisable(): void {
-  if (!disabling.value) {
-    void sessionViewState.requestGlobalDisable();
-  }
-}
-
 /**
  * Dispatches one member's rescan unless a command is already in flight. The
  * guard is here rather than in a `disabled` attribute for the reason
@@ -142,12 +128,16 @@ const rows = computed(() => {
           <span aria-live="polite" aria-atomic="true">
             <span v-if="row.progress" class="aci-note">
               {{ SCAN_PROGRESS_PHASE_TEXT[row.progress.phase] }} —
-              {{ row.progress.candidateFiles }} candidate file(s),
-              {{ row.progress.diagnosticCount }} diagnostic(s)
+              {{ row.progress.candidateFiles }}
+              {{ row.progress.candidateFiles === 1 ? 'candidate file' : 'candidate files' }},
+              {{ row.progress.diagnosticCount }}
+              {{ row.progress.diagnosticCount === 1 ? 'diagnostic' : 'diagnostics' }}
             </span>
             <span v-if="row.diagnosticFileCount > 0" class="aci-note">
-              {{ row.diagnosticFileCount }} file(s) kept a diagnostic of their own; each states it
-              where that file is listed.
+              {{ row.diagnosticFileCount }}
+              {{ row.diagnosticFileCount === 1 ? 'file' : 'files' }} kept a diagnostic of
+              {{ row.diagnosticFileCount === 1 ? 'its' : 'their' }} own; each is stated where that
+              file is listed.
             </span>
             <span v-if="row.staleFailure" class="aci-error">
               The last rescan failed, so the previous scan result is still shown and may be out of
@@ -175,19 +165,12 @@ const rows = computed(() => {
       These labels are escaped presentations of the consented directories. They are not paths you
       can open and grant no read access.
     </p>
-    <!-- The way out of personal inspection, offered where its results are
-         summarized. Disabling is the priority barrier: it removes every
-         personal-setup result from this session first and asks nothing on
-         the way (FR-042). -->
-    <p>
-      <button type="button" :aria-disabled="disabling || undefined" @click="requestDisable">
-        Disable personal inspection
-      </button>
-    </p>
-    <p class="aci-note">
-      Disabling removes every personal-setup result from this session. Your repository results are
-      untouched, and enabling again later asks for consent again.
-    </p>
+    <!-- The way out is the page's, not this component's. These rows are the
+         published members' own facts and their own per-member rescans; the
+         one command that ends personal inspection belongs to the surface that
+         asked for it and offers it in every state, including the ones where no
+         member is published (`pages/global-consent.vue`, FR-042). Rendered
+         here as well it would be one command on one screen twice. -->
   </template>
 </template>
 

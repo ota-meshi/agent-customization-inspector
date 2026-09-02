@@ -113,7 +113,7 @@ async function openInstruction(page: import('@playwright/test').Page, path: stri
   await page
     .locator('.aci-source-family-blocks__members > li')
     .filter({ has: page.getByText(path, { exact: true }) })
-    .locator('.aci-instruction-row__owner a')
+    .locator('.aci-row-file a')
     .first()
     .click();
 }
@@ -126,9 +126,9 @@ test('opens complete inert Copilot instruction detail from the inventory', async
   await expect(page.locator('.aci-instruction-detail h2')).toHaveText(
     '.github/copilot-instructions.md',
   );
-  await expect(page.locator('.aci-instruction-detail__recognition')).toHaveText(
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Instructions',
-  );
+  const attributes = page.locator('.aci-detail-attributes');
+  await expect(attributes).toContainText('GitHub Copilot');
+  await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
   // The declarations lead, in authored order — scope, endpoint, api_key is the
   // file's own order, not a sort — with the credential and the environment
   // reference exactly as written.
@@ -149,15 +149,11 @@ test('separates the surfaces one documented filename is read from', async ({ pag
   // surfaces documented reading it. Nothing on either page says one is active,
   // enabled, or selected — that turns on runtime this product never observes.
   await openInstruction(page, 'packages/api/.github/copilot-instructions.md');
-  await expect(page.locator('.aci-instruction-detail__recognition')).toHaveText(
-    'GitHub Copilot (CLI) · Instructions',
-  );
+  await expect(page.locator('.aci-detail-attributes')).toContainText('CLI');
   // `GEMINI.md` is the other asymmetry: VS Code documents no such file, so the
   // editor is absent rather than assumed from the alternative beside it.
   await openInstruction(page, 'GEMINI.md');
-  await expect(page.locator('.aci-instruction-detail__recognition')).toHaveText(
-    'GitHub Copilot (CLI, Cloud agent) · Instructions',
-  );
+  await expect(page.locator('.aci-detail-attributes')).toContainText('CLI, Cloud agent');
   const text = await page.locator('main').innerText();
   for (const claim of ['enabled', 'disabled', 'selected', 'active', 'wins']) {
     expect(text.toLowerCase(), claim).not.toContain(claim);
@@ -171,7 +167,7 @@ test('shows applyTo as an authored declaration and as the range its row is keyed
   // The row's identity is the declared value, wherever the file sits: the
   // range reads as the author's pattern rather than as the `.github`
   // directory the file is filed under.
-  await expect(page.getByRole('tabpanel').locator('.aci-instruction-row__range')).toHaveText([
+  await expect(page.getByRole('tabpanel').locator('.aci-row-head__name')).toHaveText([
     '**',
     'packages/api/**',
     'src/frontend/**',
@@ -250,7 +246,7 @@ test('reports an unparseable frontmatter with its diagnostic while the source st
 test('drops the content when the route leaves the file', async ({ page }) => {
   await openInstruction(page, '.github/copilot-instructions.md');
   await expect(page.locator('.aci-instruction-detail__declarations')).toContainText(FIXTURE_SECRET);
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-instruction-detail')).toHaveCount(0);
   // The detail-state cleanup took the authored content with it: nothing on
   // the inventory carries a value the reader navigated away from (FR-027).

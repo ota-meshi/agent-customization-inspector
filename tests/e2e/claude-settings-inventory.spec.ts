@@ -91,9 +91,7 @@ test.describe('the Claude settings documents at the launch root', () => {
       '.claude/settings.local.json',
     ]);
     for (const index of [0, 1]) {
-      await expect(items.nth(index).locator('.aci-settings-row__owner')).toContainText(
-        'Claude Code',
-      );
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('Claude Code');
     }
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
       'Showing 2 of 2',
@@ -134,15 +132,15 @@ test.describe('the Claude settings documents at the launch root', () => {
     await page.getByLabel('Tool').selectOption('claude');
     await expect(items).toHaveCount(2);
 
-    await page.getByLabel('Path contains').fill('local');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('local');
     await expect(items).toHaveCount(1);
     await expect(items.locator('.aci-path')).toHaveText(['.claude/settings.local.json']);
 
-    await page.getByLabel('Path contains').fill('config.toml');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('config.toml');
     await expect(items).toHaveCount(0);
     await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(2);
   });
 });

@@ -110,8 +110,10 @@ test.describe('Codex hooks declared by a repository layer', () => {
     // table. A second carrier declaring one event joins that event's row.
     await expect(items).toHaveCount(3);
     // The summary counts rows against the kind's own unfiltered inventory: a
-    // kind whose total went unanswered would read "3 of 0" here.
-    await expect(panel.locator('..')).toContainText('Showing 3 of 3 row(s)');
+    // kind whose total went unanswered would read "3 of 0" here. It is in the
+    // rail beside the two filters it summarizes rather than around the panel,
+    // so it is addressed on its own section.
+    await expect(page.locator('.aci-inventory-filters')).toContainText('Showing 3 of 3 rows');
     await expect(items.filter({ hasText: 'SessionStart' })).toHaveCount(1);
     await expect(items.filter({ hasText: 'PreToolUse' })).toHaveCount(1);
     await expect(items.filter({ hasText: 'UserPromptSubmit' })).toHaveCount(1);
@@ -152,10 +154,10 @@ test.describe('Codex hooks declared by a repository layer', () => {
     const panel = page.getByRole('tabpanel');
     // The path filter narrows to the carrier a reader names, which drops the
     // event only the other carrier declares.
-    await page.getByLabel('Path contains').fill('.codex/hooks.json');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.codex/hooks.json');
     await expect(panel.locator('.aci-item')).toHaveCount(2);
     await expect(panel).not.toContainText('UserPromptSubmit');
-    await page.getByLabel('Path contains').fill('');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('');
     await expect(panel.locator('.aci-item')).toHaveCount(3);
     // Every declaration here is Codex's, so selecting that product keeps them
     // all and selecting another keeps none.

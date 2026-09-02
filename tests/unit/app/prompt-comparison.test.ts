@@ -411,13 +411,12 @@ describe('prompt and command recognition comparison rows (T503)', () => {
     expect(
       comparison.tools.map((row) => [
         row.tool,
-        row.kind,
         row.left?.invocationName ?? null,
         row.right?.invocationName ?? null,
       ]),
     ).toEqual([
-      ['copilot', 'prompt/command', SHARED_NAME, SHARED_NAME],
-      ['claude', 'prompt/command', SHARED_NAME, null],
+      ['copilot', SHARED_NAME, SHARED_NAME],
+      ['claude', SHARED_NAME, null],
     ]);
     // Copilot reaches the one name two ways, and the surfaces say which:
     // the CLI reads the command file and the editor reads the prompt file.
@@ -569,7 +568,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
       'tools',
     ]);
     for (const row of comparison.tools) {
-      expect(Object.keys(row).sort()).toEqual(['kind', 'left', 'right', 'tool']);
+      expect(Object.keys(row).sort()).toEqual(['left', 'right', 'tool']);
       for (const cell of [row.left, row.right]) {
         if (cell !== null) {
           expect(Object.keys(cell).sort()).toEqual(['definition', 'invocationName']);

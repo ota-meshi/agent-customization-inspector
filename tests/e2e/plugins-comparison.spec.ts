@@ -159,16 +159,20 @@ test.describe('the plugin comparison surface', () => {
     await expect(page.locator('body')).toContainText(PLUGIN_NAME);
     await expect(page.locator('body')).toContainText('.agents/plugins/marketplace.json');
     await expect(page.locator('body')).toContainText('.claude-plugin/marketplace.json');
-    // Which products read each carrier, on that side's own line: the Codex
-    // catalog is the first file's, and the shared location the second's is
-    // read by all three, so the two lines carry which product reads which.
-    const sides = page.locator('#aci-plugin-compare-panel-declaration section');
-    await expect(sides.filter({ hasText: '.agents/plugins/marketplace.json' })).toContainText(
-      'OpenAI Codex',
-    );
-    const secondSide = sides.filter({ hasText: '.claude-plugin/marketplace.json' }).first();
-    await expect(secondSide).toContainText('GitHub Copilot');
-    await expect(secondSide).toContainText('Claude Code');
+    // Which products read each carrier, in the recognition table's cells: the
+    // Codex catalog is the first file's alone, and the shared location the
+    // second's is read by all three — so the table is where a product reading
+    // one side and not the other can be stated at all.
+    const rows = page.locator('.aci-recognition-table tbody tr');
+    await expect(rows).toHaveCount(3);
+    const copilot = rows.filter({ hasText: 'GitHub Copilot' });
+    await expect(copilot.locator('td').nth(0)).toHaveText('Not recognized');
+    await expect(copilot.locator('td').nth(1)).toContainText('Recognized');
+    const claude = rows.filter({ hasText: 'Claude Code' });
+    await expect(claude.locator('td').nth(0)).toHaveText('Not recognized');
+    await expect(claude.locator('td').nth(1)).toContainText('Recognized');
+    const codex = rows.filter({ hasText: 'OpenAI Codex' });
+    await expect(codex.locator('td').nth(0)).toContainText('Recognized');
 
     // The Monaco diff holds both declarations: the values as JSON, the
     // credential whole and unmarked, the environment reference as its own
@@ -303,7 +307,7 @@ test.describe('the plugin comparison surface', () => {
 
     // Leaving the route drops what it requested: the inventory states what was
     // found and where, never what a declaration says (FR-027).
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page.locator('body')).not.toContainText(FIXTURE_CREDENTIAL);
 
     // A link naming one carrier twice is not a comparison, and is reported

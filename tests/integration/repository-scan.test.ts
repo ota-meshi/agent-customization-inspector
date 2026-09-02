@@ -2574,6 +2574,10 @@ describe('the committed Codex instructions inventory (T208, activated by T1087)'
     // declaration still lists: a value is published as resolved, never
     // validated.
     expect(snapshot.mcp).toEqual([
+      // The empty declared name sorts first and is a row like any other: it is
+      // a name strict JSON accepts, declared in two carriers so the surfaces
+      // that note it are reachable from a comparison (FR-025).
+      { name: '', declarations: [githubCopilot, rootCopilot, rootClaude] },
       { name: 'codex-db', declarations: [codexDeclaration] },
       { name: 'gh-actions', declarations: [githubCopilot] },
       { name: 'odd', declarations: [rootCopilot, rootClaude] },

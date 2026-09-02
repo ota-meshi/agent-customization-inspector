@@ -81,7 +81,8 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     // surface its admission rests on, and the owner-carrier line, which
     // links to the carrier's file-unit view (T353).
     const main = page.locator('main');
-    await expect(main).toContainText('GitHub Copilot (CLI) · MCP');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('CLI');
     await expect(main).toContainText('Declared in');
     await expect(main.getByRole('link', { name: '.github/mcp.json' })).toBeVisible();
 
@@ -93,7 +94,10 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     await expect(main).toContainText('./scripts/gh-actions.sh');
     await expect(main).toContainText(FIXTURE_SECRET);
     await expect(main).toContainText(ENVIRONMENT_REFERENCE);
-    const text = await main.innerText();
+    // The page's own content rather than the whole shell: the bar's moves name
+    // the neighbouring rows, and a carrier declaring two servers has the other
+    // one beside this in the list (`DetailNavigation.vue`).
+    const text = await page.locator('.aci-mcp-detail').innerText();
     expect(text).not.toContain('https://docs.example.com/mcp');
     // Never the process value a same-named variable carries: the reference is
     // authored text, resolved against nothing.
@@ -122,7 +126,8 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     await page.getByRole('link', { name: '.github/mcp.json' }).click();
     await expect(page.getByRole('heading', { name: '.github/mcp.json' })).toBeVisible();
     const main = page.locator('main');
-    await expect(main).toContainText('GitHub Copilot (CLI) · MCP');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('CLI');
     await expect(main).toContainText('Readable text');
     await expect(main).toContainText('bytes');
     await expect(main.getByRole('heading', { name: 'gh-actions' })).toBeVisible();

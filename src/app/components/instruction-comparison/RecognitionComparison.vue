@@ -21,7 +21,8 @@
 // or a URI, and no value is masked, shortened, or reflowed (FR-025,
 // FR-033); no row or side ranks, orders, or prefers either file (FR-012).
 import SourceDiff from './SourceDiff.vue';
-import { CUSTOMIZATION_KIND_TEXT, SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
+import ToolMark from '../ToolMark.vue';
+import { SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import {
   INSTRUCTION_DECLARATION_SIDE_STATE_TEXT,
@@ -57,7 +58,56 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
     </p>
     <template v-else>
       <section>
-        <h3>Declared metadata</h3>
+        <h3 class="aci-compare-block-title">Tool recognition</h3>
+        <!-- One row per recognizing tool, in the contracted tool order: each
+             recognition stays distinguishable from the physical file
+             (US3 scenario 2), captioned in words (AGENTS.md § User-visible
+             copy policy). A recognized cell carries its surfaces — the typed
+             layering fact is that recognition's, so it is stated where the
+             recognition is. `tabindex` because the box
+             around the table is its own horizontal scroll container on a wide
+             viewport (WCAG 2.1.1). -->
+        <div class="aci-recognition-table" tabindex="0">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Tool</th>
+                <th scope="col">First file</th>
+                <th scope="col">Second file</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in comparison.tools" :key="row.tool">
+                <!-- Decorative, because the row spells the product's name
+                     beside it: the mark is what a reader scanning the column
+                     finds, and its own accessible name would be the same word
+                     twice (`ToolMark.vue`). -->
+                <th scope="row">
+                  <ToolMark decorative :tool="row.tool" />
+                  {{ SUPPORTED_TOOL_TEXT[row.tool] }}
+                </th>
+                <td
+                  v-for="(cell, side) in [
+                    { state: row.left, surfaces: row.leftSurfaces },
+                    { state: row.right, surfaces: row.rightSurfaces },
+                  ]"
+                  :key="side"
+                  :data-label="side === 0 ? 'First file' : 'Second file'"
+                >
+                  <span :class="cell.state === 'recognized' ? undefined : 'aci-muted'">{{
+                    INSTRUCTION_RECOGNITION_SIDE_STATE_TEXT[cell.state]
+                  }}</span>
+                  <span v-if="cell.surfaces.length > 0" class="aci-muted"
+                    >({{ surfacesText(cell.surfaces) }})</span
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h3 class="aci-compare-block-title">Declared metadata</h3>
         <!-- The files' declared metadata, not any tool's: the declarations
              are the file's one scan-time parse for the kind (FR-028), so
              they are compared once, under no tool caption (research.md
@@ -98,7 +148,7 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
         </template>
       </section>
       <section v-if="comparison.bodyDiff !== null">
-        <h3>Instructions</h3>
+        <h3 class="aci-compare-block-title">Instructions</h3>
         <!-- The other half of the same one parse, diffed on its own: the
              declarations align key by key whatever order each file wrote them
              in, and the body aligns line by line without the frontmatter block
@@ -129,112 +179,5 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
          same way. Outside the recognition branch above, because a file every
          tool fails to recognize still shows its bytes (FR-027). -->
     <slot name="source" />
-    <section v-if="comparison.tools.length > 0">
-      <h3>Tool recognition</h3>
-      <!-- One row per recognizing tool, in the contracted tool order: each
-           recognition stays distinguishable from the physical file
-           (US3 scenario 2), captioned in words (AGENTS.md § User-visible
-           copy policy). A recognized cell carries its surfaces — the typed
-           layering fact is that recognition's, so it is stated where the
-           recognition is. `tabindex` because the table is its own
-           horizontal scroll container on a wide viewport (WCAG 2.1.1). -->
-      <table class="aci-instruction-recognition-comparison__table" tabindex="0">
-        <thead>
-          <tr>
-            <th scope="col">Tool</th>
-            <th scope="col">First file</th>
-            <th scope="col">Second file</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in comparison.tools" :key="row.tool">
-            <th scope="row">
-              {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
-            </th>
-            <td
-              v-for="(cell, side) in [
-                { state: row.left, surfaces: row.leftSurfaces },
-                { state: row.right, surfaces: row.rightSurfaces },
-              ]"
-              :key="side"
-              :data-label="side === 0 ? 'First file' : 'Second file'"
-            >
-              {{ INSTRUCTION_RECOGNITION_SIDE_STATE_TEXT[cell.state] }}
-              <span v-if="cell.surfaces.length > 0" class="aci-muted">
-                — surfaces: {{ surfacesText(cell.surfaces) }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
   </div>
 </template>
-
-<style scoped>
-/* The tables scroll inside themselves when a cell is wide, so the page never
-   scrolls sideways (WCAG 1.4.10). */
-.aci-instruction-recognition-comparison__table {
-  border-collapse: collapse;
-  display: block;
-  max-inline-size: 100%;
-  overflow-x: auto;
-}
-
-.aci-instruction-recognition-comparison__table th,
-.aci-instruction-recognition-comparison__table td {
-  border: 1px solid var(--aci-border);
-  padding: 0.3rem 0.5rem;
-  text-align: start;
-  vertical-align: top;
-}
-
-/* Authored values keep their spelling but wrap rather than widening the row
-   past the viewport; a value with no break opportunities still scrolls
-   inside the table's own box. */
-.aci-instruction-recognition-comparison__table td {
-  overflow-wrap: anywhere;
-}
-
-/* On a narrow viewport the columns reflow into one stacked block per row
-   instead of scrolling in two dimensions: the contract allows
-   two-dimensional scrolling only for essential source-code regions
-   (accessibility-acceptance.md § WCAG 1.4.10), and these rows are data, not
-   source. Each cell repeats its column caption from `data-label`, so the
-   association the hidden header row carried stays visible in reading
-   order. */
-@media (width < 52rem) {
-  .aci-instruction-recognition-comparison__table thead {
-    display: none;
-  }
-
-  .aci-instruction-recognition-comparison__table tbody,
-  .aci-instruction-recognition-comparison__table tr,
-  .aci-instruction-recognition-comparison__table th[scope='row'],
-  .aci-instruction-recognition-comparison__table td {
-    display: block;
-  }
-
-  .aci-instruction-recognition-comparison__table tr {
-    border: 1px solid var(--aci-border);
-    border-radius: 4px;
-    margin-block-end: 0.5rem;
-  }
-
-  .aci-instruction-recognition-comparison__table th,
-  .aci-instruction-recognition-comparison__table td {
-    border: 0;
-    border-block-start: 1px solid var(--aci-border);
-  }
-
-  .aci-instruction-recognition-comparison__table tr > :first-child {
-    border-block-start: 0;
-  }
-
-  .aci-instruction-recognition-comparison__table td::before {
-    content: attr(data-label);
-    display: block;
-    font-weight: 600;
-  }
-}
-</style>

@@ -123,9 +123,6 @@ export class InstructionToolRecognitionRow {
   /** The tool whose recognition this row compares. */
   public readonly tool: SupportedTool;
 
-  /** The recognized kind; every recognition this surface compares is instructions. */
-  public readonly kind: 'instructions';
-
   /** What the first file holds of this tool's recognition. */
   public readonly left: InstructionRecognitionSideState;
 
@@ -152,7 +149,6 @@ export class InstructionToolRecognitionRow {
     right: InstructionComparisonSideInput,
   ) {
     this.tool = tool;
-    this.kind = 'instructions';
     this.leftSurfaces = surfacesOf(left, tool);
     this.rightSurfaces = surfacesOf(right, tool);
     this.left = recognitionState(left, tool);

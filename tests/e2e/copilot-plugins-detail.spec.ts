@@ -88,6 +88,8 @@ test.describe('the complete literal Copilot plugin carrier detail', () => {
     await page.getByRole('tab', { name: /Plugin/u }).click();
     const row = page.getByRole('tabpanel').locator('.aci-item').filter({ hasText: name });
     await row.getByRole('link').first().click();
+    // Waited for, not assumed (`claude-plugins-detail.spec.ts` records the case).
+    await expect(page).toHaveURL(/\/plugins\/detail\//u);
   }
 
   test('opens on the manifest form the plugin root actually uses', async ({ page }) => {
@@ -114,7 +116,7 @@ test.describe('the complete literal Copilot plugin carrier detail', () => {
     // plugin it lists would be on a screen about one of them (FR-007).
     const declaration = page.locator('section', { hasText: 'Declaration' }).first();
     await expect(declaration).toContainText('./plugins/secret-keeper');
-    await expect(page.locator('body')).not.toContainText('npm-helper');
+    await expect(page.locator('.aci-plugin-detail')).not.toContainText('npm-helper');
   });
 
   test('opens a component from the tree as one of the plugin own files', async ({ page }) => {
@@ -162,7 +164,7 @@ test.describe('the complete literal Copilot plugin carrier detail', () => {
     await openPlugin(page, 'secret-keeper@inspector-examples');
     await expect(page.locator('body')).toContainText(FIXTURE_CREDENTIAL);
 
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     // The authored content leaves with the page: the inventory states what was
     // found and where, never what a declaration says (FR-027).
     await expect(page.locator('body')).not.toContainText(FIXTURE_CREDENTIAL);

@@ -89,7 +89,11 @@ test.describe('the complete literal Claude command detail', () => {
     await expect(page.getByRole('heading', { name: '.claude/commands/deploy.md' })).toBeVisible();
 
     const main = page.locator('main');
-    await expect(main).toContainText('Claude Code (CLI and IDE clients) · Prompt / Command');
+    // The product that recognizes the file and the surfaces its admitting rules
+    // rest on, on the customization's own attribute line.
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
     // The name the row it was opened from is listed under: the file name
     // without its extension, because this one is a direct child.
     await expect(main).toContainText('Invocation name: deploy');
@@ -161,7 +165,7 @@ test.describe('the complete literal Claude command detail', () => {
         host.origin,
       ).toString(),
     );
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=prompt(%2F|\/)command$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Prompt / Command');
   });

@@ -38,8 +38,15 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
+import LeavesIcon from '~icons/lucide/arrow-right';
+import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
+import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
+import { AuthoredName } from '../../../../components/authored-name';
+import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 import { LEADING_PROMPT_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
@@ -48,6 +55,10 @@ import {
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
+  detailNeighbours,
+  detailRoute,
+  originRowNameOf,
+  originRowNameQuery,
   type SourceSelector,
 } from '../../../../components/detail-route';
 import { nextTabForKey } from '../../../../components/tab-navigation';
@@ -61,15 +72,13 @@ import {
   fileIdentityKey,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
-  SUPPORTED_TOOL_TEXT,
+  accessiblePresentationLabel,
   escapeControlCharacters,
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
-  rendersNothingVisible,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
-import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 
 const sessionViewState = useSessionViewState();
 
@@ -132,7 +141,7 @@ const openSourceId = computed((): string | null => sessionSources.sourceIdFor(op
 // The open file's Source facts (FR-007 "show its source"): the family name
 // where more than one family is inspected, and the consented directory where
 // the family holds more than one Source (`source-facts.ts`).
-const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
   () => snapshot.value?.sources ?? [],
   () => openSourceId.value,
 );
@@ -178,6 +187,13 @@ const owner = computed(() =>
       .map((definition) => ({ name: entry.name, definition })),
   ),
 );
+
+/**
+ * The inventory row this page was opened from, or null where the link named
+ * none (`detail-route.ts` § originRowNameQuery). It settles nothing the page
+ * shows: one file's page is one page whichever of its names was followed.
+ */
+const originRowName = computed(() => originRowNameOf(route.query['name']));
 
 /** The kind's own caption, for the heading and the recognition line. */
 const kindText = CUSTOMIZATION_KIND_TEXT['prompt/command'];
@@ -259,16 +275,120 @@ const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacte
  * row's recognitions are already in the closed tool order and each one's
  * surfaces in the closed surface order.
  */
-const toolsText = computed(() =>
-  owner.value
-    .map(
-      ({ definition }) =>
-        `${SUPPORTED_TOOL_TEXT[definition.tool]} (${definition.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', ')})`,
-    )
-    .join(', '),
+/**
+ * The products that recognize this file and the surfaces they recognize it on,
+ * restated from the row so the page and the list agree (FR-007). One
+ * definition per `(file, tool)`, so the file's definitions are its
+ * recognitions.
+ */
+const recognitions = computed(() =>
+  owner.value.map(({ definition }) => ({
+    tool: definition.tool,
+    surfaces: definition.surfaces,
+  })),
 );
+
+/**
+ * The other files carrying the same invocation names, so the next copy is one
+ * move rather than a return to the list (FR-007). The one on screen is
+ * excluded by the strip itself ({@link otherCopiesOf}).
+ */
+const nameCopies = computed(() => {
+  const names = new Set(owner.value.map(({ name }) => name));
+  const byFile = new Map<string, FileStripEntry>();
+  // The rows this file is listed under, the one the reader followed first: a
+  // copy several of them list then takes that row's name, which is the row the
+  // moves either side of it should step ({@link originRowName}). `toSorted` is
+  // stable, so the rest keep the list's own order.
+  const listedRows = (snapshot.value?.prompts ?? [])
+    .filter((entry) => names.has(entry.name))
+    .toSorted(
+      (left, right) =>
+        Number(right.name === originRowName.value) - Number(left.name === originRowName.value),
+    );
+  for (const entry of listedRows) {
+    for (const definition of entry.definitions) {
+      const key = fileIdentityKey(definition.sourceId, definition.sourceRelativePath);
+      const existing = byFile.get(key);
+      byFile.set(
+        key,
+        existing === undefined
+          ? {
+              key,
+              sourceId: definition.sourceId,
+              pathText: pathPresentationLabel(definition.sourceRelativePath),
+              opens: {
+                accessibleText: sessionSources.qualifiedLinkName(
+                  accessiblePresentationLabel(definition.sourceRelativePath),
+                  definition.sourceId,
+                ),
+                route: {
+                  path: detailRoute(
+                    'prompt/command',
+                    definition.sourceRelativePath,
+                    sessionSources.selectorOf(definition.sourceId),
+                  ),
+                  // Under the row that brought this copy into the strip: without
+                  // the coordinate the page it opens falls back to whichever of
+                  // the copy's rows the snapshot lists first, and the previous and
+                  // next moves go with it
+                  // (`detail-route.ts` § originRowNameQuery).
+                  query: originRowNameQuery(entry.name),
+                },
+              },
+              recognitions: [{ tool: definition.tool, surfaces: definition.surfaces }],
+              carrierText: null,
+            }
+          : {
+              ...existing,
+              recognitions: [
+                ...existing.recognitions,
+                { tool: definition.tool, surfaces: definition.surfaces },
+              ],
+            },
+      );
+    }
+  }
+  return [...byFile.values()];
+});
+
+/** The strip's own entries: every copy but the one this page shows. */
+const otherCopies = computed(() =>
+  otherCopiesOf(nameCopies.value, fileIdentityKey(openSourceId.value ?? '', openPath.value)),
+);
+
+/**
+ * The rows either side of this file's in the list's own order, so the next
+ * name is one move rather than a return to the inventory (FR-007).
+ */
+const listNeighbours = computed(() => {
+  const entries = snapshot.value?.prompts ?? [];
+  const rows = entries.map((entry) => ({
+    label: inlinePresentationLabel(entry.name),
+    // The move carries the row it opens, exactly as that row's own link in the
+    // inventory does: a neighbour whose file is listed under two names would
+    // otherwise land on the page as the other name's row and offer that row's
+    // neighbours, which walks the reader back up the list.
+    route: {
+      path: detailRoute(
+        'prompt/command',
+        entry.definitions[0]?.sourceRelativePath ?? '',
+        sessionSources.selectorOf(entry.definitions[0]?.sourceId ?? ''),
+      ),
+      query: originRowNameQuery(entry.name),
+    },
+  }));
+  // The row the reader followed, where this file is listed under more than one
+  // name (`detail-route.ts` § originRowNameQuery). The first row holding it is
+  // the fallback: a link naming no row, and one naming a row this generation no
+  // longer publishes, both land on the same page and differ only here.
+  const holdsOpenFile = (entry: { readonly name: string | null }): boolean =>
+    owner.value.some(({ name }) => name === entry.name);
+  const followed = entries.findIndex(
+    (entry) => holdsOpenFile(entry) && entry.name === originRowName.value,
+  );
+  return detailNeighbours(rows, followed >= 0 ? followed : entries.findIndex(holdsOpenFile));
+});
 
 /**
  * The names this file is invoked by, restated from the rows it is listed
@@ -281,15 +401,16 @@ const toolsText = computed(() =>
  * both are shown as what they are (data-model.md § Inventory unit).
  */
 const invocationNames = computed(() => {
-  const seen = new Map<string, { text: string; invisible: boolean }>();
+  // A name drawing nothing is spelled out in full: the reader would otherwise
+  // see `Invocation name:` followed by blank space, which says nothing about
+  // the name it is showing (FR-025; `PromptRow.vue` draws its row by the same
+  // rule, through the same unit). Deduplicated by the drawn text, because two
+  // rows drawing one text are one name on this line.
+  const seen = new Map<string, AuthoredName>();
   for (const { name } of owner.value) {
-    const text = escapeControlCharacters(name);
-    if (!seen.has(text)) {
-      // A name drawing nothing gets the inventory's own note beside it: the
-      // reader would otherwise see `Invocation name:` followed by blank
-      // space, which says nothing about the name it is showing (FR-025;
-      // `PromptRow.vue` states the same rule for the row).
-      seen.set(text, { text, invisible: rendersNothingVisible(name) });
+    const authored = new AuthoredName(name);
+    if (!seen.has(authored.text)) {
+      seen.set(authored.text, authored);
     }
   }
   return [...seen.values()];
@@ -639,14 +760,29 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-prompt-detail">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the commands
+  <div ref="pageRoot" class="aci-prompt-detail aci-route">
+    <!-- The way back and the rows either side of this one, drawn in the bar
+         with every other route's moves (`DetailNavigation.vue`). The kind is
+         URL state, so naming it is what makes the move land on this kind's
          list rather than the kind order's default tab. -->
-    <p><NuxtLink :to="inventoryRoute">Back to the inventory</NuxtLink></p>
+    <DetailNavigation
+      :list-route="inventoryRoute"
+      :list-text="kindText"
+      :previous="listNeighbours.previous"
+      :next="listNeighbours.next"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         Source family, the kind, and this page's own subject. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="sourceFamilyCrumbText !== null"
+        >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{ kindText }} <span>›</span>
+      <span class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
+    </p>
 
     <div class="aci-prompt-detail__title">
-      <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
+      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
         <!-- The file's path heads the page — the row's own identity, in the
            same spelling the inventory lists: escaped for presentation, never
            a locator anything can open (FR-024, FR-030). A path whose escaped
@@ -660,15 +796,17 @@ onBeforeUnmount(() => {
           pathText
         }}</span>
       </h2>
-      <!-- Beside the path, because the path is what it opens. Outside the
-         heading so it does not join the heading's accessible name: a reader
-         hearing the page's landmarks should hear the file, not an action on
-         it (WCAG 2.4.6). -->
-      <OpenFileButton
-        v-if="openDetail !== null"
-        :source-relative-path="openDetail.file.sourceRelativePath"
-        :source="openSource"
-      />
+      <!-- The comparison this file's row can make, at the end of the heading's
+           own line — where every kind whose subject is the heading puts its own
+           (`mcp/detail`, `hooks/detail`, `plugins/detail`). On the tabs' row it
+           read as a control on what the tabs select, which is one half of the
+           file rather than the file this comparison is of (FR-011). -->
+      <NuxtLink
+        v-if="comparePairRoute !== null"
+        :to="comparePairRoute"
+        class="aci-button aci-button--primary aci-prompt-detail__title-end"
+        >Compare this file <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
     </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -682,13 +820,13 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-else-if="detailState === 'stale' || owner.length === 0">
-      <p class="aci-error">
+      <SubjectUnavailable outcome="warning">
         Nothing in the current scan sits at this link's path. The inventory may have changed since
         the link was made; a rescan that brings the path back will make it resolve again.
-      </p>
-      <p>
-        <NuxtLink :to="inventoryRoute">Return to the inventory and open it again.</NuxtLink>
-      </p>
+        <template #exit>
+          <NuxtLink :to="inventoryRoute">Return to the inventory and open it again.</NuxtLink>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -696,57 +834,78 @@ onBeforeUnmount(() => {
          the shell reports what happened to the session, so neither hides or
          repeats the other. -->
     <template v-else-if="openDetail === null">
-      <p class="aci-error">{{ detailFailure }}</p>
-      <p>
-        <button type="button" @click="retryOpen">Try again</button>
-      </p>
+      <SubjectUnavailable outcome="error">
+        {{ detailFailure }}
+        <template #exit>
+          <button type="button" @click="retryOpen">Try again</button>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <template v-else>
-      <div class="aci-prompt-detail__overview">
-        <!-- Which products recognize the file, restated from the row so the
-             page and the list agree, beside the kind's own caption (FR-007).
-             No product is quoted for what it would select or run: existence
-             is what an admission proves (FR-009). -->
-        <p class="aci-prompt-detail__recognition">
-          <template v-if="sourceFamilyText !== null">{{ sourceFamilyText }} · </template
-          >{{ toolsText }} · {{ kindText }}
-        </p>
+      <!-- What this customization is, on one line: how the file read, which
+           products recognize it and where they document reading it, and the
+           command that opens it. Restated from the row so the page and the list
+           agree (FR-007); no product is quoted for what it would invoke or run,
+           because existence is what an admission proves (FR-009). -->
+      <p class="aci-detail-attributes">
+        <span
+          >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
+          }}<template v-if="openDetail.file.encoding !== 'unknown'">
+            · {{ openDetail.file.sizeBytes }} bytes</template
+          ></span
+        >
+        <RecognitionMarks :recognitions="recognitions" named />
+        <!-- The command that opens the file, at the end of the line that
+             states that file's facts — the one place every kind puts it, so a
+             reader who found it on one detail finds it on the next. Outside
+             the heading so it does not join the heading's accessible name: a
+             reader hearing the page's landmarks should hear the file, not an
+             action on it (WCAG 2.4.6). -->
+        <span class="aci-detail-attributes__end">
+          <OpenFileButton
+            :source-relative-path="openDetail.file.sourceRelativePath"
+            :source="openSource"
+          />
+        </span>
+      </p>
 
-        <!-- Which directory the file was in, where its family holds more
-             than one: an escaped presentation of the admitted root, never a
-             path anything can open (FR-002). -->
-        <p v-if="sourceRootText !== null" class="aci-prompt-detail__root aci-note">
-          <span class="aci-authored-text">{{ sourceRootText }}</span>
-        </p>
+      <!-- Which directory the file was in, where its family holds more
+           than one: an escaped presentation of the admitted root, never a
+           path anything can open (FR-002). -->
+      <p v-if="sourceRootText !== null" class="aci-prompt-detail__root aci-note">
+        <span class="aci-authored-text">{{ sourceRootText }}</span>
+      </p>
 
-        <!-- The name the inventory row this page was opened from is listed
-             under: the answer of the rule that admitted the file, derived from
-             the path for a command file and declared by a prompt file, and
-             never a claim that typing it would reach this file — a same-name
-             skill outranks a command (FR-009). -->
-        <p class="aci-prompt-detail__invocation-name aci-note">
-          Invocation name:
-          <template v-for="(entry, index) in invocationNames" :key="entry.text"
-            ><span v-if="index > 0">, </span
-            ><span
-              class="aci-authored-text"
-              :class="entry.invisible ? 'aci-authored-atomic' : undefined"
-              >{{ entry.text }}</span
-            ><span v-if="entry.invisible" class="aci-muted">
-              (name with no visible characters)</span
-            ></template
-          >
-        </p>
+      <!-- The name the inventory row this page was opened from is listed
+           under: the answer of the rule that admitted the file, derived from
+           the path for a command file and declared by a prompt file, and
+           never a claim that typing it would reach this file — a same-name
+           skill outranks a command (FR-009). -->
+      <p class="aci-prompt-detail__invocation-name aci-note">
+        Invocation name:
+        <template v-for="(entry, index) in invocationNames" :key="entry.text"
+          ><span v-if="index > 0">, </span
+          ><span :class="entry.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+            entry.text
+          }}</span></template
+        >
+      </p>
 
-        <!-- The comparison entry for this file (FR-011): present exactly
-             when the current scan holds another readable file that resolves
-             one of this file's names. The comparison surface's own pickers
-             take over from there. -->
-        <p v-if="comparePairRoute !== null">
-          <NuxtLink :to="comparePairRoute">Compare this file</NuxtLink>
-        </p>
-      </div>
+      <!-- The comparison entry for this file (FR-011): present exactly
+           when the current scan holds another readable file that resolves
+           one of this file's names. The comparison surface's own pickers
+           take over from there. -->
+
+      <!-- The other files carrying the same name, one line whatever the count
+           (`FileStrip.vue`). Nothing here states an order or a winner: which
+           copy a session loads turns on runtime this tool does not observe
+           (FR-009). -->
+      <FileStrip
+        :open-source-id="openSourceId"
+        :entries="otherCopies"
+        label="Other files of this command"
+      />
 
       <!-- Two subjects, two tabs: what the parse read out of the file, and
            the complete file itself. A real `tablist`, with the roving
@@ -796,7 +955,6 @@ onBeforeUnmount(() => {
         </ul>
 
         <div v-if="presentation" class="aci-prompt-detail__declarations">
-          <h3>Frontmatter</h3>
           <p v-if="presentation.frontmatter.length === 0" class="aci-note">
             This file declares none.
           </p>
@@ -808,16 +966,15 @@ onBeforeUnmount(() => {
                (FR-025, FR-026, FR-033). -->
           <SourceViewer
             v-else
+            panel-label="Frontmatter"
             :source-text="frontmatterText"
             :source-relative-path="openPath"
             content-label="Frontmatter of"
             content-language="yaml"
-            fit-content
           />
         </div>
 
         <div v-if="presentation" class="aci-prompt-detail__prompt">
-          <h3>Prompt</h3>
           <p v-if="bodyIsEmpty" class="aci-note">This file has none.</p>
           <!-- The same read-only viewer the file tab uses, given the file's
                own path so the body is highlighted as the Markdown it is.
@@ -827,6 +984,7 @@ onBeforeUnmount(() => {
                an agent, a skill, or another command (FR-019). -->
           <SourceViewer
             v-else
+            panel-label="Prompt"
             :source-text="presentation.bodyText"
             :source-relative-path="openPath"
             content-label="Prompt of"
@@ -869,6 +1027,7 @@ onBeforeUnmount(() => {
              source to show and its diagnostic above says why. -->
         <SourceViewer
           v-if="isReadableFile(openDetail.file)"
+          panel-label="Source"
           :source-text="openDetail.file.sourceText"
           :source-relative-path="openDetail.file.sourceRelativePath"
         />
@@ -901,7 +1060,7 @@ onBeforeUnmount(() => {
 }
 
 .aci-prompt-detail__overview {
-  border-bottom: 1px solid var(--aci-border);
+  border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
 }
 
@@ -925,7 +1084,14 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  column-gap: 0.75rem;
   margin-block-end: 0.5rem;
+}
+
+/* The comparison closes the heading's line, as it does on every kind whose
+   subject is the heading. */
+.aci-prompt-detail__title-end {
+  margin-inline-start: auto;
 }
 
 /* Tighter than the shell's section-heading baseline, because the heading

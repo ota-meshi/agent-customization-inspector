@@ -70,7 +70,10 @@ test("shows only the addressed member's names, products, and document", async ({
   await page.goto(
     new URL('/skills/detail/global-copilot/skills/common/SKILL.md', host.origin).href,
   );
-  const main = page.locator('main');
+  // The page's own content rather than the whole shell: the bar's moves name
+  // the neighbouring rows, and one of them is the other member's copy
+  // (`DetailNavigation.vue`).
+  const main = page.locator('.aci-skill-detail');
   await expect(main).toContainText('copilot-side');
   await expect(main).toContainText('The copilot-side copy.');
   await expect(main).not.toContainText('agents-side');

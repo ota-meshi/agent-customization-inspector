@@ -82,19 +82,19 @@ test.describe('the Copilot VS Code workspace MCP inventory', () => {
     // Name order: the duplicate declared by both carriers, then the
     // `.vscode` carrier's own name.
     await expect(items).toHaveCount(2);
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['shared-tavily', 'vs-docs']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['shared-tavily', 'vs-docs']);
     // The duplicate name lists both carriers — one line per physical file —
     // without ordering them: the shared root names both Copilot surfaces
     // beside Claude, and the `.vscode` carrier names VS Code alone.
     const shared = items.nth(0);
-    await expect(shared.locator('.aci-mcp-row__owner')).toHaveCount(2);
-    await expect(shared.locator('.aci-mcp-row__owner').first()).toContainText('.mcp.json');
-    await expect(shared.locator('.aci-mcp-row__owner').first()).toContainText('GitHub Copilot');
-    await expect(shared.locator('.aci-mcp-row__owner').first()).toContainText('VS Code');
-    await expect(shared.locator('.aci-mcp-row__owner').first()).toContainText('CLI');
-    await expect(shared.locator('.aci-mcp-row__owner').first()).toContainText('Claude Code');
-    await expect(shared.locator('.aci-mcp-row__owner').nth(1)).toContainText('.vscode/mcp.json');
-    await expect(shared.locator('.aci-mcp-row__owner').nth(1)).toContainText('VS Code');
+    await expect(shared.locator('.aci-row-file')).toHaveCount(2);
+    await expect(shared.locator('.aci-row-file').first()).toContainText('.mcp.json');
+    await expect(shared.locator('.aci-row-file').first()).toContainText('GitHub Copilot');
+    await expect(shared.locator('.aci-row-file').first()).toContainText('VS Code');
+    await expect(shared.locator('.aci-row-file').first()).toContainText('CLI');
+    await expect(shared.locator('.aci-row-file').first()).toContainText('Claude Code');
+    await expect(shared.locator('.aci-row-file').nth(1)).toContainText('.vscode/mcp.json');
+    await expect(shared.locator('.aci-row-file').nth(1)).toContainText('VS Code');
     await expect(items.nth(1)).toContainText('.vscode/mcp.json');
     await expect(items.nth(1)).toContainText('GitHub Copilot');
     // No declared value reaches the inventory (FR-027), the excluded
@@ -120,15 +120,15 @@ test.describe('the Copilot VS Code workspace MCP inventory', () => {
     await expect(items).toHaveCount(2);
     await page.getByLabel('Tool').selectOption('claude');
     await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['shared-tavily']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['shared-tavily']);
     await page.getByRole('button', { name: 'Clear filters' }).click();
 
     // Path: the filter applies to the carriers the declarations live in.
-    await page.getByLabel('Path contains').fill('.vscode');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.vscode');
     await expect(items).toHaveCount(2);
-    await page.getByLabel('Path contains').fill('no-such-carrier');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('no-such-carrier');
     await expect(items).toHaveCount(0);
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(2);
   });
 });

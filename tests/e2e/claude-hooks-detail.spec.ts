@@ -124,8 +124,8 @@ test.describe('Claude hook declarations opened one at a time', () => {
     );
     // Claude declares hooks only inside an accepted artifact, which the caption
     // states; the keys beside the declaration belong to that file's other rows.
-    await expect(page.locator('.aci-hook-detail__recognition')).toContainText('Claude Code');
-    await expect(page.locator('.aci-hook-detail__recognition')).toContainText(
+    await expect(page.locator('.aci-detail-attributes')).toContainText('Claude Code');
+    await expect(page.locator('.aci-detail-attributes')).toContainText(
       'declared inside another file',
     );
     const viewer = page.locator('.aci-source-viewer');
@@ -148,7 +148,7 @@ test.describe('Claude hook declarations opened one at a time', () => {
     await page.goto(
       new URL('/hooks/detail/repository/.claude-plugin%2Fmarketplace.json', host.origin).href,
     );
-    await expect(page.locator('.aci-error')).toContainText('current scan');
+    await expect(page.locator('.aci-subject-unavailable')).toContainText('current scan');
     // The declaration itself is a click away, under the plugin it belongs to.
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /Plugin/u }).click();
@@ -179,11 +179,11 @@ test.describe('Claude hook declarations opened one at a time', () => {
     await page.goto(
       new URL('/hooks/detail/repository/.claude%2Fsettings.local.json', host.origin).href,
     );
-    await expect(page.locator('.aci-hook-detail__recognition')).toContainText(
+    await expect(page.locator('.aci-detail-attributes')).toContainText(
       'declared inside another file',
     );
     await expect(page.locator('.aci-hook-detail')).toContainText('This file declares no hooks.');
-    await expect(page.locator('.aci-error')).toHaveCount(0);
+    await expect(page.locator('.aci-subject-unavailable')).toHaveCount(0);
 
     // A declaration link into that same carrier is the dead link, and it says
     // which of the two it is: the file is held, the name it asks for is not.
@@ -193,7 +193,7 @@ test.describe('Claude hook declarations opened one at a time', () => {
         host.origin,
       ).href,
     );
-    await expect(page.locator('.aci-error')).toContainText(
+    await expect(page.locator('.aci-subject-unavailable')).toContainText(
       'No hook declaration named this way is published for this file in the current scan.',
     );
   });
@@ -202,7 +202,7 @@ test.describe('Claude hook declarations opened one at a time', () => {
     // Claude documents no standalone hook file, so `/hooks/.claude/hooks.json`
     // is a dead coordinate whatever a reader types (FR-030).
     await page.goto(new URL('/hooks/detail/repository/.claude%2Fhooks.json', host.origin).href);
-    await expect(page.locator('.aci-error')).toContainText('current scan');
+    await expect(page.locator('.aci-subject-unavailable')).toContainText('current scan');
     await page.getByRole('link', { name: /Return to the inventory/u }).click();
     await expect(page.getByRole('tab', { name: /Hook/u })).toHaveAttribute('aria-selected', 'true');
   });

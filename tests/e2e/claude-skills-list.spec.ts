@@ -79,7 +79,7 @@ test('lists every vendor\u2019s skills together, grouped by invocation name', as
   // is `claude-greet` to Copilot, which invokes the authored name, and
   // `greet` to Claude Code, which invokes the skill directory — one grouping
   // for every vendor, not one list per product (FR-007).
-  await expect(page.locator('.aci-skill-row__name')).toHaveText([
+  await expect(page.locator('.aci-row-head__name')).toHaveText([
     'claude-greet',
     'codex-greet',
     'greet',
@@ -126,14 +126,14 @@ test('lists one file under each name its recognizing products invoke it by', asy
   // one file is listed under each — a single row would be headed by a name
   // one of them does not answer to (FR-007).
   const shared = page.locator('.aci-item', { hasText: '.claude/skills/greet/SKILL.md' });
-  await expect(shared.locator('.aci-skill-row__name')).toHaveText(['claude-greet', 'greet']);
+  await expect(shared.locator('.aci-row-head__name')).toHaveText(['claude-greet', 'greet']);
   // The nested skill authors no name, and Claude Code would not read one
   // anyway: its skill directory names it, with the root-relative prefix that
   // is the vendor's own command spelling for a nested skill (FR-007, T1081).
   const fallback = page.locator('.aci-item', {
     hasText: 'packages/api/.claude/skills/deploy/SKILL.md',
   });
-  await expect(fallback.locator('.aci-skill-row__name')).toHaveText('packages/api:deploy');
+  await expect(fallback.locator('.aci-row-head__name')).toHaveText('packages/api:deploy');
 });
 
 test('groups a name declared from two locations into one row listing every recognizing product', async ({
@@ -227,7 +227,7 @@ test('names a nested skill with the root-relative prefix and states the Claude r
   await page.goto(host.origin);
   await page.getByRole('button', { name: 'Rescan repository' }).click();
   const nested = page.locator('.aci-item', {
-    has: page.locator('.aci-skill-row__name', { hasText: /^apps\/web:wave$/u }),
+    has: page.locator('.aci-row-head__name', { hasText: /^apps\/web:wave$/u }),
   });
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
@@ -235,7 +235,7 @@ test('names a nested skill with the root-relative prefix and states the Claude r
   }).toPass();
   await expect(nested.locator('.aci-path')).toHaveText('apps/web/.claude/skills/wave/SKILL.md');
   const root = page.locator('.aci-item', {
-    has: page.locator('.aci-skill-row__name', { hasText: /^wave$/u }),
+    has: page.locator('.aci-row-head__name', { hasText: /^wave$/u }),
   });
   await expect(root.locator('.aci-path')).toHaveText(['.claude/skills/wave/SKILL.md']);
   for (const row of [root, nested]) {
@@ -316,17 +316,24 @@ test('opens a listed file by its own identity into the detail route', async ({ p
   await page.goto(host.origin);
   // Two rows list this file, one per invoking product, and both link to the
   // same page: the products read the same document, so the route is the
-  // file's own.
+  // file's own. They differ only in the row each was followed from, which
+  // rides in the query.
   const links = page
     .locator('.aci-source-family-blocks__members > li')
-    .locator('a[href$="/.claude/skills/greet/SKILL.md"]');
+    .locator('a[href*="/.claude/skills/greet/SKILL.md"]');
   await expect(links).toHaveCount(2);
   await links.first().click();
   // The detail route is the one surface that serves authored content; the
   // list milestone proves the row links to the file's stable identity — the
   // Source-relative path — which survives rescans and same-root server
   // launches.
+  // The row the link was followed from rides in the query, because one file
+  // can be listed under two names and the detail's moves step the row rather
+  // than the file (`detail-route.ts` § originRowNameQuery).
   await expect(page).toHaveURL(
-    new URL('/skills/detail/repository/.claude/skills/greet/SKILL.md', host.origin).href,
+    new URL(
+      '/skills/detail/repository/.claude/skills/greet/SKILL.md?name=claude-greet',
+      host.origin,
+    ).href,
   );
 });

@@ -1,40 +1,50 @@
 <script setup lang="ts">
-// The Repository inventory route (T071). It renders the committed generation:
-// the Repository header with its escaped, inert root label, the scan status
-// and rescan controls, the filters, the Codex SKILL list, and the diagnostics
-// that belong to no single row.
+// The inventory route (T071, reworked by T1153). It renders the committed
+// generation and starts at the list: the rail, the two filters, and the rows
+// of whichever entry the rail has selected.
 //
-// The root label is the one presentation value that must not be mistaken for
-// a path. `SourceBoundary.displayRoot` is a one-way escaping of the selected
-// root: it grants no read authority, is not a `SourceRelativePath`, and is
-// never used as a navigation or read locator (FR-002). It is therefore
-// rendered in its own labelled field, visually and semantically separate from
-// the Source-relative item paths in the list below, with a note stating what
-// it is.
+// It states no Source's root, status, or generation. Those are facts about a
+// Source rather than an inventory of files, so each Source family has a
+// surface of its own — `pages/repository.vue` and `pages/global-consent.vue` —
+// and the rail states each family's status beside the way there, so a reader
+// still learns from this page that a scan came back partial (FR-002, FR-030).
+// A panel here would have spent the top of every visit on values that answer a
+// question asked once, and the personal-setup panel duplicated the consent
+// page outright.
+//
+// `Files in no kind` and `Diagnostics` are rail entries rather than sections
+// appended below the rows. Both are lists of files, which is the whole test for
+// what belongs in the rail; as sections they sat past sixty rows of whatever
+// kind was in view, and moved every time the reader changed kinds.
 //
 // The session view state is injected rather than created: the shell owns the
 // one RPC connection and the one adopted snapshot, and a second view state
 // would race the first for the same request tokens.
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { NuxtLink } from '#components';
-import type { SourceSelector } from '../../shared/api-types';
-import { GLOBAL_MEMBER_ORDER, GLOBAL_MEMBER_TEXT } from '../../shared/api-text';
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import type { SourceKind } from '../../shared/api-types';
+import { GLOBAL_MEMBER_TEXT } from '../../shared/api-text';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import DiagnosticList from '../components/diagnostics/DiagnosticList.vue';
 import InventoryFilters from '../components/inventory/InventoryFilters.vue';
-import InventoryKindTabs from '../components/inventory/InventoryKindTabs.vue';
+import InventoryRail from '../components/inventory/InventoryRail.vue';
 import InventoryList from '../components/inventory/InventoryList.vue';
+import ToolLegend from '../components/inventory/ToolLegend.vue';
 import UnclassifiedList from '../components/inventory/UnclassifiedList.vue';
-import ScanProgress from '../components/inventory/ScanProgress.vue';
-import GlobalSourceControls from '../components/consent/GlobalSourceControls.vue';
 import { useSessionViewState } from '../composables/session-view-state';
 import { recordInventoryReturnPoint } from '../router.options';
 import { useInventoryFilters } from '../composables/filters';
 import {
-  SOURCE_BOUNDARY_ORIGIN_TEXT,
+  INVENTORY_SELECTION_TEXT,
+  INVENTORY_SELECTION_UNIT_TEXT,
+  type InventorySelection,
+} from '../components/inventory/rail-selection';
+import { inventoryPanelId } from '../components/inventory/panel-ids';
+import {
+  CLEARED_INVENTORY_QUERY,
+  useInventoryFilterState,
+} from '../composables/inventory-filter-state';
+import {
   SOURCE_STATUS_TEXT,
-  isCustomizationKind,
-  isSupportedTool,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
@@ -45,52 +55,6 @@ const snapshot = sessionViewState.snapshot;
 
 const route = useRoute();
 const router = useRouter();
-
-/**
- * The kind read out of `?kind=`, or null for anything the closed order does
- * not name. The URL is presentation state, never a locator: an unknown value
- * simply leaves the default tab in view.
- */
-function kindFromQuery(value: unknown): CustomizationKind | null {
-  return isCustomizationKind(value) ? value : null;
-}
-
-/**
- * The Source family read out of `?source=`, or null for anything the label
- * table does not name — the same rule as {@link kindFromQuery}, for the same
- * reason. The Source's launch-stable selector is what rides in the URL rather
- * than a Source ID: an ID belongs to one launch, so a kept link would name
- * nothing after the next one (`detail-route.ts` § sourceSelectorOf).
- */
-function sourceFromQuery(value: unknown): SourceSelector | null {
-  if (value === 'repository') {
-    return value;
-  }
-  for (const member of GLOBAL_MEMBER_ORDER) {
-    const selector: SourceSelector = `global-${member}`;
-    if (value === selector) {
-      return selector;
-    }
-  }
-  return null;
-}
-
-/**
- * The tool read out of `?tool=`, or null for anything the closed catalog does
- * not name — the same rule as {@link kindFromQuery}, for the same reason.
- */
-function toolFromQuery(value: unknown): SupportedTool | null {
-  return isSupportedTool(value) ? value : null;
-}
-
-/**
- * The text a query parameter carries, or null when it is absent, empty, or
- * repeated. None of the three is a selection the controls can make, and the
- * fields already start at the neutral value an empty one would set.
- */
-function queryText(value: unknown): string | null {
-  return typeof value === 'string' && value !== '' ? value : null;
-}
 
 // What the reader has narrowed the inventory to is navigation, and navigation
 // belongs in the URL: every selection is initialized from the query and
@@ -110,19 +74,32 @@ function queryText(value: unknown): string | null {
 // reader who has chosen nothing has chosen nothing, so the parameter stays
 // absent and the default is resolved against whatever inventory is committed
 // then.
-const sourceFilter = ref<SourceSelector | null>(sourceFromQuery(route.query.source));
-const tool = ref<SupportedTool | null>(toolFromQuery(route.query.tool));
-const pathQuery = ref(queryText(route.query.path) ?? '');
-const kind = ref<CustomizationKind | null>(kindFromQuery(route.query.kind));
+// The narrowing the shell provides, which the bar's search field writes into
+// as well (`composables/inventory-filter-state.ts`). This route is the only
+// writer of the query the four values ride in, which is what keeps the two
+// surfaces from racing over one URL.
+const inventoryFilters = useInventoryFilterState();
+const {
+  source: sourceFilter,
+  tool,
+  selection,
+  searchQuery,
+  kind,
+  nonKindSelection,
+} = inventoryFilters;
+
+// The URL decides on every arrival, its absence included: a link back to the
+// unfiltered inventory is a link to the unfiltered inventory, and the bar's
+// field follows because it reads the same value. A search typed on another
+// route reaches this page in the query it was pushed with, so nothing is lost
+// by letting the URL win here. The narrowing outlives this page now that the
+// shell holds it, so arriving adopts the query rather than declaring the
+// values: what the reader last narrowed to is not what a fresh link asks for.
+inventoryFilters.adopt(route.query);
 
 /** Whether this history entry's filters predate the last purge. */
 function queryPredatesPurge(): boolean {
-  const hasSelection =
-    route.query.source !== undefined ||
-    route.query.tool !== undefined ||
-    route.query.path !== undefined ||
-    route.query.kind !== undefined;
-  if (!hasSelection) {
+  if (!inventoryFilters.namedIn(route.query)) {
     return false;
   }
   const state = window.history.state as { aciFilterGeneration?: unknown } | null;
@@ -141,26 +118,14 @@ function queryPredatesPurge(): boolean {
 /** Strips a pre-purge entry's filters, restamping it in the current generation. */
 function dropPrePurgeQuery(): void {
   void router.replace({
-    query: {
-      ...route.query,
-      source: undefined,
-      tool: undefined,
-      path: undefined,
-      kind: undefined,
-    },
+    query: { ...route.query, ...CLEARED_INVENTORY_QUERY },
     state: { aciFilterGeneration: sessionViewState.filterGeneration() },
   });
 }
 
-watch([sourceFilter, tool, pathQuery, kind], () => {
+watch(inventoryFilters.query, (query) => {
   void router.replace({
-    query: {
-      ...route.query,
-      source: sourceFilter.value ?? undefined,
-      tool: tool.value ?? undefined,
-      path: pathQuery.value === '' ? undefined : pathQuery.value,
-      kind: kind.value ?? undefined,
-    },
+    query: { ...route.query, ...query },
     state: { aciFilterGeneration: sessionViewState.filterGeneration() },
   });
 });
@@ -183,15 +148,7 @@ onBeforeUnmount(() => {
   // An ordinary navigation keeps them — the view is still `inspection`, and
   // returning restores the reader's narrowing.
   if (sessionViewState.view.value !== 'inspection') {
-    void router.replace({
-      query: {
-        ...route.query,
-        source: undefined,
-        tool: undefined,
-        path: undefined,
-        kind: undefined,
-      },
-    });
+    void router.replace({ query: { ...route.query, ...CLEARED_INVENTORY_QUERY } });
   }
 });
 
@@ -217,10 +174,7 @@ watch(
       dropPrePurgeQuery();
       return;
     }
-    sourceFilter.value = sourceFromQuery(route.query.source);
-    tool.value = toolFromQuery(route.query.tool);
-    pathQuery.value = queryText(route.query.path) ?? '';
-    kind.value = kindFromQuery(route.query.kind);
+    inventoryFilters.adopt(route.query);
   },
 );
 
@@ -235,7 +189,39 @@ onBeforeRouteLeave((to) => {
   recordInventoryReturnPoint(to.fullPath);
 });
 
-const filters = useInventoryFilters(snapshot, { source: sourceFilter, tool, kind, pathQuery });
+/**
+ * How many rows the entry in view holds, and what they are in that entry's own
+ * unit (`rail-selection.ts` § INVENTORY_SELECTION_UNIT_TEXT) — or null where
+ * there is no entry, which is a generation that recognized no kind at all.
+ *
+ * Null rather than a stand-in: counting one entry while the heading names
+ * another is what a fallback did here, and a session with one source-level
+ * diagnostic then read "Customization files · 1 diagnostic" over a list saying
+ * no customization file was recognized.
+ */
+/**
+ * The unit the entry in view counts its rows by, for the filter row's own
+ * announcement — the same table the heading's count reads, so the sentence a
+ * reader hears and the words beside it cannot part. `files` where there is no
+ * entry, which is a generation that recognized no kind and lists nothing.
+ */
+const selectionUnit = computed(() =>
+  activeSelection.value === null
+    ? { one: 'file', many: 'files' }
+    : INVENTORY_SELECTION_UNIT_TEXT[activeSelection.value],
+);
+
+const selectionSummary = computed<{ readonly count: number; readonly unit: string } | null>(() => {
+  const selection = activeSelection.value;
+  if (selection === null) {
+    return null;
+  }
+  const count = railCounts.value.get(selection) ?? 0;
+  const unit = INVENTORY_SELECTION_UNIT_TEXT[selection];
+  return { count, unit: count === 1 ? unit.one : unit.many };
+});
+
+const filters = useInventoryFilters(snapshot, { source: sourceFilter, tool, kind, searchQuery });
 
 // What the two selects display is the selection actually applied, while what
 // they write is the raw choice. A generation that no longer publishes the
@@ -246,7 +232,7 @@ const filters = useInventoryFilters(snapshot, { source: sourceFilter, tool, kind
 // a later generation offers that option again, exactly as the kind tab does.
 const selectedSource = computed({
   get: () => filters.effectiveSource.value,
-  set: (value: SourceSelector | null) => {
+  set: (value: SourceKind | null) => {
     sourceFilter.value = value;
   },
 });
@@ -273,12 +259,51 @@ watch(snapshot, async () => {
 });
 
 /**
+ * How many rows each rail entry would show: the kind counts the filters
+ * already derive, plus the two lists that are no kind's inventory. One map
+ * rather than a count per entry, because the rail renders one column of them
+ * and a second derivation of the same numbers could disagree with the rows.
+ *
+ * Both non-kind entries carry the Source narrowing the rows themselves carry,
+ * so the number beside an entry is the number of rows behind it.
+ */
+const railCounts = computed<ReadonlyMap<InventorySelection, number>>(() => {
+  const counts = new Map<InventorySelection, number>(filters.kindCounts.value);
+  counts.set('files-in-no-kind', filters.unrecognizedRows.value.length);
+  counts.set('diagnostics', filters.sourceScopedDiagnostics.value.length);
+  return counts;
+});
+
+/**
+ * The entry in view: the two non-kind panels when one of them is chosen, and
+ * otherwise the kind the list is actually rendering.
+ *
+ * Derived from what is on screen rather than from the raw choice, because the
+ * two part company: a commit that takes the last row of the chosen kind away
+ * leaves that kind out of `availableKinds`, and the filters fall back to the
+ * first kind that is left (`filters.ts` § activeKind). Read from the raw
+ * choice, the heading, the count, and the rail's selected entry would then all
+ * name a kind whose rows are not the ones below them — and the rail, which
+ * renders no tab for a kind that is gone, would mark none of its tabs selected
+ * and leave every one of them out of the tab order (WCAG 2.4.3, 4.1.2).
+ *
+ * The raw choice is still what the URL carries ({@link InventoryFilterState}),
+ * so it comes back on its own when a later commit offers that kind again.
+ */
+const activeSelection = computed<InventorySelection | null>(
+  () => nonKindSelection.value ?? filters.activeKind.value,
+);
+
+/**
  * How many rows the filters admit in the kind currently in view. It is the
  * count that kind's tab already carries rather than a second derivation of it,
  * and it counts rows rather than files, because a row is what the user sees and
  * a skill row may stand for several files.
  */
 const matchCount = computed(() => {
+  if (nonKindSelection.value !== null) {
+    return railCounts.value.get(nonKindSelection.value) ?? 0;
+  }
   const kindInView = filters.activeKind.value;
   return kindInView === null ? 0 : (filters.kindCounts.value.get(kindInView) ?? 0);
 });
@@ -296,6 +321,14 @@ const matchCount = computed(() => {
  * copy policy makes the same argument for a label table).
  */
 const totalRowCount = computed<number>(() => {
+  if (nonKindSelection.value !== null) {
+    // The two lists that belong to no kind have their own unnarrowed
+    // populations (`filters.ts`), which is what their summary compares the
+    // visible rows against.
+    return nonKindSelection.value === 'files-in-no-kind'
+      ? filters.unrecognizedTotal.value
+      : filters.sourceScopedDiagnosticTotal.value;
+  }
   const kind = filters.activeKind.value;
   const committed = snapshot.value;
   if (kind === null || committed === null) {
@@ -328,20 +361,30 @@ const totalRowCount = computed<number>(() => {
 });
 
 /**
- * Returns the filter fields to the same neutral values they were declared with.
- * `kind` is not among them: it is the tab in view, and clearing the filters
- * must not navigate the user somewhere else.
+ * Returns the filter fields to the neutral values the narrowing starts at.
+ * The rail selection is not among them: it is the tab in view, and clearing
+ * the filters must not navigate the user somewhere else — which is what
+ * separates this control from the purge's own reset
+ * (`composables/inventory-filter-state.ts` § clear).
  */
 function clearFilters(): void {
   sourceFilter.value = null;
   tool.value = null;
-  pathQuery.value = '';
+  searchQuery.value = '';
 }
 
-/** The one Repository Source; the consented homes are {@link globalSources}. */
-const repositorySource = computed(
-  () => snapshot.value?.sources.find((source) => source.kind === 'repository') ?? null,
-);
+/** The filter row, which owns where focus settles once a clear has rendered. */
+const filterControls = useTemplateRef<InstanceType<typeof InventoryFilters>>('filterControls');
+
+/**
+ * Clears from the empty result's own button, which unmounts with the box it
+ * sits in: focus then settles where the filter row's own button settles it, so
+ * one command does not leave a keyboard user in two places (WCAG 2.4.3).
+ */
+async function clearFiltersFromEmptyResult(): Promise<void> {
+  clearFilters();
+  await filterControls.value?.settleOnSummary();
+}
 
 /**
  * The consented Global Sources, in the fixed tool order the snapshot publishes
@@ -377,173 +420,180 @@ const globalSourcesAnnouncement = computed(() =>
 
 <template>
   <div v-if="snapshot" class="aci-inventory-page">
-    <h2 ref="inventoryHeading" tabindex="-1">Repository</h2>
-    <template v-if="repositorySource">
-      <dl class="aci-definition-grid">
-        <dt>Selected root</dt>
-        <dd class="aci-inventory-page__display-root">
-          {{ repositorySource.boundary.displayRoot }}
-          ({{ SOURCE_BOUNDARY_ORIGIN_TEXT[repositorySource.boundary.origin] }})
-        </dd>
-      </dl>
-      <p class="aci-note">
-        This label is an escaped presentation of the selected root. It is not a path you can open
-        and grants no read access.
-      </p>
-
-      <ScanProgress />
-    </template>
-
-    <!-- The consented homes, once a confirmation's batch has committed. Each
-         is its own Source with its own root: two boundaries never merge, and a
-         file below one belongs to that one (FR-013). The panel is absent
-         before consent and absent while a batch is still running, because a
-         Source that has not committed does not exist. -->
-    <!-- Outside the panel's own `v-if`, and mounted from the first render with
-         nothing in it. A live region added to the document together with its
-         text is not announced — the assistive technology has nothing to
-         observe a change against — and the panel's arrival is exactly the case
-         that would be lost: it appears when a confirmation's batch commits,
-         which on any tab but this one is otherwise a silent change (WCAG 4.1.3,
-         W3C ARIA22; the same rule the shell's own two regions follow).
-         One sentence rather than the list itself, which read atomically would
-         announce every root again on every change. -->
+    <!-- The consented homes announce their arrival, which is otherwise a
+         silent change on this page: the panel that used to state them is the
+         personal setup's own surface now, and a reader who is here when a
+         confirmation's batch commits would learn nothing (WCAG 4.1.3,
+         W3C ARIA22; the same rule the shell's own two regions follow). One
+         sentence rather than a list, which read atomically would announce every
+         member again on every change. Mounted from the first render with
+         nothing in it, because a live region added together with its text is
+         not announced. -->
     <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
       {{ globalSourcesAnnouncement }}
     </p>
 
-    <template v-if="globalSources.length > 0">
-      <h2>Your personal setup</h2>
-      <GlobalSourceControls />
-    </template>
-
-    <!-- The consent route's entry. It is a link in the page rather than a
-         URL to type: a reader who cannot find the page cannot decide about
-         it, and a review found the route reachable no other way. -->
-    <p class="aci-inventory-page__consent-entry">
-      <NuxtLink to="/global-consent">
-        {{
-          globalSources.length > 0
-            ? 'Review what is inspected outside this repository'
-            : 'Inspect your personal setup outside this repository'
-        }}
-      </NuxtLink>
-    </p>
-
-    <h2>Customization files</h2>
-    <!-- The rail carries what decides which rows are on screen — the kind in
-         view and the filters that narrow it — and the rows take the rest of the
-         width, because a row is a path and a path is what needs the room. -->
-    <!-- `data-aci-inventory-rows` scopes the return-point machinery to row
-         links: this container and the no-kind disclosure below hold every row,
-         while the consent entry above is chrome — leaving through it records
-         no point, so coming back lands at the ordinary top of the page
-         (router.options.ts § renderedLinks). -->
-    <div class="aci-inventory-page__browse" data-aci-inventory-rows>
+    <!-- The rail carries what decides which rows are on screen — the entry in
+         view, each Source family's status beside the way to its own surface —
+         and the rows take the rest of the width, because a row is a path and a
+         path is what needs the room. -->
+    <div class="aci-inventory-page__browse">
       <div class="aci-inventory-page__rail">
-        <!-- The kind list is the part of the rail that gives way when the rail
+        <!-- The entry list is the part of the rail that gives way when the rail
              is taller than the viewport, which is what keeps the filters below
              it on screen. It is wrapped rather than styled through the
              component, because how tall it may grow is the rail's decision
              rather than the list's. -->
-        <div class="aci-inventory-page__kinds">
-          <InventoryKindTabs
+        <div class="aci-inventory-page__entries">
+          <InventoryRail
             :kinds="filters.availableKinds.value"
-            :active-kind="filters.activeKind.value"
-            :counts="filters.kindCounts.value"
-            @select="kind = $event"
+            :active-selection="activeSelection"
+            :counts="railCounts"
+            :sources="snapshot.sources"
+            @select="selection = $event"
           />
         </div>
-        <InventoryFilters
-          v-model:source="selectedSource"
-          v-model:tool="selectedTool"
-          v-model:path-query="pathQuery"
-          :available-sources="filters.availableSources.value"
-          :available-tools="filters.availableTools.value"
-          :match-count="matchCount"
-          :total-count="totalRowCount"
+      </div>
+
+      <!-- `data-aci-inventory-rows` scopes the return-point machinery to row
+           links: this holds every row, while the rail beside it is chrome —
+           its Source entries leave the inventory entirely, so leaving through
+           one records no point and coming back lands at the ordinary top of
+           the page (router.options.ts § renderedLinks). -->
+      <div class="aci-inventory-page__panel" data-aci-inventory-rows>
+        <!-- The list's own heading row: what is in view, how many rows it
+             holds, and the selects that narrow it. They are here rather than in
+             the rail because what they narrow is the list beside them; the rail
+             answers which list is in view at all. The Source select is offered
+             on every list, the two that belong to no kind included — a file no
+             kind lists still belongs to a Source, and so does a Source-level
+             diagnostic. The Tool select is not offered there: no product
+             recognized a file in no kind, and a Source-level diagnostic is not
+             tied to a product (FR-006). -->
+        <div class="aci-inventory-page__head">
+          <h2 ref="inventoryHeading" class="aci-inventory-page__title" tabindex="-1">
+            {{
+              activeSelection === null
+                ? 'Customization files'
+                : INVENTORY_SELECTION_TEXT[activeSelection]
+            }}
+          </h2>
+          <!-- Counted in the unit the kind's own rows are, not in rows: a row's
+               unit is decided by its kind (data-model.md § Inventory unit), so
+               `rows` named the container where the rows themselves say `2
+               files` about a name (`rail-selection.ts`
+               § INVENTORY_SELECTION_UNIT_TEXT). -->
+          <span v-if="selectionSummary !== null" class="aci-inventory-page__count"
+            >{{ selectionSummary.count }} {{ selectionSummary.unit }}</span
+          >
+          <InventoryFilters
+            ref="filterControls"
+            v-model:source="selectedSource"
+            v-model:tool="selectedTool"
+            :available-source-kinds="filters.availableSourceKinds.value"
+            :available-tools="nonKindSelection === null ? filters.availableTools.value : []"
+            :match-count="matchCount"
+            :total-count="totalRowCount"
+            :unit="selectionUnit"
+            :narrowed="filters.isNarrowed.value"
+            @clear="clearFilters"
+          />
+        </div>
+
+        <!-- What each vendor mark names, once for the list rather than on
+             every row (`ToolLegend.vue`). Its entries are the products the
+             rows on screen actually draw (`filters.ts` § shownTools), not the
+             inventory's: a key naming a mark the list does not have reads as a
+             mark the reader has not found yet — a rule list carried a Codex
+             entry that no rule row shows. An empty list draws no marks and so
+             gets no key, which follows from the same derivation rather than
+             from a rule of its own. -->
+        <ToolLegend v-if="nonKindSelection === null" :tools="filters.shownTools.value" />
+        <!-- Files an inspection rule admitted that no kind lists. Its own panel
+           rather than a disclosure below the rows: its membership rule is
+           absence, so any repository holding one unreadable, binary, or
+           nothing-declaring candidate has it, and as a section it sat open
+           under whatever kind was being read, on every visit (FR-028). -->
+        <section
+          v-if="nonKindSelection === 'files-in-no-kind'"
+          :id="inventoryPanelId('files-in-no-kind')"
+          role="tabpanel"
+          :aria-label="INVENTORY_SELECTION_TEXT['files-in-no-kind']"
+        >
+          <p class="aci-note">
+            Files an inspection rule admitted that no kind lists. Each row states its own read
+            outcome, and a file that was read and held nothing the kind that admitted it publishes
+            is here too. A file that only ships inside a customization's own directory is not: it
+            belongs to that customization's row, and its own row above says what happened to it.
+          </p>
+          <UnclassifiedList
+            :files="filters.unrecognizedRows.value"
+            :diagnostics="snapshot.diagnostics"
+          />
+        </section>
+
+        <!-- Diagnostics that belong to a Source rather than to one of its files.
+           A file's own diagnostic is stated on that file's row, which is where
+           a reader meets the file it is about (FR-028). -->
+        <section
+          v-else-if="nonKindSelection === 'diagnostics'"
+          :id="inventoryPanelId('diagnostics')"
+          role="tabpanel"
+          :aria-label="INVENTORY_SELECTION_TEXT.diagnostics"
+        >
+          <p class="aci-note">
+            Diagnostics that belong to a Source rather than to one of its files. A file's own
+            diagnostic is stated on that file's row.
+          </p>
+          <DiagnosticList
+            :diagnostics="filters.sourceScopedDiagnostics.value"
+            :sources="snapshot.sources"
+          />
+        </section>
+
+        <InventoryList
+          v-else
           :narrowed="filters.isNarrowed.value"
-          @clear="clearFilters"
+          :kind="filters.activeKind.value"
+          :instruction-range-groups="filters.instructionRangeGroups.value"
+          :skill-rows="filters.skillRows.value"
+          :mcp-rows="filters.mcpRows.value"
+          :agent-rows="filters.agentRows.value"
+          :prompt-rows="filters.promptRows.value"
+          :rule-rows="filters.ruleRows.value"
+          :permissions-rows="filters.permissionsRows.value"
+          :hook-rows="filters.hookRows.value"
+          :plugin-rows="filters.pluginRows.value"
+          :output-style-rows="filters.outputStyleRows.value"
+          :settings-rows="filters.settingsRows.value"
+          :files-by-source="filters.filesBySource.value"
+          :total-count="totalRowCount"
+          :diagnostics="snapshot.diagnostics"
+          @clear="clearFiltersFromEmptyResult"
         />
       </div>
-      <InventoryList
-        :kind="filters.activeKind.value"
-        :instruction-range-groups="filters.instructionRangeGroups.value"
-        :skill-rows="filters.skillRows.value"
-        :mcp-rows="filters.mcpRows.value"
-        :agent-rows="filters.agentRows.value"
-        :prompt-rows="filters.promptRows.value"
-        :rule-rows="filters.ruleRows.value"
-        :permissions-rows="filters.permissionsRows.value"
-        :hook-rows="filters.hookRows.value"
-        :plugin-rows="filters.pluginRows.value"
-        :output-style-rows="filters.outputStyleRows.value"
-        :settings-rows="filters.settingsRows.value"
-        :files-by-source="filters.filesBySource.value"
-        :total-count="totalRowCount"
-        :diagnostics="snapshot.diagnostics"
-      />
     </div>
-
-    <!-- Outside every kind tab: these files are in no kind's inventory, so no
-         kind presentation applies to them. It is a disclosure rather than a
-         standing section because its membership rule is absence: any repository
-         holding one unreadable, binary, or nothing-declaring candidate has it,
-         so as a standing section it sat open under whatever kind tab was being
-         read, on every visit, whether or not the reader was looking for it. The
-         count stays on the closed summary, and the scan status states how many
-         files kept a diagnostic (`ScanProgress.vue`), so a `partial` generation
-         still says which file it was (FR-028) at the cost of one interaction. -->
-    <details
-      v-if="filters.unrecognizedRows.value.length > 0"
-      class="aci-inventory-page__no-kind"
-      data-aci-inventory-rows
-    >
-      <summary>
-        <h3 class="aci-inventory-page__no-kind-heading">
-          Files in no kind
-          <span class="aci-inventory-page__no-kind-count">{{
-            filters.unrecognizedRows.value.length
-          }}</span>
-        </h3>
-      </summary>
-      <p class="aci-note">
-        Files an inspection rule admitted that no kind tab lists. Each row states its own read
-        outcome, and a file that was read and held nothing the kind that admitted it publishes is
-        here too. A file that only ships inside a customization's own directory is not: it belongs
-        to that customization's row, and its own row above says what happened to it.
-      </p>
-      <!-- The note explains why a tool filter changes nothing here; it does
-           not replace the rows. These files are listed under no tool at all,
-           so a filter has nothing to narrow — and the count in the heading
-           above would otherwise name rows the body no longer shows, taking
-           each file's path and its detail link with them. -->
-      <p v-if="filters.effectiveTool.value !== null" class="aci-note">
-        A tool filter is applied. No tool recognized these files, so none of them is listed under
-        one, and the list below is unchanged.
-      </p>
-      <UnclassifiedList
-        :files="filters.unrecognizedRows.value"
-        :diagnostics="snapshot.diagnostics"
-      />
-    </details>
-
-    <h2>Diagnostics</h2>
-    <DiagnosticList :diagnostics="snapshot.diagnostics" />
   </div>
 </template>
 
 <style scoped>
-/* The kind rail and the rows it selects, side by side: the rail is as wide as
-   the longest kind label needs and no wider, and the rows take the rest.
-   `align-items: start` is what lets the rail be shorter than the rows and
-   stick, rather than being stretched to the panel's height. */
+/* The rail and the panel it selects, side by side: the rail is as wide as the
+   longest entry label needs and no wider, and the rows take the rest. The
+   columns stretch to the taller of them, which is what gives the rail's
+   surface the height of the list beside it; what stays on screen while that
+   list scrolls is the entries inside it, not the surface. */
 .aci-inventory-page__browse {
   display: grid;
-  gap: 1rem;
+  /* No gap: the rail's own trailing edge is what separates the two, and the
+     space after it belongs to the panel's padding — a gap would set the line
+     adrift in the middle of it. */
+  gap: 0;
   grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
-  align-items: start;
-  margin-block-start: 1rem;
+  /* Flush against the bar: the rail's surface continues the bar's, so ground
+     between them would cut one panel into two. What the rail needs above its
+     first entry is its own top padding, which is drawn whether or not the page
+     is scrolled. */
+  margin-block-start: 0;
 }
 
 /* The rail stays on screen while the rows scroll past it, so choosing another
@@ -551,33 +601,30 @@ const globalSourcesAnnouncement = computed(() =>
    the last resort, for a viewport so short that even the filters do not fit;
    what normally absorbs a rail taller than the viewport is the kind list
    inside it. */
+/* The rail's surface, which is the whole column beside the rows: the grid
+   stretches it, so the panel that continues the bar's runs to the foot of the
+   list rather than stopping where the entries happen to end — a surface that
+   stopped there would read as a sidebar cut off half way down. Its horizontal
+   padding lives on the entries instead, so a selected one is a full-width band,
+   which an inset item with a leading edge could not be. */
 .aci-inventory-page__rail {
+  background: var(--aci-surface-raised);
+  border-inline-end: 1px solid var(--aci-line);
+}
+
+/* The entries are what sticks, inside that surface. Splitting the two is what
+   lets the panel be as tall as the rows while the list stays on screen: one
+   element cannot both stretch to the grid's height and stop at the viewport's.
+   It sticks just below the bar, which sticks to the top of the document itself
+   (`App.vue`) — a list that stopped at the viewport's top would slide under the
+   bar and lose its first entries — and scrolls within its own height when the
+   kinds outrun the viewport. */
+.aci-inventory-page__entries {
+  max-block-size: calc(100dvh - var(--aci-sticky-bar));
+  overflow-y: auto;
+  padding-block: 0.75rem;
   position: sticky;
-  top: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-block-size: calc(100dvh - 1.5rem);
-  overflow-y: auto;
-}
-
-/* Everything in the rail keeps its own height, so a short viewport never
-   squeezes the filters into an overflowing box. */
-.aci-inventory-page__rail > * {
-  flex: none;
-}
-
-/* The exception, and the reason the rail rarely scrolls: the kind list takes
-   the height that is left and scrolls within it. The filters stay on screen
-   whatever the viewport, because the control that clears them appears only
-   while a filter is applied — a control that arrives already scrolled out of
-   the rail is one the reader never learns is there. It keeps a few kinds
-   visible rather than collapsing to nothing on a very short viewport; below
-   that the rail's own scrollbar takes over. */
-.aci-inventory-page__kinds {
-  flex: 1 1 auto;
-  min-block-size: 6rem;
-  overflow-y: auto;
+  top: var(--aci-sticky-bar);
 }
 
 /* One column below the two-column threshold: a rail beside the rows would
@@ -590,61 +637,71 @@ const globalSourcesAnnouncement = computed(() =>
   }
 
   .aci-inventory-page__rail {
-    position: static;
+    /* Above the rows rather than beside them, so the edge that separated the
+       two columns becomes the line under the rail. */
+    border-block-end: 1px solid var(--aci-line);
+    border-inline-end: 0;
+  }
+
+  .aci-inventory-page__panel {
+    padding-inline-start: 1.25rem;
+  }
+
+  /* Nothing to stick to and nothing to give way to: the rail is as tall as it
+     needs, above the rows. */
+  .aci-inventory-page__entries {
     max-block-size: none;
     overflow-y: visible;
-  }
-
-  /* Nothing to give way to: the rail is as tall as it needs, above the rows. */
-  .aci-inventory-page__kinds {
-    min-block-size: 0;
-    overflow-y: visible;
+    position: static;
   }
 }
 
-/* An escaped root label has no break opportunities of its own; without this the
-   shell scrolls sideways. It is not a `.aci-path`: the label is a presentation
-   of a root, not a path anything can open. */
-.aci-inventory-page__display-root {
-  font-family: ui-monospace, monospace;
-  overflow-wrap: anywhere;
+/* The column beside the rail, whichever entry is selected. `min-width: 0` is
+   what lets a path with no break opportunities wrap inside it rather than
+   widening the grid track (WCAG 1.4.10). */
+/* The column beside the rail carries the inset `.aci-route` gives every other
+   surface (main.css), because this page takes none: the space after the rail's
+   edge is this column's rather than a grid gap — a gap would put the line in
+   the middle of the space instead of at its start — and the space under the
+   bar is this column's too, where the rail wants none. */
+.aci-inventory-page__panel {
+  min-width: 0;
+  /* The bottom space is this column's rather than the shell's: inside the grid
+     row it stretches the rail's column with it, so the sticky list's
+     containing block grows too. Below the shell it would be space the document
+     scrolls through with the rail already held at its end (`App.vue`
+     § .aci-app). */
+  padding: 0.75rem 1.25rem 2rem 1rem;
 }
 
-/* The consent entry sits between the Repository panel and the inventory, so it
-   reads as a second thing this session can inspect rather than as part of
-   either. */
-.aci-inventory-page__consent-entry {
-  margin-block: 1rem 0;
+/* What is in view at the start of the row, and the controls that narrow it at
+   the end. Baseline-aligned so the title, the count, and the selects sit on
+   one line, and wrapping so a narrow viewport drops the controls under the
+   title rather than scrolling the page sideways (WCAG 1.4.10). */
+.aci-inventory-page__head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-block-end: 0.5rem;
 }
 
-/* Drawn as a box of its own, like the panels above it: closed, it is one line
-   between the kind panel and the diagnostics, and a border is what says the
-   line is a section rather than a stray heading. */
-.aci-inventory-page__no-kind {
-  border: 1px solid var(--aci-border);
-  border-radius: 0.5rem;
-  margin: 1rem 0;
-  padding: 0.5rem 0.75rem;
+.aci-inventory-page__title {
+  font-size: 0.9375rem;
+  margin: 0;
 }
 
-.aci-inventory-page__no-kind summary {
-  cursor: pointer;
+/* The heading takes programmatic focus when a snapshot swap leaves focus on the
+   body, so its ring is explicit rather than dependent on a browser's
+   :focus-visible heuristic. */
+.aci-inventory-page__title:focus {
+  outline: 2px solid var(--aci-accent);
+  outline-offset: 2px;
 }
 
-/* The heading sits inside the summary so the section keeps its place in the
-   document outline while the summary stays the one control that opens it. It is
-   set inline at panel-heading size: as a block it would wrap under the
-   disclosure marker and draw its own margins inside the summary. */
-.aci-inventory-page__no-kind-heading {
-  display: inline;
-  font-size: 1rem;
-}
-
-/* The same muted count the kind tabs carry, so the closed line says how many
-   files are behind it without the reader opening it. */
-.aci-inventory-page__no-kind-count {
+.aci-inventory-page__count {
   color: var(--aci-muted);
+  font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
-  margin-left: 0.4rem;
 }
 </style>

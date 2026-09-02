@@ -52,7 +52,9 @@ import {
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
-import { sourceFactsOf } from '../../../components/source-name';
+import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
+import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -65,6 +67,7 @@ import {
 import { promptComparisonRouteFor } from '../../../composables/prompt-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
+import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
   fileIdentityKey,
@@ -455,10 +458,26 @@ const readyView = computed(() => {
   // another file's name for that frame (FR-025, FR-030).
   const leftDetailPath = left.file.sourceRelativePath;
   const rightDetailPath = right.file.sourceRelativePath;
+  // Read once and used twice — beside each side's path, and as the
+  // recognition comparison's side input — so the products a side box names
+  // and the products its rows compare cannot disagree (AGENTS.md
+  // § Implementation simplicity policy).
+  const leftDefinitions = definitionsOf(left.file);
+  const rightDefinitions = definitionsOf(right.file);
   return {
     sides: [
-      { caption: 'First file', path: leftDetailPath, detail: left },
-      { caption: 'Second file', path: rightDetailPath, detail: right },
+      {
+        caption: 'First file',
+        path: leftDetailPath,
+        detail: left,
+        recognitions: leftDefinitions.map((entry) => entry.definition),
+      },
+      {
+        caption: 'Second file',
+        path: rightDetailPath,
+        detail: right,
+        recognitions: rightDefinitions.map((entry) => entry.definition),
+      },
     ] as const,
     diff: {
       originalText: left.file.sourceText,
@@ -467,10 +486,35 @@ const readyView = computed(() => {
       modifiedPath: rightDetailPath,
     },
     recognition: new PromptRecognitionComparison(
-      { detail: left, definitions: definitionsOf(left.file) },
-      { detail: right, definitions: definitionsOf(right.file) },
+      { detail: left, definitions: leftDefinitions },
+      { detail: right, definitions: rightDefinitions },
     ),
   };
+});
+
+/**
+ * The Source family this comparison stands in, as the family's own word, or
+ * null where naming it distinguishes nothing — a session carrying one Source
+ * (`source-name.ts` § sourceFamilyNameOf). The comparison never spans two
+ * families, so one word covers both sides.
+ */
+const crumbFamilyText = computed(() =>
+  family.value === null ? null : sourceFamilyNameOf(sources.value, family.value),
+);
+
+/**
+ * The invocation name the two files share, which is what the comparison is of.
+ * Null before the pair resolves, where the crumb step would name nothing.
+ *
+ * Drawn through the shared unit, so a name whose characters draw nothing is
+ * spelled out on the crumb and the subject line the way this kind's row and
+ * detail spell it ({@link AuthoredName};
+ * `PromptRow.vue`). A prompt name comes from a file name, so it has no empty
+ * case and never takes the substituting spelling the declared kinds use.
+ */
+const crumbSubject = computed(() => {
+  const name = owningRow.value?.name ?? null;
+  return name === null ? null : new AuthoredName(name);
 });
 
 /**
@@ -688,13 +732,49 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="aci-prompt-compare">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the
-         prompts-and-commands list rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=prompt%2Fcommand">Back to the inventory</NuxtLink></p>
+  <div class="aci-prompt-compare aci-route">
+    <!-- The way back, drawn in the bar with every other route's moves
+         (`DetailNavigation.vue`). The kind is URL state, so naming it is what
+         makes the move land on the prompts and commands list rather than the kind
+         order's default tab. A comparison has no neighbouring row to step to:
+         what stands beside it is the other copy, which its own pickers
+         choose. -->
+    <DetailNavigation
+      list-route="/?kind=prompt%2Fcommand"
+      :list-text="CUSTOMIZATION_KIND_TEXT['prompt/command']"
+      :previous="null"
+      :next="null"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         kind, the subject the two copies share, and this page's own step. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="crumbFamilyText !== null">{{ crumbFamilyText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT['prompt/command'] }} <span>›</span>
+      <template v-if="crumbSubject !== null"
+        ><span class="aci-path" :class="{ 'aci-authored-text': crumbSubject.isAuthored }">{{
+          crumbSubject.text
+        }}</span>
+        <span>›</span> </template
+      ><span class="aci-detail-crumbs__subject">Compare</span>
+    </p>
 
     <h2 ref="heading" tabindex="-1">Compare prompt and command files</h2>
+
+    <!-- What is being compared, on the line directly below the heading so the
+         two are read together. The heading states the page's purpose, because
+         focus lands there on arrival and a screen reader hears it alone
+         (WCAG 2.4.6); putting the subject in it would give each kind its own
+         sentence, and an applicability range would read as "Compare **". The
+         name is the third crumb above as well, where it says where the page
+         sits rather than what it is showing. -->
+    <p v-if="crumbSubject !== null" class="aci-detail-attributes">
+      <strong
+        class="aci-detail-attributes__subject aci-path"
+        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+        >{{ crumbSubject.text }}</strong
+      >
+    </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
          region that appears together with its message is not reliably read
@@ -714,7 +794,11 @@ onBeforeUnmount(() => {
          recovers from — while a link fault ({@link pairFault}) renders the
          report alone. Native selects, each labelled through `for`/`id`
          rather than a wrapping label (WCAG 2.4.6). -->
-    <div v-if="pickersAvailable" ref="pickersRegion" class="aci-prompt-compare__pickers">
+    <div
+      v-if="pickersAvailable"
+      ref="pickersRegion"
+      class="aci-compare-pickers aci-prompt-compare__pickers"
+    >
       <div class="aci-prompt-compare__picker">
         <label for="aci-prompt-compare-first">First prompt or command file</label>
         <select id="aci-prompt-compare-first" v-model="leftSelection">
@@ -759,9 +843,9 @@ onBeforeUnmount(() => {
            read outcome — so neither file loses it to the diff
            (US3 scenario 1). The order is the link's: first named, first
            shown. -->
-      <div class="aci-prompt-compare__files">
-        <section v-for="side in readyView.sides" :key="side.caption">
-          <h3>{{ side.caption }}</h3>
+      <div class="aci-compare-sides">
+        <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
+          <span class="aci-compare-side__caption">{{ side.caption }}</span>
           <p class="aci-prompt-compare__file-path aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
@@ -771,9 +855,9 @@ onBeforeUnmount(() => {
         </section>
       </div>
 
-      <!-- The component owns the section order — the declarations, the body,
-           the complete files it takes below through the `source` slot, and
-           last the recognitions (research.md § 7). What the source diff is
+      <!-- The component owns the section order — the recognitions, the
+           declarations, the body, and last the complete files it takes below
+           through the `source` slot (research.md § 7). What the source diff is
            stays this page's. -->
       <RecognitionComparison
         :comparison="readyView.recognition"
@@ -782,7 +866,11 @@ onBeforeUnmount(() => {
       >
         <template #source>
           <div class="aci-prompt-compare__source">
-            <h3>Source comparison</h3>
+            <h3 class="aci-compare-block-title">Source comparison</h3>
+            <!-- What the diff holds, said before it, as each block above says
+                 what its own two sides are: this one is the files themselves,
+                 with nothing removed or reordered (FR-027). -->
+            <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
             <SourceDiff v-bind="readyView.diff" />
           </div>
         </template>
@@ -797,15 +885,17 @@ onBeforeUnmount(() => {
          whether focus sits on a control an automatic refresh is about to
          unmount (WCAG 2.4.3). -->
     <div v-else-if="stateStatement !== null" ref="stateRegion">
-      <p :class="retryable ? 'aci-error' : 'aci-note'">{{ stateStatement }}</p>
-      <p v-if="retryable">
-        <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
-      </p>
-      <p>
-        <NuxtLink to="/?kind=prompt%2Fcommand"
-          >Return to the inventory and open a comparison from a prompt or command row.</NuxtLink
-        >
-      </p>
+      <SubjectUnavailable :outcome="retryable ? 'error' : 'warning'">
+        {{ stateStatement }}
+        <template #exit>
+          <button v-if="retryable" ref="retryButton" type="button" @click="retryOpen">
+            Try again
+          </button>
+          <NuxtLink to="/?kind=prompt%2Fcommand"
+            >Return to the inventory and open a comparison from a prompt or command row.</NuxtLink
+          >
+        </template>
+      </SubjectUnavailable>
     </div>
   </div>
 </template>
@@ -822,59 +912,6 @@ onBeforeUnmount(() => {
 
 .aci-prompt-compare h2 {
   margin: 0.25rem 0 0.5rem;
-}
-
-.aci-prompt-compare h3 {
-  font-size: 1rem;
-  margin: 0.75rem 0 0.25rem;
-}
-
-/* The two pickers side by side, stacking on a narrow viewport. Each label is
-   a column so the select sits under its name, and the selects shrink inside
-   their columns rather than widening the page (WCAG 1.4.10). */
-.aci-prompt-compare__pickers {
-  display: grid;
-  gap: 0.5rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-  margin-block: 0.25rem;
-}
-
-@media (min-width: 52rem) {
-  .aci-prompt-compare__pickers {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-prompt-compare__picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.aci-prompt-compare__pickers select {
-  max-inline-size: 100%;
-}
-
-/* The two identities side by side above the diff, stacking on a narrow
-   viewport (WCAG 1.4.10). */
-.aci-prompt-compare__files {
-  display: grid;
-  gap: 0.25rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 52rem) {
-  .aci-prompt-compare__files {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-prompt-compare__files h3 {
-  margin: 0.5rem 0 0.1rem;
-}
-
-.aci-prompt-compare__files p {
-  margin: 0.1rem 0;
 }
 
 /* An authored path has no break opportunities of its own; wrapping keeps the

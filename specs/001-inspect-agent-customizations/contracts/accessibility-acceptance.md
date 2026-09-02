@@ -124,6 +124,51 @@ keyed cells per ID, over 36 IDs. Executing it needs all three operating systems 
 screen readers, which is why this release asserts the automated layer instead
 (spec.md § Clarifications, Session 2026-09-01).
 
+## Palette measurements
+
+The shell draws from literal colour values rather than the platform's system colours, so the
+contrast the 1.4.3 and 1.4.11 rows ask for is a number this repository chose and therefore
+owes. The values below were measured against the tokens `src/app/styles/main.css` declares.
+
+Two tokens draw lines, named for what they do rather than for how dark they are.
+`--aci-line` draws what identifies a component or its state — a control's edge, the selected
+rail entry, a source viewer, a panel — and meets 3:1 against every surface it is drawn on.
+`--aci-hairline` separates rows inside a box `--aci-line` has already identified; it
+identifies nothing on its own, the rows being told apart by their text, so 1.4.11 does not
+reach it and its lighter value is not a shortfall. A weight name would have left every use a
+judgement; these two ask a question with one answer — does this line identify a component, or
+does it only separate two rows of one?
+
+| Pair                                | Light | Dark | Threshold |
+| ----------------------------------- | ----: | ---: | --------- |
+| `--aci-line` on page surface        |  3.36 | 3.72 | 3:1 (1.4.11) |
+| `--aci-line` on raised surface      |  3.57 | 3.40 | 3:1 (1.4.11) |
+| `--aci-line` on sunken surface      |  3.18 | 3.15 | 3:1 (1.4.11) |
+| `--aci-hairline` on raised surface  |  1.24 | 1.26 | none: identifies nothing |
+| `--aci-accent` on page surface      |  7.26 | 7.01 | 3:1 (1.4.11) |
+| `--aci-accent` on raised surface    |  7.71 | 6.41 | 3:1 (1.4.11) |
+| `--aci-accent` on sunken surface    |  6.87 | 5.93 | 3:1 (1.4.11) |
+| `--aci-text` on sunken surface      | 15.86 | 13.56 | 4.5:1 (1.4.3) |
+| `--aci-muted` on sunken surface     |  4.87 | 6.36 | 4.5:1 (1.4.3) |
+| `--aci-warn` on sunken surface      |  4.96 | 7.32 | 4.5:1 (1.4.3) |
+| `--aci-on-accent` on the accent     |  7.71 | 7.01 | 4.5:1 (1.4.3) |
+
+The selected state is not carried by its fill. `--aci-accent-soft` is 1.17:1 against the
+raised surface and is discarded under forced colours, so a selected rail entry is identified
+by the accent on its leading edge — 6.87:1 in light and 5.93:1 in dark — and by its own font
+weight as well (1.4.1).
+
+Under `forced-colors: active` every token returns to a system colour, so the reader's own
+palette replaces all of the above and none of these numbers applies: the three surfaces
+collapse to `Canvas`, the two line tokens and the muted text to `CanvasText`, the accent to
+`LinkText`, and the three vendor marks to `CanvasText` together — a mark's colour is a
+scanning aid and nothing rests on it (AGENTS.md § Icon policy).
+
+`tests/e2e/palette-contrast.spec.ts` re-measures every row above in a real engine, in both
+schemes and under forced colours, and recomputes the ratios rather than reading them from the
+stylesheet. It is supporting evidence: `AUTO-1.4.3` and `AUTO-1.4.11` remain the tests in
+`tests/e2e/accessibility.spec.ts`, which this file does not replace.
+
 ## Required execution record
 
 `validation.md` and `validation.ja.md` MUST record, for each of the 55 rows, the frozen state,

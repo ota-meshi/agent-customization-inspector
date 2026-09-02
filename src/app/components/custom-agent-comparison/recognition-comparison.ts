@@ -155,9 +155,6 @@ export class CustomAgentToolRecognitionRow {
   /** The tool whose recognition this row compares. */
   public readonly tool: SupportedTool;
 
-  /** The recognized kind; every recognition this surface compares is this kind's. */
-  public readonly kind: 'agent';
-
   /**
    * This tool's definition of the first file, or null when the tool attaches
    * none. The definition carries both typed facts the cell states — the
@@ -179,7 +176,6 @@ export class CustomAgentToolRecognitionRow {
     right: CustomAgentComparisonSideInput,
   ) {
     this.tool = tool;
-    this.kind = 'agent';
     this.left = definitionOf(left, tool);
     this.right = definitionOf(right, tool);
   }

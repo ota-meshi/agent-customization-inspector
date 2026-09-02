@@ -28,7 +28,7 @@ import type {
   SessionSnapshot,
   SkillInventoryEntryDto,
   SourceDto,
-  SourceSelector,
+  SourceKind,
 } from '../../../src/shared/api-types';
 import { SUPPORTED_TOOL_ORDER } from '../../../src/shared/entities';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
@@ -187,16 +187,16 @@ function snapshotWith(
 // does and passes it in; the composable returns only what it derives.
 function withSelection(snapshot: Ref<SessionSnapshot | null>) {
   const selection = {
-    source: ref<SourceSelector | null>(null),
+    source: ref<SourceKind | null>(null),
     tool: ref<SupportedTool | null>(null),
     kind: ref<CustomizationKind | null>(null),
-    pathQuery: ref(''),
+    searchQuery: ref(''),
   };
   const clear = (): void => {
     selection.source.value = null;
     selection.tool.value = null;
     selection.kind.value = null;
-    selection.pathQuery.value = '';
+    selection.searchQuery.value = '';
   };
   return { ...selection, clear, view: useInventoryFilters(snapshot, selection) };
 }
@@ -212,13 +212,10 @@ describe('inventory filters over the committed snapshot', () => {
     const filters = withSelection(snapshot);
     expect(filters.view.availableTools.value).toEqual(['codex']);
     expect(filters.view.availableKinds.value).toEqual(['skill']);
-    // The Source axis is the family, not one option per Source: the tool axis
-    // beside it cannot separate the shared agent home from a member home,
-    // and this selection rides in the inventory's URL as the launch-stable
-    // selector (`detail-route.ts` § sourceSelectorOf).
-    expect(filters.view.availableSources.value).toEqual([
-      { selector: 'repository', label: 'Repository' },
-    ]);
+    // The Source axis is the family, not one option per Source: a per-member
+    // option asks what the tool axis beside it already answers, and one family
+    // is a question with one answer (T1003).
+    expect(filters.view.availableSourceKinds.value).toEqual(['repository']);
   });
 
   it('leaves a skill\u2019s own supporting files out of the unrecognized list', () => {
@@ -319,8 +316,100 @@ describe('inventory filters over the committed snapshot', () => {
 
     // The Source and path filters still apply: each is a fact about the file
     // itself rather than about a recognition it does not have.
-    filters.pathQuery.value = 'skills/';
+    filters.searchQuery.value = 'skills/';
     expect(filters.view.unrecognizedRows.value).toEqual([]);
+  });
+
+  it("matches a row by its own name as well as by its files' paths", () => {
+    // T1148, FR-006: one search over names and paths. The two are largely the
+    // same characters here — a skill's invocation name is its directory's name
+    // — so what has to be proved is the case where they differ: a name the
+    // paths do not spell, and a path fragment no name spells.
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          file('.agents/skills/alpha-a/SKILL.md'),
+          file('.claude/skills/dup/SKILL.md'),
+          file('vendor/skills/other/SKILL.md'),
+        ],
+        [
+          skill('alpha', '.agents/skills/alpha-a/SKILL.md', '.claude/skills/dup/SKILL.md'),
+          skill('other', 'vendor/skills/other/SKILL.md'),
+        ],
+      ),
+    );
+    const filters = withSelection(snapshot);
+
+    // A name none of its own files spells. Both of its definitions stay: the
+    // reader asked for the name, and answering with the copy whose path
+    // happens to spell it too would hide the pair that makes the row worth
+    // opening.
+    filters.searchQuery.value = 'alpha';
+    expect(filters.view.skillRows.value.map((row) => row.name)).toEqual(['alpha']);
+    expect(filters.view.skillRows.value[0]!.definitions).toHaveLength(2);
+
+    // A path fragment no name spells still narrows, which is what the removed
+    // `Path contains` field used to take.
+    filters.searchQuery.value = 'vendor/';
+    expect(filters.view.skillRows.value.map((row) => row.name)).toEqual(['other']);
+
+    // A path fragment inside one name's files keeps that row and only the
+    // definition that matched, exactly as the path filter did.
+    filters.searchQuery.value = '.claude/';
+    expect(filters.view.skillRows.value.map((row) => row.name)).toEqual(['alpha']);
+    expect(
+      filters.view.skillRows.value[0]!.definitions.map((one) => one.sourceRelativePath),
+    ).toEqual(['.claude/skills/dup/SKILL.md']);
+
+    // Text neither a name nor a path holds narrows to nothing, rather than
+    // falling back to matching everything.
+    filters.searchQuery.value = 'no-such-thing';
+    expect(filters.view.skillRows.value).toEqual([]);
+  });
+
+  it('keeps the Source filter over a row whose name matched', () => {
+    // A name match answers "what is this called", never "where does it live":
+    // the Source filter is a question about the file and still applies, so a
+    // reader narrowed to one Source never sees another Source's copy reappear
+    // because they typed the name (T1148, FR-006).
+    const claudeSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-claude',
+      kind: 'global',
+      member: 'claude',
+      boundary: { displayRoot: '/home/reader/.claude', origin: 'environment' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          file('.agents/skills/alpha/SKILL.md'),
+          { ...file('skills/alpha/SKILL.md'), sourceId: 'src-global-claude' },
+        ],
+        [
+          skill('alpha', '.agents/skills/alpha/SKILL.md'),
+          {
+            ...skill('alpha', 'skills/alpha/SKILL.md'),
+            definitions: [
+              {
+                ...skill('alpha', 'skills/alpha/SKILL.md').definitions[0]!,
+                sourceId: 'src-global-claude',
+              },
+            ],
+          },
+        ],
+        { sources: [REPOSITORY_SOURCE, claudeSource] },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    filters.searchQuery.value = 'alpha';
+    expect(filters.view.skillRows.value).toHaveLength(2);
+
+    filters.source.value = 'global';
+    expect(
+      filters.view.skillRows.value.flatMap((row) =>
+        row.definitions.map((one) => one.sourceRelativePath),
+      ),
+    ).toEqual(['skills/alpha/SKILL.md']);
   });
 
   it('narrows by source, tool, and Source-relative path', () => {
@@ -346,12 +435,12 @@ describe('inventory filters over the committed snapshot', () => {
       'other/SKILL.md',
     ]);
 
-    filters.pathQuery.value = 'packages/';
+    filters.searchQuery.value = 'packages/';
     // The filter matches a definition's file, and the row it keeps is the name
     // that definition declares.
     expect(filters.view.skillRows.value.map((row) => row.name)).toEqual(['deploy']);
 
-    filters.pathQuery.value = '';
+    filters.searchQuery.value = '';
     filters.tool.value = 'codex';
     expect(filters.view.skillRows.value).toHaveLength(2);
     // The one published family keeps every recognized row; a family the
@@ -359,7 +448,7 @@ describe('inventory filters over the committed snapshot', () => {
     // ignored rather than silently emptying the list.
     filters.source.value = 'repository';
     expect(filters.view.skillRows.value).toHaveLength(2);
-    filters.source.value = 'global-claude';
+    filters.source.value = 'global';
     expect(filters.view.skillRows.value).toHaveLength(2);
 
     filters.clear();
@@ -422,7 +511,7 @@ describe('inventory filters over the committed snapshot', () => {
     expect(filters.view.instructionRows.value).toHaveLength(3);
 
     // A Source filter leaves the range standing with the rows it kept.
-    filters.source.value = 'global-codex';
+    filters.source.value = 'global';
     expect(
       filters.view.instructionRangeGroups.value.map((group) => [
         group.applicabilityRange,
@@ -529,8 +618,107 @@ describe('inventory filters over the committed snapshot', () => {
     // And a Source selection narrows it the way it narrows every other row.
     filters.source.value = 'repository';
     expect(filters.view.unrecognizedRows.value).toHaveLength(0);
-    filters.source.value = 'global-codex';
+    filters.source.value = 'global';
     expect(filters.view.unrecognizedRows.value).toHaveLength(1);
+  });
+
+  it('narrows the Source-level diagnostics by Source and by nothing else', () => {
+    // The Diagnostics list holds the records that belong to a Source rather
+    // than to one of its files — a file's own record is stated on that file's
+    // row — so the Source selection narrows it and the tool selection cannot:
+    // such a record names no product (FR-006, FR-028).
+    const globalSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-codex',
+      kind: 'global',
+      member: 'codex',
+      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith([file('.agents/skills/greet/SKILL.md')], [], {
+        sources: [REPOSITORY_SOURCE, globalSource],
+        diagnostics: [
+          {
+            diagnosticId: 'diag-repo-root',
+            code: 'root-unreadable',
+            sourceId: 'src-repo',
+            sourceRelativePath: null,
+          },
+          {
+            diagnosticId: 'diag-global-root',
+            code: 'root-unreadable',
+            sourceId: 'src-global-codex',
+            sourceRelativePath: null,
+          },
+          {
+            // A file's own record, which the file's row states instead.
+            diagnosticId: 'diag-file',
+            code: 'file-unreadable',
+            sourceId: 'src-repo',
+            sourceRelativePath: 'AGENTS.md',
+          },
+        ],
+      }),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.sourceScopedDiagnostics.value.map((entry) => entry.diagnosticId)).toEqual([
+      'diag-repo-root',
+      'diag-global-root',
+    ]);
+    // The unnarrowed population the result summary compares against.
+    expect(filters.view.sourceScopedDiagnosticTotal.value).toBe(2);
+
+    filters.source.value = 'global';
+    expect(filters.view.sourceScopedDiagnostics.value.map((entry) => entry.diagnosticId)).toEqual([
+      'diag-global-root',
+    ]);
+    expect(filters.view.sourceScopedDiagnosticTotal.value).toBe(2);
+
+    // A tool selection leaves the list alone: no product is named by any of
+    // these records, so narrowing by one would empty a list under a question
+    // it cannot answer.
+    filters.source.value = null;
+    filters.tool.value = 'codex';
+    expect(filters.view.sourceScopedDiagnostics.value).toHaveLength(2);
+  });
+
+  it('publishes the unnarrowed count of the files in no kind beside the narrowed rows', () => {
+    // The two lists that belong to no kind carry the Source narrowing, so the
+    // summary beside them compares the rows on screen against the population
+    // the generation published (FR-006).
+    const globalSource: SourceDto = {
+      ...REPOSITORY_SOURCE,
+      sourceId: 'src-global-codex',
+      kind: 'global',
+      member: 'codex',
+      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [
+          file('AGENTS.md'),
+          {
+            sourceId: 'src-global-codex',
+            sourceRelativePath: 'AGENTS.md',
+            diagnosticIds: [],
+            encoding: 'utf-8',
+            hadLeadingBom: false,
+            sizeBytes: 3,
+          },
+        ],
+        [],
+        { sources: [REPOSITORY_SOURCE, globalSource] },
+      ),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.unrecognizedRows.value).toHaveLength(2);
+    expect(filters.view.unrecognizedTotal.value).toBe(2);
+
+    filters.source.value = 'global';
+    expect(filters.view.unrecognizedRows.value).toHaveLength(1);
+    // The total is the generation's, not the narrowing's: it is what the
+    // narrowed rows are stated as a fraction of.
+    expect(filters.view.unrecognizedTotal.value).toBe(2);
   });
 
   it('narrows to one Source family, keeping the same path in the other out', () => {
@@ -562,14 +750,11 @@ describe('inventory filters over the committed snapshot', () => {
       ),
     );
     const filters = withSelection(snapshot);
-    // Every published Source is offered, in the published order.
-    expect(filters.view.availableSources.value).toEqual([
-      { selector: 'repository', label: 'Repository' },
-      { selector: 'global-codex', label: 'OpenAI Codex' },
-    ]);
+    // Both families are offered, in the fixed order.
+    expect(filters.view.availableSourceKinds.value).toEqual(['repository', 'global']);
     expect(filters.view.instructionRows.value).toHaveLength(2);
 
-    filters.source.value = 'global-codex';
+    filters.source.value = 'global';
     expect(filters.view.instructionRows.value.map((row) => row.sourceId)).toEqual([
       'src-global-codex',
     ]);
@@ -621,13 +806,12 @@ describe('inventory filters over the committed snapshot', () => {
       ),
     );
     const filters = withSelection(snapshot);
-    expect(filters.view.availableSources.value.map((option) => option.selector)).toEqual([
-      'repository',
-      'global-codex',
-      'global-agents',
-    ]);
-    filters.source.value = 'global-agents';
+    // The filter's axis is the family, so two consented homes offer one
+    // option between them and selecting it keeps both (T1003).
+    expect(filters.view.availableSourceKinds.value).toEqual(['repository', 'global']);
+    filters.source.value = 'global';
     expect(filters.view.instructionRows.value.map((row) => row.sourceId)).toEqual([
+      'src-global-codex',
       'src-global-agents',
     ]);
   });
@@ -640,10 +824,10 @@ describe('inventory filters over the committed snapshot', () => {
       ),
     );
     const filters = withSelection(snapshot);
-    filters.pathQuery.value = 'weird name';
+    filters.searchQuery.value = 'weird name';
     expect(filters.view.skillRows.value).toHaveLength(1);
     // A leading separator is matched as text, not resolved as a path.
-    filters.pathQuery.value = '/etc/passwd';
+    filters.searchQuery.value = '/etc/passwd';
     expect(filters.view.skillRows.value).toEqual([]);
   });
 
@@ -661,7 +845,7 @@ describe('inventory filters over the committed snapshot', () => {
       ),
     );
     const filters = withSelection(snapshot);
-    filters.pathQuery.value = ' name';
+    filters.searchQuery.value = ' name';
     expect(filters.view.skillRows.value).toHaveLength(1);
   });
 
@@ -766,9 +950,9 @@ describe('settings and configuration rows in the filtered view (T588)', () => {
     expect(filters.view.kindCounts.value.get('settings/config')).toBe(0);
     filters.tool.value = null;
     // The path filter matches the spelling the row renders, case-folded.
-    filters.pathQuery.value = 'CONFIG.TOML';
+    filters.searchQuery.value = 'CONFIG.TOML';
     expect(filters.view.settingsRows.value).toEqual([CODEX_CONFIG]);
-    filters.pathQuery.value = 'settings.json';
+    filters.searchQuery.value = 'settings.json';
     expect(filters.view.settingsRows.value).toEqual([]);
   });
 
@@ -826,9 +1010,9 @@ describe('same-name resolutions in the filtered view', () => {
         [skill('dup', 'a/SKILL.md', 'b/SKILL.md')],
       ),
     );
-    const { pathQuery, view } = withSelection(snapshot);
+    const { searchQuery, view } = withSelection(snapshot);
     expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(1);
-    pathQuery.value = 'a/SKILL.md';
+    searchQuery.value = 'a/SKILL.md';
     expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(0);
   });
 
@@ -862,11 +1046,11 @@ describe('same-name resolutions in the filtered view', () => {
         [entry],
       ),
     );
-    const { pathQuery, view } = withSelection(snapshot);
+    const { searchQuery, view } = withSelection(snapshot);
     expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(1);
     // Filter away one clash partner; `wave` and `tide` remain — still two
     // definitions, but no directory clash, so no Claude statement.
-    pathQuery.value = 'one/';
+    searchQuery.value = 'one/';
     const remaining = view.skillRows.value[0]!;
     expect(remaining.definitions).toHaveLength(2);
     expect(remaining.sameNameResolutions).toHaveLength(0);
@@ -901,9 +1085,9 @@ describe('same-name resolutions in the filtered view', () => {
         [rowFor('apps:wave', nestedPath), rowFor('wave', rootPath)],
       ),
     );
-    const { pathQuery, view } = withSelection(snapshot);
+    const { searchQuery, view } = withSelection(snapshot);
     expect(view.skillRows.value.map((row) => row.sameNameResolutions.length)).toEqual([1, 1]);
-    pathQuery.value = 'apps/';
+    searchQuery.value = 'apps/';
     expect(view.skillRows.value).toHaveLength(1);
     expect(view.skillRows.value[0]!.name).toBe('apps:wave');
     expect(view.skillRows.value[0]!.sameNameResolutions).toHaveLength(0);
@@ -1218,7 +1402,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
   it('narrows by path across tools and drops a statement with the hidden side', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
     const filters = withSelection(snapshot);
-    filters.pathQuery.value = 'alpha-a';
+    filters.searchQuery.value = 'alpha-a';
     const rows = filters.view.skillRows.value;
     // One file remains, so each tool has one definition and no collision.
     expect(rows.map((entry) => entry.name)).toEqual(['alpha']);
@@ -1229,7 +1413,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     expect(rows[0]!.sameNameResolutions).toEqual([]);
 
     // The `.github` spelling reaches only the Copilot definition of `voyage`.
-    filters.pathQuery.value = '.github/';
+    filters.searchQuery.value = '.github/';
     const githubRows = filters.view.skillRows.value;
     expect(githubRows.map((entry) => entry.name)).toEqual(['voyage']);
     expect(githubRows[0]!.definitions.map((definition) => definition.tool)).toEqual(['copilot']);
@@ -1242,7 +1426,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     expect(filters.view.kindCounts.value.get('skill')).toBe(4);
     filters.tool.value = 'claude';
     expect(filters.view.kindCounts.value.get('skill')).toBe(1);
-    filters.pathQuery.value = 'no-such-path';
+    filters.searchQuery.value = 'no-such-path';
     expect(filters.view.kindCounts.value.get('skill')).toBe(0);
     // An unmatched filter empties the rows without touching the snapshot.
     expect(snapshot.value!.skills).toHaveLength(4);
@@ -1272,7 +1456,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     const filters = withSelection(state.snapshot);
     filters.tool.value = 'claude';
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['lander']);
-    filters.pathQuery.value = 'alpha';
+    filters.searchQuery.value = 'alpha';
     filters.tool.value = null;
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['alpha']);
     expect(calls).toEqual(['agent-customization-inspector:get-session']);
@@ -1386,8 +1570,8 @@ describe('unified instruction rows across the recognizing tools (T271)', () => {
 
   it('narrows by path inside each range and counts the kind tab from the result', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(matrixSnapshot());
-    const { pathQuery, view } = withSelection(snapshot);
-    pathQuery.value = 'claude.md';
+    const { searchQuery, view } = withSelection(snapshot);
+    searchQuery.value = 'claude.md';
     // Case-insensitive substring over the file paths — `CLAUDE.local.md`
     // does not contain it, so the query names the two exact spellings alone.
     // The ranges whose files all miss are not rows, and the no-range row

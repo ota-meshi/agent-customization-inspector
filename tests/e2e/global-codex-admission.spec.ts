@@ -33,6 +33,7 @@ import {
   type GlobalHomeFixture,
 } from '../fixtures/global-homes/build-fixtures';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openPersonalSetup } from './repository-status';
 import { openNoKindDisclosure } from './no-kind-disclosure';
 
 /**
@@ -117,12 +118,12 @@ test('confirms with no tool selector and states what was accepted', async ({ pag
   const main = page.locator('main');
   // All four members are bound and every fixture root is readable, so each
   // control states its own outcome from the one shared batch (FR-014).
-  await expect(main).toContainText('OpenAI Codex — Inspected');
+  await expect(main).toContainText('Codex home — Inspected');
   const outcomes = await page.locator('.aci-global-consent-page__outcomes li').allInnerTexts();
   expect(outcomes).toEqual([
-    'GitHub Copilot — Inspected',
-    'Claude Code — Inspected',
-    'OpenAI Codex — Inspected',
+    'Copilot home — Inspected',
+    'Claude home — Inspected',
+    'Codex home — Inspected',
     'Shared agent home — Inspected',
   ]);
   // No per-tool control the reader could have used to narrow the consent: the
@@ -150,9 +151,11 @@ test('publishes the admitted home as its own Source beside the repository', asyn
 
     const main = page.locator('main');
     // Two Sources on one page: the repository the launch selected, and the
-    // consented Codex home. Each states its own escaped root.
+    // consented Codex home. Each root is stated on that family's own surface
+    // rather than over the inventory (FR-030).
     await expect(main).toContainText('Repository');
-    await expect(main).toContainText(homes.homes.codex);
+    await expect(await openPersonalSetup(page)).toContainText(homes.homes.codex);
+    await page.goto(own.origin);
     // The Repository results are still there — a Global commit advances its own
     // sequence and leaves the Repository generation alone (FR-042).
     await page.getByRole('tab', { name: /^Skill/u }).click();
@@ -279,7 +282,7 @@ test('states active-no-job when nothing could be admitted, and reads nothing', a
     // was nothing to read: consent stays in effect so the reader can fix the
     // variable and try again.
     await expect(main).toContainText('Nothing could be inspected, so nothing was read');
-    await expect(main).toContainText('OpenAI Codex — Not inspected');
+    await expect(main).toContainText('Codex home — Not inspected');
     await expect(main).toContainText('environment variable is set to an empty value');
     // No Global Source was created, so the inventory is the repository's alone.
     await page.goto(refused.origin);
@@ -353,15 +356,23 @@ test('inspects the personal setup from the command line, with no consent click',
   try {
     await page.goto(own.origin);
     const main = page.locator('main');
-    await expect(main).toContainText('Your personal setup');
-    await expect(main).toContainText(homes.homes.codex);
+    // The rail says the personal setup was read, which is the inventory
+    // stating it (FR-030); the home's own root is on that family's surface.
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Sources' })
+        .getByRole('link', { name: /^Personal setup/u }),
+    ).toContainText(/Inspected|\d+ partial/u);
     // And the consent page states the active consent rather than offering to
     // work the directories out — the flag used the same consent state the
-    // handlers serve. The entry link reads as a review once a Source exists,
-    // which is itself the inventory stating that something was read.
-    await page.getByRole('link', { name: /Review what is inspected/iu }).click();
+    // handlers serve.
+    await page
+      .getByRole('navigation', { name: 'Sources' })
+      .getByRole('link', { name: /^Personal setup/u })
+      .click();
+    await expect(main).toContainText(homes.homes.codex);
     await expect(page.locator('main')).toContainText('What is inspected');
-    await expect(page.locator('main')).toContainText('OpenAI Codex — Inspected');
+    await expect(page.locator('main')).toContainText('Codex home — Inspected');
     await expect(page.getByRole('button', { name: 'Inspect these directories' })).toHaveCount(0);
   } finally {
     await stopHost(own);
@@ -388,17 +399,15 @@ test('filters the inventory by Source rather than by tool', async ({ page }) => 
     await page.goto(own.origin);
     await page.getByRole('tab', { name: /^Instructions/u }).click();
 
-    // The axis is the Source (FR-006): the repository, and each consented
-    // home as its own option — the shared agent home is no tool's, so the
-    // Tool filter beside this one could not separate it from a member home.
+    // The axis is the Source family (FR-006; T1003): the repository, and the
+    // reader's own configuration directories as one. A per-member option
+    // would ask what the Tool filter beside this one already answers, and one
+    // family is a question with one answer.
     const sourceFilter = page.getByLabel('Source', { exact: true });
     await expect(sourceFilter.locator('option')).toHaveText([
       'All sources',
       'Repository',
-      'GitHub Copilot',
-      'Claude Code',
-      'OpenAI Codex',
-      'Shared agent home',
+      'Your personal setup',
     ]);
 
     // Both families publish `AGENTS.md`, so the path says nothing about which
@@ -413,11 +422,11 @@ test('filters the inventory by Source rather than by tool', async ({ page }) => 
       '/instructions/detail/repository/AGENTS.md',
     ]);
 
-    await sourceFilter.selectOption({ label: 'OpenAI Codex' });
+    await sourceFilter.selectOption({ label: 'Your personal setup' });
     expect(await addresses()).toEqual(['/instructions/detail/global-codex/AGENTS.md']);
     await sourceFilter.selectOption({ label: 'Repository' });
     expect(await addresses()).toEqual(['/instructions/detail/repository/AGENTS.md']);
-    // The selection rides in the URL as the Source selector, which survives a
+    // The selection rides in the URL as the family's own word, which survives a
     // launch — a Source ID would not. Awaited rather than read: the query is written by
     // a `router.replace` the selection triggers, so reading it in the same tick
     // catches the previous one.
@@ -455,18 +464,16 @@ test('says which Source each row and each detail belongs to', async ({ page }) =
     const rows = page.getByRole('tabpanel').locator('.aci-family-heading');
     // Three Sources, two families: both consented homes are one block, and
     // which directory each of their files was in is stated beside the file.
-    await expect(rows).toHaveText(['Repository', 'Your personal setup']);
+    await expect(rows).toHaveText([/^Repository/u, /^Your personal setup/u]);
 
     // And each detail states it too, so a kept link says which file it opened.
     await page.goto(new URL('/instructions/detail/global-codex/AGENTS.md', own.origin).toString());
-    await expect(page.locator('.aci-instruction-detail__recognition')).toContainText(
-      'Your personal setup',
-    );
+    await expect(page.locator('.aci-detail-crumbs')).toContainText('Your personal setup');
     // And which directory it was in, because two homes are carried: this case's
     // own Codex home, not the shared fixture's.
     await expect(page.locator('.aci-instruction-detail__root')).toContainText(home.home);
     await page.goto(new URL('/instructions/detail/repository/AGENTS.md', own.origin).toString());
-    await expect(page.locator('.aci-instruction-detail__recognition')).toContainText('Repository');
+    await expect(page.locator('.aci-detail-crumbs')).toContainText('Repository');
   } finally {
     await stopHost(own);
     await rm(shadowed, { recursive: true, force: true });
@@ -554,7 +561,7 @@ test('groups one range across Sources, each Source with its own comparison', asy
     // heading, not three.
     const items = panel.locator('.aci-item');
     await expect(items).toHaveCount(2);
-    await expect(items.locator('.aci-instruction-row__range')).toHaveText(['**', 'docs/**']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['**', 'docs/**']);
     // And the count beside the list counts what a reader can count.
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
       'Showing 2 of 2',
@@ -564,24 +571,24 @@ test('groups one range across Sources, each Source with its own comparison', asy
     // each with its own files.
     const rootRange = items.first();
     await expect(rootRange.locator('.aci-family-heading')).toHaveText([
-      'Repository',
-      'Your personal setup',
+      /^Repository/u,
+      /^Your personal setup/u,
     ]);
     const blocks = rootRange.locator('.aci-source-family-blocks > li');
     await expect(blocks.nth(0).locator('.aci-path')).toHaveText(['AGENTS.md', 'CLAUDE.md']);
     // Both homes' files are in one block, each publishing the one file its own
-    // vendor rule admits — and each stating the directory it was in, which is
-    // the only thing that tells the two apart here (FR-002, FR-030).
+    // vendor rule admits — and each naming the home it came from, which is the
+    // only thing that tells the two apart here (FR-002, FR-030).
     await expect(blocks.nth(1).locator('.aci-path')).toHaveText(['CLAUDE.md', 'AGENTS.md']);
-    await expect(blocks.nth(1).locator('.aci-source-root-line')).toHaveText([
-      homes.homes.claude,
-      home.home,
+    await expect(blocks.nth(1).locator('.aci-source-home')).toHaveText([
+      'Claude home',
+      'Codex home',
     ]);
 
     // The comparison belongs to the block, and each block offers its own: the
     // repository's pair, and the two homes' files against each other. Each link
     // names its family so the two never announce identically (WCAG 2.4.6).
-    const compare = rootRange.locator('.aci-instruction-row__compare a');
+    const compare = rootRange.locator('.aci-family-heading a');
     await expect(compare).toHaveCount(2);
     await expect(compare.nth(0)).toHaveAttribute(
       'aria-label',
@@ -631,11 +638,11 @@ test('names the Source of each file in no kind at one path', async ({ page }) =>
       .locator('.aci-item')
       .filter({ hasText: 'AGENTS.md' });
     await expect(unclassified).toHaveCount(2);
-    // Each row states whose file it is, ahead of what happened to it.
-    await expect(unclassified.nth(0).locator('.aci-note').first()).toHaveText(/^Repository · /u);
-    await expect(unclassified.nth(1).locator('.aci-note').first()).toHaveText(
-      /^Your personal setup · /u,
-    );
+    // Each row states whose file it is: the family through the section it is
+    // listed under, and the home through the row's own badge (FR-002, FR-030).
+    const sections = (await openNoKindDisclosure(page)).locator('.aci-family-heading');
+    await expect(sections).toHaveText([/^Repository/u, /^Your personal setup/u]);
+    await expect(unclassified.nth(1).locator('.aci-source-home')).toHaveText('Codex home');
     // And both still say what happened, which is why they are listed at all.
     await expect(unclassified.nth(0)).toContainText('Binary — recorded without source text');
     await expect(unclassified.nth(1)).toContainText('Binary — recorded without source text');
@@ -656,7 +663,7 @@ test('states the current consent after a reload, not the acceptance response', a
     await page.goto(new URL('/global-consent', own.origin).toString());
     const main = page.locator('main');
     await expect(main).toContainText('What is inspected');
-    await expect(main).toContainText('OpenAI Codex — Inspected');
+    await expect(main).toContainText('Codex home — Inspected');
     // And the finished read is stated in the past: "being read now" after the
     // reading is over would describe work that is not happening.
     await expect(main).toContainText('were read');

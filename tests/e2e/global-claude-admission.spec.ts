@@ -27,6 +27,7 @@ import {
   type GlobalHomeFixture,
 } from '../fixtures/global-homes/build-fixtures';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openPersonalSetup } from './repository-status';
 
 /** The repository the session is launched against. */
 let repository: string;
@@ -60,7 +61,7 @@ async function instructionAddresses(page: Page): Promise<string[]> {
   await page.getByRole('tab', { name: /^Instructions/u }).click();
   return page
     .getByRole('tabpanel')
-    .locator('.aci-instruction-row__owner a')
+    .locator('.aci-row-file a')
     .evaluateAll((anchors) =>
       anchors.map((anchor) => new URL((anchor as HTMLAnchorElement).href).pathname),
     );
@@ -72,11 +73,13 @@ test('inspects Claude and Codex from one confirmation, each as its own Source', 
   await page.goto(host.origin);
   const main = page.locator('main');
 
-  // Both consented homes are stated, each by its own escaped root, under the
-  // one panel the personal setup gets.
+  // Both consented homes are stated, each by its own escaped root, on the
+  // surface that family's own state lives on (FR-030).
+  const personal = await openPersonalSetup(page);
+  await expect(personal).toContainText(homes.homes.claude);
+  await expect(personal).toContainText(homes.homes.codex);
+  await page.goto(host.origin);
   await expect(main).toContainText('Your personal setup');
-  await expect(main).toContainText(homes.homes.claude);
-  await expect(main).toContainText(homes.homes.codex);
 
   // And the consented instruction files are on the inventory, each under its
   // own Source, beside the repository's own instruction file — Copilot's
@@ -120,9 +123,9 @@ test('states each tool’s own outcome from the one shared batch', async ({ page
   await expect(main).toContainText('What is inspected');
   // All four members were read: every fixture root is a readable directory,
   // and each states its own outcome from the one shared batch (FR-014).
-  await expect(main).toContainText('GitHub Copilot — Inspected');
-  await expect(main).toContainText('Claude Code — Inspected');
-  await expect(main).toContainText('OpenAI Codex — Inspected');
+  await expect(main).toContainText('Copilot home — Inspected');
+  await expect(main).toContainText('Claude home — Inspected');
+  await expect(main).toContainText('Codex home — Inspected');
   await expect(main).toContainText('Shared agent home — Inspected');
   const outcomes = await page.locator('.aci-global-consent-page__outcomes li').allInnerTexts();
   expect(outcomes).toHaveLength(4);

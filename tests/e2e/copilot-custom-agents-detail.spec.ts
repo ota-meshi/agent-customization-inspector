@@ -125,8 +125,10 @@ test.describe('the complete literal Copilot agent-profile detail', () => {
     const main = page.locator('main');
     // The file's identity restated from its row: the product, its three
     // surfaces, the kind's caption, and the name the row is grouped under —
-    // the file's own, not the `Deployer` it declares.
-    await expect(main).toContainText('GitHub Copilot (VS Code, CLI, Cloud agent) · Agent');
+    // the file's own attribute line.
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('VS Code, CLI, Cloud agent');
     await expect(main).toContainText('Agent name: deployer');
 
     // The parse tab leads, with the frontmatter as one YAML document in the
@@ -140,7 +142,9 @@ test.describe('the complete literal Copilot agent-profile detail', () => {
     // The handoff and the declared server are values, not links or controls.
     await expect(main).toContainText('planner');
     await expect(main).toContainText('@example/deploy-mcp');
-    await expect(page.getByRole('link', { name: /planner/u })).toHaveCount(0);
+    await expect(
+      page.locator('.aci-agent-detail').getByRole('link', { name: /planner/u }),
+    ).toHaveCount(0);
     // The instructions half holds the prose, and the handoff inside it stays
     // text (FR-019).
     await expect(main).toContainText('Deploy the release, then hand the verification to @planner.');
@@ -209,7 +213,7 @@ test.describe('the complete literal Copilot agent-profile detail', () => {
     await expect(
       page.getByRole('heading', { name: '.github/agents/planner.agent.md' }),
     ).toBeVisible();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=agent$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Agent');
   });

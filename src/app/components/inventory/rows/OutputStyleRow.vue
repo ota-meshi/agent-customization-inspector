@@ -28,26 +28,32 @@
 // name instead, which is what the reader can act on: their two files (FR-009).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
-import { detailRoute } from '../../detail-route';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
+import { detailRoute, originRowNameQuery } from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
+import { AuthoredName } from '../../authored-name';
 import {
   fileIdentityKey,
-  SUPPORTED_TOOL_TEXT,
-  escapeControlCharacters,
   inlinePresentationLabel,
   pathPresentationLabel,
-  rendersNothingVisible,
   accessiblePresentationLabel,
 } from '../../../../shared/entities';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
   OutputStyleDefinitionDto,
   OutputStyleInventoryEntryDto,
   SerializedDiagnostic,
 } from '../../../../shared/api-types';
+
+/**
+ * The row's declared name, as every surface of the row needs it: the reader's
+ * own characters, with this product's note beside them where they draw nothing
+ * ({@link AuthoredName}). Never empty — the name comes from a file or
+ * directory — so the substituting spelling is not the one this kind uses.
+ */
+const name = computed(() => new AuthoredName(props.entry.name));
 
 const props = defineProps<{
   /** The committed output-style entry to render: one style name. */
@@ -100,17 +106,19 @@ const fileRows = computed(() => {
        * announce identically (WCAG 2.4.4, FR-025).
        */
       pathAccessibleText: accessiblePresentationLabel(sourceRelativePath),
-      recognitions: definitions.map((definition) => ({
-        tool: definition.tool,
-        toolText: SUPPORTED_TOOL_TEXT[definition.tool],
-        surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-      })),
-      /** The file's own detail route; the path is the whole route identity (FR-030). */
-      detailRoute: detailRoute(
-        'output style',
-        sourceRelativePath,
-        sessionSources.selectorOf(sourceId),
-      ),
+      recognitions: definitions,
+      /**
+       * The file's own detail route, with the row it was followed from: the
+       * page is the file's, addressed by `(source, path)`, and the row name
+       * beside it is what the moves to the previous and next row step from
+       * (`detail-route.ts` § originRowNameQuery). One file can be listed under
+       * two names, and without it those moves stepped whichever of its rows
+       * the snapshot listed first.
+       */
+      detailRoute: {
+        path: detailRoute('output style', sourceRelativePath, sessionSources.selectorOf(sourceId)),
+        query: originRowNameQuery(props.entry.name),
+      },
       /**
        * The extraction diagnostics this file's definitions reference,
        * deduplicated: one extraction per `(file, kind)` means every definition
@@ -127,19 +135,20 @@ const fileRows = computed(() => {
     <!-- The row's name is inert text, never a locator. It is rendered with the
          same control-character escaping as a path (data-model.md § Inventory
          unit): a selection identity must read as what it is. -->
-    <p class="aci-output-style-row__name">
-      <!-- A name that draws nothing — a file named only from whitespace or
-           default-ignorable code points — gets its own label rather than a
-           blank line: the name is kept exactly, and saying it is invisible is
-           not the same as showing nothing (FR-025). -->
-      <template v-if="rendersNothingVisible(entry.name)"
-        ><span class="aci-authored-text aci-authored-atomic">{{
-          escapeControlCharacters(entry.name)
-        }}</span>
-        <span class="aci-muted">(name with no visible characters)</span></template
+    <p class="aci-row-head">
+      <!-- A name that draws nothing — whitespace, or code points such as
+           U+200B that are not whitespace and survive a trim — is spelled out
+           in full rather than left blank, so two such names stay two rows on
+           the screen ({@link AuthoredName}). The spelled form is this
+           product's characters, so it takes the muted treatment the other
+           rows give theirs rather than the authored one. -->
+      <span
+        class="aci-row-head__name"
+        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+        >{{ name.text }}</span
       >
-      <template v-else
-        ><span class="aci-authored-text">{{ escapeControlCharacters(entry.name) }}</span></template
+      <span class="aci-row-head__count"
+        >{{ fileRows.length }} {{ fileRows.length === 1 ? 'file' : 'files' }}</span
       >
     </p>
 
@@ -152,73 +161,30 @@ const fileRows = computed(() => {
          rendered by this row. -->
     <SourceFamilyBlocks :members="fileRows" :member-key="(file) => file.key">
       <template #member="{ member: file }">
-        <p class="aci-output-style-row__owner">
-          <NuxtLink
-            :to="file.detailRoute"
-            class="aci-path aci-authored-text"
-            :aria-label="
-              sessionSources.qualifiedLinkName(
-                `${file.pathAccessibleText}: ${inlinePresentationLabel(entry.name)}`,
-                file.sourceId,
-              )
-            "
-            >{{ file.pathText }}</NuxtLink
-          >
-          <span
-            v-for="recognition in file.recognitions"
-            :key="recognition.tool"
-            class="aci-output-style-row__tool aci-muted"
-            >{{ recognition.toolText }}
-            <span class="aci-output-style-row__surfaces">{{ recognition.surfacesText }}</span></span
-          >
-        </p>
-
-        <SourceRootLine :source-id="file.sourceId" />
-        <!-- The file's own extraction diagnostics — its recognitions'
-             reference to the kind's one shared failure record, not the file's
-             aggregate, so a row reports its own kind's failure and never every
-             problem its file carries (FR-028). -->
-        <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <SourceHomeBadge :source-id="file.sourceId" />
+            <NuxtLink
+              :to="file.detailRoute"
+              class="aci-path aci-authored-text"
+              :aria-label="
+                sessionSources.qualifiedLinkName(
+                  `${file.pathAccessibleText}: ${inlinePresentationLabel(entry.name)}`,
+                  file.sourceId,
+                )
+              "
+              >{{ file.pathText }}</NuxtLink
+            >
+            <!-- The file's own extraction diagnostics — its recognitions'
+                 reference to the kind's one shared failure record, not the
+                 file's aggregate, so a row reports its own kind's failure and
+                 never every problem its file carries (FR-028). -->
+            <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+          </span>
+          <RecognitionMarks :recognitions="file.recognitions" />
+          <span class="aci-row-file__end" />
+        </div>
       </template>
     </SourceFamilyBlocks>
   </li>
 </template>
-
-<style scoped>
-/* The name leads the row, as a command row's does: it is what a reader looks
-   for, and the files that resolve it follow underneath. */
-.aci-output-style-row__name {
-  font-weight: 600;
-  margin: 0;
-}
-
-.aci-output-style-row__owner {
-  margin: 0;
-}
-
-/* Each recognizing product trails the file on the same line, set apart by a
-   separator, matching how an instruction row states its recognitions. */
-.aci-output-style-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-output-style-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-/* The surfaces qualify their own product within the same span: the product
-   alone does not say where it reads the file from once two surfaces document
-   different lookup bases. */
-.aci-output-style-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-output-style-row__surfaces::before {
-  content: '(';
-}
-
-.aci-output-style-row__surfaces::after {
-  content: ')';
-}
-</style>

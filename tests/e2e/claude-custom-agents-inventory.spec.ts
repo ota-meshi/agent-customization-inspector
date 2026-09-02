@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus } from './repository-status';
 
 /** A literal credential inside a declared block, used to prove it never lists. */
 const FIXTURE_SECRET = 'ghp_E2ECLAUDEAGENTS00000000000000000000000';
@@ -158,7 +159,7 @@ test.describe('subagents in the root agents subtree', () => {
     // because Copilot also loads project agents from `.claude/agents/` and
     // identifies each by its configuration file's own name, so the two files
     // that publish no declared name to Claude Code still head a Copilot row.
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'README',
       'broken',
       'browser-tester',
@@ -235,7 +236,7 @@ test.describe('subagents in the root agents subtree', () => {
     await page.getByLabel('Tool').selectOption('claude');
     await expect(items).toHaveCount(5);
     await page.getByLabel('Tool').selectOption('copilot');
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'README',
       'broken',
       'browser-tester',
@@ -244,14 +245,14 @@ test.describe('subagents in the root agents subtree', () => {
     ]);
     await page.getByLabel('Tool').selectOption('codex');
     await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-agent-row__name')).toHaveText(['reviewer']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['reviewer']);
 
     // Path: the filter applies to each definition's own file path, and a row
     // with no matching definition is dropped rather than emptied.
     await page.getByLabel('Tool').selectOption('');
-    await page.getByLabel('Path contains').fill('review/');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('review/');
     await expect(items).toHaveCount(2);
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'debugger',
       'security-reviewer',
     ]);
@@ -262,9 +263,12 @@ test.describe('subagents in the root agents subtree', () => {
 
   test('states the malformed file’s diagnostic beside the row that holds it', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.locator('.aci-scan-progress')).toContainText(
-      '1 file(s) kept a diagnostic of their own',
+    // The count of files that kept a diagnostic is the Repository Source's own
+    // state, which is a surface of its own now (FR-030).
+    await expect(await openRepositoryStatus(page)).toContainText(
+      '1 file kept a diagnostic of its own',
     );
+    await page.getByRole('link', { name: /Back to /u }).click();
     await page.getByRole('tab', { name: /Agent/u }).click();
     const unnamed = page
       .getByRole('tabpanel')

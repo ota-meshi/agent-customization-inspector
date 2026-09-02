@@ -95,17 +95,19 @@ test.afterAll(async () => {
 
 test('offers each member its own rescan control, named by the member', async ({ page }) => {
   await page.goto(host.origin);
-  const main = page.locator('main');
-  await expect(main).toContainText('Your personal setup');
+  // The repository's own command is in the bar, on every route (FR-030); the
+  // per-member ones are on the personal setup's own surface, which the rail
+  // reaches.
+  await expect(page.getByRole('button', { name: 'Rescan repository' })).toBeVisible();
+  await page.getByRole('link', { name: 'Personal setup' }).click();
   // Every row's control carries the same visible phrase, so the accessible
   // name is what tells a links-and-buttons walk which member each one rescans
-  // (WCAG 2.4.6) — and the repository's own control stays its own.
-  for (const member of ['GitHub Copilot', 'Claude Code', 'OpenAI Codex', 'Shared agent home']) {
+  // (WCAG 2.4.6).
+  for (const member of ['Copilot home', 'Claude home', 'Codex home', 'Shared agent home']) {
     await expect(
       page.getByRole('button', { name: `Rescan: ${member}`, exact: true }),
     ).toBeVisible();
   }
-  await expect(page.getByRole('button', { name: 'Rescan repository' })).toBeVisible();
 });
 
 test('commits one member rescan with its added file while siblings stay carried', async ({
@@ -127,7 +129,9 @@ test('commits one member rescan with its added file while siblings stay carried'
 
   // Nothing on this page updates by itself: the reader dispatches the rescan
   // and watches for its commit through "Refresh status" (FR-030).
-  await page.getByRole('button', { name: 'Rescan: Claude Code', exact: true }).click();
+  await page.goto(new URL('/global-consent', host.origin).href);
+  await page.getByRole('button', { name: 'Rescan: Claude home', exact: true }).click();
+  await page.goto(new URL('/?kind=skill', host.origin).href);
   await expect
     .poll(
       async () => {
@@ -150,13 +154,15 @@ test('commits one member rescan with its added file while siblings stay carried'
 test('keeps a partial member partial across its own rescan, counting its files', async ({
   page,
 }) => {
-  await page.goto(host.origin);
+  await page.goto(new URL('/global-consent', host.origin).href);
   const main = page.locator('main');
   // The broken link's read failure is file-confined, so the member published
   // `partial` and its row counts the files that kept a diagnostic (FR-028).
-  // The origin now leads the status inside the parentheses (T1003, FR-002).
+  // Stated on the personal setup's own surface, which is where that Source's
+  // state lives (FR-030). The origin leads the status inside the parentheses
+  // (T1003, FR-002).
   await expect(main).toContainText(', Partial)');
-  await expect(main).toContainText('1 file(s) kept a diagnostic of their own');
+  await expect(main).toContainText('1 file kept a diagnostic of its own');
 
   // A new readable file marks the rescan's commit; the broken link stays, so
   // the recommitted member is `partial` again rather than repaired by rescan.
@@ -165,7 +171,7 @@ test('keeps a partial member partial across its own rescan, counting its files',
     '# added before the copilot rescan\n',
     'utf8',
   );
-  await page.getByRole('button', { name: 'Rescan: GitHub Copilot', exact: true }).click();
+  await page.getByRole('button', { name: 'Rescan: Copilot home', exact: true }).click();
   await page.goto(new URL('/?kind=instructions', host.origin).href);
   const panel = page.getByRole('tabpanel');
   await expect
@@ -178,8 +184,9 @@ test('keeps a partial member partial across its own rescan, counting its files',
     )
     .toBe(1);
   // The origin now leads the status inside the parentheses (T1003, FR-002).
+  await page.goto(new URL('/global-consent', host.origin).href);
   await expect(main).toContainText(', Partial)');
-  await expect(main).toContainText('1 file(s) kept a diagnostic of their own');
+  await expect(main).toContainText('1 file kept a diagnostic of its own');
 });
 
 test('retains prior results on a fatal rescan and recovers with an explicit retry', async ({
@@ -190,9 +197,9 @@ test('retains prior results on a fatal rescan and recovers with an explicit retr
   // premise cannot be materialized here.
   test.skip((statSync(homes.codex).mode & 0o700) !== 0, 'chmod 000 does not deny this process');
   try {
-    await page.goto(host.origin);
+    await page.goto(new URL('/global-consent', host.origin).href);
     const main = page.locator('main');
-    await page.getByRole('button', { name: 'Rescan: OpenAI Codex', exact: true }).click();
+    await page.getByRole('button', { name: 'Rescan: Codex home', exact: true }).click();
     // The failure retains the previous results under the stale note, and only
     // the failed member's control renames to a retry (FR-030).
     await expect
@@ -208,10 +215,10 @@ test('retains prior results on a fatal rescan and recovers with an explicit retr
       'The last rescan failed, so the previous scan result is still shown and may be out of date.',
     );
     await expect(
-      page.getByRole('button', { name: 'Retry scan: OpenAI Codex', exact: true }),
+      page.getByRole('button', { name: 'Retry scan: Codex home', exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Rescan: Claude Code', exact: true }),
+      page.getByRole('button', { name: 'Rescan: Claude home', exact: true }),
     ).toBeVisible();
     // The retained prior results: the member's committed config is still
     // listed, exactly as before the failed attempt.
@@ -222,9 +229,9 @@ test('retains prior results on a fatal rescan and recovers with an explicit retr
   }
   // The repaired directory recovers through the same control: the retry
   // commits, the stale note leaves, and the control is a plain rescan again.
-  await page.goto(host.origin);
+  await page.goto(new URL('/global-consent', host.origin).href);
   const main = page.locator('main');
-  await page.getByRole('button', { name: 'Retry scan: OpenAI Codex', exact: true }).click();
+  await page.getByRole('button', { name: 'Retry scan: Codex home', exact: true }).click();
   await expect
     .poll(
       async () => {
@@ -234,7 +241,5 @@ test('retains prior results on a fatal rescan and recovers with an explicit retr
       { timeout: 30_000, intervals: [300] },
     )
     .toBe(0);
-  await expect(
-    page.getByRole('button', { name: 'Rescan: OpenAI Codex', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Rescan: Codex home', exact: true })).toBeVisible();
 });

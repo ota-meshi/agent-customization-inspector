@@ -80,7 +80,7 @@ test.describe('output styles under the project .claude/output-styles directory',
     await page.getByRole('tab', { name: /Output style/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
     // Rows in name order: the declared name and the file-name fallback.
-    await expect(items.locator('.aci-output-style-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'Diagrams first',
       'code-review',
     ]);
@@ -89,9 +89,7 @@ test.describe('output styles under the project .claude/output-styles directory',
       '.claude/output-styles/code-review.md',
     ]);
     for (let index = 0; index < 2; index += 1) {
-      await expect(items.nth(index).locator('.aci-output-style-row__owner')).toContainText(
-        'Claude Code',
-      );
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('Claude Code');
     }
 
     const text = await page.locator('main').innerText();
@@ -152,9 +150,9 @@ test.describe('output styles under the project .claude/output-styles directory',
 
     await page.getByRole('button', { name: 'Clear filters' }).click();
     // Path: the filter applies to each definition's own file path.
-    await page.getByLabel('Path contains').fill('code-review');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('code-review');
     await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-output-style-row__name')).toHaveText(['code-review']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['code-review']);
     await expect(summary).toContainText('Showing 1 of 2');
   });
 });

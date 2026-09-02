@@ -139,8 +139,11 @@ test.describe('the complete literal Claude subagent detail', () => {
     // resolve the same name here — Claude Code from the declared `name`,
     // Copilot from the file's own — so the row is one and the line is
     // singular.
-    await expect(main).toContainText('GitHub Copilot');
-    await expect(main).toContainText('Claude Code (CLI and IDE clients) · Agent');
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('VS Code, CLI');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
     await expect(main).toContainText('Agent name: browser-tester');
 
     // The parse tab leads, with the frontmatter as one YAML document in the
@@ -241,7 +244,7 @@ test.describe('the complete literal Claude subagent detail', () => {
     await expect(
       page.getByRole('heading', { name: '.claude/agents/review/security.md' }),
     ).toBeVisible();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=agent$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Agent');
   });

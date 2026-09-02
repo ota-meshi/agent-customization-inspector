@@ -91,8 +91,18 @@ const props = defineProps<{
   filesBySource: ReadonlyMap<string, ReadonlyMap<string, CustomizationFileSummaryDto>>;
   /** How many rows the committed generation published before filtering. */
   totalCount: number;
+  /**
+   * True while any filter narrows the inventory, which is what tells an empty
+   * list apart from an empty kind: one has a way out and the other does not.
+   */
+  narrowed: boolean;
   /** The generation's diagnostics, resolved per row. */
   diagnostics: readonly SerializedDiagnostic[];
+}>();
+
+const emit = defineEmits<{
+  /** The user asked to clear every filter from inside the empty result. */
+  clear: [];
 }>();
 
 /**
@@ -291,13 +301,30 @@ const rowCount = computed(() =>
          every inspected Source once personal setup is enabled, and naming the
          repository would claim the consented homes were repository content
          (FR-002, FR-030). -->
-    <p v-else-if="totalCount === 0" class="aci-empty">
-      No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} were
-      recognized in this scan.
-    </p>
-    <p v-else class="aci-empty">
-      No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} match
-      the current filters.
-    </p>
+    <!-- Both sentences are given a box of their own, because the answer to
+         "where are the rows" is otherwise one line above several hundred
+         pixels of nothing. The way out is inside it only where clearing a
+         filter can bring rows back: what narrowed the list — the search term,
+         the Source, the tool — is visible on the same screen, so the box adds
+         no explanation of its own. -->
+    <div v-else class="aci-empty-result">
+      <p v-if="totalCount === 0" class="aci-empty-result__statement">
+        No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} were
+        recognized in this scan.
+      </p>
+      <template v-else>
+        <p class="aci-empty-result__statement">
+          No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }}
+          match the current filters.
+        </p>
+        <!-- The same command the filter row carries, where the reader is
+             looking. The page clears and then settles focus in the one place
+             both controls settle it, because this button goes away with the
+             box it is in (WCAG 2.4.3). -->
+        <p v-if="narrowed" class="aci-empty-result__exit">
+          <button type="button" @click="emit('clear')">Clear filters</button>
+        </p>
+      </template>
+    </div>
   </div>
 </template>

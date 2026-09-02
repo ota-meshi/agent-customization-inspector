@@ -32,23 +32,25 @@
 // can act on: their two files (FR-009).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
-import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
+import {
+  familyComparisonPairsOf,
+  detailRoute,
+  originRowNameQuery,
+  type ComparisonSide,
+} from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
 import { promptComparisonRouteFor } from '../../../composables/prompt-comparison';
 import {
-  SUPPORTED_TOOL_TEXT,
-  escapeControlCharacters,
   fileIdentityKey,
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
-  rendersNothingVisible,
   accessiblePresentationLabel,
 } from '../../../../shared/entities';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import type {
   CustomizationFileSummaryDto,
   PromptDefinitionDto,
@@ -57,6 +59,15 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
+import { AuthoredName } from '../../authored-name';
+
+/**
+ * The row's declared name, as every surface of the row needs it: the reader's
+ * own characters, with this product's note beside them where they draw nothing
+ * ({@link AuthoredName}). Never empty — the name comes from a file or
+ * directory — so the substituting spelling is not the one this kind uses.
+ */
+const name = computed(() => new AuthoredName(props.entry.name));
 
 const props = defineProps<{
   /** The committed command entry to render: one name a reader invokes. */
@@ -106,6 +117,22 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * do. The comparison surface's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
+/**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close (`SourceFamilyBlocks.vue`).
+ */
+const headCompareRoute = computed(() => {
+  const routes = [...blockCompareRoutes.value.values()];
+  // Exactly when the row draws no family line to close: the entry lives on one
+  // of the two lines and never on neither, so both read the one rule
+  // (`session-sources.ts` § familyLineShownFor).
+  const headed = sessionSources.familyLineShownFor(fileRows.value, [
+    ...blockCompareRoutes.value.keys(),
+  ]);
+  return headed || routes.length !== 1 ? null : routes[0]!;
+});
+
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof promptComparisonRouteFor>>();
   for (const [kind, [first, second]] of familyComparisonPairsOf(comparableSides.value)) {
@@ -154,17 +181,23 @@ const fileRows = computed(() => {
        * announce identically (WCAG 2.4.4, FR-025).
        */
       pathAccessibleText: accessiblePresentationLabel(sourceRelativePath),
-      recognitions: definitions.map((definition) => ({
-        tool: definition.tool,
-        toolText: SUPPORTED_TOOL_TEXT[definition.tool],
-        surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-      })),
-      /** The file's own detail route; the path is the whole route identity (FR-030). */
-      detailRoute: detailRoute(
-        'prompt/command',
-        sourceRelativePath,
-        sessionSources.selectorOf(sourceId),
-      ),
+      recognitions: definitions,
+      /**
+       * The file's own detail route, with the row it was followed from: the
+       * page is the file's, addressed by `(source, path)`, and the row name
+       * beside it is what the moves to the previous and next row step from
+       * (`detail-route.ts` § originRowNameQuery). One file can be listed under
+       * two names, and without it those moves stepped whichever of its rows
+       * the snapshot listed first.
+       */
+      detailRoute: {
+        path: detailRoute(
+          'prompt/command',
+          sourceRelativePath,
+          sessionSources.selectorOf(sourceId),
+        ),
+        query: originRowNameQuery(props.entry.name),
+      },
       /**
        * The extraction diagnostics this file's definitions reference,
        * deduplicated: one extraction per `(file, kind)` means every definition
@@ -182,20 +215,30 @@ const fileRows = computed(() => {
          prefix is path segments, so it is rendered with the same
          control-character escaping as a path (data-model.md § Inventory
          unit): a lookup and selection identity must read as what it is. -->
-    <p class="aci-prompt-row__name">
-      <!-- A name that draws nothing — a file named only from whitespace or
-           default-ignorable code points — gets its own label rather than a
-           blank line: the name is kept exactly, and saying it is invisible is
-           not the same as showing nothing (FR-025). -->
-      <template v-if="rendersNothingVisible(entry.name)"
-        ><span class="aci-authored-text aci-authored-atomic">{{
-          escapeControlCharacters(entry.name)
-        }}</span>
-        <span class="aci-muted">(name with no visible characters)</span></template
+    <p class="aci-row-head">
+      <!-- A name that draws nothing — whitespace, or code points such as
+           U+200B that are not whitespace and survive a trim — is spelled out
+           in full rather than left blank, so two such names stay two rows on
+           the screen ({@link AuthoredName}). The spelled form is this
+           product's characters, so it takes the muted treatment the other
+           rows give theirs rather than the authored one. -->
+      <span
+        class="aci-row-head__name"
+        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+        >{{ name.text }}</span
       >
-      <template v-else
-        ><span class="aci-authored-text">{{ escapeControlCharacters(entry.name) }}</span></template
+      <span class="aci-row-head__count"
+        >{{ fileRows.length }} {{ fileRows.length === 1 ? 'file' : 'files' }}</span
       >
+      <!-- The comparison entry, where this row has one family and so no family
+           line of its own to close (`SourceFamilyBlocks.vue`). -->
+      <span v-if="headCompareRoute" class="aci-row-head__end">
+        <NuxtLink
+          :to="headCompareRoute"
+          :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}`"
+          >Compare</NuxtLink
+        >
+      </span>
     </p>
 
     <!-- One block per Source family that resolves the name
@@ -210,28 +253,24 @@ const fileRows = computed(() => {
       :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: file }">
-        <p class="aci-prompt-row__owner">
-          <NuxtLink
-            :to="file.detailRoute"
-            class="aci-path aci-authored-text"
-            :aria-label="sessionSources.qualifiedLinkName(file.pathAccessibleText, file.sourceId)"
-            >{{ file.pathText }}</NuxtLink
-          >
-          <span
-            v-for="recognition in file.recognitions"
-            :key="recognition.tool"
-            class="aci-prompt-row__tool aci-muted"
-            >{{ recognition.toolText }}
-            <span class="aci-prompt-row__surfaces">{{ recognition.surfacesText }}</span></span
-          >
-        </p>
-
-        <SourceRootLine :source-id="file.sourceId" />
-        <!-- The file's own extraction diagnostics — its recognitions'
-             reference to the kind's one shared failure record, not the file's
-             aggregate, so a row reports its own kind's failure and never every
-             problem its file carries (FR-028). -->
-        <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <SourceHomeBadge :source-id="file.sourceId" />
+            <NuxtLink
+              :to="file.detailRoute"
+              class="aci-path aci-authored-text"
+              :aria-label="sessionSources.qualifiedLinkName(file.pathAccessibleText, file.sourceId)"
+              >{{ file.pathText }}</NuxtLink
+            >
+            <!-- The file's own extraction diagnostics — its recognitions'
+                 reference to the kind's one shared failure record, not the
+                 file's aggregate, so a row reports its own kind's failure and
+                 never every problem its file carries (FR-028). -->
+            <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+          </span>
+          <RecognitionMarks :recognitions="file.recognitions" />
+          <span class="aci-row-file__end" />
+        </div>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a
@@ -240,60 +279,15 @@ const fileRows = computed(() => {
            shape. The accessible name carries the row's identity always, and
            the family where two blocks each offer one (WCAG 2.4.6). -->
       <template #entry="{ block }">
-        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-prompt-row__compare">
-          <NuxtLink
-            :to="blockCompareRoutes.get(block.kind)!"
-            :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}${
-              blockCompareRoutes.size > 1 && block.familyText !== null
-                ? ` (${block.familyText})`
-                : ''
-            }`"
-            >Compare this name's files</NuxtLink
-          >
-        </p>
+        <NuxtLink
+          v-if="blockCompareRoutes.get(block.kind)"
+          :to="blockCompareRoutes.get(block.kind)!"
+          :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}${
+            block.familyText !== null ? ` (${block.familyText})` : ''
+          }`"
+          >Compare</NuxtLink
+        >
       </template>
     </SourceFamilyBlocks>
   </li>
 </template>
-
-<style scoped>
-/* The name leads the row, as a skill row's does: it is what a reader looks
-   for, and the files that resolve it follow underneath. */
-.aci-prompt-row__name {
-  font-weight: 600;
-  margin: 0;
-}
-
-/* The path and the products that recognize it on one line, the way an MCP or
-   agent row lays out a carrier and its recognitions: the path is the subject
-   and the products qualify it. */
-.aci-prompt-row__owner {
-  margin: 0;
-}
-
-.aci-prompt-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-prompt-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-.aci-prompt-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-prompt-row__surfaces::before {
-  content: '(';
-}
-
-.aci-prompt-row__surfaces::after {
-  content: ')';
-}
-
-/* The comparison entry closes the row, under the files it compares. */
-.aci-prompt-row__compare {
-  margin: 0.35rem 0 0;
-}
-</style>

@@ -104,7 +104,7 @@ test.describe('Copilot instruction rows and their surfaces', () => {
     // itself with `applyTo` (T265). Every path-specific file here declares
     // one, so no no-range row exists; the malformed suite below has that row.
     await expect(items).toHaveCount(3);
-    await expect(page.getByRole('tabpanel').locator('.aci-instruction-row__range')).toHaveText([
+    await expect(page.getByRole('tabpanel').locator('.aci-row-head__name')).toHaveText([
       '**',
       'packages/api/**',
       'src/frontend/**',
@@ -203,7 +203,7 @@ test.describe('Copilot instruction rows and their surfaces', () => {
 
     // Path composes over the same population, and a range whose every file the
     // filter drops is not a row.
-    await page.getByLabel('Path contains').fill('packages/');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('packages/');
     await expect(items).toHaveCount(1);
     await expect(items.first()).toContainText('packages/api/.github/copilot-instructions.md');
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
@@ -253,7 +253,7 @@ test.describe('a Copilot instruction file whose declarations cannot be parsed', 
     // unreadable one has none known, and its diagnostic says why (FR-028,
     // T265).
     await expect(page.getByRole('tabpanel').locator('.aci-item')).toHaveCount(2);
-    await expect(page.getByRole('tabpanel').locator('.aci-instruction-row__range')).toHaveText([
+    await expect(page.getByRole('tabpanel').locator('.aci-row-head__name')).toHaveText([
       '**',
       'No known applicability range',
     ]);
@@ -266,6 +266,9 @@ test.describe('a Copilot instruction file whose declarations cannot be parsed', 
     await expect(fileEntries.filter({ hasText: 'copilot-instructions.md' })).not.toContainText(
       'This file could not be parsed',
     );
+    // The Source-level list is its own rail entry now: a record that belongs to
+    // a file is on that file's row, so this one stays empty (FR-028).
+    await page.getByRole('tab', { name: /^Diagnostics/u }).click();
     await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
   });
 });

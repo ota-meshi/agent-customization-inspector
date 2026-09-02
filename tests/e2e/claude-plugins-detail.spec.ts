@@ -120,6 +120,11 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
     await page.getByRole('tab', { name: /Plugin/u }).click();
     const row = page.getByRole('tabpanel').locator('.aci-item').filter({ hasText: name });
     await row.getByRole('link').first().click();
+    // Waited for, not assumed: a caller's next click must not land on the
+    // inventory the navigation is still leaving — the rail's own `Files in no
+    // kind` entry answers a `/^files/iu` tab locator, and selecting it would
+    // cancel the navigation in flight.
+    await expect(page).toHaveURL(/\/plugins\/detail\//u);
   }
 
   test('serves a placement-loaded plugin manifest complete, exactly as written', async ({
@@ -175,7 +180,10 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
 
     const declaration = page.locator('section', { hasText: 'Declaration' }).first();
     await expect(declaration).toContainText('./plugins/quality-review');
-    await expect(page.getByRole('heading', { name: 'Catalog', exact: true })).toBeVisible();
+    // The name of what the viewer holds is the band of the panel holding it,
+    // with the format the text is in at the band's end
+    // (`SourceViewer.vue` § panelLabel).
+    await expect(page.getByRole('heading', { name: 'Catalog JSON', exact: true })).toBeVisible();
     // The offering's own plugin reached a root here, so its optional manifest is
     // one of the files it ships and the page opens on it.
     const manifest = page.locator('section', { hasText: 'Manifest' }).first();
@@ -183,7 +191,10 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
     await expect(manifest).toContainText('"version": "1.2.0"');
     // A page about one plugin never serves the catalog's own bytes: every other
     // plugin it lists would be on a screen about one of them (FR-007).
-    await expect(page.locator('body')).not.toContainText('remote-helper');
+    // The page's own content rather than the whole document: the bar's moves
+    // name the neighbouring rows, and a catalog's other offerings are exactly
+    // what sits beside this one in the list (`DetailNavigation.vue`).
+    await expect(page.locator('.aci-plugin-detail')).not.toContainText('remote-helper');
   });
 
   test('states that a source outside the repository reached no files', async ({ page }) => {
@@ -221,7 +232,7 @@ test.describe('the complete literal Claude plugin carrier detail', () => {
     await openPlugin(page, 'secret-keeper@skills-dir');
     await expect(page.locator('body')).toContainText(FIXTURE_CREDENTIAL);
 
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     // The authored content leaves with the page: the inventory states what was
     // found and where, never what a declaration says (FR-027).
     await expect(page.locator('body')).not.toContainText(FIXTURE_CREDENTIAL);

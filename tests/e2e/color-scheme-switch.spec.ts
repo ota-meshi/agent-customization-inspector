@@ -4,16 +4,19 @@
 //
 // The switch is the one control this suite could not be replaced by a unit
 // test for. What is under test is not the class the module writes — the unit
-// suite owns that — but that the class actually repaints the page: the whole
-// palette is CSS system colours resolved against the root's `color-scheme`, and
-// whether a real engine re-resolves `Canvas` when that declaration changes is a
-// fact about the certified browsers rather than about this code (AGENTS.md
-// § Platform baseline policy).
+// suite owns that — but that the class actually repaints the page: every token
+// is a `light-dark()` pair resolved against the root's `color-scheme`, which
+// the class is the only thing that moves, and whether a real engine
+// re-resolves them when that declaration changes is a fact about the certified
+// browsers rather than about this code (AGENTS.md § Platform baseline policy).
+// What the repaint has to satisfy is `tests/e2e/palette-contrast.spec.ts`;
+// this suite owns that it happens at all.
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
+import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 
 let fixture: string;
@@ -39,8 +42,8 @@ function colorSchemeSwitch(page: Page) {
 
 /**
  * The colour the page is actually painted in. Read from `body`, whose
- * background is the `Canvas` system colour every other surface is mixed from,
- * so a change here is the whole palette moving rather than one rule.
+ * background is the page surface every other token is stepped from, so a
+ * change here is the whole palette moving rather than one rule.
  */
 async function pageBackground(page: Page): Promise<string> {
   return page.evaluate(() => globalThis.getComputedStyle(document.body).backgroundColor);
@@ -75,10 +78,11 @@ test.describe('on a light desktop', () => {
     await expect(colorSchemeSwitch(page)).toHaveAttribute('aria-checked', 'false');
     const light = await pageBackground(page);
 
-    // The control is reachable and operable without a pointer (WCAG 2.1.1);
-    // the shell's heading holds focus after boot, so one Tab reaches it.
-    await page.keyboard.press('Tab');
-    await expect(colorSchemeSwitch(page)).toBeFocused();
+    // The control is reachable and operable without a pointer (WCAG 2.1.1).
+    // Walked rather than counted: the bar carries the search and the two scan
+    // commands between the heading and this switch, and how many stops that is
+    // is a layout fact this case has no reason to pin.
+    expect(await tabUntilFocused(page, colorSchemeSwitch(page))).toBe(true);
     await page.keyboard.press('Space');
     await expect(colorSchemeSwitch(page)).toHaveAttribute('aria-checked', 'true');
     expect(await pageBackground(page)).not.toBe(light);

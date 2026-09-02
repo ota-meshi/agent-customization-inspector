@@ -90,7 +90,11 @@ test.describe('the complete literal Claude settings detail', () => {
     await expect(page.getByRole('heading', { name: '.claude/settings.json' })).toBeVisible();
 
     const main = page.locator('main');
-    await expect(main).toContainText('Claude Code (CLI and IDE clients) · Settings / Config');
+    // The product that recognizes the document and the surfaces its admitting
+    // rules rest on, on the customization's own attribute line.
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
     await expect(main).toContainText('Readable text');
 
     // The complete authored document, in the author's own key order: the
@@ -141,7 +145,7 @@ test.describe('the complete literal Claude settings detail', () => {
       ).toString(),
     );
     await expect(page.getByRole('heading', { name: '.claude/settings.local.json' })).toBeVisible();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=settings%2Fconfig$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Settings / Config');
   });

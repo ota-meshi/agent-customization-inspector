@@ -56,8 +56,15 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
+import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import LeavesIcon from '~icons/lucide/arrow-right';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
+import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
+import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
+import ToolMark from '../../../../components/ToolMark.vue';
+import { AuthoredName } from '../../../../components/authored-name';
+import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import { LEADING_SKILL_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
@@ -66,13 +73,17 @@ import {
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
+  detailNeighbours,
+  detailRoute,
+  originRowNameOf,
+  originRowNameQuery,
   type ComparisonSide,
   type SourceSelector,
-  detailRoute,
   selectedFileOf,
   selectedFileQuery,
 } from '../../../../components/detail-route';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
+import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { skillComparisonRouteFor } from '../../../../composables/skill-comparison';
 import { usePageOwnership } from '../../../../composables/page-ownership';
@@ -91,9 +102,11 @@ import {
   FILE_ENCODING_TEXT,
   SUPPORTED_TOOL_ORDER,
   SUPPORTED_TOOL_TEXT,
+  accessiblePresentationLabel,
   escapeControlCharacters,
   inlinePresentationLabel,
   isReadableFile,
+  pathPresentationLabel,
   rendersNothingVisible,
   type SupportedTool,
 } from '../../../../../shared/entities';
@@ -160,7 +173,7 @@ const openSourceId = computed((): string | null => sessionSources.sourceIdFor(op
 // the family holds more than one Source (`source-facts.ts`). One line for the
 // page rather than one per invocation, because which place the directory came
 // from is the skill's fact, not a product's.
-const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
   () => snapshot.value?.sources ?? [],
   () => openSourceId.value,
 );
@@ -175,6 +188,13 @@ const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
  * what the page is describing (`detail-route.ts` § withSelectedFile).
  */
 const openPath = computed((): string => selectedFileOf(route.query['file']) ?? entryPath.value);
+
+/**
+ * The inventory row this page was opened from, or null where the link named
+ * none (`detail-route.ts` § originRowNameQuery). It settles nothing the page
+ * shows: one file's page is one page whichever of its names was followed.
+ */
+const originRowName = computed(() => originRowNameOf(route.query['name']));
 
 /**
  * The committed files' paths, as one membership index: the path is the
@@ -232,16 +252,23 @@ const snapshot = sessionViewState.snapshot;
  */
 const owner = computed(() => {
   const path = entryPath.value;
+  const matches: { entry: SkillInventoryEntryDto; definition: SkillDefinitionDto }[] = [];
   for (const entry of snapshot.value?.skills ?? []) {
     for (const definition of entry.definitions) {
       // Both halves of the identity (FR-030): the address's own Source, so a
       // same-path skill in another Source cannot answer for this one.
       if (definition.sourceRelativePath === path && definition.sourceId === openSourceId.value) {
-        return { entry, definition };
+        matches.push({ entry, definition });
       }
     }
   }
-  return null;
+  // Which row the reader followed, where this file is listed under more than
+  // one name (`detail-route.ts` § originRowNameQuery). The first match is the
+  // fallback: a link that names no row, and one naming a row this generation
+  // no longer publishes, both resolve to the same page — only the moves to the
+  // neighbouring rows depend on which row it is.
+  const named = matches.find(({ entry }) => entry.name === originRowName.value);
+  return named ?? matches[0] ?? null;
 });
 
 /**
@@ -290,7 +317,15 @@ const selectionResolved = computed(() => treeFiles.value.includes(openPath.value
 function skillFileRoute(sourceRelativePath: string): RouteLocationRaw {
   return {
     path: detailRoute('skill', entryPath.value, openSource.value),
-    query: selectedFileQuery(sourceRelativePath === entryPath.value ? null : sourceRelativePath),
+    // The row the reader followed rides along: selecting another file of this
+    // skill is a move inside one page, and dropping the coordinate here made
+    // the page fall back to whichever of the skill's rows the snapshot lists
+    // first, taking the previous and next moves with it
+    // (`detail-route.ts` § originRowNameQuery).
+    query: {
+      ...originRowNameQuery(originRowName.value),
+      ...selectedFileQuery(sourceRelativePath === entryPath.value ? null : sourceRelativePath),
+    },
   };
 }
 
@@ -307,41 +342,32 @@ const treeDirectory = computed(() => directoryOf(treeFiles.value[0] ?? ''));
 class SkillInvocation {
   /** The recognizing product, rendered through its closed-union caption. */
   public readonly tool: SupportedTool;
-  /** That product's name for the skill, escaped for presentation like a path. */
-  public readonly nameText: string;
   /**
-   * The same name as accessible-name text: the single-line label rule,
-   * because an accessible name collapses whitespace and would read two
-   * invisibly different names as one ({@link inlinePresentationLabel}).
+   * That product's name for the skill, as every surface of the line needs it:
+   * the reader's own characters, with this product's note beside them where
+   * they draw nothing, and the single-line spelling for an accessible name
+   * ({@link AuthoredName}).
    */
-  public readonly nameAccessibleText: string;
-  /**
-   * Whether the name draws nothing as authored — whitespace, or
-   * default-ignorable code points — so the line can say so instead of showing
-   * an apparently empty value (FR-025).
-   */
-  public readonly nameInvisible: boolean;
+  public readonly name: AuthoredName;
   /** The surfaces this product's admissions rest on, already captioned. */
   public readonly surfacesText: string;
+  /** The surfaces themselves, for the marks the attribute line draws. */
+  public readonly surfaces: readonly VendorSurface[];
   /**
-   * The comparison of this name's copies — the open file's family's first
-   * two readable entry files — or null when that family holds fewer than
-   * two, where there is nothing to pair. A comparison is a pair within one
-   * name and one family (FR-011), so each name offers its own: the same link the inventory row offers, so a reader deep
-   * in a skill's files never has to go back to the list to start comparing.
-   * The compare route's own file switchers take over from there, census
-   * companions included.
+   * The comparison of this name's copies — the open file's family's first two
+   * readable entry files — or null when that family holds fewer than two,
+   * where there is nothing to pair. A comparison is a pair within one name and
+   * one family (FR-011), and the group that carries the name is what offers
+   * it: the route is keyed by the name, so two products invoking the file by
+   * one name would otherwise leave which of their rows shows the link to the
+   * order they happen to be in ({@link invocationGroups}).
    */
   public readonly compareRoute: ReturnType<typeof skillComparisonRouteFor> | null;
 
   /**
    * Builds one line from the row that names it and the definition in it.
-   * `openFamily` is the open file's Source family, the boundary its
-   * comparison entry stays inside. `namedAlready` is true when an earlier line of this page already carries
-   * this row's comparison entry, which suppresses a second one: the
-   * comparison belongs to the name, so two products invoking one file by one
-   * name would otherwise offer the same control twice — one accessible name,
-   * one destination (WCAG 2.4.6).
+   * `openFamily` is the open file's Source family, the boundary its comparison
+   * entry stays inside.
    */
   public constructor(
     entry: SkillInventoryEntryDto,
@@ -349,15 +375,13 @@ class SkillInvocation {
     comparableIdentities: ReadonlySet<string>,
     selectorOf: (sourceId: string) => SourceSelector,
     openFamily: SourceKind,
-    namedAlready: boolean,
   ) {
     this.tool = definition.tool;
-    this.nameText = escapeControlCharacters(entry.name);
-    this.nameAccessibleText = inlinePresentationLabel(entry.name);
-    this.nameInvisible = rendersNothingVisible(entry.name);
+    this.name = new AuthoredName(entry.name);
     this.surfacesText = definition.surfaces
       .map((surface) => VENDOR_SURFACE_TEXT[surface])
       .join(', ');
+    this.surfaces = definition.surfaces;
     // Each comparable copy once, by its whole identity: one definition per
     // (file, tool), so a file two products read is one copy, and a same-path
     // copy in another Source is a distinct one (FR-030).
@@ -379,9 +403,7 @@ class SkillInvocation {
     // § familyComparisonPairsOf).
     const pair = familyComparisonPairsOf(sides).get(openFamily);
     this.compareRoute =
-      !namedAlready && pair !== undefined
-        ? skillComparisonRouteFor(openFamily, entry.name, pair[0], pair[1])
-        : null;
+      pair === undefined ? null : skillComparisonRouteFor(openFamily, entry.name, pair[0], pair[1]);
   }
 }
 
@@ -405,10 +427,6 @@ const invocationNames = computed((): readonly SkillInvocation[] => {
     return [];
   }
   const byTool = new Map<SupportedTool, SkillInvocation>();
-  // One comparison entry per name rather than per product: the comparison is
-  // the name's, so a second product invoking the file by the same name adds a
-  // line but no second link.
-  const named = new Set<string>();
   for (const entry of snapshot.value?.skills ?? []) {
     for (const definition of entry.definitions) {
       // Both halves of the identity (FR-030): the gather spans rows — the
@@ -427,14 +445,170 @@ const invocationNames = computed((): readonly SkillInvocation[] => {
             comparableIdentities.value,
             (sourceId) => sessionSources.selectorOf(sourceId),
             sideFamilyOf({ source: openSource.value, sourceRelativePath: openPath.value }),
-            named.has(entry.name),
           ),
         );
-        named.add(entry.name);
       }
     }
   }
   return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => byTool.get(tool)!);
+});
+
+/**
+ * One invocation name and the recognitions that resolve it, in the order
+ * {@link invocationNames} publishes them (FR-007).
+ *
+ * The name is the unit rather than the recognition, because the comparison is:
+ * its route is keyed by the name, so a name two products invoke the file by
+ * has one comparison and not two. Stated per recognition instead, which of the
+ * two rows carried the link would be decided by whichever product the closed
+ * tool order puts first — an arbitrary answer to a question the reader is
+ * entitled to have settled.
+ *
+ * A class because production builds these in exactly one place
+ * (AGENTS.md § Class and interface policy).
+ */
+class SkillInvocationGroup {
+  /** The name every recognition in this group invokes the skill by. */
+  public readonly name: AuthoredName;
+
+  /**
+   * This name's comparison, or null when its family holds fewer than two
+   * readable copies — where the group says so rather than leaving the reader
+   * to tell a missing control from a forgotten one.
+   */
+  public readonly compareRoute: ReturnType<typeof skillComparisonRouteFor> | null;
+
+  /** The recognitions resolving this name, in the closed tool order. */
+  public readonly recognitions: readonly SkillInvocation[];
+
+  /**
+   * The other files this name resolves, so the next copy is one move rather
+   * than a return to the list (FR-007). Inside the group for the reason the
+   * comparison link is: a copy is a copy *of this name*, and one file that
+   * answers to two names has a different set under each — stated once for the
+   * page, the strip could not say which name a copy was a copy under.
+   */
+  public readonly otherCopies: readonly FileStripEntry[];
+
+  /** Takes the group's shared facts from its first recognition, which fixes them. */
+  public constructor(
+    recognitions: readonly SkillInvocation[],
+    otherCopies: readonly FileStripEntry[],
+  ) {
+    const first = recognitions[0];
+    if (first === undefined) {
+      throw new Error('a group of invocations holds at least the one that opened it');
+    }
+    this.name = first.name;
+    this.compareRoute = first.compareRoute;
+    this.recognitions = recognitions;
+    this.otherCopies = otherCopies;
+  }
+}
+
+/**
+ * The names this skill answers to, each with the recognitions that resolve it.
+ * One group where every product agrees, and one per name where they do not:
+ * FR-007 has Claude Code invoking the directory while Copilot invokes the
+ * authored `name`, so one file answers to two.
+ */
+const invocationGroups = computed((): readonly SkillInvocationGroup[] =>
+  [...Map.groupBy(invocationNames.value, (invocation) => invocation.name.authored).entries()].map(
+    ([name, recognitions]) =>
+      new SkillInvocationGroup(
+        recognitions,
+        otherCopiesOf(
+          copiesOfName(name),
+          fileIdentityKey(openSourceId.value ?? '', entryPath.value),
+        ),
+      ),
+  ),
+);
+
+/**
+ * Every file one invocation name resolves, as the strip's entries — the one on
+ * screen included, which the strip's own filter removes
+ * ({@link otherCopiesOf}).
+ *
+ * One name at a time, because each group states its own: a file two products
+ * invoke by two names is a copy of each, and the two names rarely resolve the
+ * same set.
+ */
+function copiesOfName(name: string): readonly FileStripEntry[] {
+  const byFile = new Map<string, FileStripEntry>();
+  for (const entry of snapshot.value?.skills ?? []) {
+    if (entry.name !== name) {
+      continue;
+    }
+    for (const definition of entry.definitions) {
+      const key = fileIdentityKey(definition.sourceId, definition.sourceRelativePath);
+      const existing = byFile.get(key);
+      byFile.set(
+        key,
+        existing === undefined
+          ? {
+              key,
+              sourceId: definition.sourceId,
+              pathText: pathPresentationLabel(definition.sourceRelativePath),
+              opens: {
+                accessibleText: sessionSources.qualifiedLinkName(
+                  accessiblePresentationLabel(definition.sourceRelativePath),
+                  definition.sourceId,
+                ),
+                route: {
+                  path: detailRoute(
+                    'skill',
+                    definition.sourceRelativePath,
+                    sessionSources.selectorOf(definition.sourceId),
+                  ),
+                  // A copy of *this* name, so the link opens it under this name:
+                  // the copy may answer to another name too, and without the
+                  // coordinate the page it opens would take that other row's
+                  // neighbours (`detail-route.ts` § originRowNameQuery).
+                  query: originRowNameQuery(name),
+                },
+              },
+              recognitions: [{ tool: definition.tool, surfaces: definition.surfaces }],
+              carrierText: null,
+            }
+          : {
+              ...existing,
+              recognitions: [
+                ...existing.recognitions,
+                { tool: definition.tool, surfaces: definition.surfaces },
+              ],
+            },
+      );
+    }
+  }
+  return [...byFile.values()];
+}
+
+/**
+ * The rows either side of this one in the skill list's own order, so the next
+ * skill is one move rather than a return to the inventory (FR-007).
+ */
+const listNeighbours = computed(() => {
+  const entries = snapshot.value?.skills ?? [];
+  const rows = entries.map((entry) => ({
+    label: inlinePresentationLabel(entry.name),
+    // The move carries the row it opens, exactly as that row's own link in the
+    // inventory does: a neighbour whose file is listed under two names would
+    // otherwise land on the page as the other name's row and offer that row's
+    // neighbours, which walks the reader back up the list.
+    route: {
+      path: detailRoute(
+        'skill',
+        entry.definitions[0]?.sourceRelativePath ?? '',
+        sessionSources.selectorOf(entry.definitions[0]?.sourceId ?? ''),
+      ),
+      query: originRowNameQuery(entry.name),
+    },
+  }));
+  return detailNeighbours(
+    rows,
+    entries.findIndex((entry) => entry === owner.value?.entry),
+  );
 });
 
 /**
@@ -660,6 +834,17 @@ const skillBodyIsEmpty = computed(() => (skillPresentation.value?.bodyText ?? ''
 const openFile = computed(() => {
   const file = openCompanion.value?.file ?? entryDetail.value?.file ?? null;
   return file !== null && file.sourceRelativePath === openPath.value ? file : null;
+});
+
+/**
+ * The entry file's own name — the last segment of its path — as presentation
+ * text, because the heading above already spells the directory it sits in and
+ * a page carries no fact in two spellings (FR-007). Escaped like every path
+ * (data-model.md § SourceRelativePath).
+ */
+const entryFileNameText = computed(() => {
+  const path = entryDetail.value?.file.sourceRelativePath ?? '';
+  return escapeControlCharacters(path.slice(path.lastIndexOf('/') + 1));
 });
 
 /**
@@ -985,13 +1170,36 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-skill-detail">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the skill
-         list rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=skill">Back to the inventory</NuxtLink></p>
+  <div ref="pageRoot" class="aci-skill-detail aci-route">
+    <!-- The way back and the rows either side of this one, drawn in the bar
+         with every other route's moves (`DetailNavigation.vue`). The kind is
+         URL state, so naming it is what makes the move land on the skill list
+         rather than the kind order's default tab. -->
+    <DetailNavigation
+      list-route="/?kind=skill"
+      :list-text="CUSTOMIZATION_KIND_TEXT.skill"
+      :previous="listNeighbours.previous"
+      :next="listNeighbours.next"
+    />
 
-    <h2 ref="heading" tabindex="-1">
+    <!-- Where the page sits, which is location rather than a way out: the
+         Source family, the kind, and this page's own subject. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="sourceFamilyCrumbText !== null"
+        >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{
+        CUSTOMIZATION_KIND_TEXT.skill
+      }}<!-- The subject and the separator before it stand together: the trail
+           has no third step until an owner resolves — a link this scan holds
+           nothing at never gets one — and a separator with nothing after it
+           reads as a step that failed to render.
+      --><template v-if="skillDirectoryText !== ''">
+        <span>›</span>
+        <span class="aci-detail-crumbs__subject aci-path">{{ skillDirectoryText }}</span>
+      </template>
+    </p>
+
+    <h2 ref="heading" tabindex="-1" class="aci-detail-title">
       <!-- The skill's own directory heads the page: the directory is the
            skill (FR-007), and it is the one identity every product reading
            it shares, where the names they invoke it by differ and are listed
@@ -1016,12 +1224,33 @@ onBeforeUnmount(() => {
       <p class="aci-empty">Loading this skill…</p>
     </template>
 
-    <template v-else-if="detailState === 'stale' || !selectionResolved">
-      <p class="aci-error">
+    <!-- Two dead links, two sentences. The address names the skill and the
+         `file` query names one file inside it, so a link can fail at either
+         step, and one sentence for both said the skill's own path resolved
+         nothing when it had resolved and only the selection had not. The
+         skill's own step is checked first and by the inventory rather than by
+         the request's state: a path this scan lists no skill at reaches no
+         request to go stale, and it must not fall through to the selection
+         sentence, which would tell the reader a directory holds no such file
+         when there is no such directory. -->
+    <template v-else-if="detailState === 'stale' || owner === null">
+      <SubjectUnavailable outcome="warning">
         Nothing in the current scan sits at this link's path. The inventory may have changed since
         the link was made; a rescan that brings the path back will make it resolve again.
-      </p>
-      <p><NuxtLink to="/?kind=skill">Return to the inventory and open it again.</NuxtLink></p>
+        <template #exit>
+          <NuxtLink to="/?kind=skill">Return to the inventory and open it again.</NuxtLink>
+        </template>
+      </SubjectUnavailable>
+    </template>
+
+    <template v-else-if="!selectionResolved">
+      <SubjectUnavailable outcome="warning">
+        This skill's directory holds no file at the path this link selects. The skill may have
+        changed since the link was made; its own files are on the files tab.
+        <template #exit>
+          <NuxtLink :to="skillFileRoute(entryPath)">Open this skill's own file.</NuxtLink>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -1031,71 +1260,132 @@ onBeforeUnmount(() => {
          for it, and the retry beside it is the way back without re-finding the
          link. -->
     <template v-else-if="entryDetail === null">
-      <p class="aci-error">{{ detailFailure }}</p>
-      <p>
-        <button type="button" @click="retryOpen">Try again</button>
-      </p>
+      <SubjectUnavailable outcome="error">
+        {{ detailFailure }}
+        <template #exit>
+          <button type="button" @click="retryOpen">Try again</button>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <template v-else-if="entryDetail">
+      <!-- The entry file's own facts, on the line under the heading: which
+           file carries the skill, how it read, its size, and how many further
+           files its directory ships. The products are not here — what each of
+           them invokes this skill by is that recognition's own fact and one
+           file can answer to two names (FR-007), so they are a row apiece
+           below rather than a set of marks on this line. -->
+      <!-- Only while the skill itself is in view. The files tab states the
+           selected file's own path and facts on the viewer's line above it,
+           and this line states the `SKILL.md`'s: with both on screen a reader
+           selecting a companion read two sizes stacked and could not tell
+           which one the page was about. -->
+      <p v-if="activeTab === 'skill'" class="aci-detail-attributes">
+        <span class="aci-path aci-authored-text">{{ entryFileNameText }}</span>
+        <!-- No count here. The files tab states how many the directory holds,
+             and a second count on this line counts the same directory a
+             different way — the reader is left adding one to the other to
+             learn what the tab already says. -->
+        <span
+          >{{ FILE_ENCODING_TEXT[entryDetail.file.encoding]
+          }}<template v-if="entryDetail.file.encoding !== 'unknown'">
+            · {{ entryDetail.file.sizeBytes }} bytes</template
+          ></span
+        >
+        <!-- The command that opens the file, at the end of the line that
+             states that file's facts — the one place every kind puts it, so a
+             reader who found it on one detail finds it on the next. The files
+             tab has its own on the viewer's line, because there the file on
+             screen is whichever one the tree selected. -->
+        <span class="aci-detail-attributes__end">
+          <OpenFileButton :source-relative-path="entryPath" :source="openSource" />
+        </span>
+      </p>
+
+      <!-- Which directory the skill was in, where its family holds more than
+           one: an escaped presentation of the admitted root, never a path
+           anything can open (FR-002). -->
+      <p v-if="sourceRootText !== null" class="aci-skill-detail__root aci-note">
+        <span class="aci-authored-text">{{ sourceRootText }}</span>
+      </p>
+
+      <!-- One row per recognition: the product, the surfaces of the documented
+           behaviors its admitting rules rest on (FR-009), and the name that
+           product invokes this skill by. The three are never folded into one
+           line, whether or not the names agree today: an invocation name
+           belongs to the recognition rather than to the file — FR-007 has
+           Claude Code invoking the directory while Copilot invokes the
+           authored `name`, so one file answers to two names — and a shape that
+           changes with the data would leave a reader asking why this page
+           looks different. Naming a surface is never a claim that it loaded
+           the skill. Selecting a companion never changes this list: a
+           companion is a file of the skill, not a skill of its own. -->
       <div class="aci-skill-detail__overview">
-        <!-- Which family of place the skill came from, and — where that
-             family holds more than one Source — which consented directory:
-             an escaped presentation of the admitted root, never a path
-             anything can open (FR-002, FR-007). -->
-        <p v-if="sourceFamilyText !== null" class="aci-skill-detail__source-family">
-          {{ sourceFamilyText }}
-        </p>
-        <p v-if="sourceRootText !== null" class="aci-skill-detail__root aci-note">
-          <span class="aci-authored-text">{{ sourceRootText }}</span>
-        </p>
-        <!-- What each recognizing product invokes this skill by, with the
-             surfaces of the documented behaviors its admitting rules rest on
-             beside it (FR-007, FR-009). Two products reading one `SKILL.md`
-             need not agree — Copilot invokes the authored `name`, Claude Code
-             the skill directory — so the page states both rather than picking
-             one, which a per-product address would have decided instead. Naming
-             a surface is never a claim that it loaded the skill. Selecting a
-             companion never changes this list: a companion is a file of the
-             skill, not a skill of its own. -->
-        <ul v-if="invocationNames.length > 0" class="aci-skill-detail__invocations" role="list">
-          <li v-for="invocation in invocationNames" :key="invocation.tool">
-            <span class="aci-skill-detail__invocation"
-              >{{ SUPPORTED_TOOL_TEXT[invocation.tool] }} ({{ invocation.surfacesText }}) ·
-              {{ CUSTOMIZATION_KIND_TEXT.skill }}</span
-            >
-            <!-- The name is labelled rather than trailing the product, because
-                 what it is — the name that product's own documentation
-                 invokes the skill by — is the whole point of showing several.
-                 The span hugs its binding because it renders authored
-                 whitespace, and a name that draws nothing as authored gets the
-                 note the inventory row gives it, so the line never reads as an
-                 empty value (FR-025). -->
-            {{ ' · ' }}
-            <span
-              >Invocation name:
+        <ul v-if="invocationGroups.length > 0" class="aci-skill-detail__invocations" role="list">
+          <li v-for="group in invocationGroups" :key="group.name.text">
+            <p class="aci-skill-detail__invocation-head">
+              <!-- The name is labelled rather than left bare, because what it
+                   is — the name a product's own documentation invokes the
+                   skill by — is the whole point of showing several. The span
+                   hugs its binding because it renders authored whitespace, and
+                   a name that draws nothing is spelled out in full, so the
+                   line never reads as an empty value (FR-025). -->
               <span
-                class="aci-authored-text"
-                :class="{ 'aci-authored-atomic': invocation.nameInvisible }"
-                >{{ invocation.nameText }}</span
-              ><span v-if="invocation.nameInvisible" class="aci-muted">
-                (name with no visible characters)</span
-              ></span
-            >
-            <!-- The comparison entry for this name (FR-011): present exactly
-                 when the name resolves two or more readable files. The
-                 comparison surface's own file switchers take over from there,
-                 this skill's census files included. The accessible name
-                 carries the name, because a page listing two products offers
-                 the same phrase twice (WCAG 2.4.6; label-in-name keeps the
-                 visible phrase as the prefix). -->
-            <template v-if="invocation.compareRoute !== null">{{ ' · ' }}</template>
-            <NuxtLink
-              v-if="invocation.compareRoute !== null"
-              :to="invocation.compareRoute"
-              :aria-label="`Compare this skill's files: ${invocation.nameAccessibleText}`"
-              >Compare this skill's files</NuxtLink
-            >
+                >Invocation name:
+                <span :class="group.name.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+                  group.name.text
+                }}</span></span
+              >
+              <!-- This name's comparison (FR-011): present exactly when the
+                   name resolves two or more readable files in this family. The
+                   comparison surface's own file switchers take over from
+                   there, this skill's census files included. The accessible
+                   name carries the name, because a page listing two names
+                   offers the same phrase twice (WCAG 2.4.6; label-in-name
+                   keeps the visible phrase as the prefix). -->
+              <NuxtLink
+                v-if="group.compareRoute !== null"
+                class="aci-button aci-button--primary aci-skill-detail__invocation-compare"
+                :to="group.compareRoute"
+                :aria-label="`Compare this skill's files: ${group.name.singleLineText}`"
+                >Compare this skill's files
+                <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+              /></NuxtLink>
+              <!-- Why there is no comparison, rather than nothing at all: a
+                   missing control reads the same as a forgotten one, and the
+                   reason is a fact about the name — this family holds one copy
+                   of it, so there is no pair to make (FR-011). -->
+              <span v-else class="aci-skill-detail__invocation-compare aci-muted"
+                >This name has one copy here, so there is nothing to compare</span
+              >
+            </p>
+            <ul class="aci-skill-detail__recognitions" role="list">
+              <li v-for="invocation in group.recognitions" :key="invocation.tool">
+                <span class="aci-skill-detail__invocation-product">
+                  <ToolMark :tool="invocation.tool" decorative />
+                  {{ SUPPORTED_TOOL_TEXT[invocation.tool] }}</span
+                >
+                <span class="aci-skill-detail__invocation-surfaces">{{
+                  invocation.surfacesText
+                }}</span>
+              </li>
+            </ul>
+            <!-- The other files this name resolves, one line whatever the
+                 count (`FileStrip.vue`). Inside the group for the reason the
+                 comparison link above is: a copy is a copy of this name, and a
+                 file answering to two names has a different set under each.
+                 Nothing here states an order or a winner: which copy a session
+                 loads turns on runtime this tool does not observe (FR-009).
+                 The landmark carries the name as well, because a page listing
+                 two names would otherwise hold two landmarks called the same
+                 thing (WCAG 2.4.1; label-in-name keeps the visible phrase as
+                 the prefix, WCAG 2.5.3). -->
+            <FileStrip
+              :open-source-id="openSourceId"
+              :entries="group.otherCopies"
+              label="Other copies of this skill"
+              :accessible-label="`Other copies of this skill: ${group.name.singleLineText}`"
+            />
           </li>
         </ul>
       </div>
@@ -1161,7 +1451,6 @@ onBeforeUnmount(() => {
         </ul>
 
         <div v-if="skillPresentation" class="aci-skill-detail__declarations">
-          <h3>Frontmatter</h3>
           <p v-if="skillPresentation.frontmatter.length === 0" class="aci-note">
             This skill declares none.
           </p>
@@ -1173,16 +1462,15 @@ onBeforeUnmount(() => {
                (FR-025, FR-026, FR-033). -->
           <SourceViewer
             v-else
+            panel-label="Frontmatter"
             :source-text="frontmatterText"
             :source-relative-path="entryPath"
             content-label="Frontmatter of"
             content-language="yaml"
-            fit-content
           />
         </div>
 
         <div v-if="skillPresentation" class="aci-skill-detail__instructions">
-          <h3>Instructions</h3>
           <p v-if="skillBodyIsEmpty" class="aci-note">This skill has none.</p>
           <!-- The same read-only viewer the files tab uses, given the entry
                point's own path so the body is highlighted as the Markdown it
@@ -1191,6 +1479,7 @@ onBeforeUnmount(() => {
                (FR-033). -->
           <SourceViewer
             v-else
+            panel-label="Instructions"
             :source-text="skillPresentation.bodyText"
             :source-relative-path="entryPath"
             content-label="Instructions of"
@@ -1220,6 +1509,7 @@ onBeforeUnmount(() => {
             :selected-path="openPath"
             :directory="treeDirectory"
             label="Files in this skill"
+            supporting-label="Supporting files"
             :route-for="skillFileRoute"
           />
 
@@ -1243,10 +1533,12 @@ onBeforeUnmount(() => {
                describe the skill, and the reader keeps them while retrying the
                one file that did not load. -->
             <template v-if="detailState === 'companion-failed'">
-              <p class="aci-error">{{ detailFailure }}</p>
-              <p>
-                <button type="button" @click="retryOpen">Try again</button>
-              </p>
+              <SubjectUnavailable outcome="error">
+                {{ detailFailure }}
+                <template #exit>
+                  <button type="button" @click="retryOpen">Try again</button>
+                </template>
+              </SubjectUnavailable>
             </template>
             <!-- A switch to another file of this skill is still in flight: the
                tree and the URL already name the new file, so the pane shows
@@ -1261,10 +1553,11 @@ onBeforeUnmount(() => {
                      heading's accessible name would carry an action beside the
                      file it names. -->
                 <h3 class="aci-path aci-authored-text">{{ openFilePathText }}</h3>
-                <!-- Beside the file's own path: this panel is the one place a
-                     skill's page names a single file. -->
+                <!-- The command that opens what is on screen, on that file's own
+                     line: at the end of the tab row it stood over both panels
+                     and left the reader to work out whether it opened the skill
+                     or the file they had selected. -->
                 <OpenFileButton
-                  v-if="openFile !== null"
                   :source-relative-path="openFile.sourceRelativePath"
                   :source="openSource"
                 />
@@ -1303,6 +1596,7 @@ onBeforeUnmount(() => {
                above is the whole story. -->
               <SourceViewer
                 v-if="isReadableFile(openFile)"
+                panel-label="Source"
                 :source-text="openFile.sourceText"
                 :source-relative-path="openFile.sourceRelativePath"
               />
@@ -1318,10 +1612,19 @@ onBeforeUnmount(() => {
 <style scoped>
 /* The file's path and the link that opens it on one line, wrapping together
    when the path is long. */
+/* The open file's path with the command that opens it, on one line: the
+   command acts on the file the line names, so a reader never has to work out
+   what it applies to. */
 .aci-skill-detail__file-title {
+  align-items: center;
+  column-gap: 0.75rem;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  row-gap: 0.375rem;
+}
+
+.aci-skill-detail__file-title > :last-child {
+  margin-inline-start: auto;
 }
 
 /* The detail route's bypass mechanism (WCAG 2.4.1): out of the way until it is
@@ -1365,64 +1668,103 @@ onBeforeUnmount(() => {
 
 /* The definition's own caption line, weighted like a heading within the
    overview: it says which tool's definition the page is. */
-/* One line per recognizing product, laid across the overview's width rather
-   than stacked in a column: this list is the widest thing the overview holds,
-   and stacking three short parts per product left the rest of the line empty.
-   Products wrap onto their own lines only when two no longer fit. */
+/* One box per name, stacked. The name is the box's heading and the products
+   that resolve it are the rows inside, which is what makes the comparison the
+   name's rather than one product's. */
 .aci-skill-detail__invocations {
-  column-gap: 1.25rem;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  gap: 0.375rem;
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.aci-skill-detail__invocations > li {
+  background: var(--aci-surface-raised);
+  border: 1px solid var(--aci-line);
+  border-radius: 0.4375rem;
+  overflow: hidden;
+}
+
+/* The name heads its own box on a band of its own, with the comparison it owns
+   at the end of that band: the band is what separates the name from the
+   recognitions under it, where a shared surface would leave two kinds of line
+   reading as one list. It wraps rather than pushing the name off the line
+   (WCAG 1.4.10). */
+.aci-skill-detail__invocation-head {
+  align-items: center;
+  background: var(--aci-surface-sunken);
+  border-block-end: 1px solid var(--aci-hairline);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0.3125rem 0.625rem;
+}
+
+.aci-skill-detail__invocation-compare {
+  margin-inline-start: auto;
+}
+
+/* One row per recognition inside the box: the product and the surfaces its
+   admitting rules rest on (FR-009). Two columns, so a reader comparing two
+   products reads down one rather than hunting along a sentence — the product
+   column fixed, the surfaces taking what is left because they are what vary in
+   length. Below the reflow width each row becomes a column of its own. */
+.aci-skill-detail__recognitions {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.aci-skill-detail__recognitions li {
+  align-items: center;
+  column-gap: 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  padding: 0.25rem 0.625rem;
   row-gap: 0.15rem;
 }
 
-/* The product, its name, and its comparison entry read as one line, set apart
-   by separators rather than by punctuation inside the text — the same rhythm
-   an inventory row's recognitions have. */
-.aci-skill-detail__invocation {
+/* A hairline between recognitions, which separates rows inside a box the
+   border above has already identified (main.css § --aci-hairline). */
+.aci-skill-detail__recognitions li + li {
+  border-block-start: 1px solid var(--aci-hairline);
+}
+
+@media (width < 40rem) {
+  .aci-skill-detail__recognitions li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The product names the row, so it carries the row's weight. */
+.aci-skill-detail__invocation-product {
+  align-items: center;
+  display: flex;
   font-weight: 600;
+  gap: 0.3125rem;
 }
 
-/* The separator is a text node rather than generated content, so the line
-   reads the same to a screen reader as it does on screen: `::before` content
-   is not part of the accessible text, and `Skill` would run into
-   `Invocation name` with nothing between them. */
-.aci-skill-detail__invocations li {
-  display: flex;
-  column-gap: 0.4rem;
-  flex-wrap: wrap;
+/* The surfaces qualify the recognition they sit beside rather than being one
+   of the things a reader scans for — the same treatment they get on a row. */
+.aci-skill-detail__invocation-surfaces {
+  color: var(--aci-muted);
+  font-size: 0.65625rem;
+  letter-spacing: 0.01em;
 }
 
-/* Kept short on purpose: it is what a reader needs before choosing a file, and
-   every line of it is a line the files do not get. One wrapping row rather
-   than three stacked lines for the same reason: the path, the definition
-   caption, and the comparison entry are each a few words, and a line apiece
-   put three lines of chrome between the heading and the tabs. The gap — not a
-   separator glyph — is what keeps the three apart, so nothing new is read
-   between them. */
+/* What the recognitions sit in, between the head's file line and the tabs.
+   Kept short on purpose: every line of it is a line the files do not get, and
+   the real data is two or three rows. */
 .aci-skill-detail__overview {
-  align-items: baseline;
-  border-bottom: 1px solid var(--aci-border);
-  column-gap: 1.25rem;
-  display: flex;
-  flex-wrap: wrap;
-  padding-bottom: 0.5rem;
-}
-
-.aci-skill-detail__overview > * {
-  margin-block: 0.15rem;
+  margin-block: 0.5rem;
 }
 
 /* The two halves of the entry point, inside the tab that holds the skill
    itself. */
 .aci-skill-detail__declarations,
-.aci-skill-detail__instructions {
-  padding-block-start: 0.75rem;
-}
-
 .aci-skill-detail__declarations > h3,
 .aci-skill-detail__instructions > h3 {
   font-size: 0.95rem;
@@ -1440,16 +1782,20 @@ onBeforeUnmount(() => {
    left the tree a few pixels or pushed it off the screen entirely. The page
    scrolls instead, and each region keeps a height it is usable at
    (WCAG 1.4.4, 1.4.10). */
+/* `start` because the tree takes the height its own rows ask for: stretched to
+   the column beside it, its frame ran on past its last row and drew an empty
+   box under the files it lists. */
 .aci-skill-detail__layout {
+  align-items: start;
   display: grid;
-  gap: 0.75rem 1.5rem;
+  gap: 0.75rem 0.875rem;
   grid-template-columns: minmax(0, 1fr);
   padding-block-start: 0.75rem;
 }
 
 @media (min-width: 52rem) {
   .aci-skill-detail__layout {
-    grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
   }
 }
 

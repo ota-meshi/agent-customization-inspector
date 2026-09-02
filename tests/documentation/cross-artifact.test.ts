@@ -149,7 +149,7 @@ const englishTasks = parseTasks(tasksEnglish);
 const japaneseTasks = parseTasks(tasksJapanese);
 
 /**
- * The declared task-ID space: T001 through T1140, less the ranges the withdrawn
+ * The declared task-ID space: T001 through T1177, less the ranges the withdrawn
  * phases left vacant (tasks.md T1041). Written out here and in the task text
  * both, because what this freezes is that a range nobody meant to change did
  * not change.
@@ -163,7 +163,7 @@ const VACANT_TASK_RANGES: readonly (readonly [number, number])[] = [
 ];
 
 /** Every task ID the current task set declares, in numeric order. */
-const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1141 }, (_, index) => index + 1)
+const DECLARED_TASK_IDS: readonly string[] = Array.from({ length: 1198 }, (_, index) => index + 1)
   .filter((number) => !VACANT_TASK_RANGES.some(([from, to]) => number >= from && number <= to))
   .map((number) => `T${String(number).padStart(3, '0')}`);
 
@@ -346,6 +346,24 @@ describe('the missing-file page accounts for every location a rule reaches', () 
     const missing = [...literalSegments()].filter((value) => !page.includes(value)).toSorted();
     expect(missing, `${name} names no location for: ${missing.join(', ')}`).toEqual([]);
   });
+
+  it('carries the one derived rule the containment check cannot see', () => {
+    // Containment reads literal path segments, and a derived rule has no
+    // matcher to take them from: it admits names read out of a file at scan
+    // time. So the count is frozen instead — the page states the one that
+    // ships, and a second cannot arrive without this failing and someone
+    // deciding what the page now says (AGENTS.md § Implementation simplicity
+    // policy, on freezes).
+    const derived = [CLAUDE_INSPECTION_RULES, COPILOT_INSPECTION_RULES, CODEX_INSPECTION_RULES]
+      .flatMap((rules) => Object.values(rules))
+      .filter((rule) => rule.discoveryClass === 'bounded-derived-candidate')
+      .map((rule) => rule.ruleId)
+      .toSorted();
+    expect(derived).toEqual(['codex.derived.fallback-basename']);
+    for (const page of [notListedEnglish, notListedJapanese]) {
+      expect(page).toContain('project_doc_fallback_filenames');
+    }
+  });
 });
 
 describe('continuous integration declares one independent job per gate', () => {
@@ -446,10 +464,10 @@ describe('task set', () => {
     // a count nobody intended to change must not change unnoticed, so the
     // literals are written here and a phase or task added without deciding to
     // add one fails (AGENTS.md § Implementation simplicity policy; T1049).
-    expect(englishTasks.size).toBe(1053);
-    expect(japaneseTasks.size).toBe(1053);
-    expect(tasksEnglish.match(/^## Phase /gmu)).toHaveLength(108);
-    expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(108);
+    expect(englishTasks.size).toBe(1110);
+    expect(japaneseTasks.size).toBe(1110);
+    expect(tasksEnglish.match(/^## Phase /gmu)).toHaveLength(115);
+    expect(tasksJapanese.match(/^## フェーズ /gmu)).toHaveLength(115);
   });
 
   it('keeps every task self-contained, with no out-of-line amendment', () => {

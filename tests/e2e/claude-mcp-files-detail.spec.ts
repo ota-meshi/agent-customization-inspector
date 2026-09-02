@@ -82,9 +82,11 @@ test.describe('the complete literal Claude MCP file detail', () => {
     // surfaces their admissions rest on — the VS Code 1.118+ provenance
     // beside the CLI's on the root spelling — in the closed tool order
     // (T343, T362).
-    await expect(main).toContainText(
-      'GitHub Copilot (VS Code, CLI), Claude Code (CLI and IDE clients) · MCP',
-    );
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('VS Code, CLI');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
     await expect(main).toContainText('Declared in');
     await expect(main.getByRole('link', { name: '.mcp.json' })).toBeVisible();
 
@@ -130,9 +132,11 @@ test.describe('the complete literal Claude MCP file detail', () => {
     // surfaces their admissions rest on — the VS Code 1.118+ provenance
     // beside the CLI's on the root spelling — in the closed tool order
     // (T343, T362).
-    await expect(main).toContainText(
-      'GitHub Copilot (VS Code, CLI), Claude Code (CLI and IDE clients) · MCP',
-    );
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('VS Code, CLI');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
     await expect(main).toContainText('Readable text');
     await expect(main).toContainText('bytes');
     await expect(main.getByRole('heading', { name: 'context7' })).toBeVisible();

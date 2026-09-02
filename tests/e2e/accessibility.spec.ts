@@ -24,6 +24,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { buildAllCustomizationKindFixture } from '../fixtures/repositories/build-fixtures';
 import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus, waitForInventory } from './repository-status';
 
 /** The four primary workflows SC-008 requires to be keyboard-operable. */
 const PRIMARY_WORKFLOWS = ['discovery', 'inspection', 'comparison', 'global-consent'] as const;
@@ -48,11 +49,10 @@ test.afterAll(async () => {
 /** Opens the committed inventory and waits for it to be operable. */
 async function openInventory(page: Page): Promise<void> {
   await page.goto(host.origin);
-  // The all-kind fixture carries deterministic file-confined outcomes, so its
-  // generation commits `Partial` rather than complete; what this waits for is
-  // that a generation committed at all and its controls are operable.
-  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  // The inventory renders nothing at all until a generation is adopted, so its
+  // own heading is what says one committed — the scan status itself is the
+  // Repository Source's surface now (`repository-status.ts`).
+  await waitForInventory(page);
   await expect(page.getByRole('button', { name: 'Rescan repository' })).toBeEnabled();
 }
 
@@ -96,20 +96,37 @@ test('AUTO-1.1.1 every non-text control carries an equivalent accessible name', 
 test('AUTO-1.3.1 structure is programmatically represented', async ({ page }) => {
   await openInventory(page);
   expectNoViolations(await axeViolations(page, ['wcag131']), 'AUTO-1.3.1');
-  // The kind rail is a tablist over tabpanels, not a row of styled buttons.
+  // The rail is a tablist over tabpanels, not a row of styled buttons, and the
+  // Source families above it are links in their own navigation landmark —
+  // they change the page rather than the panel.
   await expect(page.getByRole('tablist')).toBeVisible();
   await expect(page.getByRole('tabpanel')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Sources' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^Diagnostics/u })).toBeVisible();
 });
 
 test('AUTO-1.3.2 DOM order carries the intended reading order', async ({ page }) => {
   await openInventory(page);
-  // Source facts precede the inventory they describe, and the inventory
-  // precedes the diagnostics collected while producing it.
+  // The page's one section heading names whichever list is in view, at the head
+  // of that list; a Source's own facts are its own surface and are reached from
+  // the rail rather than read above the rows (FR-002, FR-030).
   const order = await page.evaluate(() =>
     [...document.querySelectorAll('h2')].map((heading) => heading.textContent?.trim() ?? ''),
   );
-  expect(order).toEqual(['Repository', 'Customization files', 'Diagnostics']);
+  expect(order).toHaveLength(1);
+  expect(order[0]).toMatch(/^\S/u);
+  // And within the browse region, the rail precedes the rows it selects, so
+  // reading order matches what the reader chooses before what they read.
+  const railBeforeRows = await page.evaluate(() => {
+    const rail = document.querySelector('.aci-inventory-page__rail');
+    const panel = document.querySelector('[role="tabpanel"]');
+    return (
+      rail !== null &&
+      panel !== null &&
+      (rail.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    );
+  });
+  expect(railBeforeRows, 'the rail precedes the panel it selects').toBe(true);
 });
 
 test('AUTO-1.3.4 the inventory operates in portrait and landscape', async ({ page }) => {
@@ -288,9 +305,10 @@ test('AUTO-2.1.1 every primary workflow is operable from the keyboard', async ({
     reached.push('comparison');
   }
 
-  // global consent: the entry the inventory offers to the personal setup.
+  // global consent: the rail's own Source entry, which is how the inventory
+  // offers the personal setup now (FR-030).
   await page.locator('h1').focus();
-  if (await tabUntilFocused(page, page.getByRole('link', { name: /personal setup/u }), 40)) {
+  if (await tabUntilFocused(page, page.getByRole('link', { name: /personal setup/iu }), 40)) {
     reached.push('global-consent');
   }
 
@@ -323,15 +341,38 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({ pa
   // The editor state. Monaco is the one surface here that installs its own key
   // handling, so it is where a trap would actually be: focus must reach the
   // editor and then leave it again by ordinary Tab.
-  await page.locator('.aci-item a').first().click();
+  // A rule file's detail rather than whichever row sorts first: its subject
+  // is the file itself, so it renders one source viewer with nothing hiding
+  // it, where a skill's editors sit inside whichever of its two tabs is
+  // selected and a carrier's detail renders none at all.
+  await page.getByRole('tab', { name: /^Rule/u }).click();
+  await page.getByRole('tabpanel').locator('.aci-row-file a').first().click();
   await expect(page).not.toHaveURL(`${host.origin}/`);
   await page.locator('h1').focus();
   const detail = await walk(50);
   expect(detail.size, 'the detail walk stopped moving').toBeGreaterThan(3);
-  const stuckInEditor = await page.evaluate(
-    () => document.activeElement?.closest('.monaco-editor') !== null,
-  );
-  expect(stuckInEditor, 'focus did not leave the editor').toBe(false);
+  // Reached deliberately rather than left to wherever a fixed number of
+  // presses lands: how many controls a detail renders is not fixed, so a walk
+  // that happens to end outside the editor proves nothing about leaving it.
+  // The editor is read-only (`monaco.ts` § readOnly, domReadOnly), so Tab is
+  // not taken for indentation and ordinary Tab is the way out.
+  const inEditor = (): Promise<boolean> =>
+    page.evaluate(() => document.activeElement?.closest('.monaco-editor') !== null);
+  // Waited for rather than assumed: the editor mounts after the detail's own
+  // request settles, and it is not in the tab order until it exists — so a
+  // walk started before that never reaches it however many times it presses.
+  await expect(page.locator('.monaco-editor').first()).toBeVisible();
+  await page.locator('h1').focus();
+  let entered = false;
+  for (let press = 0; press < 60 && !entered; press += 1) {
+    await page.keyboard.press('Tab');
+    entered = await inEditor();
+  }
+  expect(entered, 'focus never entered the editor').toBe(true);
+  for (let press = 0; press < 10 && (await inEditor()); press += 1) {
+    await page.keyboard.press('Tab');
+  }
+  expect(await inEditor(), 'focus did not leave the editor').toBe(false);
 
   // The consent state, which is the one state reached through a decision rather
   // than through a route the inventory already renders.
@@ -344,12 +385,25 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({ pa
 
 test('AUTO-2.4.1 repeated navigation can be bypassed', async ({ page }) => {
   await openInventory(page);
-  // The shell repeats no navigation block before the main content: the routed
-  // content is the first thing after the masthead, so there is nothing to skip
-  // past. The check is that no navigation landmark precedes the content.
-  const precedingNavigation = await page.evaluate(() => document.querySelectorAll('nav').length);
-  expect(precedingNavigation).toBe(0);
-  await expect(page.locator('main')).toBeVisible();
+  // The row's acceptance names keyboard users as well as assistive-technology
+  // ones, so both halves are asserted: the landmarks a screen reader jumps by,
+  // and the skip link a reader using the keyboard alone needs — landmarks do
+  // not help them at all.
+  //
+  // The link is reached backwards from the heading the shell puts focus on when
+  // the page arrives, which is one press: that is what says it comes before the
+  // whole repeated block rather than somewhere inside it. Walking forwards from
+  // the document instead would depend on where the browser keeps its
+  // sequential-navigation starting point, which a blur does not reset.
+  await expect(page.getByRole('main')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Sources' })).toBeVisible();
+  await page.locator('h1').focus();
+  await page.keyboard.press('Shift+Tab');
+  const skip = page.getByRole('link', { name: 'Skip to the content' });
+  await expect(skip).toBeFocused();
+  await page.keyboard.press('Enter');
+  const landed = await page.evaluate(() => document.activeElement?.id ?? '');
+  expect(landed, 'the skip link did not move focus into the content').toBe('aci-app-content');
 });
 
 test('AUTO-2.4.2 every route exposes a descriptive document title', async ({ page }) => {
@@ -390,7 +444,17 @@ test('AUTO-2.4.4 every link exposes its purpose', async ({ page }) => {
 test('AUTO-2.4.6 headings and labels describe topic or purpose', async ({ page }) => {
   await openInventory(page);
   expectNoViolations(await axeViolations(page, ['wcag246']), 'AUTO-2.4.6');
-  await expect(page.getByRole('heading', { name: 'Filters' })).toBeVisible();
+  // The two selects ride at the end of the list's heading row rather than under
+  // a heading of their own, so what names them is the group they are in and
+  // each control's own label.
+  await expect(page.getByRole('group', { name: 'Filters' })).toBeVisible();
+  await expect(page.getByLabel('Tool')).toBeVisible();
+  // Each rail group says what it groups, and each Source entry is named by the
+  // family it reaches rather than by a bare status.
+  await expect(page.getByRole('navigation', { name: 'Sources' })).toBeVisible();
+  await expect(page.getByRole('tablist', { name: 'Customization files' })).toBeVisible();
+  // The scan status carries its own heading on the surface that owns it.
+  await openRepositoryStatus(page);
   await expect(page.getByRole('heading', { name: 'Scan status' })).toBeVisible();
 });
 
@@ -507,14 +571,14 @@ test('AUTO-3.2.1 receiving focus alone never changes context', async ({ page }) 
 test('AUTO-3.2.2 input changes have predictable effects', async ({ page }) => {
   await openInventory(page);
   const before = new URL(page.url()).pathname;
-  // Typing into the path filter narrows the list in place. The filter writes
-  // itself to the query so a reload or a pasted link renders the same list
-  // (T187), which is not a change of context: the route, the heading, and the
+  // Typing into the one search narrows the list in place. It writes itself to
+  // the query so a reload or a pasted link renders the same list (T187,
+  // FR-006), which is not a change of context: the route, the heading, and the
   // controls are the ones the reader was already using.
-  await page.locator('.aci-inventory-filters input').first().fill('CLAUDE');
-  await expect(page).toHaveURL(/[?&]path=CLAUDE/u);
+  await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('CLAUDE');
+  await expect(page).toHaveURL(/[?&]q=CLAUDE/u);
   expect(new URL(page.url()).pathname).toBe(before);
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await waitForInventory(page);
   await expect(page.getByRole('tabpanel')).toBeVisible();
 });
 
@@ -524,7 +588,7 @@ test('AUTO-3.2.3 repeated navigation keeps its relative order', async ({ page })
     [...document.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent?.trim() ?? ''),
   );
   await page.reload();
-  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
+  await waitForInventory(page);
   const second = await page.evaluate(() =>
     [...document.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent?.trim() ?? ''),
   );
@@ -535,10 +599,13 @@ test('AUTO-3.2.4 components with the same function are identified consistently',
   page,
 }) => {
   await openInventory(page);
-  // Every kind rail entry is a tab, named by its kind and its count; none of
-  // them is a link or a plain button while the others are tabs.
+  // Every rail entry that selects the panel is a tab, named by what it lists
+  // and its count; none of them is a link or a plain button while the others
+  // are tabs. The Source entries above them are links, and deliberately so:
+  // they change the page rather than the panel, which is the difference this
+  // criterion is about.
   const roles = await page.evaluate(() =>
-    [...document.querySelectorAll('.aci-inventory-kind-tabs__tab')].map((tab) =>
+    [...document.querySelectorAll('.aci-inventory-rail__tab')].map((tab) =>
       tab.getAttribute('role'),
     ),
   );
@@ -575,12 +642,18 @@ test('AUTO-3.3.3 a diagnostic offers a practical next step', async ({ page }) =>
   await openInventory(page);
   // The all-kind fixture commits partial: its deterministic file-confined
   // outcomes publish diagnostics. A file-scoped record is stated on its own
-  // row, so the scan status is where the reader is told where to look — the
-  // practical next step this criterion asks for.
-  await expect(page.locator('.aci-scan-progress')).toContainText('Partial');
-  await expect(page.locator('.aci-scan-progress')).toContainText('kept a diagnostic of their own');
-  // The source-level list states its own state rather than leaving the section
+  // row, and the practical next step this criterion asks for is that the
+  // reader is told there is something to look at and where: the rail says
+  // `Partial` beside the way to the Repository Source's own surface, and that
+  // surface says how many files kept one.
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Partial');
+  const status = await openRepositoryStatus(page);
+  await expect(status).toContainText('Partial');
+  await expect(status).toContainText('kept a diagnostic of their own');
+  await page.getByRole('link', { name: /Back to /u }).click();
+  // The source-level list states its own state rather than leaving the panel
   // blank, so a reader is never left guessing whether it failed to render.
+  await page.getByRole('tab', { name: /^Diagnostics/u }).click();
   await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
 });
 
@@ -590,7 +663,7 @@ test('AUTO-3.3.8 opening the printed session URL requires no authentication', as
   // No credential field, no puzzle, no transcription step stands between the
   // printed URL and the inventory.
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await waitForInventory(page);
 });
 
 test('AUTO-4.1.2 custom controls expose name, role, and value', async ({ page }) => {
@@ -630,7 +703,11 @@ test('AUTO-4.1.3 status changes are announced without forcing focus', async ({ p
   expect(
     await withoutMovingFocus('button:has-text("Rescan repository")', async () => {
       await page.keyboard.press('Enter');
-      await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
+      // The command settles when the control is operable again: the status it
+      // produced is the Repository Source's own surface, and leaving this page
+      // to read it would move the focus this case is measuring.
+      await expect(page.getByRole('button', { name: 'Rescan repository' })).toBeEnabled();
+      await waitForInventory(page);
     }),
     'the rescan announcement moved focus',
   ).toBe(true);

@@ -37,12 +37,10 @@
 // (data-model.md § Inventory unit). Nothing states which of two same-name
 // agents a spawn would select, or what a spawned session would inherit: both
 // are runtime this tool never observes (FR-009).
+import { AuthoredName } from '../authored-name';
 import SourceDiff from './SourceDiff.vue';
-import {
-  CUSTOMIZATION_KIND_TEXT,
-  SUPPORTED_TOOL_TEXT,
-  pathPresentationLabel,
-} from '../../../shared/entities';
+import ToolMark from '../ToolMark.vue';
+import { SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import {
   CUSTOM_AGENT_DECLARATION_SIDE_STATE_TEXT,
@@ -76,37 +74,14 @@ const NOT_RECOGNIZED_TEXT = 'Not recognized';
 const NO_NAME_TEXT = 'No known agent name';
 
 /**
- * What a cell writes for an authored empty name, which has no characters for
- * the label rule to draw and would otherwise leave the cell ending after the
- * word. Reachable here: two files both declaring `name: ""` resolve one row,
- * and that row offers its comparison like any other.
+ * One cell's declared name as the cell draws it — spelled out where it has
+ * nothing to draw, noted where it is empty, and styled as the file's own
+ * characters only when they are ({@link AuthoredName}). Reached from the
+ * branch that has already told a declared name from an unknown one, so a name
+ * reads here exactly as it does on the row and the detail.
  */
-const EMPTY_NAME_TEXT = '(empty name)';
-
-/**
- * One cell's name as it is drawn: the shared label rule, which spells out a
- * name built only from whitespace or invisible code points, and the
- * empty-name note beside it — the two rules the inventory row and the detail
- * page draw a name by, so one name reads identically wherever it appears
- * (`AgentRow.vue`, `pages/agents/[source]/[...path].vue`).
- */
-function nameText(definition: CustomAgentSideDefinition): string {
-  const name = definition.agentName ?? '';
-  return name === '' ? EMPTY_NAME_TEXT : pathPresentationLabel(name);
-}
-
-/**
- * Whether {@link nameText} is the reader's own characters rather than this
- * product's note, which decides the authored-text styling — the same
- * distinction the row draws. Compared against the two substitutions rather
- * than tested again, so the two cannot answer differently.
- */
-function nameIsAuthored(definition: CustomAgentSideDefinition): boolean {
-  return (
-    definition.agentName !== null &&
-    definition.agentName !== '' &&
-    pathPresentationLabel(definition.agentName) === definition.agentName
-  );
+function nameOf(agentName: string): AuthoredName {
+  return new AuthoredName(agentName);
 }
 
 /** The surfaces list's text: each surface by its caption, in inventory order. */
@@ -127,7 +102,69 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
     </p>
     <template v-else>
       <section>
-        <h3>Declared metadata</h3>
+        <h3 class="aci-compare-block-title">Tool recognition</h3>
+        <!-- One row per recognizing tool, in the contracted tool order: each
+             recognition stays distinguishable from the physical file
+             (US3 scenario 2), captioned in words (AGENTS.md § User-visible
+             copy policy). A recognized cell carries the name this tool
+             identifies the agent by and the surfaces its admissions rest
+             on — both are that one recognition's, so they are stated where
+             the recognition is. `tabindex` because the box
+             around the table is its own horizontal scroll container on a wide
+             viewport (WCAG 2.1.1). -->
+        <div class="aci-recognition-table" tabindex="0">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Tool</th>
+                <th scope="col">First file</th>
+                <th scope="col">Second file</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in comparison.tools" :key="row.tool">
+                <!-- Decorative, because the row spells the product's name
+                     beside it: the mark is what a reader scanning the column
+                     finds, and its own accessible name would be the same word
+                     twice (`ToolMark.vue`). -->
+                <th scope="row">
+                  <ToolMark decorative :tool="row.tool" />
+                  {{ SUPPORTED_TOOL_TEXT[row.tool] }}
+                </th>
+                <td
+                  v-for="(cell, side) in [row.left, row.right]"
+                  :key="side"
+                  :data-label="side === 0 ? 'First file' : 'Second file'"
+                >
+                  <template v-if="cell === null"
+                    ><span class="aci-muted">{{ NOT_RECOGNIZED_TEXT }}</span></template
+                  >
+                  <template v-else-if="cell.agentName === null"
+                    >{{ NO_NAME_TEXT
+                    }}<span class="aci-muted"> ({{ surfacesText(cell) }})</span></template
+                  >
+                  <template v-else
+                    >Named
+                    <!-- The name drawn like a path, because one product derives
+                         it from the file name and the others read it from a
+                         declaration: both are the reader's own characters, and
+                         both are shown as what they are — spelled out when a
+                         name has none to draw, and noted when it is empty
+                         (FR-025). -->
+                    <span
+                      :class="nameOf(cell.agentName).isAuthored ? 'aci-authored-text' : 'aci-muted'"
+                      >{{ nameOf(cell.agentName).text }}</span
+                    >
+                    <span class="aci-muted"> ({{ surfacesText(cell) }})</span></template
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h3 class="aci-compare-block-title">Declared metadata</h3>
         <!-- The files' declared metadata, not any tool's: the declarations
              are the file's one scan-time parse for the kind (FR-028), so they
              are compared once, under no tool caption (research.md § 7). A
@@ -170,7 +207,7 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
         </template>
       </section>
       <section v-if="comparison.instructionsDiff !== null">
-        <h3>Instructions</h3>
+        <h3 class="aci-compare-block-title">Instructions</h3>
         <!-- What each file tells its agent, diffed on its own: a Codex
              agent's instructions are a TOML triple-quoted string and a
              Markdown agent's are the body under a frontmatter fence, so
@@ -201,123 +238,5 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
          same way. Outside the recognition branch above, because a file every
          tool fails to recognize still shows its bytes (FR-027). -->
     <slot name="source" />
-    <section v-if="comparison.tools.length > 0">
-      <h3>Tool recognition</h3>
-      <!-- One row per recognizing tool, in the contracted tool order: each
-           recognition stays distinguishable from the physical file
-           (US3 scenario 2), captioned in words (AGENTS.md § User-visible
-           copy policy). A recognized cell carries the name this tool
-           identifies the agent by and the surfaces its admissions rest
-           on — both are that one recognition's, so they are stated where
-           the recognition is. `tabindex` because the table is its own
-           horizontal scroll container on a wide viewport (WCAG 2.1.1). -->
-      <table class="aci-custom-agent-recognition-comparison__table" tabindex="0">
-        <thead>
-          <tr>
-            <th scope="col">Tool</th>
-            <th scope="col">First file</th>
-            <th scope="col">Second file</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in comparison.tools" :key="row.tool">
-            <th scope="row">
-              {{ SUPPORTED_TOOL_TEXT[row.tool] }} · {{ CUSTOMIZATION_KIND_TEXT[row.kind] }}
-            </th>
-            <td
-              v-for="(cell, side) in [row.left, row.right]"
-              :key="side"
-              :data-label="side === 0 ? 'First file' : 'Second file'"
-            >
-              <template v-if="cell === null">{{ NOT_RECOGNIZED_TEXT }}</template>
-              <template v-else-if="cell.agentName === null"
-                >{{ NO_NAME_TEXT
-                }}<span class="aci-muted"> — surfaces: {{ surfacesText(cell) }}</span></template
-              >
-              <template v-else
-                >Named
-                <!-- The name drawn like a path, because one product derives
-                     it from the file name and the others read it from a
-                     declaration: both are the reader's own characters, and
-                     both are shown as what they are — spelled out when a
-                     name has none to draw, and noted when it is empty
-                     (FR-025). -->
-                <span :class="nameIsAuthored(cell) ? 'aci-authored-text' : 'aci-muted'">{{
-                  nameText(cell)
-                }}</span>
-                <span class="aci-muted"> — surfaces: {{ surfacesText(cell) }}</span></template
-              >
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
   </div>
 </template>
-
-<style scoped>
-/* The tables scroll inside themselves when a cell is wide, so the page never
-   scrolls sideways (WCAG 1.4.10). */
-.aci-custom-agent-recognition-comparison__table {
-  border-collapse: collapse;
-  display: block;
-  max-inline-size: 100%;
-  overflow-x: auto;
-}
-
-.aci-custom-agent-recognition-comparison__table th,
-.aci-custom-agent-recognition-comparison__table td {
-  border: 1px solid var(--aci-border);
-  padding: 0.3rem 0.5rem;
-  text-align: start;
-  vertical-align: top;
-}
-
-/* Authored values keep their spelling but wrap rather than widening the row
-   past the viewport; a value with no break opportunities still scrolls inside
-   the table's own box. */
-.aci-custom-agent-recognition-comparison__table td {
-  overflow-wrap: anywhere;
-}
-
-/* On a narrow viewport the columns reflow into one stacked block per row
-   instead of scrolling in two dimensions: the contract allows two-dimensional
-   scrolling only for essential source-code regions
-   (accessibility-acceptance.md § WCAG 1.4.10), and these rows are data, not
-   source. Each cell repeats its column caption from `data-label`, so the
-   association the hidden header row carried stays visible in reading order. */
-@media (width < 52rem) {
-  .aci-custom-agent-recognition-comparison__table thead {
-    display: none;
-  }
-
-  .aci-custom-agent-recognition-comparison__table tbody,
-  .aci-custom-agent-recognition-comparison__table tr,
-  .aci-custom-agent-recognition-comparison__table th[scope='row'],
-  .aci-custom-agent-recognition-comparison__table td {
-    display: block;
-  }
-
-  .aci-custom-agent-recognition-comparison__table tr {
-    border: 1px solid var(--aci-border);
-    border-radius: 4px;
-    margin-block-end: 0.5rem;
-  }
-
-  .aci-custom-agent-recognition-comparison__table th,
-  .aci-custom-agent-recognition-comparison__table td {
-    border: 0;
-    border-block-start: 1px solid var(--aci-border);
-  }
-
-  .aci-custom-agent-recognition-comparison__table tr > :first-child {
-    border-block-start: 0;
-  }
-
-  .aci-custom-agent-recognition-comparison__table td::before {
-    content: attr(data-label);
-    display: block;
-    font-weight: 600;
-  }
-}
-</style>

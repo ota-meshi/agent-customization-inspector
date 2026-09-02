@@ -383,3 +383,38 @@ firefoxで全件通過し、`AUTO-2.1.1`のみ認証外のmacOS WebKitでそこ�
 
 **`MANUAL-*` IDは未実行として記録する。** そのmatrixは3つのoperating systemと3つのscreen readerの組を
 要し、このreleaseはそれを主張しない（contracts/accessibility-acceptance.ja.md § 判定rule）。
+
+
+## Interface rework: 何が無効になり、release完了で何を繰り返すか
+
+Phase 106–109のinterface reworkは、上に記録したすべてのoutcomeが観測されたsurfaceを変更した。
+inventoryのrowとrail、detailの見出しと前後への移動、comparisonの見出し、そしてsession自身の
+controlの位置である。このうち2つは、記録済みの測定が名指しで参照していたものを移動させた。
+scan statusとcommitted generationはinventoryではなく`/repository` pageにあり、名前とpathの検索は
+shellのもので、barにある。したがって上のoutcomeは、取得した当時のtreeについて誤っているのではない。
+このtreeを記述していないのであって、このtreeから切るrelease candidateは、それらを引用するのではなく
+実行し直す。
+
+無効になるものと、その理由:
+
+| 記録済みのoutcome | reworkが無効にする理由 |
+|---|---|
+| Release gate execution表 | その件数はrework前のtreeで各runが報告した値である。以降どのsuiteもcaseの増減や変更を受けており、数値はこのtreeのrunを同定しない |
+| SC-001とSC-006のfirst-use session | spec.md § Measurable Outcomesは、primary workflowへの実質的な変更の後に評価をやり直すことを求める。reworkは4つすべてのsurfaceを変更した |
+| SC-008 accessibility（`AUTO-*`） | 34件の自動checkはrework前のmarkupに対して記録されており、reworkが移動させたcontrolを含む |
+| SC-008 Not-applicableの再検証（`REVIEW-*`） | 各rationaleは、その後reworkが変更した`src/`に対して再確認したものである。3.3.7の行はinventoryのpath filterを名指しするが、それは現在shellの検索controlである |
+| SC-003、SC-004、SC-005、SC-007 | fixture byteが変わっており、spec.md § Release-Evidence Fixture Governanceはfixture byteの変更を新しい非比較可能な測定setとする |
+
+Release完了がこのreworked treeに対して繰り返すもの、この順で:
+
+1. `pnpm run build`、続いて`pnpm run verify:package`と`pnpm run test:package`。
+2. Release gate execution表のすべてのgate。各runが報告する件数を記録する。
+3. CIでの3 project browser run。認証matrixが実行されるのはそこである。
+4. SC-008の自動checkと`REVIEW-*`の再確認。このtreeの`src/`とpacked `dist/`に対して行う。
+5. SC-003、SC-004、SC-005、SC-007のoutcome-manifest測定。新しいsetを同定するmanifest versionと
+   canonical digestを記録する。
+6. SC-001とSC-006のためのagent駆動20 session。候補のbuildに対して実施し、agent駆動のrunとして
+   記録する。
+
+ここに書いたものはreworkに対する指摘ではない。このtreeからのreleaseが負うもののlistであり、
+後からdiffを見て再構成するのではなく、理由が新しいうちに書き留めたものである。

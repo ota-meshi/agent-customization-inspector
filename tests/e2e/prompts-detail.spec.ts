@@ -88,12 +88,19 @@ test.describe('the complete literal Copilot prompt detail', () => {
       .filter({ hasText: 'scaffold-component' })
       .getByRole('link', { name: '.github/prompts/scaffold.prompt.md' })
       .click();
-    await expect(page).toHaveURL(
-      /\/prompts-and-commands\/detail\/repository\/\.github\/prompts\/scaffold\.prompt\.md$/u,
+    // The file's own address, and beside it the row it was followed from: one
+    // file can be listed under two names, and the link records which
+    // (`detail-route.ts` § originRowNameQuery).
+    const opened = new URL(page.url());
+    expect(opened.pathname).toBe(
+      '/prompts-and-commands/detail/repository/.github/prompts/scaffold.prompt.md',
     );
+    expect(opened.searchParams.get('name')).toBe('scaffold-component');
 
     const main = page.locator('main');
-    await expect(main).toContainText('GitHub Copilot (VS Code) · Prompt / Command');
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('VS Code');
     // The name the row it was opened from is grouped under: the one the file
     // declared, not its file name.
     await expect(main).toContainText('Invocation name: scaffold-component');

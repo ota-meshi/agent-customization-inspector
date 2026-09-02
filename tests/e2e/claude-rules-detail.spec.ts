@@ -90,7 +90,11 @@ test.describe('the complete literal Claude rule detail', () => {
     await expect(page.getByRole('heading', { name: '.claude/rules/api.md' })).toBeVisible();
 
     const main = page.locator('main');
-    await expect(main).toContainText('Claude Code (CLI and IDE clients) · Rule');
+    // The product that recognizes the file and the surfaces its admitting rules
+    // rest on, on the customization's own attribute line.
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
     await expect(main).toContainText('Readable text');
     // One document, not two halves: the frontmatter delimiters and the
     // instructions after them are on one screen, in the order the file has
@@ -128,7 +132,7 @@ test.describe('the complete literal Claude rule detail', () => {
     );
     const main = page.locator('main');
     await expect(page.getByRole('heading', { name: '.claude/rules/CLAUDE.md' })).toBeVisible();
-    await expect(main).toContainText('Claude Code (CLI and IDE clients) · Rule');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('Claude Code');
     await expect(main).toContainText('Recognized as both.');
     await expect(main).not.toContainText('could not be loaded');
   });
@@ -149,7 +153,7 @@ test.describe('the complete literal Claude rule detail', () => {
     await page.goto(
       new URL('/rules/detail/repository/.claude/rules/plain.md', host.origin).toString(),
     );
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=rule$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Rule');
   });

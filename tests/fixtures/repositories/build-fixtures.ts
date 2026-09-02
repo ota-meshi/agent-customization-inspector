@@ -6078,6 +6078,12 @@ export function buildPriorityMcpFixture(
           'root-only': { url: 'https://root.example.com/mcp' },
           // Malformed command: still a named declaration this release lists.
           odd: { command: 42 },
+          // The empty declared name, which strict JSON accepts as a key: the
+          // row, the detail, and the comparison all note it rather than
+          // drawing nothing where the name goes (FR-025). Declared in two
+          // carriers, because the note has to be reachable on a comparison
+          // and a comparison needs a pair.
+          '': { command: 'npx', args: ['-y', 'unnamed-mcp'] },
         },
       },
       null,
@@ -6093,7 +6099,7 @@ export function buildPriorityMcpFixture(
   write(
     root,
     '.github/mcp.json',
-    `{ "gh-actions": { "command": "npx" }, "${sharedServerName}": { "command": "gh" }, "tickets": { "command": "npx" } }\n`,
+    `{ "gh-actions": { "command": "npx" }, "${sharedServerName}": { "command": "gh" }, "tickets": { "command": "npx" }, "": { "command": "npx", "args": ["-y", "unnamed-mcp-cli"] } }\n`,
   );
   // The VS Code JSONC carrier re-declares it too, comments and all.
   write(

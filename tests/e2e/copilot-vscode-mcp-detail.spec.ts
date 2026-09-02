@@ -76,7 +76,8 @@ test.describe('the complete literal Copilot VS Code MCP file detail', () => {
     // The record's identity: the recognizing product with the VS Code
     // surface its admission rests on, and the owner-carrier line.
     const main = page.locator('main');
-    await expect(main).toContainText('GitHub Copilot (VS Code) · MCP');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('VS Code');
     await expect(main).toContainText('Declared in');
     await expect(main.getByRole('link', { name: '.vscode/mcp.json' })).toBeVisible();
 
@@ -116,7 +117,8 @@ test.describe('the complete literal Copilot VS Code MCP file detail', () => {
     await page.getByRole('link', { name: '.mcp.json: root-bare' }).click();
     await expect(page.getByRole('heading', { name: 'root-bare' })).toBeVisible();
     const main = page.locator('main');
-    await expect(main).toContainText('GitHub Copilot (VS Code, CLI) · MCP');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('VS Code, CLI');
     await expect(main).toContainText('command');
     await expect(main).toContainText('npx');
     const text = await main.innerText();
@@ -133,7 +135,8 @@ test.describe('the complete literal Copilot VS Code MCP file detail', () => {
     await page.getByRole('link', { name: '.vscode/mcp.json' }).click();
     await expect(page.getByRole('heading', { name: '.vscode/mcp.json' })).toBeVisible();
     const main = page.locator('main');
-    await expect(main).toContainText('GitHub Copilot (VS Code) · MCP');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('VS Code');
     await expect(main).toContainText('Readable text');
     await expect(main).toContainText('bytes');
     await expect(main.getByRole('heading', { name: 'vs-local' })).toBeVisible();

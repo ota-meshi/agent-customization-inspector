@@ -107,7 +107,13 @@ const exclusions = computed(() =>
       variables and documented defaults point at, worked out from those values alone.
     </p>
 
-    <table class="aci-global-consent-preview__roots">
+    <!-- `tabindex` because the table is its own horizontal scroll container: a
+         long proposed root pushes the origin and status columns past its right
+         edge, and WebKit does not make a scrollable overflow container
+         keyboard focusable on its own — so a reader with no pointer could hear
+         those columns and never bring them into view (WCAG 2.1.1). The caption
+         below names what focus has landed on. -->
+    <table class="aci-global-consent-preview__roots" tabindex="0">
       <caption class="aci-global-consent-preview__caption">
         The four proposed directories
       </caption>
@@ -131,7 +137,11 @@ const exclusions = computed(() =>
         </tr>
       </tbody>
     </table>
-    <p class="aci-note">
+    <!-- The table's own note, so it takes the table's width rather than the
+         page's reading measure: it qualifies the column above it, and stopping
+         two-thirds of the way across read as a line that failed to reach its
+         own column. -->
+    <p class="aci-note aci-global-consent-preview__roots-note">
       Each directory is shown as an escaped presentation of the value it came from. It is not a path
       you can open and grants no read access.
     </p>
@@ -139,23 +149,48 @@ const exclusions = computed(() =>
     <template v-if="exclusions.length > 0">
       <h3>What stays excluded</h3>
       <p>Nothing else in these directories is read, whatever you confirm here.</p>
-      <!-- The examples name only what every member's exclusion covers:
+      <!-- The sentence once, then who it is recorded for. Every member's
+           exclusion says the same thing — the registry holds one categorical
+           rule per product, not prose about each — so stating it per product
+           printed one thirty-word sentence four times with only the leading
+           name different. Said once as the lead and listed under it, both
+           facts the record carries survive: what is excluded, and which
+           products carry a shipped exclusion.
+
+           The examples name only what every member's exclusion covers:
            "settings" is not among them, because Copilot's own settings
            document is one of the files the confirmation admits (FR-015),
            while "everything else" still covers the settings a member's rules
            do not admit. -->
+      <p>
+        For each product below, everything the read scope above does not name: credentials, saved
+        sessions, caches, installed plugin copies, state the tool keeps outside these directories,
+        and anything it generates for itself.
+      </p>
       <ul class="aci-global-consent-preview__exclusions">
-        <li v-for="exclusion in exclusions" :key="exclusion.ruleId">
-          {{ exclusion.tool }} — everything the read scope above does not name: credentials, saved
-          sessions, caches, installed plugin copies, state the tool keeps outside these directories,
-          and anything it generates for itself
-        </li>
+        <li v-for="exclusion in exclusions" :key="exclusion.ruleId">{{ exclusion.tool }}</li>
       </ul>
     </template>
   </div>
 </template>
 
 <style scoped>
+/* Prose takes the shared measure (`main.css` § --aci-measure); the table of
+   frozen roots below does not, because an absolute path held to a reading
+   measure wraps to four lines and the roots are what the decision rests on
+   (FR-013). At the shell's full width these paragraphs ran to about 150
+   characters a line. */
+.aci-global-consent-preview :where(p, li) {
+  max-inline-size: var(--aci-measure);
+}
+
+/* The note under the table is the table's, not the page's prose: held to the
+   reading measure it ended two-thirds of the way across a full-width table,
+   which reads as a line that failed to reach its own column. */
+.aci-global-consent-preview__roots-note {
+  max-inline-size: none;
+}
+
 .aci-global-consent-preview__roots {
   width: 100%;
   border-collapse: collapse;
@@ -179,7 +214,7 @@ const exclusions = computed(() =>
 .aci-global-consent-preview__roots :is(th, td) {
   text-align: start;
   padding: 0.35rem 0.75rem 0.35rem 0;
-  border-block-end: 1px solid var(--aci-border);
+  border-block-end: 1px solid var(--aci-line);
   vertical-align: top;
 }
 </style>

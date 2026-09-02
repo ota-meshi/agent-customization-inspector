@@ -21,6 +21,7 @@ import {
 } from '../fixtures/repositories/build-fixtures';
 import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { recognitionTexts } from './recognition-marks';
 import { openNoKindDisclosure } from './no-kind-disclosure';
 
 let fixture: AllToolSkillFixture;
@@ -62,10 +63,10 @@ test('lists one unified skill inventory with each file’s recognition badges', 
   const expectTools = async (row: string, path: string, tools: readonly string[]) => {
     const group = page
       .locator('[role="tabpanel"] .aci-item', {
-        has: page.locator('.aci-skill-row__name', { hasText: new RegExp(`^${row}$`, 'u') }),
+        has: page.locator('.aci-row-head__name', { hasText: new RegExp(`^${row}$`, 'u') }),
       })
       .locator('.aci-source-family-blocks__members > li', { hasText: path });
-    await expect(group.locator('.aci-skill-row__tool')).toHaveText([...tools]);
+    expect(await recognitionTexts(group)).toEqual([...tools]);
   };
   await expectTools('orbit', '.agents/skills/orbit/SKILL.md', [
     'GitHub Copilot VS Code, CLI, Cloud agent',
@@ -94,7 +95,7 @@ test('narrows the one population with the tool and path filters', async ({ page 
 
   // Tool: Codex keeps exactly the readable root `.agents` rows.
   await page.getByLabel('Tool').selectOption('codex');
-  await expect(skillRows(page).locator('.aci-skill-row__name')).toHaveText([
+  await expect(skillRows(page).locator('.aci-row-head__name')).toHaveText([
     'alpha',
     'empty',
     'orbit',
@@ -102,7 +103,7 @@ test('narrows the one population with the tool and path filters', async ({ page 
   ]);
 
   // Path composes with the tool filter over the same population.
-  await page.getByLabel('Path contains').fill('alpha-a');
+  await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('alpha-a');
   await expect(skillRows(page)).toHaveCount(1);
   await expect(skillRows(page).first()).toContainText('.agents/skills/alpha-a/SKILL.md');
 
@@ -126,7 +127,9 @@ test('operates the filters and their clear control from the keyboard', async ({ 
 
   // Reach the path filter in the page's real Tab order — arriving there is
   // part of the claim — then type the query with the keyboard alone.
-  expect(await tabUntilFocused(page, page.getByLabel('Path contains'))).toBe(true);
+  expect(
+    await tabUntilFocused(page, page.getByRole('searchbox', { name: 'Search names and paths' })),
+  ).toBe(true);
   await page.keyboard.type('.github/');
   await expect(skillRows(page)).toHaveCount(1);
   await expect(skillRows(page).first()).toContainText('voyage');
@@ -146,7 +149,7 @@ test('operates the filters and their clear control from the keyboard', async ({ 
   // programmatically focusable — from the known position the clear control
   // just left focus on. A link demoted to `tabindex="-1"` would fail this
   // walk where a bare `.focus()` would still land on it.
-  const firstLink = page.locator('[role="tabpanel"] .aci-item a').first();
+  const firstLink = page.locator('[role="tabpanel"] .aci-row-file a').first();
   expect(await tabUntilFocused(page, firstLink)).toBe(true);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/skills\/detail\/repository\//u);
@@ -171,7 +174,7 @@ test('exposes no authored content or fixture secret from the inventory surface',
   // The deterministic file-confined outcomes stay visible as source-free
   // facts: the NUL-carrying candidate is listed outside every kind with its
   // read outcome, named by path alone (FR-028).
-  await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^Files in no kind/u })).toBeVisible();
   const text = await (await openNoKindDisclosure(page)).innerText();
   expect(text).toContain('.agents/skills/binary/SKILL.md');
   if (fixture.capabilities.symlinks) {

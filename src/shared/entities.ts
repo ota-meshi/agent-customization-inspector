@@ -577,12 +577,37 @@ function escapedCodeUnits(character: string): string {
  * visible, and only the invisible character inside it is not.
  */
 export function applicabilityRangePresentation(value: string): string {
-  const escaped = value.replaceAll(/\\(?=u[0-9A-Fa-f]{4})/gu, '\\u005C').replaceAll(
+  const escaped = escapedApplicabilityRange(value);
+  return rendersNothingVisible(escaped) ? encodeRootPresentation(value) : escaped;
+}
+
+/**
+ * The escaping {@link applicabilityRangePresentation} and
+ * {@link inlineApplicabilityRangePresentation} share: a range's own backslash
+ * is glob syntax and stays as written, except the one that would spell this
+ * function's own escape introducer.
+ */
+function escapedApplicabilityRange(value: string): string {
+  return value.replaceAll(/\\(?=u[0-9A-Fa-f]{4})/gu, '\\u005C').replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
     /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF]|\p{Default_Ignorable_Code_Point}/gu,
     escapedCodeUnits,
   );
-  return rendersNothingVisible(escaped) ? encodeRootPresentation(value) : escaped;
+}
+
+/**
+ * One applicability range as a single-line label for a surface that normalizes
+ * whitespace — an accessible name, a control whose text does not render its
+ * own spaces (FR-025). It is {@link applicabilityRangePresentation} with
+ * {@link inlinePresentationLabel}'s whitespace test: `**` and ` **` are two
+ * rows, so they must not read as one label, and the glob's own backslashes
+ * still stay as written — which is why this exists rather than the name rule.
+ */
+export function inlineApplicabilityRangePresentation(value: string): string {
+  const escaped = escapedApplicabilityRange(value);
+  return rendersNothingVisible(escaped) || /^\s|\s{2,}|\s$/u.test(escaped)
+    ? encodeRootPresentation(value)
+    : escaped;
 }
 
 /**

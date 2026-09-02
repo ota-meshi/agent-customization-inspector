@@ -246,7 +246,7 @@ test('steps the pair through corresponding files and copies', async ({ page }) =
     .selectOption('.claude/skills/greetz/');
   await expect(fileSwitch).toHaveValue('notes.md');
   await expect(diff).toContainText('Greet notes line (agents).');
-  await expect(page.locator('.aci-skill-compare__files')).toContainText(
+  await expect(page.locator('.aci-compare-sides')).toContainText(
     'No file at this path in this skill directory',
   );
   expect(page.url()).toContain(`right=${THIRD_COPY_PATH}`);
@@ -297,7 +297,7 @@ test('shows a file only one copy ships as a one-sided difference', async ({ page
   await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
     'Extras line only in agents.',
   );
-  await expect(page.locator('.aci-skill-compare__files')).toContainText(
+  await expect(page.locator('.aci-compare-sides')).toContainText(
     'No file at this path in this skill directory',
   );
   // The absent side's identity is the corresponding path the copy does not
@@ -357,10 +357,10 @@ test('states tool recognition per tool and compares declared metadata once', asy
   // declares, what each file says, then the complete files, and last the
   // recognitions.
   await expect(comparison.locator('h3')).toHaveText([
+    'Tool recognition',
     'Declared metadata',
     'Instructions',
     'Source comparison',
-    'Tool recognition',
   ]);
   // The `.agents` file is recognized by GitHub Copilot and OpenAI Codex, the
   // `.claude` file by GitHub Copilot and Claude Code: one recognition row
@@ -368,9 +368,9 @@ test('states tool recognition per tool and compares declared metadata once', asy
   // the physical file (US3 scenario 2), captioned in words.
   const toolTable = comparison.locator('table').first();
   await expect(toolTable.locator('tbody th')).toHaveText([
-    'GitHub Copilot · Skill',
-    'Claude Code · Skill',
-    'OpenAI Codex · Skill',
+    'GitHub Copilot',
+    'Claude Code',
+    'OpenAI Codex',
   ]);
   await expect(toolTable.locator('tr', { hasText: 'GitHub Copilot' })).not.toContainText(
     'Not recognized',
@@ -493,7 +493,7 @@ test('keeps the whole page usable at a narrow viewport', async ({ page }) => {
   // (accessibility-acceptance.md § 1.4.10), and these rows are data. The
   // hidden header row is the reflow's signature: each cell then carries its
   // own column caption.
-  const table = page.locator('.aci-recognition-comparison__table').first();
+  const table = page.locator('.aci-recognition-table').first();
   await expect(table).toBeVisible();
   await expect(table.locator('thead')).toBeHidden();
   const tableOverflow = await table.evaluate(
@@ -507,7 +507,7 @@ test('drops the content when the route leaves the comparison', async ({ page }) 
   await expect(page.locator('.aci-skill-compare__source .aci-source-diff')).toContainText(
     AGENTS_SECRET,
   );
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-source-diff')).toHaveCount(0);
   expect(await page.locator('main').innerText()).not.toContain(AGENTS_SECRET);
   expect(await page.locator('main').innerText()).not.toContain(CLAUDE_SECRET);

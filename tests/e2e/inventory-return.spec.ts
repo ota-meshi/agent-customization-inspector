@@ -16,6 +16,7 @@ import {
   type AllToolSkillFixture,
 } from '../fixtures/repositories/build-fixtures';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { waitForInventory } from './repository-status';
 
 let fixture: AllToolSkillFixture;
 let host: LaunchedHost;
@@ -53,7 +54,7 @@ test('returns the reader to the row they followed, by Back and by the page’s o
   await page.goto(host.origin);
   // The last definition link in the list, which is far enough down this
   // fixture's inventory that reading it requires scrolling.
-  const row = page.locator('[role="tabpanel"] .aci-skill-row__owner a').last();
+  const row = page.locator('[role="tabpanel"] .aci-row-file a').last();
   await expect(row).toBeVisible();
   await row.scrollIntoViewIfNeeded();
   const href = await row.getAttribute('href');
@@ -61,18 +62,18 @@ test('returns the reader to the row they followed, by Back and by the page’s o
   expect(leftAt).toBeGreaterThan(0);
 
   await row.click();
-  await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
 
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await waitForInventory(page);
   await expect.poll(() => scrollOffset(page)).toBe(leftAt);
   expect(await focusedHref(page)).toBe(href);
 
   // The same return through the detail page's own link, which is an ordinary
   // forward navigation to `/` rather than a history entry with a position.
   await row.click();
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await page.getByRole('link', { name: /Back to /u }).click();
+  await waitForInventory(page);
   await expect.poll(() => scrollOffset(page)).toBe(leftAt);
   expect(await focusedHref(page)).toBe(href);
 });
@@ -85,22 +86,24 @@ test('returns to the narrowed list the reader left, and to the row inside it', a
 
   // Narrowing is the reader's own state, and it reaches the URL: without that
   // the list the browser's Back renders is not the list that was left.
-  const filter = page.getByLabel('Path contains');
+  const filter = page.getByRole('searchbox', { name: 'Search names and paths' });
   await filter.fill('.claude');
-  await expect(page).toHaveURL(/[?&]path=\.claude/u);
+  await expect(page).toHaveURL(/[?&]q=\.claude/u);
   const narrowed = await rows.count();
   expect(narrowed).toBeLessThan(unfiltered);
 
-  const row = page.locator('[role="tabpanel"] .aci-skill-row__owner a').last();
+  const row = page.locator('[role="tabpanel"] .aci-row-file a').last();
   await row.scrollIntoViewIfNeeded();
   const href = await row.getAttribute('href');
   const leftAt = await scrollOffset(page);
 
   await row.click();
-  await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
-  await expect(page.getByLabel('Path contains')).toHaveValue('.claude');
+  await waitForInventory(page);
+  await expect(page.getByRole('searchbox', { name: 'Search names and paths' })).toHaveValue(
+    '.claude',
+  );
   await expect(rows).toHaveCount(narrowed);
   await expect.poll(() => scrollOffset(page)).toBe(leftAt);
   expect(await focusedHref(page)).toBe(href);
@@ -109,10 +112,10 @@ test('returns to the narrowed list the reader left, and to the row inside it', a
   // last narrowing, so it lands on the whole list — and the row that was
   // followed is still put back on screen and focused inside it.
   await row.click();
-  await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
-  await expect(page.getByLabel('Path contains')).toHaveValue('');
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
+  await page.getByRole('link', { name: /Back to /u }).click();
+  await waitForInventory(page);
+  await expect(page.getByRole('searchbox', { name: 'Search names and paths' })).toHaveValue('');
   await expect(rows).toHaveCount(unfiltered);
   expect(await focusedHref(page)).toBe(href);
 });
@@ -135,8 +138,8 @@ test('keeps a row’s comparison link the same under a narrowing, and returns to
   const unnarrowedHref = await compare.getAttribute('href');
 
   // The narrowing leaves one of that name's two copies on screen.
-  await page.getByLabel('Path contains').fill('.claude');
-  await expect(page).toHaveURL(/[?&]path=\.claude/u);
+  await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.claude');
+  await expect(page).toHaveURL(/[?&]q=\.claude/u);
   await expect(
     page.locator('[role="tabpanel"] .aci-item').filter({ hasText: 'voyage' }),
   ).toHaveCount(1);
@@ -145,12 +148,12 @@ test('keeps a row’s comparison link the same under a narrowing, and returns to
 
   await compare.scrollIntoViewIfNeeded();
   await compare.click();
-  await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
   // The page's own link drops the narrowing by design (T1122), and the row
   // the reader left is still found in the whole list.
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
-  await expect(page.getByLabel('Path contains')).toHaveValue('');
+  await page.getByRole('link', { name: /Back to /u }).click();
+  await waitForInventory(page);
+  await expect(page.getByRole('searchbox', { name: 'Search names and paths' })).toHaveValue('');
   expect(await focusedHref(page)).toBe(unnarrowedHref);
 });
 
@@ -174,10 +177,10 @@ test('returns to the row the reader left when two rows link one file', async ({ 
   const link = page.getByRole('link', { name });
   await link.scrollIntoViewIfNeeded();
   await link.click();
-  await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await page.getByRole('link', { name: /Back to /u }).click();
+  await waitForInventory(page);
   await expect(
     page.getByRole('link', { name: '.claude/skills/lander/SKILL.md: lander' }),
   ).toHaveCount(1);
@@ -187,11 +190,11 @@ test('returns to the row the reader left when two rows link one file', async ({ 
 
 test('opens a detail page at its top, as any page change does', async ({ page }) => {
   await page.goto(host.origin);
-  const row = page.locator('[role="tabpanel"] .aci-skill-row__owner a').last();
+  const row = page.locator('[role="tabpanel"] .aci-row-file a').last();
   await row.scrollIntoViewIfNeeded();
   expect(await scrollOffset(page)).toBeGreaterThan(0);
 
   await row.click();
-  await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
   expect(await scrollOffset(page)).toBe(0);
 });

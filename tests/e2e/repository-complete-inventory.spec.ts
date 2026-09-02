@@ -21,6 +21,7 @@ import {
 } from '../fixtures/repositories/build-fixtures';
 import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus } from './repository-status';
 
 /** Every kind tab the all-supported tree must populate. */
 const KIND_TABS = [
@@ -84,13 +85,102 @@ test('populates every kind this release publishes, from one tree', async ({ page
   }
 });
 
+test('keeps the bar and the rail on screen as the document scrolls', async ({ page }) => {
+  // The shell's own behaviour, asserted here because it needs a list long
+  // enough for the document to scroll — which is this tree (`App.vue`).
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await page.goto(host.origin);
+  await page.getByRole('tab', { name: /^Agent/u }).click();
+  await expect(page.getByRole('tabpanel').locator('.aci-item').first()).toBeVisible();
+
+  // The document is the one scroll container, and the bar sticks to its top
+  // (`App.vue`). It is drawn the same pinned or not: page padding above it
+  // would be the distance it jumped on the first scroll.
+  const before = await page.evaluate(() => {
+    const bar = document.querySelector('.aci-app__bar')!.getBoundingClientRect();
+    return { top: bar.top, height: bar.height };
+  });
+  expect(before.top).toBe(0);
+
+  await page.mouse.wheel(0, 500);
+  await page.waitForTimeout(200);
+  const after = await page.evaluate(() => {
+    const bar = document.querySelector('.aci-app__bar')!.getBoundingClientRect();
+    const rail = document.querySelector('.aci-inventory-page__rail')!.getBoundingClientRect();
+    const entries = document.querySelector('.aci-inventory-page__entries')!.getBoundingClientRect();
+    const panel = document.querySelector('.aci-inventory-page__panel')!.getBoundingClientRect();
+    // The token the rail and the scroll padding are offset by, resolved the way
+    // the browser resolves it rather than read from the stylesheet.
+    const probe = document.createElement('span');
+    probe.style.blockSize = 'var(--aci-sticky-bar)';
+    probe.style.display = 'block';
+    document.body.append(probe);
+    const token = probe.getBoundingClientRect().height;
+    probe.remove();
+    return {
+      scrollY: window.scrollY,
+      barTop: bar.top,
+      barHeight: bar.height,
+      entriesTop: entries.top,
+      // The rail's surface and the rows it selects, which the grid stretches to
+      // the same height.
+      railHeight: rail.height,
+      panelHeight: panel.height,
+      token,
+    };
+  });
+  expect(after.scrollY).toBeGreaterThan(0);
+  expect(after.barTop).toBe(0);
+  expect(after.barHeight).toBe(before.height);
+
+  // The entries clear the bar rather than sliding under it. The offset is a
+  // token because CSS cannot read the bar's own height, so the two are asserted
+  // to agree here: a bar that grew without the token following it would hide
+  // the rail's first entries (`main.css` § --aci-sticky-bar).
+  expect(after.token).toBeGreaterThanOrEqual(after.barHeight);
+  expect(after.entriesTop).toBe(after.token);
+
+  // What sticks is the entries, not the surface behind them: the rail's panel
+  // is as tall as the rows beside it, so it runs to the foot of the list rather
+  // than stopping where the entries happen to end — a surface that stopped
+  // there would read as a sidebar cut off half way down.
+  expect(after.railHeight).toBe(after.panelHeight);
+  expect(after.railHeight).toBeGreaterThan(after.entriesTop + 100);
+
+  // And the document ends where that column does. A sticky box cannot leave
+  // its containing block, so any scroll below the rail's column is scroll the
+  // page takes while the list is already held at its end: over those pixels it
+  // slides up under the bar and its first entries go with it (`App.vue`
+  // § .aci-app).
+  await page.evaluate(() => globalThis.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(200);
+  const bottom = await page.evaluate(() => {
+    const rail = document.querySelector('.aci-inventory-page__rail')!.getBoundingClientRect();
+    const entries = document.querySelector('.aci-inventory-page__entries')!.getBoundingClientRect();
+    return {
+      railBottom: Math.round(rail.bottom + globalThis.scrollY),
+      documentBottom: document.documentElement.scrollHeight,
+      entriesTop: Math.round(entries.top),
+      barBottom: Math.round(
+        document.querySelector('.aci-app__bar')!.getBoundingClientRect().bottom,
+      ),
+    };
+  });
+  expect(bottom.railBottom).toBe(bottom.documentBottom);
+  // So at the very bottom the list still starts below the bar rather than
+  // under it.
+  expect(bottom.entriesTop).toBeGreaterThanOrEqual(bottom.barBottom);
+  await expect(page.getByRole('tab', { name: /^Agent/u })).toBeInViewport();
+});
+
 test('states a read that failed where the file is listed, and stays partial', async ({ page }) => {
   await page.goto(host.origin);
   // The tree carries files whose extraction cannot succeed, so the scan
   // commits `partial` and each failure is stated where its own file is listed
   // (FR-028). The status is the Source's, not a modal.
-  await expect(page.locator('main')).toContainText('Partial');
-  await expect(page.locator('main')).toContainText('kept a diagnostic of their own');
+  const status = await openRepositoryStatus(page);
+  await expect(status).toContainText('Partial');
+  await expect(status).toContainText('kept a diagnostic of their own');
 });
 
 test('says which filter emptied the list, and restores it', async ({ page }) => {
@@ -100,11 +190,16 @@ test('says which filter emptied the list, and restores it', async ({ page }) => 
   const populated = await rows.count();
   expect(populated).toBeGreaterThan(0);
 
-  await page.getByLabel('Path contains').fill('no-such-path-anywhere');
+  await page
+    .getByRole('searchbox', { name: 'Search names and paths' })
+    .fill('no-such-path-anywhere');
   // The empty state names the filters rather than the repository: the rows are
-  // there and this reader's query is what hid them.
-  await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
-  await page.getByRole('button', { name: /Clear filters/u }).click();
+  // there and this reader's query is what hid them. Its own way out is inside
+  // the box, where the reader's eye already is — the filter row carries the
+  // same command, and either restores the list.
+  const empty = page.getByRole('tabpanel').locator('.aci-empty-result');
+  await expect(empty).toContainText('match the current filters');
+  await empty.getByRole('button', { name: 'Clear filters' }).click();
   await expect(rows).toHaveCount(populated);
 });
 
@@ -155,7 +250,7 @@ test('is operable from the keyboard, tab strip and filters alike', async ({ page
   // reader arrived on.
   await expect(page.locator('[role="tab"]:focus')).toHaveAttribute('aria-selected', 'true');
   expect(await selected.textContent()).not.toBe(left);
-  const path = page.getByLabel('Path contains');
+  const path = page.getByRole('searchbox', { name: 'Search names and paths' });
   await tabUntilFocused(page, path);
   await page.keyboard.type('deploy');
   await expect(page.getByRole('tabpanel')).toContainText('deploy');

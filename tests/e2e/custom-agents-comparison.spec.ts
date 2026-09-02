@@ -188,7 +188,7 @@ test('renders the per-tool agent names and the serialized declarations', async (
 
   // Each side's identity: path, Source family, recognized kind, read outcome
   // (US3 scenario 1).
-  const files = page.locator('.aci-custom-agent-compare__files');
+  const files = page.locator('.aci-compare-sides');
   await expect(files).toContainText('.codex/agents/reviewer.toml');
   await expect(files).toContainText('.claude/agents/reviewer.md');
   await expect(files.locator('.aci-custom-agent-compare__file-facts').first()).toContainText(
@@ -206,16 +206,16 @@ test('renders the per-tool agent names and the serialized declarations', async (
   // assert (FR-027) — and last the recognitions, which are context rather
   // than the subject.
   await expect(metadata.locator('h3')).toHaveText([
+    'Tool recognition',
     'Declared metadata',
     'Instructions',
-    'Source',
-    'Tool recognition',
+    'Source comparison',
   ]);
   const toolTable = metadata.locator('table').first();
   await expect(toolTable.locator('tbody th')).toHaveText([
-    'GitHub Copilot · Agent',
-    'Claude Code · Agent',
-    'OpenAI Codex · Agent',
+    'GitHub Copilot',
+    'Claude Code',
+    'OpenAI Codex',
   ]);
   // Copilot and Claude Code both read the `.claude/agents/*.md` direct child,
   // each under its own product's name for it; Codex reads only the TOML file.
@@ -293,7 +293,7 @@ test('compares two agent files one product names identically', async ({ page }) 
     compareUrl('planner', '.github/agents/planner.agent.md', '.github/agents/planner.md'),
   );
   const toolTable = page.locator('.aci-custom-agent-recognition-comparison table').first();
-  await expect(toolTable.locator('tbody th')).toHaveText(['GitHub Copilot · Agent']);
+  await expect(toolTable.locator('tbody th')).toHaveText(['GitHub Copilot']);
   await expect(toolTable.locator('td').first()).toHaveText(
     'Named planner — surfaces: VS Code, CLI, Cloud agent',
   );
@@ -353,7 +353,7 @@ test('enters from the detail page and returns to the kind’s own tab', async ({
   await page.waitForURL(/\/agents\/compare\/repository\?/u);
   await expect(page.getByRole('heading', { name: 'Compare custom-agent files' })).toBeVisible();
   // Back to the inventory's own tab, not the kind order's default.
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page).toHaveURL(/\?kind=agent$/u);
   await expect(page.getByRole('tab', { selected: true })).toContainText('Agent');
 });

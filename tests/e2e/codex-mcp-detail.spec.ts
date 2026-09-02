@@ -81,7 +81,8 @@ test.describe('the complete literal MCP carrier detail', () => {
     // The record's identity restated: the recognition line and the
     // owner-carrier line, which links to the carrier's file-unit view.
     const main = page.locator('main');
-    await expect(main).toContainText('OpenAI Codex (Local clients) · MCP');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('OpenAI Codex');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('Local clients');
     await expect(main).toContainText('Declared in');
     await expect(main.getByRole('link', { name: '.codex/config.toml' })).toBeVisible();
 
@@ -122,7 +123,8 @@ test.describe('the complete literal MCP carrier detail', () => {
     await page.getByRole('link', { name: '.codex/config.toml' }).click();
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
     const main = page.locator('main');
-    await expect(main).toContainText('OpenAI Codex (Local clients) · MCP');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('OpenAI Codex');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('Local clients');
     await expect(main).toContainText('Readable text');
     await expect(main).toContainText('bytes');
     await expect(main.getByRole('heading', { name: 'context7' })).toBeVisible();
@@ -139,7 +141,7 @@ test.describe('the complete literal MCP carrier detail', () => {
     await page.getByRole('tab', { name: /MCP/u }).click();
     await page.getByRole('link', { name: '.codex/config.toml: context7' }).click();
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     // The back link names the kind, so the reader lands on the MCP tab they
     // came from rather than the kind order's default.
     await expect(page.getByRole('tab', { selected: true })).toContainText('MCP');

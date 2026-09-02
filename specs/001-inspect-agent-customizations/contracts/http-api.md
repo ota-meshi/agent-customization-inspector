@@ -1475,9 +1475,13 @@ first, handing the reader a file from a root they did not address (FR-030).
 
 What each target reaches:
 
-- `visual-studio-code` and `sublime-text` run the editor launcher the host resolved for
-  this machine before it bound its port — the editor's command on `PATH`, or the
-  launcher inside a known installation location when the command is not on `PATH`.
+- `visual-studio-code` and `sublime-text` reach an editor the host resolved for this
+  machine before it bound its port — the editor's command on `PATH`, or the launcher
+  inside a known installation location when the command is not on `PATH`. On macOS the
+  document goes to the application by name rather than to that launcher, because an
+  editor's own command-line script resolves the editor's user data directory from
+  `HOME`: a host whose `HOME` is not the reader's own would start a second instance
+  under it and open the file nowhere.
 - `terminal-editor` opens a terminal window running the editor `$EDITOR` or `$VISUAL`
   names. When neither names a terminal editor — neither is set, or the one that is
   brings its own window — it runs `vi`, the editor POSIX makes the default, since

@@ -80,6 +80,35 @@ export function fileSourceRootOf(sources: readonly SourceDto[], sourceId: string
 }
 
 /**
+ * The consented home one file came from, by that member's own name — or null
+ * where naming it distinguishes nothing: a Repository file, or a family holding
+ * one Source.
+ *
+ * The member's name rather than its root, because the roots are stated once on
+ * the personal setup's own surface and a root per row was the second line the
+ * compressed row exists to remove. The name is what a reader needs here:
+ * `settings.json` exists at the same Source-relative path in three of the four
+ * homes, so the path alone names no file (FR-002, FR-030).
+ *
+ * `GLOBAL_MEMBER_TEXT` rather than a phrase of this component's own: the member
+ * is a closed union whose labels are already declared beside it, and a second
+ * spelling of one of them would be a second thing to keep true
+ * (AGENTS.md § User-visible copy policy).
+ */
+export function fileSourceHomeOf(sources: readonly SourceDto[], sourceId: string): string | null {
+  const family = sources.filter((candidate) => candidate.kind === 'global');
+  if (family.length <= 1) {
+    return null;
+  }
+  for (const source of family) {
+    if (source.sourceId === sourceId) {
+      return source.member === null ? null : GLOBAL_MEMBER_TEXT[source.member];
+    }
+  }
+  return null;
+}
+
+/**
  * The Source half of one compared file's facts line: the family it is of and,
  * where that family holds more than one Source, the directory it was in — in
  * that order, ready for the kind and read-outcome facts the page appends.
@@ -105,7 +134,7 @@ export function sourceFactsOf(sources: readonly SourceDto[], sourceId: string): 
  * The accessible qualifier of one file's Source, or null where its family
  * holds one Source and the link's name needs none. The member the home
  * belongs to plus the escaped directory it was admitted at — the facts the
- * row shows beside the link (the member label and `SourceRootLine`) — so two
+ * row shows beside the link (the member label and `SourceHomeBadge`) — so two
  * links to one path in two consented homes never announce identically in a
  * links list (WCAG 2.4.6). Appended after the visible-label prefix, which
  * keeps the visible text at the front of the name (WCAG 2.5.3).

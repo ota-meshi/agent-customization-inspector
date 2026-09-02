@@ -86,7 +86,7 @@ test.describe('the Codex configuration document at the root layer', () => {
     const items = page.getByRole('tabpanel').locator('.aci-item');
     await expect(items).toHaveCount(1);
     await expect(items.locator('.aci-path')).toHaveText(['.codex/config.toml']);
-    await expect(items.first().locator('.aci-settings-row__owner')).toContainText('OpenAI Codex');
+    await expect(items.first().locator('.aci-row-file')).toContainText('OpenAI Codex');
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
       'Showing 1 of 1',
     );
@@ -141,14 +141,14 @@ test.describe('the Codex configuration document at the root layer', () => {
     await expect(items).toHaveCount(1);
 
     // Path: the filter applies to the row's own path, which is its identity.
-    await page.getByLabel('Path contains').fill('config.toml');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('config.toml');
     await expect(items).toHaveCount(1);
 
-    await page.getByLabel('Path contains').fill('settings.json');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('settings.json');
     await expect(items).toHaveCount(0);
     await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(1);
   });
 });

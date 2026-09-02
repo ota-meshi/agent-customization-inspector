@@ -186,6 +186,9 @@ describe('authored file content in the browser', () => {
       // nothing that masks or reveals either side.
       'customAgentComparison',
       'detailErrorMessage',
+      // How many of each Source's files kept a diagnostic: a count over the
+      // published outcomes, which reveals no file's content.
+      'diagnosticFileCounts',
       'dispose',
       'entryDetail',
       // What a plugin manifest's own request failed with: a message about a
@@ -270,6 +273,7 @@ describe('authored file content in the browser', () => {
       'refresh',
       // Lets a component register its Monaco model for synchronous disposal
       // on purge and on generation replacement — the opposite of a reveal.
+      'registerClientDataOwner',
       'registerOpenContentOwner',
       // The subject's ownership pair (`usePageOwnership`): a report and its
       // guarded release, both over the display name above.

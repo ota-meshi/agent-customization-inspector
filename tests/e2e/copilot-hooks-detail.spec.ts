@@ -89,8 +89,8 @@ test.describe('Copilot hook detail', () => {
     );
     // A file whose whole purpose is hooks states that form, and its remaining
     // top-level keys are on this page because no other row publishes them.
-    await expect(page.locator('.aci-hook-detail__recognition')).toContainText('GitHub Copilot');
-    await expect(page.locator('.aci-hook-detail__recognition')).toContainText('hook file');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
+    await expect(page.locator('.aci-detail-attributes')).toContainText('hook file');
     const viewer = page.locator('.aci-source-viewer');
     await expect(viewer).toContainText(SECRET);
     await expect(viewer).toContainText(ENVIRONMENT_REFERENCE);
@@ -119,7 +119,7 @@ test.describe('Copilot hook detail', () => {
       .filter({ hasText: 'postToolUse' })
       .getByRole('link', { name: /settings\.json/u })
       .click();
-    await expect(page.locator('.aci-hook-detail__recognition')).toContainText(
+    await expect(page.locator('.aci-detail-attributes')).toContainText(
       'declared inside another file',
     );
     await expect(page.locator('.aci-source-viewer')).toContainText('npx prettier --write .');
@@ -143,7 +143,7 @@ test.describe('Copilot hook detail', () => {
     await page.goto(
       new URL('/hooks/detail/repository/.github%2Fhooks%2Fnested%2Fdeep.json', host.origin).href,
     );
-    await expect(page.locator('.aci-error')).toContainText('current scan');
+    await expect(page.locator('.aci-subject-unavailable')).toContainText('current scan');
     await page.getByRole('link', { name: /Return to the inventory/u }).click();
     await expect(page.getByRole('tab', { name: /Hook/u })).toHaveAttribute('aria-selected', 'true');
   });

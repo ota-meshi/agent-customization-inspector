@@ -80,16 +80,13 @@ test.describe('rule files under the .claude/rules subtrees', () => {
       'packages/api/.claude/rules/http.md',
     ]);
     for (let index = 0; index < 4; index += 1) {
-      await expect(items.nth(index).locator('.aci-rule-row__owner')).toContainText('Claude Code');
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('Claude Code');
     }
 
     const text = await page.locator('main').innerText();
     // No `.claude` location this release leaves out becomes a Copilot
     // recognition: the rule rows name Claude Code alone.
-    const toolsText = await page
-      .getByRole('tabpanel')
-      .locator('.aci-rule-row__owner')
-      .allInnerTexts();
+    const toolsText = await page.getByRole('tabpanel').locator('.aci-row-file').allInnerTexts();
     expect(toolsText.join(' ')).not.toContain('GitHub Copilot');
     expect(toolsText.join(' ')).not.toContain('OpenAI Codex');
     // The near misses appear nowhere, and no declared value reaches the
@@ -104,9 +101,7 @@ test.describe('rule files under the .claude/rules subtrees', () => {
     await page.getByRole('tab', { name: /Permissions/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
     await expect(items.locator('.aci-path')).toHaveText(['.codex/rules/deploy.rules']);
-    await expect(items.first().locator('.aci-permissions-row__owner')).toContainText(
-      'OpenAI Codex',
-    );
+    await expect(items.first().locator('.aci-row-file')).toContainText('OpenAI Codex');
   });
 
   test('keeps the instruction rows exactly as their own phases committed them', async ({
@@ -134,9 +129,9 @@ test.describe('rule files under the .claude/rules subtrees', () => {
     await page.getByLabel('Tool').selectOption('codex');
     await expect(items).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     // Path: the filter applies to the row's own path, which is its identity.
-    await page.getByLabel('Path contains').fill('packages/api');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('packages/api');
     await expect(items).toHaveCount(1);
     await expect(items.locator('.aci-path')).toHaveText(['packages/api/.claude/rules/http.md']);
   });

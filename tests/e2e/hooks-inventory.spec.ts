@@ -164,7 +164,7 @@ test.describe('the unified hook inventory', () => {
     await page.getByLabel('Tool', { exact: true }).selectOption('');
     await expect(panel.locator('.aci-item')).toHaveCount(2);
     // The path box is a substring match over the carriers' own paths.
-    await page.getByLabel('Path contains').fill('.github/hooks');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.github/hooks');
     await expect(panel.locator('.aci-item')).toHaveCount(1);
     await page.getByRole('button', { name: /Clear filters/u }).click();
     await expect(panel.locator('.aci-item')).toHaveCount(2);
@@ -178,7 +178,7 @@ test.describe('the unified hook inventory', () => {
     const hookTab = page.getByRole('tab', { name: /Hook/u });
     await hookTab.press('Enter');
     await expect(hookTab).toHaveAttribute('aria-selected', 'true');
-    const pathBox = page.getByLabel('Path contains');
+    const pathBox = page.getByRole('searchbox', { name: 'Search names and paths' });
     await pathBox.press('.');
     await expect(pathBox).toBeFocused();
     await page.getByRole('button', { name: /Clear filters/u }).press('Enter');

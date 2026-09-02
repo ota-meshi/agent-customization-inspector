@@ -30,7 +30,7 @@ import type {
   SkillDefinitionDto,
   SkillInventoryEntryDto,
   SourceDto,
-  SourceSelector,
+  SourceKind,
 } from '../../../src/shared/api-types';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
 
@@ -130,10 +130,10 @@ function snapshotWith(
 // does and passes it in; the composable returns only what it derives.
 function withSelection(snapshot: Ref<SessionSnapshot | null>) {
   const selection = {
-    source: ref<SourceSelector | null>(null),
+    source: ref<SourceKind | null>(null),
     tool: ref<SupportedTool | null>(null),
     kind: ref<CustomizationKind | null>(null),
-    pathQuery: ref(''),
+    searchQuery: ref(''),
   };
   return { ...selection, view: useInventoryFilters(snapshot, selection) };
 }
@@ -374,9 +374,9 @@ describe('the path filter matches the spelling the rows render (T1096)', () => {
         ],
       ),
     );
-    const { pathQuery, view } = withSelection(snapshot);
+    const { searchQuery, view } = withSelection(snapshot);
 
-    pathQuery.value = pathPresentationLabel(invisible);
+    searchQuery.value = pathPresentationLabel(invisible);
     expect(view.instructionRows.value.flatMap((row) => row.files)).toEqual([
       {
         sourceRelativePath: invisible,

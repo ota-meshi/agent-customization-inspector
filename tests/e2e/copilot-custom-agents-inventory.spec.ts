@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus } from './repository-status';
 
 /** A literal credential inside a declared block, used to prove it never lists. */
 const FIXTURE_SECRET = 'ghp_E2ECOPILOTAGENTS000000000000000000000';
@@ -160,7 +161,7 @@ test.describe('agent profiles in the two documented directories', () => {
     // and no null-named row closes the list: a Copilot agent's name comes from
     // its path, which a missing declaration and a failed parse alike leave
     // intact. `shared` and `shared-reviewer` are the two names one file has.
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'README',
       'broken',
       'deployer',
@@ -198,7 +199,7 @@ test.describe('agent profiles in the two documented directories', () => {
     await expect(planner.locator('.aci-source-family-blocks__members')).toContainText(
       'GitHub Copilot',
     );
-    await expect(planner.locator('.aci-agent-row__surfaces')).toHaveText([
+    await expect(planner.locator('.aci-recognition-marks__surfaces')).toHaveText([
       'VS Code, CLI, Cloud agent',
     ]);
   });
@@ -216,7 +217,7 @@ test.describe('agent profiles in the two documented directories', () => {
       .locator('.aci-item')
       .filter({ hasText: 'shared' })
       .first();
-    await expect(shared.locator('.aci-agent-row__surfaces')).toHaveText(['VS Code, CLI']);
+    await expect(shared.locator('.aci-recognition-marks__surfaces')).toHaveText(['VS Code, CLI']);
   });
 
   test('gives one shared file a row under each product’s own name', async ({ page }) => {
@@ -271,13 +272,13 @@ test.describe('agent profiles in the two documented directories', () => {
     await expect(items).toHaveCount(6);
     await page.getByLabel('Tool').selectOption('claude');
     await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-agent-row__name')).toHaveText(['shared-reviewer']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['shared-reviewer']);
 
     // Path: the filter applies to each definition's own file path, and a row
     // with no matching definition is dropped rather than emptied.
     await page.getByLabel('Tool').selectOption('');
-    await page.getByLabel('Path contains').fill('.claude/');
-    await expect(items.locator('.aci-agent-row__name')).toHaveText(['shared', 'shared-reviewer']);
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.claude/');
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['shared', 'shared-reviewer']);
 
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(7);
@@ -285,9 +286,12 @@ test.describe('agent profiles in the two documented directories', () => {
 
   test('states the malformed file’s diagnostic beside the row that holds it', async ({ page }) => {
     await page.goto(host.origin);
-    await expect(page.locator('.aci-scan-progress')).toContainText(
-      '1 file(s) kept a diagnostic of their own',
+    // The count of files that kept a diagnostic is the Repository Source's own
+    // state, which is a surface of its own now (FR-030).
+    await expect(await openRepositoryStatus(page)).toContainText(
+      '1 file kept a diagnostic of its own',
     );
+    await page.getByRole('link', { name: /Back to /u }).click();
     await page.getByRole('tab', { name: /Agent/u }).click();
     const broken = page.getByRole('tabpanel').locator('.aci-item').filter({ hasText: 'broken' });
     await expect(broken).toContainText('.github/agents/broken.md');

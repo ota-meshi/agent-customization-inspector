@@ -217,7 +217,9 @@ test('leaves every byte of all four homes exactly as it found them', async ({ pa
   );
   // Leaving and coming back reads the current preview rather than capturing a
   // new one, which is the other path through the page.
-  await page.getByRole('link', { name: 'Go to the inventory' }).click();
+  // The way back is the bar's, where every routed surface puts it
+  // (`DetailNavigation.vue`).
+  await page.getByRole('link', { name: 'Back to the inventory' }).click();
   await page.getByRole('link', { name: /personal setup/iu }).click();
   await expect(page.locator('main')).toContainText(
     'An absolute path, so this tool can be inspected',

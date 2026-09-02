@@ -84,12 +84,10 @@ test.describe('the supported Copilot settings documents', () => {
       '.github/copilot/settings.local.json',
     ]);
     const shared = items.filter({ hasText: '.claude/settings.json' }).first();
-    await expect(shared.locator('.aci-settings-row__owner')).toContainText('GitHub Copilot');
-    await expect(shared.locator('.aci-settings-row__owner')).toContainText('Claude Code');
+    await expect(shared.locator('.aci-row-file')).toContainText('GitHub Copilot');
+    await expect(shared.locator('.aci-row-file')).toContainText('Claude Code');
     await expect(
-      items
-        .filter({ hasText: '.github/copilot/settings.local.json' })
-        .locator('.aci-settings-row__owner'),
+      items.filter({ hasText: '.github/copilot/settings.local.json' }).locator('.aci-row-file'),
     ).toContainText('GitHub Copilot');
 
     // The two documented exclusions appear nowhere, and no declared value
@@ -125,7 +123,7 @@ test.describe('the supported Copilot settings documents', () => {
     await expect(items.locator('.aci-path')).toHaveText(['.codex/config.toml']);
 
     await page.getByRole('button', { name: 'Clear filters' }).click();
-    await page.getByLabel('Path contains').fill('.github/copilot');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.github/copilot');
     await expect(items).toHaveCount(2);
 
     await page.getByRole('button', { name: 'Clear filters' }).click();

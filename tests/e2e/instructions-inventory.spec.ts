@@ -52,7 +52,7 @@ test('lists every range with each file’s recognizing products', async ({ page 
   // list (data-model.md § Inventory unit).
   await expect(page.getByRole('tab', { selected: true })).toContainText('Instructions');
   await expect(instructionRows(page)).toHaveCount(5);
-  await expect(instructionRows(page).locator('.aci-instruction-row__range')).toHaveText([
+  await expect(instructionRows(page).locator('.aci-row-head__name')).toHaveText([
     '**',
     'docs/**',
     'packages/api/**',
@@ -154,7 +154,7 @@ test('reports the deterministic failures on the files they happened to', async (
   // The binary candidate is in no kind's inventory; its own row under
   // "Files in no kind" states its path and read outcome, which is how the
   // `partial` generation names its other cause on this page.
-  await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^Files in no kind/u })).toBeVisible();
   const unclassified = (await openNoKindDisclosure(page))
     .locator('.aci-item')
     .filter({ hasText: fixture.diagnosticOnlyPaths[0]! })
@@ -183,7 +183,9 @@ test('narrows the matrix with the tool and path filters, keyboard-operably', asy
   // Reach the path filter in the page's real Tab order — arriving there is
   // part of the claim — then type the query with the keyboard alone. The
   // path composes over the tool selection.
-  expect(await tabUntilFocused(page, page.getByLabel('Path contains'))).toBe(true);
+  expect(
+    await tabUntilFocused(page, page.getByRole('searchbox', { name: 'Search names and paths' })),
+  ).toBe(true);
   await page.keyboard.type('packages/api/');
   await expect(instructionRows(page)).toHaveCount(1);
   await expect(fileEntries(page)).toHaveCount(2);

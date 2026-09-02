@@ -8,12 +8,12 @@
 
 **Tests**: Every behavioral change requires risk-appropriate automated tests before implementation. Tests cover unit, contract, integration, package, security, performance, browser, boundary, accessibility, and regression behavior.
 
-**Organization**: Tasks follow the original visible family-vertical delivery increments rather than completing one whole user story horizontally. After the bootable shell, each family completes Inventory/List, complete inert Detail, shared integration where applicable, and Comparison before the next family begins. The exact order is SKILL (whose Skill Metadata list/detail phases are settled decision records — see Phases 6 and 7 — and whose comparison phase verifies the generic path over census companions — see Phase 14) → Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks. Story labels retain canonical traceability: `[US1]` discovery, `[US2]` complete inert detail, `[US3]` comparison, and `[US4]` Global inspection. Only explicit MCP configuration joins the MCP surfaces — a file of another kind that spells MCP configuration shows it as that kind's own detail content once its own inventory phase ships it; every phase still has one independently testable milestone.
+**Organization**: Tasks follow the original visible family-vertical delivery increments rather than completing one whole user story horizontally. After the bootable shell, each family completes Inventory/List, complete inert Detail, shared integration where applicable, and Comparison before the next family begins. The exact order is SKILL (whose Skill Metadata list/detail phases are settled decision records — see Phases 6 and 7 — and whose comparison phase verifies the generic path over census companions — see Phase 14) → Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks. Story labels retain canonical traceability: `[US1]` discovery, `[US2]` complete inert detail, `[US3]` comparison, and `[US4]` Global inspection. Only explicit MCP configuration joins the MCP surfaces — a file of another kind that spells MCP configuration shows it as that kind's own detail content once its own inventory phase ships it; every phase still has one independently testable milestone. Phases 105–109 rework the interface those completed surfaces are read through and therefore follow the release evidence, which they reopen: a change to what a reader sees is a change to the tree that evidence was frozen over.
 
 ## Format: `[ID] [P?] [Story?] Description`
 
 - **[P]**: Can run in parallel after stated prerequisites because it uses different files and has no dependency on another incomplete task.
-- **[Story]**: Required for Phases 3–101; omitted only in Setup, Minimal Secure Foundation, and Phases 102–104.
+- **[Story]**: Required for Phases 3–101 and 105–109; omitted only in Setup, Minimal Secure Foundation, and Phases 102–104.
 - Every checklist item has one primary outcome and at least one exact repository-relative owned file path. A root-level owned file uses an explicit `./` prefix. An unprefixed basename may remain as a manifest member, API value, selector, or other content literal, but it is ignored when deriving owned paths and cannot satisfy task ownership.
 
 ## Normative Requirement Traceability
@@ -32,17 +32,17 @@ the task would have built.
 | Requirement | Owning implementation, verification, and evidence tasks |
 |---|---|
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
-| FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062 |
+| FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
 | FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
-| FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135 |
+| FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
-| FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929 |
-| FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929 |
-| FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137 |
+| FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
+| FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
+| FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
 | FR-015 | T977–T990, T1137 |
 | FR-016 | T963–T976, T1138 |
@@ -54,12 +54,12 @@ the task would have built.
 | FR-022 | T040, T043, T045–T047, T056, T294, T925, T996, T1054, T1098, T1123 |
 | FR-023 | T018, T020–T021, T031, T056, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061 |
 | FR-024 | T018–T022, T029–T032, T055, T057, T067, T069, T916, T924, T934, T940, T944–T945, T947, T959, T1008, T1014, T1029, T1041, T1051, T1054, T1058, T1061–T1062, T1069–T1072 |
-| FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069 |
+| FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
-| FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082 |
+| FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
 | FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061 |
 | FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929 |
@@ -70,21 +70,21 @@ the task would have built.
 | FR-038 | T001–T003, T005–T014, T024–T036, T1043–T1044, T1047–T1051 |
 | FR-042 | T041–T042, T044, T048–T049, T057, T1017–T1029, T1041, T1045–T1046, T1058, T1061–T1062 |
 | FR-043 | T1041–T1042, T1080 |
-| FR-044 | T1123, T1136 |
+| FR-044 | T1123, T1136, T1143, T1144 |
 | FR-045 | T977–T990, T991–T1005, T1137–T1140 |
 | QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
-| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141 |
+| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
-| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062 |
-| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062 |
-| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062 |
-| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062 |
-| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062 |
-| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062 |
-| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059 |
-| Constitution/project governance | T001–T014, T1029–T1063 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194 |
+| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194 |
+| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195 |
+| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194 |
+| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
+| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197 |
 
 ---
 
@@ -8034,10 +8034,10 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   later session poll after the one atomic batch commit and preserving carried existing Sources in
   `src/server/host/devframe-app.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins
   the members (FR-045).)*
-- [X] T1003 [US4] Implement a Source filter — the selected repository, and each consented home as
-  its own option — beside the tool filter, so the Source axis states where a file came from while
-  the tool axis states which product recognized it and the selection can ride in the inventory's URL
-  as the Source selector, which a per-launch Source ID cannot; one-root summaries that render each
+- [X] T1003 [US4] Implement a Source-family filter — the selected repository, and the reader's own
+  configuration directories as one — beside the tool filter, so the Source axis states where a file
+  came from while the tool axis states which product recognized it and the selection can ride in
+  the inventory's URL as the family's own word, which a per-launch Source ID cannot; one-root summaries that render each
   enabled Source's escaped, inert `SourceBoundary.displayRoot`/`origin` distinctly from
   consent-preview display and Source-relative item paths and never as a locator; detail and
   comparison navigation that addresses files by their full identity — Source and Source-relative
@@ -10167,17 +10167,429 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   human/manual evidence binding and repeats no review of it; what it repeats is the
   complete-diff and tarball read over what the release still carries.)*
 
-- [X] T1141 List every location the inspector reads in `docs/which-files-are-listed.md` and
-  `docs/which-files-are-listed.ja.md`, per tool and per kind, for the repository and for an
-  opted-in personal setup, linked from the readme in each language. Write the locations in
-  prose: a selector program and `ANY_DIRECTORIES` are how a rule is authored, not something a
-  reader of the product meets, and a vendor contract under `specs/` is not user documentation
-  to route anyone to. The page carries the list and nothing else. Prose cannot be derived from
-  the rules, so require `tests/documentation/cross-artifact.test.ts` to hold it to containment
-  instead — every literal segment a shipped `static-candidate` rule admits at must be named by
-  both languages — and to hold the readmes to one section structure, one command set, one
-  cross-reference set, and link targets that resolve (QR-004).
+- [X] T1141 List every location a customization file becomes a listed row in
+  `docs/which-files-are-listed.md` and `docs/which-files-are-listed.ja.md`, per tool and per
+  kind, for the repository and for an opted-in personal setup, linked from the readme in each
+  language. Group the personal setup by home rather than by tool, because the shared agent
+  home is no tool's and does not move with `CODEX_HOME` or `COPILOT_HOME`, and name the two
+  bounded reads that go with a listed customization — its own directory, and a plugin's
+  declared root — since neither is a location a rule admits at. Write the locations in prose:
+  a selector program and `ANY_DIRECTORIES` are how a rule is authored, not something a reader
+  of the product meets, and a vendor contract under `specs/` is not user documentation to
+  route anyone to. Prose cannot be derived from the rules, so require
+  `tests/documentation/cross-artifact.test.ts` to hold the page to containment instead —
+  every literal segment a shipped `static-candidate` rule admits at must be named by both
+  languages — with the one `bounded-derived-candidate` rule frozen beside it, because a rule
+  that admits names read at scan time has no segment to contain. Hold the readmes to one
+  section structure, one command set, one cross-reference set, and link targets that resolve
+  (QR-004).
 
+---
+
+## Phase 105: Interface Foundation
+
+**Purpose**: Draw every surface in the product's own palette — three surfaces, one accent, and two
+border tokens written as literal values, with the system-colour palette kept as the `forced-colors`
+fallback — and give the shared controls and the type scale one definition.
+
+**Independent Test**: Render the inventory in the light, dark, and forced-colors presentations and
+verify that every boundary identifying a box or a selected state measures at least 3:1 against the
+surface behind it, that the reader's chosen scheme moves the whole palette, and that a forced-colors
+rendering returns every surface, border, and accent to a system colour.
+
+**Visible Checkpoint**: The shell reads as one designed surface rather than as boxes found by
+following hairlines.
+
+### Tests first
+
+- [X] T1142 [US1] Add failing unit regressions in `tests/unit/shared/entities.test.ts` for the
+  closed order arrays the interface iterates — `SUPPORTED_TOOL_ORDER` and
+  `CUSTOMIZATION_KIND_ORDER` covering their unions exactly once — because the legend, the rail, and
+  the filters all render by walking them, and a member missing from one would drop a product or a
+  kind from the interface with the compiler silent: a `Record` is exhaustiveness-checked and an
+  array of the union is not. The mark itself is not unit-testable here — the unit project compiles
+  no single-file component — so its glyphs and colours are T1143's (FR-009)
+- [X] T1143 [US1] Add browser acceptance for the palette — the 3:1 boundary and selected-state
+  measurement in the light and dark schemes, and the `forced-colors` rendering returning every
+  surface, border, and accent to a system colour — in `tests/e2e/palette-contrast.spec.ts`
+  (FR-044, QR-004)
+
+### Implementation
+
+- [X] T1144 [US1] Replace the shell palette in `src/app/styles/main.css` with three literal
+  surfaces, one product accent, and one border token per scheme, keeping the system-colour palette
+  in a `forced-colors` block so the reader's own colours outrank the product's (FR-044, QR-004)
+- [X] T1145 [US1] Add the shared control baseline — button, select, text field, pill, and the type
+  scale the rows and notes are set in — to `src/app/styles/main.css`, so a control several surfaces
+  render is one look rather than one per component (AGENTS.md § Stylesheet scope policy)
+- [X] T1147 [US1] Record the measured boundary and selected-state contrast values and the
+  forced-colors fallback in
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.md` and
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` (QR-004)
+
+---
+
+## Phase 106: Shell and Source State Surfaces
+
+**Purpose**: Put what applies to every route in one bar, what decides which rows are on screen in
+one rail, and each Source family's own state on a surface of its own.
+
+**Independent Test**: From the inventory, reach the Repository state surface and the personal-setup
+surface from the rail, rescan from the bar without leaving the page, narrow the list by typing a
+name and by typing a path fragment into the one search, and verify the inventory itself states no
+Source root, status, or generation.
+
+**Visible Checkpoint**: The inventory starts at the list, and a Source's state is one move away with
+its status already visible.
+
+### Tests first
+
+- [X] T1148 [US1] Add failing unit regressions for the one search over names and paths — a row
+  admitted when either its name or its Source-relative path contains the entered text — in
+  `tests/unit/app/inventory.test.ts`, where the filter view's own suite lives (FR-006)
+- [X] T1149 [US1] Add browser acceptance for the shell — the bar carrying the search and the
+  colour-scheme control on every route and the scan commands on the inventory, where no panel of
+  its own carries them, the rail reaching `/repository` and `/global-consent` with each family's
+  status stated beside the way to it, and the inventory carrying no Source panel — in
+  `tests/e2e/shell-navigation.spec.ts` (FR-002, FR-030)
+
+### Implementation
+
+- [X] T1150 [US1] Add the Repository state route `src/app/pages/repository.vue` — the escaped root
+  label with the note that says what it is, the Source status, the committed generation, and this
+  Source's own rescan and status refresh (FR-002, FR-030)
+- [X] T1151 [US1] Move the product name, the one search, the rescan command, and the colour-scheme
+  control into the bar in `src/app/App.vue`, so every route carries them and no surface repeats them
+  (FR-030, FR-044)
+- [X] T1152 [US1] Replace `src/app/components/inventory/InventoryKindTabs.vue` with
+  `src/app/components/inventory/InventoryRail.vue`, which lists the Source families with their
+  statuses and the way to each family's surface, then the closed kind catalog, then the two lists of
+  files that are no kind's inventory (FR-030)
+- [X] T1153 [US1] Rework `src/app/pages/index.vue` to start at the list: no Repository panel, no
+  personal-setup panel, no standing consent link, and the two non-kind lists selected from the rail
+  rather than appended below the inventory (FR-002, FR-028, FR-030)
+- [X] T1154 [US1] Replace the path field with the one search in
+  `src/app/components/inventory/InventoryFilters.vue` and carry it through
+  `src/app/composables/filters.ts`, matching a row on either its name or its Source-relative path
+  (FR-006)
+- [X] T1155 [US1] Add the English copy the bar, the rail, and the Repository state surface render,
+  in the components that render it
+- [X] T1178 [US1] Offer the Source selection on the two lists that hold no kind's rows and withhold
+  the Tool selection there, in `src/app/components/inventory/InventoryFilters.vue`,
+  `src/app/composables/filters.ts`, and `src/app/pages/index.vue`: a file no kind lists and a
+  Source-level diagnostic both belong to a Source, while neither names a product (FR-006)
+
+- [X] T1180 [US1] Keep the bar and the rail on screen as the document scrolls, in `src/app/App.vue`,
+  `src/app/styles/main.css`, and `src/app/pages/index.vue`: the bar sticks to the top of the one
+  scroll container with its own spacing rather than the page's, the rail sticks below it by the
+  token that matches the bar's height, and a focused element is kept clear of the bar (FR-030,
+  QR-004)
+---
+
+## Phase 107: Inventory Row Compression
+
+**Purpose**: Put one file on one line under the name it resolves to, with the products that
+recognize that file and the documented surfaces each recognition rests on beside it.
+
+**Independent Test**: Open each of the eleven kinds against the all-supported fixture and verify one
+line per file, the surfaces stated beside every recognition, the carrier kind stated on a
+declaration whose file is not its own, the personal-setup home named on every row that came from
+one, and a diagnostic stated by kind on its row with its explanation disclosed rather than standing.
+
+**Visible Checkpoint**: A name with two files takes two lines instead of eight.
+
+### Tests first
+
+- [X] T1156 [US1] Add failing unit regressions for the grouping the compressed row rests on — one
+  line per file however many products recognize it, every recognition kept, and the file's own
+  facts published once — in `tests/unit/app/skill-row-files.test.ts`. The rendered row's own shape
+  is not unit-testable here, the unit project compiling no single-file component, so the surfaces
+  beside each recognition, the carrier kind, the personal-setup home, and the supporting-file count
+  are T1157's (FR-007, FR-009)
+- [X] T1157 [US1] Add browser acceptance for the eleven kinds' row shapes, the three vendor marks
+  being three distinct glyphs in three distinct colours that forced colours returns to one, and the
+  diagnostic stated by kind with its explanation disclosed, in `tests/e2e/inventory-rows.spec.ts`
+  (FR-009, FR-028)
+
+### Implementation
+
+- [X] T1146 [US1] Add `src/app/components/ToolMark.vue`, drawing each product's own `simple-icons`
+  glyph in that vendor's own token. It ships in this phase rather than with the palette because the
+  file line below is the first surface that renders one, and a component nothing renders is a
+  component nothing tests (FR-009)
+- [X] T1158 [US1] Add `src/app/components/inventory/ToolLegend.vue`, which maps a mark to its
+  product name once for the list and states nothing else — the surfaces stay on every recognition
+  (FR-009)
+- [X] T1159 [US1] Compress a Source family block to one line per file in
+  `src/app/components/inventory/SourceFamilyBlocks.vue`, with the recognizing marks and their
+  surfaces on the line and the family heading rendered only where a second Source family exists
+  (FR-009)
+- [X] T1160 [US1] Convert the name-and-file kinds to the compressed row in
+  `src/app/components/inventory/rows/SkillRow.vue`,
+  `src/app/components/inventory/rows/InstructionRow.vue`,
+  `src/app/components/inventory/rows/AgentRow.vue`,
+  `src/app/components/inventory/rows/PromptRow.vue`, and
+  `src/app/components/inventory/rows/OutputStyleRow.vue` (FR-009)
+- [X] T1161 [US1] Convert the name-and-declaration kinds to the compressed row, each declaration
+  stating the kind of the file that carries it, in `src/app/components/inventory/rows/McpRow.vue`,
+  `src/app/components/inventory/rows/HookRow.vue`, and
+  `src/app/components/inventory/rows/PluginRow.vue` (FR-009)
+- [X] T1162 [US1] Convert the kinds that carry no name, whose row is its file, in
+  `src/app/components/inventory/rows/RuleRow.vue`,
+  `src/app/components/inventory/rows/PermissionsRow.vue`, and
+  `src/app/components/inventory/rows/SettingsRow.vue` (FR-009)
+- [X] T1163 [US1] Mark a row that kept a diagnostic at all times and disclose what happened on
+  request, in `src/app/components/inventory/rows/RowDiagnostics.vue` and
+  `src/app/components/inventory/rows/UnclassifiedRow.vue` *(amended 2026-09-02: the mark is one
+  word, because a clause naming the outcome beside every affected path is more text than a row
+  being scanned for trouble needs)* (FR-028)
+- [X] T1164 [US1] Name the personal-setup home a file came from on its row, rather than repeating
+  its full path on a second line, in `src/app/components/inventory/SourceFamilySections.vue`
+  (FR-013)
+- [X] T1179 [US1] State every count with the noun it counts, singular or plural, and label a row's
+  count by the files its lines are, across the row components, `ScanProgress.vue`,
+  `GlobalSourceControls.vue`, `InventoryRail.vue`, `InventoryFilters.vue`, and
+  `src/app/pages/index.vue` (FR-009)
+
+- [X] T1181 [US1] Put one file on one line in `src/app/components/inventory/rows/PluginRow.vue`,
+  where the wire publishes one carrier per `(file, tool)`, and make each recognizing mark the link
+  to that product's own reading — the one kind whose detail differs by product, so the path opens
+  nothing and the marks open one reading each
+  (`src/app/components/inventory/RecognitionMarks.vue`, FR-007, FR-009)
+---
+
+## Phase 108: Detail Surface Rework
+
+**Purpose**: Lead each detail with its customization, put the other copies of that name on one line
+whatever their number, and let the body take the height its content needs.
+
+**Independent Test**: Open a skill, an instruction file, a rule, and a hook declaration and verify
+each leads with its own customization, that the strip of other copies stays one line at nine files
+and never repeats the one on screen, that the source viewer takes its content height under a bound,
+and that the previous and next moves reach the neighbouring rows in the list order.
+
+**Visible Checkpoint**: A two-line skill no longer opens under an empty frame, and the next name is
+one move away.
+
+### Tests first
+
+- [X] T1165 [US2] Add failing unit regressions for what the strip of other copies holds — the file
+  on screen excluded from it by its whole identity, so a same-path copy of another Source stays — in
+  `tests/unit/app/file-strip.test.ts`. The rendered strip is not unit-testable here, the unit
+  project compiling no single-file component, so its staying one line whatever the count and each
+  entry's own recognizing marks are T1166's (FR-007)
+- [X] T1166 [US2] Add browser acceptance for the subject-first detail head, the strip of other
+  copies, the content-height source viewer, and the previous and next moves, in
+  `tests/e2e/detail-navigation.spec.ts` (FR-007)
+
+### Implementation
+
+- [X] T1167 [US2] Add `src/app/components/inspection/FileStrip.vue`, which lists the other copies of
+  one name on a single scrolling line and excludes the one the page is showing (FR-007)
+- [X] T1168 [US2] Add the previous and next moves along the list order to
+  `src/app/components/detail-route.ts`, so opening the next name costs no return to the inventory
+  (FR-007)
+- [X] T1169 [US2] Let the source viewer take its content height under a bound in
+  `src/app/components/inspection/SourceViewer.vue` and `src/app/composables/monaco.ts`, so a
+  two-line file no longer opens under a fixed frame (FR-007, FR-025)
+- [X] T1170 [US2] Apply the subject-first head — the customization, then its attributes on one line
+  — to every kind's detail page under `src/app/pages/`, so no page carries one fact in two spellings
+  (FR-007)
+- [X] T1171 [US2] Add the English copy the detail head, the strip, and the previous and next moves
+  render, in the components that render it
+
+---
+
+## Phase 109: Comparison Surfaces and Rework Closure
+
+**Purpose**: Keep a comparison at the width its side-by-side rendering needs, state on each side the
+products that recognize that side's file, and rerun the gates the reworked surfaces reopened.
+
+**Independent Test**: Open a skill comparison whose two files are recognized by different products
+and verify both sides state their own products, that the diff stays side by side rather than
+collapsing to one column, and that the breadcrumb returns to the list the comparison was reached
+from.
+
+**Visible Checkpoint**: A comparison says which products read which side, and stays side by side.
+
+### Tests first
+
+- [X] T1172 [US3] Add browser acceptance for the comparison head — both sides' recognizing products,
+  the breadcrumb's return target, and the diff staying side by side rather than collapsing to one
+  column — in `tests/e2e/comparison-layout.spec.ts` (FR-011, FR-012)
+
+### Implementation
+
+- [X] T1173 [US3] State each side's own recognizing products and the return target in the seven
+  comparison pages under `src/app/pages/`, so two copies one product does not share are not read as
+  one thing twice (FR-011, FR-012)
+- [X] T1174 [US3] Hold the comparison body to the width its side-by-side rendering needs in
+  `src/app/components/skill-comparison/SourceDiff.vue`,
+  `src/app/components/instruction-comparison/SourceDiff.vue`,
+  `src/app/components/prompt-comparison/SourceDiff.vue`,
+  `src/app/components/plugin-comparison/SourceDiff.vue`, and
+  `src/app/components/custom-agent-comparison/SourceDiff.vue` (FR-011, FR-012)
+- [X] T1175 [US3] Add the English copy the comparison head renders, in the components that render it
+- [X] T1176 [US3] Rerun the cross-cutting suites over the reworked surfaces and correct what they
+  report, including the accessibility, documentation, and package gates named in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` (QR-004)
+- [X] T1177 [US3] Record in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` that the interface rework invalidates
+  the frozen release outcomes, and name the release-completion steps that repeat over the reworked
+  tree (QR-004)
+---
+
+## Phase 110: Recognition-Owned Invocation Names on the Detail Head
+
+**Purpose**: State a skill's invocation name once per recognition rather than once per page, and
+put each detail's own file facts on the line under its heading.
+
+**Independent Test**: Open the detail of a skill one product invokes by its authored name and
+another by its directory, and verify each recognition states its own name beside its own surfaces,
+and that the head's line states the open file, its read outcome, and its size.
+
+**Visible Checkpoint**: A skill that answers to two names says so, one line per product.
+
+### Tests first
+
+- [X] T1182 [US2] Add browser acceptance for the recognition-owned invocation name and the head's
+  file line — one row per recognition with that recognition's own name and surfaces, and the open
+  file stated once above them — in `tests/e2e/detail-navigation.spec.ts` (FR-007, FR-009)
+
+### Implementation
+
+- [X] T1183 [US2] Render one row per recognition on the skill detail — the product, the surfaces
+  its admitting rules rest on, and the name that product invokes the skill by — in
+  `src/app/pages/skills/detail/[source]/[...path].vue`, so one file answering to two names is
+  read as two names rather than one (FR-007, FR-009)
+- [X] T1184 [US2] State the open file, its read outcome, and its size on the head's line in
+  `src/app/pages/skills/detail/[source]/[...path].vue`,
+  `src/app/pages/hooks/detail/[source]/[...path].vue`, and
+  `src/app/pages/mcp/detail/[source]/[...path].vue`, where they sat below the page's own sections
+  (FR-007)
+- [X] T1185 [US2] Add the English copy the recognition rows and the head's file line render, in the
+  components that render it
+---
+
+## Phase 111: Convergence
+
+**Purpose**: Bring the release evidence and the user documentation back into agreement with the
+tree the interface rework produced, and restore the task-set gates over the extended task list.
+
+**Independent Test**: Run `pnpm run test:docs` and confirm it passes over the extended task set;
+open `./README.md` beside a running session and confirm the two screenshots and the personal-setup
+sentence describe what the page shows; read
+`specs/001-inspect-agent-customizations/validation.md` and confirm every recorded digest, count,
+and measurement identifies a run of this tree.
+
+**Visible Checkpoint**: A release cut from this tree cites evidence taken on it, and the readme
+shows the interface the reader will meet.
+
+### User documentation
+
+- [ ] T1186 CRITICAL Regenerate `docs/images/inventory.png` and `docs/images/comparison.png`
+  against the reworked interface and rewrite the alt text that introduces each of them in
+  `./README.md` and `./README.ja.md`: the committed images predate Phases 105–110 and show the
+  replaced surfaces — a `Filters` panel with a `Path contains` field where the shell bar now
+  carries one search (T1154), product names spelled out where `ToolMark.vue` now draws a vendor
+  mark (T1146), a supporting-file line per file where the row is now one line (T1159), and a rail
+  of kinds alone where the Source families and their statuses now stand above them (T1152).
+  `package.json.files` ships `docs/images`, so these are what npm serves (Constitution IV, QR-004,
+  T1029) (contradicts)
+- [ ] T1187 CRITICAL Correct the personal-setup sentence in `./README.md` and `./README.ja.md`,
+  which tells the reader to click *Inspect your personal setup*: T1153 removed the standing consent
+  link from the inventory, that string is now the heading of `src/app/pages/global-consent.vue`,
+  and what a reader clicks is the rail's `Personal setup` entry under `Sources`. Name what the
+  interface renders, in both languages (Constitution IV, QR-004, T1029) (contradicts)
+
+### Evidence identity
+
+- [ ] T1188 CRITICAL Re-record the outcome-manifest identity in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`: both name canonical SHA-256
+  `f87255e0df95ce017b6fd906508f25ae4860227212af760f4aa0eee60bbaff03`, which is not the digest
+  `tests/fixtures/outcomes/manifest.sha256` now holds, so the record identifies a manifest that is
+  not checked in. The manifest version stays as it is — spec.md § Release-Evidence Fixture
+  Governance requires an increment for a case, required-class, or expected-outcome change, and this
+  was a fixture-byte change (Constitution IV, SC-003, SC-004, SC-005, SC-007) (contradicts)
+
+### Task-set gates
+
+- [X] T1189 Restore the task-set gates over the tasks this phase adds, in
+  `specs/001-inspect-agent-customizations/tasks.md`,
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, and
+  `tests/documentation/cross-artifact.test.ts`: name every ID T1186–T1198 in the Normative
+  Requirement Traceability matrix in both languages — QR-004 for the documentation and evidence
+  tasks, SC-003/SC-004/SC-005/SC-007 for the manifest re-measurement, SC-008 for the accessibility
+  rerun, SC-001 and SC-006 for the sessions, and the Constitution/project-governance row for this
+  task-set work — and move the three literals the suite pins: the highest declared task ID that
+  `DECLARED_TASK_IDS` is built from, from 1185 to 1198, and the frozen counts, from 1,097 tasks and
+  114 phases to 1,110 and 115. The freeze is part of the change that adds a phase (AGENTS.md
+  § Implementation simplicity policy), and until this task runs `pnpm run test:docs` fails on the
+  appended IDs (Constitution III) (missing)
+
+### Release completion over the reworked tree
+
+These six repeat what `specs/001-inspect-agent-customizations/validation.md` § Interface rework
+records as owed, in the order it names. Each records its result in that file and in
+`specs/001-inspect-agent-customizations/validation.ja.md`.
+
+- [ ] T1190 Run `pnpm run build`, then `pnpm run verify:package` and `pnpm run test:package` over
+  this tree, and record the packaged-tree result in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` (QR-004) (missing)
+- [ ] T1191 Rerun every gate in the Release gate execution table and replace its counts with what
+  each run reports over this tree, in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. The recorded row is already
+  contradicted: Documentation 31, Unit 1,195, and Contract 389 against runs of this tree reporting
+  41, 1,211, and 391 (QR-004) (contradicts)
+- [ ] T1192 Record the three-project browser run in CI as this tree's certifying result in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`, keeping the existing disposition that
+  a local run stands in for none of it and that the macOS WebKit link-Tab failures are an
+  uncertified host's (QR-004) (missing)
+- [ ] T1193 Rerun the 34 `AUTO-*` checks against this tree's `src/` and its packed `dist/`, redo
+  the 18 `REVIEW-*` rationale recheck, and record both in
+  `specs/001-inspect-agent-customizations/validation.md`,
+  `specs/001-inspect-agent-customizations/validation.ja.md`,
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.md`, and
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` — the 3.3.7
+  rationale names the inventory's path filter, which T1154 made the shell's one search (SC-008)
+  (missing)
+- [ ] T1194 Re-execute the manifested SC-003, SC-004, SC-005, and SC-007 cases against the checked-in
+  manifest and record the new non-comparable measurement set — the manifest version, its canonical
+  digest, the executed case IDs, and a nonzero count for every required class — in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` (SC-003, SC-004, SC-005, SC-007)
+  (missing)
+- [ ] T1195 Repeat the twenty agent-driven SC-001 and SC-006 sessions against a build of this
+  candidate, naming that build and the task material under
+  `tests/usability/sc001-sc006-study-inputs/` it scored against, and record the result as an
+  agent-driven run in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. spec.md § Measurable Outcomes requires
+  the repeat after a material change to a primary workflow, and the rework changed all four
+  (SC-001, SC-006) (missing)
+
+### Records that name the rework
+
+- [ ] T1196 Extend the invalidation record from Phases 106–109 to Phases 105–110 in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`: Phase 105 replaced the palette every
+  `AUTO-*` contrast check measures, and Phase 110 reworked the skill, hook, and MCP detail heads
+  that the SC-003 shared-file and SC-005 row cases observe (QR-004) (partial)
+- [ ] T1197 Correct the frozen-count text in T1041, T1049, T1061, and T1062 in
+  `specs/001-inspect-agent-customizations/tasks.md` and
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, whose bodies still require "1,053 ordered
+  checkbox IDs, 108 phases" and coverage of "T001 through T1141" while the shipped freeze requires
+  1,097 and 114 and the declared range ends at T1185. A task body records what the task now
+  requires, and a dated amendment note records that it changed (AGENTS.md § Documentation content
+  policy) (contradicts)
+- [ ] T1198 Add the Story Coverage Matrix rows Phase 110 and this phase have none of, and correct
+  the phase ranges that stop at 109 — § Organization and the `[Story]` line in § Format, both of
+  which say "Phases 105–109" while Phase 110 exists and its tasks carry `[US2]` — in
+  `specs/001-inspect-agent-customizations/tasks.md` and
+  `specs/001-inspect-agent-customizations/tasks.ja.md` (QR-004) (missing)
 ---
 
 ## Story Coverage Matrix
@@ -10291,6 +10703,11 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
 | 102 Documentation, Evidence, and Dependency Review | release evidence | Maintainers have reviewable guidance, evidence provenance, and a dependency decision before the cross-cutting suites validate those artifacts. |
 | 103 Cross-Cutting Verification | regression | The complete documented product passes its cross-cutting automated regression layer. |
 | 104 Release and Outcome Evidence | measured outcomes | The initial release is publication-ready with explicit automated, participant, accessibility, performance, safety, residual-risk, and constitution-compliance evidence. |
+| 105 Interface Foundation | US1 | Every surface is drawn in the product's own palette, with the reader's system colours restored under forced colours. |
+| 106 Shell and Source State Surfaces | US1 | The inventory starts at the list, and each Source family's state has a surface of its own. |
+| 107 Inventory Row Compression | US1 | One file takes one line, with its recognizing products and their documented surfaces beside it. |
+| 108 Detail Surface Rework | US2 | A detail leads with its customization and gives the authored source the height it needs. |
+| 109 Comparison Surfaces and Rework Closure | US3 | A comparison names the products on each side, stays side by side, and the reopened gates are rerun. |
 
 ## Dependencies and Execution Order
 
@@ -10363,6 +10780,7 @@ Setup
 - Phase 96 establishes the generic selector-free fixed-member coordinator, three closed typed admission ports, Codex's real port, and test-only injected outcome coverage without claiming production all-member activation. Phases 97–98 bind the real Claude and Copilot ports to that same still-open composite milestone. Phase 99 repeats the fixed-member permutations through all real ports, completes the endpoint and atomic publication, and publishes every admitted separately identified one-root Source together in exactly one complete or partial generation; only then is the composite milestone green, while later explicit Global rescans remain single-Source operations.
 - Phase 102 task T1037 is the semantic evidence-drift gate: after that gate passes, semantically unchanged reviewed Phase-102 citation/evidence metadata corrections may update production registries, but any accepted normative behavior, rule, strategy, Presentation Allowlist, registry-shape, or conformance change supersedes the current bilingual task set and requires synchronized artifacts plus replanning before later old IDs run.
 - Phase 103 task T1041 is the later pre-release hard cross-artifact gate: T999 must already have materialized the production registry and T1038 any affected conformance records; the manifest and documentation/traceability suite verify that final state, existing local/CI commands, and the declared later release/final reruns, but do not require the future release workflow before T1048. Failures in T1041-owned manifest/test files are corrected and rerun within T1041; a concern in an authoritative external artifact supersedes the current task set for synchronized replanning/regeneration rather than waiting for T1062. Only after that disposition leaves no unresolved concern may verification-only T1042 or any later task under the current IDs begin.
+- Phases 105–109 rework the interface the completed surfaces are read through, so they follow the release evidence rather than preceding it: each reworks one layer — the palette and the shared controls, the shell and the Source state routes, the inventory row, the detail head, and the comparison head — and Phase 109 closes by rerunning the cross-cutting gates the rework reopened and recording that the frozen release outcomes no longer describe the tree.
 - Repository Inventory, Detail, and Comparison Acceptance complete US1, US2, and US3; Global Disable Barrier and Teardown is the first phase at which US4 is complete.
 
 ## Parallel Opportunities

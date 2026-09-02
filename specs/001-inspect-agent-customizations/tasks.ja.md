@@ -8,12 +8,12 @@
 
 **テスト**: すべての振る舞いの変更について、実装前にリスクに応じた自動テストが必要です。テストはユニット、契約、統合、パッケージ、セキュリティ、性能、ブラウザー、境界、アクセシビリティ、回帰の振る舞いを網羅します。
 
-**構成**: タスクは、一つのuser story全体を水平に完了せず、元の目に見えるfamily-vertical delivery incrementに従います。起動可能な画面の後、各familyでInventory/List、完全で不活性なDetail、必要なshared integration、Comparisonを完了してから次のfamilyへ進みます。正確な順序は、SKILL（その Skill Metadata の一覧/詳細フェーズは確定済みの決定記録 — フェーズ 6・7 参照 — であり、比較フェーズは census companion に対する generic path の検証です — フェーズ 14 参照）→ Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooksです。Story labelはcanonicalなtraceabilityを維持し、`[US1]`はdiscovery、`[US2]`は完全で不活性なdetail、`[US3]`はcomparison、`[US4]`はGlobal inspectionを表します。MCP surfaceに合流するのは明示的なMCP構成だけです。他のkindのfileが綴るMCP構成は、そのkind自身のinventory phaseが出荷された時点で、そのkindのdetail contentとして見えるようになります。各phaseは独立してtest可能なmilestoneを1つ維持します。 *(amended 2026-08-20: MCP surfaceに合流するのは明示的なMCP構成だけである。他のkindのfileが綴るMCP構成は、agentの`mcp-servers`も含め、そのkind自身のdetail contentとして見えるだけである。)*
+**構成**: タスクは、一つのuser story全体を水平に完了せず、元の目に見えるfamily-vertical delivery incrementに従います。起動可能な画面の後、各familyでInventory/List、完全で不活性なDetail、必要なshared integration、Comparisonを完了してから次のfamilyへ進みます。正確な順序は、SKILL（その Skill Metadata の一覧/詳細フェーズは確定済みの決定記録 — フェーズ 6・7 参照 — であり、比較フェーズは census companion に対する generic path の検証です — フェーズ 14 参照）→ Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooksです。Story labelはcanonicalなtraceabilityを維持し、`[US1]`はdiscovery、`[US2]`は完全で不活性なdetail、`[US3]`はcomparison、`[US4]`はGlobal inspectionを表します。MCP surfaceに合流するのは明示的なMCP構成だけです。他のkindのfileが綴るMCP構成は、そのkind自身のinventory phaseが出荷された時点で、そのkindのdetail contentとして見えるようになります。各phaseは独立してtest可能なmilestoneを1つ維持します。フェーズ 105〜109 は、完成したそれらのsurfaceを読むためのインターフェースを作り直すため、release evidenceの後に続き、それを再び開きます。読み手が見るものへの変更は、そのevidenceが凍結された対象であるtreeへの変更だからです。 *(amended 2026-08-20: MCP surfaceに合流するのは明示的なMCP構成だけである。他のkindのfileが綴るMCP構成は、agentの`mcp-servers`も含め、そのkind自身のdetail contentとして見えるだけである。)*
 
 ## 形式: `[ID] [P?] [Story?] Description`
 
 - **[P]**: 明記された前提条件の完了後、異なるファイルを使用し、別の未完了タスクへ依存しないため並列実行できます。
-- **[Story]**: フェーズ 3〜101 で必須です。Setup、Minimal Secure Foundation、フェーズ 102〜104 でのみ省略します。
+- **[Story]**: フェーズ 3〜101 および 105〜109 で必須です。Setup、Minimal Secure Foundation、フェーズ 102〜104 でのみ省略します。
 - すべてのチェックリスト項目には、一つの主要成果と少なくとも一つの正確なrepository-relative owned file pathが必要です。Repository root直下のowned fileには明示的な`./` prefixを付けます。Prefixなしのbasenameはmanifest member、API value、selector、その他content literalとして残してよいものの、owned path導出時には無視し、task ownershipを満たすものとして数えません。
 
 ## 規範的な要件トレーサビリティ
@@ -29,17 +29,17 @@ dispositionである。
 | 要件 | 所有する実装・検証・evidence task |
 |---|---|
 | FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
-| FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062 |
+| FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
 | FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
 | FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
-| FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135 |
+| FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
-| FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929 |
-| FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929 |
-| FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137 |
+| FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
+| FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
+| FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
 | FR-015 | T977–T990, T1137 |
 | FR-016 | T963–T976, T1138 |
@@ -51,12 +51,12 @@ dispositionである。
 | FR-022 | T040, T043, T045–T047, T056, T294, T925, T996, T1054, T1098, T1123 |
 | FR-023 | T018, T020–T021, T031, T056, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061 |
 | FR-024 | T018–T022, T029–T032, T055, T057, T067, T069, T916, T924, T934, T940, T944–T945, T947, T959, T1008, T1014, T1029, T1041, T1051, T1054, T1058, T1061–T1062, T1069–T1072 |
-| FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069 |
+| FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
 | FR-027 | T084, T100, T102, T927, T1045 |
-| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
-| FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082 |
+| FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
 | FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061 |
 | FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929 |
@@ -67,21 +67,21 @@ dispositionである。
 | FR-038 | T001–T003, T005–T014, T024–T036, T1043–T1044, T1047–T1051 |
 | FR-042 | T041–T042, T044, T048–T049, T057, T1017–T1029, T1041, T1045–T1046, T1058, T1061–T1062 |
 | FR-043 | T1041–T1042, T1080 |
-| FR-044 | T1123, T1136 |
+| FR-044 | T1123, T1136, T1143, T1144 |
 | FR-045 | T977–T990, T991–T1005, T1137–T1140 |
 | QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
-| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141 |
+| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
-| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062 |
-| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062 |
-| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062 |
-| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062 |
-| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062 |
-| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062 |
-| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059 |
-| Constitution/project governance | T001–T014, T1029–T1063 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194 |
+| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194 |
+| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195 |
+| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194 |
+| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
+| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197 |
 
 ---
 
@@ -6853,9 +6853,9 @@ dispositionである。
   errorについて完成させる。全admitted-member Source publicationをone atomic batch commit後のlater session
   pollへ委ね、carried existing Sourcesを保持する処理を`src/server/host/devframe-app.ts`に実装する *(2026-08-27修正:
   fixed-four — 共有agent homeがmemberに加わる（FR-045）。)*
-- [X] T1003 [US4] Sourceのfilter — 選択されたrepositoryと、consent済みの各homeをそれぞれ1つのoptionとして — をtool
-  filterの隣に実装し、Source軸はfileがどこから来たかを、tool軸はどの製品が認識したかを述べるようにする。この選択はSource
-  selectorとしてinventoryのURLに載せられる。launchごとのSource IDでは載せられない。加えて、enabled
+- [X] T1003 [US4] Source familyのfilter — 選択されたrepositoryと、読み手自身の設定ディレクトリを1つとして — をtool
+  filterの隣に実装し、Source軸はfileがどこから来たかを、tool軸はどの製品が認識したかを述べるようにする。この選択は
+  family自身の語としてinventoryのURLに載せられる。launchごとのSource IDでは載せられない。加えて、enabled
   Sourceごとのescape済みでinertな`SourceBoundary.displayRoot`/`origin`をconsent-preview
   displayとSource-relative item pathから区別してrenderしlocatorにしないone-root summary、そしてfileを完全なidentity —
   SourceとSource-relative Path（FR-030） — で指すdetail/comparison navigation — Source qualifierをdetail
@@ -8697,17 +8697,404 @@ participant 20名がこのprojectには得られず、それが存在する理�
   *(2026-09-01改訂: study kitは退役したため、この再実行はcandidate、seal、human/manual evidence
   bindingを検証せず、それらのreviewも繰り返さない。繰り返すのは、releaseが今も持つものに対する完全diffとtarballの読みである。)*
 
-- [X] T1141 Inspector が読む場所のすべてを、ツールごと・種別ごとに、リポジトリと
-  （オプトインした）個人設定について、`docs/which-files-are-listed.md`と
-  `docs/which-files-are-listed.ja.md`へ列挙し、各言語の readme からリンクする。列挙は散文で
-  書く。Selector programや`ANY_DIRECTORIES`はruleのオーサリング形式であって製品の読者が
-  出会うものではなく、`specs/`配下のvendor contractはユーザードキュメントではないため案内先に
-  もしない。ページは一覧だけを持ち、それ以外を持たない。散文はruleから導出できないので、代わりに
-  `tests/documentation/cross-artifact.test.ts`へ包含関係を要求する。出荷される
-  `static-candidate` ruleがcandidateをadmitするliteral segmentは、すべて両言語のページが名指して
-  いなければならない。あわせて2つのreadmeが1つの節構造、1つのコマンド集合、1つの相互参照集合を
-  持ち、リンク先が解決することも要求する（QR-004）。
+- [X] T1141 カスタマイズファイルが一覧の行になる場所のすべてを、ツールごと・種別ごとに、
+  リポジトリと（オプトインした）個人設定について、`docs/which-files-are-listed.md`と
+  `docs/which-files-are-listed.ja.md`へ列挙し、各言語の readme からリンクする。個人設定は
+  ツール別ではなくホーム別に分ける。共有 agent home はどのツールのものでもなく、`CODEX_HOME`や
+  `COPILOT_HOME`では動かないためである。あわせて、一覧に載るカスタマイズに伴う2つの限定的な
+  読み取り — そのカスタマイズ自身のディレクトリと、プラグインが宣言するルート — も述べる。
+  どちらもruleがadmitする場所ではないからである。列挙は散文で書く。Selector programや
+  `ANY_DIRECTORIES`はruleのオーサリング形式であって製品の読者が出会うものではなく、`specs/`配下の
+  vendor contractはユーザードキュメントではないため案内先にもしない。散文はruleから導出できないので、
+  代わりに`tests/documentation/cross-artifact.test.ts`へ包含関係を要求する。出荷される
+  `static-candidate` ruleがadmitするliteral segmentはすべて両言語のページが名指す。あわせて
+  `bounded-derived-candidate` ruleは件数を凍結する。scan時に読んだ名前をadmitするruleには、
+  包含できるsegmentが無いためである。2つのreadmeが1つの節構造、1つのコマンド集合、1つの相互参照
+  集合を持ち、リンク先が解決することも要求する（QR-004）。
 
+---
+
+## フェーズ 105: インターフェースの下地
+
+**目的**: すべてのsurfaceをproduct自身のpaletteで描く — 3段のsurface、1つのaccent、2つのborder
+tokenをliteralな値として書き、system colourのpaletteは`forced-colors`のfallbackとして残す — そして
+共有controlとtype scaleの定義を1つにまとめる。
+
+**独立テスト**: light、dark、forced-colorsの各表示で一覧をrenderし、boxまたは選択状態を識別するすべ
+ての境界が背後のsurfaceに対して3:1以上を測ること、読み手が選んだschemeがpalette全体を動かすこと、そ
+してforced-colorsのrenderingがすべてのsurface・border・accentをsystem colourへ戻すことを検証する。
+
+**目に見えるチェックポイント**: Shellが、hairlineを辿って見つける箱の集まりではなく、1つの設計された
+surfaceとして読める。
+
+### テストを先に
+
+- [X] T1142 [US1] インターフェースが走査するclosedな順序配列 — `SUPPORTED_TOOL_ORDER` と
+  `CUSTOMIZATION_KIND_ORDER` がそれぞれのunionをちょうど1回ずつ覆うこと — について失敗するunit回帰テ
+  ストを `tests/unit/shared/entities.test.ts` に追加する。凡例もrailもfilterもそれらを走査してrender
+  するため、片方から欠けたmemberはcompilerが黙ったままproductまたはkindをインターフェースから落とす:
+  `Record`は網羅性が検査されるが、unionの配列は検査されない。mark自体はここではunit testできない —
+  unit projectはsingle-file componentをcompileしない — ため、そのglyphと色はT1143が持つ（FR-009）
+- [X] T1143 [US1] Paletteのブラウザー受け入れテストを `tests/e2e/palette-contrast.spec.ts` に追加す
+  る。light/darkの両schemeにおける境界と選択状態の3:1測定、および`forced-colors`のrenderingがすべて
+  のsurface・border・accentをsystem colourへ戻すことを対象とする（FR-044、QR-004）
+
+### 実装
+
+- [X] T1144 [US1] `src/app/styles/main.css` のshell paletteを、schemeごとに3段のliteralなsurface、
+  1つのproduct accent、1つのborder tokenへ置き換える。system colourのpaletteは`forced-colors`
+  blockに残し、読み手自身の色がproductの色に優先するようにする（FR-044、QR-004）
+- [X] T1145 [US1] 共有controlの基準 — button、select、text field、pill、およびrowとnoteを組むtype
+  scale — を `src/app/styles/main.css` に追加する。複数のsurfaceがrenderするcontrolを、componentごと
+  ではなく1つの見た目にするためである（AGENTS.md § Stylesheet scope policy）
+- [X] T1147 [US1] 測定した境界と選択状態のcontrast値、およびforced-colorsのfallbackを
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.md` と
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` に記録する（
+  QR-004）
+
+---
+
+## フェーズ 106: Shell と Source 状態のサーフェス
+
+**目的**: すべてのrouteに適用されるものを1つのbarへ、画面上にどのrowがあるかを決めるものを1つの
+railへ、各Source family自身の状態をそれ自身のsurfaceへ置く。
+
+**独立テスト**: 一覧から、railを通じてRepositoryの状態surfaceと個人設定のsurfaceへ到達し、pageを離れ
+ずにbarからrescanし、1つの検索に名前を打った場合とpathの断片を打った場合の双方で一覧が絞られること、
+そして一覧自身がSourceのroot、status、generationのいずれも述べないことを検証する。
+
+**目に見えるチェックポイント**: 一覧はlistから始まり、Sourceの状態はstatusが既に見えている状態で1手
+先にある。
+
+### テストを先に
+
+- [X] T1148 [US1] 名前とpathにまたがる1つの検索について失敗するunit回帰テストを、filter viewの
+  suiteが置かれている `tests/unit/app/inventory.test.ts` に追加する。rowは名前かSource-relative path
+  のいずれかが入力されたtextを含むときに通ることを対象とする（FR-006）
+- [X] T1149 [US1] Shellのブラウザー受け入れテストを `tests/e2e/shell-navigation.spec.ts` に追加す
+  る。barがすべてのrouteで検索とcolour-scheme controlを持ち、scan commandは自前のpanelを持たない一
+  覧に置かれること、railが各familyのstatusを導線の傍らに述べつつ `/repository` と
+  `/global-consent` へ到達すること、そして一覧がSourceのpanelを持たないことを対象とする（FR-002、
+  FR-030）
+
+### 実装
+
+- [X] T1150 [US1] Repositoryの状態route `src/app/pages/repository.vue` を追加する。escaped root
+  labelとそれが何であるかを述べるnote、Source status、commit済みgeneration、そしてこのSource自身の
+  rescanとstatus refreshを持つ（FR-002、FR-030）
+- [X] T1151 [US1] Product名、1つの検索、rescan command、colour-scheme controlを `src/app/App.vue` の
+  barへ移し、すべてのrouteがそれらを持ち、どのsurfaceも重複して持たないようにする（FR-030、FR-044）
+- [X] T1152 [US1] `src/app/components/inventory/InventoryKindTabs.vue` を
+  `src/app/components/inventory/InventoryRail.vue` へ置き換える。statusと各familyのsurfaceへの導線を
+  伴うSource family、次にclosedなkind catalog、次にどのkindの一覧でもない2つのfileの一覧を並べる（
+  FR-030）
+- [X] T1153 [US1] `src/app/pages/index.vue` をlistから始まるよう作り直す: Repositoryのpanelなし、個
+  人設定のpanelなし、常設のconsent linkなし、そしてkindではない2つの一覧は、一覧の下に付け足すのでは
+  なくrailから選ぶ（FR-002、FR-028、FR-030）
+- [X] T1154 [US1] `src/app/components/inventory/InventoryFilters.vue` のpath fieldを1つの検索へ置き
+  換え、`src/app/composables/filters.ts` を通してそれを運ぶ。rowは名前かSource-relative pathのいずれ
+  かで一致させる（FR-006）
+- [X] T1155 [US1] Bar、rail、Repositoryの状態surfaceがrenderする英語のcopyを、それをrenderする
+  componentの中に追加する
+
+- [X] T1178 [US1] どのkindのrowでもない2つの一覧にSourceの選択を提供し、Toolの選択はそこでは出さない
+  ようにする。対象は `src/app/components/inventory/InventoryFilters.vue`、
+  `src/app/composables/filters.ts`、`src/app/pages/index.vue`。どのkindにも入らないファイルも
+  source単位の診断もSourceには属する一方、どちらも製品を名指さないためである（FR-006）
+- [X] T1180 [US1] documentのスクロール中もbarとrailを画面に残す。対象は `src/app/App.vue`、
+  `src/app/styles/main.css`、`src/app/pages/index.vue`。barは唯一のスクロールcontainerの上端に、
+  page側ではなく自身のspacingを持って留まり、railはbarの高さに一致するtokenの分だけ下に留まる。
+  focusされた要素はbarの下に潜らせない（FR-030、QR-004）
+---
+
+## フェーズ 107: 一覧 row の圧縮
+
+**目的**: 1つのfileを、それが解決する名前の下の1行に置き、そのfileを認識したproductと、各認識が依拠
+する文書化済みsurfaceをその傍らに並べる。
+
+**独立テスト**: All-supported fixtureに対して11のkindをそれぞれ開き、fileごとに1行であること、すべて
+の認識の傍らにsurfaceが述べられること、fileが自身のものではない宣言にcarrierの種別が述べられること、
+個人設定から来たすべてのrowにそのhomeが名指されること、そしてdiagnosticが種類としてrowに述べられ説明
+は常時ではなく展開で示されることを検証する。
+
+**目に見えるチェックポイント**: 2つのfileを持つ名前が、8行ではなく2行を占める。
+
+### テストを先に
+
+- [X] T1156 [US1] 圧縮rowが依拠するgroupingについて失敗するunit回帰テストを
+  `tests/unit/app/skill-row-files.test.ts` に追加する。いくつのproductが認識してもfileごとに1行である
+  こと、すべての認識が保たれること、file自身のfactが1度だけ公開されることを対象とする。renderされたrow
+  自体の形はここではunit testできない — unit projectはsingle-file componentをcompileしない — ため、各
+  認識の傍らのsurface、carrierの種別、個人設定のhome、supporting fileの数はT1157が持つ（FR-007、
+  FR-009）
+- [X] T1157 [US1] 11のkindのrowの形、3つのvendor markが3つの異なるglyphかつ3つの異なる色でありforced
+  coloursがそれらを1つへ戻すこと、そして種類として述べられ説明が展開で示されるdiagnosticについてのブ
+  ラウザー受け入れテストを `tests/e2e/inventory-rows.spec.ts` に追加する（FR-009、FR-028）
+
+### 実装
+
+- [X] T1146 [US1] `src/app/components/ToolMark.vue` を追加し、各product自身の`simple-icons`
+  glyphを、そのvendor自身のtokenで描く。paletteとともにではなくこのphaseで出荷するのは、下のfile
+  lineがmarkをrenderする最初のsurfaceであり、何もrenderしないcomponentは何もtestできないcomponent
+  だからである（FR-009）
+- [X] T1158 [US1] `src/app/components/inventory/ToolLegend.vue` を追加する。markとproduct名の対応を
+  listにつき1回だけ示し、それ以外は何も述べない — surfaceはすべての認識の傍らに残る（FR-009）
+- [X] T1159 [US1] `src/app/components/inventory/SourceFamilyBlocks.vue` において、Source family
+  blockをfileごとに1行へ圧縮する。認識のmarkとそのsurfaceを行の上に置き、family見出しは2つ目のSource
+  familyが存在する場合にだけrenderする（FR-009）
+- [X] T1160 [US1] 名前とfileのkindを圧縮rowへ変換する。対象は
+  `src/app/components/inventory/rows/SkillRow.vue`、
+  `src/app/components/inventory/rows/InstructionRow.vue`、
+  `src/app/components/inventory/rows/AgentRow.vue`、
+  `src/app/components/inventory/rows/PromptRow.vue`、
+  `src/app/components/inventory/rows/OutputStyleRow.vue` である（FR-009）
+- [X] T1161 [US1] 名前と宣言のkindを圧縮rowへ変換し、各宣言はそれを運ぶfileの種別を述べる。対象は
+  `src/app/components/inventory/rows/McpRow.vue`、`src/app/components/inventory/rows/HookRow.vue`、
+  `src/app/components/inventory/rows/PluginRow.vue` である（FR-009）
+- [X] T1162 [US1] 名前を持たず、rowがそのfileであるkindを変換する。対象は
+  `src/app/components/inventory/rows/RuleRow.vue`、
+  `src/app/components/inventory/rows/PermissionsRow.vue`、
+  `src/app/components/inventory/rows/SettingsRow.vue` である（FR-009）
+- [X] T1163 [US1] Diagnosticを保持したrowを常に印で示し、何が起きたかは要求に応じて展開する。対象は
+  `src/app/components/inventory/rows/RowDiagnostics.vue` と
+  `src/app/components/inventory/rows/UnclassifiedRow.vue` である *(2026-09-02 修正: 印は1語とする。
+  outcomeを述べる節を該当pathすべての隣に置くのは、trouble を探して走査しているrowが必要とする以上の
+  文字数になるため)*（FR-028）
+- [X] T1164 [US1] Fileが来た個人設定のhomeを、2行目にfull pathを繰り返すのではなくそのrowで名指す。
+  対象は `src/app/components/inventory/SourceFamilySections.vue` である（FR-013）
+
+- [X] T1179 [US1] すべての件数を、数えている名詞の単数形・複数形とともに述べ、rowの件数はその行が
+  何ファイルかで名付ける。対象はrow component群、`ScanProgress.vue`、`GlobalSourceControls.vue`、
+  `InventoryRail.vue`、`InventoryFilters.vue`、`src/app/pages/index.vue`（FR-009）
+- [X] T1181 [US1] `src/app/components/inventory/rows/PluginRow.vue` で1ファイル1行にする。wireは
+  `(file, tool)` ごとにcarrierを publish するためである。そして各認識markを、その製品自身の読み取りへ
+  のリンクにする。詳細が製品ごとに異なる唯一のkindなので、pathは何も開かず、markがそれぞれ1つの読み
+  取りを開く（`src/app/components/inventory/RecognitionMarks.vue`、FR-007、FR-009）
+---
+
+## フェーズ 108: 詳細サーフェスの作り直し
+
+**目的**: 各detailをそのcustomizationで始め、同じ名前の他のcopyを件数によらず1行に置き、本文には内容
+が必要とする高さを渡す。
+
+**独立テスト**: Skill、instruction file、rule、hook宣言をそれぞれ開き、各detailが自身の
+customizationで始まること、他のcopyのstripが9 fileでも1行のままで画面上のものを繰り返さないこと、
+source viewerが上限の下で内容の高さを取ること、そして前後の移動がlistの順序で隣接するrowへ到達するこ
+とを検証する。
+
+**目に見えるチェックポイント**: 2行のskillが空枠の下に開かなくなり、次の名前は1手先にある。
+
+### テストを先に
+
+- [X] T1165 [US2] 他のcopyのstripが何を持つかについて失敗するunit回帰テストを
+  `tests/unit/app/file-strip.test.ts` に追加する。画面上のfileはidentity全体で除かれ、別Sourceの
+  同名pathのcopyは残ることを対象とする。描画されたstrip自体はここではunit testできない（unit
+  projectはsingle-file componentをcompileしない）ため、件数によらず1行であることと各entryが自身の
+  認識markを持つことはT1166のものである（FR-007）
+- [X] T1166 [US2] 主題を先頭に置くdetailの見出し、他のcopyのstrip、内容の高さに追従するsource
+  viewer、前後の移動についてのブラウザー受け入れテストを `tests/e2e/detail-navigation.spec.ts` に追
+  加する（FR-007）
+
+### 実装
+
+- [X] T1167 [US2] `src/app/components/inspection/FileStrip.vue` を追加する。1つの名前の他のcopyを、
+  横スクロールする1行に並べ、pageが表示しているものは除く（FR-007）
+- [X] T1168 [US2] Listの順序に沿った前後の移動を `src/app/components/detail-route.ts` に追加し、次の
+  名前を開くのに一覧へ戻る必要をなくす（FR-007）
+- [X] T1169 [US2] Source viewerが上限の下で内容の高さを取るようにする。対象は
+  `src/app/components/inspection/SourceViewer.vue` と `src/app/composables/monaco.ts` であり、2行の
+  fileが固定枠の下に開かなくなる（FR-007、FR-025）
+- [X] T1170 [US2] 主題を先頭に置く見出し — customization、次にその属性を1行に — を `src/app/pages/`
+  配下の各kindのdetail pageへ適用し、どのpageも1つの事実を2つの綴りで持たないようにする（FR-007）
+- [X] T1171 [US2] Detailの見出し、strip、前後の移動がrenderする英語のcopyを、それをrenderする
+  componentの中に追加する
+
+---
+
+## フェーズ 109: 比較サーフェスと作り直しの締め
+
+**目的**: 比較を、その並列renderingが必要とする幅に保ち、各sideにそのsideのfileを認識したproductを述
+べ、作り直したsurfaceが再び開いたgateを再実行する。
+
+**独立テスト**: 2つのfileが別々のproductに認識されているskill比較を開き、両sideが自身のproductを述べ
+ること、diffが1カラムへ落ちず並列のままであること、そしてパンくずが比較へ到達した元のlistへ戻ること
+を検証する。
+
+**目に見えるチェックポイント**: 比較はどのproductがどちらのsideを読むかを述べ、並列のまま保たれる。
+
+### テストを先に
+
+- [X] T1172 [US3] 比較の見出しについてのブラウザー受け入れテストを
+  `tests/e2e/comparison-layout.spec.ts` に追加する。両sideの認識product、パンくずの戻り先、そして
+  diffが1カラムへ落ちず並列のままであることを対象とする（FR-011、FR-012）
+
+### 実装
+
+- [X] T1173 [US3] `src/app/pages/` 配下の7つの比較pageで、各side自身の認識productと戻り先を述べ、1つ
+  のproductが共有しない2つのcopyが同じものの2度として読まれないようにする（FR-011、FR-012）
+- [X] T1174 [US3] 比較本文を、その並列renderingが必要とする幅に保つ。対象は
+  `src/app/components/skill-comparison/SourceDiff.vue`、
+  `src/app/components/instruction-comparison/SourceDiff.vue`、
+  `src/app/components/prompt-comparison/SourceDiff.vue`、
+  `src/app/components/plugin-comparison/SourceDiff.vue`、
+  `src/app/components/custom-agent-comparison/SourceDiff.vue` である（FR-011、FR-012）
+- [X] T1175 [US3] 比較の見出しがrenderする英語のcopyを、それをrenderするcomponentの中に追加する
+- [X] T1176 [US3] 作り直したsurfaceに対して横断的なsuiteを再実行し、報告された内容を是正する。
+  `specs/001-inspect-agent-customizations/quickstart.md` と
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` が名指すaccessibility、documentation、
+  packageの各gateを含む（QR-004）
+- [X] T1177 [US3] インターフェースの作り直しが凍結済みのrelease outcomeを無効化することを
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録し、作り直したtreeに対して繰り返す
+  release completionのstepを名指す（QR-004）
+---
+
+## フェーズ 110: detail見出しでの認識が持つ呼び名
+
+**目的**: skillの呼び名をpageごとに1つではなく認識ごとに1つ述べ、各detailの見出し直下の行にその
+file自身の事実を置く。
+
+**独立テスト**: ある製品はauthoredな名前で、別の製品はdirectoryで呼ぶskillのdetailを開き、各認識が
+自分のsurfacesの隣に自分の名前を述べること、および見出しの行が開いているfileとその読み取り結果と
+sizeを述べることを確認する。
+
+**可視チェックポイント**: 2つの名前に答えるskillが、製品ごとに1行でそう述べる。
+
+### テストを先に
+
+- [X] T1182 [US2] 認識が持つ呼び名と見出しのfile行についてのブラウザー受け入れテストを
+  `tests/e2e/detail-navigation.spec.ts` に追加する。認識ごとに1行で、その認識自身の名前とsurfacesを
+  持ち、開いているfileはその上に1度だけ述べられる（FR-007、FR-009）
+
+### 実装
+
+- [X] T1183 [US2] skill detailで認識ごとに1行をrenderする。製品、その受け入れruleが依拠するsurfaces、
+  その製品がskillを呼ぶ名前である。対象は
+  `src/app/pages/skills/detail/[source]/[...path].vue`。2つの名前に答える1つのfileが、1つの名前では
+  なく2つの名前として読まれるようにする（FR-007、FR-009）
+- [X] T1184 [US2] 開いているfileとその読み取り結果とsizeを見出しの行に述べる。対象は
+  `src/app/pages/skills/detail/[source]/[...path].vue`、
+  `src/app/pages/hooks/detail/[source]/[...path].vue`、
+  `src/app/pages/mcp/detail/[source]/[...path].vue` で、いずれもpage自身のsectionの下にあったもので
+  ある（FR-007）
+- [X] T1185 [US2] 認識の行と見出しのfile行がrenderする英語のcopyを、それをrenderするcomponentの中に
+  追加する
+---
+
+## フェーズ 111: 収束
+
+**目的**: release evidenceとuser documentationを、interface reworkが生んだこのtreeと再び一致
+させ、拡張されたtask listに対してtask setのgateを回復する。
+
+**独立したテスト**: `pnpm run test:docs` を実行し、拡張されたtask setに対してpassすることを確認
+する。稼働中のsessionの傍らで `./README.md` を開き、2枚のscreenshotと個人設定の一文がpageの表示
+どおりであることを確認する。`specs/001-inspect-agent-customizations/validation.md` を読み、記録
+されたdigest、count、measurementのすべてがこのtreeの実行を指していることを確認する。
+
+**可視チェックポイント**: このtreeから切り出すreleaseは、このtree上で取られたevidenceを引用し、
+readmeは読み手が実際に出会うinterfaceを示す。
+
+### ユーザードキュメント
+
+- [ ] T1186 CRITICAL `docs/images/inventory.png` と `docs/images/comparison.png` を作り直した
+  interfaceに対して再生成し、`./README.md` と `./README.ja.md` でそれぞれを導入するalt textを
+  書き直す。commit済みの画像はフェーズ 105〜110 より前のもので、置き換えられたsurfaceを示して
+  いる — shell barが1つのsearchを持つ今（T1154）に `Path contains` fieldを持つ `Filters` panel、
+  `ToolMark.vue` がvendor markを描く今（T1146）にproduct名を綴った表記、rowが1行になった今
+  （T1159）にfileごとのsupporting-file行、Source familyとその状態がkindの上に立つ今（T1152）に
+  kindだけのrail。`package.json.files` は `docs/images` を同梱するため、これらはnpmが配信する
+  ものである（憲章 IV、QR-004、T1029）（contradicts）
+- [ ] T1187 CRITICAL `./README.md` と `./README.ja.md` の個人設定の一文を修正する。読み手に
+  *Inspect your personal setup* をクリックするよう伝えているが、T1153 が一覧から常設のconsent
+  linkを取り除き、その文字列は今や `src/app/pages/global-consent.vue` の見出しであり、読み手が
+  クリックするのは `Sources` の下にあるrailの `Personal setup` である。interfaceがrenderする
+  ものを、両言語で名指しする（憲章 IV、QR-004、T1029）（contradicts）
+
+### エビデンスの同一性
+
+- [ ] T1188 CRITICAL `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` でoutcome-manifestの同一性を記録し
+  直す。両者はcanonical SHA-256
+  `f87255e0df95ce017b6fd906508f25ae4860227212af760f4aa0eee60bbaff03` を名指しているが、これは
+  `tests/fixtures/outcomes/manifest.sha256` が現在保持するdigestではなく、記録はcheck inされて
+  いないmanifestを指している。manifest versionはそのままとする — spec.md § Release-Evidence
+  Fixture Governance がincrementを求めるのはcase、required-class、expected-outcomeの変更であり、
+  これはfixture byteの変更だからである（憲章 IV、SC-003、SC-004、SC-005、SC-007）（contradicts）
+
+### Task set の gate
+
+- [X] T1189 このフェーズが追加するtaskに対してtask setのgateを回復する。
+  `specs/001-inspect-agent-customizations/tasks.md`、
+  `specs/001-inspect-agent-customizations/tasks.ja.md`、
+  `tests/documentation/cross-artifact.test.ts` において、T1186〜T1198 のすべてのIDを両言語の
+  Normative Requirement Traceability matrixで名指しし — documentationとevidenceのtaskは
+  QR-004、manifest再測定は SC-003/SC-004/SC-005/SC-007、accessibility再実行は SC-008、
+  sessionは SC-001 と SC-006、このtask set作業は Constitution/project-governance の行 —
+  suiteが固定する3つのliteralを移す: `DECLARED_TASK_IDS` が組み立ての基にする最上位のtask IDを
+  1185 から 1198 へ、凍結されたcountを task 1,097件・phase 114件から 1,110件・115件へ。freezeは
+  phaseを追加する変更の一部であり（AGENTS.md § Implementation simplicity policy）、このtaskが走るまで
+  `pnpm run test:docs` は追加されたIDでfailする（憲章 III）（missing）
+
+### 作り直したtreeに対するreleaseの完了
+
+以下の6件は、`specs/001-inspect-agent-customizations/validation.md` § Interface rework が負債と
+して記録したものを、そこで名指された順に繰り返す。各taskは結果をそのファイルと
+`specs/001-inspect-agent-customizations/validation.ja.md` に記録する。
+
+- [ ] T1190 このtreeに対して `pnpm run build` を実行し、続いて `pnpm run verify:package` と
+  `pnpm run test:package` を実行して、packaged-treeの結果を
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（QR-004）（missing）
+- [ ] T1191 Release gate execution tableのすべてのgateを再実行し、そのcountをこのtreeで各実行が
+  報告した値へ置き換える。対象は `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md`。記録済みの行はすでに矛盾している:
+  Documentation 31件、Unit 1,195件、Contract 389件に対し、このtreeの実行は 41件、1,211件、391件
+  を報告する（QR-004）（contradicts）
+- [ ] T1192 CIの3 project browser実行を、このtreeのcertifyingな結果として
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。localの実行がその代わりに
+  ならないこと、macOS WebKitのlink-Tab失敗が未認証hostのものであることという既存のdispositionは
+  維持する（QR-004）（missing）
+- [ ] T1193 34件の `AUTO-*` checkをこのtreeの `src/` とpackされた `dist/` に対して再実行し、
+  18件の `REVIEW-*` の根拠を再検討して、両方を
+  `specs/001-inspect-agent-customizations/validation.md`、
+  `specs/001-inspect-agent-customizations/validation.ja.md`、
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.md`、
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` に記録する。
+  3.3.7 の根拠は一覧のpath filterを名指しているが、T1154 がそれをshellの1つのsearchにした
+  （SC-008）（missing）
+- [ ] T1194 SC-003、SC-004、SC-005、SC-007 のmanifest済みcaseを、check inされたmanifestに対して
+  再実行し、新しい比較不能なmeasurement set — manifest version、そのcanonical digest、実行した
+  case ID、required classごとの非ゼロのcount — を
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（SC-003、SC-004、SC-005、
+  SC-007）（missing）
+- [ ] T1195 SC-001 と SC-006 の agent駆動session 20件を、この候補のbuildに対して繰り返し、その
+  buildと `tests/usability/sc001-sc006-study-inputs/` の採点材料を名指して、結果をagent駆動の
+  実行として `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。spec.md § Measurable
+  Outcomes は主要workflowへの実質的な変更の後に繰り返すことを求めており、reworkは4つすべてを変更
+  した（SC-001、SC-006）（missing）
+
+### 作り直しを名指す記録
+
+- [ ] T1196 `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` で、無効化の記録をフェーズ 106〜109
+  からフェーズ 105〜110 へ広げる。フェーズ 105 はすべての `AUTO-*` contrast checkが測定する
+  paletteを置き換え、フェーズ 110 は SC-003 のshared-file caseと SC-005 のrow caseが観測する
+  skill・hook・MCPのdetail見出しを作り直した（QR-004）（partial）
+- [ ] T1197 `specs/001-inspect-agent-customizations/tasks.md` と
+  `specs/001-inspect-agent-customizations/tasks.ja.md` で、T1041、T1049、T1061、T1062 の凍結
+  countの記述を修正する。これらの本文はいまだに「ordered checkbox ID 1,053件、phase 108件」と
+  「T001 から T1141 まで」のcoverageを要求しているが、出荷済みのfreezeは 1,097件と 114件を要求し、
+  宣言された範囲は T1185 で終わる。taskの本文はそのtaskが現在要求するものを記録し、日付入りの
+  amendment noteが変更されたことを記録する（AGENTS.md § Documentation content policy）
+  （contradicts）
+- [ ] T1198 フェーズ 110 とこのフェーズが持たないStory Coverage Matrixの行を追加し、109 で止まって
+  いるphase範囲 — § 構成 と § 形式 の `[Story]` の行はどちらも「フェーズ 105〜109」と書いているが、
+  フェーズ 110 は存在しそのtaskは `[US2]` を持つ — を
+  `specs/001-inspect-agent-customizations/tasks.md` と
+  `specs/001-inspect-agent-customizations/tasks.ja.md` で修正する（QR-004）（missing）
 ---
 
 ## ストーリーカバレッジマトリクス
@@ -8821,6 +9208,11 @@ participant 20名がこのprojectには得られず、それが存在する理�
 | 102 ドキュメント、エビデンス、依存関係のレビュー | リリースエビデンス | 横断suiteがartifactを検証する前に、メンテナーがreview可能なguidance、evidence provenance、dependency decisionを利用できる。 |
 | 103 横断的な検証 | 回帰 | 文書化済みの完成productが横断的な自動regression layerを通過する。 |
 | 104 リリースと成果エビデンス | 測定可能な成果 | 初期リリースが、明示的な自動化、参加者、アクセシビリティ、性能、安全性、残存リスク、憲章準拠のエビデンスを備え、公開可能な状態になる。 |
+| 105 インターフェースの下地 | US1 | すべてのsurfaceがproduct自身のpaletteで描かれ、forced coloursでは読み手のsystem colourへ戻る。 |
+| 106 Shell と Source 状態のサーフェス | US1 | 一覧はlistから始まり、各Source familyの状態はそれ自身のsurfaceを持つ。 |
+| 107 一覧 row の圧縮 | US1 | 1つのfileが1行を占め、認識したproductとその文書化済みsurfaceがその傍らに並ぶ。 |
+| 108 詳細サーフェスの作り直し | US2 | Detailはそのcustomizationで始まり、authored sourceに必要な高さを渡す。 |
+| 109 比較サーフェスと作り直しの締め | US3 | 比較は両sideのproductを名指し、並列のまま保たれ、再び開いたgateが再実行される。 |
 
 ## 依存関係と実行順序
 
@@ -8893,6 +9285,7 @@ Setup
 - フェーズ 96 はgeneric selector-free fixed-member coordinator、3つのclosed typed admission port、Codex real port、test-only injected outcome coverageを確立するがproduction all-member activationを主張しない。フェーズ 97〜98 は同じopen composite milestoneへreal Claude/Copilot portをbindする。フェーズ 99は全real portを通じてfixed-member permutationを再検証しendpoint/atomic publicationを完成させ、全admitted separately identified one-root Sourceをexactly one completeまたはpartial generationで同時にpublishする。その時点だけcomposite milestoneをgreenとし、その後のexplicit Global rescanはsingle-Source operationのままとする。
 - フェーズ 102 のT1037はsemantic evidence-drift gateである。このgate通過後は、semanticに変化しないreview済みPhase-102 citation/evidence metadata correctionがproduction registryを更新できるが、accepted normative behavior、rule、strategy、Presentation Allowlist、registry shape、conformance changeはcurrent bilingual task setをsupersedeし、後続old ID前にsynchronized artifactとreplanningを要求する。
 - フェーズ 103 のT1041は後続のpre-release hard cross-artifact gateである。T999がproduction registry、T1038が影響conformance recordをmaterialize済みでなければならず、manifest/documentation/traceability suiteはそのfinal state、existing local/CI command、宣言済みlater release/final rerunをverifyするがT1048前のfuture release workflowを要求しない。T1041-owned manifest/test fileのfailureはT1041内でcorrect/rerunし、authoritative external artifact concernはT1062を待たずcurrent task setをsupersedeしてsynchronized replanning/regenerationを要求する。そのdisposition後にunresolved concernが0件の場合だけverification-only T1042またはcurrent IDの後続taskを開始できる。
+- フェーズ 105〜109 は、完成したsurfaceを読むためのインターフェースを作り直すため、release evidenceに先行するのではなくその後に続く: 各フェーズが1つの層 — paletteと共有control、shellとSource状態のroute、一覧のrow、detailの見出し、比較の見出し — を作り直し、フェーズ 109 は、作り直しが再び開いた横断的gateを再実行し、凍結済みのrelease outcomeがもはやこのtreeを説明しないことを記録して締める。
 - Repository のインベントリ、詳細、比較の受け入れが US1、US2、US3 を完成させる。Global 無効化バリアと解体は、US4 が完成する最初のフェーズである。
 
 ## 並行実行の機会

@@ -91,8 +91,11 @@ test.describe('the complete literal Copilot command detail', () => {
     const main = page.locator('main');
     // Both products recognize the file, and the page states both beside the
     // one name they agree on at the root.
-    await expect(main).toContainText('GitHub Copilot (CLI)');
-    await expect(main).toContainText('Claude Code (CLI and IDE clients)');
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('GitHub Copilot');
+    await expect(attributes).toContainText('CLI');
+    await expect(attributes).toContainText('Claude Code');
+    await expect(attributes).toContainText('CLI and IDE clients');
     await expect(main).toContainText('Invocation name: deploy');
     // The fields the CLI reference names, and the keys beyond them the file
     // also wrote: an authored key set is not closed (FR-007).

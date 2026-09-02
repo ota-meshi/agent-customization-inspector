@@ -68,14 +68,15 @@ async function openStyle(page: import('@playwright/test').Page, path: string): P
 test('opens a style from its row and heads the page by the file', async ({ page }) => {
   await page.goto(host.origin);
   await page.getByRole('tab', { name: /Output style/u }).click();
-  await page
-    .locator('.aci-output-style-row__owner a')
-    .filter({ hasText: 'deploy-notes.md' })
-    .click();
-  await expect(page).toHaveURL(
-    new URL('/output-styles/detail/repository/.claude/output-styles/deploy-notes.md', host.origin)
-      .href,
+  await page.locator('.aci-row-file a').filter({ hasText: 'deploy-notes.md' }).click();
+  // The file's own address, and beside it the row it was followed from: one
+  // file can be listed under two names, and the link records which
+  // (`detail-route.ts` § originRowNameQuery).
+  const opened = new URL(page.url());
+  expect(opened.pathname).toBe(
+    '/output-styles/detail/repository/.claude/output-styles/deploy-notes.md',
   );
+  expect(opened.searchParams.get('name')).toBe('Deploy notes');
   // The file is the subject, so the path heads the page; the style name the
   // row is listed under is stated beneath it.
   await expect(page.locator('.aci-output-style-detail h2')).toContainText(
@@ -84,9 +85,9 @@ test('opens a style from its row and heads the page by the file', async ({ page 
   await expect(page.locator('.aci-output-style-detail__style-name')).toContainText(
     'Style name: Deploy notes',
   );
-  await expect(page.locator('.aci-output-style-detail__recognition')).toContainText(
-    'Claude Code (CLI and IDE clients) · Output style',
-  );
+  const attributes = page.locator('.aci-detail-attributes');
+  await expect(attributes).toContainText('Claude Code');
+  await expect(attributes).toContainText('CLI and IDE clients');
 });
 
 test('shows the declarations in the documented order and the instructions apart', async ({

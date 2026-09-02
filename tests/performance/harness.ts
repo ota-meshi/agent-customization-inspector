@@ -452,8 +452,9 @@ export interface Sc002BrowserSession {
 }
 
 /**
- * Launches the automated-baseline Chromium, opens the served page, and waits
- * until the automatic initial Repository scan has reached a terminal state.
+ * Launches the automated-baseline Chromium, opens the served status page, and
+ * waits until the automatic initial Repository scan has reached a terminal
+ * state.
  * That is the whole condition spec.md § SC-002 places before the dispatch —
  * "wait until that new process's automatic initial Repository scan reaches a
  * terminal state, then the browser MUST submit exactly one explicit
@@ -475,7 +476,13 @@ export async function openSettledInventory(
     // Before the navigation, so a listener the caller attaches — the
     // admission-frame capture — sees the WebSocket the page opens on load.
     onPage?.(page);
-    await page.goto(origin);
+    // The status page rather than the inventory: the source status, the
+    // committed generation, the correlated progress row, and the two commands
+    // that drive them are `ScanProgress.vue`'s, and that panel is rendered by
+    // the `/repository` route (`pages/repository.vue`). The inventory the
+    // second timer gates on is reached from there through the page's own way
+    // back, exactly as a reader watching a scan reaches it.
+    await page.goto(new URL('/repository', origin).href);
     // The terminal labels come from the canonical table, never a copy: a
     // reviewed wording change that updates the seal must not strand this
     // wait — which runs before the seal check — on a stale spelling.
@@ -903,13 +910,45 @@ export async function runSc002MeasuredRun(
           check();
         });
         const statusMillis = performance.now() - start;
-        // The ten-second stop: the generation this request committed rendered —
-        // it advanced past the automatic scan's baseline — with the complete
-        // row set visible and every primary list control operable: the filter
-        // controls enabled and visible, and the kind tab selected and visible.
-        // Every row must be visible, not only the endpoints; the full sweep
-        // runs only once the cheap endpoint gate holds, so the per-frame cost
-        // stays bounded while the sweep still gates the stop.
+        // The ten-second stop, in the two places the reworked surfaces put its
+        // two halves. The generation this request committed is rendered by the
+        // status panel, so it is waited for here, before the run leaves it;
+        // the inventory it belongs to is then the one the list renders, because
+        // the page holds one committed snapshot at a time.
+        await new Promise<void>((resolve, reject) => {
+          const check = (): void => {
+            if (committedGeneration() > baselineGeneration) {
+              resolve();
+              return;
+            }
+            if (performance.now() - start > inventoryDeadline) {
+              reject(
+                new Error(
+                  `SC-002 wait for this request's committed generation exceeded ${inventoryDeadline} ms`,
+                ),
+              );
+              return;
+            }
+            refreshOccasionally();
+            requestAnimationFrame(check);
+          };
+          check();
+        });
+        // Read where it is rendered, before the run leaves the panel that
+        // renders it: the inventory states no generation of its own.
+        const committedGenerationValue = committedGeneration();
+        // The way back the status page offers, which is how a reader returns to
+        // the list — a router link rather than a navigation, so the session and
+        // its committed snapshot survive the move.
+        [...document.querySelectorAll('a')]
+          .find((candidate) => textOf(candidate).endsWith('Back to the inventory'))!
+          .click();
+        // The rest of the stop: the complete row set visible and every primary
+        // list control operable — the filter controls enabled and visible, and
+        // the kind tab selected and visible. Every row must be visible, not
+        // only the endpoints; the full sweep runs only once the cheap endpoint
+        // gate holds, so the per-frame cost stays bounded while the sweep still
+        // gates the stop.
         //
         // The source control is deliberately not among them. It renders only
         // where more than one Source kind is available, because with one it
@@ -920,13 +959,16 @@ export async function runSc002MeasuredRun(
         await new Promise<void>((resolve, reject) => {
           const check = (): void => {
             const rows = document.querySelectorAll('[role="tabpanel"] .aci-item');
+            // The search over names and paths is the shell's, in the bar
+            // beside the session's own commands (`App.vue`); the tool filter
+            // is the inventory's own (`InventoryFilters.vue`). Both are
+            // primary list controls, wherever the surface puts them.
             const controls = [
-              document.getElementById('aci-inventory-filters-path'),
+              document.getElementById('aci-app-search'),
               document.getElementById('aci-inventory-filters-tool'),
             ] as (HTMLInputElement | HTMLSelectElement | null)[];
             const kindTab = document.querySelector('[role="tab"][aria-selected="true"]');
             const endpointGate =
-              committedGeneration() > baselineGeneration &&
               rows.length === expectedRows &&
               visible(rows[0] ?? null) &&
               visible(rows[rows.length - 1] ?? null) &&
@@ -957,7 +999,7 @@ export async function runSc002MeasuredRun(
           statusMillis,
           inventoryMillis: performance.now() - start,
           baselineGeneration,
-          committedGeneration: committedGeneration(),
+          committedGeneration: committedGenerationValue,
         };
       },
       {
@@ -982,7 +1024,7 @@ export async function runSc002MeasuredRun(
     const filterMillis = await page.evaluate(async (deadline: number) => {
       // Element lookup and the value assignment are setup; the contract
       // starts the interaction timer at the input dispatch itself.
-      const input = document.getElementById('aci-inventory-filters-path') as HTMLInputElement;
+      const input = document.getElementById('aci-app-search') as HTMLInputElement;
       input.value = 'perf-skill-250';
       const start = performance.now();
       input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1016,7 +1058,7 @@ export async function runSc002MeasuredRun(
     }, 60_000);
     // Back to the complete row set before the selection; outside both timers.
     await page.evaluate(() => {
-      const input = document.getElementById('aci-inventory-filters-path') as HTMLInputElement;
+      const input = document.getElementById('aci-app-search') as HTMLInputElement;
       input.value = '';
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });

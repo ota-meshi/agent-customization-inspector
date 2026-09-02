@@ -184,7 +184,7 @@ test.describe('the hook declaration comparison', () => {
     const main = page.locator('main');
     // The comparison's subject is the row's declared event, in the carriers'
     // own spelling (FR-007).
-    await expect(main.locator('.aci-hook-compare__event')).toHaveText(SHARED_EVENT);
+    await expect(main.locator('.aci-detail-attributes__subject')).toHaveText(SHARED_EVENT);
     // The link opens the row's first two carriers — both contained
     // declarations, named by the documents that carry them (FR-030) — each
     // side stating its own identity and the products the row lists for it.
@@ -351,7 +351,12 @@ test.describe('the hook declaration comparison', () => {
     await page.goto(new URL('/hooks/detail/repository/.codex/hooks.json', host.origin).toString());
     await expect(page.getByRole('heading', { name: '.codex/hooks.json' })).toBeVisible();
     await expect(
-      page.getByRole('link', { name: "Compare this event's declarations: SessionStart" }),
+      // The entry sits at the end of the heading's own line: it acts on the
+      // subject that heading names — this event across the carriers that
+      // declare it — rather than on a section below it.
+      page
+        .locator('.aci-hook-detail__title')
+        .getByRole('link', { name: "Compare this event's declarations: SessionStart" }),
     ).toHaveCount(0);
     await page
       .getByRole('link', { name: `Compare this event's declarations: ${SHARED_EVENT}` })

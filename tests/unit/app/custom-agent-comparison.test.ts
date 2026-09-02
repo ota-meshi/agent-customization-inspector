@@ -412,8 +412,6 @@ describe('custom-agent recognition metadata comparison (T573)', () => {
     expect(claude!.right?.agentName).toBe(SHARED_NAME);
     expect(codex!.left?.agentName).toBe(SHARED_NAME);
     expect(codex!.right).toBeNull();
-    // Every row is this kind's; nothing else is captioned into the table.
-    expect(comparison.tools.map((row) => row.kind)).toEqual(['agent', 'agent', 'agent']);
   });
 
   it('states a definition whose tool publishes no name for the file', () => {

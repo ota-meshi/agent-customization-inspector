@@ -66,9 +66,9 @@ test.describe('the unified settings and configuration inventory', () => {
     // A shared physical file is one row naming both products that recognize
     // it, in the closed tool order.
     const shared = items.filter({ hasText: '.claude/settings.local.json' }).first();
-    await expect(shared.locator('.aci-settings-row__tool')).toHaveCount(2);
-    await expect(shared.locator('.aci-settings-row__owner')).toContainText('GitHub Copilot');
-    await expect(shared.locator('.aci-settings-row__owner')).toContainText('Claude Code');
+    await expect(shared.locator('.aci-recognition-marks__one')).toHaveCount(2);
+    await expect(shared.locator('.aci-row-file')).toContainText('GitHub Copilot');
+    await expect(shared.locator('.aci-row-file')).toContainText('Claude Code');
     // The documented exclusion is on no row of any kind.
     expect(await page.locator('main').innerText()).not.toContain('.vscode/settings.json');
   });
@@ -103,6 +103,11 @@ test.describe('the unified settings and configuration inventory', () => {
     // Arrow keys step the tab strip, and Enter or Space selects; the WAI-ARIA
     // tabs pattern this app shares (QR-004).
     await page.keyboard.press('End');
+    // The rail closes with the two entries that belong to no kind, so the end
+    // of the strip is "Diagnostics" and the last kind is two steps back.
+    await expect(page.getByRole('tab', { name: /^Diagnostics/u })).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp');
     await expect(page.getByRole('tab', { name: /Settings \/ Config/u })).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('tab', { selected: true })).toContainText('Settings / Config');

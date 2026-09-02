@@ -92,19 +92,17 @@ test.describe('contained MCP declarations on the admitted carrier', () => {
     // entry is omitted whole. The no-name record closes the list with the
     // declarationless Claude carrier — Claude's recognition, not Codex's.
     await expect(items).toHaveCount(3);
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'context7',
       'docs-http',
       'No known server declarations',
     ]);
     for (const index of [0, 1]) {
-      await expect(items.nth(index).locator('.aci-mcp-row__owner')).toContainText(
-        '.codex/config.toml',
-      );
-      await expect(items.nth(index).locator('.aci-mcp-row__owner')).toContainText('OpenAI Codex');
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('.codex/config.toml');
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('OpenAI Codex');
     }
-    await expect(items.nth(2).locator('.aci-mcp-row__owner')).toContainText('.mcp.json');
-    await expect(items.nth(2).locator('.aci-mcp-row__owner')).toContainText('Claude Code');
+    await expect(items.nth(2).locator('.aci-row-file')).toContainText('.mcp.json');
+    await expect(items.nth(2).locator('.aci-row-file')).toContainText('Claude Code');
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
       'Showing 3 of 3',
     );
@@ -146,16 +144,16 @@ test.describe('contained MCP declarations on the admitted carrier', () => {
     // — the standalone `.mcp.json` is provably not a Codex candidate.
     await page.getByLabel('Tool').selectOption('codex');
     await expect(items).toHaveCount(2);
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['context7', 'docs-http']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['context7', 'docs-http']);
 
     // Path: the filter applies to the carrier the declarations share, so a
     // query matching no carrier empties the panel into the filtered empty
     // state rather than the repository-has-nothing finding.
-    await page.getByLabel('Path contains').fill('no-such-carrier');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('no-such-carrier');
     await expect(items).toHaveCount(0);
     await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(3);
   });
 });

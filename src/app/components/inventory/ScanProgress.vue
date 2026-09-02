@@ -42,21 +42,14 @@ const requesting = computed(() => sessionViewState.rescanState.value === 'reques
  * How many of this Source's committed files kept a file-confined diagnostic —
  * which is what a `partial` status reports (FR-028). Stated here because this
  * is where a reader asks what "Partial" means, while the causes themselves are
- * spread across the rows of the files that carry them.
- *
- * Counted from the published files rather than from `snapshot.diagnostics`: a
- * diagnostic is referenced by the file it belongs to, and one file may hold
- * several, so counting records would report a number no list on this page has.
+ * spread across the rows of the files that carry them
+ * ({@link SessionViewState.diagnosticFileCounts}).
  */
 const diagnosticFileCount = computed(() => {
   const sourceId = source.value?.sourceId;
-  let count = 0;
-  for (const file of sessionViewState.snapshot.value?.files ?? []) {
-    if (file.sourceId === sourceId && file.diagnosticIds.length > 0) {
-      count += 1;
-    }
-  }
-  return count;
+  return sourceId === undefined
+    ? 0
+    : (sessionViewState.diagnosticFileCounts.value.get(sourceId) ?? 0);
 });
 
 /** The Repository Source's stale overlay from a failed explicit rescan; null if none. */
@@ -132,8 +125,10 @@ const rejectionText = computed(() =>
           <dt>This scan</dt>
           <dd>
             {{ SCAN_PROGRESS_PHASE_TEXT[correlatedProgress.phase] }} —
-            {{ correlatedProgress.candidateFiles }} candidate file(s),
-            {{ correlatedProgress.diagnosticCount }} diagnostic(s)
+            {{ correlatedProgress.candidateFiles }}
+            {{ correlatedProgress.candidateFiles === 1 ? 'candidate file' : 'candidate files' }},
+            {{ correlatedProgress.diagnosticCount }}
+            {{ correlatedProgress.diagnosticCount === 1 ? 'diagnostic' : 'diagnostics' }}
           </dd>
         </template>
       </dl>
@@ -146,9 +141,10 @@ const rejectionText = computed(() =>
            files kept a diagnostic — and never has to be kept in step with what
            the status word means. -->
       <p v-if="diagnosticFileCount > 0" class="aci-note">
-        {{ diagnosticFileCount }} file(s) kept a diagnostic of their own. Each states it where that
-        file is listed — on its row under its kind's tab, inside the row of the customization whose
-        directory holds it, or under “Files in no kind” when no kind lists it.
+        {{ diagnosticFileCount }} {{ diagnosticFileCount === 1 ? 'file' : 'files' }} kept a
+        diagnostic of {{ diagnosticFileCount === 1 ? 'its' : 'their' }} own. Each is stated where
+        that file is listed — on its row under its kind's tab, inside the row of the customization
+        whose directory holds it, or under “Files in no kind” when no kind lists it.
       </p>
 
       <p v-if="staleFailure" class="aci-error">
@@ -158,9 +154,16 @@ const rejectionText = computed(() =>
       <p v-if="rejectionText" class="aci-error">{{ rejectionText }}</p>
     </div>
 
+    <!-- The command names its Source only where the surface does not. This one
+         is the Repository page's, whose heading is the Source, so `Rescan` is
+         the whole label — the same reason each consented home's row says
+         `Rescan` rather than repeating the member's name
+         (`GlobalSourceControls.vue`). The bar's command over the inventory is
+         the other case and keeps `Rescan repository`: that list can span five
+         Sources and only this one is rescanned (`App.vue`). -->
     <p class="aci-scan-progress__actions">
       <button type="button" :aria-disabled="requesting || undefined" @click="requestRescan">
-        {{ staleFailure ? 'Retry scan' : 'Rescan repository' }}
+        {{ staleFailure ? 'Retry scan' : 'Rescan' }}
       </button>
       <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
     </p>

@@ -140,7 +140,7 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
     // `release-notes` is therefore two rows, because two catalogs offer it from
     // plugin roots of their own — this is exactly what a row keyed by the name
     // alone would have merged into one.
-    await expect(items.locator('.aci-plugin-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'release-notes@inspector-examples',
       'release-notes@inspector-legacy',
       'remote-helper@inspector-examples',
@@ -151,40 +151,44 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
     // count. Their own paths belong to the offering's detail, not to a list
     // where one plugin's files would sit under every catalog's row.
     const legacyRow = items.filter({ hasText: 'release-notes@inspector-legacy' });
-    // One file, three products: this catalog is the legacy-compatible location
-    // Codex reads, the location Claude documents for a repository's own
-    // catalog, and one of the four Copilot checks — so the row lists a carrier
-    // per recognizing tool, in the closed tool order (FR-007).
-    await expect(legacyRow.locator('.aci-path')).toHaveText([
-      '.claude-plugin/marketplace.json',
-      '.claude-plugin/marketplace.json',
-      '.claude-plugin/marketplace.json',
-    ]);
-    await expect(legacyRow.locator('.aci-plugin-row__tool').first()).toContainText(
-      'GitHub Copilot',
+    // One file, three products, one line: this catalog is the legacy-compatible
+    // location Codex reads, the location Claude documents for a repository's
+    // own catalog, and one of the four Copilot checks — so the file's line
+    // carries a mark per recognizing tool, in the closed tool order (FR-007).
+    await expect(legacyRow.locator('.aci-path')).toHaveText(['.claude-plugin/marketplace.json']);
+    // The path is the link, and it names the file and the plugin rather than a
+    // product: this list shows no per-product difference, so one link answers
+    // for the file and the marks beside it state what recognized it
+    // (`PluginRow.vue`).
+    await expect(legacyRow.locator('a.aci-path')).toHaveAttribute(
+      'aria-label',
+      '.claude-plugin/marketplace.json: release-notes@inspector-legacy',
     );
-    await expect(legacyRow.locator('.aci-plugin-row__tool').last()).toContainText('OpenAI Codex');
-    await expect(legacyRow).toContainText('1 file(s) in this plugin');
+    await expect(legacyRow.locator('.aci-recognition-marks__opens')).toHaveCount(0);
+    await expect(legacyRow).toContainText('Ships 1 file');
 
     // The offered plugin's row is headed by the pair and lists the catalog that
     // offers it.
     const localRow = items.filter({ hasText: 'release-notes@inspector-examples' });
     await expect(localRow.locator('.aci-path')).toHaveText(['.agents/plugins/marketplace.json']);
-    await expect(localRow.locator('.aci-plugin-row__carrier')).toHaveText(['Catalog entry']);
-    await expect(localRow.locator('.aci-plugin-row__tool').first()).toContainText('OpenAI Codex');
+    await expect(localRow.locator('.aci-carrier-kind')).toHaveText(['Catalog entry']);
+    await expect(localRow.locator('a.aci-path')).toHaveAttribute(
+      'aria-label',
+      '.agents/plugins/marketplace.json: release-notes@inspector-examples',
+    );
     // Its root holds the plugin's own manifest and the skill it bundles.
-    await expect(localRow).toContainText('2 file(s) in this plugin');
+    await expect(localRow).toContainText('Ships 2 files');
 
     // A row whose only carrier is a non-local entry: the plugin is declared,
     // and the source it comes from is not in this repository.
     const remoteRow = items.filter({ hasText: 'remote-helper@inspector-examples' });
     await expect(remoteRow.locator('.aci-path')).toHaveText(['.agents/plugins/marketplace.json']);
-    await expect(remoteRow.locator('.aci-plugin-row__carrier')).toHaveText(['Catalog entry']);
+    await expect(remoteRow.locator('.aci-carrier-kind')).toHaveText(['Catalog entry']);
     // A `git-subdir` source names no directory this repository holds, so the
     // offering stands with nothing of its own here — stated by the absence of
     // the count rather than by a zero, which would read as a plugin that ships
     // no files.
-    await expect(remoteRow).not.toContainText('file(s) in this plugin');
+    await expect(remoteRow).not.toContainText('file in this plugin');
   });
 
   test('opens each carrier line on that product own reading of the catalog', async ({ page }) => {
@@ -195,18 +199,21 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
       .locator('.aci-item')
       .filter({ hasText: 'release-notes@inspector-legacy' });
 
-    // One catalog, three carriers: the entry writes the object spelling only
-    // Codex documents, so Codex resolves a directory from it and the other two
-    // resolve none. Each line opens that product's answer rather than
-    // whichever recognition the projection reached first.
-    const carriers = legacyRow.locator('.aci-plugin-row__owner');
-    await carriers.filter({ hasText: 'OpenAI Codex' }).getByRole('link').click();
+    // One catalog, three readings on one line. The list opens the reading of
+    // the first product in the closed order that recognizes the file, and the
+    // other two are reached from the detail's own attributes line, where the
+    // product marks link (`plugins/detail`). The entry writes the object
+    // spelling only Codex documents, so Codex resolves a directory from it and
+    // the other two resolve none.
+    await legacyRow.locator('a.aci-path').click();
+    await expect(page.locator('body')).toContainText('Read as GitHub Copilot reads this carrier');
+    await page.getByRole('link', { name: /^OpenAI Codex reading of/u }).click();
     await expect(page.locator('body')).toContainText('Read as OpenAI Codex reads this carrier');
     await expect(page.locator('body')).toContainText('plugins/legacy-release-notes/');
 
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
-    await page.getByRole('tab', { name: /Plugin/u }).click();
-    await carriers.filter({ hasText: 'Claude Code' }).getByRole('link').click();
+    // And back the other way: the readings reach each other from the detail,
+    // so no return to the list is needed to change which one is open.
+    await page.getByRole('link', { name: /^Claude Code reading of/u }).click();
     await expect(page.locator('body')).toContainText('Read as Claude Code reads this carrier');
     // Claude documents the plain `./` string and no `local` object, so this
     // entry names it no directory: the page says what the offering is rather
@@ -253,7 +260,7 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
     await page.getByLabel('Tool', { exact: true }).selectOption('codex');
     await expect(items).toHaveCount(3);
     await page.getByLabel('Tool', { exact: true }).selectOption('claude');
-    await expect(items.locator('.aci-plugin-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'release-notes@inspector-legacy',
     ]);
 
@@ -261,22 +268,20 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
     // Path: the filter asks each carrier the same question a skill definition
     // is asked — does this file's own path match — so a catalog that matches
     // keeps the rows it carries.
-    await page.getByLabel('Path contains').fill('.claude-plugin');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('.claude-plugin');
     await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-plugin-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'release-notes@inspector-legacy',
     ]);
-    await expect(items.locator('.aci-path')).toHaveText([
-      '.claude-plugin/marketplace.json',
-      '.claude-plugin/marketplace.json',
-      '.claude-plugin/marketplace.json',
-    ]);
+    await expect(items.locator('.aci-path')).toHaveText(['.claude-plugin/marketplace.json']);
     await expect(summary).toContainText('Showing 1 of 3');
 
     // A file the plugin ships is not the carrier's path, so it narrows nothing
     // here: the row is the offering, and its files are read on the offering's
     // own page.
-    await page.getByLabel('Path contains').fill('plugins/release-notes');
+    await page
+      .getByRole('searchbox', { name: 'Search names and paths' })
+      .fill('plugins/release-notes');
     await expect(items).toHaveCount(0);
   });
 });

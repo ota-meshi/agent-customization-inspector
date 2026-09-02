@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus } from './repository-status';
 
 /** What a test can observe about one file before and after a session. */
 interface Observation {
@@ -118,10 +119,14 @@ test.describe('a session that browsed the tree', () => {
     // And waited on the generation the rescan commits, for the same reason: a
     // scan is still reading when its admission returns.
     await page.getByRole('button', { name: 'Rescan repository' }).click();
+    // The committed generation is the Repository Source's own surface (FR-030).
+    // Both commands are in the bar, so the poll refreshes from there and reads
+    // the number where it is stated.
+    await page.goto(new URL('/repository', host.origin).href);
     await expect
       .poll(
         async () => {
-          await page.getByRole('button', { name: 'Refresh status' }).click();
+          await page.getByRole('button', { name: 'Refresh status' }).first().click();
           return page.locator('main').innerText();
         },
         { timeout: 60_000, intervals: [300] },
@@ -139,12 +144,15 @@ test.describe('a session that browsed the tree', () => {
     page,
   }) => {
     await page.goto(host.origin);
-    const main = page.locator('main');
     // A file-confined outcome is the only thing that may make a generation
     // partial: the generation still committed, every other file is complete,
-    // and the session's own controls keep working (FR-028).
-    await expect(main).toContainText('Partial');
-    await expect(main).toContainText('kept a diagnostic of their own');
+    // and the session's own controls keep working (FR-028). The status and its
+    // count are the Repository Source's own facts, so they are stated on that
+    // Source's surface (FR-030).
+    const status = await openRepositoryStatus(page);
+    await expect(status).toContainText('Partial');
+    await expect(status).toContainText('1 file kept a diagnostic of its own');
+    await page.goto(host.origin);
     await page.getByRole('tab', { name: /^Skill/u }).click();
     await expect(
       page.getByRole('link', { name: /\.claude\/skills\/deploy\/SKILL\.md/u }),
@@ -176,12 +184,19 @@ test.describe('a first scan that cannot read its root', () => {
     page,
   }) => {
     await page.goto(host.origin);
+    // A root that cannot be read is the Source's own diagnostic rather than
+    // any file's, so it is listed under the entry that holds exactly those
+    // (FR-002, FR-028).
+    await page.getByRole('tab', { name: /^Diagnostics/u }).click();
+    await expect(page.getByRole('tabpanel')).toContainText(
+      'The selected root does not exist or cannot be read',
+    );
+
+    await page.goto(new URL('/repository', host.origin).href);
     const main = page.locator('main');
-    // The failure is the Source's, stated where the Source is: no partial
-    // inventory, no stale overlay — there is no prior commit to be stale
-    // against — and the session stays operable so a rescan can be dispatched
-    // once the root is readable again (FR-002).
-    await expect(main).toContainText('The selected root does not exist or cannot be read');
+    // No partial inventory, no stale overlay — there is no prior commit to be
+    // stale against — and the session stays operable so a rescan can be
+    // dispatched once the root is readable again (FR-002).
     await expect(main).toContainText('Committed generation');
     await expect(main.locator('dd').filter({ hasText: /^0$/u }).first()).toBeVisible();
     // No stale overlay: that state is what the product says after a rescan
@@ -190,6 +205,8 @@ test.describe('a first scan that cannot read its root', () => {
     // renames — the button still offers a rescan rather than a retry.
     await expect(main).not.toContainText('The last rescan failed');
     await expect(page.getByRole('button', { name: 'Retry scan' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Rescan repository' })).toBeEnabled();
+    // The Repository page's own command, which names no Source because the page
+    // is one (`ScanProgress.vue`).
+    await expect(page.getByRole('button', { name: 'Rescan', exact: true })).toBeEnabled();
   });
 });

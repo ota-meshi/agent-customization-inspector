@@ -50,7 +50,7 @@ import {
   type ScanSequence,
   type RescanOutcome,
 } from './api-client';
-import { ClientDataPurge } from './client-data';
+import { ClientDataPurge, type ClientDataDisposer } from './client-data';
 import { clearInventoryReturnPoint } from '../router.options';
 import { selectorFamilyOf, sourceIdOf } from '../components/detail-route';
 import { InstructionComparisonState } from '../composables/instruction-comparison';
@@ -253,6 +253,27 @@ export class SessionViewState {
 
   /** The adopted snapshot; null in every non-'inspection' view. */
   public readonly snapshot = shallowRef<SessionSnapshot | null>(null);
+
+  /**
+   * How many of each Source's committed files kept a file-confined diagnostic,
+   * keyed by Source ID and absent for a Source with none. It is what a
+   * `partial` status reports (FR-028), and two surfaces state it — the rail's
+   * status beside the way to a Source, and that Source's own state surface — so
+   * it is derived once here rather than once per surface.
+   *
+   * Counted from the published files rather than from the generation's
+   * diagnostics: a record is referenced by the file it belongs to, and one file
+   * may hold several, so counting records would report a number no list shows.
+   */
+  public readonly diagnosticFileCounts = computed<ReadonlyMap<string, number>>(() => {
+    const counts = new Map<string, number>();
+    for (const file of this.snapshot.value?.files ?? []) {
+      if (file.diagnosticIds.length > 0) {
+        counts.set(file.sourceId, (counts.get(file.sourceId) ?? 0) + 1);
+      }
+    }
+    return counts;
+  });
 
   /**
    * The real error message of a failed session-level request — a refresh, a
@@ -669,6 +690,21 @@ export class SessionViewState {
   /** The token to stamp into an inventory history entry written now. */
   public filterGeneration(): string {
     return this.#filterGeneration;
+  }
+
+  /**
+   * Registers one more owner's clearing with this session's client-data purge,
+   * returning its unregister function.
+   *
+   * The shell's, for state it creates itself and this class therefore cannot
+   * import: the inventory's narrowing is provided rather than module-level, so
+   * the component that constructs it is the one that can hand its clearing over
+   * (`composables/inventory-filter-state.ts`). Registration order is the purge's
+   * (`session/client-data.ts` § register), and the shell registers after
+   * constructing this state, so this class's own owners still run first.
+   */
+  public registerClientDataOwner(disposer: ClientDataDisposer): () => void {
+    return this.#clientData.register(disposer);
   }
 
   /**

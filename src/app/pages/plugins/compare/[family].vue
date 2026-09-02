@@ -31,6 +31,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
+import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import RecognitionComparison from '../../../components/plugin-comparison/RecognitionComparison.vue';
 import SourceDiff from '../../../components/plugin-comparison/SourceDiff.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
@@ -52,30 +54,31 @@ import {
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
-import { sourceFactsOf } from '../../../components/source-name';
+import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import {
   pluginComparisonRouteFor,
   type PluginComparisonFileRequest,
 } from '../../../composables/plugin-comparison';
 import { usePageOwnership } from '../../../composables/page-ownership';
+import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import { useSessionViewState } from '../../../composables/session-view-state';
 import { PLUGIN_CARRIER_TEXT, PLUGIN_SOURCE_FORM_TEXT } from '../../../../shared/api-text';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
-  fileIdentityKey,
   CUSTOMIZATION_KIND_TEXT,
-  SUPPORTED_TOOL_ORDER,
   FILE_ENCODING_TEXT,
-  SUPPORTED_TOOL_TEXT,
+  fileIdentityKey,
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
+  SUPPORTED_TOOL_ORDER,
+  SUPPORTED_TOOL_TEXT,
 } from '../../../../shared/entities';
 import type { SupportedTool } from '../../../../shared/entities';
 import type {
   CustomizationFileDto,
   PluginCarrierDetailDto,
+  PluginCarrierDto,
   PluginFileDetailDto,
   PluginSourceForm,
   SourceKind,
@@ -1427,35 +1430,15 @@ function fileRequestFor(
 }
 
 /**
- * The compared plugin name as the heading shows it: the authored spelling
- * escaped for presentation, with an authored empty name given its own note.
- * Null while the URL carries no name, where the fault statement is the page.
- */
-const subjectNameText = computed(() =>
-  subjectName.value === null
-    ? null
-    : subjectName.value === ''
-      ? '(empty name)'
-      : pathPresentationLabel(subjectName.value),
-);
-
-/** Whether {@link subjectNameText} is the authored spelling rather than this product's note. */
-const subjectNameIsAuthored = computed(
-  () => subjectName.value !== null && subjectName.value !== '',
-);
-
-/**
  * What of each carrier the diff shows, for the sides' accessible names
- * (FR-025): the compared declaration, named by the row's subject through the
- * whitespace-safe spelling — an accessible name is a flat string.
+ * (FR-025): the compared declaration, named through the whitespace-safe
+ * spelling — an accessible name is a flat string ({@link AuthoredName}).
  */
-const diffContentLabel = computed(() => {
-  const name =
-    subjectName.value === null || subjectName.value === ''
-      ? '(empty name)'
-      : inlinePresentationLabel(subjectName.value);
-  return `declaration ${name} of`;
-});
+const diffContentLabel = computed(() =>
+  crumbSubject.value === null
+    ? 'declaration of'
+    : `declaration ${crumbSubject.value.singleLineText} of`,
+);
 
 /**
  * What one compared carrier is, beside its path: the family it is of, the
@@ -1488,19 +1471,12 @@ function fileFacts(detail: PluginCarrierDetailDto): string {
  * products read which side, and a table of two states per tool would spend
  * three rows saying what two lines say.
  */
-function attributionText(sourceId: string, path: string): string {
+function recognitionsOf(sourceId: string, path: string): readonly PluginCarrierDto[] {
   return (
     (owningRow.value?.carriers ?? [])
       // Both halves of the identity (FR-030): two Sources can hold one path,
       // and the other one's products would otherwise be listed as this side's.
       .filter((carrier) => carrier.sourceId === sourceId && carrier.sourceRelativePath === path)
-      .map(
-        (carrier) =>
-          `${SUPPORTED_TOOL_TEXT[carrier.tool]} (${carrier.surfaces
-            .map((surface) => VENDOR_SURFACE_TEXT[surface])
-            .join(', ')})`,
-      )
-      .join(' · ')
   );
 }
 
@@ -1571,7 +1547,7 @@ const readyView = computed(() => {
       path: detail.file.sourceRelativePath,
       carrierText: PLUGIN_CARRIER_TEXT[detail.carrier],
       factsText: fileFacts(detail),
-      recognitionText: attributionText(detail.file.sourceId, detail.file.sourceRelativePath),
+      recognitions: recognitionsOf(detail.file.sourceId, detail.file.sourceRelativePath),
       readingText: readingTextOf(detail.file.sourceId, detail.file.sourceRelativePath),
       declarationText,
       duplicateNote:
@@ -1596,6 +1572,30 @@ const readyView = computed(() => {
  */
 const documentMissing = computed(
   () => status.value === 'ready' && readyView.value === null && pairFault.value === null,
+);
+
+/**
+ * The Source family this comparison stands in, as the family's own word, or
+ * null where naming it distinguishes nothing — a session carrying one Source
+ * (`source-name.ts` § sourceFamilyNameOf). The comparison never spans two
+ * families, so one word covers both sides.
+ */
+const crumbFamilyText = computed(() =>
+  family.value === null ? null : sourceFamilyNameOf(sources.value, family.value),
+);
+
+/**
+ * The plugin name the two carriers declare, which is what the comparison is of.
+ * Null before the pair resolves, where the crumb step would name nothing.
+ *
+ * The empty name is a plugin name: strict JSON accepts `""` as a declared plugin name, so a row is listed
+ * under it and its comparison link carries it. Drawn through the shared unit,
+ * so the crumb and the subject line note it the way the inventory row and the
+ * detail do, instead of leaving their place on the page blank
+ * ({@link AuthoredName}).
+ */
+const crumbSubject = computed(() =>
+  subjectName.value === null ? null : new AuthoredName(subjectName.value),
 );
 
 /**
@@ -1784,7 +1784,13 @@ const titleSubject = computed<string>(() => {
       if (sides === null) {
         return 'Comparing plugins';
       }
-      const subject = subjectName.value;
+      // A name whose characters draw nothing is titled by the note the crumb
+      // and the subject line show, never left blank: spliced in raw it put a
+      // doubled space in the title, which the shell then spelled out whole
+      // (`App.vue` § documentTitle). An authored name goes in raw, because the
+      // shell escapes a title subject once at its own boundary.
+      const name = crumbSubject.value;
+      const subject = name === null ? null : name.isAuthored ? name.authored : name.text;
       const base =
         subject === null
           ? `Comparing plugins — ${sides}`
@@ -1825,23 +1831,48 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="aci-plugin-compare">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the plugin
-         list rather than the kind order's default tab. -->
-    <p><NuxtLink :to="inventoryRoute">Back to the inventory</NuxtLink></p>
+  <div class="aci-plugin-compare aci-route">
+    <!-- The way back, drawn in the bar with every other route's moves
+         (`DetailNavigation.vue`). The kind is URL state, so naming it is what
+         makes the move land on the plugin list rather than the kind
+         order's default tab. A comparison has no neighbouring row to step to:
+         what stands beside it is the other copy, which its own pickers
+         choose. -->
+    <DetailNavigation
+      :list-route="inventoryRoute"
+      :list-text="CUSTOMIZATION_KIND_TEXT.plugin"
+      :previous="null"
+      :next="null"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         kind, the subject the two copies share, and this page's own step. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="crumbFamilyText !== null">{{ crumbFamilyText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.plugin }} <span>›</span>
+      <template v-if="crumbSubject !== null"
+        ><span class="aci-path" :class="{ 'aci-authored-text': crumbSubject.isAuthored }">{{
+          crumbSubject.text
+        }}</span>
+        <span>›</span> </template
+      ><span class="aci-detail-crumbs__subject">Compare</span>
+    </p>
 
     <h2 ref="heading" tabindex="-1">Compare plugins</h2>
 
-    <!-- The comparison's subject: the plugin name whose row owns it, in the
-         carriers' own spelling (FR-007) — the same heading rule its
-         inventory row uses. -->
-    <p
-      v-if="subjectNameText !== null && pairFault === null"
-      class="aci-plugin-compare__name"
-      :class="subjectNameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-    >
-      {{ subjectNameText }}
+    <!-- What is being compared, on the line directly below the heading so the
+         two are read together. The heading states the page's purpose, because
+         focus lands there on arrival and a screen reader hears it alone
+         (WCAG 2.4.6); putting the subject in it would give each kind its own
+         sentence, and an applicability range would read as "Compare **". The
+         name is the third crumb above as well, where it says where the page
+         sits rather than what it is showing. -->
+    <p v-if="crumbSubject !== null" class="aci-detail-attributes">
+      <strong
+        class="aci-detail-attributes__subject aci-path"
+        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+        >{{ crumbSubject.text }}</strong
+      >
     </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -1855,7 +1886,11 @@ onBeforeUnmount(() => {
          what a reader chooses is which of that row's carriers stands on each
          side. Native selects, each labelled through `for`/`id`
          (WCAG 2.4.6). -->
-    <div v-if="pickersAvailable" ref="pickersRegion" class="aci-plugin-compare__pickers">
+    <div
+      v-if="pickersAvailable"
+      ref="pickersRegion"
+      class="aci-compare-pickers aci-plugin-compare__pickers"
+    >
       <div class="aci-plugin-compare__picker">
         <label for="aci-plugin-compare-first">First plugin file</label>
         <select id="aci-plugin-compare-first" v-model="leftSelection">
@@ -1937,7 +1972,6 @@ onBeforeUnmount(() => {
                  the pairing the detail page shows for one plugin, shown here
                  for two. -->
             <section>
-              <h3>Manifest</h3>
               <!-- Where each plugin's own declaration of itself sits, named
                    before it is shown: two copies of one plugin keep their
                    manifests at two paths, and a diff with no paths would not
@@ -1980,6 +2014,7 @@ onBeforeUnmount(() => {
               </p>
               <SourceViewer
                 v-if="sharedManifest !== null"
+                panel-label="Manifest"
                 :source-text="sharedManifest.sourceText"
                 :source-relative-path="sharedManifest.sourceRelativePath"
                 :register-content-owner="registerComparisonContentOwner"
@@ -2009,7 +2044,6 @@ onBeforeUnmount(() => {
              carriers: the names below are names inside these two roots. -->
         <div class="aci-plugin-compare__roots">
           <section v-for="side in rootSides" :key="side.caption">
-            <h3>{{ side.caption }}</h3>
             <p v-if="side.root !== null" class="aci-path aci-authored-text">
               {{ pathPresentationLabel(side.root) }}
             </p>
@@ -2063,6 +2097,7 @@ onBeforeUnmount(() => {
             <p v-else-if="oneSidedFileNote !== null" class="aci-note">{{ oneSidedFileNote }}</p>
             <SourceViewer
               v-if="sharedFile !== null"
+              panel-label="Source"
               :source-text="sharedFile.sourceText"
               :source-relative-path="sharedFile.sourceRelativePath"
               :register-content-owner="registerFileContentOwner"
@@ -2094,15 +2129,17 @@ onBeforeUnmount(() => {
          whether focus sits on a control an automatic refresh is about to
          unmount (WCAG 2.4.3). -->
     <div v-else-if="stateStatement !== null" ref="stateRegion">
-      <p :class="retryable ? 'aci-error' : 'aci-note'">{{ stateStatement }}</p>
-      <p v-if="retryable">
-        <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
-      </p>
-      <p>
-        <NuxtLink :to="inventoryRoute"
-          >Return to the inventory and open a comparison from a plugin row.</NuxtLink
-        >
-      </p>
+      <SubjectUnavailable :outcome="retryable ? 'error' : 'warning'">
+        {{ stateStatement }}
+        <template #exit>
+          <button v-if="retryable" ref="retryButton" type="button" @click="retryOpen">
+            Try again
+          </button>
+          <NuxtLink :to="inventoryRoute"
+            >Return to the inventory and open a comparison from a plugin row.</NuxtLink
+          >
+        </template>
+      </SubjectUnavailable>
     </div>
   </div>
 </template>
@@ -2115,13 +2152,6 @@ onBeforeUnmount(() => {
 
 .aci-plugin-compare > p:first-child {
   margin: 0;
-}
-
-/* The compared name reads as the page's subject, one step below the
-   heading. */
-.aci-plugin-compare__name {
-  font-size: 1.05rem;
-  margin: 0 0 0.5rem;
 }
 
 /* The two roots side by side, stacking on a narrow viewport where two columns
@@ -2146,25 +2176,6 @@ onBeforeUnmount(() => {
 
 .aci-plugin-compare__roots p {
   margin: 0 0 0.25rem;
-}
-
-.aci-plugin-compare__pickers {
-  display: grid;
-  gap: 0.5rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-  margin-block-end: 0.75rem;
-}
-
-@media (min-width: 52rem) {
-  .aci-plugin-compare__pickers {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-plugin-compare__picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
 }
 
 /* A select is sized by its widest option, and a plugin's file names are as

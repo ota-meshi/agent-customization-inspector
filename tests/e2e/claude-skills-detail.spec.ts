@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { statedInvocations } from './skill-invocations';
 
 /** A literal credential in authored source, shown exactly as written. */
 const FIXTURE_SECRET = 'ghp_E2ECLAUDE00000000000000000000000000000';
@@ -124,6 +125,11 @@ async function openSkill(page: import('@playwright/test').Page, path: string): P
   // link is waiting for all of them; clicking before that found nothing.
   await links.first().waitFor();
   await links.first().click();
+  // Waited for, not assumed: a caller's next click must not land on the
+  // inventory the navigation is still leaving — the rail's own `Files in no
+  // kind` entry answers a `/^files/iu` tab locator, and selecting it would
+  // cancel the navigation in flight.
+  await expect(page).toHaveURL(/\/detail\//u);
 }
 
 /**
@@ -270,9 +276,17 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
   // product documents reading the file, never that it loaded it: that depends
   // on a runtime this tool never observes, and a sentence about it would take
   // the room the files below need (FR-009).
-  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveText([
-    'GitHub Copilot (VS Code, CLI, Cloud agent) · Skill · Invocation name: claude-greet',
-    'Claude Code (CLI and IDE clients) · Skill · Invocation name: greet',
+  expect(await statedInvocations(page, 2)).toEqual([
+    {
+      name: 'claude-greet',
+      comparable: false,
+      recognitions: [{ product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' }],
+    },
+    {
+      name: 'greet',
+      comparable: false,
+      recognitions: [{ product: 'Claude Code', surfaces: 'CLI and IDE clients' }],
+    },
   ]);
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
   for (const claim of ['Depends on runtime conditions', 'Selected by a documented rule']) {
@@ -300,7 +314,7 @@ test('keeps a malformed Claude skill readable while its declared name is missing
 test('drops the content when the route leaves the file', async ({ page }) => {
   await openSkillFiles(page, '.claude/skills/greet/SKILL.md');
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toHaveCount(0);
   expect(await page.locator('main').innerText()).not.toContain(FIXTURE_SECRET);
 });
@@ -310,12 +324,14 @@ test('keeps a link resolving across a rescan through its path identity', async (
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toBeVisible();
   const bookmarkedUrl = page.url();
 
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await page.getByRole('button', { name: 'Rescan repository' }).click();
   // Nothing polls, so the committed result arrives on an explicit refresh.
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation', {
+    // The status the refresh adopted is the Repository Source's own surface
+    // now; what this page shows of it is the rail's own entry (FR-030).
+    await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u, {
       timeout: 1_000,
     });
   }).toPass();
@@ -342,7 +358,9 @@ test('rescues focus to the heading when a newer commit replaces the open detail'
   await other.getByRole('button', { name: 'Rescan repository' }).click();
   await expect(async () => {
     await other.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(other.locator('.aci-scan-progress')).toContainText('Committed generation', {
+    // The status the refresh adopted is the Repository Source's own surface
+    // now; what this page shows of it is the rail's own entry (FR-030).
+    await expect(other.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u, {
       timeout: 1_000,
     });
   }).toPass();
@@ -381,7 +399,7 @@ test('reports a link whose path the current scan does not hold', async ({ page }
 test('leaves the Codex detail beside it unchanged', async ({ page }) => {
   await openSkillFiles(page, '.agents/skills/codex-greet/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.agents/skills/codex-greet/');
-  await expect(page.locator('.aci-skill-detail__invocations li')).toHaveCount(2);
+  await expect(page.locator('.aci-skill-detail__recognitions li')).toHaveCount(2);
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('# Codex');
 });
 
@@ -404,7 +422,9 @@ test('keeps the reader in the file list when a newer commit replaces the open sk
   await other.getByRole('button', { name: 'Rescan repository' }).click();
   await expect(async () => {
     await other.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(other.locator('.aci-scan-progress')).toContainText('Committed generation', {
+    // The status the refresh adopted is the Repository Source's own surface
+    // now; what this page shows of it is the rail's own entry (FR-030).
+    await expect(other.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u, {
       timeout: 1_000,
     });
   }).toPass();

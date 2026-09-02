@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { waitForInventory } from './repository-status';
 
 /** The credential each copy declares differently; both reach the diff whole. */
 const CLAUDE_SECRET = 'ghp_E2ECOMPARECLAUDE00000000000000000000000';
@@ -207,8 +208,8 @@ test('leaves the comparison behind when the route does, and comes back to the ro
   // Leaving the route drops what it mounted: the inventory that comes back
   // carries none of the compared text, which is what "route close clears the
   // displayed detail state" means for a reader (FR-027).
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await page.getByRole('link', { name: /Back to /u }).click();
+  await waitForInventory(page);
   expect(await page.locator('main').innerText()).not.toContain(CLAUDE_SECRET);
   // The row is still there to open again, and the same entry link addresses it.
   await expect(entry).toBeVisible();

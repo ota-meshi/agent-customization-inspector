@@ -72,6 +72,17 @@ const blocks = computed(() => {
     (left, right) => (left.kind === 'repository' ? 0 : 1) - (right.kind === 'repository' ? 0 : 1),
   );
 });
+
+/**
+ * Whether the blocks carry headings. Decided after the extension above rather
+ * than by the grouping alone, so a family present only for its comparison entry
+ * counts towards it — and read from the one rule the owning row reads, which is
+ * what keeps the entry reachable on the line whichever of the two draws it
+ * (`session-sources.ts` § familyLineShownFor).
+ */
+const familyLineShown = computed(() =>
+  sessionSources.familyLineShownFor(props.members, props.entryKinds ?? []),
+);
 </script>
 
 <template>
@@ -79,45 +90,33 @@ const blocks = computed(() => {
     <li v-for="block in blocks" :key="block.kind">
       <!-- Which family these members are of, in this product's own words, and
            only where that distinguishes something: two families' members under
-           one row stay two statements rather than one merged list (FR-030). -->
-      <p v-if="block.familyText !== null" class="aci-family-heading">
-        {{ block.familyText }}
+           one row stay two statements rather than one merged list (FR-030).
+           The block's own comparison entry closes that line, because a
+           comparison never spans families and the entry belongs to the family
+           it compares within. A row with one family has no such line, and its
+           entry closes the row's own name line instead — which is the owning
+           row's to render, being the line the row itself draws. -->
+      <p v-if="familyLineShown" class="aci-family-heading">
+        {{ sessionSources.familyNameOf(block.kind) }}
+        <slot name="entry" :block="block" />
       </p>
       <ul v-if="block.members.length > 0" class="aci-source-family-blocks__members" role="list">
         <li v-for="member in block.members" :key="memberKey(member)">
           <slot name="member" :member="member" />
         </li>
       </ul>
-      <slot name="entry" :block="block" />
     </li>
   </ul>
 </template>
 
 <style scoped>
-/* The family blocks of the row: the list itself carries no marker or indent —
-   each block's heading and its indented members are the visible structure. */
-.aci-source-family-blocks {
+/* The family blocks of the row: the list itself carries no marker, gap, or
+   indent — each block's heading and the file lines under it are the visible
+   structure, and a file line's own padding is what sets it under the name. */
+.aci-source-family-blocks,
+.aci-source-family-blocks__members {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-.aci-source-family-blocks > li + li {
-  margin-block-start: 0.35rem;
-}
-
-/* The members of a block, set under its heading by an indent and a rule — the
-   layout every grouped row uses for the members of its own subject. The
-   indent is what says the members belong to the line above them rather than
-   standing beside it. */
-.aci-source-family-blocks__members {
-  list-style: none;
-  margin: 0.2rem 0 0;
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline-start: 0.6rem;
-}
-
-.aci-source-family-blocks__members > li + li {
-  margin-block-start: 0.4rem;
 }
 </style>

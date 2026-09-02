@@ -40,7 +40,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
+import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import DeclarationDiff from '../../../components/mcp-comparison/DeclarationDiff.vue';
+import RecognitionTable from '../../../components/comparison/RecognitionTable.vue';
 import { canonicalDeclaredEntriesJsonText } from '../../../components/declared-entries-json';
 import {
   comparisonFamilyOf,
@@ -56,22 +59,23 @@ import {
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
-import { sourceFactsOf } from '../../../components/source-name';
+import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
 import { usePageOwnership } from '../../../composables/page-ownership';
+import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
   fileIdentityKey,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
-  SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
-  inlinePresentationLabel,
-  pathPresentationLabel,
 } from '../../../../shared/entities';
-import type { McpCarrierDetailDto, SourceKind } from '../../../../shared/api-types';
+import type {
+  McpCarrierDetailDto,
+  McpDeclarationDto,
+  SourceKind,
+} from '../../../../shared/api-types';
 
 const sessionViewState = useSessionViewState();
 
@@ -371,40 +375,15 @@ const rightSelection = computed({
 });
 
 /**
- * The subject line's text: the declared name through the shared label rule,
- * with the empty name noted the way the inventory row heads it — strict
- * JSON accepts `""` as a server name (FR-025). Null while the URL carries
- * no name, where the fault statement is the page.
- */
-const subjectNameText = computed(() =>
-  subjectName.value === null
-    ? null
-    : subjectName.value === ''
-      ? '(empty name)'
-      : pathPresentationLabel(subjectName.value),
-);
-
-/**
- * Whether {@link subjectNameText} is the authored spelling rather than this
- * product's note, which decides the authored-text styling.
- */
-const subjectNameIsAuthored = computed(
-  () => subjectName.value !== null && subjectName.value !== '',
-);
-
-/**
  * What of each carrier the diff shows, for the sides' accessible names
- * (FR-025): the compared declaration, named by the row's subject through
- * the whitespace-safe spelling — an accessible name is a flat string — with
- * the empty name noted the way every surface notes it.
+ * (FR-025): the compared declaration, named through the whitespace-safe
+ * spelling — an accessible name is a flat string ({@link AuthoredName}).
  */
-const diffContentLabel = computed(() => {
-  const name =
-    subjectName.value === null || subjectName.value === ''
-      ? '(empty name)'
-      : inlinePresentationLabel(subjectName.value);
-  return `declaration ${name} of`;
-});
+const diffContentLabel = computed(() =>
+  crumbSubject.value === null
+    ? 'declaration of'
+    : `declaration ${crumbSubject.value.singleLineText} of`,
+);
 
 /**
  * What one compared carrier is, beside its path: the family it is of, the
@@ -427,24 +406,15 @@ function fileFacts(detail: McpCarrierDetailDto): string {
 }
 
 /**
- * One side's recognition attribution: each product whose recognition the
- * row lists for that carrier, with the surfaces its admission rests on —
- * the inventory row's own statements, repeated per side so neither
- * declaration loses which tool reads it (FR-009: naming a surface never
- * claims it loaded the file).
+ * One side's recognitions: each product whose recognition the row lists for
+ * that carrier, with the surfaces its admission rests on — the inventory
+ * row's own statements, repeated per side so neither declaration loses which
+ * tool reads it (FR-009: naming a surface never claims it loaded the file).
  */
-function attributionText(sourceId: string, path: string): string {
-  return (owningRow.value?.declarations ?? [])
-    .filter(
-      (declaration) => declaration.sourceId === sourceId && declaration.sourceRelativePath === path,
-    )
-    .map(
-      (declaration) =>
-        `${SUPPORTED_TOOL_TEXT[declaration.tool]} (${declaration.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', ')})`,
-    )
-    .join(' · ');
+function recognitionsOf(sourceId: string, path: string): readonly McpDeclarationDto[] {
+  return (owningRow.value?.declarations ?? []).filter(
+    (declaration) => declaration.sourceId === sourceId && declaration.sourceRelativePath === path,
+  );
 }
 
 /**
@@ -457,7 +427,7 @@ function attributionText(sourceId: string, path: string): string {
  * snapshot replacement and the re-request it triggers, and renders nothing.
  *
  * Every rendered coordinate — the side headings, the diff labels, the
- * attribution lookups — is the adopted detail's own path, never the
+ * recognition lookups — is the adopted detail's own path, never the
  * pending-aware picker coordinate: a pick updates the coordinates one
  * render before the re-request drops this view, and labelling the old
  * details with the new paths would put one carrier's declared values —
@@ -488,13 +458,13 @@ const readyView = computed(() => {
         caption: 'First file',
         path: leftPath,
         detail: left,
-        attribution: attributionText(left.file.sourceId, leftPath),
+        recognitions: recognitionsOf(left.file.sourceId, leftPath),
       },
       {
         caption: 'Second file',
         path: rightPath,
         detail: right,
-        attribution: attributionText(right.file.sourceId, rightPath),
+        recognitions: recognitionsOf(right.file.sourceId, rightPath),
       },
     ] as const,
     leftPath,
@@ -503,6 +473,30 @@ const readyView = computed(() => {
     rightText: canonicalDeclaredEntriesJsonText(rightDeclaration.fields),
   };
 });
+
+/**
+ * The Source family this comparison stands in, as the family's own word, or
+ * null where naming it distinguishes nothing — a session carrying one Source
+ * (`source-name.ts` § sourceFamilyNameOf). The comparison never spans two
+ * families, so one word covers both sides.
+ */
+const crumbFamilyText = computed(() =>
+  family.value === null ? null : sourceFamilyNameOf(sources.value, family.value),
+);
+
+/**
+ * The server name the two carriers declare, which is what the comparison is
+ * of. Null before the pair resolves, where the crumb step would name nothing.
+ *
+ * The empty name is a name: strict JSON accepts `""` as a server key, so a row
+ * is listed under it and its comparison link carries it. Drawn through the
+ * shared unit, so the crumb and the subject line note it the way the inventory
+ * row and the detail do, instead of leaving their place on the page blank
+ * ({@link AuthoredName}).
+ */
+const crumbSubject = computed(() =>
+  subjectName.value === null ? null : new AuthoredName(subjectName.value),
+);
 
 /**
  * What this page says for the state it is in — one value read by both the
@@ -664,7 +658,13 @@ const titleSubject = computed<string>(() => {
       if (sides === null) {
         return 'Comparing MCP declarations';
       }
-      const subject = subjectName.value;
+      // A name whose characters draw nothing is titled by the note the crumb
+      // and the subject line show, never left blank: spliced in raw it put a
+      // doubled space in the title, which the shell then spelled out whole
+      // (`App.vue` § documentTitle). An authored name goes in raw, because the
+      // shell escapes a title subject once at its own boundary.
+      const name = crumbSubject.value;
+      const subject = name === null ? null : name.isAuthored ? name.authored : name.text;
       return subject === null
         ? `Comparing MCP declarations — ${sides}`
         : `Comparing MCP declarations: ${subject} — ${sides}`;
@@ -696,23 +696,48 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="aci-mcp-compare">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the MCP
-         list rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=MCP">Back to the inventory</NuxtLink></p>
+  <div class="aci-mcp-compare aci-route">
+    <!-- The way back, drawn in the bar with every other route's moves
+         (`DetailNavigation.vue`). The kind is URL state, so naming it is what
+         makes the move land on the MCP list rather than the kind
+         order's default tab. A comparison has no neighbouring row to step to:
+         what stands beside it is the other copy, which its own pickers
+         choose. -->
+    <DetailNavigation
+      list-route="/?kind=MCP"
+      :list-text="CUSTOMIZATION_KIND_TEXT.MCP"
+      :previous="null"
+      :next="null"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         kind, the subject the two copies share, and this page's own step. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="crumbFamilyText !== null">{{ crumbFamilyText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.MCP }} <span>›</span>
+      <template v-if="crumbSubject !== null"
+        ><span class="aci-path" :class="{ 'aci-authored-text': crumbSubject.isAuthored }">{{
+          crumbSubject.text
+        }}</span>
+        <span>›</span> </template
+      ><span class="aci-detail-crumbs__subject">Compare</span>
+    </p>
 
     <h2 ref="heading" tabindex="-1">Compare MCP server declarations</h2>
 
-    <!-- The comparison's subject: the declared server name whose row owns
-         it, in the carriers' own spelling (FR-007) — the same heading rule
-         its inventory row uses. -->
-    <p
-      v-if="subjectNameText !== null && pairFault === null"
-      class="aci-mcp-compare__name"
-      :class="subjectNameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-    >
-      {{ subjectNameText }}
+    <!-- What is being compared, on the line directly below the heading so the
+         two are read together. The heading states the page's purpose, because
+         focus lands there on arrival and a screen reader hears it alone
+         (WCAG 2.4.6); putting the subject in it would give each kind its own
+         sentence, and an applicability range would read as "Compare **". The
+         name is the third crumb above as well, where it says where the page
+         sits rather than what it is showing. -->
+    <p v-if="crumbSubject !== null" class="aci-detail-attributes">
+      <strong
+        class="aci-detail-attributes__subject aci-path"
+        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+        >{{ crumbSubject.text }}</strong
+      >
     </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -728,7 +753,11 @@ onBeforeUnmount(() => {
          under the same rule: only a row with more than two comparable
          carriers offers a move. Native selects, each labelled through
          `for`/`id` (WCAG 2.4.6). -->
-    <div v-if="pickersAvailable" ref="pickersRegion" class="aci-mcp-compare__pickers">
+    <div
+      v-if="pickersAvailable"
+      ref="pickersRegion"
+      class="aci-compare-pickers aci-mcp-compare__pickers"
+    >
       <div class="aci-mcp-compare__picker">
         <label for="aci-mcp-compare-first">First MCP file</label>
         <select id="aci-mcp-compare-first" v-model="leftSelection">
@@ -769,26 +798,34 @@ onBeforeUnmount(() => {
          replacement unmounts. -->
     <div v-if="readyView !== null" ref="readyRegion">
       <!-- Each side stated with its own identity — path, Source, file type,
-           read outcome, and which products' recognitions the row lists for
-           it — so neither declaration loses its carrier to the diff (US3
-           scenario 2). The order is the link's: first named, first shown.
+           read outcome — so neither declaration loses its carrier to the
+           diff (US3 scenario 2). Which products read it is the recognition
+           table's, below. The order is the link's: first named, first shown.
            No source panel follows: a carrier shows its bytes nowhere
            (FR-007). -->
-      <div class="aci-mcp-compare__files">
-        <section v-for="side in readyView.sides" :key="side.caption">
-          <h3>{{ side.caption }}</h3>
+      <div class="aci-compare-sides">
+        <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
+          <span class="aci-compare-side__caption">{{ side.caption }}</span>
           <p class="aci-mcp-compare__file-path aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
           <p class="aci-mcp-compare__file-facts aci-note">
             {{ fileFacts(side.detail) }}
           </p>
-          <p v-if="side.attribution !== ''" class="aci-mcp-compare__file-facts aci-note">
-            {{ side.attribution }}
-          </p>
         </section>
       </div>
 
+      <!-- Which product reads which side. On the table rather than on the
+           cards above, because only a cell can say that a product reads
+           neither carrier — the state this kind reaches most often, since a
+           `.vscode/mcp.json` is VS Code's and a `.codex/config.toml` is
+           Codex's (`RecognitionTable.vue`). -->
+      <RecognitionTable :sides="readyView.sides" />
+
+      <!-- Titled like the recognition block above it, so the page reads as
+           the same three tiers every kind's comparison does: what is being
+           compared, who reads it, and the difference itself. -->
+      <h3 class="aci-compare-block-title">Declaration</h3>
       <!-- What the diff holds, said before it: both sides are this page's
            canonical serialization of the declaration, not the carriers'
            own spellings — a `.codex/config.toml` declares in TOML and a
@@ -817,15 +854,17 @@ onBeforeUnmount(() => {
          whether focus sits on a control an automatic refresh is about to
          unmount (WCAG 2.4.3). -->
     <div v-else-if="stateStatement !== null" ref="stateRegion">
-      <p :class="retryable ? 'aci-error' : 'aci-note'">{{ stateStatement }}</p>
-      <p v-if="retryable">
-        <button ref="retryButton" type="button" @click="retryOpen">Try again</button>
-      </p>
-      <p>
-        <NuxtLink to="/?kind=MCP"
-          >Return to the inventory and open a comparison from an MCP row.</NuxtLink
-        >
-      </p>
+      <SubjectUnavailable :outcome="retryable ? 'error' : 'warning'">
+        {{ stateStatement }}
+        <template #exit>
+          <button v-if="retryable" ref="retryButton" type="button" @click="retryOpen">
+            Try again
+          </button>
+          <NuxtLink to="/?kind=MCP"
+            >Return to the inventory and open a comparison from an MCP row.</NuxtLink
+          >
+        </template>
+      </SubjectUnavailable>
     </div>
   </div>
 </template>
@@ -842,65 +881,6 @@ onBeforeUnmount(() => {
 
 .aci-mcp-compare h2 {
   margin: 0.25rem 0 0.5rem;
-}
-
-.aci-mcp-compare h3 {
-  font-size: 1rem;
-  margin: 0.75rem 0 0.25rem;
-}
-
-/* The subject line reads as the row heading it repeats: the declared name,
-   emphasized over the state copy around it. */
-.aci-mcp-compare__name {
-  font-weight: 600;
-  margin: 0 0 0.25rem;
-}
-
-/* The two pickers side by side, stacking on a narrow viewport; the selects
-   shrink inside their columns rather than widening the page (WCAG 1.4.10). */
-.aci-mcp-compare__pickers {
-  display: grid;
-  gap: 0.5rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-  margin-block: 0.25rem;
-}
-
-@media (min-width: 52rem) {
-  .aci-mcp-compare__pickers {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-mcp-compare__picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.aci-mcp-compare__pickers select {
-  max-inline-size: 100%;
-}
-
-/* The two identities side by side above the diff, stacking on a narrow
-   viewport (WCAG 1.4.10). */
-.aci-mcp-compare__files {
-  display: grid;
-  gap: 0.25rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 52rem) {
-  .aci-mcp-compare__files {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-mcp-compare__files h3 {
-  margin: 0.5rem 0 0.1rem;
-}
-
-.aci-mcp-compare__files p {
-  margin: 0.1rem 0;
 }
 
 /* An authored path has no break opportunities of its own; wrapping keeps the

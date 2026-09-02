@@ -2,6 +2,8 @@
 // the git-ignored .tmp/fixtures/ tree and serves it with the packaged CLI, so
 // `pnpm run start:fixture [name] [cli flags...]` is the whole
 // manual-verification loop (`pnpm run build` must have produced dist/ first).
+// `pnpm run start:fixture:before` serves the same fixture with the pre-rework
+// build snapshot instead — same tree, same flags, the UI as it was.
 //
 // The chosen fixture's previous tree is removed before rebuilding, so edits
 // made while browsing never leak into the next launch. Nothing removes the
@@ -54,9 +56,6 @@ const repositoryRoot = join(import.meta.dirname, '..');
  * .prettierignore, and the ESLint ignores, so nothing else touches it.
  */
 const fixtureBase = join(repositoryRoot, '.tmp', 'fixtures');
-
-/** The packaged CLI entry `package.json.bin` points at. */
-const cliEntry = join(repositoryRoot, 'dist', 'cli.mjs');
 
 /**
  * Every fixture name the launcher accepts, mapped to the builder that writes
@@ -116,11 +115,25 @@ const fixtureBuilders: Readonly<Record<string, (prefix?: string, root?: string) 
   all: buildAllCustomizationKindFixture,
 };
 
+// `--before` is the launcher's own option and is never forwarded: it serves
+// the build snapshot under `_before/dist/` instead of the working tree's, so
+// the implementation the UI rework replaces stays launchable beside the one
+// replacing it. The snapshot is git-ignored and is a copy of `dist/` taken
+// after building the tree the rework starts from; `pnpm run build` does not
+// refresh it, which is the point.
+const givenArguments = process.argv.slice(2);
+const servesSnapshot = givenArguments.includes('--before');
+
+/** The CLI entry to serve: the snapshot's when `--before` was passed, else the packaged one `package.json.bin` points at. */
+const cliEntry = servesSnapshot
+  ? join(repositoryRoot, '_before', 'dist', 'cli.mjs')
+  : join(repositoryRoot, 'dist', 'cli.mjs');
+
 // The fixture name is the first operand, and it stays optional: an argument
 // that opens with `-` is one of the CLI's own options, so
 // `pnpm run start:fixture --inspect-personal-setup` serves the default tree
 // with that option rather than looking for a fixture by that name.
-const operands = process.argv.slice(2);
+const operands = givenArguments.filter((argument) => argument !== '--before');
 const namesFixture = operands.length > 0 && !operands[0]!.startsWith('-');
 const requestedName = namesFixture ? operands[0]! : 'all';
 // Everything else goes to the CLI verbatim (e.g. --no-open, --port 0).
@@ -134,7 +147,11 @@ if (builder === undefined) {
   process.exit(1);
 }
 if (!existsSync(cliEntry)) {
-  console.error('dist/cli.mjs is missing; run `pnpm run build` first.');
+  console.error(
+    servesSnapshot
+      ? '_before/dist/cli.mjs is missing; build the tree the rework starts from and copy `dist/` to `_before/dist/`.'
+      : 'dist/cli.mjs is missing; run `pnpm run build` first.',
+  );
   process.exit(1);
 }
 

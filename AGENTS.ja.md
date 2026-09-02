@@ -202,6 +202,22 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 - `currentColor`を継承する単色のmarkを優先する。周囲のtextとともに暗くも明るくもなるためで
   ある。色が固定されたbrand logoは、muteされたcontrolの中で明るいままになる。Editorを
   full-colorのlogoではなく単色のbrand glyphで示しているのはそのためである。
+- Vendorのmarkはその例外であり、色こそがそれらの存在理由である。認識したproductは、この
+  productが示す何よりも多くの行の傍らで述べられる。そしてそのうち1つを探して一覧を走査する
+  読み手は、15pxのsilhouetteを3つ見分けるよりも、色を追うほうがはるかに速い。`currentColor`
+  の下では3つのmarkが同じ色になるため、1つを見つける作業は、形がもっとも判別しにくい大きさ
+  での形状弁別になってしまう。したがって、各vendor自身の単色glyphを、そのvendor自身の色で
+  描く。値はvendorが公開しているbrand colorそのままではなく、明暗どちらの地の上でも読める
+  ところまで彩度を落としたものである。markがmuteされた行の中に収まり、そこから叫ばないため
+  であり、これは`currentColor`の既定が守っていたものを、継承ではなく値によって守り続けると
+  いうことである。色だけに意味を持たせてはいない(WCAG 1.4.1): 各markは自身の形を保ち、
+  productは凡例で名指され、各markの傍らのsurfaceはtextである。よって、forced-colorsや単色
+  のrenderingが失うのは走査の助けだけで、情報は失われない。
+- 何かを識別するmarkは、その名前を描画しないtextとして持つ。rowの上でどのproductかを言うのは
+  markだけなので、装飾ではなく情報を運ぶ非textコンテンツであり、等価なaccessible nameを負う
+  (contracts/accessibility-acceptance.md § 1.1.1)。凡例は鍵であってtextの代替ではない。自分の
+  語ですでにproductを名指す呼び出し元は、代わりにmark全体を隠す — それが凡例そのものであり、
+  そこではglyphが意味する名前の傍らに立っている。
 
 ## Formattingの方針
 

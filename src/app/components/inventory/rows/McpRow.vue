@@ -23,17 +23,17 @@
 // admission is not an activation (FR-009), and inspection never connects.
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
 import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
+import { AuthoredName } from '../../authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import { mcpServerDetailRoute } from '../../mcp-detail-route';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
   fileIdentityKey,
-  SUPPORTED_TOOL_TEXT,
   accessiblePresentationLabel,
   pathPresentationLabel,
 } from '../../../../shared/entities';
@@ -55,40 +55,13 @@ const props = defineProps<{
 const sessionSources = useSessionSources();
 
 /**
- * The row's heading text: the declared name through the shared label rule, so
- * a name built only from invisible code points still identifies its row
- * ({@link pathPresentationLabel}). Null for the no-name row, whose heading is
- * fixed copy. The empty name — strict JSON accepts `""` as a server name —
- * gets its own note the way an empty declared value does, because the label
- * rule has no characters to spell out and the row would otherwise be headed
- * by nothing.
+ * The declared name this row is headed by, as every surface of the row needs
+ * it — what is drawn, whether those are the file's characters, and what the
+ * links announce ({@link AuthoredName}). Null for the no-name row, whose
+ * heading is fixed copy.
  */
-const nameText = computed(() =>
-  props.entry.name === null
-    ? null
-    : props.entry.name === ''
-      ? '(empty name)'
-      : pathPresentationLabel(props.entry.name),
-);
-
-/**
- * Whether {@link nameText} is the authored spelling rather than this
- * product's note, which decides the heading's authored-text styling.
- */
-const nameIsAuthored = computed(() => props.entry.name !== null && props.entry.name !== '');
-
-/**
- * The row's name as accessible-name text: it starts with the visible label (WCAG
- * 2.5.3 Label in Name) and appends the spelled-out presentation where
- * whitespace would collapse two invisibly different names into one ({@link accessiblePresentationLabel}); the no-name and
- * empty-name cases keep the same copy the visible heading shows.
- */
-const nameAccessibleText = computed(() =>
-  props.entry.name === null
-    ? null
-    : props.entry.name === ''
-      ? '(empty name)'
-      : accessiblePresentationLabel(props.entry.name),
+const name = computed(() =>
+  props.entry.name === null ? null : new AuthoredName(props.entry.name),
 );
 
 /**
@@ -127,13 +100,7 @@ const carrierRows = computed(() => {
       // label legitimately renders would collapse and two different carriers
       // could announce identically (FR-025, {@link accessiblePresentationLabel}).
       carrierAccessibleText: accessiblePresentationLabel(sourceRelativePath),
-      recognitions: declarations.map((declaration) => ({
-        tool: declaration.tool,
-        toolText: SUPPORTED_TOOL_TEXT[declaration.tool],
-        surfacesText: declaration.surfaces
-          .map((surface) => VENDOR_SURFACE_TEXT[surface])
-          .join(', '),
-      })),
+      recognitions: declarations,
       detailRoute:
         props.entry.name === null
           ? detailRoute('MCP', sourceRelativePath, sessionSources.selectorOf(sourceId))
@@ -190,6 +157,22 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * do. The comparison surface's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
+/**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close (`SourceFamilyBlocks.vue`).
+ */
+const headCompareRoute = computed(() => {
+  const routes = [...blockCompareRoutes.value.values()];
+  // Exactly when the row draws no family line to close: the entry lives on one
+  // of the two lines and never on neither, so both read the one rule
+  // (`session-sources.ts` § familyLineShownFor).
+  const headed = sessionSources.familyLineShownFor(carrierRows.value, [
+    ...blockCompareRoutes.value.keys(),
+  ]);
+  return headed || routes.length !== 1 ? null : routes[0]!;
+});
+
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof mcpComparisonRouteFor>>();
   const name = props.entry.name;
@@ -211,14 +194,29 @@ const blockCompareRoutes = computed(() => {
          plain copy that says the rows are not known rather than not declared,
          because it also holds a carrier whose declaration block could not be
          read (FR-028). -->
-    <p
-      v-if="nameText !== null"
-      class="aci-mcp-row__name"
-      :class="nameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-    >
-      {{ nameText }}
+    <p class="aci-row-head">
+      <span
+        v-if="name !== null"
+        class="aci-row-head__name"
+        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+        >{{ name.text }}</span
+      >
+      <span v-else class="aci-row-head__name">No known server declarations</span>
+      <!-- How many files declare this name. A count rather than a repeated
+           path: the files themselves are the lines below. -->
+      <span class="aci-row-head__count"
+        >{{ carrierRows.length }} {{ carrierRows.length === 1 ? 'file' : 'files' }}</span
+      >
+      <!-- The comparison entry, where this row has one family and so no family
+           line of its own to close (`SourceFamilyBlocks.vue`). -->
+      <span v-if="headCompareRoute" class="aci-row-head__end">
+        <NuxtLink
+          :to="headCompareRoute"
+          :aria-label="`Compare this name's declarations: ${name?.accessibleText ?? ''}`"
+          >Compare</NuxtLink
+        >
+      </span>
     </p>
-    <p v-else class="aci-mcp-row__name">No known server declarations</p>
 
     <!-- The carriers resolving this name, each linking to its own detail:
          the fields the file wrote under this key, never the file's bytes
@@ -227,10 +225,9 @@ const blockCompareRoutes = computed(() => {
          link however many products recognize it — and the accessible name
          adds the row's subject so links of several rows never announce
          identically (WCAG 2.4.6; label-in-name keeps the visible path as the
-         prefix). Each recognizing product trails the link with the surfaces
-         its admission rests on, the way an instruction row states its
-         recognitions; naming a surface never claims it loaded the file
-         (FR-009). -->
+         prefix). Each recognizing product is drawn by its mark with the
+         surfaces its admission rests on; naming a surface never claims it
+         loaded the file (FR-009). -->
     <!-- One block per Source family (`SourceFamilyBlocks.vue`), each member
          rendered by this row. -->
     <SourceFamilyBlocks
@@ -239,32 +236,31 @@ const blockCompareRoutes = computed(() => {
       :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: carrier }">
-        <p class="aci-mcp-row__owner">
-          <NuxtLink
-            :to="carrier.detailRoute"
-            class="aci-path aci-authored-text"
-            :aria-label="
-              sessionSources.qualifiedLinkName(
-                nameAccessibleText === null
-                  ? carrier.carrierAccessibleText
-                  : `${carrier.carrierAccessibleText}: ${nameAccessibleText}`,
-                carrier.sourceId,
-              )
-            "
-            >{{ carrier.carrierText }}</NuxtLink
-          >
-          <span
-            v-for="recognition in carrier.recognitions"
-            :key="recognition.tool"
-            class="aci-mcp-row__tool aci-muted"
-            >{{ recognition.toolText }}
-            <span class="aci-mcp-row__surfaces">{{ recognition.surfacesText }}</span></span
-          >
-        </p>
-
-        <SourceRootLine :source-id="carrier.sourceId" />
-        <p v-if="carrier.stateText !== null" class="aci-muted">{{ carrier.stateText }}</p>
-        <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <SourceHomeBadge :source-id="carrier.sourceId" />
+            <NuxtLink
+              :to="carrier.detailRoute"
+              class="aci-path aci-authored-text"
+              :aria-label="
+                sessionSources.qualifiedLinkName(
+                  name === null
+                    ? carrier.carrierAccessibleText
+                    : `${carrier.carrierAccessibleText}: ${name.accessibleText}`,
+                  carrier.sourceId,
+                )
+              "
+              >{{ carrier.carrierText }}</NuxtLink
+            >
+            <RowDiagnostics :diagnostic-ids="carrier.diagnosticIds" :diagnostics="diagnostics" />
+          </span>
+          <RecognitionMarks :recognitions="carrier.recognitions" />
+          <span class="aci-row-file__end" />
+        </div>
+        <!-- Which of the no-name row's two states this carrier is in: the
+             sentence is the carrier's own, so it sits under the carrier's line
+             rather than on the row (FR-028). -->
+        <p v-if="carrier.stateText !== null" class="aci-row-note">{{ carrier.stateText }}</p>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a
@@ -273,56 +269,15 @@ const blockCompareRoutes = computed(() => {
            shape. The accessible name carries the row's identity always, and
            the family where two blocks each offer one (WCAG 2.4.6). -->
       <template #entry="{ block }">
-        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-mcp-row__compare">
-          <NuxtLink
-            :to="blockCompareRoutes.get(block.kind)!"
-            :aria-label="`Compare this name's declarations: ${nameAccessibleText ?? ''}${
-              blockCompareRoutes.size > 1 && block.familyText !== null
-                ? ` (${block.familyText})`
-                : ''
-            }`"
-            >Compare this name's declarations</NuxtLink
-          >
-        </p>
+        <NuxtLink
+          v-if="blockCompareRoutes.get(block.kind)"
+          :to="blockCompareRoutes.get(block.kind)!"
+          :aria-label="`Compare this name's declarations: ${name?.accessibleText ?? ''}${
+            block.familyText !== null ? ` (${block.familyText})` : ''
+          }`"
+          >Compare</NuxtLink
+        >
       </template>
     </SourceFamilyBlocks>
   </li>
 </template>
-
-<style scoped>
-.aci-mcp-row__name {
-  margin: 0;
-  font-weight: 600;
-}
-
-.aci-mcp-row__owner {
-  margin: 0;
-}
-
-/* Each recognizing product trails the carrier on the same line, set apart by
-   a separator, matching how an instruction row's surfaces trail its
-   product. */
-.aci-mcp-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-mcp-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-/* The surfaces qualify their own product within the same span: the product
-   alone does not say where it reads the file from once two surfaces document
-   different lookup bases. */
-.aci-mcp-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-mcp-row__surfaces::before {
-  content: '(';
-}
-
-.aci-mcp-row__surfaces::after {
-  content: ')';
-}
-</style>

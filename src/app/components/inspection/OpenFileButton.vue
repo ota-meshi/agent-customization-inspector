@@ -342,39 +342,64 @@ function closeOnFocusLeaving(event: FocusEvent): void {
   anchor-name: --aci-open-file;
   display: inline-flex;
   align-items: stretch;
-  border: 1px solid var(--aci-border);
-  border-radius: 0.25rem;
 }
 
+/* The border and the corners are the two buttons' own rather than a wrapper's:
+   the element baseline rounds every button at `--aci-radius-sm`, so a wrapper
+   drawing the outline at its own radius left the buttons' corners standing
+   outside it. The pair reads as one control because the seam is a single
+   shared edge — the action drops its trailing border and the toggle draws it —
+   and each rounds only its outer corners. */
 .aci-open-file-button__action,
 .aci-open-file-button__toggle {
-  background: none;
-  border: 0;
-  color: var(--aci-muted);
+  background: var(--aci-surface-raised);
+  border: 1px solid var(--aci-line);
+  border-radius: 0;
+  color: var(--aci-text);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.35rem;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+}
+
+.aci-open-file-button__action {
+  border-inline-end: 0;
+  border-end-start-radius: var(--aci-radius-sm);
+  border-start-start-radius: var(--aci-radius-sm);
 }
 
 .aci-open-file-button__action:hover,
 .aci-open-file-button__toggle:hover {
-  color: var(--aci-text);
+  background: var(--aci-surface-sunken);
 }
 
 .aci-open-file-button__toggle {
-  border-inline-start: 1px solid var(--aci-border);
-  padding-inline: 0.15rem;
+  border-end-end-radius: var(--aci-radius-sm);
+  border-start-end-radius: var(--aci-radius-sm);
+  padding-inline: 0.3125rem;
 }
 
 .aci-open-file-button__icon {
-  /* The icons inherit the text size and colour around them, so the control
-     keeps its proportion to the heading it sits beside and its marks dim and
-     brighten with the rest of it. That is why the editor's mark is the
-     single-colour brand glyph rather than the full-colour logo: a fixed-colour
-     logo would stay bright while everything around it is muted. */
-  height: 1em;
-  width: 1em;
+  /* The marks take their colour from the text around them, so they dim and
+     brighten with it. That is why the editor's mark is the single-colour brand
+     glyph rather than the full-colour logo: a fixed-colour logo would stay
+     bright while everything around it is muted.
+
+     The size is the design's rather than `1em`, and it is what makes the
+     control the same height as the buttons beside it: the line box of a button
+     carrying a label is 14px at this font size (`main.css` § :where(button)),
+     so a 14px mark gives the two the same content box. */
+  block-size: 0.875rem;
+  inline-size: 0.875rem;
+}
+
+/* The chevron is smaller than the action's mark, as the design draws it: it
+   opens a list rather than naming what the control does, and the pair's height
+   is the action's. */
+.aci-open-file-button__toggle .aci-open-file-button__icon {
+  block-size: 0.75rem;
+  inline-size: 0.75rem;
 }
 
 /* Hung under the control and starting where it starts, so the entries begin
@@ -397,7 +422,7 @@ function closeOnFocusLeaving(event: FocusEvent): void {
     flip-block,
     flip-block flip-inline;
   background: var(--aci-surface-raised);
-  border: 1px solid var(--aci-border);
+  border: 1px solid var(--aci-line);
   border-radius: 0.25rem;
   color: var(--aci-text);
   font-size: 0.85rem;
@@ -407,6 +432,12 @@ function closeOnFocusLeaving(event: FocusEvent): void {
      this replaces it with the gap between the control and the list. */
   margin: 0.25rem 0 0;
   padding: 0.2rem;
+  /* The width its captions ask for, capped so a long folder name cannot take
+     the viewport. Without it the list is shrink-to-fit against the space its
+     anchor happens to have, so a control at the end of a line — which is where
+     a detail's attribute line puts it — leaves the captions wrapping to a
+     character or two per line. */
+  inline-size: max-content;
   max-width: min(20rem, 90vw);
 }
 

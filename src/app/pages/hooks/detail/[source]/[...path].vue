@@ -27,33 +27,45 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
+import LeavesIcon from '~icons/lucide/arrow-right';
+import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
+import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
   familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
+  detailNeighbours,
+  detailRoute,
   type ComparisonSide,
   type SourceSelector,
-  detailRoute,
   fromJsonStringBody,
 } from '../../../../components/detail-route';
+import { hookEventDetailRoute } from '../../../../components/hook-detail-route';
+import FileStrip from '../../../../components/inspection/FileStrip.vue';
+import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import type { SourceKind } from '../../../../../shared/api-types';
 import { hookComparisonRouteFor } from '../../../../composables/hook-comparison';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
-import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
+import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
 import { useSessionViewState } from '../../../../composables/session-view-state';
 import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import { HOOK_CARRIER_FORM_TEXT, SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
+import { AuthoredName } from '../../../../components/authored-name';
 import {
+  type SupportedTool,
+  SUPPORTED_TOOL_ORDER,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
-  SUPPORTED_TOOL_TEXT,
+  accessiblePresentationLabel,
   escapeControlCharacters,
+  fileIdentityKey,
   inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
@@ -120,7 +132,7 @@ const openSourceId = computed((): string | null => sessionSources.sourceIdFor(op
 // The open file's Source facts (FR-007 "show its source"): the family name
 // where more than one family is inspected, and the consented directory where
 // the family holds more than one Source (`source-facts.ts`).
-const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
   () => snapshot.value?.sources ?? [],
   () => openSourceId.value,
 );
@@ -166,17 +178,12 @@ const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacte
 const carrierRoute = computed(() => detailRoute('hook', openPath.value, openSource.value));
 
 /**
- * The selected event as the heading shows it, through the same label rule the
- * record uses, or null for the carrier view. The empty name — both formats
- * accept `""` as a key — gets the same note its inventory row shows, because
- * the label rule has no characters to spell out.
+ * The selected event as this page needs it, or null for the carrier view,
+ * which is about the file rather than one event it declares
+ * ({@link AuthoredName}).
  */
-const eventNameText = computed(() =>
-  openEventName.value === null
-    ? null
-    : openEventName.value === ''
-      ? '(empty name)'
-      : pathPresentationLabel(openEventName.value),
+const eventName = computed(() =>
+  openEventName.value === null ? null : new AuthoredName(openEventName.value),
 );
 
 /**
@@ -188,22 +195,7 @@ const eventNameText = computed(() =>
 const headingAccessibleText = computed(() =>
   openPath.value === ''
     ? CUSTOMIZATION_KIND_TEXT.hook
-    : openEventName.value !== null
-      ? openEventName.value === ''
-        ? '(empty name)'
-        : inlinePresentationLabel(openEventName.value)
-      : inlinePresentationLabel(openPath.value),
-);
-
-/**
- * Whether {@link eventNameText} is the spelled-out form rather than the
- * authored key; the spelled form is this product's characters and does not
- * title the tab.
- */
-const eventNameIsSpelledOut = computed(
-  () =>
-    openEventName.value !== null &&
-    eventNameText.value !== escapeControlCharacters(openEventName.value),
+    : (eventName.value?.singleLineText ?? inlinePresentationLabel(openPath.value)),
 );
 
 /**
@@ -217,21 +209,142 @@ const eventNameIsSpelledOut = computed(
  * declaring no event is on no row, so this page has no row's statement to
  * restate and {@link overviewText} leads with the kind's caption instead.
  */
-const ownerText = computed(() => {
-  const declarations = (snapshot.value?.hooks ?? [])
-    .filter((entry) => openEventName.value === null || entry.event === openEventName.value)
-    .flatMap((entry) => entry.declarations)
-    .filter(
-      (declaration) =>
+/**
+ * The products that recognize this carrier and the surfaces they recognize it
+ * on, restated from the row so the page and the list agree (FR-007). One
+ * declaration per `(carrier, tool)`, so the carrier's declarations here are
+ * its recognitions.
+ */
+const recognitions = computed(() => {
+  const byTool = new Map<
+    SupportedTool,
+    { tool: SupportedTool; surfaces: readonly VendorSurface[] }
+  >();
+  for (const entry of snapshot.value?.hooks ?? []) {
+    for (const declaration of entry.declarations) {
+      if (
         declaration.sourceRelativePath === openPath.value &&
-        declaration.sourceId === openSourceId.value,
-    );
-  const byTool = new Map<string, string>();
-  for (const declaration of declarations) {
-    const surfaces = declaration.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ');
-    byTool.set(declaration.tool, `${SUPPORTED_TOOL_TEXT[declaration.tool]} (${surfaces})`);
+        declaration.sourceId === openSourceId.value
+      ) {
+        byTool.set(declaration.tool, { tool: declaration.tool, surfaces: declaration.surfaces });
+      }
+    }
   }
-  return [...byTool.values()].join(', ');
+  return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => byTool.get(tool)!);
+});
+
+/**
+ * The rows either side of this one in the list's own order, so the next
+ * declaration is one move rather than a return to the inventory (FR-007).
+ */
+/**
+ * The other carriers declaring the event this page is showing, so the next
+ * declaration of it is one move rather than a return to the list (FR-007).
+ * Empty on a carrier view, which has no event to gather by, and on an event
+ * one carrier declares — the strip renders nothing either way
+ * (`FileStrip.vue`).
+ *
+ * One entry per file, with each product that declares the event there beside
+ * it: a carrier two products read is one file, exactly as the copies of a
+ * skill name are ({@link otherCopiesOf} removes the one on screen).
+ */
+const otherCarriers = computed<readonly FileStripEntry[]>(() => {
+  const event = openEventName.value;
+  if (event === null) {
+    return [];
+  }
+  const row = (snapshot.value?.hooks ?? []).find((entry) => entry.event === event);
+  const byFile = new Map<string, FileStripEntry>();
+  for (const declaration of row?.declarations ?? []) {
+    const key = fileIdentityKey(declaration.sourceId, declaration.sourceRelativePath);
+    const existing = byFile.get(key);
+    byFile.set(
+      key,
+      existing === undefined
+        ? {
+            key,
+            sourceId: declaration.sourceId,
+            pathText: pathPresentationLabel(declaration.sourceRelativePath),
+            opens: {
+              accessibleText: sessionSources.qualifiedLinkName(
+                accessiblePresentationLabel(declaration.sourceRelativePath),
+                declaration.sourceId,
+              ),
+              route: hookEventDetailRoute(
+                declaration.sourceRelativePath,
+                event,
+                sessionSources.selectorOf(declaration.sourceId),
+              ),
+            },
+            recognitions: [{ tool: declaration.tool, surfaces: declaration.surfaces }],
+            // What kind of file it is, which the path does not say: a
+            // `.codex/hooks.json` and a `[hooks]` table inside a config file
+            // are both carriers of this event, and the row states which
+            // ({@link HOOK_CARRIER_FORM_TEXT}). A file is one form or the
+            // other, so the first declaration answers for the file — the same
+            // reading `HookRow` makes of its own carriers.
+            carrierText: HOOK_CARRIER_FORM_TEXT[declaration.carrier],
+          }
+        : {
+            ...existing,
+            recognitions: [
+              ...existing.recognitions,
+              { tool: declaration.tool, surfaces: declaration.surfaces },
+            ],
+          },
+    );
+  }
+  return otherCopiesOf(
+    [...byFile.values()],
+    fileIdentityKey(openSourceId.value ?? '', openPath.value),
+  );
+});
+
+const listNeighbours = computed(() => {
+  const entries = snapshot.value?.hooks ?? [];
+  const rows = entries.map((entry) => {
+    const declaration = entry.declarations[0];
+    const path = declaration?.sourceRelativePath ?? '';
+    const source = sessionSources.selectorOf(declaration?.sourceId ?? '');
+    return {
+      label:
+        entry.event === null ? 'No known hook declarations' : inlinePresentationLabel(entry.event),
+      // A row is one event, so the move addresses that event's declaration the
+      // way the row's own link does (`rows/HookRow.vue`): the carrier route
+      // alone would open the whole carrier, which is a different page from the
+      // one the move's label names. The no-event row is the exception, being
+      // the carrier itself.
+      route:
+        entry.event === null
+          ? detailRoute('hook', path, source)
+          : hookEventDetailRoute(path, entry.event, source),
+    };
+  });
+  // The open row is this carrier *and* this event: a carrier declaring several
+  // events appears on several rows, so matching the carrier alone lands on
+  // whichever of them comes first and offers that row's neighbours instead of
+  // this one's.
+  // The carrier's own view is on no row of this list: the rows are declared
+  // event names and the carrier is the file they were read from, so it has no
+  // position to step from (FR-007 — a declaration view and a carrier view are
+  // different subjects). Matching on the name alone gave it the row that
+  // publishes none, and folding `null` and an authored `''` together gave it
+  // the empty-named row's neighbours.
+  if (openEventName.value === null) {
+    return detailNeighbours(rows, -1);
+  }
+  return detailNeighbours(
+    rows,
+    entries.findIndex(
+      (entry) =>
+        entry.event === openEventName.value &&
+        entry.declarations.some(
+          (declaration) =>
+            declaration.sourceRelativePath === openPath.value &&
+            declaration.sourceId === openSourceId.value,
+        ),
+    ),
+  );
 });
 
 /**
@@ -276,25 +389,6 @@ const declarationMissing = computed(
  */
 const carrierFormText = computed(() =>
   openDetail.value === null ? null : HOOK_CARRIER_FORM_TEXT[openDetail.value.carrier],
-);
-
-/**
- * The overview line: the recognizing products, the kind's caption, and the
- * carrier's documented form, joined here rather than in the template so a
- * part with nothing to say takes its separator with it
- * ({@link ownerText}).
- */
-const overviewText = computed(() =>
-  [
-    // The family leads, exactly where every path-addressed detail states it
-    // (FR-007 "show its source"; `source-facts.ts`).
-    sourceFamilyText.value ?? '',
-    ownerText.value,
-    CUSTOMIZATION_KIND_TEXT.hook,
-    carrierFormText.value ?? '',
-  ]
-    .filter((part) => part !== '')
-    .join(' · '),
 );
 
 /**
@@ -363,20 +457,25 @@ function compareRouteForEvent(event: string): ReturnType<typeof hookComparisonRo
  * code points still identifies it — and its groups render as the JSON document
  * the file wrote under that key.
  */
+/**
+ * The addressed event's comparison, for the declaration view only: that view's
+ * heading names one event, so the comparison of it acts on the subject the
+ * heading states rather than on one of the sections below. The carrier view
+ * heads itself with the carrier and lists every event, so each event carries
+ * its own entry instead ({@link eventBlocks}).
+ */
+const openEventCompareRoute = computed(() =>
+  openEventName.value === null ? null : (eventBlocks.value[0]?.compareRoute ?? null),
+);
+
 const eventBlocks = computed(() =>
   (openDetail.value?.events ?? [])
     .filter((event) => openEventName.value === null || event.event === openEventName.value)
     .map((event) => ({
       key: event.event,
-      // The empty name gets the same note its inventory row and this page's
-      // heading show; every other name is the authored spelling.
-      nameText: event.event === '' ? '(empty name)' : pathPresentationLabel(event.event),
-      nameIsAuthored: event.event !== '',
-      // The single-line label rule for the heading's accessible name: an
-      // accessible name collapses whitespace, so two invisibly different
-      // authored names would otherwise announce identically (FR-025).
-      nameAccessibleText:
-        event.event === '' ? '(empty name)' : inlinePresentationLabel(event.event),
+      // The declared event as the block's heading and its links need it, which
+      // is the same unit the page's own heading reads ({@link AuthoredName}).
+      name: new AuthoredName(event.event),
       // The event as the pretty-printed JSON a reader can paste into their own
       // hook map (declared-entries-json.ts): the key the file wrote and the
       // groups under it, in the file's own order, every value as resolved
@@ -522,13 +621,15 @@ const titleSubject = computed<string | null>(() => {
       ? 'Hook carrier could not be loaded'
       : 'Hook declaration could not be loaded';
   }
-  if (openEventName.value !== null) {
+  const event = eventName.value;
+  if (event !== null) {
     // The carrier's path rides in the title too: two carriers of one Source
     // can declare one lifecycle event, and their tabs must not read
-    // identically (WCAG 2.4.2).
-    return eventNameIsSpelledOut.value
-      ? null
-      : `${openEventName.value} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
+    // identically (WCAG 2.4.2). A name this product spelled out does not title
+    // the tab: those are its characters, not the file's.
+    return event.isAuthored
+      ? `${event.authored} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`
+      : null;
   }
   return pathIsSpelledOut.value
     ? null
@@ -596,14 +697,40 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-hook-detail">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the hook list
+  <div ref="pageRoot" class="aci-hook-detail aci-route">
+    <!-- The way back and the rows either side of this one, drawn in the bar
+         with every other route's moves (`DetailNavigation.vue`). The kind is
+         URL state, so naming it is what makes the move land on the hook list
          rather than the kind order's default tab. -->
-    <p><NuxtLink to="/?kind=hook">Back to the inventory</NuxtLink></p>
+    <DetailNavigation
+      list-route="/?kind=hook"
+      :list-text="CUSTOMIZATION_KIND_TEXT.hook"
+      :previous="listNeighbours.previous"
+      :next="listNeighbours.next"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         Source family, the kind, and this page's own subject. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="sourceFamilyCrumbText !== null"
+        >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.hook }} <span>›</span>
+      <!-- The page's own subject, which is the declared event on a declaration
+           view and the carrier's path on the carrier's own. The trail ended at
+           the carrier either way, so a declaration page's last step named a
+           file while its heading named an event. Which carrier it was declared
+           in is the `Declared in` line's, said once. -->
+      <span
+        v-if="eventName !== null"
+        class="aci-detail-crumbs__subject"
+        :class="{ 'aci-authored-text': eventName.isAuthored }"
+        >{{ eventName.text }}</span
+      >
+      <span v-else class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
+    </p>
 
     <div class="aci-hook-detail__title">
-      <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
+      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
         <!-- The record's own identity heads the page: the declared event for a
              declaration view — the same spelling its inventory record shows —
              and the carrier's path for the file-unit view; either is escaped
@@ -611,23 +738,37 @@ onBeforeUnmount(() => {
              FR-030). -->
         <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.hook }}</template>
         <span
-          v-else-if="eventNameText !== null"
-          :class="{ 'aci-authored-text': !eventNameIsSpelledOut }"
-          >{{ eventNameText }}</span
+          v-else-if="eventName !== null"
+          :class="{ 'aci-authored-text': eventName.isAuthored }"
+          >{{ eventName.text }}</span
         >
         <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
           pathText
         }}</span>
       </h2>
-      <!-- The carrier view heads itself with the carrier's path, so the link
-           that opens it belongs on that line. A declaration view is headed by
-           an event name and carries the link beside its "Declared in" path
-           below instead. -->
-      <OpenFileButton
-        v-if="openDetail !== null && openEventName === null"
-        :source-relative-path="openDetail.file.sourceRelativePath"
-        :source="openSource"
-      />
+      <!-- The addressed event's comparison, at the end of the heading's own
+           line: it acts on the subject that heading names
+           ({@link openEventCompareRoute}). -->
+      <NuxtLink
+        v-if="openEventCompareRoute !== null"
+        class="aci-button aci-button--primary aci-hook-detail__title-end"
+        :to="openEventCompareRoute"
+        >Compare this event's declarations
+        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
+      <!-- Why there is no comparison, rather than nothing at all: a missing
+           control reads the same as a forgotten one, and the reason is a fact
+           about the subject — this name resolves one carrier here, so there is
+           no pair to make (FR-011). The skill detail says the same of a name
+           with one copy. -->
+      <!-- Said only where there is a subject to say it of: on a link the scan
+           holds nothing at, and before the carrier has loaded, "one carrier
+           here" would be a claim about a name that resolves nothing. -->
+      <span
+        v-else-if="openEventName !== null && openDetail !== null"
+        class="aci-hook-detail__title-end aci-muted"
+        >This event has one carrier here, so there is nothing to compare</span
+      >
     </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -646,35 +787,86 @@ onBeforeUnmount(() => {
            recognition at, and a held carrier that currently declares no event
            by this name — which covers a carrier whose declarations could not be
            read, whose rows are unknown rather than absent (FR-028). -->
-      <p v-if="declarationMissing" class="aci-error">
-        No hook declaration named this way is published for this file in the current scan. The
-        carrier may have changed since the link was made — its declarations may even be unreadable
-        right now — and a rescan that brings the name back will make it resolve again.
-      </p>
-      <p v-else class="aci-error">
-        Nothing in the current scan sits at this link's path. The inventory may have changed since
-        the link was made; a rescan that brings the path back will make it resolve again.
-      </p>
-      <p>
-        <NuxtLink to="/?kind=hook">Return to the inventory and open it again.</NuxtLink>
-      </p>
+      <SubjectUnavailable outcome="warning">
+        <template v-if="declarationMissing">
+          No hook declaration named this way is published for this file in the current scan. The
+          carrier may have changed since the link was made — its declarations may even be unreadable
+          right now — and a rescan that brings the name back will make it resolve again.
+        </template>
+        <template v-else>
+          Nothing in the current scan sits at this link's path. The inventory may have changed since
+          the link was made; a rescan that brings the path back will make it resolve again.
+        </template>
+        <template #exit>
+          <NuxtLink to="/?kind=hook">Return to the inventory and open it again.</NuxtLink>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
          held. This route reports it, because this route made the request. -->
     <template v-else-if="openDetail === null">
-      <p class="aci-error">{{ detailFailure }}</p>
-      <p>
-        <button type="button" @click="retryOpen">Try again</button>
-      </p>
+      <SubjectUnavailable outcome="error">
+        {{ detailFailure }}
+        <template #exit>
+          <button type="button" @click="retryOpen">Try again</button>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <template v-else>
       <div class="aci-hook-detail__overview">
-        <!-- Which product recognizes the carrier, restated from the inventory
-             entry so the page and the list agree, beside the kind's own
-             caption and the carrier's documented form (FR-007). -->
-        <p class="aci-hook-detail__recognition">{{ overviewText }}</p>
+        <!-- What the carrier is to this kind, and which products recognize it
+             with the surfaces they document reading it on, restated from the
+             inventory entry so the page and the list agree (FR-007). No
+             product is quoted for what it would run, because an admission is
+             not an activation (FR-009). -->
+        <p class="aci-detail-attributes">
+          <!-- The carrier this page read, leading its own facts: the command at
+               the end of this line opens it, and with the path on the line
+               below the control pointed at something the line did not name. On
+               a declaration view it is a link to the carrier's own page; on
+               that page it is the subject itself, which the heading above
+               already names. -->
+          <template v-if="openEventName !== null"
+            >Declared in
+            <NuxtLink :to="carrierRoute" class="aci-path aci-authored-text">{{
+              pathText
+            }}</NuxtLink></template
+          >
+          <span v-if="carrierFormText !== null" class="aci-carrier-kind">{{
+            carrierFormText
+          }}</span>
+          <!-- What the read produced, on the head's line with the rest of
+               the carrier's own facts rather than below the page's sections:
+               the read outcome and the size are facts about the file this
+               page opened, and a reader deciding whether to trust what is
+               below reads them first (FR-007). Its source text is
+               deliberately not on this page — or on the wire at all: a file
+               admitted so its declarations can be published shows the
+               declarations, never its bytes. -->
+          <span
+            >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
+            }}<template v-if="openDetail.file.encoding !== 'unknown'">
+              · {{ openDetail.file.sizeBytes }} bytes</template
+            ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
+              · byte-order mark removed before decoding</template
+            ></span
+          >
+          <RecognitionMarks :recognitions="recognitions" named />
+          <!-- The command that opens the file, at the end of the line that
+               states that file's facts — the one place every kind puts it, so
+               a reader who found it on one detail finds it on the next.
+               Outside the heading so it does not join the heading's accessible
+               name: a reader hearing the page's landmarks should hear the
+               file, not an action on it (WCAG 2.4.6). -->
+          <span class="aci-detail-attributes__end">
+            <OpenFileButton
+              :source-relative-path="openDetail.file.sourceRelativePath"
+              :source="openSource"
+            />
+          </span>
+        </p>
 
         <!-- Which directory the carrier was in, where its family holds more
              than one: an escaped presentation of the admitted root, never a
@@ -682,33 +874,20 @@ onBeforeUnmount(() => {
         <p v-if="sourceRootText !== null" class="aci-hook-detail__root aci-note">
           <span class="aci-authored-text">{{ sourceRootText }}</span>
         </p>
-        <!-- The declaration view states its owner-carrier identity — the
-             record's own second line, linking to the carrier's file-unit
-             view. -->
-        <p v-if="openEventName !== null">
-          Declared in
-          <NuxtLink :to="carrierRoute" class="aci-path aci-authored-text">{{ pathText }}</NuxtLink>
-          <!-- Beside the carrier's path, because that is the file it opens —
-               the declaration this page is about lives inside it. -->
-          <OpenFileButton
-            :source-relative-path="openDetail.file.sourceRelativePath"
-            :source="openSource"
-          />
-        </p>
-        <!-- Both views add what the read produced, and nothing else: the
-             carrier's own file facts. Its source text is deliberately not on
-             this page — or on the wire at all: a file admitted so its
-             declarations can be published shows the declarations, never its
-             bytes (FR-007). -->
-        <p class="aci-note">
-          {{ FILE_ENCODING_TEXT[openDetail.file.encoding]
-          }}<template v-if="openDetail.file.encoding !== 'unknown'">
-            · {{ openDetail.file.sizeBytes }} bytes</template
-          ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
-            · byte-order mark removed before decoding</template
-          >
-        </p>
       </div>
+
+      <!-- The other carriers declaring this event, one line whatever the count
+           (`FileStrip.vue`). The kinds whose row is a name all offer it — a
+           skill's copies, an agent's files — and a declaration's carriers are
+           the same move: the next place this event is declared, without
+           returning to the list. Nothing here states an order or a winner:
+           which declaration a session runs turns on runtime this tool does not
+           observe (FR-009). -->
+      <FileStrip
+        :open-source-id="openSourceId"
+        :entries="otherCarriers"
+        label="Other carriers declaring this event"
+      />
 
       <ul v-if="openDiagnostics.length > 0" class="aci-list" role="list">
         <li
@@ -736,13 +915,12 @@ onBeforeUnmount(() => {
            declaration view is about one event, and the file's own keys are not
            part of it. -->
       <section v-if="openEventName === null && carrierFieldsJsonText !== ''">
-        <h3>This file's own declarations</h3>
         <SourceViewer
+          panel-label="This file's own declarations"
           :source-text="carrierFieldsJsonText"
           :source-relative-path="openPath"
           content-label="File declarations of"
           content-language="json"
-          fit-content
         />
       </section>
 
@@ -756,10 +934,10 @@ onBeforeUnmount(() => {
       <section v-for="event in eventBlocks" :key="event.key" class="aci-hook-detail__event">
         <h3
           v-if="openEventName === null"
-          :class="event.nameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-          :aria-label="event.nameAccessibleText"
+          :class="event.name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          :aria-label="event.name.singleLineText"
         >
-          {{ event.nameText }}
+          {{ event.name.text }}
         </h3>
         <!-- The declaration's groups as one read-only JSON document in the
              Monaco viewer — coloured by the `json` tokenizer a `.json` file's
@@ -770,23 +948,39 @@ onBeforeUnmount(() => {
              (FR-025, FR-026). The accessible name says which declaration of
              the carrier is showing, because a carrier view mounts one viewer
              per declared event (WCAG 2.4.6). -->
+        <!-- What the viewer holds, said before it. The carrier may be TOML or a
+             settings document, and its declaration is shown as JSON this
+             surface serializes rather than as the bytes the file wrote — so a
+             reader who opened a `.toml` and met JSON is told why. The keys are
+             the file's own, in the order it wrote them, because that is what
+             this surface publishes (FR-007; {@link declaredEntriesJsonText}).
+             Only the comparison sorts, and only to align its two sides. -->
+        <p class="aci-note">
+          This is this event's declaration serialized as JSON, with the keys the file wrote in the
+          order it wrote them; the file's own syntax is not shown.
+        </p>
         <SourceViewer
+          panel-label="Declaration"
           :source-text="event.jsonText"
           :source-relative-path="openPath"
-          :content-label="`Declaration ${event.nameAccessibleText} of`"
+          :content-label="`Declaration ${event.name.singleLineText} of`"
           content-language="json"
-          fit-content
         />
         <!-- The comparison this event's row leads to: the accessible name
              carries the declared event after the visible phrase, because a
              carrier view renders one link per event and they would otherwise
              announce identically (WCAG 2.4.6). -->
-        <p v-if="event.compareRoute !== null" class="aci-hook-detail__compare">
+        <p
+          v-if="openEventName === null && event.compareRoute !== null"
+          class="aci-hook-detail__compare"
+        >
           <NuxtLink
+            class="aci-button aci-button--primary"
             :to="event.compareRoute"
-            :aria-label="`Compare this event's declarations: ${event.nameAccessibleText}`"
-            >Compare this event's declarations</NuxtLink
-          >
+            :aria-label="`Compare this event's declarations: ${event.name.singleLineText}`"
+            >Compare this event's declarations
+            <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+          /></NuxtLink>
         </p>
       </section>
     </template>
@@ -817,7 +1011,7 @@ onBeforeUnmount(() => {
 }
 
 .aci-hook-detail__overview {
-  border-bottom: 1px solid var(--aci-border);
+  border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
 }
 
@@ -843,6 +1037,11 @@ onBeforeUnmount(() => {
    together when the path is long; the authored path may have no break
    opportunities of its own, and without the wrap a long one forces sideways
    scrolling at narrow widths and 200% zoom (WCAG 1.4.10). */
+/* Whatever closes the heading's line: the comparison of the subject it names. */
+.aci-hook-detail__title-end {
+  margin-inline-start: auto;
+}
+
 .aci-hook-detail__title {
   display: flex;
   flex-wrap: wrap;

@@ -14,6 +14,11 @@
 // request may write to the editor.
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { SourceViewerHandle } from '../../composables/monaco';
+import {
+  SOURCE_VIEWER_LANGUAGE_GRAMMAR,
+  SOURCE_VIEWER_LANGUAGE_TEXT,
+  type SourceViewerLanguage,
+} from './source-viewer-language';
 import { useSessionViewState } from '../../composables/session-view-state';
 
 const props = defineProps<{
@@ -32,6 +37,30 @@ const props = defineProps<{
    * so assistive technology never announces a slice as the complete source.
    */
   readonly contentLabel?: string;
+  /**
+   * What the panel around the editor is called — "Frontmatter", "Instructions",
+   * the file's own path. The viewer draws its own bordered panel with that name
+   * as a heading band inside it.
+   *
+   * Required, because every surface that shows source names what it is showing:
+   * a panel with no name would be an unlabelled frame, and the reader
+   * navigating by heading would arrive at nothing.
+   *
+   * The band is the viewer's rather than the caller's because the border it
+   * sits inside is: a caller drawing a panel around this component would have
+   * to reach in and cancel the editor box's own border, and `.aci-source-viewer`
+   * has one owner (AGENTS.md § Stylesheet scope policy).
+   */
+  readonly panelLabel: string;
+  /**
+   * The heading level the band takes, for a panel nested under a heading of its
+   * own. The default is `h3`, which is what a panel directly under a page's
+   * `h2` is; a comparison that groups two panels under a block title needs its
+   * captions a level below that one, or the outline would read them as its
+   * siblings (WCAG 1.3.1).
+   */
+  readonly panelHeadingLevel?: 3 | 4;
+
   /**
    * The content-owner registry this viewer joins instead of the session's, for
    * a caller whose surface owns the drop. The comparison surfaces are the
@@ -55,30 +84,25 @@ const props = defineProps<{
    */
   readonly registerContentOwner?: (disposer: () => void) => () => void;
   /**
-   * The language id the model is created with, set by a caller that knows the
-   * text's syntax where the path does not say it. Two callers do: one showing
-   * a canonical serialization rather than the file's own bytes — the MCP
-   * detail shows a declaration as JSON whatever the carrier's extension would
-   * resolve to — and one showing a file whose vendor fixes a syntax its
-   * suffix does not, which is the permission policy detail naming Starlark's
-   * grammar for a Codex `.rules` file. Omitted, the language is resolved from
-   * the path, which is the file surfaces' rule
-   * (`SourceViewerHandle.showSource`).
+   * The format the text is in, set by a caller that knows it where the path
+   * does not say it. Two callers do: one showing a canonical serialization
+   * rather than the file's own bytes — the MCP detail shows a declaration as
+   * JSON whatever the carrier's extension would resolve to — and one showing a
+   * file whose vendor fixes a format its suffix does not, which is the
+   * permission policy detail naming Starlark for a Codex `.rules` file.
+   * Omitted, the language is resolved from the path, which is the file
+   * surfaces' rule (`SourceViewerHandle.showSource`).
+   *
+   * It is the format's own name, and the grammar that colours it is looked up
+   * from it (`source-viewer-language.ts`): the band beside the label names
+   * this, so a member holding a tokenizer's id would put that id on screen.
    *
    * Explicitly `| undefined`, because a caller decides per file whether it
-   * knows the syntax: the policy detail names a grammar for a Codex policy
-   * file and the rule detail passes nothing for a Claude rule, whose Markdown
-   * suffix already claims one (`exactOptionalPropertyTypes`).
+   * knows the format: the policy detail names one for a Codex policy file and
+   * the rule detail passes nothing for a Claude rule, whose Markdown suffix
+   * already claims one (`exactOptionalPropertyTypes`).
    */
-  readonly contentLanguage?: string | undefined;
-  /**
-   * Sizes the viewer to its content instead of the fixed reading box, capped
-   * by this component's stylesheet (`SourceViewerHandle.mount`
-   * § fitContent). Set by surfaces showing a short derived document — an
-   * MCP declaration, a frontmatter block — where a fixed height would be
-   * mostly empty frame.
-   */
-  readonly fitContent?: boolean;
+  readonly contentLanguage?: SourceViewerLanguage | undefined;
 }>();
 
 /** The element Monaco takes over; empty until the editor is mounted. */
@@ -179,9 +203,7 @@ async function showCurrentSource(): Promise<void> {
     if (element === null) {
       return;
     }
-    const mounted = await SourceViewerHandle.mount(element, {
-      fitContent: props.fitContent === true,
-    }).catch(() => null);
+    const mounted = await SourceViewerHandle.mount(element).catch(() => null);
     if (mounted === null) {
       // The editor chunk or its mount failed. The source is not lost — the
       // detail already holds it — so the honest state is a visible failure
@@ -205,7 +227,12 @@ async function showCurrentSource(): Promise<void> {
     viewer.value = mounted;
   }
   try {
-    viewer.value.showSource(sourceText, path, contentLabel, contentLanguage);
+    viewer.value.showSource(
+      sourceText,
+      path,
+      contentLabel,
+      contentLanguage === undefined ? undefined : SOURCE_VIEWER_LANGUAGE_GRAMMAR[contentLanguage],
+    );
   } catch {
     // The model swap failed mid-flight (`SourceViewerHandle.showSource`
     // § rollback): the handle has already disposed what it held, so the
@@ -270,67 +297,152 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-show="!mountError"
-    ref="host"
-    class="aci-source-viewer"
-    :class="{ 'aci-source-viewer--fit': fitContent }"
-  />
-  <!-- Stable rather than inserted with the failure it reports, because a
-       region that appears together with its message is not reliably read. -->
-  <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
-    {{ mountError ? MOUNT_ERROR_MESSAGE : '' }}
-  </p>
-  <p v-if="mountError" class="aci-error">
-    {{ MOUNT_ERROR_MESSAGE }}
-    <button type="button" @click="retryMount">Try again</button>
-  </p>
-  <!-- The editor-failure rendering: the same complete text as an inert text
-       node — no markup, no links, no editor — so an environment that cannot
-       load the editor still shows the whole file. The browser lays out and
-       scrolls it, so it depends on none of the editor's own character
-       measurements. `tabindex` because the box scrolls: WebKit does not make
-       a scrollable overflow container keyboard focusable on its own, so
-       without it a reader with no pointer could reach the element's text
-       through a screen reader but never scroll the box (WCAG 2.1.1). -->
-  <pre v-if="mountError" ref="fallbackElement" class="aci-source-viewer__fallback" tabindex="0">{{
-    purged ? '' : sourceText
-  }}</pre>
+  <!-- The panel and the editor inside it. The heading stays an `h3` inside the
+       band rather than becoming a styled `div`: it is what a reader navigating
+       by heading arrives at, and moving it into the panel is a change of where
+       it is drawn, not of what it is (WCAG 1.3.1).
+
+       The panel stays whatever the editor did. A failure that took the panel
+       away with it left the message and the complete text standing outside
+       every band, so a page showing two viewers — a frontmatter and its
+       instructions, a plugin's catalog and its manifest — reported two
+       identical failures over two unlabelled blocks of text, with no way to
+       tell which was which and the heading each belonged under gone
+       (WCAG 1.3.1). -->
+  <div class="aci-source-viewer-panel">
+    <component :is="`h${panelHeadingLevel ?? 3}`" class="aci-source-viewer-panel__head">
+      <!-- The label hugs its binding: a newline between it and the span below
+           renders as a space, which a viewer naming no format would carry into
+           its accessible name. -->
+      <span>{{ panelLabel }}</span>
+      <!-- The format the caller named, not the grammar colouring it: a
+           `.rules` policy is Starlark and is tokenized by Python's grammar,
+           and a band reading the grammar would call the file Python. A viewer
+           left to the path's own claim names none, because the path is what
+           the reader is already looking at. -->
+      <span v-if="contentLanguage !== undefined" class="aci-source-viewer-panel__format"
+        ><!-- The separator lives inside the format rather than between the two,
+             so the band's accessible name reads "Metadata YAML" when there is a
+             format and "Metadata" when there is none — a newline between the
+             spans would leave the second case trailing a space. -->{{ ' '
+        }}{{ SOURCE_VIEWER_LANGUAGE_TEXT[contentLanguage] }}</span
+      >
+    </component>
+    <div v-show="!mountError" ref="host" class="aci-source-viewer" />
+    <!-- Stable rather than inserted with the failure it reports, because a
+         region that appears together with its message is not reliably read. -->
+    <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
+      {{ mountError ? MOUNT_ERROR_MESSAGE : '' }}
+    </p>
+    <p v-if="mountError" class="aci-error aci-source-viewer-panel__failure">
+      {{ MOUNT_ERROR_MESSAGE }}
+      <button type="button" @click="retryMount">Try again</button>
+    </p>
+    <!-- The editor-failure rendering: the same complete text as an inert text
+         node — no markup, no links, no editor — so an environment that cannot
+         load the editor still shows the whole file, under the band that says
+         which of the page's viewers it is. The browser lays out and scrolls it,
+         so it depends on none of the editor's own character measurements.
+         `tabindex` because the box scrolls: WebKit does not make a scrollable
+         overflow container keyboard focusable on its own, so without it a
+         reader with no pointer could reach the element's text through a screen
+         reader but never scroll the box (WCAG 2.1.1). -->
+    <pre v-if="mountError" ref="fallbackElement" class="aci-source-viewer__fallback" tabindex="0">{{
+      purged ? '' : sourceText
+    }}</pre>
+  </div>
 </template>
 
 <style scoped>
 /* Monaco lays out inside a sized box and collapses to nothing without a
-   definite height, so the editor is given one. It is not told to fill a
-   remainder: the page around it scrolls, so there is no remainder to fill and
-   an editor asked for one would collapse. `automaticLayout` keeps it in step
-   with the box on resize. */
+   definite height, so the mounted handle writes the editor's own content
+   height to the element (`SourceViewerHandle.mount`) and `automaticLayout`
+   re-lays the editor out to the box it produced. The cap keeps a long document
+   from taking the page — past it the editor scrolls inside its box — and the
+   floor keeps a one-line file from drawing a frame with no room to read in.
+
+   A fixed reading box instead of this left every short file under an empty
+   frame: a two-line skill drew 24rem of nothing, which is most of the height
+   the page has to give (FR-007). It is not told to fill a remainder either:
+   the page around it scrolls, so there is no remainder to fill and an editor
+   asked for one would collapse. */
+/* No border and no corners of its own: the panel around it draws both, and
+   every caller labels its panel — two borders a pixel apart read as a box
+   drawn twice. */
 .aci-source-viewer {
-  block-size: 24rem;
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  block-size: auto;
   inline-size: 100%;
+  /* The cap keeps a long document from taking the page, and it is measured
+     against the viewport rather than fixed: at 24rem a 734-byte settings file
+     scrolled inside a 384px window with 620px of empty page under it, which is
+     a second scroll container inside the one the shell keeps (`App.vue`
+     § .aci-app). `max()` keeps the 24rem floor for a short viewport, where a
+     viewport-derived cap would be smaller than the box is worth drawing. */
+  max-block-size: max(24rem, calc(100vh - 14rem));
+  /* One line's worth, not three. The floor exists so a mount with no height
+     yet is not a collapsed box, and Monaco writes the document's own height
+     as soon as it has one — a two-line frontmatter then sat in a box with a
+     line of empty space under it, which reads as a frame the content did not
+     fill. */
+  min-block-size: 1.5rem;
 }
 
-/* The fit-content variant: the mounted handle writes the content height to
-   the element (`SourceViewerHandle.mount` § fitContent) and this cap keeps a
-   long document from taking the page — past it, the editor scrolls inside
-   its box exactly like the fixed variant. */
-.aci-source-viewer--fit {
-  block-size: auto;
-  max-block-size: 24rem;
-  min-block-size: 3rem;
+/* The panel: the name of what is in the editor, and the editor, in one box.
+   The name inside the border rather than above it is what makes the box read
+   as "this is the frontmatter" instead of as an unlabelled frame under a
+   title. */
+.aci-source-viewer-panel {
+  background: var(--aci-surface-raised);
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  /* The gap the design puts between stacked panels, carried by the panel
+     rather than by each page that stacks them: a page that forgot it drew two
+     editors sharing one edge, which reads as one box with a rule through it. */
+  margin-block-start: 0.625rem;
+  overflow: hidden;
+}
+
+.aci-source-viewer-panel__head {
+  align-items: center;
+  background: var(--aci-surface-sunken);
+  border-block-end: 1px solid var(--aci-hairline);
+  color: var(--aci-muted);
+  display: flex;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  gap: 0.5rem;
+  letter-spacing: 0;
+  margin: 0;
+  padding: 0.25rem 0.625rem;
+}
+
+/* What the text is, at the end of the band: a qualifier on the name rather
+   than one of the things a reader scans for. */
+.aci-source-viewer-panel__format {
+  font-family: ui-monospace, monospace;
+  font-weight: 400;
+  margin-inline-start: auto;
+}
+
+/* The failure and its retry, inside the panel where the editor would have
+   been: the band above it says which viewer failed, so the message does not
+   have to. */
+.aci-source-viewer-panel__failure {
+  margin: 0;
+  padding: 0.5rem 0.625rem;
 }
 
 /* The editor-failure fallback: the same authored text as an inert text node.
    `pre` keeps the authored line structure; long lines scroll inside the block
-   rather than widening the page. */
+   rather than widening the page. It draws no border of its own: it sits inside
+   the panel's, exactly where the editor's box did. */
 .aci-source-viewer__fallback {
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  border-block-start: 1px solid var(--aci-hairline);
   flex: 1;
   margin: 0;
+  max-block-size: 32rem;
   min-block-size: 0;
   overflow: auto;
-  padding: 0.5rem;
+  padding: 0.5rem 0.625rem;
 }
 </style>

@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { recognitionTexts } from './recognition-marks';
 
 let fixture: string;
 let host: LaunchedHost;
@@ -90,10 +91,10 @@ test('lists each recognition exactly once as a definition with the exact matrix'
   const expectTools = async (row: string, path: string, tools: readonly string[]) => {
     const group = page
       .locator('.aci-item', {
-        has: page.locator('.aci-skill-row__name', { hasText: new RegExp(`^${row}$`, 'u') }),
+        has: page.locator('.aci-row-head__name', { hasText: new RegExp(`^${row}$`, 'u') }),
       })
       .locator('.aci-source-family-blocks__members > li', { hasText: path });
-    await expect(group.locator('.aci-skill-row__tool')).toHaveText([...tools]);
+    expect(await recognitionTexts(group)).toEqual([...tools]);
   };
   await expectTools('voyage', '.github/skills/ship/SKILL.md', [
     'GitHub Copilot VS Code, CLI, Cloud agent',
@@ -189,13 +190,16 @@ test('opens a Copilot definition by its stable identity into the detail route', 
   await page.goto(host.origin);
   const link = page
     .locator('.aci-source-family-blocks__members > li', { hasText: '.github/skills/ship/SKILL.md' })
-    .locator('.aci-skill-row__owner a');
+    .locator('.aci-row-file a');
   await link.click();
   // The detail route is the one surface that serves authored content; the
   // list milestone only proves the row links to the file's own identity —
   // `/skills/<source-relative path>`, with no tool in it, because both
   // products reading a file read the same document.
   await expect(page).toHaveURL(
-    new URL('/skills/detail/repository/.github/skills/ship/SKILL.md', host.origin).href,
+    // The row the link was followed from rides in the query, because one file
+    // can be listed under two names and the detail's moves step the row rather
+    // than the file (`detail-route.ts` § originRowNameQuery).
+    new URL('/skills/detail/repository/.github/skills/ship/SKILL.md?name=voyage', host.origin).href,
   );
 });

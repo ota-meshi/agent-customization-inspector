@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { openRepositoryStatus } from './repository-status';
 
 /** A literal credential inside a declared table, used to prove it never lists. */
 const FIXTURE_SECRET = 'ghp_E2EAGENTS0000000000000000000000000000000';
@@ -133,7 +134,7 @@ test.describe('custom agents at the root agents directory', () => {
     // Three named rows in name order, then the one null-named row that closes
     // the list (data-model.md § Inventory unit).
     await expect(items).toHaveCount(4);
-    await expect(items.locator('.aci-agent-row__name')).toHaveText([
+    await expect(items.locator('.aci-row-head__name')).toHaveText([
       'docs_researcher',
       'pr_explorer',
       'reviewer',
@@ -205,15 +206,15 @@ test.describe('custom agents at the root agents directory', () => {
 
     // Path: the filter applies to each definition's own file path, and a row
     // with no matching definition is dropped rather than emptied.
-    await page.getByLabel('Path contains').fill('reviewer');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('reviewer');
     await expect(items).toHaveCount(1);
-    await expect(items.locator('.aci-agent-row__name')).toHaveText(['reviewer']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['reviewer']);
 
-    await page.getByLabel('Path contains').fill('no-such-agent');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('no-such-agent');
     await expect(items).toHaveCount(0);
     await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(4);
   });
 
@@ -221,9 +222,12 @@ test.describe('custom agents at the root agents directory', () => {
     await page.goto(host.origin);
     // A file-confined extraction failure keeps the generation publishable and
     // marks it partial; the scan status says how many files kept a diagnostic.
-    await expect(page.locator('.aci-scan-progress')).toContainText(
-      '1 file(s) kept a diagnostic of their own',
+    // The count of files that kept a diagnostic is the Repository Source's own
+    // state, which is a surface of its own now (FR-030).
+    await expect(await openRepositoryStatus(page)).toContainText(
+      '1 file kept a diagnostic of its own',
     );
+    await page.getByRole('link', { name: /Back to /u }).click();
     await page.getByRole('tab', { name: /Agent/u }).click();
     const unnamed = page
       .getByRole('tabpanel')

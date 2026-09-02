@@ -48,6 +48,11 @@ vi.mock('monaco-editor/esm/vs/editor/editor.api.js', () => ({
         updateOptions: (options: Record<string, unknown>) => {
           updatedOptions = { ...updatedOptions, ...options };
         },
+        // The viewer sizes its container to the shown text, so the handle
+        // subscribes to the editor's own content-size changes and reads its
+        // height (`monaco.ts` § SourceViewerHandle.mount).
+        getContentHeight: () => 0,
+        onDidContentSizeChange: () => ({ dispose: () => undefined }),
         dispose: () => {
           disposedEditors += 1;
         },

@@ -37,19 +37,27 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
+import LeavesIcon from '~icons/lucide/arrow-right';
+import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
+import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
+import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
   familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
   decodeDetailRoutePath,
+  detailNeighbours,
   type SourceSelector,
   fromJsonStringBody,
   selectedFileOf,
 } from '../../../../components/detail-route';
+import FileStrip from '../../../../components/inspection/FileStrip.vue';
+import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
+import { AuthoredName } from '../../../../components/authored-name';
 import { pluginCarrierDetailRoute } from '../../../../components/plugin-detail-route';
 import { pluginComparisonRouteFor } from '../../../../composables/plugin-comparison';
 import { nextTabForKey } from '../../../../components/tab-navigation';
@@ -68,6 +76,8 @@ import type { CustomizationKind, SupportedTool } from '../../../../../shared/ent
 import {
   CUSTOMIZATION_KIND_ORDER,
   CUSTOMIZATION_KIND_TEXT,
+  accessiblePresentationLabel,
+  fileIdentityKey,
   SUPPORTED_TOOL_ORDER,
   isSupportedTool,
   FILE_ENCODING_TEXT,
@@ -78,7 +88,7 @@ import {
   pathPresentationLabel,
   rendersNothingVisible,
 } from '../../../../../shared/entities';
-import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
+import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
 
 const sessionViewState = useSessionViewState();
 
@@ -137,10 +147,11 @@ const sessionSources = useSessionSources();
  */
 const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
 
-// The open file's Source facts (FR-007 "show its source"): the family name
-// where more than one family is inspected, and the consented directory where
-// the family holds more than one Source (`source-facts.ts`).
-const { sourceFamilyText, sourceRootText } = useOpenSourceFacts(
+// The open file's Source facts (FR-007 "show its source"): the consented
+// directory where the family holds more than one Source, and the family name
+// the crumbs lead with (`source-facts.ts`). The family is not restated beside
+// the carrier's own facts, because the first crumb is already it.
+const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
   () => snapshot.value?.sources ?? [],
   () => openSourceId.value,
 );
@@ -193,6 +204,41 @@ const kindText = CUSTOMIZATION_KIND_TEXT.plugin;
 
 /** The inventory link that lands on the plugins tab rather than the default. */
 const inventoryRoute = '/?kind=plugin';
+
+/**
+ * The rows either side of this one in the plugin list's own order, so the next
+ * plugin is one move rather than a return to the inventory (FR-007). A row's
+ * subject is the `plugin@marketplace` pair the product itself addresses.
+ */
+const listNeighbours = computed(() => {
+  const entries = snapshot.value?.plugins ?? [];
+  const rows = entries.map((entry) => ({
+    label: entry.name === null ? 'No plugin name resolved' : inlinePresentationLabel(entry.name),
+    route: pluginCarrierDetailRoute(
+      entry.carriers[0]?.sourceRelativePath ?? '',
+      entry.carriers[0]?.tool ?? 'codex',
+      entry.name,
+      null,
+      sessionSources.selectorOf(entry.carriers[0]?.sourceId ?? ''),
+    ),
+  }));
+  // The open row is this carrier *and* this name: a carrier declaring several
+  // plugins appears on several rows, so matching the carrier alone lands on
+  // whichever of them comes first and offers that row's neighbours instead of
+  // this one's.
+  return detailNeighbours(
+    rows,
+    entries.findIndex(
+      (entry) =>
+        (entry.name ?? '') === (openPluginName.value ?? '') &&
+        entry.carriers.some(
+          (carrier) =>
+            carrier.sourceRelativePath === carrierPath.value &&
+            carrier.sourceId === openSourceId.value,
+        ),
+    ),
+  );
+});
 
 /**
  * The inventory carriers the URL's path names, with the row each belongs to —
@@ -507,35 +553,68 @@ const pathIsSpelledOut = computed(
 );
 
 /**
- * The plugin name as the heading shows it: the authored spelling escaped for
- * presentation, with an authored empty name given its own note, because the
- * heading would otherwise draw nothing.
+ * The declared plugin name as this page needs it, or null for the row that
+ * resolves none, whose heading is the carrier's path instead
+ * ({@link AuthoredName}).
  */
-const pluginNameText = computed(() =>
-  openPluginName.value === null
-    ? null
-    : openPluginName.value === ''
-      ? '(empty name)'
-      : pathPresentationLabel(openPluginName.value),
+const pluginName = computed(() =>
+  openPluginName.value === null ? null : new AuthoredName(openPluginName.value),
 );
 
 /**
  * The products that recognize this carrier and the surfaces they recognize it
  * on, restated from the row so the page and the list agree (FR-007). Naming a
  * surface never claims that surface loaded the file (FR-009).
+ *
+ * Every mark but this page's own opens that product's reading of the same
+ * file: this kind's detail is addressed by `(carrier, product)`, so a file
+ * three products read is three pages, and naming all three while reaching none
+ * left the reader going back to the list for the other two. The mark is the
+ * link because that is where this kind's links are — the inventory row makes
+ * the same three, and the path beside them opens nothing (`PluginRow.vue`).
+ *
+ * This page's own product stays inert text, so which of the three is on screen
+ * is legible from the shape before the sentence below is read.
  */
-const toolsText = computed(() =>
-  [
-    ...new Set(
-      owner.value.map(
-        ({ carrier }) =>
-          `${SUPPORTED_TOOL_TEXT[carrier.tool]} (${carrier.surfaces
-            .map((surface) => VENDOR_SURFACE_TEXT[surface])
-            .join(', ')})`,
-      ),
-    ),
-  ].join(', '),
-);
+const recognitions = computed(() => {
+  const name = openPluginName.value;
+  const pathAccessibleText = accessiblePresentationLabel(carrierPath.value);
+  const byTool = new Map<
+    SupportedTool,
+    {
+      tool: SupportedTool;
+      surfaces: readonly VendorSurface[];
+      opens?: { route: RouteLocationRaw; accessibleText: string };
+    }
+  >();
+  for (const { carrier } of owner.value) {
+    byTool.set(
+      carrier.tool,
+      carrier.tool === openTool.value
+        ? { tool: carrier.tool, surfaces: carrier.surfaces }
+        : {
+            tool: carrier.tool,
+            surfaces: carrier.surfaces,
+            opens: {
+              route: pluginCarrierDetailRoute(
+                carrierPath.value,
+                carrier.tool,
+                name,
+                null,
+                openSource.value,
+              ),
+              accessibleText: sessionSources.qualifiedLinkName(
+                `${SUPPORTED_TOOL_TEXT[carrier.tool]} reading of ${pathAccessibleText}${
+                  name === null ? '' : `: ${new AuthoredName(name).accessibleText}`
+                }`,
+                openSourceId.value ?? '',
+              ),
+            },
+          },
+    );
+  }
+  return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => byTool.get(tool)!);
+});
 
 /**
  * Where this plugin's comparison opens, or null when the row holds no second
@@ -599,6 +678,68 @@ function pluginFileRoute(sourceRelativePath: string): RouteLocationRaw {
     openSource.value,
   );
 }
+
+/**
+ * The other carriers declaring the name this page is showing, so the next
+ * declaration of it is one move rather than a return to the list (FR-007).
+ * Empty on a name one carrier declares — the strip renders nothing
+ * (`FileStrip.vue`).
+ *
+ * One entry per file, with each product that reads the file beside it. The
+ * path opens nothing and the marks are the links, because this kind's detail
+ * is one product's own reading of a carrier: a catalog three products read is
+ * one file with three readings, and only a mark says which of them to open
+ * ({@link FileStripEntry.opens}, `PluginRow.vue`). Nothing here states an
+ * order or a winner: which declaration a session uses turns on runtime this
+ * tool does not observe (FR-009).
+ */
+const otherCarriers = computed<readonly FileStripEntry[]>(() => {
+  const name = pluginName.value;
+  if (name === null) {
+    return [];
+  }
+  const byFile = new Map<string, FileStripEntry>();
+  for (const carrier of row.value?.carriers ?? []) {
+    const key = fileIdentityKey(carrier.sourceId, carrier.sourceRelativePath);
+    const pathAccessibleText = accessiblePresentationLabel(carrier.sourceRelativePath);
+    const recognition = {
+      tool: carrier.tool,
+      surfaces: carrier.surfaces,
+      opens: {
+        route: pluginCarrierDetailRoute(
+          carrier.sourceRelativePath,
+          carrier.tool,
+          name.authored,
+          null,
+          sessionSources.selectorOf(carrier.sourceId),
+        ),
+        accessibleText: sessionSources.qualifiedLinkName(
+          `${SUPPORTED_TOOL_TEXT[carrier.tool]} reading of ${pathAccessibleText}: ${name.accessibleText}`,
+          carrier.sourceId,
+        ),
+      },
+    };
+    const existing = byFile.get(key);
+    byFile.set(
+      key,
+      existing === undefined
+        ? {
+            key,
+            sourceId: carrier.sourceId,
+            pathText: pathPresentationLabel(carrier.sourceRelativePath),
+            // The form is the file's, so the first carrier answers for it: a
+            // file is one form whichever product read it (`PluginRow.vue`).
+            carrierText: PLUGIN_CARRIER_TEXT[carrier.carrier],
+            recognitions: [recognition],
+          }
+        : { ...existing, recognitions: [...existing.recognitions, recognition] },
+    );
+  }
+  return otherCopiesOf(
+    [...byFile.values()],
+    fileIdentityKey(openSourceId.value ?? '', carrierPath.value),
+  );
+});
 
 /** What the open carrier is to the plugins it declares, for the caption line. */
 const carrierText = computed(() =>
@@ -998,10 +1139,9 @@ watch(
 );
 
 /** The heading's accessible name: the flattened label rule (WCAG 2.4.4). */
-const headingAccessibleText = computed(() =>
-  openPluginName.value === null
-    ? `${kindText}: ${inlinePresentationLabel(carrierPath.value)}`
-    : `${kindText}: ${inlinePresentationLabel(openPluginName.value)}`,
+const headingAccessibleText = computed(
+  () =>
+    `${kindText}: ${pluginName.value?.singleLineText ?? inlinePresentationLabel(carrierPath.value)}`,
 );
 
 /** What the live region announces as the request settles. */
@@ -1263,28 +1403,63 @@ watch(
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-plugin-detail">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the plugin
-         list rather than the kind order's default tab. -->
-    <p><NuxtLink :to="inventoryRoute">Back to the inventory</NuxtLink></p>
+  <div ref="pageRoot" class="aci-plugin-detail aci-route">
+    <!-- The way back and the rows either side of this one, drawn in the bar
+         with every other route's moves (`DetailNavigation.vue`). The kind is
+         URL state, so naming it is what makes the move land on the plugin list
+         rather than the kind order's default tab. -->
+    <DetailNavigation
+      :list-route="inventoryRoute"
+      :list-text="CUSTOMIZATION_KIND_TEXT.plugin"
+      :previous="listNeighbours.previous"
+      :next="listNeighbours.next"
+    />
+
+    <!-- Where the page sits, which is location rather than a way out: the
+         Source family, the kind, and this page's own subject. -->
+    <p class="aci-detail-crumbs">
+      <template v-if="sourceFamilyCrumbText !== null"
+        >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{ CUSTOMIZATION_KIND_TEXT.plugin }} <span>›</span>
+      <span class="aci-detail-crumbs__subject aci-path">{{ pluginName?.text ?? pathText }}</span>
+    </p>
 
     <div class="aci-plugin-detail__title">
-      <h2 ref="heading" tabindex="-1" :aria-label="headingAccessibleText">
+      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
         <!-- The record's own identity heads the page: the declared plugin name,
              or the carrier's path for the row that resolves none. Either is
              escaped for presentation, never a locator anything can open
              (FR-024, FR-030). -->
-        <span v-if="pluginNameText !== null" class="aci-authored-text">{{ pluginNameText }}</span>
+        <span v-if="pluginName !== null" :class="{ 'aci-authored-text': pluginName.isAuthored }">{{
+          pluginName.text
+        }}</span>
         <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
           pathText
         }}</span>
       </h2>
-      <OpenFileButton
-        v-if="carrierFile !== null"
-        :source-relative-path="carrierPath"
-        :source="openSource"
-      />
+      <!-- This plugin's comparison, at the end of the heading's own line: it
+           acts on the subject that heading names — the declared plugin across
+           the carriers that declare it — rather than on what the tabs below
+           select (FR-011). -->
+      <NuxtLink
+        v-if="compareRoute !== null"
+        class="aci-button aci-button--primary aci-plugin-detail__title-end"
+        :to="compareRoute"
+        >Compare this plugin <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
+      <!-- Why there is no comparison, rather than nothing at all: a missing
+           control reads the same as a forgotten one, and the reason is a fact
+           about the subject — this name resolves one carrier here, so there is
+           no pair to make (FR-011). The skill detail says the same of a name
+           with one copy. -->
+      <!-- Said only where there is a subject to say it of: on a link the scan
+           holds nothing at, and before the carrier has loaded, "one carrier
+           here" would be a claim about a name that resolves nothing. -->
+      <span
+        v-else-if="pluginName !== null && openDetail !== null"
+        class="aci-plugin-detail__title-end aci-muted"
+        >This name has one carrier here, so there is nothing to compare</span
+      >
     </div>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -1303,15 +1478,17 @@ watch(
            the one selected — which covers a carrier whose declarations could
            not be read, whose plugins are unknown rather than absent
            (FR-028). -->
-      <p v-if="carrierListed" class="aci-error">
-        This carrier declares nothing at this link in the current scan. It may have changed since
-        the link was made — its declarations may even be unreadable right now — and a rescan that
-        brings the plugin back will make it resolve again.
-      </p>
-      <p v-else class="aci-error">
-        The current scan holds no plugin carrier at this path. It may have been removed or renamed
-        since the link was made; a rescan that brings it back will make this link resolve again.
-      </p>
+      <SubjectUnavailable outcome="warning">
+        <template v-if="carrierListed">
+          This carrier declares nothing at this link in the current scan. It may have changed since
+          the link was made — its declarations may even be unreadable right now — and a rescan that
+          brings the plugin back will make it resolve again.
+        </template>
+        <template v-else>
+          The current scan holds no plugin carrier at this path. It may have been removed or renamed
+          since the link was made; a rescan that brings it back will make this link resolve again.
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <!-- A failed request: this route reports it, because this route made it —
@@ -1322,53 +1499,78 @@ watch(
          request in flight, so without this the panels below would wait on a
          file that is never coming. -->
     <template v-else-if="carrierFile === null || detailState === 'idle'">
-      <p class="aci-error">{{ detailFailure }}</p>
-      <p>
-        <button type="button" @click="retryOpen">Try again</button>
-      </p>
+      <SubjectUnavailable outcome="error">
+        {{ detailFailure }}
+        <template #exit>
+          <button type="button" @click="retryOpen">Try again</button>
+        </template>
+      </SubjectUnavailable>
     </template>
 
     <template v-else>
-      <dl class="aci-definition-grid">
-        <!-- Which family of place the carrier came from, and — where that
-             family holds more than one Source — which consented directory:
-             an escaped presentation of the admitted root, never a path
-             anything can open (FR-002, FR-007). -->
-        <template v-if="sourceFamilyText !== null">
-          <dt>Source</dt>
-          <dd>
-            {{ sourceFamilyText }}
-            <span
-              v-if="sourceRootText !== null"
-              class="aci-plugin-detail__root aci-authored-text"
-              >{{ sourceRootText }}</span
-            >
-          </dd>
-        </template>
-        <dt>Declared in</dt>
-        <dd class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{ pathText }}</dd>
-        <dt>Carrier</dt>
-        <dd>{{ carrierText }}</dd>
-        <dt>Recognized by</dt>
-        <dd>{{ toolsText }}</dd>
-        <!-- Which of those products this page answers for: the root, the
-             source form, and the manifest forms below are that product's
-             reading of this carrier. -->
-        <dt>Reading</dt>
-        <dd>{{ readingText }}</dd>
-        <dt>Encoding</dt>
-        <!-- What the read produced, and nothing else — the same facts an MCP
-             carrier's detail states, because both are files admitted so their
-             declarations can be published (FR-007). -->
-        <dd>
-          {{ FILE_ENCODING_TEXT[carrierFile.encoding]
+      <!-- What this carrier is, on one line: what it is to the plugin, how the
+           file read, and which products recognize it with the surfaces they
+           document reading it on. A line rather than a definition grid, which
+           in this product is the vocabulary of a state surface — the
+           Repository page, the scan status, the consented homes — rather than
+           of a file's own facts. Restated from the row so the page and the
+           list agree (FR-007); no product is quoted for what it would load,
+           because an admission is not an activation (FR-009). -->
+      <p class="aci-detail-attributes">
+        <!-- The carrier this page read, leading its own facts: the command at
+             the end of this line opens it, and with the path on a line below
+             the control pointed at something the line did not name. Inert
+             here, because this page is that file's own reading — the MCP and
+             hook declaration views link it, having a different subject. -->
+        Declared in
+        <span class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
+          pathText
+        }}</span>
+        <span class="aci-carrier-kind">{{ carrierText }}</span>
+        <span
+          >{{ FILE_ENCODING_TEXT[carrierFile.encoding]
           }}<template v-if="carrierFile.encoding !== 'unknown'">
             · {{ carrierFile.sizeBytes }} bytes</template
           ><template v-if="isReadableFile(carrierFile) && carrierFile.hadLeadingBom">
             · byte-order mark removed before decoding</template
-          >
-        </dd>
-      </dl>
+          ></span
+        >
+        <RecognitionMarks :recognitions="recognitions" named />
+        <!-- The command that opens the file, at the end of the line that
+             states that file's facts — the one place every kind puts it, so a
+             reader who found it on one detail finds it on the next. Outside
+             the heading so it does not join the heading's accessible name: a
+             reader hearing the page's landmarks should hear the file, not an
+             action on it (WCAG 2.4.6). -->
+        <span v-if="carrierFile !== null" class="aci-detail-attributes__end">
+          <OpenFileButton :source-relative-path="carrierPath" :source="openSource" />
+        </span>
+      </p>
+
+      <!-- Which directory the carrier was in, where its family holds more than
+           one: an escaped presentation of the admitted root, never a path
+           anything can open (FR-002). The family itself is the first crumb
+           above, so it is not repeated here. -->
+      <p v-if="sourceRootText !== null" class="aci-plugin-detail__root aci-note">
+        <span class="aci-authored-text">{{ sourceRootText }}</span>
+      </p>
+
+      <!-- Which of the recognizing products this page answers for: the root,
+           the source form, and the manifest forms below are that product's
+           reading of this carrier. A sentence rather than a fact on the line
+           above, because it is one. -->
+      <p class="aci-note">{{ readingText }}</p>
+
+      <!-- The other carriers declaring this name, one line whatever the count
+           (`FileStrip.vue`). The kinds whose row is a name all offer it — a
+           skill's copies, a server's declarations — and a plugin's carriers
+           are the same move: the next place this name is declared, without
+           returning to the list. -->
+      <FileStrip
+        :open-source-id="openSourceId"
+        :entries="otherCarriers"
+        label="Other carriers declaring this name"
+      />
 
       <ul v-if="diagnosticMessages.length > 0" class="aci-plugin-detail__diagnostics" role="list">
         <li v-for="diagnostic in diagnosticMessages" :key="diagnostic.key" class="aci-note">
@@ -1418,13 +1620,12 @@ watch(
              itself, before what it says about the plugin the reader
              followed. -->
         <section v-if="catalogJsonText !== ''">
-          <h3>Catalog</h3>
           <SourceViewer
+            panel-label="Catalog"
             :source-text="catalogJsonText"
             :source-relative-path="carrierPath"
             content-label="Catalog declarations of"
             content-language="json"
-            fit-content
           />
         </section>
 
@@ -1433,7 +1634,6 @@ watch(
              files tab reads, and a parsed key list beside it would be the same
              strict-JSON document twice. -->
         <section v-if="openDetail?.carrier === 'catalog'">
-          <h3>Declaration</h3>
           <p v-if="openDeclarations.length === 0" class="aci-note">
             This catalog publishes no entry to show: its entries could not be read, or the link
             names a plugin it does not offer.
@@ -1441,11 +1641,11 @@ watch(
           <SourceViewer
             v-for="declaration in openDeclarations"
             :key="declaration.key"
+            panel-label="Declaration"
             :source-text="declaration.jsonText"
             :source-relative-path="carrierPath"
             content-label="Plugin declaration of"
             content-language="json"
-            fit-content
           />
         </section>
 
@@ -1454,13 +1654,13 @@ watch(
              page of its own, and a plugin shown without it would be the
              catalog's statement about the plugin and nothing from the plugin. -->
         <section v-if="manifestFile !== null">
-          <h3>Manifest</h3>
           <div class="aci-plugin-detail__file-title">
             <p class="aci-path aci-authored-text">{{ manifestPathText }}</p>
             <OpenFileButton :source-relative-path="manifestFile" :source="openSource" />
           </div>
           <SourceViewer
             v-if="manifestSource !== null"
+            panel-label="Manifest"
             :source-text="manifestSource.sourceText"
             :source-relative-path="manifestSource.sourceRelativePath"
           />
@@ -1472,14 +1672,12 @@ watch(
                  way back on a panel the reader is not looking at. The file the
                  reader selected has its own request and its own outcome in the
                  files panel; neither reports the other's. -->
-            <template v-if="manifestError !== null">
-              <p class="aci-error">
-                This plugin's manifest could not be loaded. {{ manifestError }}
-              </p>
-              <p>
+            <SubjectUnavailable v-if="manifestError !== null" outcome="error">
+              This plugin's manifest could not be loaded. {{ manifestError }}
+              <template #exit>
                 <button type="button" @click="retryOpen">Try again</button>
-              </p>
-            </template>
+              </template>
+            </SubjectUnavailable>
             <p v-else class="aci-note">Loading this file…</p>
           </template>
           <p v-else class="aci-note">This file has no source text to show.</p>
@@ -1505,14 +1703,6 @@ watch(
         <p v-else-if="openDeclarations.length > 0" class="aci-note">
           These offerings name no directory below this file's own root, so this scan holds none of
           this plugin's own files.
-        </p>
-
-        <!-- The comparison this plugin's row can open: one name declared in
-             two files, which is what a repository keeping parallel catalogs
-             has. Placed under the declaration, because it is a step out of
-             this page rather than one of the plugin's own facts. -->
-        <p v-if="compareRoute !== null" class="aci-plugin-detail__compare">
-          <NuxtLink :to="compareRoute">Compare this plugin</NuxtLink>
         </p>
 
         <!-- Stated on the panel that shows the declaration, because that is
@@ -1581,10 +1771,12 @@ watch(
                    describe the plugin, and the reader keeps them while retrying
                    the one file that did not load. -->
               <template v-if="detailState === 'companion-failed'">
-                <p class="aci-error">{{ detailFailure }}</p>
-                <p>
-                  <button type="button" @click="retryOpen">Try again</button>
-                </p>
+                <SubjectUnavailable outcome="error">
+                  {{ detailFailure }}
+                  <template #exit>
+                    <button type="button" @click="retryOpen">Try again</button>
+                  </template>
+                </SubjectUnavailable>
               </template>
               <!-- The manifest is served through its own slot, so a failure
                    there settles nowhere this pane watches: a reader who
@@ -1592,12 +1784,12 @@ watch(
                    that has already ended, with the failure and the retry on a
                    panel they are not looking at (FR-028). -->
               <template v-else-if="openFilePath === manifestFile && manifestError !== null">
-                <p class="aci-error">
+                <SubjectUnavailable outcome="error">
                   This plugin's manifest could not be loaded. {{ manifestError }}
-                </p>
-                <p>
-                  <button type="button" @click="retryOpen">Try again</button>
-                </p>
+                  <template #exit>
+                    <button type="button" @click="retryOpen">Try again</button>
+                  </template>
+                </SubjectUnavailable>
               </template>
               <!-- A switch to another file of this plugin is still in flight:
                    the tree and the URL already name the new file, so the pane
@@ -1651,6 +1843,7 @@ watch(
                      the encoding line above is the whole story. -->
                 <SourceViewer
                   v-if="isReadableFile(openFile)"
+                  panel-label="Source"
                   :source-text="openFile.sourceText"
                   :source-relative-path="openFile.sourceRelativePath"
                 />
@@ -1665,20 +1858,40 @@ watch(
 </template>
 
 <style scoped>
-/* The heading and the open control share a line, as every detail page's do. */
+/* An escaped root label has no break opportunities of its own; without this
+   the shell scrolls sideways (WCAG 1.4.10). */
+.aci-plugin-detail__root {
+  overflow-wrap: anywhere;
+}
+
+/* The heading and the comparison share a line, as every detail page's do. */
 .aci-plugin-detail__title {
   align-items: baseline;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.5rem 0.75rem;
+}
+
+/* Whatever closes the heading's line: the comparison of the subject it names. */
+.aci-plugin-detail__title-end {
+  margin-inline-start: auto;
 }
 
 /* The file's path and the link that opens it on one line, wrapping together
    when the path is long. */
+/* The open file's path with the command that opens it, on one line: the
+   command acts on the file the line names, so a reader never has to work out
+   what it applies to. */
 .aci-plugin-detail__file-title {
-  align-items: baseline;
+  align-items: center;
+  column-gap: 0.75rem;
   display: flex;
   flex-wrap: wrap;
+  row-gap: 0.375rem;
+}
+
+.aci-plugin-detail__file-title > :last-child {
+  margin-inline-start: auto;
 }
 
 /* The detail route's bypass mechanism (WCAG 2.4.1): out of the way until it is
@@ -1707,21 +1920,21 @@ watch(
 
 /* The tree beside the file it opens, stacking on a narrow viewport — the
    arrangement the skill detail's files panel uses. */
+/* `start` because the tree takes the height its own rows ask for: stretched to
+   the column beside it, its frame ran on past its last row and drew an empty
+   box under the files it lists. */
 .aci-plugin-detail__layout {
+  align-items: start;
   display: grid;
-  gap: 0.75rem 1.5rem;
+  gap: 0.75rem 0.875rem;
   grid-template-columns: minmax(0, 1fr);
   padding-block-start: 0.75rem;
 }
 
 @media (min-width: 52rem) {
   .aci-plugin-detail__layout {
-    grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
   }
-}
-
-.aci-plugin-detail__compare {
-  margin: 0.75rem 0 0;
 }
 
 .aci-plugin-detail__main {

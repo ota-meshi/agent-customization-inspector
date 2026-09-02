@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { waitForInventory } from './repository-status';
 
 /** A literal credential in authored source, used to prove it never lists. */
 const FIXTURE_SECRET = 'ghp_E2EFIXTURE0000000000000000000000000000';
@@ -115,14 +116,21 @@ test('shows no near-miss path and no authored source text', async ({ page }) => 
 });
 
 test('presents the escaped root label distinctly from every item path', async ({ page }) => {
+  // The label is on the Repository Source's own surface and the paths are in
+  // the inventory, so the two are not even on one screen (FR-002, FR-030).
   await page.goto(host.origin);
-  const rootLabel = page.locator('.aci-inventory-page__display-root');
-  await expect(rootLabel).toHaveCount(1);
+  await waitForInventory(page);
+  const itemPaths = await page.locator('.aci-item .aci-path').allInnerTexts();
+  expect(itemPaths.length).toBeGreaterThan(0);
+  await expect(page.locator('.aci-repository-page__display-root')).toHaveCount(0);
 
-  // The root label lives in its own labelled field, above the list; no
-  // inventory row repeats it, so the two cannot be confused.
+  await page.goto(new URL('/repository', host.origin).href);
+  const rootLabel = page.locator('.aci-repository-page__display-root');
+  await expect(rootLabel).toHaveCount(1);
+  // The root label lives in its own labelled field; no inventory row repeats
+  // it, so the two cannot be confused.
   const labelText = (await rootLabel.innerText()).replace(/\s*\(.*\)$/u, '');
-  for (const path of await page.locator('.aci-item .aci-path').allInnerTexts()) {
+  for (const path of itemPaths) {
     expect(path).not.toContain(labelText);
     // Item paths are Source-relative and never absolute.
     expect(path.startsWith('/')).toBe(false);
@@ -131,8 +139,8 @@ test('presents the escaped root label distinctly from every item path', async ({
 });
 
 test('never offers the root label as something to open or navigate to', async ({ page }) => {
-  await page.goto(host.origin);
-  const label = page.locator('.aci-inventory-page__display-root');
+  await page.goto(new URL('/repository', host.origin).href);
+  const label = page.locator('.aci-repository-page__display-root');
   // Inert by construction: not a link, not a control, not focusable.
   await expect(label.locator('a, button, input')).toHaveCount(0);
   expect(await label.evaluate((element) => element.closest('a, button') !== null)).toBe(false);
@@ -141,18 +149,18 @@ test('never offers the root label as something to open or navigate to', async ({
 
 test('states how many supporting files a skill ships', async ({ page }) => {
   await page.goto(host.origin);
-  // `greet/` holds a sibling `README.md`; `deploy/` holds only its own
-  // `SKILL.md` and reports zero rather than omitting the line — the count is a
-  // fact about the skill, and "none" is part of it.
-  await expect(page.locator('.aci-item').first()).toContainText('1 supporting file(s)');
-  await expect(page.locator('.aci-item').last()).toContainText('0 supporting file(s)');
+  // `greet/` holds a sibling `README.md` and says so. `deploy/` holds only its
+  // own `SKILL.md` and says nothing: most skills ship none, so a drawn zero is
+  // one phrase repeated down the list to report an absence (`SkillRow.vue`).
+  await expect(page.locator('.aci-item').first()).toContainText('1 supporting file');
+  await expect(page.locator('.aci-item').last()).not.toContainText('supporting file');
 });
 
 test('shows each skill by the name authored in its own file', async ({ page }) => {
   await page.goto(host.origin);
   // `ship-it` lives in `.agents/skills/deploy/`, so a row showing it proves the
   // name came from the frontmatter rather than the directory segment (FR-007).
-  await expect(page.locator('.aci-skill-row__name')).toHaveText(['greet', 'ship-it']);
+  await expect(page.locator('.aci-row-head__name')).toHaveText(['greet', 'ship-it']);
   // Each row names the files declaring it; the name is the row's unit, and the
   // path says which file authored it.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
@@ -187,7 +195,7 @@ test('shows one row for a name two files declare, with each product\u2019s rule'
       { timeout: 1_000 },
     );
   }).toPass();
-  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u);
   // The row states what each product documents and never orders the two:
   // Codex keeps both and documents no precedence among the scopes, while
   // Copilot — which also recognizes both files — has no single documented
@@ -216,14 +224,16 @@ test('names a skill that declares no name by its skill directory', async ({ page
       timeout: 1_000,
     });
   }).toPass();
-  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
-  await expect(row.locator('.aci-skill-row__name')).toHaveText('nameless');
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u);
+  await expect(row.locator('.aci-row-head__name')).toHaveText('nameless');
 });
 
 test('keeps two names that both draw nothing apart', async ({ page }) => {
   // A declared name of nothing but whitespace is a name, and two skills whose
-  // names differ only in how much of it they hold are two rows. Rendering the
-  // note in place of the name would show them as one row twice (FR-025).
+  // names differ only in how much of it they hold are two rows. Each is
+  // spelled out in full, so the two read as two on the screen: one shared
+  // phrase in place of both would show them as one row twice, and so would
+  // keeping the whitespace itself, which draws nothing either way (FR-025).
   await mkdir(join(fixture, '.agents/skills/blank-one'), { recursive: true });
   await mkdir(join(fixture, '.agents/skills/blank-two'), { recursive: true });
   await writeFile(
@@ -243,19 +253,20 @@ test('keeps two names that both draw nothing apart', async ({ page }) => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
     await expect(rows).toHaveCount(2, { timeout: 1_000 });
   }).toPass();
-  // `textContent`, not `toHaveText`: the matcher normalizes whitespace, which
-  // is exactly the difference under test.
-  const names = rows.locator('.aci-skill-row__name .aci-authored-text');
-  expect(await names.nth(0).textContent()).toBe(' ');
-  expect(await names.nth(1).textContent()).toBe('  ');
-  await expect(rows.first()).toContainText('(name with no visible characters)');
+  const names = rows.locator('.aci-row-head__name');
+  await expect(names.nth(0)).toHaveText('\\u0020');
+  await expect(names.nth(1)).toHaveText('\\u0020\\u0020');
+  // The spelled form is this product's characters, so it takes the muted
+  // treatment rather than the authored one.
+  await expect(names.nth(0)).toHaveClass(/aci-muted/u);
+  await expect(names.nth(0)).not.toHaveClass(/aci-authored-text/u);
 });
 
 test('filters the list by tool and Source-relative path', async ({ page }) => {
   await page.goto(host.origin);
   await expect(page.locator('.aci-item')).toHaveCount(2);
 
-  await page.getByLabel('Path contains').fill('greet');
+  await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('greet');
   await expect(page.locator('.aci-item')).toHaveCount(1);
   await expect(page.locator('.aci-inventory-filters')).toContainText('Showing 1 of 2');
 
@@ -289,7 +300,7 @@ test('shows the filtered empty state without claiming the repository is empty', 
   page,
 }) => {
   await page.goto(host.origin);
-  await page.getByLabel('Path contains').fill('no-such-path');
+  await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('no-such-path');
   await expect(page.locator('.aci-item')).toHaveCount(0);
   // The empty state names the kind in view, because that is what has no rows —
   // and the "nothing was recognized" finding is about the repository, which is
@@ -300,7 +311,10 @@ test('shows the filtered empty state without claiming the repository is empty', 
 
 test('rescans on demand and keeps the status tied to that request', async ({ page }) => {
   await page.goto(host.origin);
-  await expect(page.locator('.aci-scan-progress')).toContainText('Ready');
+  // The status is the rail's on this page and the Repository surface's in full
+  // (FR-030); both commands are in the bar, so a rescan and the refresh that
+  // adopts its result are reachable without leaving the list.
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Ready');
 
   await page.getByRole('button', { name: 'Rescan repository' }).click();
   // The command's own status is adopted immediately; the committed result
@@ -309,10 +323,12 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
   // still running shows `scanning`, and nothing would ever fetch again.
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(page.locator('.aci-scan-progress')).toContainText('Ready', { timeout: 1_000 });
+    await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Ready', {
+      timeout: 1_000,
+    });
   }).toPass();
   await expect(page.locator('.aci-item')).toHaveCount(2);
-  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u);
 });
 
 test('links each definition by its stable tool-and-path identity', async ({ page }) => {
@@ -320,18 +336,21 @@ test('links each definition by its stable tool-and-path identity', async ({ page
   const links = page.locator('.aci-source-family-blocks__members > li a');
   await expect(links).toHaveCount(2);
 
-  // The link carries the Source-relative path and nothing else — the file's
-  // own identity, stable across rescans and same-root server launches, and
-  // its identity on the wire too, so no per-generation file ID exists to leak
-  // into a URL. Two products reading one file share the link, because they
-  // read the same document.
+  // The link's path carries the Source-relative path and nothing else — the
+  // file's own identity, stable across rescans and same-root server launches,
+  // and its identity on the wire too, so no per-generation file ID exists to
+  // leak into a URL. Two products reading one file share the link, because
+  // they read the same document. The row the link was followed from rides in
+  // the query, because one file can be listed under two names and the detail's
+  // moves step the row rather than the file (`detail-route.ts`
+  // § originRowNameQuery).
   const hrefs = await links.evaluateAll((elements) =>
     elements.map((element) => element.getAttribute('href') ?? ''),
   );
   expect(hrefs.toSorted()).toEqual(
     [
-      '/skills/detail/repository/.agents/skills/greet/SKILL.md',
-      '/skills/detail/repository/.agents/skills/deploy/SKILL.md',
+      '/skills/detail/repository/.agents/skills/greet/SKILL.md?name=greet',
+      '/skills/detail/repository/.agents/skills/deploy/SKILL.md?name=ship-it',
     ].toSorted(),
   );
   // The row itself offers nothing else to act on here: opening the file is
@@ -347,24 +366,25 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
   await expect(page.locator('h1')).toBeFocused();
 
   // Every control is a native form element, so it is reachable by Tab and
-  // has a programmatic name (contracts/accessibility-acceptance.md).
-  for (const id of ['aci-inventory-filters-tool', 'aci-inventory-filters-path']) {
-    await expect(page.locator(`label[for="${id}"]`)).toHaveCount(1);
-  }
+  // has a programmatic name (contracts/accessibility-acceptance.md). The
+  // search is the bar's and applies on every route, so it is labelled there
+  // rather than in the rail beside the tool filter (FR-006).
+  await expect(page.locator('label[for="aci-inventory-filters-tool"]')).toHaveCount(1);
+  await expect(page.locator('label[for="aci-app-search"]')).toHaveCount(1);
   // The Source control is not among them here: this launch inspects the
   // selected repository alone, so the filter has one family to offer and is not
   // rendered at all. Where two are carried it appears and is reached the same
   // way (`global-codex-admission.spec.ts`).
   await expect(page.locator('label[for="aci-inventory-filters-source"]')).toHaveCount(0);
-  // Kind moved out of the filter form into a tab strip, which carries its own
+  // Kind moved out of the filter form into the rail, which carries its own
   // accessible name instead of a `<label>`.
-  await expect(page.getByRole('tablist', { name: 'Customization kind' })).toHaveCount(1);
+  await expect(page.getByRole('tablist', { name: 'Customization files' })).toHaveCount(1);
   // Tab really walks the page — `.focus()` would prove only that an element can
   // hold focus, not that a keyboard user ever arrives at it. Collect what the
   // walk reaches rather than asserting one fixed order, so the claim survives a
   // layout change without weakening.
   const reached: string[] = [];
-  for (let step = 0; step < 12; step += 1) {
+  for (let step = 0; step < 20; step += 1) {
     await page.keyboard.press('Tab');
     reached.push(
       await page.evaluate(() => {
@@ -379,7 +399,7 @@ test('operates every inventory control from the keyboard', async ({ page }) => {
     );
   }
   expect(reached).toContain('#aci-inventory-filters-tool');
-  expect(reached).toContain('#aci-inventory-filters-path');
+  expect(reached).toContain('#aci-app-search');
   // The rescan control too: `.focus()` below proves Enter activates it, which
   // says nothing about a keyboard user ever arriving there.
   expect(reached.some((stop) => stop.includes('Rescan repository'))).toBe(true);

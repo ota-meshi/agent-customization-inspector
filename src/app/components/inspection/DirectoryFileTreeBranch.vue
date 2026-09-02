@@ -10,6 +10,7 @@
 import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
+import FolderIcon from '~icons/lucide/folder';
 import type { DirectoryTreeNode } from './directory-file-tree-nodes';
 
 const props = defineProps<{
@@ -72,19 +73,18 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
              collapses — the visible segment is hidden from the name
              computation and the spelled-out twin speaks instead. `aria-label`
              cannot do it here: a generic span exposes none. -->
-        <template v-if="node.accessibleLabel !== node.label">
-          <span
-            class="aci-directory-file-tree-branch__directory aci-authored-text"
-            aria-hidden="true"
-            >{{ node.label }}/</span
-          >
-          <span class="aci-directory-file-tree-branch__directory-spelling"
-            >{{ node.accessibleLabel }}/</span
-          >
-        </template>
-        <span v-else class="aci-directory-file-tree-branch__directory aci-authored-text"
-          >{{ node.label }}/</span
-        >
+        <p class="aci-directory-file-tree-branch__directory">
+          <FolderIcon class="aci-directory-file-tree-branch__directory-icon" aria-hidden="true" />
+          <template v-if="node.accessibleLabel !== node.label">
+            <span class="aci-authored-text" aria-hidden="true">{{ node.label }}/</span>
+            <span class="aci-visually-hidden">{{ node.accessibleLabel }}/</span>
+          </template>
+          <span v-else class="aci-authored-text">{{ node.label }}/</span>
+          <!-- How many files are under it, at the row's end. The directory is
+               not something to open, so what its row can say is what it
+               holds. -->
+          <span class="aci-directory-file-tree-branch__directory-count">{{ node.fileCount }}</span>
+        </p>
         <DirectoryFileTreeBranch
           :route-for="routeFor"
           :nodes="node.children"
@@ -98,19 +98,6 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 </template>
 
 <style scoped>
-/* The spelled-out twin is for the accessibility tree alone: visually the
-   authored segment above already shows, so this one is clipped out of the
-   visual layout without leaving the accessible one (the display:none family
-   would remove both). */
-.aci-directory-file-tree-branch__directory-spelling {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .aci-directory-file-tree-branch {
   list-style: none;
   margin: 0;
@@ -119,15 +106,18 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 
 /* Rows are full-width targets rather than bare text: a file browser is a list
    of things to click, and a click that only lands on the glyphs is a smaller
-   target than the row it appears to be (WCAG 2.5.8). */
+   target than the row it appears to be (WCAG 2.5.8). The transparent leading
+   edge is what the open row fills in, so no row moves when the selection
+   does. */
 .aci-directory-file-tree-branch__file,
 .aci-directory-file-tree-branch__directory {
-  border-radius: 4px;
+  border-inline-start: 2px solid transparent;
   display: block;
   font-family: ui-monospace, monospace;
-  font-size: 0.9rem;
+  font-size: 0.71875rem;
+  margin: 0;
   overflow-wrap: anywhere;
-  padding: 0.15rem 0.4rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.5rem;
   /* An authored name is its own bidi context, like `.aci-authored-text`: a
      directional control in a filename renders inside its own row and reorders
      nothing beside it. */
@@ -138,7 +128,21 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 }
 
 .aci-directory-file-tree-branch__directory {
+  align-items: center;
   color: var(--aci-muted);
+  display: flex;
+  gap: 0.375rem;
+}
+
+.aci-directory-file-tree-branch__directory-icon {
+  block-size: 0.6875rem;
+  flex: none;
+  inline-size: 0.6875rem;
+}
+
+.aci-directory-file-tree-branch__directory-count {
+  font-variant-numeric: tabular-nums;
+  margin-inline-start: auto;
 }
 
 /* No underline at rest, which is the convention for a list of navigation
@@ -150,15 +154,18 @@ const indentStep = computed(() => ((props.depth ?? 0) < MAX_INDENTED_DEPTH ? '0.
 }
 
 .aci-directory-file-tree-branch__file:hover {
-  background: color-mix(in srgb, CanvasText 8%, Canvas);
+  border-inline-start-color: var(--aci-line);
   text-decoration: underline;
 }
 
-/* The open file is marked by background and weight as well as by
-   `aria-current`, so the state is not carried by colour alone (WCAG 1.4.1) and
-   survives a forced-colours rendering. */
+/* The open file is marked the way the rail marks the list in view: a leading
+   edge in the accent with a soft ground behind the row. One form for one
+   meaning, so a reader who has used the rail already knows what it says
+   (Constitution II). The weight and `aria-current` carry it as well, so the
+   state does not rest on colour (WCAG 1.4.1) and survives forced colours. */
 .aci-directory-file-tree-branch__file[aria-current='page'] {
-  background: color-mix(in srgb, CanvasText 14%, Canvas);
+  background: var(--aci-accent-soft);
+  border-inline-start-color: var(--aci-accent);
   font-weight: 600;
 }
 

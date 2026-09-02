@@ -86,6 +86,20 @@ export class SkillTreeDirectoryNode {
     this.label = pathPresentationLabel(name);
     this.accessibleLabel = accessiblePresentationLabel(name);
   }
+
+  /**
+   * How many files stand under this directory, at any depth. Derived from
+   * {@link children} where the row is drawn rather than stored beside them:
+   * one fact, and a stored count could disagree with the nodes it counts
+   * (AGENTS.md § Implementation simplicity policy).
+   */
+  public get fileCount(): number {
+    let count = 0;
+    for (const child of this.children) {
+      count += child.kind === 'file' ? 1 : child.fileCount;
+    }
+    return count;
+  }
 }
 
 /** One node of the tree, discriminated by `kind`: a file to open, or a directory that holds nodes. */

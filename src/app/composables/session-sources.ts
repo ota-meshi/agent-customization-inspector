@@ -12,6 +12,7 @@ import { computed, type ComputedRef } from 'vue';
 import { useSessionViewState } from './session-view-state';
 import { sourceIdOf, sourceSelectorOf, type SourceSelector } from '../components/detail-route';
 import {
+  fileSourceHomeOf,
   fileSourceRootOf,
   sourceFamilyNameOf,
   fileSourceQualifierOf,
@@ -27,8 +28,9 @@ export interface SourceFamilyBlock<Member> {
   /** Which family this block is; see `api-text.ts` § SOURCE_KIND_TEXT. */
   readonly kind: SourceKind;
   /**
-   * What the block's heading says, or null where the session holds one Source
-   * and every block would repeat the page's only answer
+   * What the block's heading says, or null where it would head a group of one:
+   * a grouping that produced a single family has nothing to separate, and a
+   * session holding one Source has nothing to separate anywhere
    * (`source-name.ts` § sourceFamilyNameOf).
    */
   readonly familyText: string | null;
@@ -102,6 +104,14 @@ export class SessionSources {
   }
 
   /**
+   * The consented home one file came from, by that member's own name, or null
+   * where naming it distinguishes nothing (`source-name.ts` § fileSourceHomeOf).
+   */
+  public homeNameOf(sourceId: string): string | null {
+    return fileSourceHomeOf(this.sources.value, sourceId);
+  }
+
+  /**
    * The accessible Source qualifier of one file's link name, or null where
    * its family holds one Source (`source-name.ts` § fileSourceQualifierOf).
    */
@@ -140,6 +150,33 @@ export class SessionSources {
    * the session holds more than one Source
    * ({@link SessionSources.familyNameOf}).
    */
+  /**
+   * Whether one grouping's blocks carry family headings: only where they cover
+   * more than one family, because a heading over the single family a row has
+   * groups nothing.
+   *
+   * Read in two places, and it has to be one answer in both: the blocks
+   * component draws the heading, and the owning row puts its comparison entry
+   * on its own name line exactly when no heading exists to close instead
+   * (`SourceFamilyBlocks.vue`). Read apart, the heading went and the entry went
+   * with it — sixteen comparison links vanished the moment a personal setup was
+   * consented.
+   *
+   * `entryKinds` are the families a row can still offer a comparison for after
+   * a narrowing emptied their members: the blocks component renders those too,
+   * so they count towards the heading exactly as members do.
+   */
+  public familyLineShownFor<Member extends { readonly sourceId: string }>(
+    members: readonly Member[],
+    entryKinds: readonly SourceKind[] = [],
+  ): boolean {
+    const kinds = new Set(members.map((member) => this.familyKindOf(member.sourceId)));
+    for (const kind of entryKinds) {
+      kinds.add(kind);
+    }
+    return kinds.size > 1;
+  }
+
   public familyBlocksOf<Member extends { readonly sourceId: string }>(
     members: readonly Member[],
   ): readonly SourceFamilyBlock<Member>[] {
@@ -157,7 +194,14 @@ export class SessionSources {
       [...byFamily]
         .map(([kind, blockMembers]) => ({
           kind,
-          familyText: this.familyNameOf(kind),
+          // A heading only where this grouping holds two families. The session
+          // holding two is not enough: most rows are one family's whatever the
+          // session inspects, and heading each of them named a group of one —
+          // 15 of the 16 skill rows in the all-kinds fixture with the personal
+          // setup enabled. A row of one family then reads as it does with no
+          // personal setup at all, and which home a file came from is on the
+          // file's own line either way (`SourceHomeBadge.vue`).
+          familyText: byFamily.size > 1 ? this.familyNameOf(kind) : null,
           members: blockMembers,
         }))
         // The published family order — the Repository family first — whatever

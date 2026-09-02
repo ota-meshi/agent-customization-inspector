@@ -142,7 +142,9 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
     // to the ChatGPT desktop app and marketplace management to the Codex CLI,
     // and names the IDE extension nowhere
     // (contracts/vendors/openai-codex.md § Surface boundary).
-    await expect(page.locator('body')).toContainText('OpenAI Codex (Desktop app and plugin CLI)');
+    const attributes = page.locator('.aci-plugin-detail .aci-detail-attributes');
+    await expect(attributes).toContainText('OpenAI Codex');
+    await expect(attributes).toContainText('Desktop app and plugin CLI');
 
     // The address alone opens what the plugin declares, exactly as the skill
     // detail opens on what its `SKILL.md` declares — the files it ships are the
@@ -155,7 +157,10 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
     // The entry the link named, and the catalog's own declarations beside it.
     const declaration = page.locator('section', { hasText: 'Declaration' }).first();
     await expect(declaration).toContainText('./plugins/secret-keeper');
-    await expect(page.getByRole('heading', { name: 'Catalog', exact: true })).toBeVisible();
+    // The name of what the viewer holds is the band of the panel holding it,
+    // with the format the text is in at the band's end
+    // (`SourceViewer.vue` § panelLabel).
+    await expect(page.getByRole('heading', { name: 'Catalog JSON', exact: true })).toBeVisible();
 
     // And the plugin's own declaration of itself, read on this page rather than
     // linked to: it is one of the files the plugin ships, and none of them is a
@@ -174,8 +179,11 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
 
     // A page about one plugin never serves the catalog's own bytes: every other
     // plugin it lists would be on a screen about one of them (FR-007).
-    await expect(page.locator('body')).not.toContainText('broken-plugin');
-    await expect(page.locator('body')).not.toContainText('remote-helper');
+    // The page's own content rather than the whole document: the bar's moves
+    // name the neighbouring rows, and a catalog's other offerings are exactly
+    // what sits beside this one in the list (`DetailNavigation.vue`).
+    await expect(page.locator('.aci-plugin-detail')).not.toContainText('broken-plugin');
+    await expect(page.locator('.aci-plugin-detail')).not.toContainText('remote-helper');
   });
 
   test('lists what the plugin ships on the files tab', async ({ page }) => {
@@ -328,7 +336,7 @@ test.describe('the complete literal Codex plugin carrier detail', () => {
     await openPlugin(page, 'secret-keeper');
     await expect(page.locator('body')).toContainText(FIXTURE_CREDENTIAL);
 
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     // The authored content leaves with the page: the inventory states what was
     // found and where, never what a declaration says (FR-027).
     await expect(page.locator('body')).not.toContainText(FIXTURE_CREDENTIAL);

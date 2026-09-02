@@ -6,10 +6,12 @@
 // are built from has to live where both the component and the route that
 // builds it can import it.
 //
-// The side is already presentation: every string here is the compare route's
+// The side is already presentation: every value here is the compare route's
 // own rendering of a published fact — the carrier's caption, the file's
-// facts, the products that recognize it, and the document the diff mounts —
+// facts, the recognitions that read it, and the document the diff mounts —
 // so the component draws them and decides nothing.
+
+import type { PluginCarrierDto } from '../../../shared/api-types';
 
 /** One compared side: the carrier, and what the row says about it. */
 export interface PluginComparisonSide {
@@ -22,11 +24,11 @@ export interface PluginComparisonSide {
   /** The file's own facts: Source, kind, and read outcome. */
   readonly factsText: string;
   /**
-   * The products that recognize this carrier, with the surfaces each
-   * admission rests on, on one line. Empty string when the row lists none,
-   * which the component drops rather than drawing an empty line.
+   * The products that recognize this carrier, each with the surfaces its
+   * admission rests on, drawn by their own marks. Empty when the row lists
+   * none, which the component drops rather than drawing an empty line.
    */
-  readonly recognitionText: string;
+  readonly recognitions: readonly PluginCarrierDto[];
   /**
    * Which product's reading this side is, when the file has more than one
    * recognizing it, and the empty string when the question does not arise —

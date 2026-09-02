@@ -117,7 +117,7 @@ test.describe('Claude plugins declared by placement and by a repository catalog'
 
     // A placement-loaded plugin is addressed `<folder>@skills-dir` — the
     // vendor's own spelling — and a catalog offering `<plugin>@<marketplace>`.
-    await expect(items.locator('.aci-plugin-row__name')).toContainText([
+    await expect(items.locator('.aci-row-head__name')).toContainText([
       'quality-review@inspector-examples',
       'release-notes@skills-dir',
       'remote-helper@inspector-examples',
@@ -129,22 +129,27 @@ test.describe('Claude plugins declared by placement and by a repository catalog'
     await expect(placed.locator('.aci-path')).toHaveText([
       '.claude/skills/release-notes/.claude-plugin/plugin.json',
     ]);
-    await expect(placed.locator('.aci-plugin-row__carrier')).toHaveText(['Manifest']);
-    await expect(placed.locator('.aci-plugin-row__tool').first()).toContainText('Claude Code');
+    await expect(placed.locator('.aci-carrier-kind')).toHaveText(['Manifest']);
+    // The path is the link, as it is in every other kind's list, and it names
+    // the file and the plugin rather than a product (`PluginRow.vue`).
+    await expect(placed.locator('a.aci-path')).toHaveAttribute(
+      'aria-label',
+      '.claude/skills/release-notes/.claude-plugin/plugin.json: release-notes@skills-dir',
+    );
     // The plugin is its root, so the count is that whole directory: the
     // manifest that made the folder a plugin, the skill it bundles, and the
     // nested manifest no rule admits — the same files its own page lists.
-    await expect(placed).toContainText('3 file(s) in this plugin');
+    await expect(placed).toContainText('Ships 3 files');
 
     // The catalog's own offering, carried by the catalog.
     const offered = items.filter({ hasText: 'quality-review@inspector-examples' });
-    await expect(offered.locator('.aci-plugin-row__carrier').first()).toHaveText('Catalog entry');
-    await expect(offered).toContainText('2 file(s) in this plugin');
+    await expect(offered.locator('.aci-carrier-kind').first()).toHaveText('Catalog entry');
+    await expect(offered).toContainText('Ships 2 files');
 
     // A source outside the repository: the offering stands and ships nothing
     // here, which the absence of the count states.
     const remote = items.filter({ hasText: 'remote-helper@inspector-examples' });
-    await expect(remote).not.toContainText('file(s) in this plugin');
+    await expect(remote).not.toContainText('file in this plugin');
   });
 
   test('lists no plugin the vendor does not load by placement', async ({ page }) => {

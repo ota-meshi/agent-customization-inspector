@@ -9,12 +9,17 @@
 // that matters, because an authored entry name must not be able to smuggle a
 // separator or a query into the URL.
 //
-// A detail whose subject is not the file alone carries a second coordinate in
-// the query. The file a reader selected inside a directory-shaped
-// customization is one of them and lives here, because two kinds share it; a
-// coordinate one kind has keeps its own module and builds on these — an MCP
-// declaration's route names the declared server (`mcp-detail-route.ts`), and a
-// plugin carrier's names the row (`plugin-detail-route.ts`).
+// A detail carries a second coordinate in the query where the address alone
+// does not settle what the reader is looking at. Two live here, because
+// several kinds share each: the file a reader selected inside a
+// directory-shaped customization, and the inventory row a link was followed
+// from, for the kinds whose row unit is a name and whose one file can
+// therefore be listed under two. A coordinate one kind has keeps its own
+// module and builds on these — an MCP declaration's route names the declared
+// server (`mcp-detail-route.ts`), and a plugin carrier's names the row
+// (`plugin-detail-route.ts`).
+import type { RouteLocationRaw } from 'vue-router';
+
 import { fileIdentityKey } from '../../shared/entities';
 import type { CustomizationKind } from '../../shared/entities';
 import { GLOBAL_MEMBER_ORDER, SOURCE_SELECTOR_TEXT } from '../../shared/api-text';
@@ -227,6 +232,49 @@ export function detailRoute(
 }
 
 /**
+ * One row a detail page can move to without returning to the inventory: what
+ * the control calls it, and where it goes (FR-007).
+ *
+ * The label is the row's own subject — the name a reader looked the row up by
+ * — because that is what the move is offering to open. It is presentation
+ * text, so a caller passes it through the label rules the row itself uses
+ * (`entities.ts` § inlinePresentationLabel).
+ */
+export interface DetailNeighbour {
+  /** The row's own subject, as the control names it. */
+  readonly label: string;
+  /**
+   * That row's own detail route, addressed exactly as the inventory links it.
+   * A location rather than a path string, because a kind whose detail is one
+   * product's reading carries that product in the query (`plugin-detail-route.ts`).
+   */
+  readonly route: RouteLocationRaw;
+}
+
+/**
+ * The rows either side of the open one, in the list's published order.
+ *
+ * The order is the list's rather than this module's: a reader moving from a
+ * detail is continuing down the list they came from, so the neighbours are
+ * whatever that list showed next. A caller therefore passes its kind's rows
+ * already ordered and says which one is open; a row the current generation no
+ * longer publishes has no position, and `openIndex` below zero yields no move
+ * in either direction rather than the list's ends.
+ */
+export function detailNeighbours(
+  rows: readonly DetailNeighbour[],
+  openIndex: number,
+): { readonly previous: DetailNeighbour | null; readonly next: DetailNeighbour | null } {
+  if (openIndex < 0) {
+    return { previous: null, next: null };
+  }
+  return {
+    previous: rows[openIndex - 1] ?? null,
+    next: rows[openIndex + 1] ?? null,
+  };
+}
+
+/**
  * The stable route token for one published Source: the repository's own token,
  * or the tool whose consented home the Source is.
  *
@@ -370,6 +418,43 @@ export function selectedFileQuery(
  * single file.
  */
 export function selectedFileOf(parameter: unknown): string | null {
+  return typeof parameter === 'string' ? fromJsonStringBody(parameter) : null;
+}
+
+/**
+ * The `name` query a link from an inventory row carries: which row the reader
+ * followed, for the kinds whose row unit is a name.
+ *
+ * One file can be listed under more than one name — FR-007 has Claude Code
+ * invoking a skill's directory while Copilot invokes the authored `name`, and
+ * the same file is then a definition of both rows (spec.md § Clarifications).
+ * The page stays the file's, addressed by `(source, path)`; this says nothing
+ * about what the page shows and only records where it was opened from, so the
+ * moves to the previous and next row step the list the reader was actually
+ * reading rather than whichever of that file's rows the snapshot lists first.
+ *
+ * A second coordinate in the query rather than a second address, exactly as
+ * {@link selectedFileQuery} is: two rows opening one file must not become two
+ * pages, because they are one file with one set of bytes.
+ *
+ * No query for a row that has no name — the one row closing the custom-agent
+ * list, whose files publish none (api-types.ts § AgentInventoryEntryDto.name).
+ * A name is what this coordinate carries, so a nameless row states nothing and
+ * the page falls back to the first row holding the file, which is what every
+ * link did before this coordinate existed. A kept link that names a row the
+ * current generation no longer publishes falls back the same way.
+ */
+export function originRowNameQuery(name: string | null): Readonly<Record<string, string>> {
+  return name === null ? {} : { name: toJsonStringBody(name) };
+}
+
+/**
+ * The row name a detail route's `name` query states, or null when it states
+ * none — an absent query, and the repeated one the router hands over as an
+ * array, which no link this product builds produces and which names no single
+ * row.
+ */
+export function originRowNameOf(parameter: unknown): string | null {
   return typeof parameter === 'string' ? fromJsonStringBody(parameter) : null;
 }
 

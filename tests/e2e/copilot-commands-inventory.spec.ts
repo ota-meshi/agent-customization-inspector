@@ -71,11 +71,7 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // their file names, because Copilot derives the command from the filename
     // and documents no namespace.
     await page.getByLabel('Tool').selectOption('copilot');
-    await expect(items.locator('.aci-prompt-row__name')).toHaveText([
-      'broken',
-      'deploy',
-      'release',
-    ]);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['broken', 'deploy', 'release']);
     for (const path of await items.locator('.aci-path').allInnerTexts()) {
       expect(path.split('/')).toHaveLength(3);
     }
@@ -95,7 +91,7 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // reads of one path are two recognitions of it, not a collision (FR-004).
     const shared = items.filter({ hasText: 'deploy' }).first();
     await expect(shared.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
-    await expect(shared.locator('.aci-prompt-row__tool')).toHaveCount(2);
+    await expect(shared.locator('.aci-recognition-marks__one')).toHaveCount(2);
     await expect(shared.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
     await expect(shared.locator('.aci-source-family-blocks__members')).toContainText(
       'GitHub Copilot',
@@ -106,7 +102,7 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // The nested command keeps Claude's recognition and gains no Copilot one.
     const nested = items.filter({ hasText: 'frontend:component' });
     await expect(nested.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
-    await expect(nested.locator('.aci-prompt-row__tool')).toHaveCount(1);
+    await expect(nested.locator('.aci-recognition-marks__one')).toHaveCount(1);
     await expect(nested.locator('.aci-source-family-blocks__members')).toContainText('Claude Code');
   });
 
@@ -120,7 +116,7 @@ test.describe('the Copilot CLI reading of root command files', () => {
     // definition of the file references (FR-028) — so the row's one item for
     // the file states it once, beside both products.
     await expect(broken.locator('.aci-source-family-blocks__members > li')).toHaveCount(1);
-    await expect(broken.locator('.aci-prompt-row__tool')).toHaveCount(2);
+    await expect(broken.locator('.aci-recognition-marks__one')).toHaveCount(2);
     await expect(broken).toContainText('This file could not be parsed');
   });
 });

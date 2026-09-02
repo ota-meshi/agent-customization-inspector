@@ -28,6 +28,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
+import { waitForInventory } from './repository-status';
 
 /** The repository the session is launched against. */
 let repository: string;
@@ -101,7 +102,11 @@ test('keeps the reader in place across a rescan and returns them to the inventor
   const rescan = page.getByRole('button', { name: 'Rescan repository' });
   await rescan.focus();
   await page.keyboard.press('Enter');
-  await expect(page.locator('.aci-scan-progress')).toContainText('Committed generation');
+  // The command settles when the control is operable again: the status it
+  // produced is the Repository Source's own surface, and leaving this page to
+  // read it would move the focus this case is measuring.
+  await expect(rescan).toBeEnabled();
+  await waitForInventory(page);
   expect(await rescan.evaluate((element) => element === document.activeElement)).toBe(true);
 
   // Opening a file and coming back returns the reader to the inventory they
@@ -115,7 +120,7 @@ test('keeps the reader in place across a rescan and returns them to the inventor
   // The detail page's own way back, which pushes a fresh history entry carrying
   // no saved position: the kind tab rides in the URL, so the reader still lands
   // on the narrowed list they left rather than on the default one (T1122).
-  await main.getByRole('link', { name: 'Back to the inventory' }).click();
+  await main.getByRole('link', { name: /Back to /u }).click();
   await expect(page).toHaveURL(/[?&]kind=skill/u);
   await expect(page.getByRole('tabpanel')).toContainText(skillName);
 });
@@ -158,7 +163,7 @@ test('states a stale link in text with a practical next step', async ({ page }) 
   // Identified in text (3.3.1), with a next step (3.3.3), and a way back.
   await expect(main).toContainText('Nothing in the current scan sits at this link');
   await expect(main).toContainText('Return to the inventory and open it again.');
-  await expect(main.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
+  await expect(main.getByRole('link', { name: /Back to /u })).toBeVisible();
 
   // A safe error: a sentence, not a stack, and no path from this machine.
   const rendered = await main.innerText();
@@ -167,8 +172,8 @@ test('states a stale link in text with a practical next step', async ({ page }) 
   expect(rendered).not.toContain(repository);
 
   // And the way back works, so the reader is never stranded on it.
-  await main.getByRole('link', { name: 'Back to the inventory' }).click();
-  await expect(page.getByRole('heading', { name: 'Customization files' })).toBeVisible();
+  await main.getByRole('link', { name: /Back to /u }).click();
+  await waitForInventory(page);
 });
 
 test('disposes one route’s state on leaving it and every Global result on disable', async ({
@@ -187,9 +192,11 @@ test('disposes one route’s state on leaving it and every Global result on disa
   await expect(page.getByRole('tabpanel')).toContainText('AGENTS.md');
 
   // The central full purge: disabling resets every client-held Global result,
-  // and the fence keeps the purged detail from coming back.
+  // and the fence keeps the purged detail from coming back. It is offered on
+  // the personal setup's own surface, which the rail reaches (FR-030).
+  await page.getByRole('link', { name: 'Personal setup' }).click();
   await page.getByRole('button', { name: 'Disable personal inspection' }).click();
-  await expect(main).not.toContainText('Your personal setup');
+  await expect(page.getByRole('button', { name: 'Work out the directories' })).toBeVisible();
   await page.goto(new URL('/skills/detail/global-claude/skills/deploy/SKILL.md', host.origin).href);
   await expect(main).not.toContainText('The personal deploy skill.');
 
@@ -198,7 +205,6 @@ test('disposes one route’s state on leaving it and every Global result on disa
   await page.goto(host.origin);
   await page.getByRole('tab', { name: /Instructions/u }).click();
   await expect(page.getByRole('tabpanel')).toContainText('AGENTS.md');
-  await expect(
-    page.getByRole('link', { name: 'Inspect your personal setup outside this repository' }),
-  ).toBeVisible();
+  // The rail's entry is the pre-consent offer again (FR-030).
+  await expect(page.getByRole('link', { name: 'Personal setup' })).toContainText('Not inspected');
 });

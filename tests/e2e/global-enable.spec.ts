@@ -142,17 +142,23 @@ test.afterAll(async () => {
 test('publishes all four members together, each its own labelled Source', async ({ page }) => {
   await page.goto(host.origin);
   const main = page.locator('main');
-  // The one confirmation published every member simultaneously: the summary
-  // panel lists all four, each with its escaped boundary label — a
-  // presentation, never a path — and its own status (FR-013, FR-045).
-  await expect(main).toContainText('Your personal setup');
-  for (const member of ['GitHub Copilot', 'Claude Code', 'OpenAI Codex']) {
+  // The rail says from the list that the personal setup was read, and the
+  // members themselves are on that family's own surface: their roots, statuses,
+  // and rescans are facts about those Sources rather than an inventory of files
+  // (FR-030).
+  await expect(page.getByRole('link', { name: 'Personal setup' })).toContainText('Inspected');
+  await page.getByRole('link', { name: 'Personal setup' }).click();
+  // The one confirmation published every member simultaneously: the panel lists
+  // all four, each with its escaped boundary label — a presentation, never a
+  // path — and its own status (FR-013, FR-045).
+  for (const member of ['Copilot home', 'Claude home', 'Codex home']) {
     await expect(main).toContainText(member);
   }
   await expect(main).toContainText(
     'These labels are escaped presentations of the consented directories.',
   );
   // The Repository results are still there beside them, unchanged.
+  await page.goto(host.origin);
   await page.getByRole('tab', { name: /^Instructions/u }).click();
   await expect(page.getByRole('tabpanel')).toContainText('AGENTS.md');
 });
@@ -164,10 +170,10 @@ test('narrows the inventory by Source family and back', async ({ page }) => {
   await expect(panel).toContainText('common');
   // The Source filter: the repository alone drops the rows only the
   // consented homes publish.
-  await page.getByLabel('Source').selectOption({ label: 'Repository' });
+  await page.getByLabel('Source', { exact: true }).selectOption({ label: 'Repository' });
   await expect(panel).toContainText('deploy');
   await expect(panel).not.toContainText('common');
-  await page.getByLabel('Source').selectOption({ label: 'All sources' });
+  await page.getByLabel('Source', { exact: true }).selectOption({ label: 'All sources' });
   await expect(panel).toContainText('common');
 });
 
@@ -195,9 +201,12 @@ test('compares two same-spelled copies as two files, each naming its directory (
   await page.goto(new URL('/?kind=skill', host.origin).href);
   const panel = page.getByRole('tabpanel');
   const commonRow = panel.locator('.aci-item').filter({ hasText: 'common' });
-  // The row itself already names each copy's directory, because its family
-  // holds more than one Source and the paths alone are the same spelling.
-  await expect(commonRow.locator('.aci-source-root-line')).toHaveCount(2);
+  // The row itself already names each copy's home, because its family holds
+  // more than one Source and the paths alone are the same spelling. The home's
+  // name rather than its root: the roots are stated once on that family's own
+  // surface, and a root per row was the second line the compressed row exists
+  // to remove (FR-002, FR-030).
+  await expect(commonRow.locator('.aci-source-home')).toHaveCount(2);
   await commonRow.getByRole('link', { name: /^Compare this skill's files/u }).click();
   const main = page.locator('main');
   // Two files, one spelling: both sides render, told apart by their own

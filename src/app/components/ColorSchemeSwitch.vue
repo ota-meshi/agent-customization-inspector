@@ -67,7 +67,7 @@ import 'shine-and-bright/index.css';
    property the package does not define. `flex: none` keeps the fixed-size
    control from being squeezed by the heading beside it in a narrow masthead. */
 .aci-color-scheme-switch {
-  --snb-switch-border-color: var(--aci-border);
+  --snb-switch-border-color: var(--aci-line);
   background-color: var(--aci-surface-sunken);
   flex: none;
 }

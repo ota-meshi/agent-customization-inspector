@@ -62,7 +62,7 @@ describe('the picker Source qualifier', () => {
       { source: 'global-agents', sourceRelativePath: 'skills/deploy/SKILL.md' },
     ]);
     expect(options.map((option) => option.label)).toEqual([
-      'skills/deploy/SKILL.md — GitHub Copilot — /home/reader/.agents',
+      'skills/deploy/SKILL.md — Copilot home — /home/reader/.agents',
       'skills/deploy/SKILL.md — Shared agent home — /home/reader/.agents',
     ]);
     expect(new Set(options.map((option) => option.label)).size).toBe(2);

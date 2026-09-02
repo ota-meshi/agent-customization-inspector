@@ -27,12 +27,14 @@
 // construct the diff, the complete serializations stay available as inert
 // text with an actionable failure beside them (research.md § 7); that
 // rendering is the failure path only, with no standing toggle to it.
+import { AuthoredName } from '../authored-name';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { canonicalHookEventJsonText } from '../declared-entries-json';
+import RecognitionTable from '../comparison/RecognitionTable.vue';
 import { SourceDiffHandle } from '../../composables/monaco';
 import { useSessionViewState } from '../../composables/session-view-state';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
-import type { HookCarrierDetailDto } from '../../../shared/api-types';
+import type { HookCarrierDetailDto, HookDeclarationDto } from '../../../shared/api-types';
 
 const props = defineProps<{
   /**
@@ -51,9 +53,9 @@ const props = defineProps<{
    * statements, repeated per side so neither declaration loses which product
    * reads it. Naming a surface never claims it ran the hook (FR-009).
    */
-  readonly leftAttribution: string;
-  /** The second carrier's recognitions; see {@link leftAttribution}. */
-  readonly rightAttribution: string;
+  readonly leftRecognitions: readonly HookDeclarationDto[];
+  /** The second carrier's recognitions; see {@link leftRecognitions}. */
+  readonly rightRecognitions: readonly HookDeclarationDto[];
   /**
    * The first carrier's facts line — its Source family, its carrier form, and
    * its read outcome — composed by the page, which holds the session's
@@ -66,18 +68,15 @@ const props = defineProps<{
 }>();
 
 /**
- * The whitespace-safe event spelling the sides' accessible names carry: an
- * accessible name is flattened, so an authored key differing only in
- * whitespace must not announce identically (FR-025). The empty key — strict
- * JSON accepts the empty string as an event name — is noted the way every
- * surface notes it rather than announcing as nothing.
+ * What of each carrier the diff shows, spliced into each side's accessible
+ * name through the whitespace-safe spelling: an accessible name is flattened,
+ * so an authored key differing only in whitespace must not announce
+ * identically, and a key with nothing to draw is noted rather than announcing
+ * as nothing (FR-025; {@link AuthoredName}).
  */
-const eventAccessibleText = computed(() =>
-  props.event === '' ? '(empty name)' : inlinePresentationLabel(props.event),
+const contentLabel = computed(
+  () => `declaration ${new AuthoredName(props.event).singleLineText} of`,
 );
-
-/** What of each carrier the diff shows, spliced into each side's accessible name. */
-const contentLabel = computed(() => `declaration ${eventAccessibleText.value} of`);
 
 /**
  * One side's serialized declaration, or the empty object when this carrier's
@@ -99,14 +98,14 @@ const sides = computed(
         caption: 'First file',
         path: props.leftDetail.file.sourceRelativePath,
         factsText: props.leftFactsText,
-        attribution: props.leftAttribution,
+        recognitions: props.leftRecognitions,
         text: serialize(props.leftDetail),
       },
       {
         caption: 'Second file',
         path: props.rightDetail.file.sourceRelativePath,
         factsText: props.rightFactsText,
-        attribution: props.rightAttribution,
+        recognitions: props.rightRecognitions,
         text: serialize(props.rightDetail),
       },
     ] as const,
@@ -274,20 +273,28 @@ onBeforeUnmount(() => {
 <template>
   <div class="aci-hook-recognition-comparison">
     <!-- Each side stated with its own identity — path, Source, kind, carrier
-         form, and read outcome, plus the products whose recognitions the row
-         lists for it — so neither declaration loses its carrier to the diff
-         (US3 scenario 2). The order is the link's: first named, first shown. -->
-    <div class="aci-hook-recognition-comparison__files">
-      <section v-for="side in sides" :key="side.caption">
-        <h3>{{ side.caption }}</h3>
+         form, and read outcome — so neither declaration loses its carrier to
+         the diff (US3 scenario 2). Which products read it is the recognition
+         table's, below. The order is the link's: first named, first shown. -->
+    <div class="aci-compare-sides">
+      <section v-for="side in sides" :key="side.caption" class="aci-compare-side">
+        <span class="aci-compare-side__caption">{{ side.caption }}</span>
         <p class="aci-hook-recognition-comparison__path aci-path aci-authored-text">
           {{ escapeControlCharacters(side.path) }}
         </p>
         <p class="aci-note">{{ side.factsText }}</p>
-        <p v-if="side.attribution !== ''" class="aci-note">{{ side.attribution }}</p>
       </section>
     </div>
 
+    <!-- Which product reads which side. On the table rather than on the cards
+         above, because only a cell can say that a product reads neither
+         carrier (`RecognitionTable.vue`). -->
+    <RecognitionTable :sides="sides" />
+
+    <!-- Titled like the recognition block above it, so the page reads as the
+         same three tiers every kind's comparison does: what is being compared,
+         who reads it, and the difference itself. -->
+    <h3 class="aci-compare-block-title">Declaration</h3>
     <!-- What the diff holds, said before it: both sides are this surface's
          canonical serialization of the declaration, not the carriers' own
          spellings — one event can be declared in a TOML layer and in a JSON
@@ -352,24 +359,6 @@ onBeforeUnmount(() => {
   margin: 0.5rem 0 0.1rem;
 }
 
-/* The two identities side by side above the diff, stacking on a narrow
-   viewport (WCAG 1.4.10). */
-.aci-hook-recognition-comparison__files {
-  display: grid;
-  gap: 0.25rem 1.5rem;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-@media (min-width: 52rem) {
-  .aci-hook-recognition-comparison__files {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.aci-hook-recognition-comparison__files p {
-  margin: 0.1rem 0;
-}
-
 /* An authored path has no break opportunities of its own; wrapping keeps the
    page from scrolling sideways at narrow widths (WCAG 1.4.10). */
 .aci-hook-recognition-comparison__path {
@@ -379,8 +368,18 @@ onBeforeUnmount(() => {
 /* Monaco lays out inside a sized box and collapses to nothing without a
    definite height; the same sizing contract as the sibling surfaces. */
 .aci-hook-recognition-comparison__diff {
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  /* The corners are the box's, so what it holds is clipped to them: Monaco
+     paints an opaque square panel, and without this it filled all four rounded
+     corners — a frame that looked broken rather than rounded. It does not
+     reach the editor's own scrolling, which happens inside
+     `.monaco-scrollable-element`. `box-sizing` because the width is `100%` and
+     the border is a pixel: on the content box the two made the element two
+     pixels wider than the box holding it, so every diff sat two pixels
+     short of its own right border. */
+  box-sizing: border-box;
+  overflow: hidden;
   inline-size: 100%;
   /* Content-fit: the mounted handle writes the taller document's height to
      the element (`SourceDiffHandle.mount` § fitContent) and this cap keeps a
@@ -412,8 +411,8 @@ onBeforeUnmount(() => {
 /* `pre` keeps the serialized line structure; long lines scroll inside the
    block rather than widening the page. */
 .aci-hook-recognition-comparison__fallback-source {
-  border: 1px solid var(--aci-border);
-  border-radius: 4px;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
   margin: 0;
   max-block-size: 28rem;
   overflow: auto;

@@ -27,16 +27,20 @@
 // inherited anything: an admission is not an activation (FR-009).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
-import SourceRootLine from '../SourceRootLine.vue';
-import { familyComparisonPairsOf, detailRoute, type ComparisonSide } from '../../detail-route';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
+import {
+  familyComparisonPairsOf,
+  detailRoute,
+  originRowNameQuery,
+  type ComparisonSide,
+} from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
 import { customAgentComparisonRouteFor } from '../../../composables/custom-agent-comparison';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
 import {
   fileIdentityKey,
-  SUPPORTED_TOOL_TEXT,
   accessiblePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
@@ -48,6 +52,7 @@ import type {
   SourceKind,
 } from '../../../../shared/api-types';
 import type { NarrowedInventoryRow } from '../../../composables/filters';
+import { AuthoredName } from '../../authored-name';
 
 const props = defineProps<{
   /** The committed agent entry to render: one resolved name, or the null row. */
@@ -67,39 +72,12 @@ const props = defineProps<{
 const sessionSources = useSessionSources();
 
 /**
- * The row's heading text: the resolved name through the shared label rule, so
- * a name built only from invisible code points still identifies its row
- * ({@link pathPresentationLabel}). Null for the no-name row, whose heading is
- * fixed copy. The empty name gets its own note the way an MCP row's does,
- * because the label rule has no characters to spell out and the row would
- * otherwise be headed by nothing.
+ * The declared name this row is headed by, as every surface of the row needs
+ * it — what is drawn, whether those are the file's characters, and what the
+ * links announce ({@link AuthoredName}). Null for a row whose files declare no name, whose heading is fixed copy.
  */
-const nameText = computed(() =>
-  props.entry.name === null
-    ? null
-    : props.entry.name === ''
-      ? '(empty name)'
-      : pathPresentationLabel(props.entry.name),
-);
-
-/**
- * Whether {@link nameText} is the authored spelling rather than this product's
- * note, which decides the heading's authored-text styling.
- */
-const nameIsAuthored = computed(() => props.entry.name !== null && props.entry.name !== '');
-
-/**
- * The row's name as accessible-name text: it starts with the visible label (WCAG
- * 2.5.3 Label in Name) and appends the spelled-out presentation where
- * whitespace would collapse two invisibly different names into one ({@link accessiblePresentationLabel}); the no-name and
- * empty-name cases keep the same copy the visible heading shows.
- */
-const nameAccessibleText = computed(() =>
-  props.entry.name === null
-    ? null
-    : props.entry.name === ''
-      ? '(empty name)'
-      : accessiblePresentationLabel(props.entry.name),
+const name = computed(() =>
+  props.entry.name === null ? null : new AuthoredName(props.entry.name),
 );
 
 /**
@@ -134,6 +112,22 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * do. The comparison surface's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
+/**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close (`SourceFamilyBlocks.vue`).
+ */
+const headCompareRoute = computed(() => {
+  const routes = [...blockCompareRoutes.value.values()];
+  // Exactly when the row draws no family line to close: the entry lives on one
+  // of the two lines and never on neither, so both read the one rule
+  // (`session-sources.ts` § familyLineShownFor).
+  const headed = sessionSources.familyLineShownFor(fileRows.value, [
+    ...blockCompareRoutes.value.keys(),
+  ]);
+  return headed || routes.length !== 1 ? null : routes[0]!;
+});
+
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof customAgentComparisonRouteFor>>();
   const name = props.entry.name;
@@ -183,12 +177,19 @@ const fileRows = computed(() => {
       // label legitimately renders would collapse and two different files could
       // announce identically (FR-025, {@link accessiblePresentationLabel}).
       pathAccessibleText: accessiblePresentationLabel(sourceRelativePath),
-      recognitions: definitions.map((definition) => ({
-        tool: definition.tool,
-        toolText: SUPPORTED_TOOL_TEXT[definition.tool],
-        surfacesText: definition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-      })),
-      detailRoute: detailRoute('agent', sourceRelativePath, sessionSources.selectorOf(sourceId)),
+      recognitions: definitions,
+      /**
+       * The file's own detail route, with the row it was followed from: the
+       * page is the file's, addressed by `(source, path)`, and the row name
+       * beside it is what the moves to the previous and next row step from
+       * (`detail-route.ts` § originRowNameQuery). One file can be listed under
+       * two names, and without it those moves stepped whichever of its rows
+       * the snapshot listed first.
+       */
+      detailRoute: {
+        path: detailRoute('agent', sourceRelativePath, sessionSources.selectorOf(sourceId)),
+        query: originRowNameQuery(props.entry.name),
+      },
       // The no-name row's members tell their two states apart (FR-028): a failed
       // extraction leaves the name unknown, a parsed file with no usable `name`
       // declares none. Null on named rows, whose definitions are always parsed;
@@ -214,14 +215,25 @@ const fileRows = computed(() => {
          gets plain copy that says the name is not known rather than not
          declared, because it also holds a file whose declarations could not be
          read (FR-028). -->
-    <p
-      v-if="nameText !== null"
-      class="aci-agent-row__name"
-      :class="nameIsAuthored ? 'aci-authored-text' : 'aci-muted'"
-    >
-      {{ nameText }}
+    <p class="aci-row-head">
+      <span
+        class="aci-row-head__name"
+        :class="name === null ? '' : name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+        >{{ name?.text ?? 'No known agent name' }}</span
+      >
+      <span class="aci-row-head__count"
+        >{{ fileRows.length }} {{ fileRows.length === 1 ? 'file' : 'files' }}</span
+      >
+      <!-- The comparison entry, where this row has one family and so no family
+           line of its own to close (`SourceFamilyBlocks.vue`). -->
+      <span v-if="headCompareRoute" class="aci-row-head__end">
+        <NuxtLink
+          :to="headCompareRoute"
+          :aria-label="`Compare this name's files: ${name?.accessibleText ?? ''}`"
+          >Compare</NuxtLink
+        >
+      </span>
     </p>
-    <p v-else class="aci-agent-row__name">No known agent name</p>
 
     <!-- The files defining this name, each linking to its own detail: the
          declarations the file wrote, beside its complete authored source. The
@@ -238,32 +250,28 @@ const fileRows = computed(() => {
       :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: file }">
-        <p class="aci-agent-row__owner">
-          <NuxtLink
-            :to="file.detailRoute"
-            class="aci-path aci-authored-text"
-            :aria-label="
-              sessionSources.qualifiedLinkName(
-                nameAccessibleText === null
-                  ? file.pathAccessibleText
-                  : `${file.pathAccessibleText}: ${nameAccessibleText}`,
-                file.sourceId,
-              )
-            "
-            >{{ file.pathText }}</NuxtLink
-          >
-          <span
-            v-for="recognition in file.recognitions"
-            :key="recognition.tool"
-            class="aci-agent-row__tool aci-muted"
-            >{{ recognition.toolText }}
-            <span class="aci-agent-row__surfaces">{{ recognition.surfacesText }}</span></span
-          >
-        </p>
-
-        <SourceRootLine :source-id="file.sourceId" />
-        <p v-if="file.stateText !== null" class="aci-muted">{{ file.stateText }}</p>
-        <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+        <div class="aci-row-file">
+          <span class="aci-row-file__path">
+            <SourceHomeBadge :source-id="file.sourceId" />
+            <NuxtLink
+              :to="file.detailRoute"
+              class="aci-path aci-authored-text"
+              :aria-label="
+                sessionSources.qualifiedLinkName(
+                  name === null
+                    ? file.pathAccessibleText
+                    : `${file.pathAccessibleText}: ${name.accessibleText}`,
+                  file.sourceId,
+                )
+              "
+              >{{ file.pathText }}</NuxtLink
+            >
+            <span v-if="file.stateText !== null" class="aci-muted">{{ file.stateText }}</span>
+            <RowDiagnostics :diagnostic-ids="file.diagnosticIds" :diagnostics="diagnostics" />
+          </span>
+          <RecognitionMarks :recognitions="file.recognitions" />
+          <span class="aci-row-file__end" />
+        </div>
       </template>
 
       <!-- The block's own comparison entry (FR-011): the family is where a
@@ -272,61 +280,15 @@ const fileRows = computed(() => {
            shape. The accessible name carries the row's identity always, and
            the family where two blocks each offer one (WCAG 2.4.6). -->
       <template #entry="{ block }">
-        <p v-if="blockCompareRoutes.get(block.kind)" class="aci-agent-row__compare">
-          <NuxtLink
-            :to="blockCompareRoutes.get(block.kind)!"
-            :aria-label="`Compare this name's files: ${nameAccessibleText ?? ''}${
-              blockCompareRoutes.size > 1 && block.familyText !== null
-                ? ` (${block.familyText})`
-                : ''
-            }`"
-            >Compare this name's files</NuxtLink
-          >
-        </p>
+        <NuxtLink
+          v-if="blockCompareRoutes.get(block.kind)"
+          :to="blockCompareRoutes.get(block.kind)!"
+          :aria-label="`Compare this name's files: ${name?.accessibleText ?? ''}${
+            block.familyText !== null ? ` (${block.familyText})` : ''
+          }`"
+          >Compare</NuxtLink
+        >
       </template>
     </SourceFamilyBlocks>
   </li>
 </template>
-
-<style scoped>
-.aci-agent-row__name {
-  margin: 0;
-  font-weight: 600;
-}
-
-.aci-agent-row__owner {
-  margin: 0;
-}
-
-/* Each recognizing product trails the file on the same line, set apart by a
-   separator, matching how an instruction row's surfaces trail its product. */
-.aci-agent-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-agent-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-/* The surfaces qualify their own product within the same span: the product
-   alone does not say where it reads the file from once two surfaces document
-   different lookup bases. */
-.aci-agent-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-agent-row__surfaces::before {
-  content: '(';
-}
-
-.aci-agent-row__surfaces::after {
-  content: ')';
-}
-
-/* The comparison entry sits under the definitions it draws its pair from, as
-   a skill row's and a prompt row's do. */
-.aci-agent-row__compare {
-  margin: 0.3rem 0 0;
-}
-</style>

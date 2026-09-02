@@ -91,23 +91,28 @@ test('carries one consent from preview through enable, refresh, and disable', as
       { timeout: 30_000, intervals: [300] },
     )
     .toBe(1);
-  await expect(main).toContainText('Claude Code — Inspected');
+  await expect(main).toContainText('Claude home — Inspected');
 
-  // The results are on the inventory, under their own family.
-  await page.getByRole('link', { name: 'Go to the inventory' }).click();
+  // The results are on the inventory, under their own family, and the rail
+  // states that the personal setup was read (FR-030).
+  // The way back is the bar's, where every routed surface puts it
+  // (`DetailNavigation.vue`).
+  await page.getByRole('link', { name: 'Back to the inventory' }).click();
   await expect(main).toContainText('Your personal setup');
+  const railPersonal = page
+    .getByRole('navigation', { name: 'Sources' })
+    .getByRole('link', { name: /^Personal setup/u });
+  await expect(railPersonal).toContainText('Inspected');
 
-  // Disable from the consent page: the same barrier the summary offers.
-  await page
-    .getByRole('link', { name: 'Review what is inspected outside this repository' })
-    .click();
+  // Disable from the personal setup's own surface, which the rail reaches.
+  await railPersonal.click();
   await page.getByRole('button', { name: 'Disable personal inspection' }).click();
   // Everything Global is gone; the page is back to proposing, and the
   // inventory carries no personal-setup section.
   await expect(page.getByRole('button', { name: 'Disable personal inspection' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Go to the inventory' }).click();
+  // The way back is the bar's, where every routed surface puts it
+  // (`DetailNavigation.vue`).
+  await page.getByRole('link', { name: 'Back to the inventory' }).click();
   await expect(main).not.toContainText('Your personal setup');
-  await expect(
-    page.getByRole('link', { name: 'Inspect your personal setup outside this repository' }),
-  ).toBeVisible();
+  await expect(railPersonal).toContainText('Not inspected');
 });

@@ -94,8 +94,12 @@ test.describe('the complete literal Codex configuration detail', () => {
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
 
     const main = page.locator('main');
-    // The file's identity restated from its row, beside the kind's caption.
-    await expect(main).toContainText('OpenAI Codex (Local clients) · Settings / Config');
+    // The file's identity restated from its row: the product that recognizes it
+    // and the surfaces its admitting rules rest on, on the customization's own
+    // attribute line.
+    const attributes = page.locator('.aci-detail-attributes');
+    await expect(attributes).toContainText('OpenAI Codex');
+    await expect(attributes).toContainText('Local clients');
     // The read outcome, and nothing narrating what the configuration might do.
     await expect(main).toContainText('Readable text');
 
@@ -175,7 +179,7 @@ test.describe('the complete literal Codex configuration detail', () => {
       ).toString(),
     );
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(page).toHaveURL(/\?kind=settings%2Fconfig$/u);
     await expect(page.getByRole('tab', { selected: true })).toContainText('Settings / Config');
   });

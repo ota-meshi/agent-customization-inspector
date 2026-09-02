@@ -49,7 +49,10 @@ test.describe('discovering the customizations of one repository', () => {
   });
 
   test('names the selected root as a label, with no picker beside it', async ({ page }) => {
-    await page.goto(host.origin);
+    // The label is on the Repository Source's own surface (FR-002, FR-030);
+    // what this case is about is that it is a label and nothing beside it
+    // offers another root.
+    await page.goto(new URL('/repository', host.origin).href);
     const main = page.locator('main');
     await expect(main).toContainText('Selected root');
     // The label is a presentation escaping of the root, not a control: there
@@ -71,9 +74,7 @@ test.describe('discovering the customizations of one repository', () => {
     // rather than as a second entry (FR-004).
     const agents = panel.getByRole('link', { name: /AGENTS\.md/u });
     await expect(agents).toHaveCount(1);
-    const agentsLine = panel
-      .locator('p.aci-instruction-row__owner')
-      .filter({ hasText: 'AGENTS.md' });
+    const agentsLine = panel.locator('.aci-row-file').filter({ hasText: 'AGENTS.md' });
     await expect(agentsLine).toContainText('OpenAI Codex');
     await expect(agentsLine).toContainText('GitHub Copilot');
     // The near miss is listed nowhere: a path one segment from an admitted one
@@ -99,7 +100,7 @@ test.describe('discovering the customizations of one repository', () => {
     // and a query that matches nothing states that rather than emptying the
     // page silently.
     await page.getByLabel('Tool', { exact: true }).selectOption('');
-    const path = page.getByLabel('Path contains');
+    const path = page.getByRole('searchbox', { name: 'Search names and paths' });
     await path.focus();
     await page.keyboard.type('no-such-path');
     await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
@@ -118,7 +119,7 @@ test.describe('discovering the customizations of one repository', () => {
     // controls and the rows stayed on the other entry's state.
     await page.goto(new URL('/?kind=instructions', host.origin).href);
     const panel = page.getByRole('tabpanel');
-    await page.getByLabel('Path contains').fill('CLAUDE');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('CLAUDE');
     await expect(panel).not.toContainText('AGENTS.md');
     // Navigating to a detail page and back through its own link produces two
     // inventory entries — the narrowed one and the unfiltered one the back
@@ -127,7 +128,7 @@ test.describe('discovering the customizations of one repository', () => {
       .getByRole('link', { name: /CLAUDE\.md/u })
       .first()
       .click();
-    await page.getByRole('link', { name: 'Back to the inventory' }).click();
+    await page.getByRole('link', { name: /Back to /u }).click();
     await expect(panel).toContainText('AGENTS.md');
     // The browser's history menu jumps straight from the unfiltered entry to
     // the narrowed one — one popstate over the detail entry, landing on the
@@ -135,18 +136,21 @@ test.describe('discovering the customizations of one repository', () => {
     await page.evaluate(() => {
       history.go(-2);
     });
-    await expect(page.getByLabel('Path contains')).toHaveValue('CLAUDE');
+    await expect(page.getByRole('searchbox', { name: 'Search names and paths' })).toHaveValue(
+      'CLAUDE',
+    );
     await expect(panel).not.toContainText('AGENTS.md');
     await expect(panel).toContainText('CLAUDE.md');
   });
 
   test('commits the automatic scan and replaces it on an explicit rescan', async ({ page }) => {
-    await page.goto(host.origin);
+    await page.goto(new URL('/repository', host.origin).href);
     const main = page.locator('main');
     // The automatic scan committed generation 1; generation 0 is the
     // bootstrap state no scan has replaced yet.
     await expect(main).toContainText('Committed generation');
     await expect(main.locator('dd').filter({ hasText: /^1$/u }).first()).toBeVisible();
+    await page.goto(host.origin);
 
     // A file added while the session is up is not in the committed generation
     // until a rescan commits one that holds it: a generation is a whole state
@@ -171,6 +175,8 @@ test.describe('discovering the customizations of one repository', () => {
         { timeout: 30_000, intervals: [300] },
       )
       .toBe(1);
+    // The committed generation is stated where that Source's own facts are.
+    await page.goto(new URL('/repository', host.origin).href);
     await expect(main.locator('dd').filter({ hasText: /^2$/u }).first()).toBeVisible();
   });
 });

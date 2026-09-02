@@ -90,11 +90,11 @@ test.describe('the root Claude MCP file inventory', () => {
     // workspace carrier at once — and no excluded location contributes a
     // record: the subdirectory carrier is a near miss for every product.
     await expect(items).toHaveCount(2);
-    await expect(items.locator('.aci-mcp-row__name')).toHaveText(['context7', 'docs-http']);
+    await expect(items.locator('.aci-row-head__name')).toHaveText(['context7', 'docs-http']);
     for (const index of [0, 1]) {
-      await expect(items.nth(index).locator('.aci-mcp-row__owner')).toContainText('.mcp.json');
-      await expect(items.nth(index).locator('.aci-mcp-row__owner')).toContainText('Claude Code');
-      await expect(items.nth(index).locator('.aci-mcp-row__owner')).toContainText('GitHub Copilot');
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('.mcp.json');
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('Claude Code');
+      await expect(items.nth(index).locator('.aci-row-file')).toContainText('GitHub Copilot');
     }
     await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toContainText(
       'Showing 2 of 2',
@@ -128,11 +128,11 @@ test.describe('the root Claude MCP file inventory', () => {
     await page.getByRole('button', { name: 'Clear filters' }).click();
 
     // Path: the filter applies to the carrier the declarations share.
-    await page.getByLabel('Path contains').fill('no-such-carrier');
+    await page.getByRole('searchbox', { name: 'Search names and paths' }).fill('no-such-carrier');
     await expect(items).toHaveCount(0);
     await expect(page.getByRole('tabpanel')).toContainText('match the current filters');
 
-    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await page.locator('.aci-empty-result').getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(2);
   });
 });

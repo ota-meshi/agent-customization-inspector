@@ -34,15 +34,11 @@
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
 import RowDiagnostics from './RowDiagnostics.vue';
-import SourceRootLine from '../SourceRootLine.vue';
+import RecognitionMarks from '../RecognitionMarks.vue';
+import SourceHomeBadge from '../SourceHomeBadge.vue';
 import { detailRoute } from '../../detail-route';
 import { useSessionSources } from '../../../composables/session-sources';
-import {
-  SUPPORTED_TOOL_TEXT,
-  accessiblePresentationLabel,
-  pathPresentationLabel,
-} from '../../../../shared/entities';
-import { VENDOR_SURFACE_TEXT } from '../../../../shared/registries/behavior-text';
+import { accessiblePresentationLabel, pathPresentationLabel } from '../../../../shared/entities';
 import type {
   PermissionsInventoryEntryDto,
   SerializedDiagnostic,
@@ -90,80 +86,32 @@ const pathAccessibleText = computed(() =>
     props.entry.sourceId,
   ),
 );
-
-/**
- * Each product that recognized the policy, with the surfaces its admissions
- * rest on beside it — the product alone does not say where a file is read
- * from once two surfaces document different lookup bases (FR-009).
- *
- * Derived rather than computed once at setup, because the row's key is its
- * path: a tool filter that drops recognitions leaves the key alone, so the
- * component instance is reused and a value read once would keep rendering the
- * recognitions the filter removed.
- */
-const recognitions = computed(() =>
-  props.entry.recognitions.map((recognition) => ({
-    tool: recognition.tool,
-    toolText: SUPPORTED_TOOL_TEXT[recognition.tool],
-    surfacesText: recognition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', '),
-  })),
-);
 </script>
 
 <template>
   <li class="aci-item">
-    <!-- The declaring file's path is the row's identity and the link to the
-         policy's own detail, rendered exactly as published and never as a
-         locator anything outside this product can open (FR-024). A link per
-         product would be the same URL repeated, because this detail is
-         addressed by the path alone. -->
-    <p class="aci-permissions-row__owner">
-      <NuxtLink :to="route" class="aci-path aci-authored-text" :aria-label="pathAccessibleText">{{
-        pathText
-      }}</NuxtLink>
-      <span
-        v-for="recognition in recognitions"
-        :key="recognition.tool"
-        class="aci-permissions-row__tool aci-muted"
-        >{{ recognition.toolText }}
-        <span class="aci-permissions-row__surfaces">{{ recognition.surfacesText }}</span></span
-      >
-    </p>
-
-    <SourceRootLine :source-id="entry.sourceId" />
-
-    <!-- Why a row a reader can see publishes nothing: the extraction's own
-         record, resolved from the generation's diagnostics (FR-028). -->
-    <RowDiagnostics :diagnostic-ids="props.entry.diagnosticIds" :diagnostics="props.diagnostics" />
+    <!-- A kind that carries no name: the row is its file, so the file line
+         starts where a name would have been. The declaring file's path is the
+         row's identity and the link to the policy's own detail, rendered
+         exactly as published and never as a locator anything outside this
+         product can open (FR-024). A link per product would be the same URL
+         repeated, because this detail is addressed by the path alone. -->
+    <div class="aci-row-file aci-row-file--only">
+      <span class="aci-row-file__path">
+        <SourceHomeBadge :source-id="entry.sourceId" />
+        <NuxtLink :to="route" class="aci-path aci-authored-text" :aria-label="pathAccessibleText">{{
+          pathText
+        }}</NuxtLink>
+        <!-- Why a row a reader can see publishes nothing: the extraction's
+             own record, resolved from the generation's diagnostics
+             (FR-028). -->
+        <RowDiagnostics
+          :diagnostic-ids="props.entry.diagnosticIds"
+          :diagnostics="props.diagnostics"
+        />
+      </span>
+      <RecognitionMarks :recognitions="entry.recognitions" />
+      <span class="aci-row-file__end" />
+    </div>
   </li>
 </template>
-
-<style scoped>
-/* The path and the products that recognize it on one line, the way an MCP or
-   agent row lays out a carrier and its recognitions: the path is the subject
-   and the products qualify it. */
-.aci-permissions-row__owner {
-  margin: 0;
-}
-
-.aci-permissions-row__tool {
-  margin-inline-start: 0.4rem;
-}
-
-.aci-permissions-row__tool::before {
-  content: '·';
-  margin-inline-end: 0.4rem;
-}
-
-.aci-permissions-row__surfaces {
-  font-size: 0.85em;
-}
-
-.aci-permissions-row__surfaces::before {
-  content: '(';
-}
-
-.aci-permissions-row__surfaces::after {
-  content: ')';
-}
-</style>

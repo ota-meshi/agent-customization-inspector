@@ -70,7 +70,7 @@ test.describe('agent-contained and hosted MCP stay off every session surface', (
     await page.getByRole('tab', { name: /MCP/u }).click();
     const items = page.getByRole('tabpanel').locator('.aci-item');
     await expect(items).toHaveCount(1);
-    await expect(items.first().locator('.aci-mcp-row__name')).toHaveText(['explicit-only']);
+    await expect(items.first().locator('.aci-row-head__name')).toHaveText(['explicit-only']);
     // Neither the agent's declaration, the plugin's, nor any hosted Cloud
     // fact appears anywhere on the page — no unavailable-state label stands
     // in for them, and no control offers to connect.

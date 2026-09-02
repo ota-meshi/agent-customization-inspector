@@ -46,7 +46,7 @@ function retryDisable(): void {
 </script>
 
 <template>
-  <section v-if="recovery" aria-labelledby="aci-fence-recovery-heading">
+  <section v-if="recovery" class="aci-route" aria-labelledby="aci-fence-recovery-heading">
     <h2 id="aci-fence-recovery-heading" tabindex="-1">Disabling personal inspection</h2>
     <p aria-live="polite">
       {{ GLOBAL_DISABLE_STATE_TEXT[recovery.globalDisableInProgress.state] }}

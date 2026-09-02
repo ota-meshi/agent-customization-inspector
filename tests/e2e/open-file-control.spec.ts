@@ -45,7 +45,7 @@ test('offers the applications the host can launch, and closes on Escape', async 
     .locator('[role="tabpanel"] a[href^="/instructions/detail/repository/"]')
     .first()
     .click();
-  await expect(page.getByRole('link', { name: 'Back to the inventory' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
 
   const toggle = page.getByRole('button', { name: 'Choose how to open this file' });
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');

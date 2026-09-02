@@ -33,8 +33,9 @@
 //    would drop keyboard focus on the body, so their handlers return focus
 //    to the page heading — the same landing every navigation uses.
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { NuxtLink } from '#components';
 import GlobalConsentPreview from '../components/consent/GlobalConsentPreview.vue';
+import GlobalSourceControls from '../components/consent/GlobalSourceControls.vue';
+import DetailNavigation from '../components/inspection/DetailNavigation.vue';
 import { useSessionViewState } from '../composables/session-view-state';
 import {
   GLOBAL_MEMBER_TEXT,
@@ -190,6 +191,14 @@ onMounted(() => {
 /** The page heading, the focus landing for a button that unmounts itself. */
 const heading = ref<HTMLHeadingElement | null>(null);
 
+// And the landing on arrival: following a link in an SPA moves no focus by
+// itself, so every routed surface puts it on its own heading — the same move
+// the detail pages make. Without it focus stayed on the shell's `h1`, which
+// names the application rather than the page a reader just opened (WCAG 2.4.3).
+onMounted(() => {
+  heading.value?.focus();
+});
+
 /**
  * Runs one capture or reload and moves focus to the heading: the pressed
  * button unmounts with its branch when the state changes, and an unmounted
@@ -201,28 +210,33 @@ function runAndRefocus(action: () => Promise<void>): void {
   void nextTick(() => heading.value?.focus());
 }
 
-/**
- * Runs the status refresh and recovers focus only when the refresh unmounted
- * the pressed control — another tab's commit replaces the live-operation
- * branch with the Source controls, and another tab's disable replaces the
- * whole page with the fenced view, leaving focus silently on the body
- * (WCAG 2.4.3). A refresh that changed nothing keeps the reader's place,
- * which is why this is not {@link runAndRefocus}: a status poll must not
- * yank focus to the heading every time.
- */
-function refreshAndRecoverFocus(): void {
-  void sessionViewState.refresh().then(() =>
-    nextTick(() => {
-      if (document.activeElement === document.body) {
-        heading.value?.focus();
-      }
-    }),
-  );
-}
+// A refresh can unmount the very element that held keyboard focus — another
+// tab's commit replaces the live-operation branch with the Source controls, and
+// another tab's disable replaces the whole page — and focus then falls to the
+// document body (WCAG 2.4.3). Watched rather than tied to a control's own
+// handler, because the refresh is the bar's now and applies on every route: the
+// recovery belongs to the change rather than to whoever asked for it. A refresh
+// that changed nothing keeps the reader's place, which is what the body check
+// is for — this must not yank focus to the heading on every poll.
+watch(
+  () => sessionViewState.snapshot.value,
+  async () => {
+    await nextTick();
+    if (document.activeElement === document.body) {
+      heading.value?.focus();
+    }
+  },
+);
 </script>
 
 <template>
-  <div class="aci-global-consent-page">
+  <div class="aci-global-consent-page aci-route">
+    <!-- The way back, drawn in the bar with every other route's moves
+         (`DetailNavigation.vue`): a reader looks for it in one place whatever
+         surface they are on. A Source page has no neighbouring row to step to,
+         so it offers neither move. -->
+    <DetailNavigation list-route="/" list-text="the inventory" :previous="null" :next="null" />
+
     <h2 ref="heading" tabindex="-1">Inspect your personal setup</h2>
     <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
       {{ failureAnnouncement }}
@@ -230,7 +244,12 @@ function refreshAndRecoverFocus(): void {
 
     <p v-if="previewState === 'loading'" aria-live="polite">Reading the proposed directories…</p>
 
-    <template v-else-if="previewState === 'missing'">
+    <!-- The two states before a preview exist in a panel of their own, as the
+         state of what was consented does below and as the Repository page's
+         scan status does (`ScanProgress.vue`): the two Source pages state a
+         Source's current state, and a reader should find the same box on
+         either. -->
+    <section v-else-if="previewState === 'missing'" class="aci-panel">
       <p>
         This session has not worked out which directories your personal setup lives in. Nothing has
         been read, and working it out reads nothing either — it looks only at the tools' own
@@ -239,14 +258,14 @@ function refreshAndRecoverFocus(): void {
       <button type="button" @click="runAndRefocus(() => sessionViewState.captureConsentPreview())">
         Work out the directories
       </button>
-    </template>
+    </section>
 
-    <template v-else-if="previewState === 'failed'">
+    <section v-else-if="previewState === 'failed'" class="aci-panel">
       <p class="aci-error">{{ rejectionText ?? sessionViewState.consentPreviewError.value }}</p>
       <button type="button" @click="runAndRefocus(() => sessionViewState.loadConsentPreview())">
         Try again
       </button>
-    </template>
+    </section>
 
     <template v-else-if="preview">
       <!-- Consent is given at the reader's confirmation, not at the commit
@@ -305,21 +324,28 @@ function refreshAndRecoverFocus(): void {
            commits, while the controls and the batch status are the current
            state and survive a reload, which is what a reader coming back needs
            to see. -->
-      <template v-if="controls.length > 0">
+      <!-- The state of what was consented, in a panel of its own — the same
+           treatment the Repository page gives its scan status
+           (`ScanProgress.vue`): both are a Source family's current state
+           rather than the page's explanation of itself, and a reader coming
+           back for it should find the same box on either surface. -->
+      <section v-if="controls.length > 0" class="aci-panel">
         <h3>What is inspected</h3>
         <p aria-live="polite">{{ consentSummary }}</p>
-        <!-- The page's one manual refresh, the same contract the inventory's
-             scan status states: nothing here updates on its own, so a batch
-             that fails after the acceptance's own refresh would otherwise
-             leave "being read now" on screen with no error and no retry —
-             the retry offer above is derived from the snapshot too, so it
-             cannot appear until the reader asks for the current state. -->
-        <p>
-          <button type="button" @click="refreshAndRecoverFocus()">Refresh status</button>
-        </p>
+        <!-- This surface commands its own reads, as the Repository's does: the
+             bar's scan commands stop at the inventory, which is the one surface
+             with no panel of its own to carry them (`App.vue`). The note is
+             what the button is for — a batch that fails after the acceptance's
+             own refresh would otherwise leave "being read now" on screen with
+             no error and no retry, because the retry offer is derived from the
+             snapshot too and cannot appear until the reader asks for the
+             current state. -->
         <p class="aci-note">
           Nothing on this page updates by itself. Use “Refresh status” to see the result of a read
           that is still running.
+        </p>
+        <p>
+          <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
         </p>
         <ul class="aci-global-consent-page__outcomes">
           <li v-for="control in controls" :key="control.member">
@@ -329,6 +355,14 @@ function refreshAndRecoverFocus(): void {
             </template>
           </li>
         </ul>
+        <!-- Each published home's own root, status, and rescan (T1153). They
+             are here rather than over the inventory for the reason every
+             Source's state is: they are facts about a Source rather than an
+             inventory of files, and this is that family's own surface — the
+             one that already explains and manages what is inspected outside
+             the repository (FR-013, FR-030). Over the inventory they also said
+             a second time what this page had already said. -->
+        <GlobalSourceControls />
         <p v-if="batchStatus?.failureRef?.kind === 'error'" class="aci-error">
           Reading failed: {{ batchStatus.failureRef.message }}
         </p>
@@ -347,7 +381,7 @@ function refreshAndRecoverFocus(): void {
           Disabling removes every personal-setup result from this session. Your repository results
           are untouched, and enabling again later asks for consent again.
         </p>
-      </template>
+      </section>
 
       <!-- A confirmation whose outcome has not landed: the response was an
            acceptance, or a delivery failure that can hide one, and the
@@ -372,7 +406,7 @@ function refreshAndRecoverFocus(): void {
           }}
         </p>
         <p>
-          <button type="button" @click="refreshAndRecoverFocus()">Refresh status</button>
+          <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
           <button
             type="button"
             :aria-disabled="sessionViewState.globalDisableState.value === 'submitting' || undefined"
@@ -394,7 +428,7 @@ function refreshAndRecoverFocus(): void {
           status” to follow it.
         </p>
         <p>
-          <button type="button" @click="refreshAndRecoverFocus()">Refresh status</button>
+          <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
           <button
             type="button"
             :aria-disabled="sessionViewState.globalDisableState.value === 'submitting' || undefined"
@@ -419,18 +453,14 @@ function refreshAndRecoverFocus(): void {
         </button>
       </p>
     </template>
-
-    <p>
-      <NuxtLink to="/">Go to the inventory</NuxtLink>
-    </p>
   </div>
 </template>
 
 <style scoped>
-.aci-global-consent-page {
-  /* A consent decision is prose to read, so the column is measured for
-     reading rather than stretched to the shell's width. */
-  max-width: 70ch;
+/* The page's own prose takes the shared measure (`main.css` § --aci-measure),
+   which is every explanatory paragraph's in this product. */
+.aci-global-consent-page :where(p, li) {
+  max-inline-size: var(--aci-measure);
 }
 
 .aci-global-consent-page__outcomes {

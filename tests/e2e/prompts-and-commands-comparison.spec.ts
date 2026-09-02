@@ -140,7 +140,7 @@ test('renders the per-tool invocation names and the serialized declarations', as
 
   // Each side's identity: path, Source family, recognized kind, read
   // outcome (US3 scenario 1).
-  const files = page.locator('.aci-prompt-compare__files');
+  const files = page.locator('.aci-compare-sides');
   await expect(files).toContainText('.claude/commands/deploy.md');
   await expect(files).toContainText('.github/prompts/deploy.prompt.md');
   await expect(files.locator('.aci-prompt-compare__file-facts').first()).toContainText(
@@ -156,16 +156,13 @@ test('renders the per-tool invocation names and the serialized declarations', as
   // declares, what each file says, then the complete files, and last the
   // recognitions.
   await expect(metadata.locator('h3')).toHaveText([
+    'Tool recognition',
     'Declared metadata',
     'Prompt or command content',
     'Source comparison',
-    'Tool recognition',
   ]);
   const toolTable = metadata.locator('table').first();
-  await expect(toolTable.locator('tbody th')).toHaveText([
-    'GitHub Copilot · Prompt / Command',
-    'Claude Code · Prompt / Command',
-  ]);
+  await expect(toolTable.locator('tbody th')).toHaveText(['GitHub Copilot', 'Claude Code']);
   // Copilot reaches the one name two ways and the cells say which; Claude
   // reads the command file and nothing in the editor's prompts directory.
   const copilotRow = toolTable.locator('tr', { hasText: 'GitHub Copilot' });
@@ -201,7 +198,7 @@ test('compares two command files one product invokes by one name', async ({ page
     compareUrl('.claude/commands/team/review.md', '.claude/commands/team/review/SKILL.md'),
   );
   const toolTable = page.locator('.aci-prompt-recognition-comparison table').first();
-  await expect(toolTable.locator('tbody th')).toHaveText(['Claude Code · Prompt / Command']);
+  await expect(toolTable.locator('tbody th')).toHaveText(['Claude Code']);
   await expect(toolTable.locator('td').first()).toHaveText(
     'Invoked as team:review — surfaces: CLI and IDE clients',
   );
@@ -262,6 +259,6 @@ test('enters from the detail page and returns to the kind’s own tab', async ({
     page.getByRole('heading', { name: 'Compare prompt and command files' }),
   ).toBeVisible();
   // Back to the inventory's own tab, not the kind order's default.
-  await page.getByRole('link', { name: 'Back to the inventory' }).click();
+  await page.getByRole('link', { name: /Back to /u }).click();
   await expect(page.getByRole('tab', { selected: true })).toContainText('Prompt / Command');
 });

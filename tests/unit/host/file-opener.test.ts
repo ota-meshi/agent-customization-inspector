@@ -434,16 +434,18 @@ describe("opening through the machine's own handlers", () => {
 });
 
 describe('opening in the resolved editor', () => {
-  it('spawns the launcher directly on macOS', async () => {
-    // macOS `open -a` takes an application, and the resolved launcher is the
-    // editor's own command-line script inside the bundle.
+  it('hands the document to LaunchServices by application name on macOS', async () => {
+    // Not the resolved launcher: that command-line script reads the editor's
+    // user data directory from `HOME`, so a host whose `HOME` is not the
+    // reader's own starts a second instance under it and the file opens
+    // nowhere. `open -a` takes the application name, which the editor catalog
+    // publishes, and reaches the editor already running.
     setPlatform('darwin');
     await openerWith(['visual-studio-code', LAUNCHER]).openFile(FILE, 'visual-studio-code');
-    expect(vi.mocked(spawn)).toHaveBeenCalledWith(LAUNCHER, [FILE], {
-      detached: true,
-      stdio: 'ignore',
+    expect(vi.mocked(open)).toHaveBeenCalledWith(FILE, {
+      app: { name: 'Visual Studio Code' },
     });
-    expect(vi.mocked(open)).not.toHaveBeenCalled();
+    expect(vi.mocked(spawn)).not.toHaveBeenCalled();
   });
 
   it('runs the launcher through the open package everywhere else', async () => {
@@ -495,20 +497,17 @@ describe('opening in the resolved editor', () => {
 });
 
 describe('a launch the machine refuses (T1123)', () => {
-  it('rejects instead of letting the emitter throw the unhandled error', async () => {
-    // The launcher was probed and is gone, unexecutable, or the machine is out
-    // of processes: `spawn` emits `error`, and an `error` event nobody listens
-    // for is thrown by the emitter — which would end the host on a click.
+  it('reports the refusal instead of answering that something opened', async () => {
+    // The application was probed and has since been removed, so LaunchServices
+    // has no bundle under that name: the launcher rejects, and the reader is
+    // told rather than being answered that their file opened.
     setPlatform('darwin');
-    vi.mocked(spawn).mockImplementationOnce((() => {
-      const child = new EventEmitter() as EventEmitter & { unref: () => void };
-      child.unref = vi.fn();
-      queueMicrotask(() => child.emit('error', new Error('spawn EACCES')));
-      return child;
+    vi.mocked(open).mockImplementationOnce((async () => {
+      throw new Error('Unable to find application named Visual Studio Code');
     }) as never);
     await expect(
       openerWith(['visual-studio-code', LAUNCHER]).openFile(FILE, 'visual-studio-code'),
-    ).rejects.toThrow('spawn EACCES');
+    ).rejects.toThrow('Unable to find application named Visual Studio Code');
   });
 });
 
