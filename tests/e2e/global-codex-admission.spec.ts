@@ -389,6 +389,12 @@ test('filters the inventory by Source rather than by tool', async ({ page }) => 
   const own = await launchHost(
     shadowed,
     {
+      // The shared agent home is the one member no property relocates: it is
+      // always `homedir()/.agents` (FR-045), so the launch has to say which
+      // home that is. Left out, `homedir()` answers with the machine's own,
+      // and whether the Source this case lists exists becomes a fact about
+      // the runner rather than about the fixture.
+      HOME: homes.home,
       [GLOBAL_HOME_VARIABLES.copilot]: homes.homes.copilot,
       [GLOBAL_HOME_VARIABLES.claude]: homes.homes.claude,
       [GLOBAL_HOME_VARIABLES.codex]: home.home,
