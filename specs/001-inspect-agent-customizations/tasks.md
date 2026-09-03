@@ -10592,6 +10592,62 @@ records as owed, in the order it names. Each records its result in that file and
   `specs/001-inspect-agent-customizations/tasks.ja.md` (QR-004) (missing)
 ---
 
+## Phase 112: Convergence
+
+**Purpose**: Bring the record of the interface rework to the state the release evidence now shows,
+and state the story-label rule over the phases that exist.
+
+**Independent Test**: Read
+`specs/001-inspect-agent-customizations/validation.md` from top to bottom and confirm that no
+section claims a record above it is still owed; run `pnpm run test:docs` and confirm it passes over
+the extended task set; read tasks.md § Format and confirm its `[Story]` rule matches which phases
+carry a story label.
+
+**Visible Checkpoint**: The validation record reads as one account of this tree rather than as an
+account plus a list of what it lacks.
+
+### The rework record
+
+- [ ] T1199 CRITICAL Rewrite `## Interface rework: what it invalidates, and what release completion
+  repeats` in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` to what is now true: every record it
+  names as invalidated has since been re-taken, and the section still asserts otherwise in the
+  present tense. Its table says the Release gate execution table holds counts from the pre-rework
+  tree, while that table records a run of 2026-09-03 against this one; it names the SC-001 and
+  SC-006 sessions as owed, while those ran on 2026-09-03; it names the `REVIEW-*` recheck as owed,
+  while that was performed on 2026-09-03; and it names the SC-003/SC-004/SC-005/SC-007 set as
+  invalidated, while § Outcome-manifest criteria now carries the current canonical digest and says
+  in its own words that the set is non-comparable with the pre-rework one. The closing sentence,
+  "It is the list of what a release from this tree owes", is what a maintainer deciding whether the
+  release is ready would act on. Keep the reason — the rework reopened these records, which is why
+  they carry the dates they do — and drop the chronology and the debt (AGENTS.md § Documentation
+  content policy, Constitution IV, QR-004) (contradicts)
+
+### Task-set gates
+
+- [ ] T1200 Restore the task-set gates over the tasks this phase adds, in
+  `specs/001-inspect-agent-customizations/tasks.md`,
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, and
+  `tests/documentation/cross-artifact.test.ts`: name T1199, T1200, and T1201 in the Normative
+  Requirement Traceability matrix in both languages — QR-004 for the rework record and the
+  `[Story]` rule, the Constitution/project-governance row for this task-set work — and move the
+  three literals the suite pins: the highest declared task ID that `DECLARED_TASK_IDS` is built
+  from, from 1198 to 1201, and the frozen counts, from 1,110 tasks and 115 phases to 1,113 and 116.
+  Until this task runs `pnpm run test:docs` fails on the appended IDs (Constitution III) (missing)
+
+### The story-label rule
+
+- [ ] T1201 Correct the `[Story]` line in tasks.md § Format in
+  `specs/001-inspect-agent-customizations/tasks.md` and
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, which still requires a story label for
+  "Phases 3–101 and 105–109" and omits it only in "Setup, Minimal Secure Foundation, and Phases
+  102–104". Phase 110's tasks carry `[US2]`, so the rule fails to require what they have; the
+  Convergence phases carry none, so it fails to excuse what they omit. T1198 named this line and
+  corrected § Organization and the Story Coverage note instead, and no gate covers it. Write the
+  exemption as every Convergence phase rather than by number, so a later convergence run does not
+  reopen the same line (QR-004) (partial)
+---
+
 ## Story Coverage Matrix
 
 | Phase | Primary story coverage | Cumulative milestone |

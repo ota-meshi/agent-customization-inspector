@@ -9097,6 +9097,59 @@ readmeは読み手が実際に出会うinterfaceを示す。
   `specs/001-inspect-agent-customizations/tasks.ja.md` で修正する（QR-004）（missing）
 ---
 
+## フェーズ 112: 収束
+
+**目的**: interface reworkの記録を、release evidenceが現に示す状態へ合わせ、story labelの規則を
+実在するphaseに対して述べる。
+
+**独立したテスト**: `specs/001-inspect-agent-customizations/validation.md` を通して読み、上の節の
+記録がまだ負債であると主張する節が1つもないことを確認する。`pnpm run test:docs` を実行し、拡張
+されたtask setに対してpassすることを確認する。tasks.md § 形式 を読み、その `[Story]` 規則が、
+実際にstory labelを持つphaseと一致することを確認する。
+
+**可視チェックポイント**: validation recordが、このtreeについての1つの説明として読める。説明に
+「足りないもののlist」が足された姿ではなくなる。
+
+### 作り直しの記録
+
+- [ ] T1199 CRITICAL `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` の
+  `## Interface rework: what it invalidates, and what release completion repeats` を、現在の事実
+  へ書き直す。無効化されたとして名指されている記録はいずれもすでに取り直されているのに、節は
+  現在形で反対のことを主張している。表はRelease gate execution tableが作り直し前のtreeのcountを
+  保持すると述べるが、その表は 2026-09-03 にこのtreeで実行した結果を記録している。SC-001 と
+  SC-006 のsessionを負債として名指すが、それらは 2026-09-03 に実施された。`REVIEW-*` の再確認を
+  負債として名指すが、それは 2026-09-03 に実施された。SC-003/SC-004/SC-005/SC-007 のsetを無効と
+  名指すが、§ Outcome-manifest criteria は現在のcanonical digestを載せ、作り直し前のsetと比較
+  不能であることを自らの言葉で述べている。結びの一文「It is the list of what a release from this
+  tree owes」は、releaseの可否を判断するmaintainerがそれを根拠に動く文である。理由 — reworkが
+  これらの記録を再び開いたこと、それが各記録の日付の由来であること — は残し、chronologyと負債の
+  主張を落とす（AGENTS.md § Documentation content policy、憲章 IV、QR-004）（contradicts）
+
+### Task set の gate
+
+- [ ] T1200 このフェーズが追加するtaskに対してtask setのgateを回復する。
+  `specs/001-inspect-agent-customizations/tasks.md`、
+  `specs/001-inspect-agent-customizations/tasks.ja.md`、
+  `tests/documentation/cross-artifact.test.ts` において、T1199・T1200・T1201 を両言語の Normative
+  Requirement Traceability matrix で名指し — 作り直しの記録と `[Story]` 規則は QR-004、この
+  task set作業は Constitution/project-governance の行 — suiteが固定する3つのliteralを移す:
+  `DECLARED_TASK_IDS` が組み立ての基にする最上位のtask IDを 1198 から 1201 へ、凍結されたcountを
+  task 1,110件・phase 115件から 1,113件・116件へ。このtaskが走るまで `pnpm run test:docs` は
+  追加されたIDでfailする（憲章 III）（missing）
+
+### Story label の規則
+
+- [ ] T1201 `specs/001-inspect-agent-customizations/tasks.md` と
+  `specs/001-inspect-agent-customizations/tasks.ja.md` の tasks.md § 形式 にある `[Story]` の行を
+  修正する。この行はいまだ「フェーズ 3〜101 および 105〜109」でstory labelを必須とし、省略を
+  「Setup、Minimal Secure Foundation、フェーズ 102〜104」に限っている。フェーズ 110 のtaskは
+  `[US2]` を持つのでこの規則はそれを要求できておらず、収束フェーズのtaskは持たないのでこの規則は
+  その省略を許せていない。T1198 はこの行を名指しながら、§ 構成 と Story Coverage の注記だけを
+  修正した。これを覆うgateは存在しない。免除は番号で列挙せず「すべての収束フェーズ」として書き、
+  後の収束実行が同じ行を再び開かないようにする（QR-004）（partial）
+---
+
 ## ストーリーカバレッジマトリクス
 
 | フェーズ | 主要ストーリー範囲 | 累積マイルストーン |
