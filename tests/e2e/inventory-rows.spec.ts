@@ -258,7 +258,7 @@ test('offers the two non-kind lists a Source filter and no Tool filter', async (
   // The two lists that belong to no kind keep the Source control and lose the
   // Tool one: no product recognized a file in no kind, and a Source-level
   // diagnostic is not tied to a product (FR-006).
-  for (const entry of ['Files in no kind', 'Diagnostics']) {
+  for (const entry of ['Files in no kind', 'Source diagnostics']) {
     await page.getByRole('tab', { name: new RegExp(`^${entry}`, 'u') }).click();
     await expect(page.getByLabel('Tool', { exact: true }), entry).toHaveCount(0);
     // The all-supported tree carries one Source, where naming the only family

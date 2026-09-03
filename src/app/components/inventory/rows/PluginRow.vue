@@ -115,9 +115,7 @@ const headCompareRoute = computed(() => {
   // Exactly when the row draws no family line to close: the entry lives on one
   // of the two lines and never on neither, so both read the one rule
   // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(carrierRows.value, [
-    ...blockCompareRoutes.value.keys(),
-  ]);
+  const headed = sessionSources.familyLineShownFor(carrierRows.value);
   return headed || routes.length !== 1 ? null : routes[0]!;
 });
 
@@ -334,11 +332,7 @@ function affectedShippedFiles(carrier: {
          (FR-009). -->
     <!-- One block per Source family (`SourceFamilyBlocks.vue`), each member
          rendered by this row. -->
-    <SourceFamilyBlocks
-      :members="carrierRows"
-      :member-key="(carrier) => carrier.key"
-      :entry-kinds="[...blockCompareRoutes.keys()]"
-    >
+    <SourceFamilyBlocks :members="carrierRows" :member-key="(carrier) => carrier.key">
       <template #member="{ member: carrier }">
         <div class="aci-row-file">
           <span class="aci-row-file__path">

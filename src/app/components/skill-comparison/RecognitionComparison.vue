@@ -74,8 +74,10 @@ defineProps<{
                      finds, and its own accessible name would be the same word
                      twice (`ToolMark.vue`). -->
                 <th scope="row">
-                  <ToolMark decorative :tool="row.tool" />
-                  {{ SUPPORTED_TOOL_TEXT[row.tool] }}
+                  <span class="aci-recognition-table__tool"
+                    ><ToolMark decorative :tool="row.tool" />
+                    {{ SUPPORTED_TOOL_TEXT[row.tool] }}</span
+                  >
                 </th>
                 <!-- The recognition, and the surfaces of the documented
                      behaviors its admitting rules rest on: FR-009 states them

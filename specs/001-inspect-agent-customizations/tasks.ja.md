@@ -8,7 +8,7 @@
 
 **テスト**: すべての振る舞いの変更について、実装前にリスクに応じた自動テストが必要です。テストはユニット、契約、統合、パッケージ、セキュリティ、性能、ブラウザー、境界、アクセシビリティ、回帰の振る舞いを網羅します。
 
-**構成**: タスクは、一つのuser story全体を水平に完了せず、元の目に見えるfamily-vertical delivery incrementに従います。起動可能な画面の後、各familyでInventory/List、完全で不活性なDetail、必要なshared integration、Comparisonを完了してから次のfamilyへ進みます。正確な順序は、SKILL（その Skill Metadata の一覧/詳細フェーズは確定済みの決定記録 — フェーズ 6・7 参照 — であり、比較フェーズは census companion に対する generic path の検証です — フェーズ 14 参照）→ Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooksです。Story labelはcanonicalなtraceabilityを維持し、`[US1]`はdiscovery、`[US2]`は完全で不活性なdetail、`[US3]`はcomparison、`[US4]`はGlobal inspectionを表します。MCP surfaceに合流するのは明示的なMCP構成だけです。他のkindのfileが綴るMCP構成は、そのkind自身のinventory phaseが出荷された時点で、そのkindのdetail contentとして見えるようになります。各phaseは独立してtest可能なmilestoneを1つ維持します。フェーズ 105〜109 は、完成したそれらのsurfaceを読むためのインターフェースを作り直すため、release evidenceの後に続き、それを再び開きます。読み手が見るものへの変更は、そのevidenceが凍結された対象であるtreeへの変更だからです。 *(amended 2026-08-20: MCP surfaceに合流するのは明示的なMCP構成だけである。他のkindのfileが綴るMCP構成は、agentの`mcp-servers`も含め、そのkind自身のdetail contentとして見えるだけである。)*
+**構成**: タスクは、一つのuser story全体を水平に完了せず、元の目に見えるfamily-vertical delivery incrementに従います。起動可能な画面の後、各familyでInventory/List、完全で不活性なDetail、必要なshared integration、Comparisonを完了してから次のfamilyへ進みます。正確な順序は、SKILL（その Skill Metadata の一覧/詳細フェーズは確定済みの決定記録 — フェーズ 6・7 参照 — であり、比較フェーズは census companion に対する generic path の検証です — フェーズ 14 参照）→ Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooksです。Story labelはcanonicalなtraceabilityを維持し、`[US1]`はdiscovery、`[US2]`は完全で不活性なdetail、`[US3]`はcomparison、`[US4]`はGlobal inspectionを表します。MCP surfaceに合流するのは明示的なMCP構成だけです。他のkindのfileが綴るMCP構成は、そのkind自身のinventory phaseが出荷された時点で、そのkindのdetail contentとして見えるようになります。各phaseは独立してtest可能なmilestoneを1つ維持します。フェーズ 105〜110 は、完成したそれらのsurfaceを読むためのインターフェースを作り直すため、release evidenceの後に続き、それを再び開きます。そしてフェーズ 111 が、そのevidenceとユーザー向けドキュメントを、作り直しの結果であるtreeへ戻します。読み手が見るものへの変更は、そのevidenceが凍結された対象であるtreeへの変更だからです。 *(amended 2026-08-20: MCP surfaceに合流するのは明示的なMCP構成だけである。他のkindのfileが綴るMCP構成は、agentの`mcp-servers`も含め、そのkind自身のdetail contentとして見えるだけである。)*
 
 ## 形式: `[ID] [P?] [Story?] Description`
 
@@ -7546,7 +7546,7 @@ dispositionである。
   reviewを立証しない。`tests/documentation/cross-artifact.test.ts`へ、両quickstart、順序付き独立CI
   job、後続release/final rerunを要求するbilingual plan/task/quickstart declarationを含むrunnable command/stable
   ID、FR-045までの全53 FR/QR/SC trace row *(2026-08-04 修正: trace rowの件数は現在のFR/QR/SC集合に従う。)*、宣言済みtask
-  IDすべてのmapping（T001からT1141まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
+  IDすべてのmapping（T001からT1198まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
   *(2026-08-30 修正: 欠番の範囲に取り下げたmarketplaceフェーズ68–75を含めた。同じgateが再現すべきtask件数は既にそれらを除外していたが、列挙が漏れていた。)*
   *(2026-08-24 修正: 件数と欠番の範囲は現在のtask
   setに従う。取り下げたフェーズ64と67がその欠番を残す。)*を検証し、prefixなしbasenameにownershipを依存するtaskを
@@ -7690,7 +7690,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
 
 - [X] T1049 Targeted study-evidence gate
   `pnpm run test:contract -- tests/contract/usability-study-evidence.test.ts`、`pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`、`pnpm run test:security -- tests/security/usability-study-evidence.test.ts`を実行し、全positive/negative
-  caseがpassするまで先へ進まない。Bilingual task parserでexact 1,053 ordered checkbox ID、108 phase、53 trace row
+  caseがpassするまで先へ進まない。Bilingual task parserでexact 1,110 ordered checkbox ID、115 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 111 が拡張した task set に従う。)*
   *(2026-08-01 修正: 現在のtask setに合わせて件数を補正)* *(2026-08-04 修正: trace
   rowの件数は現在のFR/QR/SC集合に従う。)*、English/Japaneseのidentical owned-path set、out-of-line amendment
   mechanismのないself-contained task textを要求する。Exact five-input phase matrix、closed twenty-member
@@ -8281,7 +8281,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
   cardinality、unchanged record kind/effect row/sole-writer chain、heartbeat boundary、handoff
   anchor、stable control session、finalize teardown、witness-before-seal order、exact retained
   distribution/stream/handoff/witness/seal pair、sidecar/runtime control/raw/browser/reviewer/mapping
-  residue 0件を確認する。最後にtask parserのexact 1,053 ID、108 phase、53 trace row、owned-path
+  residue 0件を確認する。最後にtask parserのexact 1,110 ID、115 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 111 が拡張した task set に従う。)*、owned-path
   parity、self-contained task text、bilingual semantic/code-literal parity、全focused/complete gate
   resultをreviewし、untested branch、stale architecture term、failed check、missing evidence、privacy
   residue、unresolved concernがあればT1062/T1063をblockする。 加えて、次のbrowser-observation、outcome、ordering
@@ -8569,8 +8569,8 @@ participant 20名がこのprojectには得られず、それが存在する理�
   diff/tarballに対してT1061を再実行し、concernが残る間T1061 → remediation → focused gate → complete gate → full
   studyを反復する。Concern 0件の後だけ、exact retained distribution、stream 3件、handoff pair、continuity-witness
   pair、capture-seal pair、record kind 5件、threshold independence、exact six-plus-two long-lived
-  exitとreviewer-exit equation、aggregate equation 7件、prohibited residue 0件、exact task ID 1,053件、phase
-  108件、trace row 53件、宣言済み task ID すべての coverage — T001 から T1141 まで、取り下げたフェーズ39の欠番
+  exitとreviewer-exit equation、aggregate equation 7件、prohibited residue 0件、exact task ID 1,110件、phase
+  115件、trace row 53件 *(2026-09-03 修正: countと宣言範囲はフェーズ 111 が拡張した task set に従う。)*、宣言済み task ID すべての coverage — T001 から T1198 まで、取り下げたフェーズ39の欠番
   T436–T439、フェーズ45の欠番 T482–T485、フェーズ64の欠番 T654–T657、フェーズ67の欠番 T675–T678、フェーズ68–75の欠番 T679–T750
   を除く、English/Japanese owned-path/semantic parity、stale architecture term
   0件、`git diff --check`をverifyする。全invalidation、rerun、digest、safe count、aggregate、cleanup、final
@@ -8996,7 +8996,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
 
 ### ユーザードキュメント
 
-- [ ] T1186 CRITICAL `docs/images/inventory.png` と `docs/images/comparison.png` を作り直した
+- [X] T1186 CRITICAL `docs/images/inventory.png` と `docs/images/comparison.png` を作り直した
   interfaceに対して再生成し、`./README.md` と `./README.ja.md` でそれぞれを導入するalt textを
   書き直す。commit済みの画像はフェーズ 105〜110 より前のもので、置き換えられたsurfaceを示して
   いる — shell barが1つのsearchを持つ今（T1154）に `Path contains` fieldを持つ `Filters` panel、
@@ -9004,7 +9004,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
   （T1159）にfileごとのsupporting-file行、Source familyとその状態がkindの上に立つ今（T1152）に
   kindだけのrail。`package.json.files` は `docs/images` を同梱するため、これらはnpmが配信する
   ものである（憲章 IV、QR-004、T1029）（contradicts）
-- [ ] T1187 CRITICAL `./README.md` と `./README.ja.md` の個人設定の一文を修正する。読み手に
+- [X] T1187 CRITICAL `./README.md` と `./README.ja.md` の個人設定の一文を修正する。読み手に
   *Inspect your personal setup* をクリックするよう伝えているが、T1153 が一覧から常設のconsent
   linkを取り除き、その文字列は今や `src/app/pages/global-consent.vue` の見出しであり、読み手が
   クリックするのは `Sources` の下にあるrailの `Personal setup` である。interfaceがrenderする
@@ -9012,7 +9012,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
 
 ### エビデンスの同一性
 
-- [ ] T1188 CRITICAL `specs/001-inspect-agent-customizations/validation.md` と
+- [X] T1188 CRITICAL `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` でoutcome-manifestの同一性を記録し
   直す。両者はcanonical SHA-256
   `f87255e0df95ce017b6fd906508f25ae4860227212af760f4aa0eee60bbaff03` を名指しているが、これは
@@ -9041,21 +9041,21 @@ readmeは読み手が実際に出会うinterfaceを示す。
 して記録したものを、そこで名指された順に繰り返す。各taskは結果をそのファイルと
 `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。
 
-- [ ] T1190 このtreeに対して `pnpm run build` を実行し、続いて `pnpm run verify:package` と
+- [X] T1190 このtreeに対して `pnpm run build` を実行し、続いて `pnpm run verify:package` と
   `pnpm run test:package` を実行して、packaged-treeの結果を
   `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（QR-004）（missing）
-- [ ] T1191 Release gate execution tableのすべてのgateを再実行し、そのcountをこのtreeで各実行が
+- [X] T1191 Release gate execution tableのすべてのgateを再実行し、そのcountをこのtreeで各実行が
   報告した値へ置き換える。対象は `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md`。記録済みの行はすでに矛盾している:
   Documentation 31件、Unit 1,195件、Contract 389件に対し、このtreeの実行は 41件、1,211件、391件
   を報告する（QR-004）（contradicts）
-- [ ] T1192 CIの3 project browser実行を、このtreeのcertifyingな結果として
+- [X] T1192 CIの3 project browser実行を、このtreeのcertifyingな結果として
   `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。localの実行がその代わりに
   ならないこと、macOS WebKitのlink-Tab失敗が未認証hostのものであることという既存のdispositionは
   維持する（QR-004）（missing）
-- [ ] T1193 34件の `AUTO-*` checkをこのtreeの `src/` とpackされた `dist/` に対して再実行し、
+- [X] T1193 34件の `AUTO-*` checkをこのtreeの `src/` とpackされた `dist/` に対して再実行し、
   18件の `REVIEW-*` の根拠を再検討して、両方を
   `specs/001-inspect-agent-customizations/validation.md`、
   `specs/001-inspect-agent-customizations/validation.ja.md`、
@@ -9063,13 +9063,13 @@ readmeは読み手が実際に出会うinterfaceを示す。
   `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` に記録する。
   3.3.7 の根拠は一覧のpath filterを名指しているが、T1154 がそれをshellの1つのsearchにした
   （SC-008）（missing）
-- [ ] T1194 SC-003、SC-004、SC-005、SC-007 のmanifest済みcaseを、check inされたmanifestに対して
+- [X] T1194 SC-003、SC-004、SC-005、SC-007 のmanifest済みcaseを、check inされたmanifestに対して
   再実行し、新しい比較不能なmeasurement set — manifest version、そのcanonical digest、実行した
   case ID、required classごとの非ゼロのcount — を
   `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（SC-003、SC-004、SC-005、
   SC-007）（missing）
-- [ ] T1195 SC-001 と SC-006 の agent駆動session 20件を、この候補のbuildに対して繰り返し、その
+- [X] T1195 SC-001 と SC-006 の agent駆動session 20件を、この候補のbuildに対して繰り返し、その
   buildと `tests/usability/sc001-sc006-study-inputs/` の採点材料を名指して、結果をagent駆動の
   実行として `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。spec.md § Measurable
@@ -9078,19 +9078,19 @@ readmeは読み手が実際に出会うinterfaceを示す。
 
 ### 作り直しを名指す記録
 
-- [ ] T1196 `specs/001-inspect-agent-customizations/validation.md` と
+- [X] T1196 `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` で、無効化の記録をフェーズ 106〜109
   からフェーズ 105〜110 へ広げる。フェーズ 105 はすべての `AUTO-*` contrast checkが測定する
   paletteを置き換え、フェーズ 110 は SC-003 のshared-file caseと SC-005 のrow caseが観測する
   skill・hook・MCPのdetail見出しを作り直した（QR-004）（partial）
-- [ ] T1197 `specs/001-inspect-agent-customizations/tasks.md` と
+- [X] T1197 `specs/001-inspect-agent-customizations/tasks.md` と
   `specs/001-inspect-agent-customizations/tasks.ja.md` で、T1041、T1049、T1061、T1062 の凍結
-  countの記述を修正する。これらの本文はいまだに「ordered checkbox ID 1,053件、phase 108件」と
-  「T001 から T1141 まで」のcoverageを要求しているが、出荷済みのfreezeは 1,097件と 114件を要求し、
-  宣言された範囲は T1185 で終わる。taskの本文はそのtaskが現在要求するものを記録し、日付入りの
-  amendment noteが変更されたことを記録する（AGENTS.md § Documentation content policy）
-  （contradicts）
-- [ ] T1198 フェーズ 110 とこのフェーズが持たないStory Coverage Matrixの行を追加し、109 で止まって
+  countの記述を出荷済みのfreezeに合わせる。これら4つの本文は、task parserが ordered checkbox ID
+  1,110件、phase 115件、trace row 53件を再現すること、および T001 から T1198 までの宣言済み task ID
+  すべて（各本文が既に列挙している欠番を除く）のcoverageを要求する。taskの本文はそのtaskが現在
+  要求するものを記録し、日付入りの amendment noteが変更されたことを記録する
+  （AGENTS.md § Documentation content policy）（contradicts）
+- [X] T1198 フェーズ 110 とこのフェーズが持たないStory Coverage Matrixの行を追加し、109 で止まって
   いるphase範囲 — § 構成 と § 形式 の `[Story]` の行はどちらも「フェーズ 105〜109」と書いているが、
   フェーズ 110 は存在しそのtaskは `[US2]` を持つ — を
   `specs/001-inspect-agent-customizations/tasks.md` と
@@ -9213,6 +9213,8 @@ readmeは読み手が実際に出会うinterfaceを示す。
 | 107 一覧 row の圧縮 | US1 | 1つのfileが1行を占め、認識したproductとその文書化済みsurfaceがその傍らに並ぶ。 |
 | 108 詳細サーフェスの作り直し | US2 | Detailはそのcustomizationで始まり、authored sourceに必要な高さを渡す。 |
 | 109 比較サーフェスと作り直しの締め | US3 | 比較は両sideのproductを名指し、並列のまま保たれ、再び開いたgateが再実行される。 |
+| 110 detail見出しの、recognitionが持つ呼び出し名 | US2 | detailは各productの呼び出し名をそのproductの隣で述べ、ファイル自身の事実を見出しの下の行に置く。 |
+| 111 収束 | 共通の前提 | release evidenceとユーザー向けドキュメントが、作り直しの結果であるtreeを記述し、task-set gateがそのtreeで追加されたtaskを覆う。 |
 
 ## 依存関係と実行順序
 
@@ -9285,7 +9287,7 @@ Setup
 - フェーズ 96 はgeneric selector-free fixed-member coordinator、3つのclosed typed admission port、Codex real port、test-only injected outcome coverageを確立するがproduction all-member activationを主張しない。フェーズ 97〜98 は同じopen composite milestoneへreal Claude/Copilot portをbindする。フェーズ 99は全real portを通じてfixed-member permutationを再検証しendpoint/atomic publicationを完成させ、全admitted separately identified one-root Sourceをexactly one completeまたはpartial generationで同時にpublishする。その時点だけcomposite milestoneをgreenとし、その後のexplicit Global rescanはsingle-Source operationのままとする。
 - フェーズ 102 のT1037はsemantic evidence-drift gateである。このgate通過後は、semanticに変化しないreview済みPhase-102 citation/evidence metadata correctionがproduction registryを更新できるが、accepted normative behavior、rule、strategy、Presentation Allowlist、registry shape、conformance changeはcurrent bilingual task setをsupersedeし、後続old ID前にsynchronized artifactとreplanningを要求する。
 - フェーズ 103 のT1041は後続のpre-release hard cross-artifact gateである。T999がproduction registry、T1038が影響conformance recordをmaterialize済みでなければならず、manifest/documentation/traceability suiteはそのfinal state、existing local/CI command、宣言済みlater release/final rerunをverifyするがT1048前のfuture release workflowを要求しない。T1041-owned manifest/test fileのfailureはT1041内でcorrect/rerunし、authoritative external artifact concernはT1062を待たずcurrent task setをsupersedeしてsynchronized replanning/regenerationを要求する。そのdisposition後にunresolved concernが0件の場合だけverification-only T1042またはcurrent IDの後続taskを開始できる。
-- フェーズ 105〜109 は、完成したsurfaceを読むためのインターフェースを作り直すため、release evidenceに先行するのではなくその後に続く: 各フェーズが1つの層 — paletteと共有control、shellとSource状態のroute、一覧のrow、detailの見出し、比較の見出し — を作り直し、フェーズ 109 は、作り直しが再び開いた横断的gateを再実行し、凍結済みのrelease outcomeがもはやこのtreeを説明しないことを記録して締める。
+- フェーズ 105〜110 は、完成したsurfaceを読むためのインターフェースを作り直すため、release evidenceに先行するのではなくその後に続く: 各フェーズが1つの層 — paletteと共有control、shellとSource状態のroute、一覧のrow、detailの見出し、比較の見出し — を作り直し、フェーズ 109 は、作り直しが再び開いた横断的gateを再実行し、凍結済みのrelease outcomeがもはやこのtreeを説明しないことを記録して締める。
 - Repository のインベントリ、詳細、比較の受け入れが US1、US2、US3 を完成させる。Global 無効化バリアと解体は、US4 が完成する最初のフェーズである。
 
 ## 並行実行の機会

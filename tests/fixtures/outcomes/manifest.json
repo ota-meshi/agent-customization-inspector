@@ -299,7 +299,7 @@
     "tests/e2e/inspection-safety.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/inspection-safety.spec.ts",
-      "sha256": "326c858e3cd88a9aed5ba50d85754cb5fe31c81b9b2332ca10edbd247035ac20"
+      "sha256": "6d02bfb0c6dc0c9b857b220c05cf51ffc689bbcb9545afad6184b7bae77b77b1"
     },
     "tests/e2e/mcp-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -594,56 +594,56 @@
           "caseId": "sc003.shared-file.repository-agents-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `AGENTS.md` is attributed to OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-root-claude-md",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository-root `CLAUDE.md` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `CLAUDE.md` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/instructions-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-agents-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "A repository `.agents/skills/<name>/SKILL.md` is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "A repository `.agents/skills/<name>/SKILL.md` is attributed to OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/skills-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-claude-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "A repository `.claude/skills/<name>/SKILL.md` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "A repository `.claude/skills/<name>/SKILL.md` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/skills-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-claude-settings",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["tests/e2e/settings-config-inventory.spec.ts"],
-          "expectedOutcome": "The repository `.claude/settings.json` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository `.claude/settings.json` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/settings-config-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-root-mcp-json",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["tests/e2e/mcp-inventory.spec.ts"],
-          "expectedOutcome": "The repository-root `.mcp.json` is attributed to Claude Code and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository-root `.mcp.json` is attributed to Claude Code and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/mcp-inventory.spec.ts"]
         },
         {
           "caseId": "sc003.shared-file.repository-marketplace-json",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["repositories"],
-          "expectedOutcome": "The repository `.claude-plugin/marketplace.json` is attributed to Claude Code and OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "The repository `.claude-plugin/marketplace.json` is attributed to Claude Code and OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/integration/repository-scan.test.ts"]
         },
         {
           "caseId": "sc003.shared-file.global-shared-agent-home-skill",
           "requiredClasses": ["shared-file-attribution"],
           "fixtureRefs": ["tests/e2e/global-same-path-skill.spec.ts"],
-          "expectedOutcome": "A `skills/<name>/SKILL.md` held by two consented Global member boundaries at once is attributed to OpenAI Codex and GitHub Copilot — every recognizing tool and no other — from the one physical file, without duplicating it into separate rows.",
+          "expectedOutcome": "A `skills/<name>/SKILL.md` held by two consented Global member boundaries at once is attributed to OpenAI Codex and GitHub Copilot \u2014 every recognizing tool and no other \u2014 from the one physical file, without duplicating it into separate rows.",
           "verifiedBy": ["tests/e2e/global-same-path-skill.spec.ts"]
         },
         {

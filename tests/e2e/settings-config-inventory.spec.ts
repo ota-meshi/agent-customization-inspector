@@ -104,8 +104,8 @@ test.describe('the unified settings and configuration inventory', () => {
     // tabs pattern this app shares (QR-004).
     await page.keyboard.press('End');
     // The rail closes with the two entries that belong to no kind, so the end
-    // of the strip is "Diagnostics" and the last kind is two steps back.
-    await expect(page.getByRole('tab', { name: /^Diagnostics/u })).toBeFocused();
+    // of the strip is "Source diagnostics" and the last kind is two steps back.
+    await expect(page.getByRole('tab', { name: /^Source diagnostics/u })).toBeFocused();
     await page.keyboard.press('ArrowUp');
     await page.keyboard.press('ArrowUp');
     await expect(page.getByRole('tab', { name: /Settings \/ Config/u })).toBeFocused();

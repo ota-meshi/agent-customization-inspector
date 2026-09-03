@@ -8,7 +8,7 @@
 
 **Tests**: Every behavioral change requires risk-appropriate automated tests before implementation. Tests cover unit, contract, integration, package, security, performance, browser, boundary, accessibility, and regression behavior.
 
-**Organization**: Tasks follow the original visible family-vertical delivery increments rather than completing one whole user story horizontally. After the bootable shell, each family completes Inventory/List, complete inert Detail, shared integration where applicable, and Comparison before the next family begins. The exact order is SKILL (whose Skill Metadata list/detail phases are settled decision records — see Phases 6 and 7 — and whose comparison phase verifies the generic path over census companions — see Phase 14) → Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks. Story labels retain canonical traceability: `[US1]` discovery, `[US2]` complete inert detail, `[US3]` comparison, and `[US4]` Global inspection. Only explicit MCP configuration joins the MCP surfaces — a file of another kind that spells MCP configuration shows it as that kind's own detail content once its own inventory phase ships it; every phase still has one independently testable milestone. Phases 105–109 rework the interface those completed surfaces are read through and therefore follow the release evidence, which they reopen: a change to what a reader sees is a change to the tree that evidence was frozen over.
+**Organization**: Tasks follow the original visible family-vertical delivery increments rather than completing one whole user story horizontally. After the bootable shell, each family completes Inventory/List, complete inert Detail, shared integration where applicable, and Comparison before the next family begins. The exact order is SKILL (whose Skill Metadata list/detail phases are settled decision records — see Phases 6 and 7 — and whose comparison phase verifies the generic path over census companions — see Phase 14) → Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks. Story labels retain canonical traceability: `[US1]` discovery, `[US2]` complete inert detail, `[US3]` comparison, and `[US4]` Global inspection. Only explicit MCP configuration joins the MCP surfaces — a file of another kind that spells MCP configuration shows it as that kind's own detail content once its own inventory phase ships it; every phase still has one independently testable milestone. Phases 105–110 rework the interface those completed surfaces are read through and therefore follow the release evidence, which they reopen: a change to what a reader sees is a change to the tree that evidence was frozen over, and Phase 111 brings that evidence and the user documentation back onto the tree they produced.
 
 ## Format: `[ID] [P?] [Story?] Description`
 
@@ -8873,7 +8873,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   quickstarts; ordered independent CI jobs; and the bilingual plan/task/quickstart declarations that
   require later release/final reruns—plus all 53 FR/QR/SC trace rows through FR-045 *(amended
   2026-08-04: the trace-row count follows the current FR/QR/SC set.)*, and every declared task ID's
-  mapping (T001 through T1141, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
+  mapping (T001 through T1198, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
   T482–T485, Phase 64’s vacant T654–T657, Phase 67’s vacant T675–T678, and Phases 68–75’s vacant
   T679–T750) *(amended 2026-08-30: the vacant ranges include the withdrawn marketplace Phases 68–75,
   whose T679–T750 the enumeration previously omitted while the same count it must reproduce already
@@ -9048,7 +9048,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   `pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`, and
   `pnpm run test:security -- tests/security/usability-study-evidence.test.ts`, and do not continue
   until all positive and negative cases pass. Require the bilingual task parser to preserve exactly
-  1,053 ordered checkbox IDs, 108 phases, 53 trace rows *(amended 2026-08-01: counts corrected to
+  1,110 ordered checkbox IDs, 115 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 111 extends.)* *(amended 2026-08-01: counts corrected to
   the current task set)* *(amended 2026-08-04: the trace-row count follows the current
   FR/QR/SC set.)*, identical English/Japanese owned-path sets, and self-contained task text with no
   out-of-line amendment mechanism. Verify the exact five-input phase matrix, closed twenty-member
@@ -9710,7 +9710,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   heartbeat boundaries, handoff anchors, stable control session, finalize teardown,
   witness-before-seal ordering, exact retained distributions/streams/handoff/witness/seal pairs, and
   zero sidecar/runtime control/raw/browser/reviewer/mapping residue. Finally review the task
-  parser's exact 1,053 IDs, 108 phases, 53 trace rows, owned-path parity, self-contained task text,
+  parser's exact 1,110 IDs, 115 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 111 extends.)*, owned-path parity, self-contained task text,
   bilingual semantic/code-literal parity, and all focused/complete gate results; any untested
   branch, stale architecture term, failed check, missing evidence, privacy residue, or unresolved
   concern blocks T1062/T1063. Additionally, review against the complete diff, tarball, and evidence
@@ -10025,8 +10025,8 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   while any concern remains. Only after zero concerns, verify the exact retained distributions,
   three streams, handoff pair, continuity-witness pair, capture-seal pair, five record kinds,
   threshold independence, the exact six-plus-two long-lived exits and reviewer-exit equation, seven
-  aggregate equations, zero prohibited residue, exact 1,053 task IDs, 108 phases, 53 trace rows,
-  coverage of every declared task ID — T001 through T1141, less the withdrawn Phase 39's vacant
+  aggregate equations, zero prohibited residue, exact 1,110 task IDs, 115 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 111 extends.)*,
+  coverage of every declared task ID — T001 through T1198, less the withdrawn Phase 39's vacant
   T436–T439, Phase 45's vacant T482–T485, Phase 64's vacant T654–T657, Phase 67's vacant T675–T678,
   and Phases 68–75's vacant T679–T750, English/Japanese owned-path and semantic parity, no stale
   architecture term, and `git diff --check`; record every invalidation, rerun, digest, safe count,
@@ -10488,7 +10488,7 @@ shows the interface the reader will meet.
 
 ### User documentation
 
-- [ ] T1186 CRITICAL Regenerate `docs/images/inventory.png` and `docs/images/comparison.png`
+- [X] T1186 CRITICAL Regenerate `docs/images/inventory.png` and `docs/images/comparison.png`
   against the reworked interface and rewrite the alt text that introduces each of them in
   `./README.md` and `./README.ja.md`: the committed images predate Phases 105–110 and show the
   replaced surfaces — a `Filters` panel with a `Path contains` field where the shell bar now
@@ -10497,7 +10497,7 @@ shows the interface the reader will meet.
   of kinds alone where the Source families and their statuses now stand above them (T1152).
   `package.json.files` ships `docs/images`, so these are what npm serves (Constitution IV, QR-004,
   T1029) (contradicts)
-- [ ] T1187 CRITICAL Correct the personal-setup sentence in `./README.md` and `./README.ja.md`,
+- [X] T1187 CRITICAL Correct the personal-setup sentence in `./README.md` and `./README.ja.md`,
   which tells the reader to click *Inspect your personal setup*: T1153 removed the standing consent
   link from the inventory, that string is now the heading of `src/app/pages/global-consent.vue`,
   and what a reader clicks is the rail's `Personal setup` entry under `Sources`. Name what the
@@ -10505,7 +10505,7 @@ shows the interface the reader will meet.
 
 ### Evidence identity
 
-- [ ] T1188 CRITICAL Re-record the outcome-manifest identity in
+- [X] T1188 CRITICAL Re-record the outcome-manifest identity in
   `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md`: both name canonical SHA-256
   `f87255e0df95ce017b6fd906508f25ae4860227212af760f4aa0eee60bbaff03`, which is not the digest
@@ -10535,21 +10535,21 @@ These six repeat what `specs/001-inspect-agent-customizations/validation.md` § 
 records as owed, in the order it names. Each records its result in that file and in
 `specs/001-inspect-agent-customizations/validation.ja.md`.
 
-- [ ] T1190 Run `pnpm run build`, then `pnpm run verify:package` and `pnpm run test:package` over
+- [X] T1190 Run `pnpm run build`, then `pnpm run verify:package` and `pnpm run test:package` over
   this tree, and record the packaged-tree result in
   `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md` (QR-004) (missing)
-- [ ] T1191 Rerun every gate in the Release gate execution table and replace its counts with what
+- [X] T1191 Rerun every gate in the Release gate execution table and replace its counts with what
   each run reports over this tree, in `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md`. The recorded row is already
   contradicted: Documentation 31, Unit 1,195, and Contract 389 against runs of this tree reporting
   41, 1,211, and 391 (QR-004) (contradicts)
-- [ ] T1192 Record the three-project browser run in CI as this tree's certifying result in
+- [X] T1192 Record the three-project browser run in CI as this tree's certifying result in
   `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md`, keeping the existing disposition that
   a local run stands in for none of it and that the macOS WebKit link-Tab failures are an
   uncertified host's (QR-004) (missing)
-- [ ] T1193 Rerun the 34 `AUTO-*` checks against this tree's `src/` and its packed `dist/`, redo
+- [X] T1193 Rerun the 34 `AUTO-*` checks against this tree's `src/` and its packed `dist/`, redo
   the 18 `REVIEW-*` rationale recheck, and record both in
   `specs/001-inspect-agent-customizations/validation.md`,
   `specs/001-inspect-agent-customizations/validation.ja.md`,
@@ -10557,13 +10557,13 @@ records as owed, in the order it names. Each records its result in that file and
   `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` — the 3.3.7
   rationale names the inventory's path filter, which T1154 made the shell's one search (SC-008)
   (missing)
-- [ ] T1194 Re-execute the manifested SC-003, SC-004, SC-005, and SC-007 cases against the checked-in
+- [X] T1194 Re-execute the manifested SC-003, SC-004, SC-005, and SC-007 cases against the checked-in
   manifest and record the new non-comparable measurement set — the manifest version, its canonical
   digest, the executed case IDs, and a nonzero count for every required class — in
   `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md` (SC-003, SC-004, SC-005, SC-007)
   (missing)
-- [ ] T1195 Repeat the twenty agent-driven SC-001 and SC-006 sessions against a build of this
+- [X] T1195 Repeat the twenty agent-driven SC-001 and SC-006 sessions against a build of this
   candidate, naming that build and the task material under
   `tests/usability/sc001-sc006-study-inputs/` it scored against, and record the result as an
   agent-driven run in `specs/001-inspect-agent-customizations/validation.md` and
@@ -10573,19 +10573,19 @@ records as owed, in the order it names. Each records its result in that file and
 
 ### Records that name the rework
 
-- [ ] T1196 Extend the invalidation record from Phases 106–109 to Phases 105–110 in
+- [X] T1196 Extend the invalidation record from Phases 106–109 to Phases 105–110 in
   `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md`: Phase 105 replaced the palette every
   `AUTO-*` contrast check measures, and Phase 110 reworked the skill, hook, and MCP detail heads
   that the SC-003 shared-file and SC-005 row cases observe (QR-004) (partial)
-- [ ] T1197 Correct the frozen-count text in T1041, T1049, T1061, and T1062 in
+- [X] T1197 Hold the frozen-count text in T1041, T1049, T1061, and T1062 to the shipped freeze in
   `specs/001-inspect-agent-customizations/tasks.md` and
-  `specs/001-inspect-agent-customizations/tasks.ja.md`, whose bodies still require "1,053 ordered
-  checkbox IDs, 108 phases" and coverage of "T001 through T1141" while the shipped freeze requires
-  1,097 and 114 and the declared range ends at T1185. A task body records what the task now
-  requires, and a dated amendment note records that it changed (AGENTS.md § Documentation content
-  policy) (contradicts)
-- [ ] T1198 Add the Story Coverage Matrix rows Phase 110 and this phase have none of, and correct
+  `specs/001-inspect-agent-customizations/tasks.ja.md`: each of those bodies requires the task
+  parser to reproduce 1,110 ordered checkbox IDs, 115 phases, and 53 trace rows, and coverage of
+  every declared task ID from T001 through T1198 less the vacant ranges each already enumerates. A
+  task body records what the task now requires, and a dated amendment note records that it changed
+  (AGENTS.md § Documentation content policy) (contradicts)
+- [X] T1198 Add the Story Coverage Matrix rows Phase 110 and this phase have none of, and correct
   the phase ranges that stop at 109 — § Organization and the `[Story]` line in § Format, both of
   which say "Phases 105–109" while Phase 110 exists and its tasks carry `[US2]` — in
   `specs/001-inspect-agent-customizations/tasks.md` and
@@ -10708,6 +10708,8 @@ records as owed, in the order it names. Each records its result in that file and
 | 107 Inventory Row Compression | US1 | One file takes one line, with its recognizing products and their documented surfaces beside it. |
 | 108 Detail Surface Rework | US2 | A detail leads with its customization and gives the authored source the height it needs. |
 | 109 Comparison Surfaces and Rework Closure | US3 | A comparison names the products on each side, stays side by side, and the reopened gates are rerun. |
+| 110 Recognition-Owned Invocation Names on the Detail Head | US2 | A detail states each product's own invocation name beside that product, and its file's facts on the line under the heading. |
+| 111 Convergence | shared prerequisite | The release evidence and the user documentation describe the tree the rework produced, and the task-set gates cover the tasks it added. |
 
 ## Dependencies and Execution Order
 
@@ -10780,7 +10782,7 @@ Setup
 - Phase 96 establishes the generic selector-free fixed-member coordinator, three closed typed admission ports, Codex's real port, and test-only injected outcome coverage without claiming production all-member activation. Phases 97–98 bind the real Claude and Copilot ports to that same still-open composite milestone. Phase 99 repeats the fixed-member permutations through all real ports, completes the endpoint and atomic publication, and publishes every admitted separately identified one-root Source together in exactly one complete or partial generation; only then is the composite milestone green, while later explicit Global rescans remain single-Source operations.
 - Phase 102 task T1037 is the semantic evidence-drift gate: after that gate passes, semantically unchanged reviewed Phase-102 citation/evidence metadata corrections may update production registries, but any accepted normative behavior, rule, strategy, Presentation Allowlist, registry-shape, or conformance change supersedes the current bilingual task set and requires synchronized artifacts plus replanning before later old IDs run.
 - Phase 103 task T1041 is the later pre-release hard cross-artifact gate: T999 must already have materialized the production registry and T1038 any affected conformance records; the manifest and documentation/traceability suite verify that final state, existing local/CI commands, and the declared later release/final reruns, but do not require the future release workflow before T1048. Failures in T1041-owned manifest/test files are corrected and rerun within T1041; a concern in an authoritative external artifact supersedes the current task set for synchronized replanning/regeneration rather than waiting for T1062. Only after that disposition leaves no unresolved concern may verification-only T1042 or any later task under the current IDs begin.
-- Phases 105–109 rework the interface the completed surfaces are read through, so they follow the release evidence rather than preceding it: each reworks one layer — the palette and the shared controls, the shell and the Source state routes, the inventory row, the detail head, and the comparison head — and Phase 109 closes by rerunning the cross-cutting gates the rework reopened and recording that the frozen release outcomes no longer describe the tree.
+- Phases 105–110 rework the interface the completed surfaces are read through, so they follow the release evidence rather than preceding it: each reworks one layer — the palette and the shared controls, the shell and the Source state routes, the inventory row, the detail head, and the comparison head — and Phase 109 closes by rerunning the cross-cutting gates the rework reopened and recording that the frozen release outcomes no longer describe the tree.
 - Repository Inventory, Detail, and Comparison Acceptance complete US1, US2, and US3; Global Disable Barrier and Teardown is the first phase at which US4 is complete.
 
 ## Parallel Opportunities

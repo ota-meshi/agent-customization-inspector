@@ -15,8 +15,11 @@
 //
 // A mark is a link where the kind's detail differs by product: a plugin catalog
 // three products read is one file with three readings, and the reader chooses
-// which reading to open by choosing a mark. Every other kind's file has one
-// detail, so its path is the link and the marks state only what recognized it.
+// which reading to open by choosing one. Every other kind's file has one
+// detail, so its path is the link and the marks state only what recognized it —
+// which the plugin list does too, since a list shows nothing that varies by
+// product (`PluginRow.vue`). The linked mark is therefore the plugin detail's,
+// where the name is drawn beside it and goes inside the link with it.
 //
 // The mark carries the product's identity and the legend gives it its name once
 // for the list, so the name is not repeated on every row. Nothing rests on the
@@ -78,18 +81,24 @@ defineProps<{
       :key="recognition.tool"
       class="aci-recognition-marks__one"
     >
-      <!-- The link is the mark and nothing else. The surfaces beside it are
-           visible text, so inside the link they became its visible label while
-           `aria-label` replaced them with the product, the file, and the
-           plugin — a name that does not contain what the reader can see, which
-           is what speech input matches on (WCAG 2.5.3;
-           contracts/accessibility-acceptance.md § 2.5.3). Outside it the link
-           has no visible label at all, and its `aria-label` is the whole of
-           its name. -->
-      <!-- Where the name is drawn, the mark is decoration beside it and its own
-           accessible name would be the same announcement twice
-           (`ToolMark.vue`). A mark that opens something is decoration too: the
-           link around it states what it opens, this product's name included. -->
+      <!-- The link is the mark and the product's drawn name, and the surfaces
+           stay outside it. The name is what a reader presses — a 15px mark is
+           the whole target otherwise, and the underline this product draws on
+           a link has no characters to sit under, so three products read as
+           three of the same thing and two of them happen to be links. The
+           surfaces stay out because they qualify the mark rather than naming
+           where it goes: inside, they would become the link's visible label
+           while `aria-label` announced something that does not contain them,
+           which is what speech input matches on (WCAG 2.5.3;
+           contracts/accessibility-acceptance.md § 2.5.3).
+
+           The mark and the name are written twice rather than wrapped
+           conditionally, because a template has no conditional wrapper and a
+           component for one would be a component to open before reading two
+           lines. Where a name is drawn the mark is decoration beside it, and
+           its own accessible name would be the same announcement twice
+           (`ToolMark.vue`); inside a link the same holds, since the link
+           states what it opens with this product's name included. -->
       <NuxtLink
         v-if="recognition.opens"
         class="aci-recognition-marks__opens"
@@ -97,9 +106,12 @@ defineProps<{
         :aria-label="recognition.opens.accessibleText"
       >
         <ToolMark :tool="recognition.tool" decorative />
+        <span v-if="named">{{ SUPPORTED_TOOL_TEXT[recognition.tool] }}</span>
       </NuxtLink>
-      <ToolMark v-else :tool="recognition.tool" :decorative="named" />
-      <span v-if="named">{{ SUPPORTED_TOOL_TEXT[recognition.tool] }}</span>
+      <template v-else>
+        <ToolMark :tool="recognition.tool" :decorative="named" />
+        <span v-if="named">{{ SUPPORTED_TOOL_TEXT[recognition.tool] }}</span>
+      </template>
       <span class="aci-recognition-marks__surfaces">{{
         recognition.surfaces.map((surface) => VENDOR_SURFACE_TEXT[surface]).join(', ')
       }}</span>
@@ -123,11 +135,13 @@ defineProps<{
   gap: 0.3125rem;
 }
 
-/* The mark's own link, so the focus ring is drawn around the mark rather than
-   around the whole recognition — the mark is what it opens. */
+/* The mark and its product's name, so the focus ring and the underline are
+   drawn around what a reader presses rather than around the whole recognition,
+   whose surfaces the link does not open. */
 .aci-recognition-marks__opens {
   align-items: center;
   display: inline-flex;
+  gap: 0.3125rem;
 }
 
 /* Smaller than the row's own text and muted, because a surface qualifies the

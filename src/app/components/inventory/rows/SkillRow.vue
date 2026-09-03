@@ -139,9 +139,7 @@ const headCompareRoute = computed(() => {
   // Exactly when the row draws no family line to close: the entry lives on one
   // of the two lines and never on neither, so both read the one rule
   // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(rowFiles.value, [
-    ...blockCompareRoutes.value.keys(),
-  ]);
+  const headed = sessionSources.familyLineShownFor(rowFiles.value);
   return headed || routes.length !== 1 ? null : routes[0]!;
 });
 
@@ -230,7 +228,6 @@ function affectedCompanions(
     <SourceFamilyBlocks
       :members="rowFiles"
       :member-key="(file) => fileIdentityKey(file.sourceId, file.sourceRelativePath)"
-      :entry-kinds="[...blockCompareRoutes.keys()]"
     >
       <template #member="{ member: file }">
         <!-- The path is the link: the detail route is the file's identity, and

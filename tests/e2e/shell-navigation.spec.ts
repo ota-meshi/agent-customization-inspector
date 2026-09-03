@@ -122,7 +122,7 @@ test('the inventory itself states no Source root, status, or generation', async 
   // And the two lists that are no kind's inventory are rail entries rather
   // than sections a reader scrolls past the rows to reach.
   await expect(page.getByRole('tab', { name: /^Files in no kind/u })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /^Diagnostics/u })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^Source diagnostics/u })).toBeVisible();
 });
 
 test('one search matches a row by its name and by its path', async ({ page }) => {

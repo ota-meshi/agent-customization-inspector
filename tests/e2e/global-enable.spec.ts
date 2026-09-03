@@ -195,6 +195,37 @@ test('offers no comparison entry on a row whose blocks hold one copy each', asyn
   );
 });
 
+test('draws no block for a family the Source filter emptied', async ({ page }) => {
+  await page.goto(new URL('/?kind=skill', host.origin).href);
+  const panel = page.getByRole('tabpanel');
+  const deployRow = panel.locator('.aci-item').filter({ hasText: 'deploy' });
+  await expect(deployRow.locator('.aci-family-heading')).toHaveText([
+    'Repository',
+    'Your personal setup',
+  ]);
+
+  // Narrowing to one family leaves the row one copy, so the family it lost is
+  // not a block any more: a block kept for its entry's sake would stand as a
+  // family name with no file under it, over a Compare link opening the files
+  // the filter has just hidden. What the row publishes and what the screen
+  // shows are two questions, and the heading and the link follow the screen
+  // (`SourceFamilyBlocks.vue`, FR-030).
+  await page.getByLabel('Source', { exact: true }).selectOption({ label: 'Your personal setup' });
+  await expect(deployRow.locator('.aci-source-family-blocks > li')).toHaveCount(1);
+  // One family left, so the surviving block heads nothing either: the heading
+  // separates families, and there is no second family to separate it from.
+  await expect(panel.locator('.aci-family-heading')).toHaveCount(0);
+  await expect(panel.getByRole('link', { name: /\(Repository\)$/u })).toHaveCount(0);
+
+  // And the whole list comes back with the filter, so nothing was dropped from
+  // what the row publishes — only from what this narrowing shows.
+  await page.getByLabel('Source', { exact: true }).selectOption({ label: 'All sources' });
+  await expect(deployRow.locator('.aci-family-heading')).toHaveText([
+    'Repository',
+    'Your personal setup',
+  ]);
+});
+
 test('compares two same-spelled copies as two files, each naming its directory (T1140)', async ({
   page,
 }) => {

@@ -187,10 +187,20 @@ test.describe('a first scan that cannot read its root', () => {
     // A root that cannot be read is the Source's own diagnostic rather than
     // any file's, so it is listed under the entry that holds exactly those
     // (FR-002, FR-028).
-    await page.getByRole('tab', { name: /^Diagnostics/u }).click();
-    await expect(page.getByRole('tabpanel')).toContainText(
-      'The selected root does not exist or cannot be read',
-    );
+    //
+    // The count is asserted with the row because this is the only state that
+    // draws the list at all: every other diagnostic this product publishes is
+    // a file's and is stated on that file's row, so a regression here shows up
+    // as an empty list nobody is looking at.
+    await expect(page.getByRole('tab', { name: /^Source diagnostics/u })).toContainText('1');
+    await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
+    const diagnostics = page.getByRole('tabpanel');
+    // The row names whose diagnostic it is and which root the Source selected,
+    // because a source-level record belongs to a Source rather than to a path
+    // the reader can otherwise find on a row (FR-030).
+    await expect(diagnostics).toContainText('Repository');
+    await expect(diagnostics).toContainText(unreadable);
+    await expect(diagnostics).toContainText('The selected root does not exist or cannot be read');
 
     await page.goto(new URL('/repository', host.origin).href);
     const main = page.locator('main');

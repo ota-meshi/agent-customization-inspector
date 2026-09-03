@@ -126,9 +126,13 @@ test('confirms with no tool selector and states what was accepted', async ({ pag
     'Codex home — Inspected',
     'Shared agent home — Inspected',
   ]);
-  // No per-tool control the reader could have used to narrow the consent: the
-  // confirmation is one button for the whole preview.
-  await expect(page.getByRole('checkbox')).toHaveCount(1);
+  // Nothing here offers the confirmation again, and nothing offers it per
+  // tool: with every member inspected, the checkbox and the button it gates
+  // are both absent, so the one confirmation this page takes is one button for
+  // the whole preview (FR-014). The outcomes asserted above are what says the
+  // page rendered, so the two absences are a state rather than a blank page.
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Inspect these directories' })).toHaveCount(0);
 
   // And every home is exactly as it was. The instruction file was read; the
   // settings, credentials, memories, prompts, and session state beside it were

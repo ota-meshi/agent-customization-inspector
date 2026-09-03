@@ -162,19 +162,14 @@ export class SessionSources {
    * with it — sixteen comparison links vanished the moment a personal setup was
    * consented.
    *
-   * `entryKinds` are the families a row can still offer a comparison for after
-   * a narrowing emptied their members: the blocks component renders those too,
-   * so they count towards the heading exactly as members do.
+   * The members are the whole of it: a family a narrowing emptied draws no
+   * block, so there is nothing for a heading to name and nothing for an entry
+   * to close (`SourceFamilyBlocks.vue`).
    */
   public familyLineShownFor<Member extends { readonly sourceId: string }>(
     members: readonly Member[],
-    entryKinds: readonly SourceKind[] = [],
   ): boolean {
-    const kinds = new Set(members.map((member) => this.familyKindOf(member.sourceId)));
-    for (const kind of entryKinds) {
-      kinds.add(kind);
-    }
-    return kinds.size > 1;
+    return new Set(members.map((member) => this.familyKindOf(member.sourceId))).size > 1;
   }
 
   public familyBlocksOf<Member extends { readonly sourceId: string }>(

@@ -182,6 +182,49 @@ test('keeps the bar and the rail on screen as the document scrolls', async ({ pa
   await expect(page.getByRole('tab', { name: /^Agent/u })).toBeInViewport();
 });
 
+test('clears a focused element of the bar at the width the bar wraps at', async ({ page }) => {
+  // The scroll padding is what keeps a focused element out from under the
+  // opaque bar (WCAG 2.4.11), and the bar wraps: two lines below 32rem, and at
+  // any width once the reader's text is large enough. `--aci-sticky-bar` is
+  // therefore published from the bar's measured height rather than written as
+  // a constant (`App.vue` § barHeightObserver), and this is the assertion that
+  // the publication happens: held at the one-line value, `scrollIntoView` put
+  // a link 31.79px under the bar, which is a whole row hidden.
+  //
+  // Asserted here rather than by eye: 50px against an 81.84px bar looks like a
+  // page that scrolled slightly short of the target.
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(host.origin);
+  await page.waitForSelector('.aci-app__bar');
+  const wrapped = await page.evaluate(() => ({
+    barHeight: document.querySelector('.aci-app__bar')!.getBoundingClientRect().height,
+    scrollPadding: Number.parseFloat(
+      getComputedStyle(document.documentElement).scrollPaddingBlockStart,
+    ),
+  }));
+  // The bar does wrap at this width — without that this test would pass on a
+  // one-line bar and assert nothing.
+  expect(wrapped.barHeight).toBeGreaterThan(60);
+  // To within a pixel: two measurements of one edge need not agree to the last
+  // representable fraction.
+  expect(wrapped.scrollPadding).toBeCloseTo(wrapped.barHeight, 1);
+
+  // And a link scrolled to its top lands clear of the bar rather than under it.
+  const cleared = await page.evaluate(async () => {
+    const bar = document.querySelector('.aci-app__bar')!;
+    const links = [...document.querySelectorAll('a[href]')].filter(
+      (link) => !bar.contains(link),
+    ) as HTMLElement[];
+    const target = links[Math.floor(links.length / 2)]!;
+    target.scrollIntoView({ block: 'start' });
+    await new Promise((resolve) => {
+      globalThis.setTimeout(resolve, 300);
+    });
+    return bar.getBoundingClientRect().bottom - target.getBoundingClientRect().top;
+  });
+  expect(cleared).toBeLessThan(1);
+});
+
 test('states a read that failed where the file is listed, and stays partial', async ({ page }) => {
   await page.goto(host.origin);
   // The tree carries files whose extraction cannot succeed, so the scan

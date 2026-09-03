@@ -128,8 +128,10 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
                      finds, and its own accessible name would be the same word
                      twice (`ToolMark.vue`). -->
                 <th scope="row">
-                  <ToolMark decorative :tool="row.tool" />
-                  {{ SUPPORTED_TOOL_TEXT[row.tool] }}
+                  <span class="aci-recognition-table__tool"
+                    ><ToolMark decorative :tool="row.tool" />
+                    {{ SUPPORTED_TOOL_TEXT[row.tool] }}</span
+                  >
                 </th>
                 <td
                   v-for="(cell, side) in [row.left, row.right]"

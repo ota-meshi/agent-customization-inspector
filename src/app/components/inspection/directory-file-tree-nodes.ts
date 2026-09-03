@@ -27,19 +27,26 @@ export class SkillTreeFileNode {
   public readonly label: string;
 
   /**
-   * The same name as accessible-name text: it starts with the visible label
-   * (WCAG 2.5.3 Label in Name) and appends the spelled-out presentation
-   * where whitespace would collapse two files a directory holds apart into
-   * one announcement (FR-025, WCAG 2.4.4;
-   * {@link accessiblePresentationLabel}).
+   * The file's whole path below the tree's root as accessible-name text.
+   * The path rather than the leaf, because the leaf is what the tree's shape
+   * disambiguates and a link list has no shape: a plugin holding
+   * `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and its own
+   * `plugin.json` announced those three as one name (WCAG 2.4.4). The visible
+   * label stays the leaf, so the tree still reads as a tree — the accessible
+   * name starts with it, which is what label-in-name asks (WCAG 2.5.3) — and
+   * the spelled-out presentation follows where whitespace would collapse two
+   * files into one announcement ({@link accessiblePresentationLabel}).
    */
   public readonly accessibleLabel: string;
 
-  /** Names one file by the last segment of its path below the tree root. */
-  public constructor(sourceRelativePath: string, name: string) {
+  /**
+   * Names one file by the last segment of its path below the tree root, and
+   * announces it by that whole path below the root.
+   */
+  public constructor(sourceRelativePath: string, name: string, relativePath: string) {
     this.sourceRelativePath = sourceRelativePath;
     this.label = pathPresentationLabel(name);
-    this.accessibleLabel = accessiblePresentationLabel(name);
+    this.accessibleLabel = accessiblePresentationLabel(relativePath);
   }
 
   /** Stable identity for the render; a file's path is already unique. */
@@ -135,7 +142,7 @@ export function buildDirectoryTree(
       siblings = node.children;
       walked.push(segment);
     }
-    siblings.push(new SkillTreeFileNode(file, name));
+    siblings.push(new SkillTreeFileNode(file, name, relative));
   }
   return roots;
 }

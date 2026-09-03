@@ -229,21 +229,35 @@ const otherCopies = computed(() =>
  * rows are.
  */
 const listNeighbours = computed(() => {
-  const rows = (snapshot.value?.instructions ?? []).map((entry) => ({
-    // The single-line rule, as every other kind's moves use: the control does
-    // not render its own whitespace and its accessible name collapses it, so
-    // `**` and ` **` would otherwise name one move twice
+  // Grouped by range across Sources, because that is what the list's rows are:
+  // the wire carries one entry per `(Source, range)`, and the inventory shows
+  // one row per range with its Sources' files under it
+  // (`filters.ts` § instructionRangeGroups). Stepping the wire entries instead
+  // walked a range twice — Repository `**`, `docs/**`, then a consented home's
+  // `**` — so `docs/**`'s next went back to a range the reader had passed.
+  //
+  // The snapshot's own order is the group order and the first entry of a group
+  // is its representative: the host sorts Sources with the repository's first,
+  // which is the family-major order the row's own file list is drawn in.
+  const groups = [
+    ...Map.groupBy(snapshot.value?.instructions ?? [], (entry) => entry.applicabilityRange),
+  ];
+  const rows = groups.map(([applicabilityRange, entries]) => ({
+    // The drawn spelling, and the single-line one for the accessible name: the
+    // control does not render its own whitespace and an accessible name
+    // collapses it, so `**` and ` **` would otherwise name one move twice
     // ({@link ApplicabilityRange}; `DetailNavigation.vue`).
-    label: new ApplicabilityRange(entry.applicabilityRange).singleLineText,
+    label: new ApplicabilityRange(applicabilityRange).text,
+    accessibleLabel: new ApplicabilityRange(applicabilityRange).singleLineText,
     route: detailRoute(
       'instructions',
-      entry.files[0]?.sourceRelativePath ?? '',
-      sessionSources.selectorOf(entry.sourceId),
+      entries[0]?.files[0]?.sourceRelativePath ?? '',
+      sessionSources.selectorOf(entries[0]?.sourceId ?? ''),
     ),
   }));
   return detailNeighbours(
     rows,
-    (snapshot.value?.instructions ?? []).findIndex((entry) => entry === ownerRow.value),
+    groups.findIndex(([, entries]) => entries.some((entry) => entry === ownerRow.value)),
   );
 });
 

@@ -217,6 +217,7 @@ function directoryFilesOf(
   directory: string,
   files: readonly CustomizationFileDto[],
   recognized: ReadonlySet<string>,
+  censusEscapedRoots: ReadonlySet<string>,
 ): string[] {
   // The owning customization's Source scopes the census: `files` spans every
   // committed Source, and a path prefix says nothing across boundaries — a
@@ -225,7 +226,7 @@ function directoryFilesOf(
   // passes the directory with its trailing separator — the entry point's own
   // path sliced past its last `/` — so `skills/deploy/` never swallows a
   // `skills/deploy2/` sibling.
-  return directory === ''
+  return directory === '' || censusEscapedRoots.has(fileIdentityKey(sourceId, directory))
     ? []
     : files
         .filter(
@@ -349,7 +350,19 @@ function projectSkillInventory(
   recognitions: readonly ToolRecognition[],
   files: readonly CustomizationFileDto[],
   sourceOrder: ReadonlyMap<string, number>,
+  censusEscapedDirectories: readonly { sourceId: string; directory: string }[],
 ): SkillInventoryEntryDto[] {
+  // The census's verdict outranks the spelling, exactly as it does for a
+  // plugin root ({@link pluginRootFilesOf}): a directory whose real path
+  // escaped the Source belongs to no Source
+  // (contracts/inspection-path-allowlist.md § Bounded companion census), so a
+  // file another rule independently admitted below the same spelling must not
+  // be listed as a companion of the skill. The verdict travels with the
+  // generation because nothing at this layer may re-derive it — that would be
+  // filesystem I/O outside the scan.
+  const censusEscapedRoots = new Set(
+    censusEscapedDirectories.map((entry) => fileIdentityKey(entry.sourceId, entry.directory)),
+  );
   const recognized = new Set(
     recognitions.map((recognition) =>
       fileIdentityKey(recognition.sourceId, recognition.sourceRelativePath),
@@ -400,6 +413,7 @@ function projectSkillInventory(
         path.slice(0, path.lastIndexOf('/') + 1),
         files,
         recognized,
+        censusEscapedRoots,
       ),
     });
   }
@@ -2206,7 +2220,18 @@ export class InspectionSession {
           // row's file list ({@link pluginRootFilesOf}): a root whose real
           // path escaped the Source authorizes nothing below its spelling.
           .filter((root) => !escapedRoots.has(fileIdentityKey(recognition.sourceId, root)));
-        if (!roots.some((root) => params.filePath.startsWith(root))) {
+        // The type is checked before the prefix test rather than trusted: a
+        // declared parameter carrying a value of another type resolves nowhere
+        // and takes the same `stale-resource` rejection any unheld resource
+        // takes (contracts/http-api.md § Resource parameters). Every sibling
+        // resolver compares for equality and so refuses a wrong type by
+        // failing to match; this one calls a string method, so it says no
+        // itself. Reached from the RPC boundary, which types its parameters
+        // without validating them (`devframe-app.ts`).
+        if (
+          typeof params.filePath !== 'string' ||
+          !roots.some((root) => params.filePath.startsWith(root))
+        ) {
           return null;
         }
         const file = generation.files.find(
@@ -2581,6 +2606,10 @@ export class InspectionSession {
         ],
         committedFiles,
         inventorySourceOrder,
+        [
+          ...this.committedRepositoryGeneration.censusEscapedDirectories,
+          ...(this.committedGlobalGeneration?.censusEscapedDirectories ?? []),
+        ],
       ),
       mcp: projectMcpInventory(
         [

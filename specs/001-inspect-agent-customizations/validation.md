@@ -96,7 +96,7 @@ proposed. The task set is not superseded by this review.
 
 ## Release gate execution
 
-Every gate below was run on 2026-09-01 against the tree at this change's tip, after
+Every gate below was run on 2026-09-03 against the tree at this change's tip, after
 `pnpm run build`. The counts are what each run reported.
 
 | Gate | Command | Result |
@@ -104,15 +104,15 @@ Every gate below was run on 2026-09-01 against the tree at this change's tip, af
 | Format | `pnpm run format:check` | silent, exit 0 |
 | Lint | `pnpm run lint` | silent, exit 0 |
 | Types | `pnpm run typecheck` | silent, exit 0 |
-| Unit | `pnpm run test:unit` | 50 files, 1,195 tests passed |
-| Contract | `pnpm run test:contract` | 12 files, 389 tests passed |
+| Unit | `pnpm run test:unit` | 52 files, 1,211 tests passed |
+| Contract | `pnpm run test:contract` | 12 files, 391 tests passed |
 | Integration | `pnpm run test:integration` | 10 files, 268 tests passed |
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 6 tests passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 535 passed |
-| Coverage | `pnpm run test:coverage` | 72 files, 1,852 tests passed; statements 87.10%, lines 87.25% |
-| Documentation | `pnpm run test:docs` | 1 file, 31 tests passed |
+| Browser | `pnpm exec playwright test --project=chromium` | 560 passed |
+| Coverage | `pnpm run test:coverage` | 74 files, 1,870 tests passed; statements 86.27%, lines 86.59% |
+| Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
 **The browser gate here is one project; the certification matrix is CI's.**
 `playwright.config.ts` pins one Chromium, one Firefox, and one WebKit revision, and the
@@ -126,6 +126,11 @@ same property for the four primary workflows. The certified WebKit is the Linux 
 runs, where the tab order includes links, so those assertions are kept as written rather than
 weakened to what one uncertified host does. The row above is therefore the Chromium project,
 and this record claims no local run on the certification matrix.
+
+**This tree's certifying browser result is the CI run of its own commit**, over the three
+pinned revisions, and it is not reproduced here: the row above is one project on one host, and
+a local run stands in for none of it. The disposition is unchanged from the tree the rework
+started on — what changed is which commit the certifying run is of.
 
 **Two projects run the study lifecycle, and running them at once starves it.** The
 twenty-participant lifecycle test belongs to both `integration` and `coverage`, each spawning
@@ -143,12 +148,20 @@ threshold is asserted anywhere in this release.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `f87255e0df95ce017b6fd906508f25ae4860227212af760f4aa0eee60bbaff03`, recorded in
+SHA-256 `23ebf9ca12d61b95e7f4427c645709a5e57689194c0e74b2dee8d4e847d28c4a`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed by running every suite
 each case names in `verifiedBy`: the eleven vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
 three-project Playwright run recorded above. `tests/contract/outcome-fixture-manifest.test.ts`
 reproduced the canonical digest and all 66 fixture digests in the same session.
+
+The set is non-comparable with the one recorded before the interface rework: the fixture bytes
+changed, which spec.md § Release-Evidence Fixture Governance makes a new measurement set. The
+manifest version stays at 3, because that governance requires an increment for a case,
+required-class, or expected-outcome change and this was neither — the same 99 case IDs across
+the same four criteria, each with a nonzero count for every required class. The browser half of
+this execution was the Chromium project on this host; the three pinned revisions are CI's, as
+the browser gate above records.
 
 | Criterion | Cases | Passed | Passed except macOS WebKit | Failed |
 |---|---:|---:|---:|---:|
@@ -219,7 +232,7 @@ Windows with NVDA, and Ubuntu with Orca. SC-008 asserts the automated checks and
 keyboard workflows instead, and every `MANUAL-*` ID is recorded as unexecuted rather than as
 passed (spec.md § Clarifications, Session 2026-09-01).
 
-**The 18 `REVIEW-*` IDs were performed**, on 2026-09-01, and are recorded in their own
+**The 18 `REVIEW-*` IDs were performed**, on 2026-09-03, and are recorded in their own
 section below.
 
 ## Lower-bound certification
@@ -237,12 +250,41 @@ matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
 
-**Twenty agent-driven sessions, run on 2026-09-01.** Each session was an independent
-autonomous agent handed one thing: the origin one running Inspector printed. No selector, no
-route, no description of the interface, and no access to this repository — a session that read
-the source would have been reading the answer rather than finding it. All twenty met the same
-tree, the all-kind fixture `pnpm run start:fixture` builds, served by a single host for the
-whole run, and each drove its own browser and kept its own clock.
+**Twenty agent-driven sessions, run on 2026-09-03** against a build of this candidate
+(`pnpm run build`, then the all-kind fixture `pnpm run start:fixture` builds, served by a
+single host for the whole run). Each session was an independent autonomous agent handed one
+thing besides the tasks: the origin the running Inspector printed, and the text of
+`tests/usability/sc001-sc006-study-inputs/guidance.md`. No selector, no route, and no
+description of the interface beyond that guide. Each drove its own browser and kept its own
+clock, and the tasks were the four prompt files beside that guide.
+
+**What was enforced, and what was not.** Reading this product's source, tests, specifications,
+fixtures, and documents was forbidden by instruction, because a session that read them would
+have been reading the answer rather than finding it. It was not prevented mechanically: the
+sessions ran Playwright out of this working tree, which is where the browser binary is, so the
+tree was reachable to them. That is a weaker guarantee than a session with no access at all,
+and it is recorded rather than claimed away.
+
+**Two conditions of this run bear on the numbers.** Every session was given its own scratch
+directory, and four ran at once. And one session, looking for the wreckage of a crashed script
+of its own, attached to a sibling's live browser over a shared debugging port and closed it;
+its own check afterwards found that browser's page and context still open, and the three
+sessions running at that moment all completed and answered all four tasks. The instruction was
+extended from session 13 onward to forbid attaching to any browser a session did not launch,
+which is the same rule as the standing prohibition on `kill` reaching the mechanism that got
+around it.
+
+**The consent state is server-side and the host is shared.** Personal inspection starts off, so
+the first session to confirm it turns it on for every session after, and a session that
+exercises `Disable personal inspection` turns it back off for them. One session did both — it
+arrived to a completed read, disabled it, and redid the flow from a clean state to see the gate
+for itself, which it reported working as specified. Four sessions met the un-consented page and
+reported the two-step gate: the confirmation checkbox is what makes the `Inspect these
+directories` button appear. Two others saw the consequence from the other side, a kind's count
+moving between reloads and `Personal setup` reverting to `Not inspected` with no action of their
+own; both read it as server-side state rather than as something they had caused. It is the
+harness's condition, not the product's: one host cannot hold twenty independent first uses of a
+once-per-process confirmation, and a reader with one session changes that state only by acting.
 
 **This is an agent-driven run and is recorded as one.** What twenty agents measure is whether
 the product's own printed and rendered guidance is sufficient to reach a file and to state
@@ -254,8 +296,8 @@ the record below covers.
 
 | Workflow | What it measures | Threshold | Result |
 |---|---|---|---|
-| Discovery | SC-001: one discovered file's detail view open within two minutes | 19 of 20 | **20 of 20**, 2.4 s to 63 s, median 28.6 s |
-| Inspection | SC-006: the three response fields for the designated `AGENTS.md` within two minutes | 18 of 20 | **20 of 20**, 4.4 s to 115 s, median 41.2 s |
+| Discovery | SC-001: one discovered file's detail view open within two minutes | 19 of 20 | **20 of 20**, 0.753 s to 93.6 s, median 5.72 s |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` within two minutes | 18 of 20 | **20 of 20**, 0.37 s to 29 s, median 1.12 s |
 | Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete |
 | Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete |
 | Safety | SC-006 zero-critical gate | no critical issue | **none reported** |
@@ -264,60 +306,77 @@ Every session's three fields matched `tests/usability/sc001-sc006-study-inputs/g
 with no partial credit: source `Repository`, recognizing tools `GitHub Copilot` **and**
 `OpenAI Codex`, file type `Instructions`. The tool field is the one that separates reading the
 page from guessing at it — the fixture's root `AGENTS.md` is not a Claude Code path — and
-every session named both tools and none named Claude Code; several stated the exclusion
-without being asked.
+every session named both tools and none named Claude Code; most stated the exclusion without
+being asked, several of them naming the sibling `CLAUDE.md` that Claude Code does read.
+
+The comparison task names no pair, and the fixture holds several, so a session is scored on
+finding drift and stating it rather than on reaching the pair the ground truth records. Six
+pairs were reached across the run, each of them a real drift confirmed against the fixture's
+bytes: the `changelog` skill in `.agents/skills/` against the copy in `.github/skills/`, which
+the ground truth names and thirteen sessions found; `alpha-a` against `alpha-b`, two skills in
+one directory declaring one name; the plugin `changelog-writer`'s two manifests, at versions
+`2.0.0` and `0.9.0`; `docs/AGENTS.md` against `docs/CLAUDE.md`, where the second's `scope`
+array is never closed and the product states its declarations unknown rather than absent;
+`packages/api/CLAUDE.md` against the directory-form copy beside it; and the agent `debugger`
+declared by two files under one tree. Most sessions also reported the recognition difference
+the compare page states beside the text.
 
 | Session | Discovery | Inspection | Comparison | Consent | Safety |
 |---|---|---|---|---|---|
-| 01 | 26 s | 40 s | complete | complete | none |
-| 02 | 47.5 s | 41.2 s | complete | complete | none |
-| 03 | 19.9 s | 75.8 s | complete | complete | none |
-| 04 | 3.9 s | 5.6 s | complete | complete | none |
-| 05 | 35 s | 75 s | complete | complete | none |
-| 06 | 17 s | 29 s | complete | complete | none |
-| 07 | 2.4 s | 4.4 s | complete | complete | none |
-| 08 | 42 s | 60 s | complete | complete | none |
-| 09 | 60 s | 115 s | complete | complete | none |
-| 10 | 16.5 s | 52.3 s | complete | complete | none |
-| 11 | 3 s | 5 s | complete | complete | none |
-| 12 | 26 s | 34 s | complete | complete | none |
-| 13 | 28.6 s | 37.8 s | complete | complete | none |
-| 14 | 22.4 s | 45.9 s | complete | complete | none |
-| 15 | 62 s | 35 s | complete | complete | none |
-| 16 | 34 s | 22 s | complete | complete | none |
-| 17 | 33.1 s | 65.2 s | complete | complete | none |
-| 18 | 63 s | 58 s | complete | complete | none |
-| 19 | 40 s | 63 s | complete | complete | none |
-| 20 | 23 s | 38 s | complete | complete | none |
+| 01 | 29.2 s | 10.1 s | complete | complete | none |
+| 02 | 0.866 s | 0.857 s | complete | complete | none |
+| 03 | 93.6 s | 12.8 s | complete | complete | none |
+| 04 | 0.86 s | 0.97 s | complete | complete | none |
+| 05 | 76 s | 29 s | complete | complete | none |
+| 06 | 40.9 s | 1.2 s | complete | complete | none |
+| 07 | 1.146 s | 1.111 s | complete | complete | none |
+| 08 | 1.17 s | 0.37 s | complete | complete | none |
+| 09 | 0.82 s | 0.92 s | complete | complete | none |
+| 10 | 0.753 s | 0.741 s | complete | complete | none |
+| 11 | 19.8 s | 12.2 s | complete | complete | none |
+| 12 | 9.5 s | 5.9 s | complete | complete | none |
+| 13 | 51.1 s | 1.0 s | complete | complete | none |
+| 14 | 0.9 s | 1.1 s | complete | complete | none |
+| 15 | 1.15 s | 1.13 s | complete | complete | none |
+| 16 | 77.3 s | 1.1 s | complete | complete | none |
+| 17 | 66.0 s | 6.3 s | complete | complete | none |
+| 18 | 1.19 s | 1.13 s | complete | complete | none |
+| 19 | 1.94 s | 0.99 s | complete | complete | none |
+| 20 | 55.66 s | 1.15 s | complete | complete | none |
 
-No session was excluded or replaced, and no session failed a workflow, so the fixed
-denominator and the recorded count are the same twenty.
+No session was excluded or replaced, and no session failed a workflow it was scored on, so the
+fixed denominator and the recorded count are the same twenty.
 
 **What the sessions reported about safety.** No prohibited effect: no execution derived from
 a customization, no mutation of an inspected source, no outbound request, and no MCP
-connection. One session independently enumerated its browser's requests and found all
-thirty-one addressed to the host's own origin. Every session reached the personal-setup
-consent page, read the four proposed directories with the origin of each value, and left the
-confirmation unticked; several quoted the page's own statement that nothing had been read
-yet.
+connection. What the sessions raised beyond the shared consent state above was the honesty of
+the consent page itself, and they raised it approvingly: that it states nothing has been read
+yet, that it names what stays excluded — credentials, saved sessions, caches, installed plugin
+copies, and whatever a tool generates for itself — and that the directory it shows is an
+escaped presentation rather than a path anything can open.
 
-Five sessions named the same thing, and none of them called it alarming: a file's detail
-header carries icon-only controls that launch a local application. One of the five activated
-`Open in VS Code` while probing what the icons were; the editor was already running, so
-nothing started and nothing changed. This is the file-opening capability the product is
-specified to have, it is activated by the reader, and the controls carry their accessible
-names (`FILE_OPEN_TARGET_TEXT` supplies both `aria-label` and `title`) — which is how the
-sessions were able to name them. The observation is that the names are not *visible* text,
-which WCAG requires only where a visible label exists. It is recorded as an observation, not
-as a critical issue.
+No session read the rail's Source-diagnostic count against a Source's own `Partial · 14 files
+kept a diagnostic` as a contradiction. The rail item names the unit it counts — `Source
+diagnostics` — because the label is what a reader has before deciding whether to open the
+panel, and every other item in its group counts the rows of a file list, so an unqualified
+noun invites the rule the siblings taught.
+
+An earlier run of the same twenty sessions reported one thing this run did not, and it is kept
+because it is about the product rather than about a harness: a file's detail header carries
+icon-only controls that launch a local application, and one session activated `Open in VS Code`
+while probing what the icons were; the editor was already running, so nothing started and
+nothing changed. This is the file-opening capability the product is specified to have, it is
+activated by the reader, and the controls carry their accessible names
+(`FILE_OPEN_TARGET_TEXT` supplies both `aria-label` and `title`) — which is how the sessions
+were able to name them. The observation is that the names are not *visible* text, which WCAG
+requires only where a visible label exists.
 
 **What this run does not establish.** It does not establish anything about human first use,
 which is the whole of what the criteria's earlier participant form would have measured. It
 carries no capture bundle, so nothing here is sealed or independently reverifiable from
-evidence artifacts: what it rests on is the per-session record below. And it is one host and
-one fixture
-tree: a session met the customization files this repository builds for its own tests, not a
-repository it had never seen.
+evidence artifacts: what it rests on is the per-session record above. And it is one host and
+one fixture tree: a session met the customization files this repository builds for its own
+tests, not a repository it had never seen.
 
 ## Release-candidate review of the study kit, and its retirement
 
@@ -423,20 +482,23 @@ removal this record identifies rather than a question it leaves open.
 ## SC-008 accessibility: Not-applicable revalidation
 
 The 18 `REVIEW-*` IDs recheck each Not-applicable rationale against the release diff and the
-built package. Every one was rechecked on 2026-09-01 against `src/` and the packed `dist/`,
-and every one still holds. What was looked at:
+built package. Every one was rechecked on 2026-09-03 against `src/` and the packed `dist/`,
+and every one still holds. Four findings changed with the interface rework while their
+verdicts did not — the search that replaced the inventory's path filter, the tab strips the
+detail and comparison surfaces gained, the routes a Source's own surface added, and the
+vendor marks that carry a colour of their own. What was looked at:
 
 | Criteria | Rationale rechecked | What was found |
 |---|---|---|
 | 1.2.1–1.2.5, 1.4.2, 2.3.1 | No prerecorded or live audio or video, and no flashing | No `<audio>`, `<video>`, `new Audio`, or `.play()` anywhere in `src/`, and no media file of any format in the packed tree |
-| 1.3.5 | No field collects a WCAG input-purpose value | No `autocomplete` attribute anywhere in `src/app` |
-| 1.4.5 | No image presents text | `dist/public` contains no image file at all; icons compile to inline SVG that inherits `currentColor` |
-| 2.1.4 | No single printable character activates a command | The one keyboard handler is the kind rail's, and `nextTabForKey` answers only `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Home`, and `End`; any other key keeps its default so Tab still leaves the rail |
-| 2.2.1, 2.2.2 | No time limit, and nothing auto-updates | No `setTimeout` or `setInterval` in `src/app`; status advances only on an explicit refresh |
-| 2.4.5 | The inventory is the only standalone page | Every other route is a detail, comparison, or consent step of the one inspection |
+| 1.3.5 | No field collects a WCAG input-purpose value | One `autocomplete` attribute in `src/app`, `off` on the shell's search field: a query about the inspected tree, not information about the person typing it |
+| 1.4.5 | No image presents text | `dist/public` contains no image file at all; icons compile to inline SVG, and the vendor marks that carry a fixed colour draw a shape rather than a word (AGENTS.md § Icon policy) |
+| 2.1.4 | No single printable character activates a command | Eight keyboard handlers in `src/app`, all the same tab-strip pattern — the Source-and-kind rail and seven detail or comparison tab strips — and all of them `nextTabForKey`, which answers only `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Home`, and `End`; any other key keeps its default so Tab still leaves the strip |
+| 2.2.1, 2.2.2 | No time limit, and nothing auto-updates | No `setTimeout` or `setInterval` in `src/app`; status advances only on an explicit refresh. The one observer is the shell's `ResizeObserver` over the bar, which publishes that bar's height as a CSS length and changes no content (`App.vue` § barHeightObserver) |
+| 2.4.5 | The inventory is the only standalone page | Three top-level routes exist — the inventory, a Source's own `/repository` surface, and the `/global-consent` step — and the other two are that Source's state and that consent decision rather than destinations of their own; every remaining route is a detail or comparison of the one inspection |
 | 2.5.1, 2.5.4, 2.5.7 | No gesture, motion, or dragging input | No `draggable`, `dragstart`, `touchmove`, `devicemotion`, or `deviceorientation` handler in `src/app` |
 | 3.3.4 | No legal or financial commitment, and no durable data modified | The inspection and session modules issue no filesystem write; FR-023 is what the mutation instrumentation proves |
-| 3.3.7 | Nothing is asked twice | Two inputs exist: the inventory's path filter and the consent checkbox, neither of which re-asks for information already supplied |
+| 3.3.7 | Nothing is asked twice | The inputs are the shell's one search over names and paths, the inventory's Tool and Source selects, the consent checkbox, and a comparison's two file pickers; none re-asks for information already supplied |
 
 **The Applicable rows' automated half** is recorded above under SC-008 accessibility: 34
 `AUTO-*` IDs, all passing in chromium and firefox, with `AUTO-2.1.1` failing only on the
@@ -449,9 +511,10 @@ paired with three screen readers, which this release does not assert
 
 ## Interface rework: what it invalidates, and what release completion repeats
 
-The interface rework of Phases 106–109 changed the surfaces every recorded outcome above was
-observed on: the inventory's rows and its rail, the detail head and its previous/next moves,
-the comparison head, and where the session's own controls sit. Two of those moves relocate
+The interface rework of Phases 105–110 changed the surfaces every recorded outcome above was
+observed on: the palette every surface is drawn in, the inventory's rows and its rail, the
+detail head with its file facts and its previous/next moves, the invocation names a detail
+states per recognition, the comparison head, and where the session's own controls sit. Two of those moves relocate
 something a recorded measurement addressed by name — the scan status and the committed
 generation now live on the `/repository` page rather than on the inventory, and the search over
 names and paths is the shell's, in the bar. So the outcomes above are not wrong about the tree
@@ -464,9 +527,9 @@ What is invalidated, and why:
 |---|---|
 | The Release gate execution table | Its counts are what each run reported on the pre-rework tree. Every suite has since gained, lost, or changed cases, so the numbers no longer identify a run of this tree |
 | SC-001 and SC-006 first-use sessions | spec.md § Measurable Outcomes requires repeating the evaluation after a material change to a primary workflow. The rework changed the surface of all four |
-| SC-008 accessibility (`AUTO-*`) | The 34 automated checks were recorded against the pre-rework markup, including the controls the rework moved |
+| SC-008 accessibility (`AUTO-*`) | The 34 automated checks were recorded against the pre-rework markup, including the controls the rework moved, and Phase 105 replaced the palette every contrast check measures |
 | SC-008 Not-applicable revalidation (`REVIEW-*`) | Each rationale was rechecked against a `src/` the rework has since changed; the 3.3.7 row names the inventory's path filter, which is now the shell's search control |
-| SC-003, SC-004, SC-005, SC-007 | Their fixture bytes changed, and spec.md § Release-Evidence Fixture Governance makes a fixture-byte change a new non-comparable measurement set |
+| SC-003, SC-004, SC-005, SC-007 | Their fixture bytes changed, and spec.md § Release-Evidence Fixture Governance makes a fixture-byte change a new non-comparable measurement set. Phase 110 also reworked the skill, hook, and MCP detail heads that the SC-003 shared-file and SC-005 row cases observe |
 
 What release completion repeats over the reworked tree, in this order:
 

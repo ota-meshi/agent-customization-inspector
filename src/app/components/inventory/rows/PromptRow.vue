@@ -127,9 +127,7 @@ const headCompareRoute = computed(() => {
   // Exactly when the row draws no family line to close: the entry lives on one
   // of the two lines and never on neither, so both read the one rule
   // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(fileRows.value, [
-    ...blockCompareRoutes.value.keys(),
-  ]);
+  const headed = sessionSources.familyLineShownFor(fileRows.value);
   return headed || routes.length !== 1 ? null : routes[0]!;
 });
 
@@ -247,11 +245,7 @@ const fileRows = computed(() => {
          it beside the path, and the surfaces of the documented behaviors
          their admitting rules rest on beside each product. Naming a surface
          is never a claim that the surface loaded the file (FR-009). -->
-    <SourceFamilyBlocks
-      :members="fileRows"
-      :member-key="(file) => file.key"
-      :entry-kinds="[...blockCompareRoutes.keys()]"
-    >
+    <SourceFamilyBlocks :members="fileRows" :member-key="(file) => file.key">
       <template #member="{ member: file }">
         <div class="aci-row-file">
           <span class="aci-row-file__path">

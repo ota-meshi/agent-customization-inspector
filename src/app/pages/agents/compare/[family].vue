@@ -799,12 +799,14 @@ const titleSubject = computed<string>(() => {
       if (sides === null) {
         return 'Comparing custom-agent files';
       }
-      // A name with nothing to draw is named rather than left blank, exactly
-      // as the crumbs and the subject line name it ({@link AuthoredName}); the
-      // shell escapes a title subject once at the rendering boundary, so an
-      // authored name goes in raw.
+      // The authored name goes in raw: the shell escapes a title subject once
+      // at its own rendering boundary, so a spelling escaped here would be
+      // escaped twice and `\u0020` would reach the tab as `\u005Cu0020`
+      // (`App.vue` § documentTitle). The empty name is the one substitution,
+      // because it has no characters to escape and spliced in raw it leaves a
+      // doubled space the shell then spells the whole title out for.
       const name = crumbSubject.value;
-      const subject = name === null ? null : name.isAuthored ? name.authored : name.text;
+      const subject = name === null ? null : name.authored === '' ? name.text : name.authored;
       return subject === null
         ? `Comparing custom-agent files — ${sides}`
         : `Comparing custom-agent files: ${subject} — ${sides}`;

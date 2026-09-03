@@ -241,8 +241,18 @@ export function detailRoute(
  * (`entities.ts` § inlinePresentationLabel).
  */
 export interface DetailNeighbour {
-  /** The row's own subject, as the control names it. */
+  /** The row's own subject as the control draws it. */
   readonly label: string;
+  /**
+   * The same subject as the fragment spliced into the control's accessible
+   * name. Separate from {@link label} because the two rules differ where a
+   * name has no characters to draw: the control renders this product's
+   * spelled-out spelling, while an accessible name collapses whitespace and
+   * two rows differing only in it must not announce as one move (FR-025,
+   * WCAG 2.4.4; `authored-name.ts`). Required rather than defaulted, so a
+   * kind added later cannot leave a move announced as its arrow alone.
+   */
+  readonly accessibleLabel: string;
   /**
    * That row's own detail route, addressed exactly as the inventory links it.
    * A location rather than a path string, because a kind whose detail is one

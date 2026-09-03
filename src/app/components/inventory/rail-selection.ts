@@ -94,6 +94,15 @@ export const INVENTORY_SELECTION_TEXT: Readonly<Record<InventorySelection, strin
   ...CUSTOMIZATION_KIND_TEXT,
   /** The heading the list of rule-admitted, kind-less files carries. */
   'files-in-no-kind': 'Files in no kind',
-  /** The heading the Source-level diagnostic list carries. */
-  diagnostics: 'Diagnostics',
+  /**
+   * The heading the Source-level diagnostic list carries. It names the unit it
+   * counts, because every other item in the rail's group counts the rows of a
+   * file list and this one counts a Source's own diagnostics: with the same
+   * shape and no qualifier, a reader carries the rule the siblings taught them
+   * and reads `0` against a Source's own `14 files kept a diagnostic` as the
+   * same population counted twice (AGENTS.md § Consistency). The qualifier
+   * belongs on the label rather than in the panel's note, because the label is
+   * what a reader has before deciding whether to open the panel.
+   */
+  diagnostics: 'Source diagnostics',
 };

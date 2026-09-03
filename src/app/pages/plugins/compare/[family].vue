@@ -1784,13 +1784,14 @@ const titleSubject = computed<string>(() => {
       if (sides === null) {
         return 'Comparing plugins';
       }
-      // A name whose characters draw nothing is titled by the note the crumb
-      // and the subject line show, never left blank: spliced in raw it put a
-      // doubled space in the title, which the shell then spelled out whole
-      // (`App.vue` § documentTitle). An authored name goes in raw, because the
-      // shell escapes a title subject once at its own boundary.
+      // The authored name goes in raw: the shell escapes a title subject once
+      // at its own rendering boundary, so a spelling escaped here would be
+      // escaped twice and `\u0020` would reach the tab as `\u005Cu0020`
+      // (`App.vue` § documentTitle). The empty name is the one substitution,
+      // because it has no characters to escape and spliced in raw it leaves a
+      // doubled space the shell then spells the whole title out for.
       const name = crumbSubject.value;
-      const subject = name === null ? null : name.isAuthored ? name.authored : name.text;
+      const subject = name === null ? null : name.authored === '' ? name.text : name.authored;
       const base =
         subject === null
           ? `Comparing plugins — ${sides}`

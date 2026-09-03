@@ -896,6 +896,20 @@ button[aria-disabled='true'] {
   white-space: nowrap;
 }
 
+/* The mark centred on its product's name, the way a mark sits beside text
+   everywhere else in this product (`RecognitionMarks.vue`). A wrapper rather
+   than a rule on the cell, because a `th` made a flex container leaves the
+   table layout and the row stops being a row: as a table cell it aligns the
+   mark on the baseline instead, which put the mark 1.5px above the name's
+   centre — measured, and 0.01px with this. `vertical-align: middle` was the
+   other candidate and lands 0.65px out, because it aligns on half the
+   x-height rather than on the line box. */
+.aci-recognition-table__tool {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.375rem;
+}
+
 /* Authored values keep their spelling but wrap rather than widening the row
    past the viewport; a value with no break opportunities still scrolls inside
    the table's own box. */

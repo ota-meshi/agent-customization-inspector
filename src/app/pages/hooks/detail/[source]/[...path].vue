@@ -307,8 +307,15 @@ const listNeighbours = computed(() => {
     const path = declaration?.sourceRelativePath ?? '';
     const source = sessionSources.selectorOf(declaration?.sourceId ?? '');
     return {
+      // The drawn spelling rather than the label rule, which returns nothing at
+      // all for a name with no characters and would leave the move named by
+      // its arrow alone ({@link AuthoredName}; FR-025).
       label:
-        entry.event === null ? 'No known hook declarations' : inlinePresentationLabel(entry.event),
+        entry.event === null ? 'No known hook declarations' : new AuthoredName(entry.event).text,
+      accessibleLabel:
+        entry.event === null
+          ? 'No known hook declarations'
+          : new AuthoredName(entry.event).singleLineText,
       // A row is one event, so the move addresses that event's declaration the
       // way the row's own link does (`rows/HookRow.vue`): the carrier route
       // alone would open the whole carrier, which is a different page from the

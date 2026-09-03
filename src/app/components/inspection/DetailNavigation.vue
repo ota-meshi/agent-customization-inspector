@@ -48,7 +48,7 @@ defineProps<{
       v-if="previous"
       :to="previous.route"
       class="aci-detail-navigation__move"
-      :aria-label="`Previous in ${listText}: ${previous.label}`"
+      :aria-label="`Previous in ${listText}: ${previous.accessibleLabel}`"
     >
       <PreviousIcon aria-hidden="true" />
       <span class="aci-detail-navigation__label">{{ previous.label }}</span>
@@ -57,7 +57,7 @@ defineProps<{
       v-if="next"
       :to="next.route"
       class="aci-detail-navigation__move"
-      :aria-label="`Next in ${listText}: ${next.label}`"
+      :aria-label="`Next in ${listText}: ${next.accessibleLabel}`"
     >
       <NextIcon aria-hidden="true" />
       <span class="aci-detail-navigation__label">{{ next.label }}</span>

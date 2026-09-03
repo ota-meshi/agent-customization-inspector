@@ -33,14 +33,15 @@ export interface FileStripEntry {
   /** The file's Source-relative Path, in the row's own presentation spelling. */
   readonly pathText: string;
   /**
-   * Where the file's own detail opens, for a kind whose file has one detail:
-   * the path is the link, and the marks beside it state only what recognized
-   * the file. Absent for a kind whose detail is one product's own reading — a
-   * plugin catalog three products read is one file with three readings, so
-   * each mark opens one of them and the path opens nothing
-   * (`RecognitionMarks.vue`).
+   * Where the file's own detail opens. The path is the link on every kind's
+   * strip, and the marks beside it state only what recognized the file — the
+   * strip is the carrier axis, offering the next file the customization is in
+   * (`FileStrip.vue`). A plugin's detail is one product's reading of a file,
+   * so its link picks the first product in the closed tool order that reads
+   * that file, exactly as its inventory row does (`PluginRow.vue`); the other
+   * readings of a file are reached from that file's own attributes line.
    */
-  readonly opens?: {
+  readonly opens: {
     /** What a screen reader announces the entry's link as. */
     readonly accessibleText: string;
     /**
@@ -54,17 +55,6 @@ export interface FileStripEntry {
   readonly recognitions: readonly {
     readonly tool: SupportedTool;
     readonly surfaces: readonly VendorSurface[];
-    /**
-     * Where this product's own reading of the file opens, for a kind whose
-     * detail differs by product. Set exactly where {@link FileStripEntry.opens}
-     * is absent, and absent everywhere it is set (`RecognitionMarks.vue`).
-     */
-    readonly opens?: {
-      /** That reading's own detail route. */
-      readonly route: RouteLocationRaw;
-      /** What the link announces: the product, the file, and the subject. */
-      readonly accessibleText: string;
-    };
   }[];
   /**
    * What kind of file carries the declaration, where the kind has one: a hook

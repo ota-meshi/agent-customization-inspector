@@ -13,7 +13,6 @@
 import { computed } from 'vue';
 import { useSessionSources } from '../../composables/session-sources';
 import type { SourceFamilyBlock } from '../../composables/session-sources';
-import type { SourceKind } from '../../../shared/api-types';
 
 const props = defineProps<{
   /** The row's members, in the row's own published order. */
@@ -23,16 +22,6 @@ const props = defineProps<{
    * owning row spells because it knows which fields identify its members.
    */
   memberKey: (member: Member) => string;
-  /**
-   * The families whose comparison entries the owning row can still offer —
-   * the keys of its per-block compare routes. A narrowing that empties such
-   * a family's members does not take its block with it, so the entry stays
-   * reachable; a family with no comparable pair is deliberately absent, so
-   * an all-filtered family never leaves a bare heading behind. Omitted by a
-   * caller with no block-level entries; the members alone then decide the
-   * blocks.
-   */
-  entryKinds?: readonly SourceKind[];
 }>();
 
 defineSlots<{
@@ -50,39 +39,20 @@ const sessionSources = useSessionSources();
 
 /**
  * The members grouped into family blocks
- * ({@link SessionSources.familyBlocksOf}), extended with the families only
- * {@link props.entryKinds} holds: a family every member of which a narrowing
- * dropped still renders its block exactly when its comparison entry has
- * something to offer.
+ * ({@link SessionSources.familyBlocksOf}) — the families this grouping still
+ * shows a file for, and no others.
+ *
+ * A family a narrowing emptied draws no block, so it draws neither a heading
+ * nor the comparison entry the block would have closed: a block kept for its
+ * entry's sake is a family name with no file under it, over a Compare link
+ * opening the two files the narrowing has just hidden. What the row publishes
+ * and what the screen shows are two questions, and the heading and the link
+ * follow the screen (`SkillRow.vue` § the same rule for a family line). How a
+ * pair is built is the other question: the sides come from the row's own
+ * published identities, so a narrowing that empties one family does not
+ * change the pair a surviving family offers.
  */
-const blocks = computed(() => {
-  const grouped = sessionSources.familyBlocksOf(props.members);
-  const present = new Set(grouped.map((block) => block.kind));
-  const extended = [...grouped];
-  for (const kind of props.entryKinds ?? []) {
-    if (!present.has(kind)) {
-      present.add(kind);
-      extended.push({ kind, familyText: sessionSources.familyNameOf(kind), members: [] });
-    }
-  }
-  // The same published family order the grouping itself keeps: an extension
-  // appended for an all-filtered family must slot where the family reads,
-  // not after whichever blocks survived the narrowing.
-  return extended.toSorted(
-    (left, right) => (left.kind === 'repository' ? 0 : 1) - (right.kind === 'repository' ? 0 : 1),
-  );
-});
-
-/**
- * Whether the blocks carry headings. Decided after the extension above rather
- * than by the grouping alone, so a family present only for its comparison entry
- * counts towards it — and read from the one rule the owning row reads, which is
- * what keeps the entry reachable on the line whichever of the two draws it
- * (`session-sources.ts` § familyLineShownFor).
- */
-const familyLineShown = computed(() =>
-  sessionSources.familyLineShownFor(props.members, props.entryKinds ?? []),
-);
+const blocks = computed(() => sessionSources.familyBlocksOf(props.members));
 </script>
 
 <template>
@@ -91,16 +61,20 @@ const familyLineShown = computed(() =>
       <!-- Which family these members are of, in this product's own words, and
            only where that distinguishes something: two families' members under
            one row stay two statements rather than one merged list (FR-030).
-           The block's own comparison entry closes that line, because a
+           The block says whether it is headed, exactly as a section does
+           (`SourceFamilySections.vue`), so the grouping settles it once for
+           both. The block's own comparison entry closes that line, because a
            comparison never spans families and the entry belongs to the family
            it compares within. A row with one family has no such line, and its
            entry closes the row's own name line instead — which is the owning
-           row's to render, being the line the row itself draws. -->
-      <p v-if="familyLineShown" class="aci-family-heading">
-        {{ sessionSources.familyNameOf(block.kind) }}
+           row's to render, being the line the row itself draws
+           (`session-sources.ts` § familyLineShownFor, the rule that keeps the
+           entry reachable on whichever of the two lines draws it). -->
+      <p v-if="block.familyText !== null" class="aci-family-heading">
+        {{ block.familyText }}
         <slot name="entry" :block="block" />
       </p>
-      <ul v-if="block.members.length > 0" class="aci-source-family-blocks__members" role="list">
+      <ul class="aci-source-family-blocks__members" role="list">
         <li v-for="member in block.members" :key="memberKey(member)">
           <slot name="member" :member="member" />
         </li>

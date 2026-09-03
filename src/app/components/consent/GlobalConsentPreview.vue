@@ -82,7 +82,13 @@ const exclusions = computed(() =>
 
 <template>
   <div class="aci-global-consent-preview">
-    <h3>What would be inspected</h3>
+    <!-- Future tense before a confirmation, past after it, on the same value
+         the paragraph below branches on: a reader returning to this page has
+         already made the decision, and a heading still proposing it says the
+         decision is outstanding. Deliberately not the wording of the
+         `What is inspected` panel further down, which would put the same
+         heading on the page twice (`pages/global-consent.vue`). -->
+    <h3>{{ consentGiven ? 'What your confirmation covers' : 'What would be inspected' }}</h3>
     <p>
       Inspecting your personal setup means reading the customization files each tool documents in
       its own configuration directory — instructions, and the skills, agents, prompts and commands,
@@ -115,7 +121,9 @@ const exclusions = computed(() =>
          below names what focus has landed on. -->
     <table class="aci-global-consent-preview__roots" tabindex="0">
       <caption class="aci-global-consent-preview__caption">
-        The four proposed directories
+        {{
+          consentGiven ? 'The four directories' : 'The four proposed directories'
+        }}
       </caption>
       <thead>
         <tr>

@@ -79,22 +79,22 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 
 ## Release gateの実行
 
-以下のgateはすべて2026-09-01に、`pnpm run build`後のこの変更時点のtreeに対して実行した。件数は各runが報告した値である。
+以下のgateはすべて2026-09-03に、`pnpm run build`後のこの変更時点のtreeに対して実行した。件数は各runが報告した値である。
 
 | Gate | Command | 結果 |
 |---|---|---|
 | Format | `pnpm run format:check` | 無出力、exit 0 |
 | Lint | `pnpm run lint` | 無出力、exit 0 |
 | Types | `pnpm run typecheck` | 無出力、exit 0 |
-| Unit | `pnpm run test:unit` | 50 file、1,195 test passed |
-| Contract | `pnpm run test:contract` | 12 file、389 test passed |
+| Unit | `pnpm run test:unit` | 52 file、1,211 test passed |
+| Contract | `pnpm run test:contract` | 12 file、391 test passed |
 | Integration | `pnpm run test:integration` | 10 file、268 test passed |
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、6 test passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 535 passed |
-| Coverage | `pnpm run test:coverage` | 72 file、1,852 test passed。statement 87.10%、line 87.25% |
-| Documentation | `pnpm run test:docs` | 1 file、31 test passed |
+| Browser | `pnpm exec playwright test --project=chromium` | 560 passed |
+| Coverage | `pnpm run test:coverage` | 74 file、1,870 test passed。statement 86.27%、line 86.59% |
+| Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
 **ここでのbrowser gateは1 projectであり、certification matrixはCIのものである。**
 `playwright.config.ts`はChromium・Firefox・WebKitを各1 revision固定しており、3
@@ -107,6 +107,11 @@ workflowについて同じ性質をassertする。認証対象のWebKitはCIが�
 revisionであり、そこではtab orderにlinkが含まれる。したがってassertionは、認証外のhost
 1台の挙動に合わせて弱めるのではなくそのまま維持する。よって上表のrowはChromium
 projectであり、この記録はcertification matrix上のlocal runを主張しない。
+
+**このtreeの認証されたbrowser結果は、そのcommit自身に対するCI runである。** 3つのpinned
+revisionにわたるものであり、ここでは再現していない。上表のrowはhost 1台のproject
+1つであって、local runはそのどれの代わりにもならない。判断はreworkが始まったtreeから変わって
+いない。変わったのは、認証runがどのcommitに対するものかである。
 
 **Study lifecycleは2つのprojectが走らせるため、同時に走らせると機械を奪い合う。**
 20 participantのlifecycle testは`integration`と`coverage`の双方に属し、各copyが自前のsupervisorと
@@ -122,12 +127,19 @@ timingのthresholdをassertしない。
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`f87255e0df95ce017b6fd906508f25ae4860227212af760f4aa0eee60bbaff03`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+`23ebf9ca12d61b95e7f4427c645709a5e57689194c0e74b2dee8d4e847d28c4a`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
 caseは、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。11件のvitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser
 specは上記の3 project
 Playwright run経由である。`tests/contract/outcome-fixture-manifest.test.ts`は同じsessionでcanonical
 digestと66件のfixture digestすべてを再現した。
+
+このsetは、interface rework前に記録したsetとは比較できない。fixture byteが変わっており、spec.md
+§ Release-Evidence Fixture Governanceはそれを新しい測定setとする。manifest versionは3のままである。
+同governanceがincrementを要求するのはcase・required class・expected outcomeの変更であり、今回は
+そのいずれでもない — 同じ4 criteriaにわたる同じ99件のcase IDで、required classごとの件数はすべて
+非ゼロのままである。この実行のbrowser側は、このhostのChromium projectであった。3つのpinned
+revisionはCIのものであり、上のbrowser gateがそれを記録している。
 
 | Criterion | Case | Passed | macOS WebKitを除きpassed | Failed |
 |---|---:|---:|---:|---:|
@@ -188,7 +200,7 @@ Windows、Orca付きUbuntuを要する。SC-008は代わりにautomated checkと
 assertし、`MANUAL-*` IDはpassedではなくunexecutedとして記録する（spec.ja.md § Clarifications、
 Session 2026-09-01）。
 
-**18件の`REVIEW-*` IDは実施した。** 2026-09-01に実施し、後掲の独自の節に記録している。
+**18件の`REVIEW-*` IDは実施した。** 2026-09-03に実施し、後掲の独自の節に記録している。
 
 ## Lower-bound certification
 
@@ -202,11 +214,36 @@ host 1台である。Certificationの結果はmatrix上のCI runが生むもの�
 
 ## SC-001とSC-006のfirst-use session
 
-**2026-09-01に実施した20件のagent駆動session。** 各sessionは独立した自律agentであり、渡したものは
-1つだけ、稼働中のInspectorが印字したoriginである。Selectorもrouteも、interfaceの説明も与えず、
-このrepositoryへのaccessも与えていない。Sourceを読むsessionは、探し当てるのではなく答えを読むことに
-なるからである。20件すべてが同じtree — `pnpm run start:fixture`が構築するall-kind fixture — に
-向き合い、run全体を通じて1つのhostが配信し、各sessionは自分のbrowserを駆動し自分の時計で計測した。
+**2026-09-03に、この候補のbuildに対して実施した20件のagent駆動session。**（`pnpm run build`のあと、
+`pnpm run start:fixture`が構築するall-kind fixtureを、run全体を通じて1つのhostが配信した。）各session
+は独立した自律agentであり、taskのほかに渡したものは2つだけ — 稼働中のInspectorが印字したoriginと、
+`tests/usability/sc001-sc006-study-inputs/guidance.md`の本文である。Selectorもrouteも、そのguideを
+超えるinterfaceの説明も与えていない。各sessionは自分のbrowserを駆動し自分の時計で計測し、taskはその
+guideの隣にある4つのprompt fileである。
+
+**何を強制し、何を強制しなかったか。** このproductのsource、test、specification、fixture、document
+を読むことは指示で禁じた。読むsessionは、探し当てるのではなく答えを読むことになるからである。ただし
+機構としては阻止していない。sessionはbrowser binaryのあるこのworking treeからPlaywrightを実行した
+ので、treeはsessionから到達可能だった。access自体が無いsessionより弱い保証であり、主張を弱める形で
+そのまま記録する。
+
+**このrunの2つの条件が数値に効いている。** 各sessionには固有のscratch directoryを与え、同時に走らせた
+のは4件である。もう1つは、あるsessionが自分のクラッシュしたscriptの残骸を探すうちに、共有debugging
+port経由で隣のsessionの生きたbrowserに接続しclose()を呼んだことである。その後の自己確認では対象の
+pageとcontextは開いたままであり、当時走っていた3 sessionはすべて完走し4 taskすべてに回答した。
+session 13以降は、自分が起動していないbrowserへの接続を禁じる指示を加えた — `kill`の既存の禁止が
+守っていたものに対し、それを迂回した機構を同じ規則で塞いだ形である。
+
+**consentの状態はserver側にあり、hostは共有である。** personal inspectionは無効の状態から始まるので、
+最初に確認したsessionが以降のすべてのsessionに対してそれを有効にし、`Disable personal inspection`を
+使ったsessionが再び無効に戻す。1件のsessionは両方を行った — 完了済みの読み取りに到着し、それを無効化し、
+きれいな状態から手順をやり直してgate自体を確かめ、仕様どおり働いたと報告している。4件は未同意のpageに
+出会い、2段階のgateを報告した — confirmationのcheckboxを入れて初めて`Inspect these directories`
+buttonが現れる。別の2件は反対側から結果を見た。再読み込みの間にあるkindの件数が動き、`Personal setup`が
+`Not inspected`に戻ったが、自分は何もしていない。2件ともそれを自分が起こしたものではなくserver側の状態
+として読んだ。これはproductの条件ではなくharnessの条件である。1台のhostは、process毎に一度きりの
+confirmationについて独立した20件のfirst useを保持できず、sessionを1つ持つ読み手はその状態を自分の
+操作でしか変えない。
 
 **これはagent駆動のrunであり、そのように記録する。** 20件のagentが測るのは、productが自ら印字し
 描画するguidanceだけでfileに到達し、productがそのfileについて述べていることを言えるかである。
@@ -217,63 +254,78 @@ moderated studyが必要としたsealed-capture kitはこのrunで動かされ�
 
 | Workflow | 測るもの | 閾値 | 結果 |
 |---|---|---|---|
-| Discovery | SC-001: 発見した1 fileのdetail viewを2分以内に開く | 20件中19件 | **20件中20件**、2.4秒〜63秒、中央値28.6秒 |
-| Inspection | SC-006: 指定`AGENTS.md`の3 fieldを2分以内に回答 | 20件中18件 | **20件中20件**、4.4秒〜115秒、中央値41.2秒 |
+| Discovery | SC-001: 発見した1 fileのdetail viewを2分以内に開く | 20件中19件 | **20件中20件**、0.753秒〜93.6秒、中央値5.72秒 |
+| Inspection | SC-006: 指定`AGENTS.md`の3 fieldを2分以内に回答 | 20件中18件 | **20件中20件**、0.37秒〜29秒、中央値1.12秒 |
 | Comparison | SC-006のcoverage: 標準comparison task | 20件すべてが試行 | **20件中20件**完了 |
 | Global consent | SC-006のcoverage: 標準personal-setup consent task | 20件すべてが試行 | **20件中20件**完了 |
 | Safety | SC-006のzero-critical gate | critical issueなし | **報告なし** |
 
-全sessionの3 fieldが`tests/usability/sc001-sc006-study-inputs/ground-truth.json`と部分点なしで
-一致した。source `Repository`、recognizing tools `GitHub Copilot`**および**`OpenAI Codex`、
-file type `Instructions`である。Pageを読んだかどうかを分けるのはtool fieldであり — fixtureの
-root `AGENTS.md`はClaude Codeのpathではない — 全sessionが両toolを挙げ、Claude Codeを挙げた
-sessionは無かった。いくつかは問われずにその除外を明言した。
+全sessionの3 fieldが`tests/usability/sc001-sc006-study-inputs/ground-truth.json`と部分点なしで一致した
+— source `Repository`、認識するtool `GitHub Copilot`**と**`OpenAI Codex`、file type `Instructions`。
+pageを読んだのか当て推量なのかを分けるのはtool fieldである（fixtureのroot `AGENTS.md`はClaude Codeの
+pathではない）。全sessionが両方のtoolを挙げ、Claude Codeを挙げたsessionは無い。多くは問われずに除外を
+述べ、そのうち何件かはClaude Codeが実際に読む隣の`CLAUDE.md`を名指しした。
+
+comparison taskはどの組かを指定しておらず、fixtureは複数を保持する。したがってsessionは、ground truthが
+記録する組に到達したかではなく、driftを見つけて述べたかで採点される。runを通じて6つの組に到達し、いずれも
+fixtureのbyteと照合した実在のdriftである — ground truthが名指しし13 sessionが見つけた、`.agents/skills/`の
+`changelog` skillと`.github/skills/`にあるその複製。1つのdirectoryで1つの名前を宣言する2つのskill、
+`alpha-a`と`alpha-b`。version `2.0.0`と`0.9.0`を持つplugin `changelog-writer`の2つのmanifest。
+`docs/AGENTS.md`と`docs/CLAUDE.md` — 後者は`scope`配列が閉じておらず、productはその宣言を「無い」ではなく
+「不明」と述べる。`packages/api/CLAUDE.md`と、その傍らのdirectory形式の複製。そして1つのtreeの下で2つの
+fileが宣言するagent `debugger`。多くのsessionは、compare pageが本文の傍らに述べる認識の差も報告した。
 
 | Session | Discovery | Inspection | Comparison | Consent | Safety |
 |---|---|---|---|---|---|
-| 01 | 26秒 | 40秒 | 完了 | 完了 | なし |
-| 02 | 47.5秒 | 41.2秒 | 完了 | 完了 | なし |
-| 03 | 19.9秒 | 75.8秒 | 完了 | 完了 | なし |
-| 04 | 3.9秒 | 5.6秒 | 完了 | 完了 | なし |
-| 05 | 35秒 | 75秒 | 完了 | 完了 | なし |
-| 06 | 17秒 | 29秒 | 完了 | 完了 | なし |
-| 07 | 2.4秒 | 4.4秒 | 完了 | 完了 | なし |
-| 08 | 42秒 | 60秒 | 完了 | 完了 | なし |
-| 09 | 60秒 | 115秒 | 完了 | 完了 | なし |
-| 10 | 16.5秒 | 52.3秒 | 完了 | 完了 | なし |
-| 11 | 3秒 | 5秒 | 完了 | 完了 | なし |
-| 12 | 26秒 | 34秒 | 完了 | 完了 | なし |
-| 13 | 28.6秒 | 37.8秒 | 完了 | 完了 | なし |
-| 14 | 22.4秒 | 45.9秒 | 完了 | 完了 | なし |
-| 15 | 62秒 | 35秒 | 完了 | 完了 | なし |
-| 16 | 34秒 | 22秒 | 完了 | 完了 | なし |
-| 17 | 33.1秒 | 65.2秒 | 完了 | 完了 | なし |
-| 18 | 63秒 | 58秒 | 完了 | 完了 | なし |
-| 19 | 40秒 | 63秒 | 完了 | 完了 | なし |
-| 20 | 23秒 | 38秒 | 完了 | 完了 | なし |
+| 01 | 29.2秒 | 10.1秒 | 完了 | 完了 | なし |
+| 02 | 0.866秒 | 0.857秒 | 完了 | 完了 | なし |
+| 03 | 93.6秒 | 12.8秒 | 完了 | 完了 | なし |
+| 04 | 0.86秒 | 0.97秒 | 完了 | 完了 | なし |
+| 05 | 76秒 | 29秒 | 完了 | 完了 | なし |
+| 06 | 40.9秒 | 1.2秒 | 完了 | 完了 | なし |
+| 07 | 1.146秒 | 1.111秒 | 完了 | 完了 | なし |
+| 08 | 1.17秒 | 0.37秒 | 完了 | 完了 | なし |
+| 09 | 0.82秒 | 0.92秒 | 完了 | 完了 | なし |
+| 10 | 0.753秒 | 0.741秒 | 完了 | 完了 | なし |
+| 11 | 19.8秒 | 12.2秒 | 完了 | 完了 | なし |
+| 12 | 9.5秒 | 5.9秒 | 完了 | 完了 | なし |
+| 13 | 51.1秒 | 1.0秒 | 完了 | 完了 | なし |
+| 14 | 0.9秒 | 1.1秒 | 完了 | 完了 | なし |
+| 15 | 1.15秒 | 1.13秒 | 完了 | 完了 | なし |
+| 16 | 77.3秒 | 1.1秒 | 完了 | 完了 | なし |
+| 17 | 66.0秒 | 6.3秒 | 完了 | 完了 | なし |
+| 18 | 1.19秒 | 1.13秒 | 完了 | 完了 | なし |
+| 19 | 1.94秒 | 0.99秒 | 完了 | 完了 | なし |
+| 20 | 55.66秒 | 1.15秒 | 完了 | 完了 | なし |
 
-除外も差し替えもしておらず、workflowを落としたsessionも無い。したがって固定分母と記録件数は同じ20である。
+除外も差し替えも行っておらず、採点対象のworkflowを落としたsessionも無い。したがって固定分母と記録件数
+は同じ20件である。
 
-**Safetyについてsessionが報告したもの。** 禁止された作用は無かった。Customizationに由来する実行、
-inspected sourceの変更、outbound request、MCP connectionのいずれも無い。1件のsessionは自身のbrowserの
-requestを独自に列挙し、31件すべてがhost自身のoriginに向いていることを確認した。全sessionが
-personal-setup consent pageに到達し、提案された4 directoryとその値の出所を読み、確認checkboxを未チェックの
-まま残した。いくつかは「まだ何も読んでいない」というpage自身の記述を引用した。
+**sessionがsafetyについて報告したこと。** 禁止された作用は無い — customizationに由来する実行も、
+inspectedなsourceの変更も、outboundなrequestも、MCP接続も無い。前掲の共有consent状態を除いてsessionが
+挙げたのはconsent page自身の誠実さであり、それを肯定的に挙げた — まだ何も読んでいないと述べること、
+除外され続けるもの（認証情報、保存されたsession、cache、installされたpluginの複製、toolが自分のために
+生成するもの）を名指しすること、そして表示するdirectoryが、何かが開けるpathではなくescaped presentation
+であると述べること。
 
-5件のsessionが同じものを挙げたが、いずれも警戒すべきとは呼んでいない。Fileのdetail
-headerにあるicon-onlyのcontrolがlocal applicationを起動する、という点である。5件のうち1件は
-iconが何かを確かめる過程で`Open in VS Code`を実行した。Editorは既に起動していたため、何も起動せず
-何も変更していない。これはproductが仕様として持つfile-opening capabilityであり、readerの操作で
-起動し、controlはaccessible nameを持つ（`FILE_OPEN_TARGET_TEXT`が`aria-label`と`title`の双方を
-供給する）。Sessionがそれらを名指しできたのはそのためである。指摘の実質は名前が*可視*textでは
-ないことであり、WCAGがそれを要求するのは可視labelが存在する場合だけである。よってcritical
-issueではなくobservationとして記録する。
+railのSource-diagnostic件数を、Source自身の`Partial · 14 files kept a diagnostic`と並べて矛盾として
+読んだsessionは無かった。rail項目は数える単位を名前に持つ（`Source diagnostics`）。labelは、panelを
+開くかどうかを決める前に読み手が持つ唯一のものであり、同じgroupの他の項目はすべてfile一覧の行数を
+数えているので、修飾のない名詞は兄弟項目が教えた規則を招くからである。
 
-**このrunが立証しないもの。** 人間の初回利用については何も立証しない。それは基準の以前のparticipant
-形式が測るはずだったもののすべてである。Capture bundleを持たないため、sealされておらずevidence
-artifactから独立に再検証もできない。拠り所は後掲のsessionごとの記録である。そして1つのhostと1つの
-fixture treeである。Sessionが向き合ったのは、このrepositoryが自身のtestのために構築する
-customization fileであり、見たことのないrepositoryではない。
+同じ20 sessionの先行runは、このrunが報告しなかったことを1つ報告しており、harnessではなくproductに
+ついてであるため残す — fileのdetail headerは、localなapplicationを起動するicon只のcontrolを持ち、
+1件のsessionがiconが何かを探る途中で`Open in VS Code`を作動させた。editorは既に起動していたので、
+何も起動せず何も変わらなかった。これはproductが仕様上持つfile-opening capabilityであり、読み手が
+作動させるものであり、controlはaccessible nameを持つ（`FILE_OPEN_TARGET_TEXT`が`aria-label`と`title`
+の双方を供給する） — sessionがそれを名指しできたのはそのためである。observationは、その名前が
+*visible*なtextではないという点であり、WCAGがそれを求めるのはvisibleなlabelがある場合だけである。
+
+**このrunが確立しないこと。** 人によるfirst useについては何も確立しない。基準の以前のparticipant形式が
+測ろうとしていたのは、まさにそれである。capture bundleを持たないので、ここには封緘されたものも、
+evidence artifactから独立に再検証できるものも無い。拠って立つのは前掲のsession毎の記録である。そして
+host 1台、fixture tree 1つである — sessionが出会ったのは、このrepositoryが自分のtestのために構築する
+customization fileであって、見たことのないrepositoryではない。
 
 ## Study kitのrelease-candidate reviewと、その退役
 
@@ -364,19 +416,22 @@ runtimeで何に到達するかは検査済みであり、その記録が前掲�
 ## SC-008 accessibility: Not-applicableの再検証
 
 18件の`REVIEW-*` IDは、各Not-applicable rationaleをrelease diffとbuild済みpackageに照らして再確認する。
-2026-09-01に`src/`とpacked `dist/`に対して全件を再確認し、全件が今も成り立つ。確認した内容:
+2026-09-03に`src/`とpacked `dist/`に対して全件を再確認し、全件が今も成り立つ。interface reworkに
+伴って確認結果が変わったものが4件あるが、判定は変わっていない — inventoryのpath filterを置き換えた
+検索、detailとcomparisonが得たtab strip、Source自身のsurfaceが増やしたroute、そして固有の色を持つ
+vendor markである。確認した内容:
 
 | Criteria | 再確認したrationale | 確認結果 |
 |---|---|---|
 | 1.2.1–1.2.5、1.4.2、2.3.1 | 録音・録画もliveのaudio/videoも無く、flashも無い | `src/`のどこにも`<audio>`、`<video>`、`new Audio`、`.play()`が無く、packed treeにいかなる形式のmedia fileも無い |
-| 1.3.5 | WCAG input-purposeの値を集めるfieldが無い | `src/app`のどこにも`autocomplete`属性が無い |
-| 1.4.5 | textを提示するimageが無い | `dist/public`にimage fileが1つも無い。IconはinlineのSVGにcompileされ`currentColor`を継承する |
-| 2.1.4 | 単一の印字可能文字でcommandが起動しない | keyboard handlerはkind railの1つだけで、`nextTabForKey`が答えるのは`ArrowUp`・`ArrowDown`・`ArrowLeft`・`ArrowRight`・`Home`・`End`のみ。他のkeyは既定動作を保つのでTabでrailから出られる |
-| 2.2.1、2.2.2 | 制限時間が無く、自動更新も無い | `src/app`に`setTimeout`も`setInterval`も無い。Statusは明示的なrefreshでのみ進む |
-| 2.4.5 | 単独のpageはinventoryだけ | 他のrouteはすべて、1つのinspectionのdetail・comparison・consent stepである |
+| 1.3.5 | WCAG input-purposeの値を集めるfieldが無い | `src/app`の`autocomplete`属性は1つ、shellの検索fieldの`off`である。集めるのは検査対象treeへのqueryであって、入力する人についての情報ではない |
+| 1.4.5 | textを提示するimageが無い | `dist/public`にimage fileが1つも無い。IconはinlineのSVGにcompileされ、固有の色を持つvendor markも語ではなく形を描く（AGENTS.md § Icon policy） |
+| 2.1.4 | 単一の印字可能文字でcommandが起動しない | `src/app`のkeyboard handlerは8つで、いずれも同じtab strip patternである — Sourceとkindのrail、およびdetail・comparisonの7つのtab strip — すべて`nextTabForKey`を通り、答えるのは`ArrowUp`、`ArrowDown`、`ArrowLeft`、`ArrowRight`、`Home`、`End`だけ。他のkeyは既定のまま残るのでTabはstripから出られる |
+| 2.2.1、2.2.2 | 制限時間が無く、自動更新も無い | `src/app`に`setTimeout`も`setInterval`も無い。Statusは明示的なrefreshでのみ進む。唯一のobserverはshellがbarに張る`ResizeObserver`で、そのbarの高さをCSSの長さとして公開するだけでcontentは変えない（`App.vue` § barHeightObserver） |
+| 2.4.5 | 単独のpageはinventoryだけ | top-levelのrouteは3つ — inventory、Source自身の`/repository` surface、`/global-consent` step — であり、後の2つはそのSourceの状態とそのconsentの判断であって、それ自体が行き先ではない。残るrouteはすべて1つのinspectionのdetailかcomparisonである |
 | 2.5.1、2.5.4、2.5.7 | gesture・motion・dragging入力が無い | `src/app`に`draggable`、`dragstart`、`touchmove`、`devicemotion`、`deviceorientation`のhandlerが無い |
 | 3.3.4 | 法的・金銭的commitmentが無く、永続dataを変更しない | inspectionとsessionのmoduleはfilesystem writeを一切発行しない。FR-023はmutation instrumentationが証明する |
-| 3.3.7 | 同じことを二度尋ねない | 入力はinventoryのpath filterとconsent checkboxの2つで、いずれも既に与えられた情報を再度求めない |
+| 3.3.7 | 同じことを二度尋ねない | 入力はshellが持つ名前とpathの検索1つ、inventoryのToolとSourceのselect、consent checkbox、comparisonの2つのfile pickerである。いずれも既に与えられた情報を尋ね直さない |
 
 **Applicable rowの自動側**は上記のSC-008 accessibilityに記録している。34件の`AUTO-*` IDがchromiumと
 firefoxで全件通過し、`AUTO-2.1.1`のみ認証外のmacOS WebKitでそこに記録したtab orderの理由により失敗する。
@@ -387,8 +442,9 @@ firefoxで全件通過し、`AUTO-2.1.1`のみ認証外のmacOS WebKitでそこ�
 
 ## Interface rework: 何が無効になり、release完了で何を繰り返すか
 
-Phase 106–109のinterface reworkは、上に記録したすべてのoutcomeが観測されたsurfaceを変更した。
-inventoryのrowとrail、detailの見出しと前後への移動、comparisonの見出し、そしてsession自身の
+Phase 105–110のinterface reworkは、上に記録したすべてのoutcomeが観測されたsurfaceを変更した。
+すべてのsurfaceが描かれるpalette、inventoryのrowとrail、ファイル自身の事実を伴うdetailの見出しと
+前後への移動、detailがrecognitionごとに述べる呼び出し名、comparisonの見出し、そしてsession自身の
 controlの位置である。このうち2つは、記録済みの測定が名指しで参照していたものを移動させた。
 scan statusとcommitted generationはinventoryではなく`/repository` pageにあり、名前とpathの検索は
 shellのもので、barにある。したがって上のoutcomeは、取得した当時のtreeについて誤っているのではない。
@@ -401,9 +457,9 @@ shellのもので、barにある。したがって上のoutcomeは、取得し�
 |---|---|
 | Release gate execution表 | その件数はrework前のtreeで各runが報告した値である。以降どのsuiteもcaseの増減や変更を受けており、数値はこのtreeのrunを同定しない |
 | SC-001とSC-006のfirst-use session | spec.md § Measurable Outcomesは、primary workflowへの実質的な変更の後に評価をやり直すことを求める。reworkは4つすべてのsurfaceを変更した |
-| SC-008 accessibility（`AUTO-*`） | 34件の自動checkはrework前のmarkupに対して記録されており、reworkが移動させたcontrolを含む |
+| SC-008 accessibility（`AUTO-*`） | 34件の自動checkはrework前のmarkupに対して記録されており、reworkが移動させたcontrolを含む。さらにPhase 105は、すべてのcontrast checkが測定するpaletteを置き換えた |
 | SC-008 Not-applicableの再検証（`REVIEW-*`） | 各rationaleは、その後reworkが変更した`src/`に対して再確認したものである。3.3.7の行はinventoryのpath filterを名指しするが、それは現在shellの検索controlである |
-| SC-003、SC-004、SC-005、SC-007 | fixture byteが変わっており、spec.md § Release-Evidence Fixture Governanceはfixture byteの変更を新しい非比較可能な測定setとする |
+| SC-003、SC-004、SC-005、SC-007 | fixture byteが変わっており、spec.md § Release-Evidence Fixture Governanceはfixture byteの変更を新しい非比較可能な測定setとする。Phase 110はさらに、SC-003のshared-file caseとSC-005のrow caseが観測するskill・hook・MCPのdetail見出しを作り直した |
 
 Release完了がこのreworked treeに対して繰り返すもの、この順で:
 

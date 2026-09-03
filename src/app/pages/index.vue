@@ -541,10 +541,13 @@ const globalSourcesAnnouncement = computed(() =>
           role="tabpanel"
           :aria-label="INVENTORY_SELECTION_TEXT.diagnostics"
         >
-          <p class="aci-note">
-            Diagnostics that belong to a Source rather than to one of its files. A file's own
-            diagnostic is stated on that file's row.
-          </p>
+          <!-- Only what the heading cannot say. The rail item and this heading
+               both name the unit, so a note opening on the same qualifier would
+               state it twice on one screen; what is left is the question a
+               reader arrives with, having seen a count of zero beside a Source
+               that kept diagnostics of its own. `A file's own` draws the
+               contrast by itself, so it needs no preface. -->
+          <p class="aci-note">A file's own diagnostic is stated on that file's row.</p>
           <DiagnosticList
             :diagnostics="filters.sourceScopedDiagnostics.value"
             :sources="snapshot.sources"

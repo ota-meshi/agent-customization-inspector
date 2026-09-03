@@ -160,7 +160,9 @@ const inventoryRoute = '/?kind=rule';
  */
 const listNeighbours = computed(() => {
   const rows = (snapshot.value?.rules ?? []).map((entry) => ({
+    // A path always draws, so the two spellings are the one label rule.
     label: inlinePresentationLabel(entry.sourceRelativePath),
+    accessibleLabel: inlinePresentationLabel(entry.sourceRelativePath),
     route: detailRoute('rule', entry.sourceRelativePath, sessionSources.selectorOf(entry.sourceId)),
   }));
   return detailNeighbours(

@@ -104,7 +104,6 @@ import {
   SUPPORTED_TOOL_TEXT,
   accessiblePresentationLabel,
   escapeControlCharacters,
-  inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
   rendersNothingVisible,
@@ -591,7 +590,10 @@ function copiesOfName(name: string): readonly FileStripEntry[] {
 const listNeighbours = computed(() => {
   const entries = snapshot.value?.skills ?? [];
   const rows = entries.map((entry) => ({
-    label: inlinePresentationLabel(entry.name),
+    // Drawn and announced through the shared unit, so a name with nothing to
+    // draw still names its move ({@link AuthoredName}; FR-025).
+    label: new AuthoredName(entry.name).text,
+    accessibleLabel: new AuthoredName(entry.name).singleLineText,
     // The move carries the row it opens, exactly as that row's own link in the
     // inventory does: a neighbour whose file is listed under two names would
     // otherwise land on the page as the other name's row and offer that row's

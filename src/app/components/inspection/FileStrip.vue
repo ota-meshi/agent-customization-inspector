@@ -9,10 +9,10 @@
 // sideways instead, so the count changes what a reader scrolls past rather
 // than where the content starts.
 //
-// Each entry reaches that file's own detail, with the products that recognize
-// it drawn beside the path. The path is the link where the file has one
-// detail; where the detail is one product's own reading, the marks are the
-// links and the path is inert ({@link FileStripEntry.opens}). It states no order, no precedence, and
+// Each entry reaches that file's own detail through its path, with the
+// products that recognize it drawn beside it as marks. The path is the link on
+// every kind, because the strip offers the next file rather than another
+// reading of one ({@link FileStripEntry.opens}). It states no order, no precedence, and
 // no winner: which copy a session loads turns on runtime this tool does not
 // observe (FR-009).
 //
@@ -65,17 +65,11 @@ defineProps<{
     <span v-for="entry in entries" :key="entry.key" class="aci-file-strip__item">
       <SourceHomeBadge v-if="entry.sourceId !== openSourceId" :source-id="entry.sourceId" />
       <NuxtLink
-        v-if="entry.opens !== undefined"
         :to="entry.opens.route"
         class="aci-path aci-authored-text"
         :aria-label="entry.opens.accessibleText"
         >{{ entry.pathText }}</NuxtLink
       >
-      <!-- Inert text rather than a link: this kind's detail is one product's
-           own reading of the file, so there is no single destination the path
-           could open. The marks are the links, which is the reading the plugin
-           row makes of its own carriers (`PluginRow.vue`). -->
-      <span v-else class="aci-path aci-authored-text">{{ entry.pathText }}</span>
       <span v-if="entry.carrierText !== null" class="aci-carrier-kind">{{
         entry.carrierText
       }}</span>
@@ -91,6 +85,16 @@ defineProps<{
    move between entries; each entry itself is capped at the strip's own width
    below, so reading one never costs a sideways move. */
 .aci-file-strip {
+  /* The scroll stays inside this box. `overflow-x: auto` alone does not keep
+     it there: the entries still counted towards the document's own scrollable
+     area, so a strip 3,940px wide made the whole page scroll 3,928px sideways
+     at a 1,280px viewport — the failure the line above says cannot happen
+     (WCAG 1.4.10). Measured: hiding the strip took the document back to
+     1,280px and hiding the Monaco viewers changed nothing, so the overflow was
+     this box's. Clipping an ancestor does not fix it either; paint containment
+     does, because it makes this box the boundary its descendants are painted
+     and scrolled within. */
+  contain: paint;
   display: flex;
   gap: 0.3125rem;
   margin-block: 0.5625rem 0.4375rem;

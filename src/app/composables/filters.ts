@@ -24,6 +24,7 @@
 //
 // Filtering is a view over the committed snapshot and never a request: no
 // filter value reaches the host, and no filter can widen what was scanned.
+import { AuthoredName } from '../components/authored-name';
 import { computed, type ComputedRef, type Ref } from 'vue';
 import type {
   AgentInventoryEntryDto,
@@ -840,7 +841,9 @@ export class InventoryFilterView {
      */
     this.mcpRows = computed<readonly NarrowedInventoryRow<McpInventoryEntryDto>[]>(() =>
       (snapshot.value?.mcp ?? []).flatMap((entry) => {
-        const named = nameMatches(entry.name === null ? null : inlinePresentationLabel(entry.name));
+        const named = nameMatches(
+          entry.name === null ? null : new AuthoredName(entry.name).singleLineText,
+        );
         const declarations = entry.declarations.filter(
           (declaration) =>
             fileMatches(declaration.sourceRelativePath, declaration.sourceId, named) &&
@@ -867,7 +870,9 @@ export class InventoryFilterView {
      */
     this.agentRows = computed<readonly NarrowedInventoryRow<AgentInventoryEntryDto>[]>(() =>
       (snapshot.value?.agents ?? []).flatMap((entry) => {
-        const named = nameMatches(entry.name === null ? null : inlinePresentationLabel(entry.name));
+        const named = nameMatches(
+          entry.name === null ? null : new AuthoredName(entry.name).singleLineText,
+        );
         const definitions = entry.definitions.filter(
           (definition) =>
             fileMatches(definition.sourceRelativePath, definition.sourceId, named) &&
@@ -954,7 +959,7 @@ export class InventoryFilterView {
     this.hookRows = computed(() =>
       (snapshot.value?.hooks ?? []).flatMap((entry) => {
         const named = nameMatches(
-          entry.event === null ? null : inlinePresentationLabel(entry.event),
+          entry.event === null ? null : new AuthoredName(entry.event).singleLineText,
         );
         const declarations = entry.declarations.filter(
           (declaration) =>
@@ -981,7 +986,9 @@ export class InventoryFilterView {
      */
     this.pluginRows = computed(() =>
       (snapshot.value?.plugins ?? []).flatMap((entry) => {
-        const named = nameMatches(entry.name === null ? null : inlinePresentationLabel(entry.name));
+        const named = nameMatches(
+          entry.name === null ? null : new AuthoredName(entry.name).singleLineText,
+        );
         const carriers = entry.carriers.filter(
           (carrier) =>
             fileMatches(carrier.sourceRelativePath, carrier.sourceId, named) &&

@@ -40,7 +40,7 @@
     "comparison": {
       "completedWhen": "changelog スキルの2つの写しが左右に並んで表示され、参加者がその違いを1つ挙げた。",
       "theTwoCopies": [
-        ".claude/skills/changelog/SKILL.md",
+        ".github/skills/changelog/SKILL.md",
         ".agents/skills/changelog/SKILL.md"
       ],
       "differencesEitherOfWhichCounts": [

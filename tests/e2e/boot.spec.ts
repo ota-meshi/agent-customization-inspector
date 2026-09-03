@@ -51,7 +51,7 @@ test('shows one enabled Repository Source with an empty inventory', async ({ pag
   await expect(
     page.getByText('No customization files were recognized in this scan.'),
   ).toBeVisible();
-  await page.getByRole('tab', { name: /^Diagnostics/u }).click();
+  await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
   await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
 
   // The Source's own state is its own surface (FR-002, FR-030). The launch URL

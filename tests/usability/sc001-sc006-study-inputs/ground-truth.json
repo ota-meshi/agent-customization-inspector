@@ -40,7 +40,7 @@
     "comparison": {
       "completedWhen": "The two changelog skill copies are on screen side by side and the participant names one difference between them.",
       "theTwoCopies": [
-        ".claude/skills/changelog/SKILL.md",
+        ".github/skills/changelog/SKILL.md",
         ".agents/skills/changelog/SKILL.md"
       ],
       "differencesEitherOfWhichCounts": [

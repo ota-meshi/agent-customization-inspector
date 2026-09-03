@@ -23,7 +23,7 @@ directory — what each one is, which tool reads it, and exactly what it says.
 
 ## The answer looks like this
 
-![The inventory: kinds down the left with their counts, and each row naming the file, the tools that read it, and how they resolve a name two files share](docs/images/inventory.png)
+![The inventory: the two Sources and their scan status above the kinds and their counts, and each row naming what it is, the files under it, the products that read each file with the surfaces that recognition rests on, and how they resolve a name two files share](docs/images/inventory.png)
 
 Eleven kinds — **instructions, skills, MCP, agents, prompts and commands, rules,
 permissions, hooks, plugins, output styles, and settings** — with their counts down the
@@ -44,7 +44,7 @@ apply to, so `packages/api/**` gathers the files that govern that directory and 
 `.agents/skills/`. A `CLAUDE.md` and an `AGENTS.md` that started out as one file. A row holding
 two readable copies opens a side-by-side diff.
 
-![A skill named changelog compared across two files: its declared metadata, its instructions, and its complete source, each as a side-by-side diff](docs/images/comparison.png)
+![A skill named changelog compared across two files: which products recognize each and on which surfaces, then its declared metadata, its instructions, and its complete source, each as a side-by-side diff](docs/images/comparison.png)
 
 **"Where does this MCP server come from?"** MCP, hooks, and plugins are counted by name rather
 than by file: one server name, every file that declares it, and what each declaration says —
@@ -53,7 +53,7 @@ so you can see for yourself which ones disagree.
 **"And my own setup, not the repository's?"** Four directories hold customizations that follow
 you into every project: `~/.claude`, `~/.codex`, and `~/.copilot` — or wherever
 `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `COPILOT_HOME` point instead — plus the shared
-`~/.agents`. Click *Inspect your personal setup* and the page names the four it resolved
+`~/.agents`. Open *Personal setup* under *Sources* and the page names the four it resolved
 before reading any of them; `--inspect-personal-setup` is that confirmation given on the
 command line, so it reads them before the page exists.
 

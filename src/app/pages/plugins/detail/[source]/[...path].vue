@@ -213,7 +213,12 @@ const inventoryRoute = '/?kind=plugin';
 const listNeighbours = computed(() => {
   const entries = snapshot.value?.plugins ?? [];
   const rows = entries.map((entry) => ({
-    label: entry.name === null ? 'No plugin name resolved' : inlinePresentationLabel(entry.name),
+    // The drawn spelling rather than the label rule, which returns nothing at
+    // all for a name with no characters and would leave the move named by its
+    // arrow alone ({@link AuthoredName}; FR-025).
+    label: entry.name === null ? 'No plugin name resolved' : new AuthoredName(entry.name).text,
+    accessibleLabel:
+      entry.name === null ? 'No plugin name resolved' : new AuthoredName(entry.name).singleLineText,
     route: pluginCarrierDetailRoute(
       entry.carriers[0]?.sourceRelativePath ?? '',
       entry.carriers[0]?.tool ?? 'codex',
@@ -701,24 +706,7 @@ const otherCarriers = computed<readonly FileStripEntry[]>(() => {
   const byFile = new Map<string, FileStripEntry>();
   for (const carrier of row.value?.carriers ?? []) {
     const key = fileIdentityKey(carrier.sourceId, carrier.sourceRelativePath);
-    const pathAccessibleText = accessiblePresentationLabel(carrier.sourceRelativePath);
-    const recognition = {
-      tool: carrier.tool,
-      surfaces: carrier.surfaces,
-      opens: {
-        route: pluginCarrierDetailRoute(
-          carrier.sourceRelativePath,
-          carrier.tool,
-          name.authored,
-          null,
-          sessionSources.selectorOf(carrier.sourceId),
-        ),
-        accessibleText: sessionSources.qualifiedLinkName(
-          `${SUPPORTED_TOOL_TEXT[carrier.tool]} reading of ${pathAccessibleText}: ${name.accessibleText}`,
-          carrier.sourceId,
-        ),
-      },
-    };
+    const recognition = { tool: carrier.tool, surfaces: carrier.surfaces };
     const existing = byFile.get(key);
     byFile.set(
       key,
@@ -727,6 +715,33 @@ const otherCarriers = computed<readonly FileStripEntry[]>(() => {
             key,
             sourceId: carrier.sourceId,
             pathText: pathPresentationLabel(carrier.sourceRelativePath),
+            // The path is the link, as it is in every other kind's strip, and
+            // it opens the reading of the first product in the closed tool
+            // order that recognizes the file — the rule the inventory row
+            // follows (`PluginRow.vue`). The strip is the carrier axis: it
+            // offers the next file this name is declared in, so its link is
+            // named by the file rather than by a product, and the readings of
+            // one file are reached from that file's own attributes line.
+            opens: {
+              route: pluginCarrierDetailRoute(
+                carrier.sourceRelativePath,
+                SUPPORTED_TOOL_ORDER.find((tool) =>
+                  (row.value?.carriers ?? []).some(
+                    (other) =>
+                      other.sourceId === carrier.sourceId &&
+                      other.sourceRelativePath === carrier.sourceRelativePath &&
+                      other.tool === tool,
+                  ),
+                ) ?? carrier.tool,
+                name.authored,
+                null,
+                sessionSources.selectorOf(carrier.sourceId),
+              ),
+              accessibleText: sessionSources.qualifiedLinkName(
+                accessiblePresentationLabel(carrier.sourceRelativePath),
+                carrier.sourceId,
+              ),
+            },
             // The form is the file's, so the first carrier answers for it: a
             // file is one form whichever product read it (`PluginRow.vue`).
             carrierText: PLUGIN_CARRIER_TEXT[carrier.carrier],
@@ -855,7 +870,14 @@ const openFile = computed(() => {
  */
 const openFileRoleText = computed(() => {
   if (openFilePath.value === carrierPath.value) {
-    return 'The manifest that declares this plugin';
+    // What the carrier is to the plugin, from the carrier's own published form
+    // rather than from the path matching: a catalog that sits inside the root
+    // it names is a file of the plugin and the carrier at once, and calling it
+    // the manifest would name it something the inventory does not
+    // ({@link PLUGIN_CARRIER_TEXT}).
+    return openDetail.value?.carrier === 'catalog'
+      ? 'The catalog entry that declares this plugin'
+      : 'The manifest that declares this plugin';
   }
   // What the file is comes from the inventory rather than from the file's own
   // request: a plugin's file is served as the plugin's ({@link

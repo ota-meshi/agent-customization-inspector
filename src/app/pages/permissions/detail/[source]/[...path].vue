@@ -166,7 +166,9 @@ const inventoryRoute = '/?kind=permissions';
  */
 const listNeighbours = computed(() => {
   const rows = (snapshot.value?.permissions ?? []).map((entry) => ({
+    // A path always draws, so the two spellings are the one label rule.
     label: inlinePresentationLabel(entry.sourceRelativePath),
+    accessibleLabel: inlinePresentationLabel(entry.sourceRelativePath),
     route: detailRoute(
       'permissions',
       entry.sourceRelativePath,

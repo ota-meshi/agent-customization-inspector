@@ -198,7 +198,7 @@ test.describe('a Claude instruction file whose declarations cannot be parsed', (
     );
     // The Source-level list is its own rail entry now: a record that belongs to
     // a file is on that file's row, so this one stays empty (FR-028).
-    await page.getByRole('tab', { name: /^Diagnostics/u }).click();
+    await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
     await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
   });
 });

@@ -43,6 +43,35 @@ import {
  * The label rules spell out what they can, and the empty string leaves them
  * nothing to spell, so the name is noted instead — one note, so a reader who
  * met it on a row meets the same words on the detail and the comparison.
+ *
+ * A carrier that declares both `""` and the literal name `(empty name)`
+ * therefore publishes two rows a reader cannot tell apart: they draw the same
+ * text, they announce the same text, and only their destinations differ.
+ * {@link isAuthored} separates them internally, but what that reaches the
+ * screen as is a colour — `.aci-muted` sets nothing else, and a difference
+ * carried by colour alone is not a difference (WCAG 1.4.1). Nothing is
+ * announced either way. This is accepted, with no distinction between them.
+ *
+ * Accepted because the alternative is the comparison this product refuses to
+ * make: deciding what to draw by testing an authored value against this
+ * product's own copy turns display wording into load-bearing syntax
+ * (`entities.ts` § inlinePresentationLabel, which records the same judgment
+ * for the same reason, as do the two comparison `SourceDiff.vue` components
+ * and `skills/compare/[family].vue`). Marking the empty name structurally
+ * instead — a badge the row shape carries — would put a permanent mark on
+ * every empty-name row, on its list, its detail, its comparison, and its
+ * moves, to separate it from a name nobody writes.
+ *
+ * It is a choice, not a limit: a structural mark would remove the ambiguity.
+ *
+ * The second reason `entities.ts` gives — that the complete source stands
+ * beside every surface, so the exact spelling is always somewhere on screen —
+ * does not carry here for every kind. A skill, prompt, output style, or agent
+ * shows its file's source; a plugin's declaration draws `"name"`, and a hook's
+ * draws the event key itself. An MCP declaration draws the value alone, and a
+ * pure MCP carrier's bytes reach no surface at all (FR-007) — so for that one
+ * kind the authored key is nowhere on the page. What separates the two rows
+ * there is what each declaration holds, not which of them is the empty name.
  */
 const EMPTY_NAME_TEXT = '(empty name)';
 

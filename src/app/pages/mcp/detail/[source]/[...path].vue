@@ -51,7 +51,6 @@ import type { SourceKind } from '../../../../../shared/api-types';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
-import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
 import { useSessionViewState } from '../../../../composables/session-view-state';
 import { mcpComparisonRouteFor } from '../../../../composables/mcp-comparison';
@@ -61,7 +60,6 @@ import {
   SUPPORTED_TOOL_ORDER,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
-  SUPPORTED_TOOL_TEXT,
   accessiblePresentationLabel,
   escapeControlCharacters,
   fileIdentityKey,
@@ -419,8 +417,15 @@ const listNeighbours = computed(() => {
     const path = declaration?.sourceRelativePath ?? '';
     const source = sessionSources.selectorOf(declaration?.sourceId ?? '');
     return {
+      // The drawn spelling rather than the label rule, which returns nothing at
+      // all for a name with no characters and would leave the move named by its
+      // arrow alone ({@link AuthoredName}; FR-025).
       label:
-        entry.name === null ? 'No known server declarations' : inlinePresentationLabel(entry.name),
+        entry.name === null ? 'No known server declarations' : new AuthoredName(entry.name).text,
+      accessibleLabel:
+        entry.name === null
+          ? 'No known server declarations'
+          : new AuthoredName(entry.name).singleLineText,
       // A row is one server name, so the move addresses that name's declaration
       // the way the row's own link does (`rows/McpRow.vue`): the carrier route
       // alone would open the whole carrier, which is a different page from the
@@ -492,8 +497,12 @@ const serverBlocks = computed(() =>
       // the carrier detail serves the union of the readings, and since the
       // CLI's bare schema exists the readings of one shared file can differ,
       // so each block states its own readers the way the inventory row does
-      // (FR-009 names no winner; this names the documented readers).
-      toolsText: (snapshot.value?.mcp ?? [])
+      // (FR-009 names no winner; this names the documented readers). Drawn by
+      // the one component every recognition on every surface is drawn by: a
+      // parenthetical `GitHub Copilot (CLI)` is the comparison table's cell
+      // spelling, and outside that table a reader met one statement in two
+      // shapes on one page ({@link RecognitionMarks}).
+      recognitions: (snapshot.value?.mcp ?? [])
         .filter((entry) => entry.name === server.name)
         .flatMap((entry) => entry.declarations)
         .filter(
@@ -501,13 +510,7 @@ const serverBlocks = computed(() =>
             declaration.sourceRelativePath === openPath.value &&
             declaration.sourceId === openSourceId.value,
         )
-        .map(
-          (declaration) =>
-            `${SUPPORTED_TOOL_TEXT[declaration.tool]} (${declaration.surfaces
-              .map((surface) => VENDOR_SURFACE_TEXT[surface])
-              .join(', ')})`,
-        )
-        .join(', '),
+        .map((declaration) => ({ tool: declaration.tool, surfaces: declaration.surfaces })),
       // The declaration as the pretty-printed JSON a reader can paste into
       // their own carrier (declared-entries-json.ts): the keys the file
       // wrote, in the file's own order, every value as resolved (FR-007). A
@@ -961,7 +964,9 @@ onBeforeUnmount(() => {
              the readings of one shared carrier can differ by schema, so the
              carrier view states each server's own readers rather than letting
              the page caption answer for every block (T353). -->
-        <p v-if="openServerName === null" class="aci-muted">{{ server.toolsText }}</p>
+        <p v-if="openServerName === null">
+          <RecognitionMarks :recognitions="server.recognitions" named />
+        </p>
         <!-- The carrier view's per-server comparison entry: the accessible
              name carries the server's name after the visible phrase, because
              a carrier view lists one such link per declared name and they

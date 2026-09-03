@@ -102,8 +102,9 @@ function surfacesText(recognition: SideRecognition): string {
                  accessible name would be the same word twice
                  (`ToolMark.vue`). -->
             <th scope="row">
-              <ToolMark decorative :tool="row.tool" />
-              {{ SUPPORTED_TOOL_TEXT[row.tool] }}
+              <span class="aci-recognition-table__tool"
+                ><ToolMark decorative :tool="row.tool" /> {{ SUPPORTED_TOOL_TEXT[row.tool] }}</span
+              >
             </th>
             <td v-for="cell in row.cells" :key="cell.caption" :data-label="cell.caption">
               <!-- The absent state set in `.aci-muted`, which is what the design

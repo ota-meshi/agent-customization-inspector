@@ -10,7 +10,7 @@
 // tree afterwards: unlike the suites' OS-temp roots, it stays on disk for
 // inspection until the next launch of the same fixture replaces it.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -133,7 +133,28 @@ const cliEntry = servesSnapshot
 // that opens with `-` is one of the CLI's own options, so
 // `pnpm run start:fixture --inspect-personal-setup` serves the default tree
 // with that option rather than looking for a fixture by that name.
-const operands = givenArguments.filter((argument) => argument !== '--before');
+// `--unreadable-home` is this launcher's, not the CLI's: it replaces one built
+// Global home with a regular file, so the personal-setup page can be read in
+// the state where a proposed home cannot be read — `Codex home — Not
+// inspected · That directory does not exist or cannot be read`, which nothing
+// else a person can launch produces.
+//
+// It does not fill the Diagnostics list, and reaching for it to do that is the
+// wrong turn this note exists to stop. A Global home broken before the launch
+// is rejected at admission (`global-admission.ts`), which produces the consent
+// row above and no Diagnostic at all. The Repository has no admission step —
+// root selection is purely lexical (`cli.ts`) — so a Repository root that does
+// not exist becomes the first scan's source-scoped `root-unreadable`
+// Diagnostic, and that is how the Diagnostics list is filled:
+//
+//   node dist/cli.mjs --root /path/that/does/not/exist --no-open --port 0
+//
+// which `tests/e2e/inspection-safety.spec.ts` § "a first scan that cannot read
+// its root" also asserts.
+const breaksAHome = givenArguments.includes('--unreadable-home');
+const operands = givenArguments.filter(
+  (argument) => argument !== '--before' && argument !== '--unreadable-home',
+);
 const namesFixture = operands.length > 0 && !operands[0]!.startsWith('-');
 const requestedName = namesFixture ? operands[0]! : 'all';
 // Everything else goes to the CLI verbatim (e.g. --no-open, --port 0).
@@ -182,6 +203,18 @@ const globalHomeRoot = join(fixtureBase, 'global-homes');
 rmSync(globalHomeRoot, { recursive: true, force: true });
 mkdirSync(globalHomeRoot, { recursive: true });
 const globalHomes = buildGlobalHomeFixture(undefined, globalHomeRoot);
+if (breaksAHome) {
+  // A regular file where a directory is proposed: the same rejection an
+  // unreadable directory gives, and the one this can produce without depending
+  // on the launching user's permissions — a mode-000 directory is still
+  // readable to root, so it would report nothing when run as one. Codex's is
+  // broken because the other three carry the skills, plugins, and instructions
+  // the Global suites read.
+  const codexHome = join(globalHomeRoot, '.codex');
+  rmSync(codexHome, { recursive: true, force: true });
+  writeFileSync(codexHome, 'not a directory\n', 'utf8');
+  console.log(`unreadable home: ${codexHome} (a regular file)`);
+}
 console.log(`global homes: ${globalHomes.base}`);
 
 // The CLI owns the terminal from here: it prints its launch line and serves

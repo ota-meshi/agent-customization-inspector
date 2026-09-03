@@ -176,6 +176,27 @@ const pendingTools = computed(
   () => sessionViewState.snapshot.value?.globalControl?.pendingTools ?? [],
 );
 
+/**
+ * Whether a confirmation can be made at all, which is what both halves of the
+ * control — the checkbox and the button it enables — are shown on.
+ *
+ * Offered before consent is active, and again while the active consent has
+ * members the same preview can retry: an unpublished admitted member, or one
+ * rejected for a reason a retry can answer (contracts/http-api.md
+ * § enable-global). With consent active and nothing retryable, a confirmation
+ * would be refused, so neither half offers it. One value rather than the
+ * condition written twice, because the two are one control: a checkbox that
+ * outlived its button is a tick with nowhere to go, and left standing after a
+ * confirmation it read as an ungranted consent above a panel reporting the
+ * directories as read.
+ */
+const confirmationOffered = computed(
+  () =>
+    enableInProgress.value === null &&
+    (controls.value.length === 0 ||
+      (retryableTools.value.length > 0 && pendingTools.value.length === 0)),
+);
+
 /** The accepted batch's status while one is running or has failed. */
 const batchStatus = computed(
   () => sessionViewState.snapshot.value?.globalControl?.batchStatus ?? null,
@@ -284,26 +305,16 @@ watch(
       />
 
       <!-- The confirmation comes after the preview in document order, so a
-           keyboard reader reaches it having passed everything it is about. -->
-      <p>
+           keyboard reader reaches it having passed everything it is about.
+           Both halves appear on the one condition that says a confirmation is
+           possible ({@link confirmationOffered}). -->
+      <p v-if="confirmationOffered">
         <label>
           <input v-model="confirmed" type="checkbox" />
           I have read what would be inspected and I want the inspector to read these files
         </label>
       </p>
-      <!-- Offered before consent is active, and again while the active
-           consent has members the same preview can retry — an unpublished
-           admitted member, or one rejected for a reason a retry can answer
-           (contracts/http-api.md § enable-global). With consent active and
-           nothing retryable, a confirmation would be refused, so no control
-           offers it. -->
-      <p
-        v-if="
-          confirmed &&
-          enableInProgress === null &&
-          (controls.length === 0 || (retryableTools.length > 0 && pendingTools.length === 0))
-        "
-      >
+      <p v-if="confirmationOffered && confirmed">
         <button
           type="button"
           :disabled="sessionViewState.globalEnableState.value === 'submitting'"
