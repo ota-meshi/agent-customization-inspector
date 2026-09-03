@@ -509,39 +509,28 @@ paired with three screen readers, which this release does not assert
 (contracts/accessibility-acceptance.md § Decision rule).
 
 
-## Interface rework: what it invalidates, and what release completion repeats
+## The interface rework and the records it reopened
 
 The interface rework of Phases 105–110 changed the surfaces every recorded outcome above was
 observed on: the palette every surface is drawn in, the inventory's rows and its rail, the
 detail head with its file facts and its previous/next moves, the invocation names a detail
-states per recognition, the comparison head, and where the session's own controls sit. Two of those moves relocate
-something a recorded measurement addressed by name — the scan status and the committed
-generation now live on the `/repository` page rather than on the inventory, and the search over
-names and paths is the shell's, in the bar. So the outcomes above are not wrong about the tree
-they were taken on; they no longer describe this one, and a release candidate cut from this
-tree repeats them rather than citing them.
+states per recognition, the comparison head, and where the session's own controls sit. Two of
+those moves relocate something a recorded measurement addressed by name — the scan status and
+the committed generation live on the `/repository` page rather than on the inventory, and the
+search over names and paths is the shell's, in the bar. An outcome taken on the tree the rework
+started from is not wrong about that tree; it does not describe this one. So the records above
+state what this tree produced, which is why they carry one date. Where the producing run is
+CI's rather than this session's, the section that owns the record says so.
 
-What is invalidated, and why:
+What the rework reached, and why each record had to be taken over this tree:
 
-| Recorded outcome | Why the rework invalidates it |
+| Record | Why the rework reached it |
 |---|---|
-| The Release gate execution table | Its counts are what each run reported on the pre-rework tree. Every suite has since gained, lost, or changed cases, so the numbers no longer identify a run of this tree |
-| SC-001 and SC-006 first-use sessions | spec.md § Measurable Outcomes requires repeating the evaluation after a material change to a primary workflow. The rework changed the surface of all four |
-| SC-008 accessibility (`AUTO-*`) | The 34 automated checks were recorded against the pre-rework markup, including the controls the rework moved, and Phase 105 replaced the palette every contrast check measures |
-| SC-008 Not-applicable revalidation (`REVIEW-*`) | Each rationale was rechecked against a `src/` the rework has since changed; the 3.3.7 row names the inventory's path filter, which is now the shell's search control |
+| The Release gate execution table | Every suite gained, lost, or changed cases, so counts taken on another tree identify no run of this one |
+| SC-001 and SC-006 first-use sessions | spec.md § Measurable Outcomes requires repeating the evaluation after a material change to a primary workflow, and the rework changed the surface of all four |
+| SC-008 accessibility (`AUTO-*`) | The 34 automated checks address the markup the rework moved, and Phase 105 replaced the palette every contrast check measures |
+| SC-008 Not-applicable revalidation (`REVIEW-*`) | Each rationale is a reading of a `src/` the rework changed; the 3.3.7 row names the search over names and paths, which the rework moved into the bar |
 | SC-003, SC-004, SC-005, SC-007 | Their fixture bytes changed, and spec.md § Release-Evidence Fixture Governance makes a fixture-byte change a new non-comparable measurement set. Phase 110 also reworked the skill, hook, and MCP detail heads that the SC-003 shared-file and SC-005 row cases observe |
 
-What release completion repeats over the reworked tree, in this order:
-
-1. `pnpm run build`, then `pnpm run verify:package` and `pnpm run test:package`.
-2. Every gate in the Release gate execution table, recording the counts each run reports.
-3. The three-project browser run in CI, which is where the certification matrix is exercised.
-4. The SC-008 automated checks and the `REVIEW-*` recheck, against this tree's `src/` and its
-   packed `dist/`.
-5. The outcome-manifest measurement for SC-003, SC-004, SC-005, and SC-007, recording the
-   manifest version and canonical digest that identify the new set.
-6. The twenty agent-driven sessions for SC-001 and SC-006, against a build of the candidate,
-   recorded as an agent-driven run.
-
-Nothing here is a finding against the rework. It is the list of what a release from this tree
-owes, written down while the reason is fresh rather than reconstructed later from a diff.
+Nothing here is a finding against the rework. It is why this document's evidence is of one tree
+rather than of the feature's whole history.

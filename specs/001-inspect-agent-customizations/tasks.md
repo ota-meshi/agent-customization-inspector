@@ -8,12 +8,12 @@
 
 **Tests**: Every behavioral change requires risk-appropriate automated tests before implementation. Tests cover unit, contract, integration, package, security, performance, browser, boundary, accessibility, and regression behavior.
 
-**Organization**: Tasks follow the original visible family-vertical delivery increments rather than completing one whole user story horizontally. After the bootable shell, each family completes Inventory/List, complete inert Detail, shared integration where applicable, and Comparison before the next family begins. The exact order is SKILL (whose Skill Metadata list/detail phases are settled decision records — see Phases 6 and 7 — and whose comparison phase verifies the generic path over census companions — see Phase 14) → Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks. Story labels retain canonical traceability: `[US1]` discovery, `[US2]` complete inert detail, `[US3]` comparison, and `[US4]` Global inspection. Only explicit MCP configuration joins the MCP surfaces — a file of another kind that spells MCP configuration shows it as that kind's own detail content once its own inventory phase ships it; every phase still has one independently testable milestone. Phases 105–110 rework the interface those completed surfaces are read through and therefore follow the release evidence, which they reopen: a change to what a reader sees is a change to the tree that evidence was frozen over, and Phase 111 brings that evidence and the user documentation back onto the tree they produced.
+**Organization**: Tasks follow the original visible family-vertical delivery increments rather than completing one whole user story horizontally. After the bootable shell, each family completes Inventory/List, complete inert Detail, shared integration where applicable, and Comparison before the next family begins. The exact order is SKILL (whose Skill Metadata list/detail phases are settled decision records — see Phases 6 and 7 — and whose comparison phase verifies the generic path over census companions — see Phase 14) → Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks. Story labels retain canonical traceability: `[US1]` discovery, `[US2]` complete inert detail, `[US3]` comparison, and `[US4]` Global inspection. Only explicit MCP configuration joins the MCP surfaces — a file of another kind that spells MCP configuration shows it as that kind's own detail content once its own inventory phase ships it; every phase still has one independently testable milestone. Phases 105–110 rework the interface those completed surfaces are read through and therefore follow the release evidence, which they reopen: a change to what a reader sees is a change to the tree that evidence was frozen over, and the Convergence phases bring that evidence and the user documentation back onto the tree they produced.
 
 ## Format: `[ID] [P?] [Story?] Description`
 
 - **[P]**: Can run in parallel after stated prerequisites because it uses different files and has no dependency on another incomplete task.
-- **[Story]**: Required for Phases 3–101 and 105–109; omitted only in Setup, Minimal Secure Foundation, and Phases 102–104.
+- **[Story]**: Required for Phases 3–101 and 105–110; omitted only in Setup, Minimal Secure Foundation, Phases 102–104, and every Convergence phase.
 - Every checklist item has one primary outcome and at least one exact repository-relative owned file path. A root-level owned file uses an explicit `./` prefix. An unprefixed basename may remain as a manifest member, API value, selector, or other content literal, but it is ignored when deriving owned paths and cannot satisfy task ownership.
 
 ## Normative Requirement Traceability
@@ -75,7 +75,7 @@ the task would have built.
 | QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
-| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198 |
+| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
 | SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195 |
 | SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194 |
@@ -84,7 +84,7 @@ the task would have built.
 | SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
-| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197 |
+| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200 |
 
 ---
 
@@ -8873,7 +8873,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   quickstarts; ordered independent CI jobs; and the bilingual plan/task/quickstart declarations that
   require later release/final reruns—plus all 53 FR/QR/SC trace rows through FR-045 *(amended
   2026-08-04: the trace-row count follows the current FR/QR/SC set.)*, and every declared task ID's
-  mapping (T001 through T1198, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
+  mapping (T001 through T1201, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
   T482–T485, Phase 64’s vacant T654–T657, Phase 67’s vacant T675–T678, and Phases 68–75’s vacant
   T679–T750) *(amended 2026-08-30: the vacant ranges include the withdrawn marketplace Phases 68–75,
   whose T679–T750 the enumeration previously omitted while the same count it must reproduce already
@@ -9048,7 +9048,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   `pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`, and
   `pnpm run test:security -- tests/security/usability-study-evidence.test.ts`, and do not continue
   until all positive and negative cases pass. Require the bilingual task parser to preserve exactly
-  1,110 ordered checkbox IDs, 115 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 111 extends.)* *(amended 2026-08-01: counts corrected to
+  1,113 ordered checkbox IDs, 116 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)* *(amended 2026-08-01: counts corrected to
   the current task set)* *(amended 2026-08-04: the trace-row count follows the current
   FR/QR/SC set.)*, identical English/Japanese owned-path sets, and self-contained task text with no
   out-of-line amendment mechanism. Verify the exact five-input phase matrix, closed twenty-member
@@ -9710,7 +9710,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   heartbeat boundaries, handoff anchors, stable control session, finalize teardown,
   witness-before-seal ordering, exact retained distributions/streams/handoff/witness/seal pairs, and
   zero sidecar/runtime control/raw/browser/reviewer/mapping residue. Finally review the task
-  parser's exact 1,110 IDs, 115 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 111 extends.)*, owned-path parity, self-contained task text,
+  parser's exact 1,113 IDs, 116 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)*, owned-path parity, self-contained task text,
   bilingual semantic/code-literal parity, and all focused/complete gate results; any untested
   branch, stale architecture term, failed check, missing evidence, privacy residue, or unresolved
   concern blocks T1062/T1063. Additionally, review against the complete diff, tarball, and evidence
@@ -10025,8 +10025,8 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   while any concern remains. Only after zero concerns, verify the exact retained distributions,
   three streams, handoff pair, continuity-witness pair, capture-seal pair, five record kinds,
   threshold independence, the exact six-plus-two long-lived exits and reviewer-exit equation, seven
-  aggregate equations, zero prohibited residue, exact 1,110 task IDs, 115 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 111 extends.)*,
-  coverage of every declared task ID — T001 through T1198, less the withdrawn Phase 39's vacant
+  aggregate equations, zero prohibited residue, exact 1,113 task IDs, 116 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)*,
+  coverage of every declared task ID — T001 through T1201, less the withdrawn Phase 39's vacant
   T436–T439, Phase 45's vacant T482–T485, Phase 64's vacant T654–T657, Phase 67's vacant T675–T678,
   and Phases 68–75's vacant T679–T750, English/Japanese owned-path and semantic parity, no stale
   architecture term, and `git diff --check`; record every invalidation, rerun, digest, safe count,
@@ -10581,8 +10581,9 @@ records as owed, in the order it names. Each records its result in that file and
 - [X] T1197 Hold the frozen-count text in T1041, T1049, T1061, and T1062 to the shipped freeze in
   `specs/001-inspect-agent-customizations/tasks.md` and
   `specs/001-inspect-agent-customizations/tasks.ja.md`: each of those bodies requires the task
-  parser to reproduce 1,110 ordered checkbox IDs, 115 phases, and 53 trace rows, and coverage of
-  every declared task ID from T001 through T1198 less the vacant ranges each already enumerates. A
+  parser to reproduce 1,113 ordered checkbox IDs, 116 phases, and 53 trace rows, and coverage of
+  every declared task ID from T001 through T1201 less the vacant ranges each already enumerates
+  *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)*. A
   task body records what the task now requires, and a dated amendment note records that it changed
   (AGENTS.md § Documentation content policy) (contradicts)
 - [X] T1198 Add the Story Coverage Matrix rows Phase 110 and this phase have none of, and correct

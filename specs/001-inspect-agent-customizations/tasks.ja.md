@@ -8,12 +8,12 @@
 
 **テスト**: すべての振る舞いの変更について、実装前にリスクに応じた自動テストが必要です。テストはユニット、契約、統合、パッケージ、セキュリティ、性能、ブラウザー、境界、アクセシビリティ、回帰の振る舞いを網羅します。
 
-**構成**: タスクは、一つのuser story全体を水平に完了せず、元の目に見えるfamily-vertical delivery incrementに従います。起動可能な画面の後、各familyでInventory/List、完全で不活性なDetail、必要なshared integration、Comparisonを完了してから次のfamilyへ進みます。正確な順序は、SKILL（その Skill Metadata の一覧/詳細フェーズは確定済みの決定記録 — フェーズ 6・7 参照 — であり、比較フェーズは census companion に対する generic path の検証です — フェーズ 14 参照）→ Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooksです。Story labelはcanonicalなtraceabilityを維持し、`[US1]`はdiscovery、`[US2]`は完全で不活性なdetail、`[US3]`はcomparison、`[US4]`はGlobal inspectionを表します。MCP surfaceに合流するのは明示的なMCP構成だけです。他のkindのfileが綴るMCP構成は、そのkind自身のinventory phaseが出荷された時点で、そのkindのdetail contentとして見えるようになります。各phaseは独立してtest可能なmilestoneを1つ維持します。フェーズ 105〜110 は、完成したそれらのsurfaceを読むためのインターフェースを作り直すため、release evidenceの後に続き、それを再び開きます。そしてフェーズ 111 が、そのevidenceとユーザー向けドキュメントを、作り直しの結果であるtreeへ戻します。読み手が見るものへの変更は、そのevidenceが凍結された対象であるtreeへの変更だからです。 *(amended 2026-08-20: MCP surfaceに合流するのは明示的なMCP構成だけである。他のkindのfileが綴るMCP構成は、agentの`mcp-servers`も含め、そのkind自身のdetail contentとして見えるだけである。)*
+**構成**: タスクは、一つのuser story全体を水平に完了せず、元の目に見えるfamily-vertical delivery incrementに従います。起動可能な画面の後、各familyでInventory/List、完全で不活性なDetail、必要なshared integration、Comparisonを完了してから次のfamilyへ進みます。正確な順序は、SKILL（その Skill Metadata の一覧/詳細フェーズは確定済みの決定記録 — フェーズ 6・7 参照 — であり、比較フェーズは census companion に対する generic path の検証です — フェーズ 14 参照）→ Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooksです。Story labelはcanonicalなtraceabilityを維持し、`[US1]`はdiscovery、`[US2]`は完全で不活性なdetail、`[US3]`はcomparison、`[US4]`はGlobal inspectionを表します。MCP surfaceに合流するのは明示的なMCP構成だけです。他のkindのfileが綴るMCP構成は、そのkind自身のinventory phaseが出荷された時点で、そのkindのdetail contentとして見えるようになります。各phaseは独立してtest可能なmilestoneを1つ維持します。フェーズ 105〜110 は、完成したそれらのsurfaceを読むためのインターフェースを作り直すため、release evidenceの後に続き、それを再び開きます。そしてConvergence フェーズが、そのevidenceとユーザー向けドキュメントを、作り直しの結果であるtreeへ戻します。読み手が見るものへの変更は、そのevidenceが凍結された対象であるtreeへの変更だからです。 *(amended 2026-08-20: MCP surfaceに合流するのは明示的なMCP構成だけである。他のkindのfileが綴るMCP構成は、agentの`mcp-servers`も含め、そのkind自身のdetail contentとして見えるだけである。)*
 
 ## 形式: `[ID] [P?] [Story?] Description`
 
 - **[P]**: 明記された前提条件の完了後、異なるファイルを使用し、別の未完了タスクへ依存しないため並列実行できます。
-- **[Story]**: フェーズ 3〜101 および 105〜109 で必須です。Setup、Minimal Secure Foundation、フェーズ 102〜104 でのみ省略します。
+- **[Story]**: フェーズ 3〜101 および 105〜110 で必須です。Setup、Minimal Secure Foundation、フェーズ 102〜104、およびすべての Convergence フェーズで省略します。
 - すべてのチェックリスト項目には、一つの主要成果と少なくとも一つの正確なrepository-relative owned file pathが必要です。Repository root直下のowned fileには明示的な`./` prefixを付けます。Prefixなしのbasenameはmanifest member、API value、selector、その他content literalとして残してよいものの、owned path導出時には無視し、task ownershipを満たすものとして数えません。
 
 ## 規範的な要件トレーサビリティ
@@ -72,7 +72,7 @@ dispositionである。
 | QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
-| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198 |
+| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
 | SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195 |
 | SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194 |
@@ -81,7 +81,7 @@ dispositionである。
 | SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
-| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197 |
+| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200 |
 
 ---
 
@@ -7546,7 +7546,7 @@ dispositionである。
   reviewを立証しない。`tests/documentation/cross-artifact.test.ts`へ、両quickstart、順序付き独立CI
   job、後続release/final rerunを要求するbilingual plan/task/quickstart declarationを含むrunnable command/stable
   ID、FR-045までの全53 FR/QR/SC trace row *(2026-08-04 修正: trace rowの件数は現在のFR/QR/SC集合に従う。)*、宣言済みtask
-  IDすべてのmapping（T001からT1198まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
+  IDすべてのmapping（T001からT1201まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
   *(2026-08-30 修正: 欠番の範囲に取り下げたmarketplaceフェーズ68–75を含めた。同じgateが再現すべきtask件数は既にそれらを除外していたが、列挙が漏れていた。)*
   *(2026-08-24 修正: 件数と欠番の範囲は現在のtask
   setに従う。取り下げたフェーズ64と67がその欠番を残す。)*を検証し、prefixなしbasenameにownershipを依存するtaskを
@@ -7690,7 +7690,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
 
 - [X] T1049 Targeted study-evidence gate
   `pnpm run test:contract -- tests/contract/usability-study-evidence.test.ts`、`pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`、`pnpm run test:security -- tests/security/usability-study-evidence.test.ts`を実行し、全positive/negative
-  caseがpassするまで先へ進まない。Bilingual task parserでexact 1,110 ordered checkbox ID、115 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 111 が拡張した task set に従う。)*
+  caseがpassするまで先へ進まない。Bilingual task parserでexact 1,113 ordered checkbox ID、116 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*
   *(2026-08-01 修正: 現在のtask setに合わせて件数を補正)* *(2026-08-04 修正: trace
   rowの件数は現在のFR/QR/SC集合に従う。)*、English/Japaneseのidentical owned-path set、out-of-line amendment
   mechanismのないself-contained task textを要求する。Exact five-input phase matrix、closed twenty-member
@@ -8281,7 +8281,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
   cardinality、unchanged record kind/effect row/sole-writer chain、heartbeat boundary、handoff
   anchor、stable control session、finalize teardown、witness-before-seal order、exact retained
   distribution/stream/handoff/witness/seal pair、sidecar/runtime control/raw/browser/reviewer/mapping
-  residue 0件を確認する。最後にtask parserのexact 1,110 ID、115 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 111 が拡張した task set に従う。)*、owned-path
+  residue 0件を確認する。最後にtask parserのexact 1,113 ID、116 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*、owned-path
   parity、self-contained task text、bilingual semantic/code-literal parity、全focused/complete gate
   resultをreviewし、untested branch、stale architecture term、failed check、missing evidence、privacy
   residue、unresolved concernがあればT1062/T1063をblockする。 加えて、次のbrowser-observation、outcome、ordering
@@ -8569,8 +8569,8 @@ participant 20名がこのprojectには得られず、それが存在する理�
   diff/tarballに対してT1061を再実行し、concernが残る間T1061 → remediation → focused gate → complete gate → full
   studyを反復する。Concern 0件の後だけ、exact retained distribution、stream 3件、handoff pair、continuity-witness
   pair、capture-seal pair、record kind 5件、threshold independence、exact six-plus-two long-lived
-  exitとreviewer-exit equation、aggregate equation 7件、prohibited residue 0件、exact task ID 1,110件、phase
-  115件、trace row 53件 *(2026-09-03 修正: countと宣言範囲はフェーズ 111 が拡張した task set に従う。)*、宣言済み task ID すべての coverage — T001 から T1198 まで、取り下げたフェーズ39の欠番
+  exitとreviewer-exit equation、aggregate equation 7件、prohibited residue 0件、exact task ID 1,113件、phase
+  116件、trace row 53件 *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*、宣言済み task ID すべての coverage — T001 から T1201 まで、取り下げたフェーズ39の欠番
   T436–T439、フェーズ45の欠番 T482–T485、フェーズ64の欠番 T654–T657、フェーズ67の欠番 T675–T678、フェーズ68–75の欠番 T679–T750
   を除く、English/Japanese owned-path/semantic parity、stale architecture term
   0件、`git diff --check`をverifyする。全invalidation、rerun、digest、safe count、aggregate、cleanup、final
@@ -9086,8 +9086,9 @@ readmeは読み手が実際に出会うinterfaceを示す。
 - [X] T1197 `specs/001-inspect-agent-customizations/tasks.md` と
   `specs/001-inspect-agent-customizations/tasks.ja.md` で、T1041、T1049、T1061、T1062 の凍結
   countの記述を出荷済みのfreezeに合わせる。これら4つの本文は、task parserが ordered checkbox ID
-  1,110件、phase 115件、trace row 53件を再現すること、および T001 から T1198 までの宣言済み task ID
-  すべて（各本文が既に列挙している欠番を除く）のcoverageを要求する。taskの本文はそのtaskが現在
+  1,113件、phase 116件、trace row 53件を再現すること、および T001 から T1201 までの宣言済み task ID
+  すべて（各本文が既に列挙している欠番を除く）のcoverageを要求する
+  *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*。taskの本文はそのtaskが現在
   要求するものを記録し、日付入りの amendment noteが変更されたことを記録する
   （AGENTS.md § Documentation content policy）（contradicts）
 - [X] T1198 フェーズ 110 とこのフェーズが持たないStory Coverage Matrixの行を追加し、109 で止まって
