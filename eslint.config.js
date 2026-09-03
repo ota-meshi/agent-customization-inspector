@@ -13,8 +13,6 @@ export default withNuxt()
       '.nuxt/**',
       '.output/**',
       'dist/**',
-      // A copy of dist/ taken before the UI rework, so the same reason applies.
-      '_before/**',
       'coverage/**',
       'playwright-report/**',
       'test-results/**',

@@ -33,7 +33,6 @@
     "build": "node scripts/clean-build-output.mjs && nuxt build && tsdown",
     "start": "node dist/cli.mjs",
     "start:fixture": "node scripts/serve-fixture.ts",
-    "start:fixture:before": "node scripts/serve-fixture.ts --before",
     "build-and-start": "pnpm run build && pnpm run start",
     "check:official-sources": "node scripts/check-official-sources.ts",
     "verify:package": "node scripts/verify-package-files.mjs",

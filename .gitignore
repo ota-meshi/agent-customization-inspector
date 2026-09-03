@@ -23,6 +23,3 @@ test-results/
 # Fixture trees served by `pnpm run start:fixture`
 .tmp/
 
-# Snapshot of the built implementation the UI rework starts from, kept
-# launchable by `pnpm run start:fixture:before` while the new UI is written.
-_before/
