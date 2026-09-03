@@ -341,4 +341,4 @@ jobs:
           # loopback origin and serve the packaged shell there, then stop when
           # told. `--help` alone proves the bin resolves, not that it launches.
           node "${GITHUB_WORKSPACE}/scripts/check-installed-launch.mjs" \
-            npx --no-install agent-customization-inspector
+            node_modules/agent-customization-inspector
