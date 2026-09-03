@@ -63,13 +63,17 @@ test('carries one consent from preview through enable, refresh, and disable', as
   // action appears only once the captured preview is on screen and behind
   // the explicit checkbox.
   await expect(main).toContainText('Inspect your personal setup');
+  // Awaited rather than probed. `isVisible()` answers about the moment it is
+  // called, and on a slower engine that moment can precede the branch's own
+  // render: the offer is then skipped as absent while the page still holds it,
+  // and every assertion below runs against the surface that never advanced. A
+  // fresh session always offers it, which is what the paragraph above states.
   const offer = page.getByRole('button', { name: 'Work out the directories' });
-  if (await offer.isVisible()) {
-    await offer.click();
-    // The pressed button unmounts with its branch, so focus lands on the
-    // page heading rather than silently falling to the body.
-    await expect(page.getByRole('heading', { name: 'Inspect your personal setup' })).toBeFocused();
-  }
+  await expect(offer).toBeVisible();
+  await offer.click();
+  // The pressed button unmounts with its branch, so focus lands on the
+  // page heading rather than silently falling to the body.
+  await expect(page.getByRole('heading', { name: 'Inspect your personal setup' })).toBeFocused();
   await expect(main).toContainText('An absolute path, so this tool can be inspected');
   await expect(page.getByRole('button', { name: 'Inspect these directories' })).toHaveCount(0);
   await page

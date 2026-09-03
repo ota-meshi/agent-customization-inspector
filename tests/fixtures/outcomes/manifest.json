@@ -74,7 +74,7 @@
     "tests/e2e/claude-mcp-files-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-mcp-files-detail.spec.ts",
-      "sha256": "824f2c7ab1e64ce3ca877669c1732841739c243a5e70ab142e156180d4cf2251"
+      "sha256": "d690e78c11744b0166de507af587bfad0e6b0609797ca58c58a518feb941debe"
     },
     "tests/e2e/claude-mcp-files-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -94,7 +94,7 @@
     "tests/e2e/claude-plugins-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-plugins-inventory.spec.ts",
-      "sha256": "64bf9813ffa0e36682d7ca93b8c6a814514ca0ad7efbe31a866a3317e7f80332"
+      "sha256": "8a607061f5c37bf959c8c9b33906ffa6e569bbc7b477200c962d8b4979d1c8b9"
     },
     "tests/e2e/claude-rules-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -169,7 +169,7 @@
     "tests/e2e/codex-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-mcp-detail.spec.ts",
-      "sha256": "cac3ef7b3fb062f3f3e2ac9ec84e11a896167dd5c780c8e9c7b52d5bab39a514"
+      "sha256": "dc647d437167399cbbe2ca556bcc3d3a75594f827a39825e2cd91218c5bef938"
     },
     "tests/e2e/codex-mcp-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -194,7 +194,7 @@
     "tests/e2e/codex-plugins-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-plugins-inventory.spec.ts",
-      "sha256": "e580d412a9bdd1c081be05a66a8e712149e2327a73792506e42781ad66ec8fcf"
+      "sha256": "92b8f01926c9eb7e06fa592af64e391c8888532441eaf2d1c02ee511615027d9"
     },
     "tests/e2e/codex-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -284,7 +284,7 @@
     "tests/e2e/copilot-vscode-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-vscode-mcp-detail.spec.ts",
-      "sha256": "1398efe8e99645507cb189200820a32ae4c2bc479ab087e7d3eec4ed9509474a"
+      "sha256": "56bc167f71f211ecb45ec0e327ec999bea8daed0ea70374c7196210550b9b2be"
     },
     "tests/e2e/copilot-vscode-mcp-inventory.spec.ts": {
       "kind": "inline-fixture-suite",

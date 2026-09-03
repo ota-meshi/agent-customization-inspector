@@ -1,24 +1,27 @@
-// Launch check for a command that is supposed to be this product's CLI: it
+// Launch check for an installed copy of this package: what its `bin` points at
 // prints one loopback origin, serves the shell there, and exits when asked
 // (FR-001, contracts/http-api.md § Host requirements).
 //
-// It takes the command as its arguments rather than assuming one, so the same
-// script covers the two things that need covering and can be run against
-// either. CI points it at the tarball it just installed —
-// `npx --no-install agent-customization-inspector` — which is the one path no
-// other gate reaches: `tests/package/npx-launch.test.ts` runs `dist/cli.mjs`
-// from an unrelated directory, and says in its own scope note that installing
-// a tarball would need a network install the package gate deliberately does
-// not perform. Locally the same script runs against `node dist/cli.mjs`, which
-// is how it is checked before it is trusted in CI.
+// It takes the package directory, reads that copy's own `package.json.bin`,
+// and runs the file it names under this process's Node. CI points it at the
+// tarball it just installed — `node_modules/agent-customization-inspector`
+// inside a fresh `npm install` — which is the one path no other gate reaches:
+// `tests/package/npx-launch.test.ts` runs `dist/cli.mjs` from an unrelated
+// directory, and says in its own scope note that installing a tarball would
+// need a network install the package gate deliberately does not perform.
+// Locally the same script runs against `.`, whose `bin` is the same
+// `dist/cli.mjs`, which is how it is checked before it is trusted in CI.
 //
-// Node rather than shell because the job runs on Windows too, where
-// backgrounding a process in bash and killing the tree it spawned is the part
-// that would differ; `spawn` and `kill` behave the same on all three runners.
+// `process.execPath` on the bin target rather than `npx` through `spawn`: on
+// Windows `npx` is `npx.cmd`, which `spawn` cannot start without a shell, and
+// through a shell the process this check would end is the wrapper rather than
+// the CLI. Whether the bin *resolves* is the `--help` step's, which CI runs
+// through `npx` on every runner just before this; what this adds is that the
+// resolved file launches.
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 /** The one contracted launch line: a loopback origin and nothing else. */
 const LAUNCH_LINE = /^http:\/\/localhost:\d+\/$/mu;
@@ -26,22 +29,35 @@ const LAUNCH_LINE = /^http:\/\/localhost:\d+\/$/mu;
 /** How long the launch line may take before this check fails. */
 const LAUNCH_TIMEOUT_MS = 60_000;
 
-const command = process.argv[2];
-const commandArguments = process.argv.slice(3);
-if (command === undefined) {
+/** How long the CLI may take to stop after SIGTERM before it is killed. */
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+const packageDirectory = process.argv[2];
+if (packageDirectory === undefined) {
   console.error(
-    'usage: node scripts/check-installed-launch.mjs <command> [args...]\n' +
-      'example: node scripts/check-installed-launch.mjs node dist/cli.mjs',
+    'usage: node scripts/check-installed-launch.mjs <package directory>\n' +
+      'example: node scripts/check-installed-launch.mjs node_modules/agent-customization-inspector',
   );
   process.exit(1);
 }
+
+/** The installed copy's own manifest, read from the directory the caller named. */
+const manifest = JSON.parse(await readFile(join(packageDirectory, 'package.json'), 'utf8'));
+/** The one file `bin` names; a string form or a single-entry object are the two shapes npm accepts. */
+const binTarget =
+  typeof manifest.bin === 'string' ? manifest.bin : Object.values(manifest.bin ?? {})[0];
+if (typeof binTarget !== 'string') {
+  console.error(`launch check failed: ${packageDirectory}/package.json names no bin`);
+  process.exit(1);
+}
+const cliEntry = resolve(packageDirectory, binTarget);
 
 // A root of its own, so the check never depends on what the working directory
 // happens to hold and never reads the reader's own tree.
 const root = await mkdtemp(join(tmpdir(), 'aci-launch-check-'));
 await writeFile(join(root, 'AGENTS.md'), '# Launch check\n', 'utf8');
 
-const child = spawn(command, [...commandArguments, '--root', root, '--no-open', '--port', '0'], {
+const child = spawn(process.execPath, [cliEntry, '--root', root, '--no-open', '--port', '0'], {
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 
@@ -107,15 +123,30 @@ try {
   failure = error instanceof Error ? error : new Error(String(error));
 }
 
-// The command owns the port until it is told to stop, which is the last thing
-// this check asserts: a launch that cannot be ended leaves the port held.
+// The CLI owns the port until it is told to stop, which is the last thing this
+// check asserts: a launch that cannot be ended leaves the port held. The
+// process signalled is the CLI itself, there being no wrapper between.
 const ended = new Promise((resolve) => child.once('exit', () => resolve(undefined)));
 child.kill('SIGTERM');
-await ended;
+// Escalated rather than waited on indefinitely. A CLI that ignores SIGTERM
+// would hold this `await` for as long as the job is allowed to run — measured
+// once at six hours on the Ubuntu runners, where the step was cancelled by the
+// job timeout rather than by anything this check decided. The escalation makes
+// the refusal a reported failure instead of a hang, and it is a failure: the
+// port stays held by a launch nothing could end.
+const escalation = setTimeout(() => child.kill('SIGKILL'), SHUTDOWN_TIMEOUT_MS);
+const shutdownDeadline = new Promise((resolve) => setTimeout(resolve, SHUTDOWN_TIMEOUT_MS * 2));
+await Promise.race([ended, shutdownDeadline]);
+clearTimeout(escalation);
+if (child.exitCode === null && child.signalCode === null && failure === null) {
+  failure = new Error(
+    `still running ${SHUTDOWN_TIMEOUT_MS * 2}ms after SIGTERM, and after SIGKILL beyond that`,
+  );
+}
 await rm(root, { recursive: true, force: true });
 
 if (failure !== null) {
   console.error(`launch check failed: ${failure.message}`);
   process.exit(1);
 }
-console.log(`launch check passed: ${command} printed ${origin} and served the shell there`);
+console.log(`launch check passed: ${cliEntry} printed ${origin} and served the shell there`);

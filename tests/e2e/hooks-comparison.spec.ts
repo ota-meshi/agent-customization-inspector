@@ -358,9 +358,16 @@ test.describe('the hook declaration comparison', () => {
         .locator('.aci-hook-detail__title')
         .getByRole('link', { name: "Compare this event's declarations: SessionStart" }),
     ).toHaveCount(0);
-    await page
-      .getByRole('link', { name: `Compare this event's declarations: ${SHARED_EVENT}` })
-      .click();
+    // The entry is awaited before it is followed. `click()` waits for the link
+    // to exist, but the detail's own sections settle after it does, and a
+    // press that lands while they are still arriving is one the router never
+    // sees — the address then stays the carrier's, which is what a slower
+    // engine reported.
+    const entry = page.getByRole('link', {
+      name: `Compare this event's declarations: ${SHARED_EVENT}`,
+    });
+    await expect(entry).toBeVisible();
+    await entry.click();
     await expect(page).toHaveURL(/\/hooks\/compare\/repository\?/u);
     await expect(page).toHaveURL(new RegExp(`event=${SHARED_EVENT}`, 'u'));
     await expect(page.locator('main')).toContainText('Repository · Hook · hook file');
