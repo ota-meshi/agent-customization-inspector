@@ -77,6 +77,17 @@ export class ApplicabilityRange {
    * in whitespace must not read as one there
    * ({@link inlineApplicabilityRangePresentation}).
    */
+  /**
+   * Every spelling of this range a reader can see, for the search that narrows
+   * the list by what a row displays (FR-006): the file's own characters and
+   * the spelling drawn in their place, or — where no range was declared — this
+   * product's statement about the row, which is what the row shows there
+   * (`authored-name.ts` § visibleSpellings makes the same answer for a name).
+   */
+  public get visibleSpellings(): readonly string[] {
+    return this.#declared === null ? [this.text] : [this.#declared, this.text];
+  }
+
   public get singleLineText(): string {
     return this.#declared === null
       ? NO_RANGE_TEXT

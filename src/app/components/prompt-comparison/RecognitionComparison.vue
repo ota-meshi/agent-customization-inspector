@@ -22,6 +22,7 @@
 // that turns on a same-name skill outranking a command and on runtime this
 // tool never observes (FR-009).
 import { AuthoredName } from '../authored-name';
+import AuthoredNameText from '../AuthoredNameText.vue';
 import SourceDiff from './SourceDiff.vue';
 import ToolMark from '../ToolMark.vue';
 import { SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
@@ -124,12 +125,14 @@ function surfacesText(definition: PromptSideDefinition): string {
                          they draw nothing, exactly as the row and the detail
                          show such a name (FR-025; `PromptRow.vue`). A command
                          file named `.md` resolves one. -->
-                    <span
-                      :class="
-                        nameOf(cell.invocationName).isAuthored ? 'aci-authored-text' : 'aci-muted'
-                      "
-                      >{{ nameOf(cell.invocationName).text }}</span
-                    >
+                    <AuthoredNameText :name="nameOf(cell.invocationName)">
+                      <span
+                        :class="
+                          nameOf(cell.invocationName).isAuthored ? 'aci-authored-text' : 'aci-muted'
+                        "
+                        >{{ nameOf(cell.invocationName).text }}</span
+                      >
+                    </AuthoredNameText>
                     <span class="aci-muted"> ({{ surfacesText(cell) }})</span></template
                   >
                 </td>

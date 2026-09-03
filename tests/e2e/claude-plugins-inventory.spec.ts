@@ -134,7 +134,7 @@ test.describe('Claude plugins declared by placement and by a repository catalog'
     // the file and the plugin rather than a product (`PluginRow.vue`).
     await expect(placed.locator('a.aci-path')).toHaveAttribute(
       'aria-label',
-      '.claude/skills/release-notes/.claude-plugin/plugin.json: release-notes@skills-dir',
+      'release-notes@skills-dir in .claude/skills/release-notes/.claude-plugin/plugin.json',
     );
     // The plugin is its root, so the count is that whole directory: the
     // manifest that made the folder a plugin, the skill it bundles, and the

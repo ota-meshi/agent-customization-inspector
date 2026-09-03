@@ -210,6 +210,30 @@ const repositoryDiagnosticFiles = computed(() => {
 });
 
 /**
+ * What the Repository entry says, as one string for the live region below: the
+ * status word the entry shows, and the diagnostic count it shows beside it,
+ * from the same two values the entry draws — so what is announced and what is
+ * seen cannot disagree, and `Scanning` and a failure flow through the same
+ * path as `Ready` (WCAG 4.1.3). Empty until a Repository exists, so the region
+ * is mounted with nothing in it rather than added with its text.
+ *
+ * Not a notice that the rescan was pressed: the status moves through
+ * `scanning` to its result, so the press is heard as that movement — and a
+ * scan that finishes before the first word is heard reads as its result, which
+ * is what a sighted reader sees too.
+ */
+const repositoryAnnouncement = computed(() => {
+  if (repositorySource.value === null) {
+    return '';
+  }
+  const status = SOURCE_STATUS_TEXT[repositorySource.value.status];
+  const files = repositoryDiagnosticFiles.value;
+  return files === null
+    ? `Repository: ${status}.`
+    : `Repository: ${status} · ${files} ${files === 1 ? 'file' : 'files'} kept a diagnostic.`;
+});
+
+/**
  * True while the personal-setup entry's status is one a reader should act on,
  * which is the same set the entry counts members in
  * ({@link GLOBAL_STATUS_ENTRY} § counted): the pill and the words it holds
@@ -263,6 +287,14 @@ function onKeydown(event: KeyboardEvent, index: number): void {
 
 <template>
   <div class="aci-inventory-rail">
+    <!-- A region of the Repository entry's own, apart from the personal
+         setup's on the page, because one region for both would re-announce
+         every personal member on each repository rescan; the rail itself keeps
+         the two entries apart. Mounted from the first render with nothing in
+         it (`index.vue` § the same rule). -->
+    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
+      {{ repositoryAnnouncement }}
+    </p>
     <nav class="aci-inventory-rail__sources" aria-label="Sources">
       <p class="aci-inventory-rail__group">Sources</p>
       <NuxtLink v-if="repositorySource" class="aci-inventory-rail__route" to="/repository">

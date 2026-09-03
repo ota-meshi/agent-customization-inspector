@@ -162,7 +162,7 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
     // (`PluginRow.vue`).
     await expect(legacyRow.locator('a.aci-path')).toHaveAttribute(
       'aria-label',
-      '.claude-plugin/marketplace.json: release-notes@inspector-legacy',
+      'release-notes@inspector-legacy in .claude-plugin/marketplace.json',
     );
     await expect(legacyRow.locator('.aci-recognition-marks__opens')).toHaveCount(0);
     await expect(legacyRow).toContainText('Ships 1 file');
@@ -174,7 +174,7 @@ test.describe('Codex plugins declared by a repository catalog and its manifests'
     await expect(localRow.locator('.aci-carrier-kind')).toHaveText(['Catalog entry']);
     await expect(localRow.locator('a.aci-path')).toHaveAttribute(
       'aria-label',
-      '.agents/plugins/marketplace.json: release-notes@inspector-examples',
+      'release-notes@inspector-examples in .agents/plugins/marketplace.json',
     );
     // Its root holds the plugin's own manifest and the skill it bundles.
     await expect(localRow).toContainText('Ships 2 files');

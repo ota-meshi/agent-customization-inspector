@@ -23,6 +23,7 @@
 // admission is not an activation (FR-009), and inspection never connects.
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../AuthoredNameText.vue';
 import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
@@ -33,6 +34,7 @@ import { useSessionSources } from '../../../composables/session-sources';
 import { mcpServerDetailRoute } from '../../mcp-detail-route';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import {
+  UNNAMED_ROW_TEXT,
   fileIdentityKey,
   accessiblePresentationLabel,
   pathPresentationLabel,
@@ -162,14 +164,9 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * route, where the session holds one Source and so no family line exists to
  * close (`SourceFamilyBlocks.vue`).
  */
-const headCompareRoute = computed(() => {
-  const routes = [...blockCompareRoutes.value.values()];
-  // Exactly when the row draws no family line to close: the entry lives on one
-  // of the two lines and never on neither, so both read the one rule
-  // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(carrierRows.value);
-  return headed || routes.length !== 1 ? null : routes[0]!;
-});
+const headCompareRoute = computed(() =>
+  sessionSources.headEntryOf(carrierRows.value, blockCompareRoutes.value),
+);
 
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof mcpComparisonRouteFor>>();
@@ -193,13 +190,14 @@ const blockCompareRoutes = computed(() => {
          because it also holds a carrier whose declaration block could not be
          read (FR-028). -->
     <p class="aci-row-head">
-      <span
-        v-if="name !== null"
-        class="aci-row-head__name"
-        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-        >{{ name.text }}</span
-      >
-      <span v-else class="aci-row-head__name">No known server declarations</span>
+      <AuthoredNameText v-if="name !== null" :name="name">
+        <span
+          class="aci-row-head__name"
+          :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          >{{ name.text }}</span
+        >
+      </AuthoredNameText>
+      <span v-else class="aci-row-head__name">{{ UNNAMED_ROW_TEXT['MCP'] }}</span>
       <!-- How many files declare this name. A count rather than a repeated
            path: the files themselves are the lines below. -->
       <span class="aci-row-head__count"
@@ -240,7 +238,7 @@ const blockCompareRoutes = computed(() => {
                 sessionSources.qualifiedLinkName(
                   name === null
                     ? carrier.carrierAccessibleText
-                    : `${carrier.carrierAccessibleText}: ${name.accessibleText}`,
+                    : `${name.accessibleText} in ${carrier.carrierAccessibleText}`,
                   carrier.sourceId,
                 )
               "

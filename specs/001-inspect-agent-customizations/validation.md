@@ -110,7 +110,7 @@ Every gate below was run on 2026-09-03 against the tree at this change's tip, af
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 6 tests passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 561 passed |
+| Browser | `pnpm exec playwright test --project=chromium` | 564 passed |
 | Coverage | `pnpm run test:coverage` | 74 files, 1,870 tests passed; statements 86.25%, lines 86.57% |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
@@ -132,14 +132,6 @@ pinned revisions, and it is not reproduced here: the row above is one project on
 a local run stands in for none of it. The disposition is unchanged from the tree the rework
 started on — what changed is which commit the certifying run is of.
 
-**Two projects run the study lifecycle, and running them at once starves it.** The
-twenty-participant lifecycle test belongs to both `integration` and `coverage`, each spawning
-its own supervisor and eight children with real pipes and no timers, and its per-subject wait
-is bounded. Run concurrently on this machine — which the ordinary sequential chain never does
-— one copy misses that bound and the verifier's `checkpoint` reports a failure that a
-sequential run does not reproduce. Each work root is a fresh `mkdtemp` and each control
-endpoint an ephemeral port, so the copies share nothing; what they compete for is the machine.
-
 **The coverage percentages are a run's, not a constant.** Two runs over this tree reported
 5,907 and 5,909 covered statements of 6,848 — 86.25% and 86.28% — with the same 74 files and
 1,870 tests passing in both. No threshold is asserted on them anywhere, and the row above is
@@ -153,11 +145,11 @@ threshold is asserted anywhere in this release.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `23ebf9ca12d61b95e7f4427c645709a5e57689194c0e74b2dee8d4e847d28c4a`, recorded in
+SHA-256 `88e0ab53bd16dff5be25cf30d65a000280308d34e79537aea17cca478d483c9f`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed by running every suite
 each case names in `verifiedBy`: the eleven vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
-three-project Playwright run recorded above. `tests/contract/outcome-fixture-manifest.test.ts`
+Chromium project recorded above. `tests/contract/outcome-fixture-manifest.test.ts`
 reproduced the canonical digest and all 66 fixture digests in the same session.
 
 The set is non-comparable with the one recorded before the interface rework: the fixture bytes
@@ -301,7 +293,7 @@ the record below covers.
 
 | Workflow | What it measures | Threshold | Result |
 |---|---|---|---|
-| Discovery | SC-001: one discovered file's detail view open within two minutes | 19 of 20 | **20 of 20**, 0.753 s to 93.6 s, median 5.72 s |
+| Discovery | SC-001: one discovered file's detail view open within two minutes | 19 of 20 | **Not established.** 20 of 20 reached a file, 0.753 s to 93.6 s, median 5.72 s — but the timer began at an already-running origin, and SC-001 fixes an interval that includes launching the Inspector |
 | Inspection | SC-006: the three response fields for the designated `AGENTS.md` within two minutes | 18 of 20 | **20 of 20**, 0.37 s to 29 s, median 1.12 s |
 | Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete |
 | Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete |
@@ -375,6 +367,15 @@ activated by the reader, and the controls carry their accessible names
 (`FILE_OPEN_TARGET_TEXT` supplies both `aria-label` and `title`) — which is how the sessions
 were able to name them. The observation is that the names are not *visible* text, which WCAG
 requires only where a visible label exists.
+
+**What this run measured, and what SC-001 asks for.** SC-001 fixes an interval that starts when
+the task prompt is presented and ends with a file's detail view open, and it says in its own words
+that the interval therefore includes launching the Inspector and reaching it through the URL it
+prints. This run started each session at an origin a host was already serving, so the seconds above
+are the interval after that: finding a file through what the running product renders. They are a
+result about the rendered guidance, not about the printed one, and the criterion is not established
+by them. Twenty sessions also shared that one host, so they were not twenty independent first uses
+— which is the same condition the consent state above records from the other side.
 
 **What this run does not establish.** It does not establish anything about human first use,
 which is the whole of what the criteria's earlier participant form would have measured. It

@@ -376,8 +376,11 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({
   // Tab inside its own `textarea.inputarea` on the pinned Firefox revision:
   // focus enters the editor and does not come out, measured to sixty presses
   // with `document.activeElement` that same textarea throughout, and with
-  // `accessibilitySupport: 'on'` changing nothing about which element holds the
-  // key. Chromium and WebKit release it within a few. The behaviour is the
+  // `accessibilitySupport: 'on'` and `tabFocusMode: true` each changing nothing
+  // about which element holds the key — the latter measured on 2026-09-03 by
+  // setting it on both read-only editors and lifting this exemption, which
+  // failed here at ten presses exactly as before. It governs whether Tab
+  // inserts a tab or moves focus, and a `readOnly` editor never inserts one. Chromium and WebKit release it within a few. The behaviour is the
   // editor's rather than this repository's, and no setting it publishes moves
   // it, so the exit is asserted where it is observable instead of a workaround
   // being built around one engine's editor.

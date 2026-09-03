@@ -213,9 +213,9 @@ Repository root. The CLI never calls `process.chdir()`. Built-in
 help/version are handled without binding. The production entry does not import
 `gunshi/agent`, lazy commands, custom plugins, or experimental parser combinators. After
 validation the CLI starts the devframe host through the app definition in
-`src/server/host/devframe-app.ts`; devframe owns port selection, the loopback `localhost` bind, and the
-startup browser-open attempt, and the CLI prints the loopback origin once for the FR-001
-manual fallback. A `--port` value reaches the definition's `cli.port` exactly as parsed
+`src/server/host/devframe-app.ts`; devframe owns port selection and the loopback `localhost` bind,
+the definition passes it `openBrowser: false` and makes the startup browser-open attempt itself,
+and the CLI prints the loopback origin once for the FR-001 manual fallback. A `--port` value reaches the definition's `cli.port` exactly as parsed
 and is a preference devframe resolves; with the option omitted the key is absent and
 devframe's own default stands.
 

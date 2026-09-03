@@ -29,6 +29,7 @@
 // ships are served by the carrier's own detail, one file at a time (FR-027).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../AuthoredNameText.vue';
 import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
@@ -39,6 +40,7 @@ import { useSessionSources } from '../../../composables/session-sources';
 import { pluginComparisonRouteFor } from '../../../composables/plugin-comparison';
 import { PLUGIN_CARRIER_TEXT } from '../../../../shared/api-text';
 import {
+  UNNAMED_ROW_TEXT,
   SUPPORTED_TOOL_ORDER,
   escapeControlCharacters,
   fileIdentityKey,
@@ -110,14 +112,9 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * route, where the session holds one Source and so no family line exists to
  * close (`SourceFamilyBlocks.vue`).
  */
-const headCompareRoute = computed(() => {
-  const routes = [...blockCompareRoutes.value.values()];
-  // Exactly when the row draws no family line to close: the entry lives on one
-  // of the two lines and never on neither, so both read the one rule
-  // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(carrierRows.value);
-  return headed || routes.length !== 1 ? null : routes[0]!;
-});
+const headCompareRoute = computed(() =>
+  sessionSources.headEntryOf(carrierRows.value, blockCompareRoutes.value),
+);
 
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof pluginComparisonRouteFor>>();
@@ -220,7 +217,9 @@ const carrierRows = computed(() => {
        * state what recognized it.
        */
       pathAccessibleText: sessionSources.qualifiedLinkName(
-        `${pathAccessibleText}${name.value === null ? '' : `: ${name.value.accessibleText}`}`,
+        name.value === null
+          ? pathAccessibleText
+          : `${name.value.accessibleText} in ${pathAccessibleText}`,
         sourceId,
       ),
       /**
@@ -300,13 +299,14 @@ function affectedShippedFiles(carrier: {
          not be read, whose diagnostic says so beside it (FR-028). Copy denying
          the declarations would contradict the ones on the row. -->
     <p class="aci-row-head">
-      <span
-        v-if="name !== null"
-        class="aci-row-head__name"
-        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-        >{{ name.text }}</span
-      >
-      <span v-else class="aci-row-head__name">No plugin name resolved</span>
+      <AuthoredNameText v-if="name !== null" :name="name">
+        <span
+          class="aci-row-head__name"
+          :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          >{{ name.text }}</span
+        >
+      </AuthoredNameText>
+      <span v-else class="aci-row-head__name">{{ UNNAMED_ROW_TEXT['plugin'] }}</span>
       <span class="aci-row-head__count"
         >{{ carrierRows.length }} {{ carrierRows.length === 1 ? 'file' : 'files' }}</span
       >

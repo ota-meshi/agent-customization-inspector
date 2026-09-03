@@ -166,13 +166,13 @@ test('returns to the row the reader left when two rows link one file', async ({ 
   // of the two rows makes the difference visible: the followed link is first
   // among that route's links while the unnarrowed list puts the other row's
   // link first.
-  const name = '.claude/skills/lander/SKILL.md: voyage';
+  const name = 'voyage in .claude/skills/lander/SKILL.md';
   await page.goto(host.origin);
   await page.getByLabel('Tool', { exact: true }).selectOption('copilot');
   // The narrowing leaves the Copilot row alone, so this route has one link in
   // the list the reader follows it from and two in the list they come back to.
   await expect(
-    page.getByRole('link', { name: '.claude/skills/lander/SKILL.md: lander' }),
+    page.getByRole('link', { name: 'lander in .claude/skills/lander/SKILL.md' }),
   ).toHaveCount(0);
   const link = page.getByRole('link', { name });
   await link.scrollIntoViewIfNeeded();
@@ -182,7 +182,7 @@ test('returns to the row the reader left when two rows link one file', async ({ 
   await page.getByRole('link', { name: /Back to /u }).click();
   await waitForInventory(page);
   await expect(
-    page.getByRole('link', { name: '.claude/skills/lander/SKILL.md: lander' }),
+    page.getByRole('link', { name: 'lander in .claude/skills/lander/SKILL.md' }),
   ).toHaveCount(1);
   // The row the reader left, not the other row that links the same file.
   expect(await focusedAccessibleName(page)).toBe(name);

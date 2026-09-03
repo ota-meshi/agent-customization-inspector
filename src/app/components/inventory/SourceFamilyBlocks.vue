@@ -68,8 +68,8 @@ const blocks = computed(() => sessionSources.familyBlocksOf(props.members));
            it compares within. A row with one family has no such line, and its
            entry closes the row's own name line instead — which is the owning
            row's to render, being the line the row itself draws
-           (`session-sources.ts` § familyLineShownFor, the rule that keeps the
-           entry reachable on whichever of the two lines draws it). -->
+           (`session-sources.ts` § headEntryOf, the rule that keeps the entry
+           reachable on whichever of the two lines draws it). -->
       <p v-if="block.familyText !== null" class="aci-family-heading">
         {{ block.familyText }}
         <slot name="entry" :block="block" />

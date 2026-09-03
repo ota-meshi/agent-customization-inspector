@@ -587,11 +587,6 @@ onBeforeUnmount(() => {
     <div id="aci-app-content" tabindex="-1" class="aci-app__content">
       <div v-if="view === 'booting'" class="aci-route">
         <div class="aci-session-state">
-          <!-- Decorative: how long the wait will be is not known, so the ring
-               turns without measuring anything. The state itself is announced
-               by the live region above (WCAG 4.1.3), so a reader who never
-               sees this loses nothing. -->
-          <span class="aci-session-state__ring" aria-hidden="true" />
           <!-- The disable command's own interlude reads as what it is; the retry
              control stays, because a refresh while the barrier runs simply
              joins it (contracts/http-api.md § disable-global). -->
@@ -681,32 +676,6 @@ onBeforeUnmount(() => {
 
 .aci-session-state__action {
   margin: 0.875rem 0 0;
-}
-
-/* An indeterminate ring: one arc of the circle in the accent, turning. It is
-   drawn from a border rather than an icon because there is no glyph for
-   "still working" that is not this shape. */
-.aci-session-state__ring {
-  animation: aci-session-state-turn 1.1s linear infinite;
-  block-size: 1.125rem;
-  border: 2px solid var(--aci-hairline);
-  border-block-start-color: var(--aci-accent);
-  border-radius: 999px;
-  display: block;
-  inline-size: 1.125rem;
-  margin: 0 auto 0.75rem;
-}
-
-@keyframes aci-session-state-turn {
-  to {
-    rotate: 360deg;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .aci-session-state__ring {
-    animation: none;
-  }
 }
 
 /* A centered reading column in a document that scrolls itself. The shell is

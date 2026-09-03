@@ -75,7 +75,7 @@ export default defineConfig({
           // Node like the package project. The one smoke pass — packaged CLI
           // driven through a rendered Chromium page over the 100,000-entry
           // fixture — runs in `globalSetup`, once, and both suites read that
-          // single run's record (T183; the ten-run protocol is T918's). No
+          // single run's record (T183, T918). No
           // Vitest timeout governs `globalSetup`, so the pass bounds itself:
           // every in-page wait, launch, and read-back inside the harness
           // carries its own deadline. The files stay serialized so no second

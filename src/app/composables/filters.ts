@@ -24,6 +24,7 @@
 //
 // Filtering is a view over the committed snapshot and never a request: no
 // filter value reaches the host, and no filter can widen what was scanned.
+import { ApplicabilityRange } from '../components/applicability-range';
 import { AuthoredName } from '../components/authored-name';
 import { computed, type ComputedRef, type Ref } from 'vue';
 import type {
@@ -44,11 +45,10 @@ import type {
   SourceKind,
 } from '../../shared/api-types';
 import {
+  UNNAMED_ROW_TEXT,
   fileIdentityKey,
-  applicabilityRangePresentation,
   CUSTOMIZATION_KIND_ORDER,
   SUPPORTED_TOOL_ORDER,
-  inlinePresentationLabel,
   pathPresentationLabel,
   type CustomizationKind,
   type SupportedTool,
@@ -616,20 +616,23 @@ export class InventoryFilterView {
 
     /**
      * Whether the search text matches a row's own name (FR-006). The caller
-     * passes the spelling its row renders — an authored name, an applicability
-     * range, a declared event — because matching what is on the screen is what
-     * lets a reader narrow the list to a row by typing what they can see, and
-     * a row whose name is escaped for display would otherwise match nothing.
+     * passes every spelling a reader can see of it, because a row is found by
+     * what that row displays: a name escaped for display would otherwise match
+     * nothing, and a row displaying this product's words for a name the file
+     * did not declare would match neither those words nor anything else.
      *
-     * Null for the kinds that carry no name and for the one row per kind whose
-     * name is not known: there is nothing to match, so those rows narrow by
-     * their files' paths alone, exactly as they did when the two were separate
-     * fields.
+     * Nothing is read as this product's own note here — each spelling stands
+     * for its own row, so a query that two rows both display returns both,
+     * each keeping its own identity (`authored-name.ts`
+     * § visibleSpellings).
+     *
+     * Empty for the kinds that carry no name and for the one row per kind
+     * whose name is not known: there is nothing to match, so those rows narrow
+     * by their files' paths alone.
      */
-    const nameMatches = (presentedName: string | null): boolean =>
+    const nameMatches = (spellings: readonly string[]): boolean =>
       query.value !== '' &&
-      presentedName !== null &&
-      presentedName.toLowerCase().includes(query.value);
+      spellings.some((spelling) => spelling.toLowerCase().includes(query.value));
 
     /**
      * Whether a published file passes the Source and path filters, resolved
@@ -691,9 +694,7 @@ export class InventoryFilterView {
           // is what a search matches it on — spelled the way the row renders it
           // (`applicabilityRangePresentation`), never the raw glob.
           const named = nameMatches(
-            entry.applicabilityRange === null
-              ? null
-              : applicabilityRangePresentation(entry.applicabilityRange),
+            new ApplicabilityRange(entry.applicabilityRange).visibleSpellings,
           );
           const files = entry.files.flatMap((file) => {
             // The row's own Source, so a same-path file in the other Source
@@ -804,7 +805,7 @@ export class InventoryFilterView {
      */
     this.skillRows = computed<readonly NarrowedInventoryRow<SkillInventoryEntryDto>[]>(() => {
       const filtered = (snapshot.value?.skills ?? []).flatMap((entry) => {
-        const named = nameMatches(inlinePresentationLabel(entry.name));
+        const named = nameMatches(new AuthoredName(entry.name).visibleSpellings);
         const definitions = entry.definitions.filter(
           (definition) =>
             fileMatches(definition.sourceRelativePath, definition.sourceId, named) &&
@@ -842,7 +843,9 @@ export class InventoryFilterView {
     this.mcpRows = computed<readonly NarrowedInventoryRow<McpInventoryEntryDto>[]>(() =>
       (snapshot.value?.mcp ?? []).flatMap((entry) => {
         const named = nameMatches(
-          entry.name === null ? null : new AuthoredName(entry.name).singleLineText,
+          entry.name === null
+            ? [UNNAMED_ROW_TEXT.MCP!]
+            : new AuthoredName(entry.name).visibleSpellings,
         );
         const declarations = entry.declarations.filter(
           (declaration) =>
@@ -871,7 +874,9 @@ export class InventoryFilterView {
     this.agentRows = computed<readonly NarrowedInventoryRow<AgentInventoryEntryDto>[]>(() =>
       (snapshot.value?.agents ?? []).flatMap((entry) => {
         const named = nameMatches(
-          entry.name === null ? null : new AuthoredName(entry.name).singleLineText,
+          entry.name === null
+            ? [UNNAMED_ROW_TEXT.agent!]
+            : new AuthoredName(entry.name).visibleSpellings,
         );
         const definitions = entry.definitions.filter(
           (definition) =>
@@ -891,7 +896,7 @@ export class InventoryFilterView {
      */
     this.promptRows = computed(() =>
       (snapshot.value?.prompts ?? []).flatMap((entry) => {
-        const named = nameMatches(inlinePresentationLabel(entry.name));
+        const named = nameMatches(new AuthoredName(entry.name).visibleSpellings);
         const definitions = entry.definitions.filter(
           (definition) =>
             fileMatches(definition.sourceRelativePath, definition.sourceId, named) &&
@@ -959,7 +964,9 @@ export class InventoryFilterView {
     this.hookRows = computed(() =>
       (snapshot.value?.hooks ?? []).flatMap((entry) => {
         const named = nameMatches(
-          entry.event === null ? null : new AuthoredName(entry.event).singleLineText,
+          entry.event === null
+            ? [UNNAMED_ROW_TEXT.hook!]
+            : new AuthoredName(entry.event).visibleSpellings,
         );
         const declarations = entry.declarations.filter(
           (declaration) =>
@@ -987,7 +994,9 @@ export class InventoryFilterView {
     this.pluginRows = computed(() =>
       (snapshot.value?.plugins ?? []).flatMap((entry) => {
         const named = nameMatches(
-          entry.name === null ? null : new AuthoredName(entry.name).singleLineText,
+          entry.name === null
+            ? [UNNAMED_ROW_TEXT.plugin!]
+            : new AuthoredName(entry.name).visibleSpellings,
         );
         const carriers = entry.carriers.filter(
           (carrier) =>
@@ -1009,7 +1018,7 @@ export class InventoryFilterView {
      */
     this.outputStyleRows = computed(() =>
       (snapshot.value?.outputStyles ?? []).flatMap((entry) => {
-        const named = nameMatches(inlinePresentationLabel(entry.name));
+        const named = nameMatches(new AuthoredName(entry.name).visibleSpellings);
         const definitions = entry.definitions.filter(
           (definition) =>
             fileMatches(definition.sourceRelativePath, definition.sourceId, named) &&

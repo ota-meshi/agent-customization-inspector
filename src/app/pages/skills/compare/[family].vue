@@ -49,6 +49,7 @@ import {
   comparisonOptionLabel,
   comparisonSourceQualifierOf,
 } from '../../../components/comparison-side-picker';
+import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
@@ -1280,7 +1281,8 @@ const titleSubject = computed<string>(() => {
       // The name goes in raw: the shell escapes a title subject once at its own
       // rendering boundary, and spells out a name that draws nothing there
       // (`App.vue` § documentTitle).
-      const subject = crumbSubject.value?.authored ?? null;
+      const named = crumbSubject.value;
+      const subject = named === null ? null : named.isEmpty ? named.singleLineText : named.authored;
       // The compared file rides in the title too: stepping the pair through
       // its files changes what the page shows, and two tabs on two files of
       // one pair must not read identically (WCAG 2.4.2).
@@ -1377,11 +1379,13 @@ onBeforeUnmount(() => {
          name is the third crumb above as well, where it says where the page
          sits rather than what it is showing. -->
     <p v-if="crumbSubject !== null" class="aci-detail-attributes">
-      <strong
-        class="aci-detail-attributes__subject aci-path"
-        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
-        >{{ crumbSubject.text }}</strong
-      >
+      <AuthoredNameText :name="crumbSubject">
+        <strong
+          class="aci-detail-attributes__subject aci-path"
+          :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+          >{{ crumbSubject.text }}</strong
+        >
+      </AuthoredNameText>
     </p>
 
     <!-- Stable rather than inserted with the state it reports, because a

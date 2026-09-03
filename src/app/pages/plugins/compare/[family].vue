@@ -31,6 +31,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import RecognitionComparison from '../../../components/plugin-comparison/RecognitionComparison.vue';
@@ -1791,7 +1792,7 @@ const titleSubject = computed<string>(() => {
       // because it has no characters to escape and spliced in raw it leaves a
       // doubled space the shell then spells the whole title out for.
       const name = crumbSubject.value;
-      const subject = name === null ? null : name.authored === '' ? name.text : name.authored;
+      const subject = name === null ? null : name.isEmpty ? name.singleLineText : name.authored;
       const base =
         subject === null
           ? `Comparing plugins — ${sides}`
@@ -1869,11 +1870,13 @@ onBeforeUnmount(() => {
          name is the third crumb above as well, where it says where the page
          sits rather than what it is showing. -->
     <p v-if="crumbSubject !== null" class="aci-detail-attributes">
-      <strong
-        class="aci-detail-attributes__subject aci-path"
-        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
-        >{{ crumbSubject.text }}</strong
-      >
+      <AuthoredNameText :name="crumbSubject">
+        <strong
+          class="aci-detail-attributes__subject aci-path"
+          :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+          >{{ crumbSubject.text }}</strong
+        >
+      </AuthoredNameText>
     </p>
 
     <!-- Stable rather than inserted with the state it reports, because a
@@ -2045,6 +2048,7 @@ onBeforeUnmount(() => {
              carriers: the names below are names inside these two roots. -->
         <div class="aci-plugin-compare__roots">
           <section v-for="side in rootSides" :key="side.caption">
+            <h4>{{ side.caption }}</h4>
             <p v-if="side.root !== null" class="aci-path aci-authored-text">
               {{ pathPresentationLabel(side.root) }}
             </p>

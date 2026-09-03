@@ -151,25 +151,30 @@ export class SessionSources {
    * ({@link SessionSources.familyNameOf}).
    */
   /**
-   * Whether one grouping's blocks carry family headings: only where they cover
-   * more than one family, because a heading over the single family a row has
-   * groups nothing.
+   * The comparison entry a row's own name line carries, or null where none
+   * belongs there: the entry of the one family the shown members leave, and
+   * nothing at all while they leave two — there each block heads its own line
+   * and closes it with its own entry (`SourceFamilyBlocks.vue`).
    *
-   * Read in two places, and it has to be one answer in both: the blocks
-   * component draws the heading, and the owning row puts its comparison entry
-   * on its own name line exactly when no heading exists to close instead
-   * (`SourceFamilyBlocks.vue`). Read apart, the heading went and the entry went
-   * with it — sixteen comparison links vanished the moment a personal setup was
-   * consented.
+   * One answer for both lines, because the entry lives on exactly one of them:
+   * read apart, the heading went and the entry went with it, and sixteen
+   * comparison links vanished the moment a personal setup was consented.
    *
-   * The members are the whole of it: a family a narrowing emptied draws no
-   * block, so there is nothing for a heading to name and nothing for an entry
-   * to close (`SourceFamilyBlocks.vue`).
+   * The family decides, not the count of published entries. A row publishes an
+   * entry per family whatever a narrowing hides, because the pair a reader
+   * followed must still be there when they come back; but an entry whose
+   * family the screen no longer shows opens the files that narrowing has just
+   * hidden, and a row narrowed to one family would otherwise offer the other
+   * family's pair under its own name. What the row publishes and what the
+   * screen shows are two questions, and the link follows the screen
+   * (`SourceFamilyBlocks.vue` § the same rule for a block).
    */
-  public familyLineShownFor<Member extends { readonly sourceId: string }>(
+  public headEntryOf<Member extends { readonly sourceId: string }, Entry>(
     members: readonly Member[],
-  ): boolean {
-    return new Set(members.map((member) => this.familyKindOf(member.sourceId))).size > 1;
+    entriesByFamily: ReadonlyMap<SourceKind, Entry>,
+  ): Entry | null {
+    const [shown, ...rest] = new Set(members.map((member) => this.familyKindOf(member.sourceId)));
+    return shown === undefined || rest.length > 0 ? null : (entriesByFamily.get(shown) ?? null);
   }
 
   public familyBlocksOf<Member extends { readonly sourceId: string }>(

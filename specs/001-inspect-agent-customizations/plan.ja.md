@@ -176,7 +176,8 @@ validationによりrejectする（反復`--root`はparserのlast valueへ解決�
 する。CLIは`process.chdir()`を呼ばない。Built-in help/versionはbindせずに処理する。Production entryは`gunshi/agent`、
 lazy command、custom plugin、experimental parser combinatorをimportしない。Validation後、CLIは
 `src/server/host/devframe-app.ts`のapp definitionを通じてdevframe hostを起動する。devframeがport選択、
-loopbackの`localhost` bind、起動時のbrowser-open試行を所有し、CLIはFR-001のmanual fallback用にloopback originを
+loopbackの`localhost` bindを所有する。definitionはdevframeへ`openBrowser: false`を渡し、起動時の
+browser-open試行はproduct自身が行う。CLIはFR-001のmanual fallback用にloopback originを
 1回表示する。`--port`の値はparseされたままdefinitionの`cli.port`へ届き、devframeが解決する希望である。
 Optionを省略した場合そのkeyは存在せず、devframe自身のdefaultが適用される。
 

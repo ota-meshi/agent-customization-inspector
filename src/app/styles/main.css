@@ -770,6 +770,16 @@ button[aria-disabled='true'] {
   overflow-wrap: anywhere;
 }
 
+/* The no-name badge where a title's subject goes. The badge's own size is a
+   row's, and a row's size under a 1.0625rem title reads as a footnote to the
+   title rather than as the subject of it — so it takes a size of its own here,
+   which is the one place the badge is the heading rather than a note beside
+   one (`AuthoredNameText.vue`). */
+.aci-detail-title .aci-carrier-kind {
+  font-size: 0.8125rem;
+  padding: 0.0625rem 0.5rem;
+}
+
 /* Everything the customization is, on one wrapping line: the kind's own
    attribute, how the file read, the products that recognize it, and the
    command that opens it. One line rather than a paragraph each, because a page

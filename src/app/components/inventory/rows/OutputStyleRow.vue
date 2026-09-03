@@ -28,6 +28,7 @@
 // name instead, which is what the reader can act on: their two files (FR-009).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../AuthoredNameText.vue';
 import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
@@ -37,7 +38,6 @@ import { useSessionSources } from '../../../composables/session-sources';
 import { AuthoredName } from '../../authored-name';
 import {
   fileIdentityKey,
-  inlinePresentationLabel,
   pathPresentationLabel,
   accessiblePresentationLabel,
 } from '../../../../shared/entities';
@@ -142,11 +142,13 @@ const fileRows = computed(() => {
            the screen ({@link AuthoredName}). The spelled form is this
            product's characters, so it takes the muted treatment the other
            rows give theirs rather than the authored one. -->
-      <span
-        class="aci-row-head__name"
-        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-        >{{ name.text }}</span
-      >
+      <AuthoredNameText :name="name">
+        <span
+          class="aci-row-head__name"
+          :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          >{{ name.text }}</span
+        >
+      </AuthoredNameText>
       <span class="aci-row-head__count"
         >{{ fileRows.length }} {{ fileRows.length === 1 ? 'file' : 'files' }}</span
       >
@@ -169,7 +171,7 @@ const fileRows = computed(() => {
               class="aci-path aci-authored-text"
               :aria-label="
                 sessionSources.qualifiedLinkName(
-                  `${file.pathAccessibleText}: ${inlinePresentationLabel(entry.name)}`,
+                  `${name.singleLineText} in ${file.pathAccessibleText}`,
                   file.sourceId,
                 )
               "

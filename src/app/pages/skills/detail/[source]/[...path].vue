@@ -55,6 +55,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import LeavesIcon from '~icons/lucide/arrow-right';
@@ -1334,9 +1335,11 @@ onBeforeUnmount(() => {
                    line never reads as an empty value (FR-025). -->
               <span
                 >Invocation name:
-                <span :class="group.name.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
-                  group.name.text
-                }}</span></span
+                <AuthoredNameText :name="group.name"
+                  ><span :class="group.name.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+                    group.name.text
+                  }}</span></AuthoredNameText
+                ></span
               >
               <!-- This name's comparison (FR-011): present exactly when the
                    name resolves two or more readable files in this family. The

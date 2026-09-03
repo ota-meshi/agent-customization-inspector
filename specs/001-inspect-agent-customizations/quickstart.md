@@ -420,7 +420,7 @@ Verify:
    `.mcp.json` remains CLI-only; the product never infers a VS Code schema or winner.
 5. Repository, documented User, and consented Global tables are validated independently.
    A documented User location never becomes Global read authority unless FR-015 through
-   FR-018 name it, and runtime composition never merges the Inspector's Repository and
+   FR-018 or FR-045 name it, and runtime composition never merges the Inspector's Repository and
    Global source graphs.
 6. The shipped `bounded-derived-candidate` rule is exactly one, expanded by its own
    vendor's configuration-read stage and none by a runtime extension point:

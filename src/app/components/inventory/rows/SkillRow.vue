@@ -30,6 +30,7 @@
 // § existence-versus-activation vocabulary).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../AuthoredNameText.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
 import RecognitionMarks from '../RecognitionMarks.vue';
@@ -48,7 +49,6 @@ import {
   SAME_NAME_SKILL_RESOLUTION_TEXT,
   SUPPORTED_TOOL_TEXT,
   escapeControlCharacters,
-  inlinePresentationLabel,
   isReadableFile,
   accessiblePresentationLabel,
 } from '../../../../shared/entities';
@@ -134,14 +134,9 @@ const comparableEntrySides = computed<readonly ComparisonSide[]>(() => {
  * close. Null where a family line does exist — there the entry belongs to that
  * line, because a comparison never spans families.
  */
-const headCompareRoute = computed(() => {
-  const routes = [...blockCompareRoutes.value.values()];
-  // Exactly when the row draws no family line to close: the entry lives on one
-  // of the two lines and never on neither, so both read the one rule
-  // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(rowFiles.value);
-  return headed || routes.length !== 1 ? null : routes[0]!;
-});
+const headCompareRoute = computed(() =>
+  sessionSources.headEntryOf(rowFiles.value, blockCompareRoutes.value),
+);
 
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof skillComparisonRouteFor>>();
@@ -196,11 +191,13 @@ function affectedCompanions(
            the screen ({@link AuthoredName}). The spelled form is this
            product's characters, so it takes the muted treatment the other
            rows give theirs rather than the authored one. -->
-      <span
-        class="aci-row-head__name"
-        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-        >{{ name.text }}</span
-      >
+      <AuthoredNameText :name="name">
+        <span
+          class="aci-row-head__name"
+          :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          >{{ name.text }}</span
+        >
+      </AuthoredNameText>
       <!-- How many files resolve to this name. A count rather than a repeated
            path: the files themselves are the lines below. -->
       <span class="aci-row-head__count"
@@ -211,7 +208,7 @@ function affectedCompanions(
       <span v-if="headCompareRoute" class="aci-row-head__end">
         <NuxtLink
           :to="headCompareRoute"
-          :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}`"
+          :aria-label="`Compare this skill's files: ${name.singleLineText}`"
           >Compare</NuxtLink
         >
       </span>
@@ -272,9 +269,7 @@ function affectedCompanions(
               class="aci-path aci-authored-text"
               :aria-label="
                 sessionSources.qualifiedLinkName(
-                  `${accessiblePresentationLabel(
-                    file.sourceRelativePath,
-                  )}: ${inlinePresentationLabel(entry.name)}`,
+                  `${name.singleLineText} in ${accessiblePresentationLabel(file.sourceRelativePath)}`,
                   file.sourceId,
                 )
               "
@@ -333,7 +328,7 @@ function affectedCompanions(
         <NuxtLink
           v-if="blockCompareRoutes.get(block.kind)"
           :to="blockCompareRoutes.get(block.kind)!"
-          :aria-label="`Compare this skill's files: ${inlinePresentationLabel(entry.name)}${
+          :aria-label="`Compare this skill's files: ${name.singleLineText}${
             block.familyText !== null ? ` (${block.familyText})` : ''
           }`"
           >Compare</NuxtLink

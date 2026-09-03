@@ -38,6 +38,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
+import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -1443,7 +1444,10 @@ watch(
       <template v-if="sourceFamilyCrumbText !== null"
         >{{ sourceFamilyCrumbText }} <span>›</span> </template
       >{{ CUSTOMIZATION_KIND_TEXT.plugin }} <span>›</span>
-      <span class="aci-detail-crumbs__subject aci-path">{{ pluginName?.text ?? pathText }}</span>
+      <AuthoredNameText v-if="pluginName !== null" :name="pluginName">
+        <span class="aci-detail-crumbs__subject aci-path">{{ pluginName.text }}</span>
+      </AuthoredNameText>
+      <span v-else class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
     </p>
 
     <div class="aci-plugin-detail__title">
@@ -1452,9 +1456,9 @@ watch(
              or the carrier's path for the row that resolves none. Either is
              escaped for presentation, never a locator anything can open
              (FR-024, FR-030). -->
-        <span v-if="pluginName !== null" :class="{ 'aci-authored-text': pluginName.isAuthored }">{{
-          pluginName.text
-        }}</span>
+        <AuthoredNameText v-if="pluginName !== null" :name="pluginName">
+          <span :class="{ 'aci-authored-text': pluginName.isAuthored }">{{ pluginName.text }}</span>
+        </AuthoredNameText>
         <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
           pathText
         }}</span>

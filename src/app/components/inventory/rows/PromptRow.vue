@@ -32,6 +32,7 @@
 // can act on: their two files (FR-009).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../AuthoredNameText.vue';
 import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
@@ -46,7 +47,6 @@ import { useSessionSources } from '../../../composables/session-sources';
 import { promptComparisonRouteFor } from '../../../composables/prompt-comparison';
 import {
   fileIdentityKey,
-  inlinePresentationLabel,
   isReadableFile,
   pathPresentationLabel,
   accessiblePresentationLabel,
@@ -64,8 +64,12 @@ import { AuthoredName } from '../../authored-name';
 /**
  * The row's declared name, as every surface of the row needs it: the reader's
  * own characters, with this product's note beside them where they draw nothing
- * ({@link AuthoredName}). Never empty — the name comes from a file or
- * directory — so the substituting spelling is not the one this kind uses.
+ * ({@link AuthoredName}). Empty is reachable here, unlike the kinds whose name
+ * is a directory: the terminal selector step matches the extension, so a file
+ * named exactly `.md` is admitted, and the invocation name strips that
+ * extension off a name that is nothing else
+ * (`rules/prompts-and-commands/codex.ts` § invocationNameOf). Every spelling
+ * below therefore reads this object rather than the label rules directly.
  */
 const name = computed(() => new AuthoredName(props.entry.name));
 
@@ -122,14 +126,9 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * route, where the session holds one Source and so no family line exists to
  * close (`SourceFamilyBlocks.vue`).
  */
-const headCompareRoute = computed(() => {
-  const routes = [...blockCompareRoutes.value.values()];
-  // Exactly when the row draws no family line to close: the entry lives on one
-  // of the two lines and never on neither, so both read the one rule
-  // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(fileRows.value);
-  return headed || routes.length !== 1 ? null : routes[0]!;
-});
+const headCompareRoute = computed(() =>
+  sessionSources.headEntryOf(fileRows.value, blockCompareRoutes.value),
+);
 
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof promptComparisonRouteFor>>();
@@ -220,11 +219,13 @@ const fileRows = computed(() => {
            the screen ({@link AuthoredName}). The spelled form is this
            product's characters, so it takes the muted treatment the other
            rows give theirs rather than the authored one. -->
-      <span
-        class="aci-row-head__name"
-        :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-        >{{ name.text }}</span
-      >
+      <AuthoredNameText :name="name">
+        <span
+          class="aci-row-head__name"
+          :class="name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          >{{ name.text }}</span
+        >
+      </AuthoredNameText>
       <span class="aci-row-head__count"
         >{{ fileRows.length }} {{ fileRows.length === 1 ? 'file' : 'files' }}</span
       >
@@ -233,7 +234,7 @@ const fileRows = computed(() => {
       <span v-if="headCompareRoute" class="aci-row-head__end">
         <NuxtLink
           :to="headCompareRoute"
-          :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}`"
+          :aria-label="`Compare this name's files: ${name.singleLineText}`"
           >Compare</NuxtLink
         >
       </span>
@@ -276,7 +277,7 @@ const fileRows = computed(() => {
         <NuxtLink
           v-if="blockCompareRoutes.get(block.kind)"
           :to="blockCompareRoutes.get(block.kind)!"
-          :aria-label="`Compare this name's files: ${inlinePresentationLabel(entry.name)}${
+          :aria-label="`Compare this name's files: ${name.singleLineText}${
             block.familyText !== null ? ` (${block.familyText})` : ''
           }`"
           >Compare</NuxtLink

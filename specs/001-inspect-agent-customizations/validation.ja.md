@@ -92,7 +92,7 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、6 test passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 561 passed |
+| Browser | `pnpm exec playwright test --project=chromium` | 564 passed |
 | Coverage | `pnpm run test:coverage` | 74 file、1,870 test passed。statement 86.25%、line 86.57% |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
@@ -113,13 +113,6 @@ revisionにわたるものであり、ここでは再現していない。上表
 1つであって、local runはそのどれの代わりにもならない。判断はreworkが始まったtreeから変わって
 いない。変わったのは、認証runがどのcommitに対するものかである。
 
-**Study lifecycleは2つのprojectが走らせるため、同時に走らせると機械を奪い合う。**
-20 participantのlifecycle testは`integration`と`coverage`の双方に属し、各copyが自前のsupervisorと
-8つの子processを実pipeでtimer無しに起動し、subjectごとの待ちには上限がある。通常の逐次chainでは
-起こらない同時実行をこの機械で行うと、片方の copyがその上限を超え、verifierの`checkpoint`が
-逐次runでは再現しないfailureを報告する。Work rootは毎回新しい`mkdtemp`、control
-endpointはephemeral portであり、copy同士は何も共有しない。奪い合うのは機械そのものである。
-
 **Coverageの百分率はあるrunの値であり、定数ではない。** このtreeに対する2回のrunは、6,848 statement
 中5,907と5,909のcovered statement — 86.25%と86.28% — を報告し、file 74件・test 1,870件のpassは
 どちらも同じだった。これらにthresholdをassertしている箇所はどこにも無く、上の行は後のrunである。
@@ -131,11 +124,10 @@ timingのthresholdをassertしない。
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`23ebf9ca12d61b95e7f4427c645709a5e57689194c0e74b2dee8d4e847d28c4a`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+`88e0ab53bd16dff5be25cf30d65a000280308d34e79537aea17cca478d483c9f`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
 caseは、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。11件のvitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser
-specは上記の3 project
-Playwright run経由である。`tests/contract/outcome-fixture-manifest.test.ts`は同じsessionでcanonical
+specは上記のChromium project経由である。`tests/contract/outcome-fixture-manifest.test.ts`は同じsessionでcanonical
 digestと66件のfixture digestすべてを再現した。
 
 このsetは、interface rework前に記録したsetとは比較できない。fixture byteが変わっており、spec.md
@@ -258,7 +250,7 @@ moderated studyが必要としたsealed-capture kitはこのrunで動かされ�
 
 | Workflow | 測るもの | 閾値 | 結果 |
 |---|---|---|---|
-| Discovery | SC-001: 発見した1 fileのdetail viewを2分以内に開く | 20件中19件 | **20件中20件**、0.753秒〜93.6秒、中央値5.72秒 |
+| Discovery | SC-001: 発見した1 fileのdetail viewを2分以内に開く | 20件中19件 | **未確立。** 20件中20件がfileへ到達し0.753秒〜93.6秒・中央値5.72秒だが、timerは起動済みのoriginから始まっており、SC-001が定める区間はInspectorの起動を含む |
 | Inspection | SC-006: 指定`AGENTS.md`の3 fieldを2分以内に回答 | 20件中18件 | **20件中20件**、0.37秒〜29秒、中央値1.12秒 |
 | Comparison | SC-006のcoverage: 標準comparison task | 20件すべてが試行 | **20件中20件**完了 |
 | Global consent | SC-006のcoverage: 標準personal-setup consent task | 20件すべてが試行 | **20件中20件**完了 |
@@ -324,6 +316,14 @@ railのSource-diagnostic件数を、Source自身の`Partial · 14 files kept a d
 作動させるものであり、controlはaccessible nameを持つ（`FILE_OPEN_TARGET_TEXT`が`aria-label`と`title`
 の双方を供給する） — sessionがそれを名指しできたのはそのためである。observationは、その名前が
 *visible*なtextではないという点であり、WCAGがそれを求めるのはvisibleなlabelがある場合だけである。
+
+**このrunが測ったものと、SC-001が求めるもの。** SC-001が定める区間は、task promptが提示された
+時点で始まりfileのdetail viewが開いた時点で終わる。そしてその区間にはInspectorの起動と、印字された
+URLでそこへ到達することが含まれる、と条文自身が述べている。このrunは、hostが既に配信しているoriginから
+各sessionを始めた。したがって上の秒数はその後の区間 — 稼働中のproductが描画するものからfileを見つける
+までである。描画されたguidanceについての結果であって印字されたそれについてではなく、この基準はこれらに
+よっては確立されない。20 sessionはその1台のhostも共有しており、独立した20件のfirst useではなかった —
+これは前掲のconsent状態が反対側から記録しているのと同じ条件である。
 
 **このrunが確立しないこと。** 人によるfirst useについては何も確立しない。基準の以前のparticipant形式が
 測ろうとしていたのは、まさにそれである。capture bundleを持たないので、ここには封緘されたものも、

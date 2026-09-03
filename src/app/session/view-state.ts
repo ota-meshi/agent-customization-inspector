@@ -768,6 +768,11 @@ export class SessionViewState {
       this.snapshot.value = null;
       this.#sessionError.value = null;
       this.closeFileDetail();
+      // The document title's subject with them: it is a name or a path the
+      // purged session published, and the tab keeps showing it until the page
+      // unmounts, which a purge does not wait for (data-model.md § Client
+      // data). No token, so the release applies whichever page reported it.
+      this.releasePageSubject();
       // The rescan commands belong to the purged session too: their request
       // IDs are meaningless against a different host session, and leaving one
       // set would let a post-purge status be mistaken for that command's

@@ -1053,7 +1053,7 @@ registryだけがreadを認可できることをvalidateする。Matcher fixture
 recursive-directory segment）を拒否し、exact/direct-child/explicit descendant inventoryを区別し、先頭の
 `ANY_DIRECTORIES` segmentがvendor traversal factをsatisfiedにしないことを証明する。Targeted regression fixtureはCopilotの別々のVS Code/CLI/Cloud lookup表、
 選択した正確なRepository rootだけのClaude project settings、non-recursiveなCodex rule directory、plugin activation対
-authored manifest inventory、FR-015からFR-018外へのGlobal read 0件を扱う。
+authored manifest inventory、FR-015からFR-018およびFR-045の外へのGlobal read 0件を扱う。
 さらに、member Global Sourceが0から4つで各member最大1つ、各Sourceが正確に1つのrootとSource-relative Path
 namespaceを持つこと、literal credentialのexact表示、reveal controlがないこと、環境変数を置換しないことを
 検証する。Lifecycle fixtureは全4 Sourceの未解決failure共存、Source別clear/replace/removal、自動初回failureの

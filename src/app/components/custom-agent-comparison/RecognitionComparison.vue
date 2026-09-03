@@ -38,6 +38,7 @@
 // agents a spawn would select, or what a spawned session would inherit: both
 // are runtime this tool never observes (FR-009).
 import { AuthoredName } from '../authored-name';
+import AuthoredNameText from '../AuthoredNameText.vue';
 import SourceDiff from './SourceDiff.vue';
 import ToolMark from '../ToolMark.vue';
 import { SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
@@ -153,10 +154,14 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
                          both are shown as what they are — spelled out when a
                          name has none to draw, and noted when it is empty
                          (FR-025). -->
-                    <span
-                      :class="nameOf(cell.agentName).isAuthored ? 'aci-authored-text' : 'aci-muted'"
-                      >{{ nameOf(cell.agentName).text }}</span
-                    >
+                    <AuthoredNameText :name="nameOf(cell.agentName)">
+                      <span
+                        :class="
+                          nameOf(cell.agentName).isAuthored ? 'aci-authored-text' : 'aci-muted'
+                        "
+                        >{{ nameOf(cell.agentName).text }}</span
+                      >
+                    </AuthoredNameText>
                     <span class="aci-muted"> ({{ surfacesText(cell) }})</span></template
                   >
                 </td>

@@ -28,6 +28,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
+import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -634,9 +635,12 @@ const titleSubject = computed<string | null>(() => {
     // can declare one lifecycle event, and their tabs must not read
     // identically (WCAG 2.4.2). A name this product spelled out does not title
     // the tab: those are its characters, not the file's.
-    return event.isAuthored
-      ? `${event.authored} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`
-      : null;
+    // An undeclared name is named in words, because a tab can carry no badge
+    // and a reader who met the badge must not meet an untitled tab instead.
+    const subject = event.isEmpty ? event.singleLineText : event.isAuthored ? event.authored : null;
+    return subject === null
+      ? null
+      : `${subject} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
   }
   return pathIsSpelledOut.value
     ? null
@@ -727,12 +731,13 @@ onBeforeUnmount(() => {
            the carrier either way, so a declaration page's last step named a
            file while its heading named an event. Which carrier it was declared
            in is the `Declared in` line's, said once. -->
-      <span
-        v-if="eventName !== null"
-        class="aci-detail-crumbs__subject"
-        :class="{ 'aci-authored-text': eventName.isAuthored }"
-        >{{ eventName.text }}</span
-      >
+      <AuthoredNameText v-if="eventName !== null" :name="eventName">
+        <span
+          class="aci-detail-crumbs__subject"
+          :class="{ 'aci-authored-text': eventName.isAuthored }"
+          >{{ eventName.text }}</span
+        >
+      </AuthoredNameText>
       <span v-else class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
     </p>
 
@@ -744,11 +749,9 @@ onBeforeUnmount(() => {
              for presentation, never a locator anything can open (FR-024,
              FR-030). -->
         <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.hook }}</template>
-        <span
-          v-else-if="eventName !== null"
-          :class="{ 'aci-authored-text': eventName.isAuthored }"
-          >{{ eventName.text }}</span
-        >
+        <AuthoredNameText v-else-if="eventName !== null" :name="eventName">
+          <span :class="{ 'aci-authored-text': eventName.isAuthored }">{{ eventName.text }}</span>
+        </AuthoredNameText>
         <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
           pathText
         }}</span>
@@ -939,12 +942,12 @@ onBeforeUnmount(() => {
            The declaration view's event already heads the page, so its one
            section repeats no heading. -->
       <section v-for="event in eventBlocks" :key="event.key" class="aci-hook-detail__event">
-        <h3
-          v-if="openEventName === null"
-          :class="event.name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-          :aria-label="event.name.singleLineText"
-        >
-          {{ event.name.text }}
+        <h3 v-if="openEventName === null" :aria-label="event.name.singleLineText">
+          <AuthoredNameText :name="event.name">
+            <span :class="event.name.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+              event.name.text
+            }}</span>
+          </AuthoredNameText>
         </h3>
         <!-- The declaration's groups as one read-only JSON document in the
              Monaco viewer — coloured by the `json` tokenizer a `.json` file's

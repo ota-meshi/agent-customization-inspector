@@ -39,6 +39,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
+import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
@@ -889,9 +890,11 @@ onBeforeUnmount(() => {
         Invocation name:
         <template v-for="(entry, index) in invocationNames" :key="entry.text"
           ><span v-if="index > 0">, </span
-          ><span :class="entry.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
-            entry.text
-          }}</span></template
+          ><AuthoredNameText :name="entry"
+            ><span :class="entry.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+              entry.text
+            }}</span></AuthoredNameText
+          ></template
         >
       </p>
 

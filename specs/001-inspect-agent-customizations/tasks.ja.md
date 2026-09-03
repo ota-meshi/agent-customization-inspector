@@ -6065,7 +6065,8 @@ dispositionである。
   suite（`tests/unit/cli.test.ts`）が直接駆動して所有する。このtaskが足すのはpackaged側である: packed
   entry経由のoptionalおよび繰り返しの`--root`、working directoryの変更やoutbound
   connectionがあればlaunchを失敗させるpreload、subcommandを持たない1つのmode、packed processが終了する形での空root拒否。)*
-- [X] T918 [P] [US1] T183をfinal registryへ拡張し、1つの変更しないprofile/fixtureで正確に10のfresh processを実行する。Run
+- [X] T918 [P] [US1] T183をfinal registryへ拡張し、1つの変更しないprofile/fixtureでnon-gatingなsmoke passを1回実行する
+  *(2026-09-03 修正: 10 runのprotocolは、それが測っていた基準（T1052）とともに撤回された。)*。Run
   1直前と各run直後にprofileがbindする`tests/performance/sc002-fixture-manifest.json`のversion/canonical
   digest、`tests/performance/sc002-fixture-manifest.sha256`、参照する全content digestを再計算して、missing
   entryまたはdriftがあればset全体を無効とする。各自動first
@@ -8770,7 +8771,10 @@ railへ、各Source family自身の状態をそれ自身のsurfaceへ置く。
 
 - [X] T1148 [US1] 名前とpathにまたがる1つの検索について失敗するunit回帰テストを、filter viewの
   suiteが置かれている `tests/unit/app/inventory.test.ts` に追加する。rowは名前かSource-relative path
-  のいずれかが入力されたtextを含むときに通ることを対象とする（FR-006）
+  のいずれかが入力されたtextを含むときに通ることを対象とする
+  *(2026-09-03 修正: rowは自分が表示しているどの綴りでも通る。したがって、fileが宣言しなかった名前に
+  対してこのproductの言葉を表示しているrowは、その言葉で見つかる
+  （`tests/e2e/undeclared-name.spec.ts`）。)*（FR-006）
 - [X] T1149 [US1] Shellのブラウザー受け入れテストを `tests/e2e/shell-navigation.spec.ts` に追加す
   る。barがすべてのrouteで検索とcolour-scheme controlを持ち、scan commandは自前のpanelを持たない一
   覧に置かれること、railが各familyのstatusを導線の傍らに述べつつ `/repository` と
@@ -8829,7 +8833,9 @@ railへ、各Source family自身の状態をそれ自身のsurfaceへ置く。
   FR-009）
 - [X] T1157 [US1] 11のkindのrowの形、3つのvendor markが3つの異なるglyphかつ3つの異なる色でありforced
   coloursがそれらを1つへ戻すこと、そして種類として述べられ説明が展開で示されるdiagnosticについてのブ
-  ラウザー受け入れテストを `tests/e2e/inventory-rows.spec.ts` に追加する（FR-009、FR-028）
+  ラウザー受け入れテストを `tests/e2e/inventory-rows.spec.ts` に追加する
+  *(2026-09-03 修正: rowの形には、fileが名前を宣言しなかったrowが描くbadgeを含む。そのbadgeの他の
+  surfaceとあわせて `tests/e2e/undeclared-name.spec.ts` が保持する。)*（FR-009、FR-028）
 
 ### 実装
 
@@ -8867,9 +8873,10 @@ railへ、各Source family自身の状態をそれ自身のsurfaceへ置く。
   何ファイルかで名付ける。対象はrow component群、`ScanProgress.vue`、`GlobalSourceControls.vue`、
   `InventoryRail.vue`、`InventoryFilters.vue`、`src/app/pages/index.vue`（FR-009）
 - [X] T1181 [US1] `src/app/components/inventory/rows/PluginRow.vue` で1ファイル1行にする。wireは
-  `(file, tool)` ごとにcarrierを publish するためである。そして各認識markを、その製品自身の読み取りへ
-  のリンクにする。詳細が製品ごとに異なる唯一のkindなので、pathは何も開かず、markがそれぞれ1つの読み
-  取りを開く（`src/app/components/inventory/RecognitionMarks.vue`、FR-007、FR-009）
+  `(file, tool)` ごとにcarrierを publish するためである。そしてpathを行のリンクのままにする
+  *(2026-09-03 修正: 他のどのkindの一覧とも同じくpathがリンクである。この一覧は製品ごとの差を示さず、
+  どの製品の読み取りにpageが答えるかはdetailから辿る。理由はrouteを組み立てる箇所の
+  `PluginRow.vue` が述べる。)*（`src/app/components/inventory/RecognitionMarks.vue`、FR-007、FR-009）
 ---
 
 ## フェーズ 108: 詳細サーフェスの作り直し
@@ -9728,8 +9735,8 @@ directory名、nestedなClaude Code recognitionはroot相対prefix付き — で
 - [X] T1124 一覧のどのkindにも属さないfileをdisclosureへ畳む（2026-08-22）。このsectionは不在で定義される — inspection
   ruleがadmitしたが、どのkindのinventoryにも載らないfile —
   ため、読めないfile、binaryのfile、admitしたkindが公開するものを何も宣言していないfileを1つでも持つrepositoryには必ず存在し、常設sectionのままでは訪問のたびに、読んでいるkind
-  tabの下で、説明文とすべての行を開いたまま置き続けていた。`src/app/pages/index.vue`はこれを、到着時に閉じている`details`要素としてrenderする。件数はsummaryに置き、見出しもsummaryの中に置くことでsectionはdocument
-  outline上の位置を保ち、残りのcopyは開いたときにだけ述べる。`partial`というstatusが何についてのものかは、そのstatusを読む場所へ移す:
+  tabの下で、説明文とすべての行を開いたまま置き続けていた。`src/app/pages/index.vue`はこれを、kindの隣のrailから選ぶ独立した一覧としてrenderし、件数はそこに置く
+  *(2026-09-03 修正: railが選ぶので、kindの行の下にdisclosureは立たない。T1152、T1153。)*。`partial`というstatusが何についてのものかは、そのstatusを読む場所へ移す:
   `src/app/components/inventory/ScanProgress.vue`が、そのSourceのcommit済みfileのうちfile単位のdiagnosticを保持したものの件数を述べる（FR-028）。件数はsnapshotを所有するpageが公開済みfileから数えるので、背後のdiagnostic
   recordではなく、readerが開ける行に従う。`src/app/composables/filters.ts`では、tool選択がこのlistを空にするのをやめる:
   これらのfileはどのproductにも認識されていないため、どのtool選択も一致し得ず、tool選択で空にすることは`partial`なgenerationがそのfileについて持つ唯一の記述をpageから取り去っていた

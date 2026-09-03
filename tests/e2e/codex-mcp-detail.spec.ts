@@ -75,7 +75,7 @@ test.describe('the complete literal MCP carrier detail', () => {
     // The row is headed by the server name; the declaration line under it —
     // labelled by its owner carrier, with the row's name completing the
     // accessible name — is the link to that declaration's own detail (T302).
-    await page.getByRole('link', { name: '.codex/config.toml: context7' }).click();
+    await page.getByRole('link', { name: 'context7 in .codex/config.toml' }).click();
     await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=context7/u);
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     // The record's identity restated: the recognition line and the
@@ -118,7 +118,7 @@ test.describe('the complete literal MCP carrier detail', () => {
     // The declaration detail's own owner line opens the carrier's file-unit
     // view: the file facts — standing in for the source panel this page
     // deliberately lacks — and every declaration the file makes.
-    await page.getByRole('link', { name: '.codex/config.toml: context7' }).click();
+    await page.getByRole('link', { name: 'context7 in .codex/config.toml' }).click();
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     await page.getByRole('link', { name: '.codex/config.toml' }).click();
     await expect(page.getByRole('heading', { name: '.codex/config.toml' })).toBeVisible();
@@ -139,7 +139,7 @@ test.describe('the complete literal MCP carrier detail', () => {
   test('returns to the MCP tab through the owner navigation', async ({ page }) => {
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /MCP/u }).click();
-    await page.getByRole('link', { name: '.codex/config.toml: context7' }).click();
+    await page.getByRole('link', { name: 'context7 in .codex/config.toml' }).click();
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     await page.getByRole('link', { name: /Back to /u }).click();
     // The back link names the kind, so the reader lands on the MCP tab they

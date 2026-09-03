@@ -329,10 +329,18 @@ export function asSourceSelector(value: unknown): SourceSelector | null {
 }
 
 /**
- * How a document title names a comparison's two sides (WCAG 2.4.2): the two
- * paths, each led by its Source's name when the sides sit in two Sources —
- * two tabs comparing one path across two consented homes must not read
- * identically, while two paths of one Source already tell themselves apart.
+ * How a document title names a comparison's two sides (WCAG 2.4.2): each path
+ * led by the side it is, and by its Source's name as well when the sides sit
+ * in two Sources — two tabs comparing one path across two consented homes must
+ * not read identically, while two paths of one Source already tell themselves
+ * apart.
+ *
+ * `first` and `second` are the words the comparison's own cards carry, and
+ * they say which side a path is where a conjunction only sat between them: a
+ * path may contain the conjunction, and then two different pairs title
+ * themselves alike. It narrows the collision rather than closing it — any
+ * string is one a file may write, which is why the sides are told apart by
+ * structure wherever a surface has structure to spend (`authored-name.ts`).
  * Null while the URL does not name both sides; the raw paths, because the
  * shell escapes a title subject exactly once at the rendering boundary.
  */
@@ -344,8 +352,8 @@ export function comparisonTitleSides(
     return null;
   }
   return left.source === right.source
-    ? `${left.sourceRelativePath} and ${right.sourceRelativePath}`
-    : `${SOURCE_SELECTOR_TEXT[left.source]} ${left.sourceRelativePath} and ${
+    ? `first ${left.sourceRelativePath}, second ${right.sourceRelativePath}`
+    : `first ${SOURCE_SELECTOR_TEXT[left.source]} ${left.sourceRelativePath}, second ${
         SOURCE_SELECTOR_TEXT[right.source]
       } ${right.sourceRelativePath}`;
 }

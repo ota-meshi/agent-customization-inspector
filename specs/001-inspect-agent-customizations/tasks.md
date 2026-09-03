@@ -7080,8 +7080,9 @@ the task would have built.
   the packed entry, a preload that fails the launch if it changes a working directory or opens an
   outbound connection, one mode with no subcommand, and the empty-root rejection as the packed
   process exits.)*
-- [X] T918 [P] [US1] Extend T183 to the final registry and execute exactly ten fresh processes
-  against one unchanged profile/fixture: recompute and require the profile-bound
+- [X] T918 [P] [US1] Extend T183 to the final registry and execute the one non-gating smoke pass
+  against one unchanged profile/fixture *(amended 2026-09-03: the ten-run protocol is withdrawn
+  with the criterion it measured, T1052.)*: recompute and require the profile-bound
   `tests/performance/sc002-fixture-manifest.json` version/canonical digest,
   `tests/performance/sc002-fixture-manifest.sha256`, and every referenced content digest immediately
   before run 1 and after every run, invalidating the full set on any missing entry or drift; wait
@@ -10246,7 +10247,10 @@ its status already visible.
 
 - [X] T1148 [US1] Add failing unit regressions for the one search over names and paths — a row
   admitted when either its name or its Source-relative path contains the entered text — in
-  `tests/unit/app/inventory.test.ts`, where the filter view's own suite lives (FR-006)
+  `tests/unit/app/inventory.test.ts`, where the filter view's own suite lives
+  *(amended 2026-09-03: a row is admitted by any spelling it displays, so a row displaying this
+  product's words for a name its file did not declare is found by them
+  (`tests/e2e/undeclared-name.spec.ts`).)* (FR-006)
 - [X] T1149 [US1] Add browser acceptance for the shell — the bar carrying the search and the
   colour-scheme control on every route and the scan commands on the inventory, where no panel of
   its own carries them, the rail reaching `/repository` and `/global-consent` with each family's
@@ -10309,7 +10313,9 @@ one, and a diagnostic stated by kind on its row with its explanation disclosed r
 - [X] T1157 [US1] Add browser acceptance for the eleven kinds' row shapes, the three vendor marks
   being three distinct glyphs in three distinct colours that forced colours returns to one, and the
   diagnostic stated by kind with its explanation disclosed, in `tests/e2e/inventory-rows.spec.ts`
-  (FR-009, FR-028)
+  *(amended 2026-09-03: the row shapes include the badge a row draws where its file declared no
+  name, which `tests/e2e/undeclared-name.spec.ts` holds together with that badge's other
+  surfaces.)* (FR-009, FR-028)
 
 ### Implementation
 
@@ -10352,9 +10358,10 @@ one, and a diagnostic stated by kind on its row with its explanation disclosed r
   `src/app/pages/index.vue` (FR-009)
 
 - [X] T1181 [US1] Put one file on one line in `src/app/components/inventory/rows/PluginRow.vue`,
-  where the wire publishes one carrier per `(file, tool)`, and make each recognizing mark the link
-  to that product's own reading — the one kind whose detail differs by product, so the path opens
-  nothing and the marks open one reading each
+  where the wire publishes one carrier per `(file, tool)`, and keep the path as the row's link
+  *(amended 2026-09-03: the path is the link here as in every other kind's list — this list shows
+  no per-product difference, and which product's reading a page answers for is reached from the
+  detail; `PluginRow.vue` states it where the route is built.)*
   (`src/app/components/inventory/RecognitionMarks.vue`, FR-007, FR-009)
 ---
 
@@ -11357,9 +11364,9 @@ they already state.
   is defined by absence — an admitted file no kind's inventory lists — so every repository holding
   one unreadable, binary, or nothing-declaring candidate has one, and as a standing section it stood
   open on every visit, beneath whatever kind tab was being read, with its explanation and each of
-  its rows. `src/app/pages/index.vue` renders it as a `details` element closed on arrival, carrying
-  its count on the summary and its heading inside that summary so the section keeps its place in the
-  document outline, and states the rest of its copy only once opened. What a `partial` status is
+  its rows. `src/app/pages/index.vue` renders it as a list of its own, reached from the rail beside
+  the kinds and carrying its count there *(amended 2026-09-03: the rail selects it, so no disclosure
+  stands under a kind's rows; T1152, T1153.)*. What a `partial` status is
   about moves to where that status is read: `src/app/components/inventory/ScanProgress.vue` states
   how many of the Source's committed files kept a file-confined diagnostic (FR-028), counted from
   the published files by the page that owns the snapshot, so the number follows the rows a reader

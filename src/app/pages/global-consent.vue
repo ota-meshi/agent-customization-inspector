@@ -263,7 +263,16 @@ watch(
       {{ failureAnnouncement }}
     </p>
 
-    <p v-if="previewState === 'loading'" aria-live="polite">Reading the proposed directories…</p>
+    <!-- Mounted from the first render with nothing in it, because a live region
+         added together with its text is not announced (`index.vue` states the
+         same rule for the consented homes' arrival, W3C ARIA22). What changes
+         is the region's text; the visible sentence below is the state itself,
+         and carries no region of its own so the two are not two announcements. -->
+    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
+      {{ previewState === 'loading' ? 'Reading the proposed directories…' : '' }}
+    </p>
+
+    <p v-if="previewState === 'loading'">Reading the proposed directories…</p>
 
     <!-- The two states before a preview exist in a panel of their own, as the
          state of what was consented does below and as the Repository page's

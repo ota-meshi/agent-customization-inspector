@@ -72,7 +72,7 @@ test.describe('the complete literal Claude MCP file detail', () => {
     // The row is headed by the server name; the declaration line under it —
     // labelled by its owner carrier, with the row's name completing the
     // accessible name — is the link to that declaration's own detail.
-    await page.getByRole('link', { name: '.mcp.json: context7' }).click();
+    await page.getByRole('link', { name: 'context7 in .mcp.json' }).click();
     await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=context7/u);
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     // The record's identity restated: the recognition line and the
@@ -123,7 +123,7 @@ test.describe('the complete literal Claude MCP file detail', () => {
     // The declaration detail's own owner line opens the carrier's file-unit
     // view: the file facts — standing in for the source panel this page
     // deliberately lacks — and every declaration the file makes.
-    await page.getByRole('link', { name: '.mcp.json: context7' }).click();
+    await page.getByRole('link', { name: 'context7 in .mcp.json' }).click();
     await expect(page.getByRole('heading', { name: 'context7' })).toBeVisible();
     await page.getByRole('link', { name: '.mcp.json' }).click();
     await expect(page.getByRole('heading', { name: '.mcp.json' })).toBeVisible();

@@ -8,22 +8,30 @@
 // empty string, which strict JSON and TOML both accept as a key, and a name
 // whose characters draw nothing at all.
 //
-// Both are answered by substitution, for every kind alike. A name with nothing
-// to draw is spelled out in full — `\u0020` for one space, `\u0020\u0020`
-// for two — so two such names stay two things on the screen, which is what
-// keeping the invisible characters and adding one shared note beside them
-// could not do: the note read identically under both, and the runs differed by
-// the width of a space (FR-025; `entities.ts` § pathPresentationLabel makes
-// the same call for a path, because a label has to be unambiguous on its own).
+// A name whose characters draw nothing is spelled out in full — `\u0020` for
+// one space, `\u0020\u0020` for two — so two such names stay two things on
+// the screen, which is what keeping the invisible characters and adding one
+// shared note beside them could not do: the note read identically under both,
+// and the runs differed by the width of a space (FR-025; `entities.ts`
+// § pathPresentationLabel makes the same call for a path, because a label has
+// to be unambiguous on its own).
 //
 // A spelled-out name is this product's characters, so {@link isAuthored} is
 // false for it and the surface styles it as the product's own — the same
 // distinction every row already draws.
 //
+// The empty string has nothing to spell, so the surface draws this product's
+// own words for what the file wrote — and draws them as a badge rather than as
+// the name, because a carrier can declare both `""` and a name spelling those
+// same words, and a difference carried by colour alone is not a difference
+// (WCAG 1.4.1). {@link isEmpty} is what a surface switches on;
+// `AuthoredNameText.vue` is where every surface switches.
+//
 // One unit rather than the same ternaries in each row, detail, and comparison.
 // Ten surfaces derived them separately and one went stale unnoticed: after the
 // MCP comparison's own name element was removed, its crumb kept the raw name,
-// so the page announced "(empty name)" and drew nothing where the name went.
+// so the page announced this product's words for the absence and drew nothing
+// where the name went.
 // A surface that reads this class cannot forget the case.
 //
 // It holds the authored name and derives each spelling where it is read,
@@ -39,41 +47,27 @@ import {
 } from '../../shared/entities';
 
 /**
- * What a surface draws for a name whose every character draws nothing at all.
- * The label rules spell out what they can, and the empty string leaves them
- * nothing to spell, so the name is noted instead — one note, so a reader who
- * met it on a row meets the same words on the detail and the comparison.
+ * What this product says where a file declared the name empty. It names what
+ * the file did — it wrote the key, with nothing in it — rather than saying the
+ * name is missing, which is a different state and a different row's
+ * ({@link AuthoredName} is never constructed for it).
  *
- * A carrier that declares both `""` and the literal name `(empty name)`
- * therefore publishes two rows a reader cannot tell apart: they draw the same
- * text, they announce the same text, and only their destinations differ.
- * {@link isAuthored} separates them internally, but what that reaches the
- * screen as is a colour — `.aci-muted` sets nothing else, and a difference
- * carried by colour alone is not a difference (WCAG 1.4.1). Nothing is
- * announced either way. This is accepted, with no distinction between them.
- *
- * Accepted because the alternative is the comparison this product refuses to
- * make: deciding what to draw by testing an authored value against this
- * product's own copy turns display wording into load-bearing syntax
- * (`entities.ts` § inlinePresentationLabel, which records the same judgment
- * for the same reason, as do the two comparison `SourceDiff.vue` components
- * and `skills/compare/[family].vue`). Marking the empty name structurally
- * instead — a badge the row shape carries — would put a permanent mark on
- * every empty-name row, on its list, its detail, its comparison, and its
- * moves, to separate it from a name nobody writes.
- *
- * It is a choice, not a limit: a structural mark would remove the ambiguity.
- *
- * The second reason `entities.ts` gives — that the complete source stands
- * beside every surface, so the exact spelling is always somewhere on screen —
- * does not carry here for every kind. A skill, prompt, output style, or agent
- * shows its file's source; a plugin's declaration draws `"name"`, and a hook's
- * draws the event key itself. An MCP declaration draws the value alone, and a
- * pure MCP carrier's bytes reach no surface at all (FR-007) — so for that one
- * kind the authored key is nowhere on the page. What separates the two rows
- * there is what each declaration holds, not which of them is the empty name.
+ * This spelling is for the surfaces carrying words alone: an accessible name,
+ * a previous/next label, a document title. A surface that can carry a shape
+ * draws the badge instead (`AuthoredNameText.vue`), which is where this name
+ * is separated from one spelling these same words: no string can do that,
+ * because any string is one a file may declare (WCAG 1.4.1, WCAG 2.4.4).
  */
-const EMPTY_NAME_TEXT = '(empty name)';
+const EMPTY_NAME_TEXT = 'empty name';
+
+/**
+ * What the badge reads where a surface can carry a shape
+ * (`AuthoredNameText.vue`). It lives beside the name rather than in that
+ * component because it is one of the spellings a reader sees, and the search
+ * matches a row by what the row displays
+ * ({@link AuthoredName.visibleSpellings}).
+ */
+export const EMPTY_NAME_BADGE_TEXT = 'Empty name';
 
 /**
  * One authored customization name, as the surfaces showing it need it.
@@ -116,6 +110,20 @@ export class AuthoredName {
   }
 
   /**
+   * Whether the file wrote this name with nothing in it. What a surface
+   * switches on to draw the badge rather than a name: {@link isAuthored} is
+   * false for a spelled-out name too, and that one is a name — it has
+   * characters, and two of them stay two things on the screen.
+   *
+   * Empty is not missing. A name this product does not know reaches no
+   * `AuthoredName` at all; the row states that in its own words, and those
+   * words are a statement about the row rather than a name in its place.
+   */
+  public get isEmpty(): boolean {
+    return this.#authored === '';
+  }
+
+  /**
    * Whether {@link text} is the file's own characters, which is what decides
    * the authored-text styling: that styling renders its own whitespace and
    * isolates its own bidi run, and both are wrong for a spelling this product
@@ -134,6 +142,19 @@ export class AuthoredName {
    */
   public get accessibleText(): string {
     return this.#authored === '' ? EMPTY_NAME_TEXT : accessiblePresentationLabel(this.#authored);
+  }
+
+  /**
+   * Every spelling of this name a reader can see, for the search that narrows
+   * the list by what a row displays (FR-006): the file's own characters and
+   * the spelling drawn in their place, or — where no name was declared — the
+   * badge and the words that stand in for it. Most names spell both the same,
+   * so most rows match exactly as they did.
+   */
+  public get visibleSpellings(): readonly string[] {
+    return this.#authored === ''
+      ? [EMPTY_NAME_BADGE_TEXT, EMPTY_NAME_TEXT]
+      : [this.#authored, this.text];
   }
 
   /**

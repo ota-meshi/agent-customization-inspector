@@ -196,6 +196,44 @@ export const CUSTOMIZATION_KIND_TEXT: Readonly<Record<CustomizationKind, string>
   'settings/config': 'Settings / Config',
 };
 
+/**
+ * What a kind's one nameless row says of itself, or null for a kind that has
+ * none. It is a statement about the row — which carriers it stands for and why
+ * they resolved no name — rather than a name in the place of one, so it is not
+ * the badge an empty name draws (`authored-name.ts`).
+ *
+ * Beside the kind union rather than in the row that renders it, because the
+ * search matches a row by what that row displays and reads it from here
+ * (`filters.ts` § nameMatches, FR-006). Every kind is present so a kind added
+ * later cannot compile without deciding whether it has such a row.
+ */
+export const UNNAMED_ROW_TEXT = {
+  /** Instruction rows are headed by an applicability range, not a name. */
+  instructions: null,
+  /** A skill row's name is its directory, so it is never unresolved. */
+  skill: null,
+  /** The carriers publishing no named declaration, or none this scan could read. */
+  MCP: 'No known server declarations',
+  /** A definition whose file declares none and whose path resolves none. */
+  agent: 'No known agent name',
+  /** A prompt's name is its file, so it is never unresolved. */
+  'prompt/command': null,
+  /** Rule rows are their files. */
+  rule: null,
+  /** Permission rows are their files. */
+  permissions: null,
+  /** The carriers publishing no named declaration, or none this scan could read. */
+  hook: 'No known hook declarations',
+  /** A carrier whose manifest or catalog entry named no plugin. */
+  plugin: 'No plugin name resolved',
+  /** Skill metadata is listed under its skill, never as a row of its own. */
+  'skill metadata': null,
+  /** An output style's name is its file or its declaration. */
+  'output style': null,
+  /** Settings rows are their files. */
+  'settings/config': null,
+} as const satisfies Readonly<Record<CustomizationKind, string | null>>;
+
 /** The label shown for each tool; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
 export const SUPPORTED_TOOL_TEXT: Readonly<Record<SupportedTool, string>> = {
   /** Label for GitHub Copilot. */

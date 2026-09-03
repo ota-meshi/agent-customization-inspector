@@ -337,3 +337,8 @@ jobs:
           npm init -y > /dev/null
           npm install "${GITHUB_WORKSPACE}"/tarball/*.tgz
           npx --no-install agent-customization-inspector --help
+          # The installed bin has to do what the help promises: print one
+          # loopback origin and serve the packaged shell there, then stop when
+          # told. `--help` alone proves the bin resolves, not that it launches.
+          node "${GITHUB_WORKSPACE}/scripts/check-installed-launch.mjs" \
+            npx --no-install agent-customization-inspector

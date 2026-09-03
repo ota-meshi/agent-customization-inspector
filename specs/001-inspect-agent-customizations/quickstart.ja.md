@@ -347,7 +347,7 @@ source checkでnetworkを使えるのはこのcommandだけとする。
    1 Copilot/MCP recognition、release note/current guideへのreciprocal evidence、`documentationStatus: conflict`、
    VS Code所有root-schema field 0件、root、`.vscode`、User、agent、plugin input間のunknown same-name orderingを
    要求する。Nested `.mcp.json`はCLI-onlyのままとし、VS Code schemaまたはwinnerを推測しない。
-5. Repository、文書化済みUser、consent済みGlobalの表を独立して検証する。FR-015からFR-018が明示しない限り、
+5. Repository、文書化済みUser、consent済みGlobalの表を独立して検証する。FR-015からFR-018またはFR-045が明示しない限り、
    文書化済みUser locationはGlobal read authorityにならず、runtime compositionはInspectorのRepository/Global
    source graphをmergeしない。
 6. 出荷済みの`bounded-derived-candidate` ruleは正確に1件であり、自身のvendorの構成読み取り段階が

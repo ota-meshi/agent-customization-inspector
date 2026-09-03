@@ -44,6 +44,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
+import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
@@ -491,13 +492,6 @@ const noAgentNameText = computed(() =>
     : 'This file declares no agent name.',
 );
 
-/** The displayed names as the line writes them, or null when there are none. */
-const agentNamesText = computed(() =>
-  displayedAgentNames.value.size === 0
-    ? null
-    : [...displayedAgentNames.value.values()].map((name) => name.text).join(', '),
-);
-
 /**
  * The label {@link agentNamesText} is introduced by, plural exactly when the
  * recognizing products name the file's agent differently. Counted from the
@@ -508,17 +502,6 @@ const agentNamesText = computed(() =>
  */
 const agentNamesLabel = computed(() =>
   displayedAgentNames.value.size > 1 ? 'Agent names' : 'Agent name',
-);
-
-/**
- * Whether every name on this line is the reader's own characters rather than
- * this product's note, which decides the authored-text styling — the same
- * distinction the row draws. Asked of the names actually displayed, so a file
- * also listed under the null-named row keeps the styling its shown name
- * earns.
- */
-const agentNamesAreAuthored = computed(() =>
-  [...displayedAgentNames.value.values()].every((name) => name.isAuthored),
 );
 
 /**
@@ -1029,11 +1012,18 @@ onBeforeUnmount(() => {
            so rather than borrowing a fact its product does not use. Naming
            it is not a claim that a spawn would select this agent (FR-009). -->
       <p class="aci-agent-detail__agent-name aci-note">
-        <template v-if="agentNamesText !== null"
+        <template v-if="displayedAgentNames.size > 0"
           >{{ agentNamesLabel }}:
-          <span :class="agentNamesAreAuthored ? 'aci-authored-text' : 'aci-muted'">{{
-            agentNamesText
-          }}</span></template
+          <template
+            v-for="(agentName, index) in [...displayedAgentNames.values()]"
+            :key="agentName.authored"
+            ><template v-if="index > 0">, </template
+            ><AuthoredNameText :name="agentName"
+              ><span :class="agentName.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+                agentName.text
+              }}</span></AuthoredNameText
+            ></template
+          ></template
         >
         <template v-else>{{ noAgentNameText }}</template>
       </p>

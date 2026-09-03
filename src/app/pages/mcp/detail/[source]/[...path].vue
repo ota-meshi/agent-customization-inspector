@@ -27,6 +27,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
+import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -660,9 +661,12 @@ const titleSubject = computed<string | null>(() => {
     // can declare one server name, and their tabs must not read identically
     // (WCAG 2.4.2). A name this product spelled out does not title the tab:
     // those are its characters, not the file's.
-    return name.isAuthored
-      ? `${name.authored} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`
-      : null;
+    // An undeclared name is named in words, because a tab can carry no badge
+    // and a reader who met the badge must not meet an untitled tab instead.
+    const subject = name.isEmpty ? name.singleLineText : name.isAuthored ? name.authored : null;
+    return subject === null
+      ? null
+      : `${subject} — ${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
   }
   return pathIsSpelledOut.value
     ? null
@@ -754,12 +758,13 @@ onBeforeUnmount(() => {
            file while its heading named a server — the only kind whose trail
            and heading disagreed. Which carrier it was declared in is the
            `Declared in` line's, said once. -->
-      <span
-        v-if="serverName !== null"
-        class="aci-detail-crumbs__subject"
-        :class="{ 'aci-authored-text': serverName.isAuthored }"
-        >{{ serverName.text }}</span
-      >
+      <AuthoredNameText v-if="serverName !== null" :name="serverName">
+        <span
+          class="aci-detail-crumbs__subject"
+          :class="{ 'aci-authored-text': serverName.isAuthored }"
+          >{{ serverName.text }}</span
+        >
+      </AuthoredNameText>
       <span v-else class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
     </p>
 
@@ -771,11 +776,9 @@ onBeforeUnmount(() => {
              escaped for presentation, never a locator anything can open
              (FR-024, FR-030). -->
         <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.MCP }}</template>
-        <span
-          v-else-if="serverName !== null"
-          :class="{ 'aci-authored-text': serverName.isAuthored }"
-          >{{ serverName.text }}</span
-        >
+        <AuthoredNameText v-else-if="serverName !== null" :name="serverName">
+          <span :class="{ 'aci-authored-text': serverName.isAuthored }">{{ serverName.text }}</span>
+        </AuthoredNameText>
         <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
           pathText
         }}</span>
@@ -953,12 +956,12 @@ onBeforeUnmount(() => {
            The declaration view's name already heads the page, so its one
            section repeats no heading. -->
       <section v-for="server in serverBlocks" :key="server.key" class="aci-mcp-detail__server">
-        <h3
-          v-if="openServerName === null"
-          :class="server.name.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-          :aria-label="server.name.singleLineText"
-        >
-          {{ server.name.text }}
+        <h3 v-if="openServerName === null" :aria-label="server.name.singleLineText">
+          <AuthoredNameText :name="server.name">
+            <span :class="server.name.isAuthored ? 'aci-authored-text' : 'aci-muted'">{{
+              server.name.text
+            }}</span>
+          </AuthoredNameText>
         </h3>
         <!-- The products whose documented reading includes this declaration:
              the readings of one shared carrier can differ by schema, so the

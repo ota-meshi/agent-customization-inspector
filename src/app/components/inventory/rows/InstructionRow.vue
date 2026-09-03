@@ -140,14 +140,9 @@ const rowFiles = computed(() =>
  * route, where the session holds one Source and so no family line exists to
  * close (`SourceFamilyBlocks.vue`).
  */
-const headCompareRoute = computed(() => {
-  const routes = [...blockCompareRoutes.value.values()];
-  // Exactly when the row draws no family line to close: the entry lives on one
-  // of the two lines and never on neither, so both read the one rule
-  // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(rowFiles.value);
-  return headed || routes.length !== 1 ? null : routes[0]!;
-});
+const headCompareRoute = computed(() =>
+  sessionSources.headEntryOf(rowFiles.value, blockCompareRoutes.value),
+);
 
 const blockCompareRoutes = computed(() => {
   const comparable = props.group.fileIdentities.flatMap((identity) => {

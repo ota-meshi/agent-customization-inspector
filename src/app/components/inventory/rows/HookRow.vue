@@ -28,6 +28,7 @@
 // activation (FR-009), and inspection never runs a declared command (FR-020).
 import { computed } from 'vue';
 import { NuxtLink } from '#components';
+import AuthoredNameText from '../../AuthoredNameText.vue';
 import RecognitionMarks from '../RecognitionMarks.vue';
 import RowDiagnostics from './RowDiagnostics.vue';
 import SourceFamilyBlocks from '../SourceFamilyBlocks.vue';
@@ -37,6 +38,7 @@ import { useSessionSources } from '../../../composables/session-sources';
 import { hookEventDetailRoute } from '../../hook-detail-route';
 import { hookComparisonRouteFor } from '../../../composables/hook-comparison';
 import {
+  UNNAMED_ROW_TEXT,
   fileIdentityKey,
   accessiblePresentationLabel,
   pathPresentationLabel,
@@ -166,14 +168,9 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
  * route, where the session holds one Source and so no family line exists to
  * close (`SourceFamilyBlocks.vue`).
  */
-const headCompareRoute = computed(() => {
-  const routes = [...blockCompareRoutes.value.values()];
-  // Exactly when the row draws no family line to close: the entry lives on one
-  // of the two lines and never on neither, so both read the one rule
-  // (`session-sources.ts` § familyLineShownFor).
-  const headed = sessionSources.familyLineShownFor(carrierRows.value);
-  return headed || routes.length !== 1 ? null : routes[0]!;
-});
+const headCompareRoute = computed(() =>
+  sessionSources.headEntryOf(carrierRows.value, blockCompareRoutes.value),
+);
 
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof hookComparisonRouteFor>>();
@@ -197,13 +194,14 @@ const blockCompareRoutes = computed(() => {
          it also holds a carrier whose hook block could not be read
          (FR-028). -->
     <p class="aci-row-head">
-      <span
-        v-if="event !== null"
-        class="aci-row-head__name"
-        :class="event.isAuthored ? 'aci-authored-text' : 'aci-muted'"
-        >{{ event.text }}</span
-      >
-      <span v-else class="aci-row-head__name">No known hook declarations</span>
+      <AuthoredNameText v-if="event !== null" :name="event">
+        <span
+          class="aci-row-head__name"
+          :class="event.isAuthored ? 'aci-authored-text' : 'aci-muted'"
+          >{{ event.text }}</span
+        >
+      </AuthoredNameText>
+      <span v-else class="aci-row-head__name">{{ UNNAMED_ROW_TEXT['hook'] }}</span>
       <span class="aci-row-head__count"
         >{{ carrierRows.length }} {{ carrierRows.length === 1 ? 'file' : 'files' }}</span
       >
@@ -242,7 +240,7 @@ const blockCompareRoutes = computed(() => {
                 sessionSources.qualifiedLinkName(
                   event === null
                     ? carrier.carrierAccessibleText
-                    : `${carrier.carrierAccessibleText}: ${event.accessibleText}`,
+                    : `${event.accessibleText} in ${carrier.carrierAccessibleText}`,
                   carrier.sourceId,
                 )
               "

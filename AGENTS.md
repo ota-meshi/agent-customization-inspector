@@ -61,16 +61,20 @@ policy agreed in conversation and left there is a policy the next session does n
 - Keep the reason, drop the chronology. When a decision is hard to judge from its outcome
   alone, state why the alternative was rejected — in the present tense, as a property of
   the design rather than as an account of an edit.
-- Four artifacts are change logs by nature and keep their dated entries: `tasks.md`; the
+- Five artifacts are change logs by nature and keep their dated entries: `tasks.md`; the
   `## Clarifications` section of `spec.md`, whose dated sessions record the questions a
   specification was asked and the answers that settled them; the `checklists/`, whose
-  items record how each check came to be satisfied; and the constitution's Sync Impact
+  items record how each check came to be satisfied; the constitution's Sync Impact
   Report comment, which the constitution workflow prescribes and which holds only the
-  latest amendment's report, never a stack of previous ones. Nowhere else — not a
-  requirement, not a contract clause, not a plan paragraph, not a code comment. Even in
-  those four, never write the superseded name or requirement: the body records what the
-  task now requires, or what the answer now is, and a dated amendment note records only
-  that — and briefly why — it changed, not what it used to say.
+  latest amendment's report, never a stack of previous ones; and `validation.md`, a
+  record of what each run reported and when, which spec.md § Release-Evidence Fixture
+  Governance asks to hold the prior and current manifest versions across a
+  denominator-semantics change — a transition is the fact it records there, not a
+  chronology it narrates. Nowhere else — not a requirement, not a contract clause, not a
+  plan paragraph, not a code comment. Even in those five, never write the superseded name
+  or requirement: the body records what the task now requires, or what the answer now is,
+  and a dated amendment note records only that — and briefly why — it changed, not what it
+  used to say.
 - Removing a historical note is an edit like any other: check that the parenthetical did
   not also carry a normative cross-reference such as an `FR-` identifier.
 - Never attribute a decision to the user. "user decision", "by user decision", and their

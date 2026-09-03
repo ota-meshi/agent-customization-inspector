@@ -74,7 +74,7 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     // The row is headed by the server name; the declaration line under it —
     // labelled by its owner carrier, with the row's name completing the
     // accessible name — is the link to that declaration's own detail.
-    await page.getByRole('link', { name: '.github/mcp.json: gh-actions' }).click();
+    await page.getByRole('link', { name: 'gh-actions in .github/mcp.json' }).click();
     await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=gh-actions/u);
     await expect(page.getByRole('heading', { name: 'gh-actions' })).toBeVisible();
     // The record's identity restated: the recognizing product with the
@@ -121,7 +121,7 @@ test.describe('the complete literal Copilot CLI MCP file detail', () => {
     // The declaration detail's own owner line opens the carrier's file-unit
     // view: the file facts — standing in for the source panel this page
     // deliberately lacks — and every declaration the bare-schema file makes.
-    await page.getByRole('link', { name: '.github/mcp.json: gh-actions' }).click();
+    await page.getByRole('link', { name: 'gh-actions in .github/mcp.json' }).click();
     await expect(page.getByRole('heading', { name: 'gh-actions' })).toBeVisible();
     await page.getByRole('link', { name: '.github/mcp.json' }).click();
     await expect(page.getByRole('heading', { name: '.github/mcp.json' })).toBeVisible();

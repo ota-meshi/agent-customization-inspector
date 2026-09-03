@@ -403,7 +403,7 @@ test('shows the tab title for the comparison the page holds', async ({ page }) =
   // The row and its pair ride in the title so two comparison tabs never
   // read identically (WCAG 2.4.2).
   await expect(page).toHaveTitle(
-    '⁨Comparing skill files: greet — .agents/skills/greet/SKILL.md and .claude/skills/greet/SKILL.md — SKILL.md⁩ — Agent Customization Inspector',
+    '⁨Comparing skill files: greet — first .agents/skills/greet/SKILL.md, second .claude/skills/greet/SKILL.md — SKILL.md⁩ — Agent Customization Inspector',
   );
 });
 

@@ -70,7 +70,7 @@ test.describe('the complete literal Copilot VS Code MCP file detail', () => {
   test('opens a .vscode declaration as its own detail, literal and unmasked', async ({ page }) => {
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /MCP/u }).click();
-    await page.getByRole('link', { name: '.vscode/mcp.json: vs-local' }).click();
+    await page.getByRole('link', { name: 'vs-local in .vscode/mcp.json' }).click();
     await expect(page).toHaveURL(/\/mcp\/detail\/repository\/.*\?server=vs-local/u);
     await expect(page.getByRole('heading', { name: 'vs-local' })).toBeVisible();
     // The record's identity: the recognizing product with the VS Code
@@ -114,7 +114,7 @@ test.describe('the complete literal Copilot VS Code MCP file detail', () => {
     // so its appearance proves no VS Code extractor ran on the root file —
     // the 1.118+ admission stays path and surface only — while the record
     // states both Copilot surfaces its one recognition rests on.
-    await page.getByRole('link', { name: '.mcp.json: root-bare' }).click();
+    await page.getByRole('link', { name: 'root-bare in .mcp.json' }).click();
     await expect(page.getByRole('heading', { name: 'root-bare' })).toBeVisible();
     const main = page.locator('main');
     await expect(page.locator('.aci-detail-attributes')).toContainText('GitHub Copilot');
@@ -130,7 +130,7 @@ test.describe('the complete literal Copilot VS Code MCP file detail', () => {
   }) => {
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /MCP/u }).click();
-    await page.getByRole('link', { name: '.vscode/mcp.json: vs-local' }).click();
+    await page.getByRole('link', { name: 'vs-local in .vscode/mcp.json' }).click();
     await expect(page.getByRole('heading', { name: 'vs-local' })).toBeVisible();
     await page.getByRole('link', { name: '.vscode/mcp.json' }).click();
     await expect(page.getByRole('heading', { name: '.vscode/mcp.json' })).toBeVisible();

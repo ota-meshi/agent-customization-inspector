@@ -65,6 +65,7 @@ import {
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
+import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
@@ -806,7 +807,7 @@ const titleSubject = computed<string>(() => {
       // because it has no characters to escape and spliced in raw it leaves a
       // doubled space the shell then spells the whole title out for.
       const name = crumbSubject.value;
-      const subject = name === null ? null : name.authored === '' ? name.text : name.authored;
+      const subject = name === null ? null : name.isEmpty ? name.singleLineText : name.authored;
       return subject === null
         ? `Comparing custom-agent files — ${sides}`
         : `Comparing custom-agent files: ${subject} — ${sides}`;
@@ -879,11 +880,13 @@ onBeforeUnmount(() => {
          name is the third crumb above as well, where it says where the page
          sits rather than what it is showing. -->
     <p v-if="crumbSubject !== null" class="aci-detail-attributes">
-      <strong
-        class="aci-detail-attributes__subject aci-path"
-        :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
-        >{{ crumbSubject.text }}</strong
-      >
+      <AuthoredNameText :name="crumbSubject">
+        <strong
+          class="aci-detail-attributes__subject aci-path"
+          :class="{ 'aci-authored-text': crumbSubject.isAuthored }"
+          >{{ crumbSubject.text }}</strong
+        >
+      </AuthoredNameText>
     </p>
 
     <!-- Stable rather than inserted with the state it reports, because a

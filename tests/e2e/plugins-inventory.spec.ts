@@ -180,7 +180,7 @@ test.describe('the unified plugin inventory', () => {
     // opens the file, and the marks beside it state what recognized it.
     await expect(sharedPath).toHaveAttribute(
       'aria-label',
-      '.claude-plugin/marketplace.json: formatter@shared-tools',
+      'formatter@shared-tools in .claude-plugin/marketplace.json',
     );
     await expect(shared.locator('.aci-recognition-marks__one')).toHaveText([
       /VS Code, CLI/u,

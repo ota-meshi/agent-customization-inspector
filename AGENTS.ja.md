@@ -52,12 +52,15 @@
   あります。
 - 理由は残し、経緯は落としてください。結果だけからは判断しにくい決定については、なぜ代替案を
   却下したのかを述べます。ただし編集の経過としてではなく、設計の性質として現在形で書きます。
-- 性質上が変更ログである artifact は4つあり、そこだけが日付付き entry を保持します: `tasks.md`、
+- 性質上が変更ログである artifact は5つあり、そこだけが日付付き entry を保持します: `tasks.md`、
   specification が受けた質問とそれを解決した回答を日付付き session として記録する `spec.md` の
-  `## Clarifications` section、各 check がどう満たされたかを記録する `checklists/`、そして
+  `## Clarifications` section、各 check がどう満たされたかを記録する `checklists/`、
   constitution workflow が定める constitution の Sync Impact Report comment（最新の改訂 1 件の
-  report だけを保持し、過去 report を積み重ねない）です。それ以外には書かないでください —
-  requirement にも、contract clause にも、plan の段落にも、code comment にもです。この4つでも
+  report だけを保持し、過去 report を積み重ねない）、そして各 run が何をいつ報告したかの記録である
+  `validation.md`（spec.md § Release-Evidence Fixture Governance が、分母の意味が変わる変更を
+  またいで旧版と現行版の manifest version を保持するよう求める場所であり、その遷移はそこに記録
+  される事実であって、語られる経緯ではありません）です。それ以外には書かないでください —
+  requirement にも、contract clause にも、plan の段落にも、code comment にもです。この5つでも
   旧名・旧要求は書かないでください。本文は task が今何を要求するか、回答が今どうであるかを
   記録し、日付付き修正 note は「いつ・なぜ変わったか」だけを短く記録します。以前どう書かれて
   いたかは記録しません。
