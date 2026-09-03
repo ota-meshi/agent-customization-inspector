@@ -92,8 +92,8 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、6 test passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 560 passed |
-| Coverage | `pnpm run test:coverage` | 74 file、1,870 test passed。statement 86.27%、line 86.59% |
+| Browser | `pnpm exec playwright test --project=chromium` | 561 passed |
+| Coverage | `pnpm run test:coverage` | 74 file、1,870 test passed。statement 86.25%、line 86.57% |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
 **ここでのbrowser gateは1 projectであり、certification matrixはCIのものである。**
@@ -119,6 +119,10 @@ revisionにわたるものであり、ここでは再現していない。上表
 起こらない同時実行をこの機械で行うと、片方の copyがその上限を超え、verifierの`checkpoint`が
 逐次runでは再現しないfailureを報告する。Work rootは毎回新しい`mkdtemp`、control
 endpointはephemeral portであり、copy同士は何も共有しない。奪い合うのは機械そのものである。
+
+**Coverageの百分率はあるrunの値であり、定数ではない。** このtreeに対する2回のrunは、6,848 statement
+中5,907と5,909のcovered statement — 86.25%と86.28% — を報告し、file 74件・test 1,870件のpassは
+どちらも同じだった。これらにthresholdをassertしている箇所はどこにも無く、上の行は後のrunである。
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
@@ -440,37 +444,27 @@ firefoxで全件通過し、`AUTO-2.1.1`のみ認証外のmacOS WebKitでそこ�
 要し、このreleaseはそれを主張しない（contracts/accessibility-acceptance.ja.md § 判定rule）。
 
 
-## Interface rework: 何が無効になり、release完了で何を繰り返すか
+## Interface reworkと、それが開き直した記録
 
 Phase 105–110のinterface reworkは、上に記録したすべてのoutcomeが観測されたsurfaceを変更した。
 すべてのsurfaceが描かれるpalette、inventoryのrowとrail、ファイル自身の事実を伴うdetailの見出しと
 前後への移動、detailがrecognitionごとに述べる呼び出し名、comparisonの見出し、そしてsession自身の
 controlの位置である。このうち2つは、記録済みの測定が名指しで参照していたものを移動させた。
 scan statusとcommitted generationはinventoryではなく`/repository` pageにあり、名前とpathの検索は
-shellのもので、barにある。したがって上のoutcomeは、取得した当時のtreeについて誤っているのではない。
-このtreeを記述していないのであって、このtreeから切るrelease candidateは、それらを引用するのではなく
-実行し直す。
+shellのもので、barにある。reworkが出発したtreeで取得したoutcomeは、そのtreeについて誤っているのでは
+ない。このtreeを記述していないのである。したがって上の記録は、このtreeが生んだものを述べており、
+それが同じ日付を持つ理由である。生んだrunがこのsessionではなくCIのものである場合は、その記録を
+所有する節がそう述べている。
 
-無効になるものと、その理由:
+reworkが到達したものと、各記録をこのtreeで取り直すことになった理由:
 
-| 記録済みのoutcome | reworkが無効にする理由 |
+| 記録 | reworkが到達した理由 |
 |---|---|
-| Release gate execution表 | その件数はrework前のtreeで各runが報告した値である。以降どのsuiteもcaseの増減や変更を受けており、数値はこのtreeのrunを同定しない |
-| SC-001とSC-006のfirst-use session | spec.md § Measurable Outcomesは、primary workflowへの実質的な変更の後に評価をやり直すことを求める。reworkは4つすべてのsurfaceを変更した |
-| SC-008 accessibility（`AUTO-*`） | 34件の自動checkはrework前のmarkupに対して記録されており、reworkが移動させたcontrolを含む。さらにPhase 105は、すべてのcontrast checkが測定するpaletteを置き換えた |
-| SC-008 Not-applicableの再検証（`REVIEW-*`） | 各rationaleは、その後reworkが変更した`src/`に対して再確認したものである。3.3.7の行はinventoryのpath filterを名指しするが、それは現在shellの検索controlである |
+| Release gate execution表 | どのsuiteもcaseの増減や変更を受けており、別のtreeで取った件数はこのtreeのrunを同定しない |
+| SC-001とSC-006のfirst-use session | spec.md § Measurable Outcomesは、primary workflowへの実質的な変更の後に評価をやり直すことを求め、reworkは4つすべてのsurfaceを変更した |
+| SC-008 accessibility（`AUTO-*`） | 34件の自動checkはreworkが移動させたmarkupを対象とし、さらにPhase 105は、すべてのcontrast checkが測定するpaletteを置き換えた |
+| SC-008 Not-applicableの再検証（`REVIEW-*`） | 各rationaleは、reworkが変更した`src/`の読みである。3.3.7の行は名前とpathの検索を名指しし、reworkはそれをbarへ移した |
 | SC-003、SC-004、SC-005、SC-007 | fixture byteが変わっており、spec.md § Release-Evidence Fixture Governanceはfixture byteの変更を新しい非比較可能な測定setとする。Phase 110はさらに、SC-003のshared-file caseとSC-005のrow caseが観測するskill・hook・MCPのdetail見出しを作り直した |
 
-Release完了がこのreworked treeに対して繰り返すもの、この順で:
-
-1. `pnpm run build`、続いて`pnpm run verify:package`と`pnpm run test:package`。
-2. Release gate execution表のすべてのgate。各runが報告する件数を記録する。
-3. CIでの3 project browser run。認証matrixが実行されるのはそこである。
-4. SC-008の自動checkと`REVIEW-*`の再確認。このtreeの`src/`とpacked `dist/`に対して行う。
-5. SC-003、SC-004、SC-005、SC-007のoutcome-manifest測定。新しいsetを同定するmanifest versionと
-   canonical digestを記録する。
-6. SC-001とSC-006のためのagent駆動20 session。候補のbuildに対して実施し、agent駆動のrunとして
-   記録する。
-
-ここに書いたものはreworkに対する指摘ではない。このtreeからのreleaseが負うもののlistであり、
-後からdiffを見て再構成するのではなく、理由が新しいうちに書き留めたものである。
+ここに書いたものはreworkに対する指摘ではない。この文書のevidenceが、featureの歴史全体ではなく
+1つのtreeのものである理由である。

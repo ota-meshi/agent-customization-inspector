@@ -9037,8 +9037,8 @@ readmeは読み手が実際に出会うinterfaceを示す。
 
 ### 作り直したtreeに対するreleaseの完了
 
-以下の6件は、`specs/001-inspect-agent-customizations/validation.md` § Interface rework が負債と
-して記録したものを、そこで名指された順に繰り返す。各taskは結果をそのファイルと
+以下の6件は、interface reworkが到達した各記録を、`specs/001-inspect-agent-customizations/validation.md`
+§ Interface reworkと、それが開き直した記録 が名指す順に、このtreeで取り直す。各taskは結果をそのファイルと
 `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。
 
 - [X] T1190 このtreeに対して `pnpm run build` を実行し、続いて `pnpm run verify:package` と
@@ -9113,9 +9113,9 @@ readmeは読み手が実際に出会うinterfaceを示す。
 
 ### 作り直しの記録
 
-- [ ] T1199 CRITICAL `specs/001-inspect-agent-customizations/validation.md` と
+- [X] T1199 CRITICAL `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` の
-  `## Interface rework: what it invalidates, and what release completion repeats` を、現在の事実
+  `## Interface reworkと、それが開き直した記録` を、現在の事実
   へ書き直す。無効化されたとして名指されている記録はいずれもすでに取り直されているのに、節は
   現在形で反対のことを主張している。表はRelease gate execution tableが作り直し前のtreeのcountを
   保持すると述べるが、その表は 2026-09-03 にこのtreeで実行した結果を記録している。SC-001 と
@@ -9129,7 +9129,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
 
 ### Task set の gate
 
-- [ ] T1200 このフェーズが追加するtaskに対してtask setのgateを回復する。
+- [X] T1200 このフェーズが追加するtaskに対してtask setのgateを回復する。
   `specs/001-inspect-agent-customizations/tasks.md`、
   `specs/001-inspect-agent-customizations/tasks.ja.md`、
   `tests/documentation/cross-artifact.test.ts` において、T1199・T1200・T1201 を両言語の Normative
@@ -9141,7 +9141,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
 
 ### Story label の規則
 
-- [ ] T1201 `specs/001-inspect-agent-customizations/tasks.md` と
+- [X] T1201 `specs/001-inspect-agent-customizations/tasks.md` と
   `specs/001-inspect-agent-customizations/tasks.ja.md` の tasks.md § 形式 にある `[Story]` の行を
   修正する。この行はいまだ「フェーズ 3〜101 および 105〜109」でstory labelを必須とし、省略を
   「Setup、Minimal Secure Foundation、フェーズ 102〜104」に限っている。フェーズ 110 のtaskは

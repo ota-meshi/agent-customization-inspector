@@ -110,8 +110,8 @@ Every gate below was run on 2026-09-03 against the tree at this change's tip, af
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 6 tests passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 560 passed |
-| Coverage | `pnpm run test:coverage` | 74 files, 1,870 tests passed; statements 86.27%, lines 86.59% |
+| Browser | `pnpm exec playwright test --project=chromium` | 561 passed |
+| Coverage | `pnpm run test:coverage` | 74 files, 1,870 tests passed; statements 86.25%, lines 86.57% |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
 **The browser gate here is one project; the certification matrix is CI's.**
@@ -139,6 +139,11 @@ is bounded. Run concurrently on this machine — which the ordinary sequential c
 — one copy misses that bound and the verifier's `checkpoint` reports a failure that a
 sequential run does not reproduce. Each work root is a fresh `mkdtemp` and each control
 endpoint an ephemeral port, so the copies share nothing; what they compete for is the machine.
+
+**The coverage percentages are a run's, not a constant.** Two runs over this tree reported
+5,907 and 5,909 covered statements of 6,848 — 86.25% and 86.28% — with the same 74 files and
+1,870 tests passing in both. No threshold is asserted on them anywhere, and the row above is
+the later run.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
 non-gating pass over the 100,000-entry fixture and asserts harness integrity. No timing

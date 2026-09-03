@@ -10531,8 +10531,9 @@ shows the interface the reader will meet.
 
 ### Release completion over the reworked tree
 
-These six repeat what `specs/001-inspect-agent-customizations/validation.md` § Interface rework
-records as owed, in the order it names. Each records its result in that file and in
+These six take each record the interface rework reached over this tree, in the order
+`specs/001-inspect-agent-customizations/validation.md` § The interface rework and the records it
+reopened names them. Each records its result in that file and in
 `specs/001-inspect-agent-customizations/validation.ja.md`.
 
 - [X] T1190 Run `pnpm run build`, then `pnpm run verify:package` and `pnpm run test:package` over
@@ -10609,8 +10610,8 @@ account plus a list of what it lacks.
 
 ### The rework record
 
-- [ ] T1199 CRITICAL Rewrite `## Interface rework: what it invalidates, and what release completion
-  repeats` in `specs/001-inspect-agent-customizations/validation.md` and
+- [X] T1199 CRITICAL Rewrite `## The interface rework and the records it reopened` in
+  `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md` to what is now true: every record it
   names as invalidated has since been re-taken, and the section still asserts otherwise in the
   present tense. Its table says the Release gate execution table holds counts from the pre-rework
@@ -10626,7 +10627,7 @@ account plus a list of what it lacks.
 
 ### Task-set gates
 
-- [ ] T1200 Restore the task-set gates over the tasks this phase adds, in
+- [X] T1200 Restore the task-set gates over the tasks this phase adds, in
   `specs/001-inspect-agent-customizations/tasks.md`,
   `specs/001-inspect-agent-customizations/tasks.ja.md`, and
   `tests/documentation/cross-artifact.test.ts`: name T1199, T1200, and T1201 in the Normative
@@ -10638,7 +10639,7 @@ account plus a list of what it lacks.
 
 ### The story-label rule
 
-- [ ] T1201 Correct the `[Story]` line in tasks.md § Format in
+- [X] T1201 Correct the `[Story]` line in tasks.md § Format in
   `specs/001-inspect-agent-customizations/tasks.md` and
   `specs/001-inspect-agent-customizations/tasks.ja.md`, which still requires a story label for
   "Phases 3–101 and 105–109" and omits it only in "Setup, Minimal Secure Foundation, and Phases
