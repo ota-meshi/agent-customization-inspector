@@ -349,7 +349,7 @@ export type RescanOutcome =
       readonly kind: 'accepted';
       /** The opaque request ID every later status for this command carries. */
       readonly scanRequestId: string;
-      /** The Source projection as of admission, carrying that same ID. */
+      /** The Source projection as the admitted scan left it, carrying that same ID. */
       readonly source: SourceDto;
     }
   | {

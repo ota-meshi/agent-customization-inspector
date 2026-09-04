@@ -240,11 +240,14 @@ An unexpected thrown or rejected handler failure is not wrapped in a product env
 crosses the devframe channel as an ordinary serialized RPC error (devframe/birpc
 behavior), and the client shows the real error message. A failure before asynchronous job
 acceptance rejects only that invocation; no job or `scanRequestId` is created and nothing
-is retained in the session. For an accepted scan job, the invocation has already resolved
-with its queued acceptance, so the terminal failure is retained where the data model
-defines it: an explicit-rescan failure in the affected Source's `staleFailures` entry as
-`{ kind: 'error', message }`, and an accepted admitted-subset Global batch failure in the
-failed `batchStatus`. The two-stage Global-disable barrier is the sole exception: a
+is retained in the session. An accepted job's terminal failure is retained where the data
+model defines it rather than thrown into the invocation: an explicit-rescan failure in the
+affected Source's `staleFailures` entry as `{ kind: 'error', message }`, and an accepted
+admitted-subset Global batch failure in the failed `batchStatus`. The two accepted jobs
+settle their invocations differently. An explicit rescan resolves when its scan reaches a
+terminal state, so its acceptance carries the Source that scan left. `enable-global`
+likewise resolves once every admitted member's scan is terminal, and answers with its
+queued acceptance whether the batch committed or failed. The two-stage Global-disable barrier is the sole exception: a
 post-acceptance failure rejects that still-pending disable invocation with the real error
 and also retains the same message for the fenced session as the failed disable
 projection's `globalDisableInProgress.message`, present only while its `state` is `failed`

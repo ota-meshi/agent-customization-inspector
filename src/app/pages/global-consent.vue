@@ -258,6 +258,19 @@ function recapturePreview(): void {
   }
 }
 
+/**
+ * Confirms the preview unless a confirmation is already out. The guard is
+ * here rather than only inside the command, because a press this page starts
+ * nothing for must move nothing either: {@link runAndRefocus} sends focus to
+ * the heading, and doing that for a press that dispatched no request would
+ * take the reader off the control they pressed for no reason.
+ */
+function confirmConsent(): void {
+  if (sessionViewState.globalEnableState.value === 'idle') {
+    runAndRefocus(() => sessionViewState.confirmGlobalConsent());
+  }
+}
+
 // A refresh can unmount the very element that held keyboard focus — another
 // tab's commit replaces the live-operation branch with the Source controls, and
 // another tab's disable replaces the whole page — and focus then falls to the
@@ -362,7 +375,7 @@ watch(
         <button
           type="button"
           :aria-disabled="sessionViewState.globalEnableState.value !== 'idle' || undefined"
-          @click="runAndRefocus(() => sessionViewState.confirmGlobalConsent())"
+          @click="confirmConsent"
         >
           {{ controls.length === 0 ? 'Inspect these directories' : 'Try the failed members again' }}
         </button>

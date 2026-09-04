@@ -411,13 +411,18 @@ retained errorをclearする。Repository operationとpublish済みSourceのresc
 |---|---|---|
 | `operationId` | opaque string | 1回のinitial enableまたはexact-consent retry用のunique coordinator command |
 | `kind` | `initial-enable \| retry` | Closed operation type。どちらもcommit済みgenerationではない |
-| `commandEpoch` | non-negative integer | 受理時のcoordinator値をcaptureし、全async continuationで一致を要求 |
 | `previewId` | opaque string | Operation全体でfrozen consent previewと一致 |
-| `previewEpoch` | non-negative safe integer | Registration時にexact preview objectからcaptureし、全async boundary後とterminal commit前にobject identityとともにrevalidate |
-| `tools` | non-emptyなsort済みmember enum[] | Initial enableではexact fixed 4-member set、retryではcomplete server-derived `retryableTools` subset。Clientから供給またはnarrowしない |
-| `scanRequestId` | opaque ASCII stringまたはnull | Rootを1つ以上admitして単一subset scanをacceptした場合だけ正確に1回allocateし、そのbatchとcommitする1つのGlobal generationで共有する |
-| `status` | `waiting \| validating \| admitting \| queueing-batch \| draining \| cancelled \| complete` | Disableがabortすると`draining`になり、以後new authority/jobをpublishできない |
-| `responseDisposition` | `unset \| queued \| active-no-job \| global-disable-pending` | Coordinator linearization pointで正確に1回選択し、`queued`は1つのatomic admitted-subset jobを表す |
+
+Recordが持つのはこの3 fieldだけであり、operationが要する各不変条件は、専用のfieldではなく既存の
+機構が保つ。同時に1 operationだけであることはregistration自身が保つ。recordがある間は拒否するからで
+ある。Async boundaryを越えた継続は、sessionの現在の`operationId`とregistrationが発行したものを比較して
+検査する。Barrierがcancelしたoperationや、後のregistrationが置き換えたoperationはもう一致せず、その
+継続は何もpublishしない。Operationが束縛されるpreviewはdomain自身のcurrent objectであり、`previewId`が
+それを識別する。評価するmember setはsettlementで導出する。Initial enableでは固定の4件、retryでは
+serverが導出する`retryableTools` subsetであり、clientから運ばれることはない。`scanRequestId`は
+settlementがqueueするbatchのものであり、`batchStatus`で公開する。Operationが何に解決したかは
+settleした`GlobalEnableResultDto.state`、すなわち`queued`または`active-no-job`である。Barrierがcancelした
+場合は固定の`global-disable-pending` conflictで応答する。
 
 Initial enableは同じcoordinator lock下でcommandを登録してexact current preview object/epochをfreezeするが、provisional consent、4件のcontrol、candidate ID、全admission outcomeを
 operation-localかつ観測不能に保ち、4 entryすべての決定的validationが終わる前に`globalControl`を作成せず

@@ -9,9 +9,12 @@
 // FR-003 gives an accompanying file no inventory row of its own, so its
 // diagnostic is stated inside the row of the skill whose directory holds it.
 //
-// It carries no empty state of its own. The caller renders this section only
-// when there is something to list, because a heading that says nothing could
-// not be read is a finding, not a placeholder.
+// It carries an empty state, as every kind's list does: this entry is a tab a
+// reader can select whatever its count, and a selected tab whose panel draws
+// nothing leaves them with the note above and blank space. One sentence is
+// enough — the note already says what this list is, and nothing here can be
+// narrowed away, so there is no way out to offer (`InventoryList.vue` gives
+// the filtered case its own).
 import SourceFamilySections from './SourceFamilySections.vue';
 import UnclassifiedRow from './rows/UnclassifiedRow.vue';
 import { fileIdentityKey } from '../../../shared/entities';
@@ -26,7 +29,10 @@ defineProps<{
 </script>
 
 <template>
-  <ul class="aci-list aci-inventory" role="list">
+  <div v-if="files.length === 0" class="aci-empty-result">
+    <p class="aci-empty-result__statement">No files.</p>
+  </div>
+  <ul v-else class="aci-list aci-inventory" role="list">
     <!-- One section per Source family, exactly as the file-unit kinds' lists
          (`SourceFamilySections.vue`). The row states which home a file came
          from by its short name, so the family heading is what says a file is

@@ -9,7 +9,7 @@
     "global-homes": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/global-homes/build-fixtures.ts",
-      "sha256": "0a8492abe133eed5dbf439c0c43724f8c2cf12dfb40a3eaf0c1aa3c12c0b8520"
+      "sha256": "85d002dc814dd90c19b62e843ada538e5cbe98fe52ffc9c23ffb8c9f857110ff"
     },
     "repositories": {
       "kind": "deterministic-builder",

@@ -320,8 +320,9 @@ answers, so a `3xx` is reported for review rather than followed. Following one w
 recorded URL a starting point instead of the address the citation names, and a relocation is
 a citation change the reviewer makes. Request, response, redirect, and decoding capacity comes from Node.js and
 the execution environment; a recoverable environment failure fails closed. An HTTPS
-downgrade, cross-host redirect, wrong content type, decoding failure, or missing or duplicate
-heading is a hard failure. A section no served heading carries is then looked for in
+downgrade, cross-host redirect, wrong content type, decoding failure, a section carried by
+two or more served headings, and a section whose final resolution is missing or ambiguous
+are hard failures. A section no served heading carries is looked for in
 the page's own table of contents, for the heading check only: the site derives that list from
 the same content, so a fragment link whose text is the cited section names a section the page
 has — one whose heading a client-rendered page did not serve, or one the page renders as

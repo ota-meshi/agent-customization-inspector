@@ -6876,8 +6876,10 @@ dispositionである。
 - [X] T1004 [US4] One shared batch request/progressに結び付くfixed-four confirmationとper-member
   outcome/retry control、focus recovery、`active-no-job`、ordinaryなwhole-batch failure
   error、simultaneous separate-Source outcome
-  presentationを`src/app/pages/global-consent.vue`と`src/app/components/consent/GlobalSourceControls.vue`で完成させ、自動更新statusにはT071のpause/resumeとon-demand-refresh
+  presentationを`src/app/pages/global-consent.vue`と`src/app/components/consent/GlobalSourceControls.vue`で完成させ、statusにはT071のon-demand-refresh
   contractを再利用する *(2026-08-27修正: fixed-four — 共有agent homeがmemberに加わる（FR-045）。)*
+  *(2026-09-04修正: pause/resumeの側を落とした。そうしたcontrolが存在しないことをT071自身の注記が
+  記録しており、これらのpageは何も自動更新しないので、pauseする対象が無いからである。)*
 - [X] T1005 [US4] 英語のfixed-four/single-batch、one-root separate
   Source、accepted/rejected、`active-no-job`、whole-batch failure、carried existing
   Sourcesをvisibleに保つretry、source/tool-filter、detail/comparison、shared-progress messageをそれらを描画するVue
@@ -9095,7 +9097,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
   した *(2026-09-03 修正: 記録したrunは各sessionにhostが既に配信しているoriginを渡したので、その
   timerはSC-001の区間が含む起動を含まず、recordはSC-001を未確立と述べる。各sessionが自分でInspectorを
   起動する繰り返しはT1202であり、このtaskは記録したrunとしてだけ完了である。)*（SC-001、SC-006）（missing）
-- [X] T1202 SC-001 と SC-006 の agent駆動session 20件を、各sessionが意図した Repository root から
+- [ ] T1202 SC-001 と SC-006 の agent駆動session 20件を、各sessionが意図した Repository root から
   自分で Inspector を起動する形で繰り返す — SC-001 の区間は起動を含み、T1195 が記録する run は
   その後から始まっていた —。そのbuildと `tests/usability/sc001-sc006-study-inputs/` の採点材料を
   名指して、結果をagent駆動の実行として `specs/001-inspect-agent-customizations/validation.md` と
@@ -9103,7 +9105,9 @@ readmeは読み手が実際に出会うinterfaceを示す。
   この日に2回実施し、2回目は最初のrunの所見が導いた作り直しを載せたbuildに対して行った。どちらの
   runもSC-001とSC-006を確立しない。全sessionのruntimeがこのrepository自身の指示を持っており、基準の
   no-hint policyはそれを許さず、2回目はsession自身のruntimeのserviceの障害がdiscovery区間の内側で
-  3件を切った。再実施は、各sessionをこのworking treeの外で開始し、現在のbuildに対して行う。)*（SC-001、SC-006）
+  3件を切った。再実施は、各sessionをこのworking treeの外で開始し、現在のbuildに対して行う。同日の3回目の試行はsessionを1件も立ち上げられなかった。accountの
+  session limitが20 processすべてを最初のturnの前に拒み、記録すべきrunが存在しないので、この
+  taskは開いたままとする。)*（SC-001、SC-006）
 
 ### 作り直しを名指す記録
 

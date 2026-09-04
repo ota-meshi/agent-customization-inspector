@@ -174,7 +174,10 @@ declarative: `.gitattributes` (`* text=auto eol=lf`) makes git normalize line en
 `@nuxt/eslint` 1.16.0 is the lint
 gate, and the strict TypeScript type check over the application, shared, source, script, and
 test code configured in `tsconfig.json` runs as the equally independent `typecheck` gate.
-Local verification, independent CI jobs, and release run ESLint and `typecheck` separately.
+Local verification and independent CI jobs run ESLint and `typecheck` separately. The
+release path re-runs neither: it adds only the checks about the artifact itself — the build
+that produces the tarball and the packaged-tree verification over what is about to be packed
+(AGENTS.md § Release policy).
 
 **Dependency and breaking-change migration gate**: This initial-release baseline has a
 planned migration impact of none because there is no prior published Inspector package,
@@ -536,13 +539,6 @@ _GATE: Passed before Phase 0 research and re-checked after Phase 1 design._
       distinct from ordinary scoped route/Source/generation cleanup, and Global disable is
       the explicit exception that invokes the full purge before its request. Deliberately inspected complete content
       remains inert, local, session-only, and absent from persistence and egress.
-      Study capture adapters likewise classify raw traffic only ephemerally and discard it
-      before IPC; retained evidence hashes only closed content-free safe events and rejects raw
-      header names, framing, wire or encoded representations, every noncanonical derivative, bodies,
-      content/metadata, participant responses, paths, URLs/authority values, capabilities,
-      environment values, and raw errors. The sole exception is strictly validated decoded
-      canonical safe `correlationId`, retained in the canonical payload and digest chain; captured
-      wire/browser/Inspector bytes are never hash preimages.
       Session diagnostics may carry only actionable location fields. Failures are reported
       as ordinary errors: per the Constitution § Quality and Safety Standards, the product defines no
       log-content rules and no sanitized error envelope, because it has no telemetry and
@@ -1296,10 +1292,11 @@ configuration.
   consented homes' readable files of one row against each other while retaining each
   owning Source and Source-relative namespace — a comparison stays inside one Source
   family, so no pair spans Repository and Global.
-  Automatically updating Repository and Global scan/status information shown beside other
-  content uses one keyboard-operable pause/resume plus on-demand-refresh control. Pausing
-  freezes the presented/live-region status at its last value without stopping the underlying
-  scan; resuming or explicit refresh presents the current state.
+  Repository and Global scan/status information updates on the reader's own actions and on
+  nothing else: a scan command answers once its scan is terminal and the page refetches on
+  that answer, and an explicit refresh is what shows a scan that started elsewhere. Nothing
+  updates by itself, so there is no pause/resume control and nothing to pause
+  (contracts/accessibility-acceptance.md § 2.2.2).
   The editor is client-only and lazy-loaded on file/compare routes. Nuxt/Vite emits the
   explicitly imported editor worker as a same-origin static asset, plus one lazily fetched
   grammar chunk per basic language; language-service workers, CDN assets, external workers,

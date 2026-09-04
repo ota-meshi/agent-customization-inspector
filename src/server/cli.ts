@@ -173,7 +173,12 @@ const command = define({
       // is its control's own `failureCode`, which the consent page states —
       // the flag reports nothing itself, because the terminal output is the
       // one launch line (contracts/http-api.md § Host requirements #5).
-      await runGlobalEnable(context, consent.createPreview());
+      //
+      // An accepted batch's terminal failure propagates, as the Repository
+      // scan's does: there is no host yet on which the session could state a
+      // retained failure, so swallowing it would announce a launch URL for a
+      // personal setup that was never read.
+      await runGlobalEnable(context, consent.createPreview(), { onBatchFailure: 'propagate' });
     }
     // Install shutdown handling before the launch line becomes observable.
     // The host calls `onReady` before its `open` browser helper and returns

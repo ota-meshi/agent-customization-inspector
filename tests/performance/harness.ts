@@ -672,7 +672,12 @@ export function createSc002AdmissionCapture(): Sc002AdmissionCapture {
 
 /** One recorded smoke observation, printed with the run rather than asserted. */
 export interface Sc002RunRecord {
-  /** The profile the run executed under. */
+  /**
+   * The checked-in reference profile these observations are read beside. It
+   * is not a claim about this run's own machine: nothing here compares the
+   * executing environment with the profile's, and the printed record carries
+   * that environment separately (`global-run.ts`).
+   */
   readonly profileId: string;
   /** The manifest version the fixture was validated against. */
   readonly manifestVersion: number;

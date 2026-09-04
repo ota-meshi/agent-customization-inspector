@@ -34,8 +34,12 @@ export type InventorySelection = CustomizationKind | NonKindSelection;
  * order the rail renders them in: the files first, because a file in no kind
  * is still a file the reader was looking for, and the Source-level diagnostics
  * last, being the only entry that lists no file at all.
+ *
+ * Typed as a non-empty tuple, because the inventory's default selection is its
+ * first entry: a generation that recognized no kind still has these two, so
+ * there is always an entry to select (`pages/index.vue` § activeSelection).
  */
-export const NON_KIND_SELECTION_ORDER: readonly NonKindSelection[] = [
+export const NON_KIND_SELECTION_ORDER: readonly [NonKindSelection, ...NonKindSelection[]] = [
   'files-in-no-kind',
   'diagnostics',
 ];

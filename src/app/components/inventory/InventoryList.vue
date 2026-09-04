@@ -60,7 +60,7 @@ import type { InstructionRangeGroup, NarrowedInventoryRow } from '../../composab
 
 const props = defineProps<{
   /** The kind in view; its inventory below is what this list renders. */
-  kind: CustomizationKind | null;
+  kind: CustomizationKind;
   /** The instruction rows that passed the active filters, in snapshot order. */
   instructionRangeGroups: readonly InstructionRangeGroup[];
   /** The skill rows that passed the active filters, in snapshot order. */
@@ -141,11 +141,7 @@ const rowCount = computed(() =>
        rows: a tab's `aria-controls` must reach something, and an empty panel is
        what "this kind has nothing" looks like. It is labelled by that tab, so a
        screen reader reaching it knows which kind it is reading. -->
-  <div
-    :id="kind === null ? undefined : inventoryPanelId(kind)"
-    :role="kind === null ? undefined : 'tabpanel'"
-    :aria-labelledby="kind === null ? undefined : inventoryTabId(kind)"
-  >
+  <div :id="inventoryPanelId(kind)" role="tabpanel" :aria-labelledby="inventoryTabId(kind)">
     <ul v-if="rowCount > 0" class="aci-list aci-inventory" role="list">
       <template v-if="kind === 'instructions'">
         <!-- Keyed by the range itself — the row unit is one applicability
@@ -309,12 +305,11 @@ const rowCount = computed(() =>
          no explanation of its own. -->
     <div v-else class="aci-empty-result">
       <p v-if="totalCount === 0" class="aci-empty-result__statement">
-        No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} were
-        recognized in this scan.
+        No {{ CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }} were recognized in this scan.
       </p>
       <template v-else>
         <p class="aci-empty-result__statement">
-          No {{ kind === null ? 'customization files' : CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }}
+          No {{ CUSTOMIZATION_KIND_PLURAL_TEXT[kind] }}
           match the current filters.
         </p>
         <!-- The same command the filter row carries, where the reader is

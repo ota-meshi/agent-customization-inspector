@@ -438,12 +438,14 @@ mixed path matrix:
 2. The **Inspector matcher registry** records stable `ruleId` values and is governed by
    the common [allowlist grammar](contracts/inspection-path-allowlist.md). Every Repository
    matcher separates Base, ordered Relative selectors, and their one-to-one typed segment
-   programs, is rendered from the exact selected Repository root with `./`, and rejects a bare `**/`.
+   programs.
    Literal, regex, and non-adjacent recursive-directory tokens can compose in one program;
-   `./**/` denotes explicit downward Inspector descendant inventory only and never asserts
-   vendor traversal. Build validation compiles the same programs into immutable versioned
-   `TraversalPlan` data; Global preview patterns render from those plans and consent binds
-   their schema, closed selection policy, and canonical programs. The only
+   a descendant-inventory selector denotes explicit downward Inspector descendant inventory
+   only and never asserts vendor traversal. Build validation compiles the same programs into
+   immutable versioned `TraversalPlan` data. A consent preview holds the captured roots and
+   the two version identifiers that name the shipped allowlist and plan set; it holds no plan
+   and no program of its own, and a scan reads them from the static registry those versions
+   identify. The only
    content-dependent policy is the closed Codex Global first-non-empty branch: it probes
    the override first, short-circuits on read non-empty content, advances only from
    absent or empty content, and ends the branch with that file's diagnostic and no

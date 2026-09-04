@@ -106,34 +106,39 @@ proposed. The task set is not superseded by this review.
 
 ## Release gate execution
 
-**Regression review, 2026-09-04.** The official-source checker corrections and their
-regression cases pass `pnpm run test:contract`: 12 files and 405 tests passed. The current
-`pnpm run test:integration` run reports 10 files passed and one failed, with 269 tests passed
-and one failed across 11 files. The one failure is
-`tests/integration/cli-global-batch-failure.test.ts`'s CLI propagation case: after an accepted
-Global batch rejects, the command resolves, starts the host, and prints its launch URL instead
-of propagating the original error. The paired RPC case passes and retains that failure in the
-batch status while returning the queued acceptance. Type checking and the targeted formatting,
-lint, and diff checks pass. Release approval remains blocked until the production correction
-owned by T046 lands and the full release gate is rerun.
+**The CLI's accepted-batch failure now propagates**, which is what
+`tests/integration/cli-global-batch-failure.test.ts` had been failing on: `runGlobalEnable`
+takes the disposition its caller needs, so the confirmation the consent page sends retains a
+failed batch on `batchStatus` and answers with its acceptance, while the CLI's
+`--inspect-personal-setup` throws it before a host exists, printing no launch URL — the same
+end the automatic Repository scan's failure has. Both cases now pass.
 
-Every gate below was run on 2026-09-03 against the tree then under review, after
-`pnpm run build`. The counts are what each run reported; the table is a historical run record,
-not approval of the current tree described above.
+**The launcher-exclusion review remains open.** `DetectedFileOpener` compares an executable
+and each inspected root by lexical spelling. With an inspected root that is a symbolic link to
+`/` and `EDITOR=/usr/bin/vi`, the probe offered `terminal-editor`: the executable is inside the
+tree that root reaches but outside the root's spelling. That conflicts with FR-020, FR-022, and
+the `open-file` contract's requirement to exclude every candidate directory inside an inspected
+root. The SC-004 exception covers a lexically indistinguishable network filesystem, not a local
+root alias, so the source comment cannot establish this as an accepted limitation. The gates
+below do not exercise the alias case. Release approval remains blocked until the implementation
+and a regression test establish the contracted exclusion.
+
+Every gate below was run on 2026-09-04 against this tree, after `pnpm run build`, in one
+sitting; the counts are what each run reported.
 
 | Gate | Command | Result |
 |---|---|---|
 | Format | `pnpm run format:check` | silent, exit 0 |
 | Lint | `pnpm run lint` | silent, exit 0 |
 | Types | `pnpm run typecheck` | silent, exit 0 |
-| Unit | `pnpm run test:unit` | 52 files, 1,211 tests passed |
-| Contract | `pnpm run test:contract` | 12 files, 391 tests passed |
-| Integration | `pnpm run test:integration` | 10 files, 268 tests passed |
+| Unit | `pnpm run test:unit` | 52 files, 1,224 tests passed |
+| Contract | `pnpm run test:contract` | 12 files, 405 tests passed |
+| Integration | `pnpm run test:integration` | 11 files, 270 tests passed |
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 4 tests passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 564 passed |
-| Coverage | `pnpm run test:coverage` | 74 files, 1,870 tests passed; statements 86.25%, lines 86.57% |
+| Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
+| Coverage | `pnpm run test:coverage` | 75 files, 1,899 tests passed; statements 86.14%, lines 86.45% |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
 **The browser gate here is one project; the certification matrix is CI's.**
@@ -154,16 +159,18 @@ pinned revisions, and it is not reproduced here: the row above is one project on
 a local run stands in for none of it. The disposition is unchanged from the tree the rework
 started on — what changed is which commit the certifying run is of.
 
-**The coverage percentages are a run's, not a constant.** Two runs over this tree reported
-5,907 and 5,909 covered statements of 6,848 — 86.25% and 86.28% — with the same 74 files and
-1,870 tests passing in both. No threshold is asserted on them anywhere, and the row above is
-the later run.
+**The coverage percentages are a run's, not a constant.** This tree's run reported the 75
+files, 1,899 passing tests, and percentages recorded in the row above. No threshold is asserted
+on them anywhere.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
 non-gating pass over the 100,000-entry fixture and asserts harness integrity. No timing
-threshold is asserted anywhere in this release. The pass on 2026-09-04 (arm64, Node 24.14.0,
-profile `sc002-smoke-reference-v2` — minted because the profile's benchmark fields changed and
-its own rule makes any field change a new, non-comparable ID) observed the request-correlated
+threshold is asserted anywhere in this release. The checked-in reference profile
+`sc002-smoke-reference-v2` describes a hosted Ubuntu 24.04 x86_64 runner on Node 24.18 and was
+minted because the profile's benchmark fields changed, its own rule making any field change a
+new, non-comparable ID. It is the reference these observations are read beside and not a claim
+about where they were taken: nothing compares the executing environment with it, so the run
+prints its own. The pass on 2026-09-04 ran on this machine — arm64, Node 24.14.0 — and observed the request-correlated
 status 118 ms and the request-committed operable inventory 607 ms after the rescan was
 dispatched, the filter feedback at 23 ms and the selection feedback at 45 ms; the global setup
 prints these for whoever reads the log, and they describe this machine.
@@ -172,22 +179,22 @@ prints these for whoever reads the log, and they describe this machine.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `ced49fd384730548c6077aa9248175e0320845d9b48de72b72cb4a40b2717bb7`, recorded in
+SHA-256 `58e3a057a3713d0896efd472527d3d2f73c89f4ade794a05c0fd07942cf372f5`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-04 by
 running every suite each case names in `verifiedBy`: the vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
-Chromium project — the whole Chromium suite, 565 tests, of which 562 passed in one run and the
-three `global-codex-admission` cases passed once their confirmation helper waited for the
-answer that now arrives with the read finished, which is the change this set records.
-`tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and all 66
-fixture digests in the same session.
+whole Chromium suite, 567 tests, all passing in the one run the release-gate table above
+records. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
+all 66 fixture digests in the same session.
 
-The set is non-comparable with the one recorded after the interface rework: four inline
-fixture suites changed — `tests/contract/http-api-session.test.ts`, whose rescan cases now
+The set is non-comparable with the one recorded after the interface rework: five referenced
+fixtures changed — `tests/contract/http-api-session.test.ts`, whose rescan cases now
 observe the answer a scan command gives once its scan reached a terminal state
-(contracts/http-api.md § rescan-repository), and the three skills specs that read the rail's
-status words — which spec.md § Release-Evidence Fixture Governance makes a new measurement
-set. The manifest version stays at 3, because that governance requires an increment for a
+(contracts/http-api.md § rescan-repository), the three skills specs that read the rail's
+status words, and `tests/fixtures/global-homes/build-fixtures.ts`, which now pins
+`USERPROFILE` beside `HOME` so a Windows run reads the fixture's shared agent home rather
+than the developer's own — which spec.md § Release-Evidence Fixture Governance makes a new
+measurement set. The manifest version stays at 3, because that governance requires an increment for a
 case, required-class, or expected-outcome change and this was neither — the same 99 case IDs
 across the same four criteria, each with a nonzero count for every required class. The
 browser half of this execution was the Chromium project on this host; the three pinned
@@ -251,11 +258,80 @@ Applicable and 18 Not applicable, naming 34 `AUTO-*`, 36 `MANUAL-*`, and 18 `REV
 
 **The automated half.** `tests/e2e/accessibility.spec.ts` carries one test per `AUTO-*` ID —
 exactly the 34 the matrix rows name, with no ID the matrix does not define. A local
-three-project run passed 33 in every project; `AUTO-2.1.1` passed in chromium and firefox and
-failed in macOS WebKit for the tab-order reason recorded above. The certified WebKit is the
+three-project run on 2026-09-04 passed 32 in every project; `AUTO-2.1.1` and `AUTO-2.4.1`
+passed in chromium and firefox and failed in macOS WebKit, both for the tab-order reason
+recorded above — one cannot reach a link-driven workflow by Tab, the other cannot focus the
+skip link. The certified WebKit is the
 Linux revision CI runs, so the certifying result for this half is CI's, and it is assumed
 rather than observed here — the same disposition T1051 records for the lower-bound matrix.
 No local run stands in for it.
+
+### WCAG results
+
+Every row of the acceptance matrix with the result of each check ID it names, as the contract
+requires (contracts/accessibility-acceptance.md § Stable check IDs and execution locations).
+The three project results are the local run above; `MANUAL-*` is unexecuted for the reason
+below; each `REVIEW-*` result is the recheck recorded under § SC-008 accessibility:
+Not-applicable revalidation. A passing Playwright run writes no artifact, so none is named:
+the two failures' artifacts are this machine's `test-results/` and are not checked in.
+
+| Criterion | Level | State | Checks and results |
+|---|---:|---|---|
+| 1.1.1 Non-text Content | A | Applicable | `AUTO-1.1.1` pass (chromium, firefox, webkit); `MANUAL-1.1.1` unexecuted |
+| 1.2.1 Audio-only and Video-only (Prerecorded) | A | Not applicable | `REVIEW-1.2.1` pass |
+| 1.2.2 Captions (Prerecorded) | A | Not applicable | `REVIEW-1.2.2` pass |
+| 1.2.3 Audio Description or Media Alternative (Prerecorded) | A | Not applicable | `REVIEW-1.2.3` pass |
+| 1.2.4 Captions (Live) | AA | Not applicable | `REVIEW-1.2.4` pass |
+| 1.2.5 Audio Description (Prerecorded) | AA | Not applicable | `REVIEW-1.2.5` pass |
+| 1.3.1 Info and Relationships | A | Applicable | `AUTO-1.3.1` pass (chromium, firefox, webkit); `MANUAL-1.3.1` unexecuted |
+| 1.3.2 Meaningful Sequence | A | Applicable | `AUTO-1.3.2` pass (chromium, firefox, webkit); `MANUAL-1.3.2` unexecuted |
+| 1.3.3 Sensory Characteristics | A | Applicable | `MANUAL-1.3.3` unexecuted |
+| 1.3.4 Orientation | AA | Applicable | `AUTO-1.3.4` pass (chromium, firefox, webkit); `MANUAL-1.3.4` unexecuted |
+| 1.3.5 Identify Input Purpose | AA | Not applicable | `REVIEW-1.3.5` pass |
+| 1.4.1 Use of Color | A | Applicable | `AUTO-1.4.1` pass (chromium, firefox, webkit); `MANUAL-1.4.1` unexecuted |
+| 1.4.2 Audio Control | A | Not applicable | `REVIEW-1.4.2` pass |
+| 1.4.3 Contrast (Minimum) | AA | Applicable | `AUTO-1.4.3` pass (chromium, firefox, webkit); `MANUAL-1.4.3` unexecuted |
+| 1.4.4 Resize Text | AA | Applicable | `AUTO-1.4.4` pass (chromium, firefox, webkit); `MANUAL-1.4.4` unexecuted |
+| 1.4.5 Images of Text | AA | Not applicable | `REVIEW-1.4.5` pass |
+| 1.4.10 Reflow | AA | Applicable | `AUTO-1.4.10` pass (chromium, firefox, webkit); `MANUAL-1.4.10` unexecuted |
+| 1.4.11 Non-text Contrast | AA | Applicable | `AUTO-1.4.11` pass (chromium, firefox, webkit); `MANUAL-1.4.11` unexecuted |
+| 1.4.12 Text Spacing | AA | Applicable | `AUTO-1.4.12` pass (chromium, firefox, webkit); `MANUAL-1.4.12` unexecuted |
+| 1.4.13 Content on Hover or Focus | AA | Applicable | `AUTO-1.4.13` pass (chromium, firefox, webkit); `MANUAL-1.4.13` unexecuted |
+| 2.1.1 Keyboard | A | Applicable | `AUTO-2.1.1` pass (chromium, firefox), fail (webkit — the uncertified macOS revision, tab order); `MANUAL-2.1.1` unexecuted |
+| 2.1.2 No Keyboard Trap | A | Applicable | `AUTO-2.1.2` pass (chromium, firefox, webkit); `MANUAL-2.1.2` unexecuted |
+| 2.1.4 Character Key Shortcuts | A | Not applicable | `REVIEW-2.1.4` pass |
+| 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` pass |
+| 2.2.2 Pause, Stop, Hide | A | Not applicable | `REVIEW-2.2.2` pass |
+| 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` pass |
+| 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1` pass (chromium, firefox), fail (webkit — the uncertified macOS revision, tab order); `MANUAL-2.4.1` unexecuted |
+| 2.4.2 Page Titled | A | Applicable | `AUTO-2.4.2` pass (chromium, firefox, webkit); `MANUAL-2.4.2` unexecuted |
+| 2.4.3 Focus Order | A | Applicable | `AUTO-2.4.3` pass (chromium, firefox, webkit); `MANUAL-2.4.3` unexecuted |
+| 2.4.4 Link Purpose (In Context) | A | Applicable | `AUTO-2.4.4` pass (chromium, firefox, webkit); `MANUAL-2.4.4` unexecuted |
+| 2.4.5 Multiple Ways | AA | Not applicable | `REVIEW-2.4.5` pass |
+| 2.4.6 Headings and Labels | AA | Applicable | `AUTO-2.4.6` pass (chromium, firefox, webkit); `MANUAL-2.4.6` unexecuted |
+| 2.4.7 Focus Visible | AA | Applicable | `AUTO-2.4.7` pass (chromium, firefox, webkit); `MANUAL-2.4.7` unexecuted |
+| 2.4.11 Focus Not Obscured (Minimum) | AA | Applicable | `AUTO-2.4.11` pass (chromium, firefox, webkit); `MANUAL-2.4.11` unexecuted |
+| 2.5.1 Pointer Gestures | A | Not applicable | `REVIEW-2.5.1` pass |
+| 2.5.2 Pointer Cancellation | A | Applicable | `AUTO-2.5.2` pass (chromium, firefox, webkit); `MANUAL-2.5.2` unexecuted |
+| 2.5.3 Label in Name | A | Applicable | `AUTO-2.5.3` pass (chromium, firefox, webkit); `MANUAL-2.5.3` unexecuted |
+| 2.5.4 Motion Actuation | A | Not applicable | `REVIEW-2.5.4` pass |
+| 2.5.7 Dragging Movements | AA | Not applicable | `REVIEW-2.5.7` pass |
+| 2.5.8 Target Size (Minimum) | AA | Applicable | `AUTO-2.5.8` pass (chromium, firefox, webkit); `MANUAL-2.5.8` unexecuted |
+| 3.1.1 Language of Page | A | Applicable | `AUTO-3.1.1` pass (chromium, firefox, webkit) |
+| 3.1.2 Language of Parts | AA | Applicable | `MANUAL-3.1.2` unexecuted |
+| 3.2.1 On Focus | A | Applicable | `AUTO-3.2.1` pass (chromium, firefox, webkit); `MANUAL-3.2.1` unexecuted |
+| 3.2.2 On Input | A | Applicable | `AUTO-3.2.2` pass (chromium, firefox, webkit); `MANUAL-3.2.2` unexecuted |
+| 3.2.3 Consistent Navigation | AA | Applicable | `AUTO-3.2.3` pass (chromium, firefox, webkit); `MANUAL-3.2.3` unexecuted |
+| 3.2.4 Consistent Identification | AA | Applicable | `AUTO-3.2.4` pass (chromium, firefox, webkit); `MANUAL-3.2.4` unexecuted |
+| 3.2.6 Consistent Help | A | Applicable | `MANUAL-3.2.6` unexecuted |
+| 3.3.1 Error Identification | A | Applicable | `AUTO-3.3.1` pass (chromium, firefox, webkit); `MANUAL-3.3.1` unexecuted |
+| 3.3.2 Labels or Instructions | A | Applicable | `AUTO-3.3.2` pass (chromium, firefox, webkit); `MANUAL-3.3.2` unexecuted |
+| 3.3.3 Error Suggestion | AA | Applicable | `AUTO-3.3.3` pass (chromium, firefox, webkit); `MANUAL-3.3.3` unexecuted |
+| 3.3.4 Error Prevention (Legal, Financial, Data) | AA | Not applicable | `REVIEW-3.3.4` pass |
+| 3.3.7 Redundant Entry | A | Not applicable | `REVIEW-3.3.7` pass |
+| 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8` pass (chromium, firefox, webkit); `MANUAL-3.3.8` unexecuted |
+| 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2` pass (chromium, firefox, webkit); `MANUAL-4.1.2` unexecuted |
+| 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3` pass (chromium, firefox, webkit); `MANUAL-4.1.3` unexecuted |
 
 **`AUTO-2.1.2` certifies the exit from the editor on all three browsers.** Chromium and WebKit
 assert a bounded forward-Tab exit. On the pinned Firefox revision, Tab does not leave Monaco's
@@ -861,8 +937,11 @@ removal this record identifies rather than a question it leaves open.
 ## SC-008 accessibility: Not-applicable revalidation
 
 The 18 `REVIEW-*` IDs recheck each Not-applicable rationale against the release diff and the
-built package. Every one was rechecked on 2026-09-03 against `src/` and the packed `dist/`,
-and every one still holds. Four findings changed with the interface rework while their
+built package. Every one was rechecked on 2026-09-04 against `src/` and the packed `dist/` of
+the tree the release gate below was run on, and every one still holds. The recheck is
+agent-driven, as this repository requires such a record to say (AGENTS.md § Evidence before
+conclusions): the reviewer is this session, and what each row states is the search it ran and
+what that search returned, not a judgement it could not show. Four findings changed with the interface rework while their
 verdicts did not — the search that replaced the inventory's path filter, the tab strips the
 detail and comparison surfaces gained, the routes a Source's own surface added, and the
 vendor marks that carry a colour of their own. What was looked at:

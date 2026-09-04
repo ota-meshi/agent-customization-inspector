@@ -2352,12 +2352,14 @@ export interface GlobalRescanParams {
 /**
  * The rescan acceptance result
  * (contracts/http-api.md § rescan-repository): the admitted request ID plus
- * the updated Source summary carrying that same ID.
+ * the Source summary carrying that same ID. The command answers once its
+ * admitted scan reached a terminal state, so the summary is the Source that
+ * scan left rather than the one admission found.
  */
 export interface ScanAdmission {
   /** The opaque request ID issued at admission (FR-030 correlation). */
   readonly scanRequestId: string;
-  /** The updated Source projection at admission time. */
+  /** The Source projection as the admitted scan left it. */
   readonly source: SourceDto;
 }
 

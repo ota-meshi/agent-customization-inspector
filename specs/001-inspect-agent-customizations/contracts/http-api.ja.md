@@ -208,10 +208,13 @@ outcomeであって、sanitizationではない。
 Unexpectedにthrow/rejectされたhandler failureをproduct envelopeで包まない。devframe channelを
 ordinaryなserialized RPC error（devframe/birpcの挙動）として横断し、clientは実際のerror message
 を表示する。Async job accept前のfailureはそのinvocationだけをrejectし、jobも`scanRequestId`も
-作らず、sessionに何もretainしない。Accepted scan jobでは、invocationがすでにqueued acceptance
-でresolveしているため、terminal failureはdata modelが定義する場所にretainされる。すなわち明示
-rescanのfailureはaffected Sourceの`staleFailures` entryに`{ kind: 'error', message }`として、
-accepted admitted-subset Global batchのfailureはfailed `batchStatus`にretainされる。Two-stage
+作らず、sessionに何もretainしない。Accepted jobのterminal failureは、invocationへthrowするので
+はなくdata modelが定義する場所にretainする。すなわち明示rescanのfailureはaffected Sourceの
+`staleFailures` entryに`{ kind: 'error', message }`として、accepted admitted-subset Global batchの
+failureはfailed `batchStatus`にretainされる。2つのaccepted jobは、invocationの解決の仕方が異なる。
+明示rescanはそのscanが終端状態に達したときに解決するので、acceptanceはそのscanが残したSourceを
+運ぶ。`enable-global`も同様に、admitした全memberのscanが終端に達してから解決し、batchがcommitした
+場合もfailした場合もqueued acceptanceで応答する。Two-stage
 Global-disable barrierだけが例外で、accept後failureはstill-pendingなdisable invocationを実際の
 errorでrejectし、同じmessageをfenced session用にfailed disable projectionの
 `globalDisableInProgress.message`（`state`が`failed`の間だけ存在する）としてもretainする

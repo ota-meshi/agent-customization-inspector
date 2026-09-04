@@ -36,6 +36,7 @@ import { useInventoryFilters } from '../composables/filters';
 import {
   INVENTORY_SELECTION_TEXT,
   INVENTORY_SELECTION_UNIT_TEXT,
+  NON_KIND_SELECTION_ORDER,
   type InventorySelection,
 } from '../components/inventory/rail-selection';
 import { inventoryPanelId } from '../components/inventory/panel-ids';
@@ -191,31 +192,25 @@ onBeforeRouteLeave((to) => {
 
 /**
  * How many rows the entry in view holds, and what they are in that entry's own
- * unit (`rail-selection.ts` § INVENTORY_SELECTION_UNIT_TEXT) — or null where
- * there is no entry, which is a generation that recognized no kind at all.
+ * unit (`rail-selection.ts` § INVENTORY_SELECTION_UNIT_TEXT).
  *
- * Null rather than a stand-in: counting one entry while the heading names
- * another is what a fallback did here, and a session with one source-level
- * diagnostic then read "Customization files · 1 diagnostic" over a list saying
- * no customization file was recognized.
+ * There is always an entry, so this is always a count of the one the heading
+ * names: what a generation that recognized no kind selects is the first
+ * non-kind entry ({@link activeSelection}), and the heading, this count, and
+ * the panel all follow that one selection. An earlier fallback counted one
+ * entry while the heading named another, so a session with one source-level
+ * diagnostic read "Customization files · 1 diagnostic" over a list saying no
+ * customization file was recognized.
  */
 /**
  * The unit the entry in view counts its rows by, for the filter row's own
  * announcement — the same table the heading's count reads, so the sentence a
- * reader hears and the words beside it cannot part. `files` where there is no
- * entry, which is a generation that recognized no kind and lists nothing.
+ * reader hears and the words beside it cannot part.
  */
-const selectionUnit = computed(() =>
-  activeSelection.value === null
-    ? { one: 'file', many: 'files' }
-    : INVENTORY_SELECTION_UNIT_TEXT[activeSelection.value],
-);
+const selectionUnit = computed(() => INVENTORY_SELECTION_UNIT_TEXT[activeSelection.value]);
 
-const selectionSummary = computed<{ readonly count: number; readonly unit: string } | null>(() => {
+const selectionSummary = computed<{ readonly count: number; readonly unit: string }>(() => {
   const selection = activeSelection.value;
-  if (selection === null) {
-    return null;
-  }
   const count = railCounts.value.get(selection) ?? 0;
   const unit = INVENTORY_SELECTION_UNIT_TEXT[selection];
   return { count, unit: count === 1 ? unit.one : unit.many };
@@ -289,10 +284,28 @@ const railCounts = computed<ReadonlyMap<InventorySelection, number>>(() => {
  *
  * The raw choice is still what the URL carries ({@link InventoryFilterState}),
  * so it comes back on its own when a later commit offers that kind again.
+ *
+ * Total, because a tablist has one selected tab: a generation that recognized
+ * no kind at all still offers the two entries that belong to none, and the
+ * first of them is what is selected there. The rail derives its own tab stop
+ * from this one value rather than defaulting a second time
+ * (`InventoryRail.vue` § tabStop).
  */
-const activeSelection = computed<InventorySelection | null>(
-  () => nonKindSelection.value ?? filters.activeKind.value,
+const activeSelection = computed<InventorySelection>(
+  () => nonKindSelection.value ?? filters.activeKind.value ?? NON_KIND_SELECTION_ORDER[0],
 );
+
+/**
+ * The kind the panel is showing, or null when the entry in view is one of the
+ * two that belong to no kind. Derived from {@link activeSelection} rather than
+ * from the reader's raw non-kind choice, so the default above — the first
+ * entry, where nothing was recognized — reaches the panel, the legend, and the
+ * counts as the selection it already is on the rail.
+ */
+const kindInView = computed<CustomizationKind | null>(() => {
+  const selection = activeSelection.value;
+  return selection === 'files-in-no-kind' || selection === 'diagnostics' ? null : selection;
+});
 
 /**
  * How many rows the filters admit in the kind currently in view. It is the
@@ -301,11 +314,10 @@ const activeSelection = computed<InventorySelection | null>(
  * a skill row may stand for several files.
  */
 const matchCount = computed(() => {
-  if (nonKindSelection.value !== null) {
-    return railCounts.value.get(nonKindSelection.value) ?? 0;
-  }
-  const kindInView = filters.activeKind.value;
-  return kindInView === null ? 0 : (filters.kindCounts.value.get(kindInView) ?? 0);
+  const kind = kindInView.value;
+  return kind === null
+    ? (railCounts.value.get(activeSelection.value) ?? 0)
+    : (filters.kindCounts.value.get(kind) ?? 0);
 });
 
 /**
@@ -321,19 +333,18 @@ const matchCount = computed(() => {
  * copy policy makes the same argument for a label table).
  */
 const totalRowCount = computed<number>(() => {
-  if (nonKindSelection.value !== null) {
+  const kind = kindInView.value;
+  if (kind === null) {
     // The two lists that belong to no kind have their own unnarrowed
     // populations (`filters.ts`), which is what their summary compares the
     // visible rows against.
-    return nonKindSelection.value === 'files-in-no-kind'
+    return activeSelection.value === 'files-in-no-kind'
       ? filters.unrecognizedTotal.value
       : filters.sourceScopedDiagnosticTotal.value;
   }
-  const kind = filters.activeKind.value;
   const committed = snapshot.value;
-  if (kind === null || committed === null) {
-    // No kind in view, or nothing committed yet: the summary has no rows to
-    // compare against.
+  if (committed === null) {
+    // Nothing committed yet: the summary has no rows to compare against.
     return 0;
   }
   const totals: Readonly<Record<CustomizationKind, number>> = {
@@ -472,18 +483,14 @@ const globalSourcesAnnouncement = computed(() =>
              tied to a product (FR-006). -->
         <div class="aci-inventory-page__head">
           <h2 ref="inventoryHeading" class="aci-inventory-page__title" tabindex="-1">
-            {{
-              activeSelection === null
-                ? 'Customization files'
-                : INVENTORY_SELECTION_TEXT[activeSelection]
-            }}
+            {{ INVENTORY_SELECTION_TEXT[activeSelection] }}
           </h2>
           <!-- Counted in the unit the kind's own rows are, not in rows: a row's
                unit is decided by its kind (data-model.md § Inventory unit), so
                `rows` named the container where the rows themselves say `2
                files` about a name (`rail-selection.ts`
                § INVENTORY_SELECTION_UNIT_TEXT). -->
-          <span v-if="selectionSummary !== null" class="aci-inventory-page__count"
+          <span class="aci-inventory-page__count"
             >{{ selectionSummary.count }} {{ selectionSummary.unit }}</span
           >
           <InventoryFilters
@@ -491,7 +498,7 @@ const globalSourcesAnnouncement = computed(() =>
             v-model:source="selectedSource"
             v-model:tool="selectedTool"
             :available-source-kinds="filters.availableSourceKinds.value"
-            :available-tools="nonKindSelection === null ? filters.availableTools.value : []"
+            :available-tools="kindInView === null ? [] : filters.availableTools.value"
             :match-count="matchCount"
             :total-count="totalRowCount"
             :unit="selectionUnit"
@@ -508,14 +515,14 @@ const globalSourcesAnnouncement = computed(() =>
              entry that no rule row shows. An empty list draws no marks and so
              gets no key, which follows from the same derivation rather than
              from a rule of its own. -->
-        <ToolLegend v-if="nonKindSelection === null" :tools="filters.shownTools.value" />
+        <ToolLegend v-if="kindInView !== null" :tools="filters.shownTools.value" />
         <!-- Files an inspection rule admitted that no kind lists. Its own panel
            rather than a disclosure below the rows: its membership rule is
            absence, so any repository holding one unreadable, binary, or
            nothing-declaring candidate has it, and as a section it sat open
            under whatever kind was being read, on every visit (FR-028). -->
         <section
-          v-if="nonKindSelection === 'files-in-no-kind'"
+          v-if="activeSelection === 'files-in-no-kind'"
           :id="inventoryPanelId('files-in-no-kind')"
           role="tabpanel"
           :aria-label="INVENTORY_SELECTION_TEXT['files-in-no-kind']"
@@ -536,7 +543,7 @@ const globalSourcesAnnouncement = computed(() =>
            A file's own diagnostic is stated on that file's row, which is where
            a reader meets the file it is about (FR-028). -->
         <section
-          v-else-if="nonKindSelection === 'diagnostics'"
+          v-else-if="activeSelection === 'diagnostics'"
           :id="inventoryPanelId('diagnostics')"
           role="tabpanel"
           :aria-label="INVENTORY_SELECTION_TEXT.diagnostics"
@@ -555,9 +562,9 @@ const globalSourcesAnnouncement = computed(() =>
         </section>
 
         <InventoryList
-          v-else
+          v-else-if="kindInView !== null"
           :narrowed="filters.isNarrowed.value"
-          :kind="filters.activeKind.value"
+          :kind="kindInView"
           :instruction-range-groups="filters.instructionRangeGroups.value"
           :skill-rows="filters.skillRows.value"
           :mcp-rows="filters.mcpRows.value"

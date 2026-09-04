@@ -109,10 +109,12 @@ export interface GlobalHomeFixture {
   /**
    * The environment values a suite exports to point the capture at these
    * homes, keyed by the property name the capture reads — the three tool
-   * overrides, plus `HOME`, which is what `node:os.homedir()` answers from on
-   * POSIX. The shared agent home has no override of its own: pinning `HOME` is
-   * what keeps its always-derived root inside the fixture instead of at the
-   * developer's real `~/.agents` (FR-045).
+   * overrides, plus the two properties `node:os.homedir()` answers from:
+   * `HOME` on POSIX and `USERPROFILE`, which Windows prefers. The shared
+   * agent home has no override of its own, so pinning both is what keeps its
+   * always-derived root inside the fixture instead of at the developer's real
+   * `~/.agents` (FR-045) — pinning only `HOME` left a Windows run reading the
+   * developer's own home.
    */
   readonly environment: Readonly<Record<string, string>>;
   /** Which capability-gated cases exist; see {@link GlobalHomeCapabilities}. */
@@ -793,6 +795,7 @@ export function buildGlobalHomeFixture(
       [GLOBAL_HOME_VARIABLES.claude]: homes.claude,
       [GLOBAL_HOME_VARIABLES.codex]: homes.codex,
       HOME: root,
+      USERPROFILE: root,
     },
     capabilities: { symlinks },
     expectedCandidatePaths,

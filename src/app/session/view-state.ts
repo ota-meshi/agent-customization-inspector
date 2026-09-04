@@ -1493,23 +1493,18 @@ export class SessionViewState {
         }
         slot.state.value = 'accepted';
         slot.recordAcceptance(outcome.scanRequestId);
-        // The answer's own `SourceDto` is the Source as its scan left it —
-        // the command answers once that scan settled (contracts/http-api.md
-        // § rescan-repository, § rescan-global) — so the row shows the result
-        // even if the refresh below is slow or fails.
-        if (this.snapshot.value !== null) {
-          this.snapshot.value = {
-            ...this.snapshot.value,
-            sources: this.snapshot.value.sources.map((source) =>
-              source.sourceId === outcome.source.sourceId ? outcome.source : source,
-            ),
-          };
-        }
-        // The committed generation arrives on this refresh — one that starts
-        // after the answer. An in-flight fetch may predate it: a "Refresh
-        // status" pressed before the commit returns the previous generation,
-        // and adopting it would overwrite the Source patched above with the
-        // row the scan replaced.
+        // The answer's own `SourceDto` is read for its request ID and nothing
+        // else: it is the Source of the generation the scan committed, and
+        // splicing it into the snapshot on screen would put that generation's
+        // status beside the previous generation's files — one page describing
+        // two generations, which a refresh that then failed would leave
+        // standing. The whole generation arrives on the refresh below, and a
+        // failed refresh leaves the previous one whole (FR-030).
+        //
+        // That refresh starts after the answer. An in-flight fetch may predate
+        // it: a "Refresh status" pressed before the commit returns the
+        // previous generation, so this one is issued fresh rather than
+        // joined.
         await this.#refreshFreshly();
         return;
       case 'rejected':

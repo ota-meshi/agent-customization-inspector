@@ -8065,9 +8065,11 @@ This slice adds the real Copilot port to the same open composite milestone; it i
 - [X] T1004 [US4] Complete fixed-four confirmation and per-member outcome/retry controls tied to one
   shared batch request/progress, focus recovery, `active-no-job`, the ordinary whole-batch failure
   error, and simultaneous separate-Source outcome presentation in `src/app/pages/global-consent.vue`
-  and `src/app/components/consent/GlobalSourceControls.vue`; reuse the T071 pause/resume and
-  on-demand-refresh contract for automatically updating status *(amended 2026-08-27: fixed-four —
-  the shared agent home joins the members (FR-045).)*
+  and `src/app/components/consent/GlobalSourceControls.vue`; reuse T071's on-demand-refresh
+  contract for status *(amended 2026-08-27: fixed-four —
+  the shared agent home joins the members (FR-045).)* *(amended 2026-09-04: the pause/resume
+  half is dropped, because T071's own note records that no such control exists — nothing on
+  these pages updates automatically, so there is nothing to pause.)*
 - [X] T1005 [US4] Add English fixed-four/single-batch, one-root separate Source, accepted/rejected,
   `active-no-job`, whole-batch failure, retry with carried existing Sources kept visible,
   source/tool-filter, detail/comparison, and shared-progress messages in the Vue components that
@@ -10597,7 +10599,7 @@ reopened names them. Each records its result in that file and in
   serving, so its timer excludes the launch SC-001's interval includes and the record states
   SC-001 as not established; the repeat in which each session launches the Inspector itself is
   T1202, and this task is complete only as the run it records.)* (SC-001, SC-006) (missing)
-- [X] T1202 Repeat the twenty agent-driven SC-001 and SC-006 sessions so that each session
+- [ ] T1202 Repeat the twenty agent-driven SC-001 and SC-006 sessions so that each session
   launches the Inspector itself from the intended Repository root — SC-001's interval includes
   the launch, which the run T1195 records began after — naming the build and the task material
   under `tests/usability/sc001-sc006-study-inputs/` it scored against, and record the result as an
@@ -10608,7 +10610,9 @@ reopened names them. Each records its result in that file and in
   repository's own instructions, which the criteria's no-hint policy excludes, and a service
   outage on the sessions' own runtime cut three of the second run's sessions inside the
   discovery interval. The repeat starts each session outside this working tree, against the
-  current build.)* (SC-001, SC-006)
+  current build. A third attempt that day staged no session at all: the account's session
+  limit refused all twenty processes before any of them received a first turn, so there is no
+  run to record and the task stays open.)* (SC-001, SC-006)
 
 ### Records that name the rework
 

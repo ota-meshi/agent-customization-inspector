@@ -56,8 +56,13 @@ import {
 const props = defineProps<{
   /** The kinds the current inventory recognizes, in the closed kind order. */
   kinds: readonly CustomizationKind[];
-  /** The entry in view; null only while the inventory recognizes no kind. */
-  activeSelection: InventorySelection | null;
+  /**
+   * The entry in view. Total, because a tablist has one selected tab and the
+   * page's own selection is what decides which (`pages/index.vue`
+   * § activeSelection): a generation that recognized no kind selects the first
+   * entry that belongs to none, so this component defaults nothing of its own.
+   */
+  activeSelection: InventorySelection;
   /** How many rows each entry would show, with every other filter applied. */
   counts: ReadonlyMap<InventorySelection, number>;
   /** Every Source the current generation published, in snapshot order. */
@@ -236,16 +241,13 @@ const globalNeedsAttention = computed(
 );
 
 /**
- * The one entry in the page's tab order. The selected one where there is one,
- * and otherwise the first — a generation that recognized no kind at all leaves
- * the two non-kind entries with nothing selected, and a roving tabindex with no
- * `0` takes the whole strip out of the tab order, so a keyboard reader could
- * not reach either list (WCAG 2.1.1; the WAI-ARIA tabs pattern puts the tab
- * stop on the first tab when none is selected).
+ * The one entry in the page's tab order, which is the selected one: a roving
+ * tabindex with no `0` takes the whole strip out of the tab order, so a
+ * keyboard reader could reach neither list (WCAG 2.1.1). It needs no default
+ * of its own — the page's selection is total, and deriving the same fallback
+ * here as well would be one fact in two places.
  */
-const tabStop = computed<InventorySelection | undefined>(
-  () => props.activeSelection ?? selections.value[0],
-);
+const tabStop = computed<InventorySelection>(() => props.activeSelection);
 
 // Arrow keys move selection, matching the WAI-ARIA tabs pattern. Selection
 // follows focus here because switching entries only re-renders committed rows:
@@ -342,6 +344,12 @@ function onKeydown(event: KeyboardEvent, index: number): void {
          answer away in the one case that needs it. -->
     <div class="aci-inventory-rail__tabs">
       <p id="aci-inventory-rail-kinds" class="aci-inventory-rail__group">Customization files</p>
+      <!-- The group is what is empty, and the group is the rail's, so the rail
+           says so. Said in the panel it would sit under the heading of
+           whichever entry is selected — a statement about the kinds, under
+           `Files in no kind` — and would vanish when the reader moved to the
+           other entry, though nothing about the scan had changed. -->
+      <p v-if="kinds.length === 0" class="aci-inventory-rail__group-note">None recognized.</p>
       <!-- The tablist is the strip of tabs and nothing else: the heading above
            names it through `aria-labelledby` rather than sitting inside it,
            where it was both a non-tab child of a `tablist` and — once the strip
@@ -477,6 +485,16 @@ function onKeydown(event: KeyboardEvent, index: number): void {
   border-radius: 999px;
   flex: none;
   inline-size: 0.375rem;
+}
+
+/* The group label's own note, at its size and colour but not its letterform:
+   it is a sentence rather than a label, so it takes neither the tracking nor
+   the uppercase. */
+.aci-inventory-rail__group-note {
+  color: var(--aci-muted);
+  font-size: 0.6875rem;
+  margin: -0.125rem 0 0.5rem;
+  padding-inline: 0.6rem;
 }
 
 /* Words alone, at the status's size: a Source with no state, or the note a

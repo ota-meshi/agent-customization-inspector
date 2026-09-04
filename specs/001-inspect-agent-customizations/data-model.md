@@ -546,13 +546,21 @@ attributed to its exact accepted request.
 |---|---|---|
 | `operationId` | opaque string | Unique coordinator command for one initial enable or exact-consent retry |
 | `kind` | `initial-enable \| retry` | Closed operation type; neither is a committed generation |
-| `commandEpoch` | non-negative integer | Captured from the coordinator when accepted; every asynchronous continuation must still match it |
 | `previewId` | opaque string | Must equal the frozen consent preview for the whole operation |
-| `previewEpoch` | non-negative safe integer | Captured from the exact preview object at registration and revalidated with object identity after every asynchronous boundary and before terminal commit |
-| `tools` | non-empty sorted member enum[] | Exact fixed four-member set for initial enable, or complete server-derived `retryableTools` subset for retry; never supplied or narrowed by the client |
-| `scanRequestId` | opaque ASCII string or null | Allocated once only when at least one root is admitted and the single subset scan is accepted; shared by that batch and its one committed Global generation |
-| `status` | `waiting \| validating \| admitting \| queueing-batch \| draining \| cancelled \| complete` | `draining` begins when disable aborts the operation; no new authority or job may be published afterward |
-| `responseDisposition` | `unset \| queued \| active-no-job \| global-disable-pending` | Chosen exactly once at the coordinator linearization point; `queued` describes one atomic admitted-subset job |
+
+The record holds these three fields and nothing more; each invariant the operation needs is
+held by a mechanism that already exists rather than by a field of its own. One operation at a
+time is the registration itself, which refuses while a record stands. Continuation across an
+asynchronous boundary is checked by comparing the session's current `operationId` with the one
+registration issued: an operation the barrier cancelled or a later registration replaced no
+longer matches, and its continuation publishes nothing. The preview an operation is bound to
+is the domain's own current object, identified by `previewId`. The evaluated member set is
+derived at settlement — the fixed four for an initial enable, the server-derived
+`retryableTools` subset for a retry — and never carried from the client. The `scanRequestId`
+belongs to the batch the settlement queues, and is published on `batchStatus`. What the
+operation resolved to is the settled `GlobalEnableResultDto.state`, `queued` or
+`active-no-job`; a barrier that cancelled it answers the fixed `global-disable-pending`
+conflict instead.
 
 Initial enable registers this command and freezes the exact current preview object/epoch
 under the same coordinator lock while keeping the provisional consent, four controls,

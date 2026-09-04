@@ -359,14 +359,35 @@ export async function executeGlobalBatch(
  * Repository scan completes before the host starts: its launch line prints
  * with the Global generation already committed.
  *
+ * They differ in what an accepted batch's terminal failure does, which
+ * {@link GlobalEnableOptions.onBatchFailure} decides.
+ *
  * A conflicting registration is the caller's to report; every other outcome is
  * the settled disposition, `active-no-job` included — a confirmation nothing
  * could be admitted for is accepted, and what went wrong is each control's own
  * `failureCode`.
  */
+export interface GlobalEnableOptions {
+  /**
+   * What an accepted batch's terminal failure does to this call.
+   *
+   * `retain` answers with the acceptance and leaves the failure on the
+   * session's failed `batchStatus`, which is what the reader's own consent
+   * surface then states (contracts/http-api.md § enable-global). `propagate`
+   * throws it instead, for a caller with no such surface: the CLI's
+   * `--inspect-personal-setup` runs before any host exists, so a swallowed
+   * failure would print a launch line for a personal setup that was never
+   * read — the automatic Repository scan above it ends the launch the same
+   * way (spec.md SC-007 "a startup failure ends the launch with an actionable
+   * message").
+   */
+  readonly onBatchFailure: 'retain' | 'propagate';
+}
+
 export async function runGlobalEnable(
   context: InspectorHostContext,
   preview: GlobalConsentPreview,
+  options: GlobalEnableOptions,
 ): Promise<GlobalEnableResultDto | DeterministicRejection> {
   // A confirmation over an active consent is the same-preview retry
   // (contracts/http-api.md § enable-global): the server derives the exact
@@ -459,13 +480,15 @@ export async function runGlobalEnable(
     await context.coordinator.runGlobalTransaction(() =>
       executeGlobalBatch(context, scanRequestId, members),
     );
-  } catch {
-    // A batch that failed is answered with the same acceptance: the failure
-    // is already retained once on the failed `batchStatus` by
-    // `executeGlobalBatch`, which is what the contract makes of a throw after
-    // queued acceptance (contracts/http-api.md § enable-global), and the
-    // consent surface states it from there. Nothing is thrown past here, so
-    // an accepted batch's rejection never ends the caller.
+  } catch (cause: unknown) {
+    if (options.onBatchFailure === 'propagate') {
+      throw cause;
+    }
+    // Retained rather than thrown: the failure is already on the failed
+    // `batchStatus` that `executeGlobalBatch` wrote, which is what the
+    // contract makes of a throw after queued acceptance (contracts/http-api.md
+    // § enable-global), and the consent surface states it from there. The
+    // confirmation itself was accepted, so it answers with its acceptance.
   }
   return result;
 }
@@ -1015,9 +1038,16 @@ export function createInspectorDevframe(
         // evaluated.
         //
         // A throw during preview construction or serialization is deliberately
-        // not caught here. It reaches this pre-acceptance RPC boundary,
-        // devframe serializes it as-is, and no preview, job, `scanRequestId`,
-        // retention, or path authority exists as a result.
+        // not caught here: it reaches this pre-acceptance RPC boundary and
+        // devframe serializes it as-is. Neither creates a job,
+        // `scanRequestId`, or read authority. They differ in what is left
+        // behind, and the contract says so
+        // (contracts/http-api.md § create-global-consent-preview):
+        // construction throws before {@link GlobalConsentDomain.createPreview}
+        // binds anything, so the prior current preview is unchanged, while a
+        // DTO or transport serialization failure happens after that binding —
+        // the newly created preview may remain current although no result was
+        // delivered.
         handler: (): CommandResult<GlobalConsentPreviewDto> | DeterministicRejection => {
           if (context.session.globalDisableInProgress !== null) {
             // The disable fence blocks capture and replacement: preview
@@ -1119,7 +1149,7 @@ export function createInspectorDevframe(
           // still loses no batch, because the batch is retained on
           // `batchStatus` and a fresh poll recovers it (data-model.md
           // § GlobalEnableOperation).
-          const result = await runGlobalEnable(context, preview);
+          const result = await runGlobalEnable(context, preview, { onBatchFailure: 'retain' });
           if ('error' in result) {
             return result;
           }

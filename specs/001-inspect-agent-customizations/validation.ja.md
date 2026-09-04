@@ -87,32 +87,37 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 
 ## Release gateの実行
 
-**2026-09-04の回帰review。** Official-source checkerの修正とその回帰caseは
-`pnpm run test:contract`で通過し、12 file・405 test passedだった。現在の
-`pnpm run test:integration`は、11 file全体で10 file passed・1 file failed、269 test
-passed・1 test failedを報告する。失敗は
-`tests/integration/cli-global-batch-failure.test.ts`のCLI伝播case 1件だけである。受理済みの
-Global batchがrejectした後、元のerrorを伝播せずcommandがresolveし、hostを起動してlaunch URLを
-出力する。対になるRPC caseは通過し、queued acceptanceを返しながら同じfailureをbatch statusへ
-保持する。型検査と対象限定のformat・lint・diff checkは通過した。T046が所有するプロダクション修正を
-反映し、release gate全体を再実行するまでrelease approvalは保留である。
+**CLIのaccepted batch failureは伝播するようになった。**
+`tests/integration/cli-global-batch-failure.test.ts`が失敗していたのはこの点である。
+`runGlobalEnable`は呼び出し側が必要とするdispositionを受け取る。consent pageが送るconfirmationは
+失敗したbatchを`batchStatus`へ保持したままacceptanceで応答し、CLIの`--inspect-personal-setup`は
+hostが存在する前にそれをthrowしてlaunch URLを出力しない。自動Repository scanのfailureと同じ終わり方で
+ある。両caseとも通過する。
 
-以下のgateはすべて2026-09-03に、`pnpm run build`後の当時review対象だったtreeに対して実行した。
-件数は各runが報告した値であり、下表は過去のrun記録であって、上記の現在のtreeに対するapprovalではない。
+**Launcher exclusionのreviewは未解決である。** `DetectedFileOpener`はexecutableと各inspected rootを
+字面で比較する。`/`へのsymbolic linkをinspected rootとし、`EDITOR=/usr/bin/vi`とすると、probeは
+`terminal-editor`を提供した。executableはrootが到達するtreeの内側にあるが、rootの字面の下にはない。
+これはFR-020、FR-022、およびinspected root内の全candidate directoryを除外する`open-file` contractと
+矛盾する。SC-004の例外は字面で区別できないnetwork filesystemを対象とし、local root aliasではないため、
+source commentだけでaccepted limitationにはできない。下記gateはalias caseを実行していない。
+実装と回帰testがcontractどおりの除外を確立するまでrelease approvalは保留である。
+
+以下のgateはすべて2026-09-04に、`pnpm run build`後のこのtreeに対して、ひと続きで実行した。
+件数は各runが報告した値である。
 
 | Gate | Command | 結果 |
 |---|---|---|
 | Format | `pnpm run format:check` | 無出力、exit 0 |
 | Lint | `pnpm run lint` | 無出力、exit 0 |
 | Types | `pnpm run typecheck` | 無出力、exit 0 |
-| Unit | `pnpm run test:unit` | 52 file、1,211 test passed |
-| Contract | `pnpm run test:contract` | 12 file、391 test passed |
-| Integration | `pnpm run test:integration` | 10 file、268 test passed |
+| Unit | `pnpm run test:unit` | 52 file、1,224 test passed |
+| Contract | `pnpm run test:contract` | 12 file、405 test passed |
+| Integration | `pnpm run test:integration` | 11 file、270 test passed |
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、4 test passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 564 passed |
-| Coverage | `pnpm run test:coverage` | 74 file、1,870 test passed。statement 86.25%、line 86.57% |
+| Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
+| Coverage | `pnpm run test:coverage` | 75 file、1,899 test passed。statement 86.14%、line 86.45% |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
 **ここでのbrowser gateは1 projectであり、certification matrixはCIのものである。**
@@ -132,29 +137,29 @@ revisionにわたるものであり、ここでは再現していない。上表
 1つであって、local runはそのどれの代わりにもならない。判断はreworkが始まったtreeから変わって
 いない。変わったのは、認証runがどのcommitに対するものかである。
 
-**Coverageの百分率はあるrunの値であり、定数ではない。** このtreeに対する2回のrunは、6,848 statement
-中5,907と5,909のcovered statement — 86.25%と86.28% — を報告し、file 74件・test 1,870件のpassは
-どちらも同じだった。これらにthresholdをassertしている箇所はどこにも無く、上の行は後のrunである。
+**Coverageの百分率はあるrunの値であり、定数ではない。** このtreeのrunは、上の行に記録した
+75 file・1,899 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
-timingのthresholdをassertしない。2026-09-04のpass（arm64、Node 24.14.0、profile `sc002-smoke-reference-v2` — profileのbenchmark fieldが変わり、profile自身の規則がfield変更を新しい非互換IDとするため新設した）は、rescan dispatchからrequest相関のstatusまで118 ms、request committedのoperable inventoryまで607 ms、filter feedbackまで23 ms、selection feedbackまで45 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
+timingのthresholdをassertしない。Checked-inのreference profile `sc002-smoke-reference-v2`は、hostedなUbuntu 24.04 x86_64 runner上のNode 24.18を記述し、profileのbenchmark fieldが変わって、profile自身の規則がfield変更を新しい非互換IDとするため新設した。これは観測値を読む際の参照であって、観測した場所の主張ではない。実行環境とprofileを比較する機構は無く、runは自分の環境を出力する。2026-09-04のpassはこのmachine — arm64、Node 24.14.0 — で走り、rescan dispatchからrequest相関のstatusまで118 ms、request committedのoperable inventoryまで607 ms、filter feedbackまで23 ms、selection feedbackまで45 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
 
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`ced49fd384730548c6077aa9248175e0320845d9b48de72b72cb4a40b2717bb7`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+`58e3a057a3713d0896efd472527d3d2f73c89f4ade794a05c0fd07942cf372f5`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
 caseは、2026-09-04に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser specはChromium
-project経由 — Chromium suite全体565件で、1回のrunで562件が通り、`global-codex-admission`の3件は
-confirmationのhelperが、読み取りが終わってから届くようになった応答を待つように直してから通った。
-それがこのsetの記録する変更そのものである。`tests/contract/outcome-fixture-manifest.test.ts`は
+suite全体567件経由であり、上のrelease gate表が記録する1回のrunで全件が通った。
+`tests/contract/outcome-fixture-manifest.test.ts`は
 同じsessionでcanonical digestと66件のfixture digestすべてを再現した。
 
-このsetは、interface rework後に記録したsetとは比較できない。4つのinline fixture suiteが変わった —
+このsetは、interface rework後に記録したsetとは比較できない。参照fixtureが5件変わった —
 `tests/contract/http-api-session.test.ts`は、rescan caseがscan commandの応答を、そのscanが終端
 状態に達してから得るようになったことを観測し（contracts/http-api.md § rescan-repository）、
-railの状態語を読む3つのskills specも変わった — ので、spec.md § Release-Evidence Fixture
+railの状態語を読む3つのskills spec、そして`tests/fixtures/global-homes/build-fixtures.ts`が
+`HOME`と並べて`USERPROFILE`も固定し、Windowsのrunがdeveloper自身のではなくfixtureの共有agent home
+を読むようにした — ので、spec.md § Release-Evidence Fixture
 Governanceはそれを新しい測定setとする。manifest versionは3のままである。同governanceが
 incrementを要求するのはcase・required class・expected outcomeの変更であり、今回はそのいずれでも
 ない — 同じ4 criteriaにわたる同じ99件のcase IDで、required classごとの件数はすべて非ゼロのまま
@@ -212,11 +217,79 @@ Applicable、18 Not applicableであり、34件の`AUTO-*`、36件の`MANUAL-*`�
 IDを名指す。
 
 **Automatedな側。** `tests/e2e/accessibility.spec.ts`は`AUTO-*` IDごとに1 testを持つ —
-matrix rowが名指す34件そのもので、matrixが定義しないIDは持たない。Localの3
-project runでは33件が全projectで通過し、`AUTO-2.1.1`はchromiumとfirefoxで通過し、macOS
-WebKitでは上記のtab orderの理由により失敗した。認証対象のWebKitはCIが実行するLinux
+matrix rowが名指す34件そのもので、matrixが定義しないIDは持たない。2026-09-04のlocalな3
+project runでは32件が全projectで通過し、`AUTO-2.1.1`と`AUTO-2.4.1`はchromiumとfirefoxで通過し、
+macOS WebKitでは上記のtab orderの理由により失敗した — 一方はlinkで進むworkflowにTabで到達できず、
+もう一方はskip linkにfocusできない。認証対象のWebKitはCIが実行するLinux
 revisionであるため、この側の認証結果はCIのものであり、ここでは観測ではなく前提とする。これは
 T1051がlower-bound matrixについて記録するのと同じ措置である。Localのrunがそれを代替することはない。
+
+### WCAG results
+
+Contractが求めるとおり、acceptance matrixの全rowと、それが名指す各check IDの結果である
+（contracts/accessibility-acceptance.ja.md § Stable check IDとexecution location）。3 projectの結果は
+上記のlocal runのものである。`MANUAL-*`は後述の理由により未実行とし、各`REVIEW-*`の結果は
+§ SC-008 accessibility: Not-applicableの再検証に記録した再確認である。通過したPlaywright runは
+artifactを書かないので名指すものは無い。失敗2件のartifactはこのmachineの`test-results/`にあり、
+checked inしていない。
+
+| Criterion | Level | State | Checksと結果 |
+|---|---:|---|---|
+| 1.1.1 Non-text Content | A | Applicable | `AUTO-1.1.1` pass（chromium・firefox・webkit）; `MANUAL-1.1.1` 未実行 |
+| 1.2.1 Audio-only and Video-only (Prerecorded) | A | Not applicable | `REVIEW-1.2.1` pass |
+| 1.2.2 Captions (Prerecorded) | A | Not applicable | `REVIEW-1.2.2` pass |
+| 1.2.3 Audio Description or Media Alternative (Prerecorded) | A | Not applicable | `REVIEW-1.2.3` pass |
+| 1.2.4 Captions (Live) | AA | Not applicable | `REVIEW-1.2.4` pass |
+| 1.2.5 Audio Description (Prerecorded) | AA | Not applicable | `REVIEW-1.2.5` pass |
+| 1.3.1 Info and Relationships | A | Applicable | `AUTO-1.3.1` pass（chromium・firefox・webkit）; `MANUAL-1.3.1` 未実行 |
+| 1.3.2 Meaningful Sequence | A | Applicable | `AUTO-1.3.2` pass（chromium・firefox・webkit）; `MANUAL-1.3.2` 未実行 |
+| 1.3.3 Sensory Characteristics | A | Applicable | `MANUAL-1.3.3` 未実行 |
+| 1.3.4 Orientation | AA | Applicable | `AUTO-1.3.4` pass（chromium・firefox・webkit）; `MANUAL-1.3.4` 未実行 |
+| 1.3.5 Identify Input Purpose | AA | Not applicable | `REVIEW-1.3.5` pass |
+| 1.4.1 Use of Color | A | Applicable | `AUTO-1.4.1` pass（chromium・firefox・webkit）; `MANUAL-1.4.1` 未実行 |
+| 1.4.2 Audio Control | A | Not applicable | `REVIEW-1.4.2` pass |
+| 1.4.3 Contrast (Minimum) | AA | Applicable | `AUTO-1.4.3` pass（chromium・firefox・webkit）; `MANUAL-1.4.3` 未実行 |
+| 1.4.4 Resize Text | AA | Applicable | `AUTO-1.4.4` pass（chromium・firefox・webkit）; `MANUAL-1.4.4` 未実行 |
+| 1.4.5 Images of Text | AA | Not applicable | `REVIEW-1.4.5` pass |
+| 1.4.10 Reflow | AA | Applicable | `AUTO-1.4.10` pass（chromium・firefox・webkit）; `MANUAL-1.4.10` 未実行 |
+| 1.4.11 Non-text Contrast | AA | Applicable | `AUTO-1.4.11` pass（chromium・firefox・webkit）; `MANUAL-1.4.11` 未実行 |
+| 1.4.12 Text Spacing | AA | Applicable | `AUTO-1.4.12` pass（chromium・firefox・webkit）; `MANUAL-1.4.12` 未実行 |
+| 1.4.13 Content on Hover or Focus | AA | Applicable | `AUTO-1.4.13` pass（chromium・firefox・webkit）; `MANUAL-1.4.13` 未実行 |
+| 2.1.1 Keyboard | A | Applicable | `AUTO-2.1.1` pass（chromium・firefox）、fail（webkit — 認証対象外のmacOS revision、tab order）; `MANUAL-2.1.1` 未実行 |
+| 2.1.2 No Keyboard Trap | A | Applicable | `AUTO-2.1.2` pass（chromium・firefox・webkit）; `MANUAL-2.1.2` 未実行 |
+| 2.1.4 Character Key Shortcuts | A | Not applicable | `REVIEW-2.1.4` pass |
+| 2.2.1 Timing Adjustable | A | Not applicable | `REVIEW-2.2.1` pass |
+| 2.2.2 Pause, Stop, Hide | A | Not applicable | `REVIEW-2.2.2` pass |
+| 2.3.1 Three Flashes or Below Threshold | A | Not applicable | `REVIEW-2.3.1` pass |
+| 2.4.1 Bypass Blocks | A | Applicable | `AUTO-2.4.1` pass（chromium・firefox）、fail（webkit — 認証対象外のmacOS revision、tab order）; `MANUAL-2.4.1` 未実行 |
+| 2.4.2 Page Titled | A | Applicable | `AUTO-2.4.2` pass（chromium・firefox・webkit）; `MANUAL-2.4.2` 未実行 |
+| 2.4.3 Focus Order | A | Applicable | `AUTO-2.4.3` pass（chromium・firefox・webkit）; `MANUAL-2.4.3` 未実行 |
+| 2.4.4 Link Purpose (In Context) | A | Applicable | `AUTO-2.4.4` pass（chromium・firefox・webkit）; `MANUAL-2.4.4` 未実行 |
+| 2.4.5 Multiple Ways | AA | Not applicable | `REVIEW-2.4.5` pass |
+| 2.4.6 Headings and Labels | AA | Applicable | `AUTO-2.4.6` pass（chromium・firefox・webkit）; `MANUAL-2.4.6` 未実行 |
+| 2.4.7 Focus Visible | AA | Applicable | `AUTO-2.4.7` pass（chromium・firefox・webkit）; `MANUAL-2.4.7` 未実行 |
+| 2.4.11 Focus Not Obscured (Minimum) | AA | Applicable | `AUTO-2.4.11` pass（chromium・firefox・webkit）; `MANUAL-2.4.11` 未実行 |
+| 2.5.1 Pointer Gestures | A | Not applicable | `REVIEW-2.5.1` pass |
+| 2.5.2 Pointer Cancellation | A | Applicable | `AUTO-2.5.2` pass（chromium・firefox・webkit）; `MANUAL-2.5.2` 未実行 |
+| 2.5.3 Label in Name | A | Applicable | `AUTO-2.5.3` pass（chromium・firefox・webkit）; `MANUAL-2.5.3` 未実行 |
+| 2.5.4 Motion Actuation | A | Not applicable | `REVIEW-2.5.4` pass |
+| 2.5.7 Dragging Movements | AA | Not applicable | `REVIEW-2.5.7` pass |
+| 2.5.8 Target Size (Minimum) | AA | Applicable | `AUTO-2.5.8` pass（chromium・firefox・webkit）; `MANUAL-2.5.8` 未実行 |
+| 3.1.1 Language of Page | A | Applicable | `AUTO-3.1.1` pass（chromium・firefox・webkit） |
+| 3.1.2 Language of Parts | AA | Applicable | `MANUAL-3.1.2` 未実行 |
+| 3.2.1 On Focus | A | Applicable | `AUTO-3.2.1` pass（chromium・firefox・webkit）; `MANUAL-3.2.1` 未実行 |
+| 3.2.2 On Input | A | Applicable | `AUTO-3.2.2` pass（chromium・firefox・webkit）; `MANUAL-3.2.2` 未実行 |
+| 3.2.3 Consistent Navigation | AA | Applicable | `AUTO-3.2.3` pass（chromium・firefox・webkit）; `MANUAL-3.2.3` 未実行 |
+| 3.2.4 Consistent Identification | AA | Applicable | `AUTO-3.2.4` pass（chromium・firefox・webkit）; `MANUAL-3.2.4` 未実行 |
+| 3.2.6 Consistent Help | A | Applicable | `MANUAL-3.2.6` 未実行 |
+| 3.3.1 Error Identification | A | Applicable | `AUTO-3.3.1` pass（chromium・firefox・webkit）; `MANUAL-3.3.1` 未実行 |
+| 3.3.2 Labels or Instructions | A | Applicable | `AUTO-3.3.2` pass（chromium・firefox・webkit）; `MANUAL-3.3.2` 未実行 |
+| 3.3.3 Error Suggestion | AA | Applicable | `AUTO-3.3.3` pass（chromium・firefox・webkit）; `MANUAL-3.3.3` 未実行 |
+| 3.3.4 Error Prevention (Legal, Financial, Data) | AA | Not applicable | `REVIEW-3.3.4` pass |
+| 3.3.7 Redundant Entry | A | Not applicable | `REVIEW-3.3.7` pass |
+| 3.3.8 Accessible Authentication (Minimum) | AA | Applicable | `AUTO-3.3.8` pass（chromium・firefox・webkit）; `MANUAL-3.3.8` 未実行 |
+| 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2` pass（chromium・firefox・webkit）; `MANUAL-4.1.2` 未実行 |
+| 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3` pass（chromium・firefox・webkit）; `MANUAL-4.1.3` 未実行 |
 
 **`AUTO-2.1.2`は3 browserすべてでeditorからの脱出を認証する。** ChromiumとWebKitでは上限付きの前向き
 Tab脱出をassertする。pinされたFirefox revisionでは、TabはMonacoの入力textareaから出ない。一方
@@ -748,7 +821,10 @@ runtimeで何に到達するかは検査済みであり、その記録が前掲�
 ## SC-008 accessibility: Not-applicableの再検証
 
 18件の`REVIEW-*` IDは、各Not-applicable rationaleをrelease diffとbuild済みpackageに照らして再確認する。
-2026-09-03に`src/`とpacked `dist/`に対して全件を再確認し、全件が今も成り立つ。interface reworkに
+2026-09-04に、後掲のrelease gateを実行したtreeの`src/`とpacked `dist/`に対して全件を再確認し、全件が
+今も成り立つ。この再確認はagent駆動であり、このrepositoryはそう記録することを求めている
+（AGENTS.ja.md「結論より先に証拠を確認する方針」）。reviewerはこのsessionであり、各行が述べるのは
+実行した検索とその結果であって、示せない判断ではない。interface reworkに
 伴って確認結果が変わったものが4件あるが、判定は変わっていない — inventoryのpath filterを置き換えた
 検索、detailとcomparisonが得たtab strip、Source自身のsurfaceが増やしたroute、そして固有の色を持つ
 vendor markである。確認した内容:

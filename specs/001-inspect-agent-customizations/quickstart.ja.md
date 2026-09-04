@@ -119,8 +119,10 @@ bindされたportを述べる場所はprintされたURLだけである。誰か�
 `--inspect-personal-setup`は、4つのmember root — 各tool自身の設定ディレクトリと共有agent home — に
 ある文書化済みカスタマイズfileもinspectする。consent pageのcheckboxが認可するのと同じreadを、commandで
 述べる形である。このflagそのものがconfirmationである。CLIはstartupで1回captureしたimmutableなGlobal
-root inputからpreviewを構築して確認し、readのcommitを待つ。したがってprintされたURLが現れる時点で、
-Global Sourceは既にinventoryに載っている。Flagもpreview requestも環境プロパティやhome directoryを
+root inputからpreviewを構築して確認し、batchのsettleを待つ。したがってprintされたURLが現れる時点で、
+そのconfirmationが生んだものは既にcommit済みである。Rootを1つ以上admitした場合はGlobal generationと
+そのSourceがinventoryに載る。4件すべてがrejectされた場合、settleしたdispositionは`active-no-job`で
+あり、Sourceもgenerationも存在せず、各memberの`failureCode`が説明するcontrol stateだけが残る。Flagもpreview requestも環境プロパティやhome directoryを
 再captureしない。各toolがどう終わったか、何が除外されたままかは、これまでどおりconsent pageにある。
 Flagなしのlaunchは選択されたrepositoryの外を一切readせず、pageはディレクトリの割り出しを申し出る。
 
@@ -599,7 +601,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    `--inspect-personal-setup`もprocess inputを再読込しない。`HOME`/`USERPROFILE`の直接選択もexistence checkも
    行わない。Capture、classification、またはdisplay escapeのthrowはlauncher探索、session作成、browser
    attemptより前にstartupをfailさせる。
-2. Consent viewが正確なCopilot/Claude/Codex lexical root、input state、除外を表示し、
+2. Consent viewが正確なCopilot/Claude/Codex/共有agent home lexical root、input state、除外を表示し、
    read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。previewが束縛する2つのversionは
    どちらも表示しない。読み手はどちらに対しても行動できず、参照先もなく、それらが守るversion不一致は
    previewが画面にある間には起こりえない — 値はbuildの定数であり、異なるbuildは確認できるpreviewを
@@ -714,9 +716,13 @@ fixtureの自分の複製とguidanceだけを渡し、このworking treeの外�
 にある。Sessionが読むtask prompt、guidance、response form、ground truth、scoring rubricは
 `tests/usability/sc001-sc006-study-inputs/`配下にある。
 
-Treeは`pnpm run start:fixture`で配信する。これはground truthが前提とするall-kind fixtureを構築し
-配信する。全sessionを`validation.md`と`validation.ja.md`へ記録する。4つのworkflow outcome、2つの
-計測区間、safetyの観測を、除外も置換もせず記録し、runがagent駆動であったことも記録する。
+Run の前に各sessionへ自分のfolderを用意する。そのfolderから`npx --no-install`が解決する場所に
+packしたrelease candidateを入れ、`tests/fixtures/repositories/build-fixtures.ts`がそのfolderの
+`repository/`としてall-kind fixtureをその場所に構築し、`tests/fixtures/global-homes/build-fixtures.ts`が
+自分だけの`HOME`の下に4つのpersonal-setup homeを構築する。1つの共有hostではrunにならない。
+20 sessionは20回の起動と20個のconsent状態である。全sessionを`validation.md`と`validation.ja.md`へ
+記録する。4つのworkflow outcome、2つの計測区間、safetyの観測を、除外も置換もせず記録し、runが
+agent駆動であったことと、どのmodelで走ったかも記録する。
 
 
 ### Performance smoke pass
@@ -859,8 +865,10 @@ Pathlessなscopeは存在せず、source scopeのdiagnosticが表示、ordering�
 ## Manual accessibility review
 
 [SC-008 accessibility受入contract](contracts/accessibility-acceptance.ja.md)を規範とする。Automated E2E合格後、packed
-release candidateに対してcriterion固有の全`AUTO-*` checkを合格させてから全`MANUAL-*` checkを実行し、完全なdiff、
-packed tarballのfile list、render済みpacked interfaceに対して全`REVIEW-*` rationaleを再確認する。Axeのseverity resultだけでは
+release candidateに対してcriterion固有の全`AUTO-*` checkを実行し、完全なdiff、packed tarballのfile list、
+render済みpacked interfaceに対して全`REVIEW-*` rationaleを再確認し、全`MANUAL-*` IDは理由とともに未実行
+として記録する。このreleaseがassertするのはautomated layerであり、manual matrixは3つのOSと3つのscreen
+readerなしには実行できない。Axeのseverity resultだけでは
 SC-008を立証できない。Contractはsamplingしない完全なexecution matrixを固定する。
 
 1. Keyboardだけでlaunch/URL follow、filter、file open/close、skill rowのlinkからの比較openとcompared file/copy切替、

@@ -352,11 +352,12 @@ surfaceの全てである。spawnされるどのprocessも、固定の引数とb
    Copilot contractはさらにVS Code、CLI、Cloudを別表にする。
 2. **Inspector matcher registry**はstableな`ruleId`を記録し、共通の
    [allowlist grammar](contracts/inspection-path-allowlist.ja.md)に従う。全Repository matcherはBase、ordered Relative
-   selector、それらと1対1のtyped segment programを分離し、正確なselected Repository rootから`./`で表記してbare `**/`を
-   拒否する。Literal、regex、non-adjacent recursive-directory tokenは1 program内でcomposeできる。`./**/`は
+   selector、それらと1対1のtyped segment programを分離する。Literal、regex、non-adjacent
+   recursive-directory tokenは1 program内でcomposeできる。Descendant-inventory selectorは
    明示的な下向きInspector descendant inventoryだけを表し、vendor traversalを主張しない。Build validationは同じ
-   programをimmutable versioned `TraversalPlan` dataへcompileし、Global preview patternをそのplanからrenderしてconsentへ
-   schema、closed selection policy、canonical programをbindする。Content依存policyはclosedなCodex Global
+   programをimmutable versioned `TraversalPlan` dataへcompileする。Consent previewが持つのはcaptureした
+   rootと、出荷済みallowlistおよびplan setを名指す2つのversion識別子だけである。planもprogramも自身では
+   持たず、scanはそれらのversionが識別する静的registryからそれらを読む。Content依存policyはclosedなCodex Global
    first-non-empty branchだけで、overrideを先にprobeし、readしたnon-empty contentならshort-circuitし、absentまたは
    emptyの場合だけ次へ進む。Unreadableまたはbinaryのoverrideはそのfileのdiagnosticで
    branchを終了し、fallbackしない（FR-035）。 Selectorはtyped segment arrayとして直接authorする。`./`表記のBase/selector string形式、bare `**/`拒否、
@@ -1301,7 +1302,7 @@ mutationとしてscoreすること、server-sideおよびclient-sideのacknowled
    platform自身のpath処理が所有する。Valueの欠落はGunshiのtyped argument validationが所有し、productの固定
    startup errorを受けるのは明示的なempty valueだけで、反復optionはparserのlast valueへ解決する。Generation 0は
    stableでreadを認可しないRepository Sourceを同期的に含む。
-2. Global consentはselectorなしのall-tools action 1件とする。Initial processingは必ずfrozen preview entry 3件全てを評価し、
+2. Global consentはselectorなしのall-tools action 1件とする。Initial processingは必ずfrozen preview entry 4件全てを評価し、
    retryはcurrent server-side `retryableTools`のcomplete set、すなわちnon-pending unpublished `admitted` controlと
    `retryDisposition: same-preview`の`rejected` controlを導出し、lexicalな`new-preview-required`を除外する。決定的に
    rejectされたentryはsiblingをblockしない。Admitした全rootをbatch

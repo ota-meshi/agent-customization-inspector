@@ -234,6 +234,19 @@ function comparablePath(invocationCwd: string, path: string): string {
  * the machine would offer for consent. An executable there is inspected
  * content, which this product never executes (FR-020), and a destination
  * chosen from inspected content is what FR-022 forbids.
+ *
+ * The comparison is between spellings, and a root's spelling does not always
+ * name the tree that is read: a scan follows links (FR-024) and appends
+ * without normalizing, so a root reached through a symbolic link — or one
+ * whose `..` follows one, where the lexical fold in {@link comparablePath}
+ * and the operating system's own resolution disagree (`traversal.ts`
+ * § pathBelow) — is read at a location no spelling here names. An executable
+ * inside that location is then outside this comparison, and this is the
+ * documented residual limitation rather than a gap to close: naming it would
+ * take `realpath`, which is filesystem I/O this module does not perform
+ * (QR-003) and which FR-013 forbids on a proposed member root before the
+ * reader has consented to it. It is the same class as the FR-022 limitation
+ * SC-004 records for a lexically indistinguishable network filesystem.
  */
 function insideInspectedRoot(candidate: string, inspectedRoots: readonly string[]): boolean {
   return inspectedRoots.some((root) => candidate === root || candidate.startsWith(root + sep));

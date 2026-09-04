@@ -201,9 +201,10 @@ test.describe('an empty repository', () => {
     // generation committed, and the page says what it looked for rather than
     // showing a failure.
     await expect(page.locator('main')).toContainText('Inspection session ready.');
-    await expect(page.locator('main')).toContainText(
-      'No customization files were recognized in this scan.',
-    );
+    // Said on the rail, over the group that is empty (`InventoryRail.vue`);
+    // the selected entry's own panel states what that entry holds.
+    await expect(page.locator('main')).toContainText('None recognized.');
+    await expect(page.getByRole('tabpanel')).toContainText('No files.');
     await expect(page.locator('.aci-error')).toHaveCount(0);
   });
 });

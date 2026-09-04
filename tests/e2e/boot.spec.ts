@@ -45,12 +45,14 @@ test('shows one enabled Repository Source with an empty inventory', async ({ pag
   await page.goto(host.origin);
   await waitForInventory(page);
   // The fixture holds no Codex skill, so the committed inventory is empty and
-  // the shell says so instead of rendering an empty list.
-  // Vendor-neutral on purpose: the sentence reports the finding, so it stays
-  // correct as the shipped catalog grows past Codex.
-  await expect(
-    page.getByText('No customization files were recognized in this scan.'),
-  ).toBeVisible();
+  // the shell says so. The rail says it, because what is empty is the group of
+  // kinds and the group is the rail's: in a panel the sentence would sit under
+  // whichever entry is selected and vanish when the reader moved to the other
+  // (`InventoryRail.vue`). Vendor-neutral on purpose — the sentence reports the
+  // finding, so it stays correct as the shipped catalog grows past Codex.
+  await expect(page.getByRole('navigation', { name: 'Sources' }).locator('..')).toContainText(
+    'None recognized.',
+  );
   await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
   await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
 

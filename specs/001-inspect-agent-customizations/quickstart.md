@@ -140,8 +140,11 @@ port someone is holding for their own use; the suites launch that way for the sa
 member roots — the tools' own configuration directories and the shared agent home — the
 same read the consent page's checkbox authorizes, stated in the command instead. The flag
 _is_ the confirmation: the CLI constructs the preview from the immutable Global root inputs
-captured once at startup, confirms it, and waits for the read to commit, so the printed URL
-appears with the Global Source already on the inventory. Neither the flag nor a preview
+captured once at startup, confirms it, and waits for the batch to settle, so the printed URL
+appears with whatever that confirmation produced already committed. Where at least one root
+was admitted, that is the Global generation and its Sources on the inventory; where all four
+were rejected, the settled disposition is `active-no-job` and no Source or generation exists
+— only the control state each member's own `failureCode` explains. Neither the flag nor a preview
 request recaptures the environment properties or home directory. What each tool ended as,
 and what stays excluded, is on the consent page as it always is; without the flag a launch
 reads nothing outside the selected repository, and the page offers to work the directories
@@ -738,8 +741,8 @@ real home directory. Verify:
    `--inspect-personal-setup` rereads process inputs. No direct `HOME`/`USERPROFILE`
    selection or existence check occurs. A capture, classification, or display-escape throw
    fails startup before launcher discovery, session creation, or a browser attempt.
-2. The consent view shows the exact Copilot, Claude, and Codex lexical roots, input
-   states, and exclusions, with the read scope explained in plain language rather than
+2. The consent view shows the exact Copilot, Claude, Codex, and shared agent lexical roots,
+   input states, and exclusions, with the read scope explained in plain language rather than
    per-pattern path displays. It shows neither version the preview binds: a reader can act
    on neither, cannot look either up, and the version mismatch they guard against cannot
    occur while the preview is on screen — the values are build constants, and a different
@@ -903,10 +906,15 @@ to a session, and what is written down are in
 the task prompts, guidance, response form, ground truth, and scoring rubric it reads are
 under `tests/usability/sc001-sc006-study-inputs/`.
 
-Serve the tree with `pnpm run start:fixture`, which builds and serves the all-kind fixture the
-ground truth is written against. Record every session in `validation.md` and
-`validation.ja.md` — the four workflow outcomes, the two timed intervals, and the safety
-observations — without exclusion or replacement, and record that the run was agent-driven.
+Prepare each session its own folder before the run: the packed release candidate installed
+where `npx --no-install` resolves it from that folder, the all-kind fixture built in place as
+that folder's `repository/` by `tests/fixtures/repositories/build-fixtures.ts`, and four
+personal-setup homes under a `HOME` of its own from
+`tests/fixtures/global-homes/build-fixtures.ts`. One shared host serves no run: twenty
+sessions are twenty launches and twenty consent states. Record every session in
+`validation.md` and `validation.ja.md` — the four workflow outcomes, the two timed intervals,
+and the safety observations — without exclusion or replacement, and record that the run was
+agent-driven and on which model.
 
 
 ### Performance smoke pass
@@ -1098,9 +1106,11 @@ diagnostic never invents a path for display or ordering.
 ## Manual accessibility review
 
 Follow the normative [SC-008 accessibility acceptance contract](contracts/accessibility-acceptance.md).
-After every criterion-specific `AUTO-*` check passes, execute every `MANUAL-*` check against
-the packed release candidate and recheck every `REVIEW-*` rationale against the complete
-diff, the packed tarball's file list, and the rendered packed interface. An axe severity result alone does
+Execute every criterion-specific `AUTO-*` check against the packed release candidate, recheck
+every `REVIEW-*` rationale against the complete diff, the packed tarball's file list, and the
+rendered packed interface, and record every `MANUAL-*` ID as unexecuted with its reason — this
+release asserts the automated layer, and the manual matrix cannot be run without three
+operating systems and three screen readers. An axe severity result alone does
 not establish SC-008. The contract freezes the complete, non-sampled execution matrix:
 
 1. Use only the keyboard to launch/follow the URL, filter, open and close a file, open a

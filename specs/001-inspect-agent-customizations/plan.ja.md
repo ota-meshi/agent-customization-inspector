@@ -143,8 +143,10 @@ instructionは、その1つの同期済みbaselineだけを使用しなければ
 trailing-whitespaceの慣習をeditorに宣言する（research § 3）。
 ESLint 10.7.0と`@nuxt/eslint` 1.16.0はlint gateとし、`tsconfig.json`で設定した
 application、shared、source、script、test codeへのstrict TypeScript type checkを同等に独立した
-`typecheck` gateとして実行する。local verification、独立CI job、releaseでは
-ESLintと`typecheck`を別に実行する。
+`typecheck` gateとして実行する。local verificationと独立CI jobでは
+ESLintと`typecheck`を別に実行する。Release pathはどちらも再実行せず、artifact自身についての
+checkだけを加える。すなわちtarballを作るbuildと、packされる直前のpackaged-tree verificationである
+（AGENTS.ja.md「Releaseの方針」）。
 
 **Dependencyおよび破壊的変更の移行gate**: このinitial-release baselineは、移行対象となる以前の公開済み
 Inspector package、public contract、永続profile、user dataが存在しないため、planned migration impactを
@@ -396,11 +398,7 @@ _GATE: Phase 0調査前に合格し、Phase 1設計後に再確認済み。_
       comparison構築を通じてのみ到達できるようにする。inventoryやsessionのresponseからは到達できない。
       中央のfull-session purgeを通常のscope限定route/Source/generation cleanupから
       区別し、Global disableはrequest前にfull purgeをinvokeする明示的な例外とする。意図的に調査した完全なcontentはinert、local、
-      session-onlyのままで、persistenceとegressには含めない。Study capture adapterもraw trafficを一時的にだけclassifyしてIPC前に
-      discardし、retain evidenceはclosedでcontent-freeなsafe eventだけをhashする。Raw headerのname/framing/wire/encoded representation、全
-      noncanonical derivative、body、content/metadata、participant response、path、URL/authority value、capability、environment value、raw
-      errorをrejectする。唯一の例外はstrict validation済みdecoded canonical safe `correlationId`であり、retained canonical payload/digest chainへ入れる。
-      Captured wire/browser/Inspector byte自体をhash preimageにしない。Session Diagnosticはactionableな
+      session-onlyのままで、persistenceとegressには含めない。Session Diagnosticはactionableな
       location fieldだけを保持できる。Failureは通常のerrorとして報告する。Constitution § Quality and Safety Standardsのclauseに従い、
       productはlog-content ruleもsanitized error envelopeも定義しない。telemetryを持たず、outputは調査対象fileを
       所有する同じuserが読むためである。Resource capacityはNode.js、parser library、OS、filesystem、browser、
@@ -1013,9 +1011,10 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   rule自身の読み取りである。Repository comparison acceptanceでは最初に同じRepository Source内のreadableなcurrent-generation distinctなカスタマイズファイル
   2件を使用し、正常なGlobal commit後だけ、2つのconsented homeが持つ同じrowのreadableなfileどうしの
   比較を、各owning SourceとSource-relative namespaceを維持したままUS4で検証する — 比較は1つの
-  Source family内に留まるため、RepositoryとGlobalを跨ぐpairは存在しない。他contentと並行して表示するRepository/Globalの自動更新scan/status informationは、共通のkeyboard操作可能な
-  pause/resumeとon-demand-refresh controlを使う。Pauseはunderlying scanを停止せず、表示/live-region statusをlast valueで
-  freezeし、resumeまたは明示refreshでcurrent stateを表示する。Editorはclient-onlyとし、file/compare routeで
+  Source family内に留まるため、RepositoryとGlobalを跨ぐpairは存在しない。RepositoryとGlobalのscan/status informationは読み手自身の操作でだけ更新する。scan commandはそのscanが
+  終端に達してから応答し、pageはその応答で再取得する。他所で始まったscanを見せるのは明示refreshである。
+  自動で更新されるものが無いので、pause/resume controlも、pauseする対象も存在しない
+  （contracts/accessibility-acceptance.ja.md § 2.2.2）。Editorはclient-onlyとし、file/compare routeで
   lazy-loadする。Nuxt/Viteは明示的にimportしたeditor workerをsame-origin static assetとして出力し、
   basic languageごとのgrammar chunkはlazyに取得する。Language-service worker、CDN asset、
   external worker、blob workerを許可しない。Editor/model
