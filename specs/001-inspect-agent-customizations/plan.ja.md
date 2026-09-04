@@ -368,7 +368,7 @@ _GATE: Phase 0調査前に合格し、Phase 1設計後に再確認済み。_
       staleならT002をblockし、英日validation evidenceが欠落すればreleaseをblockする。
 - [x] **完全な検証**: Byte衛生は`.gitattributes`と`.editorconfig`に委ねる。lint、typecheck、automated
       suiteはlocalと独立CI jobで実行し、release pathはそのどれも再実行しない。同じcommitに対しpull requestが既に実行したsuiteを、publish credentialの隣でもう一度走らせても得るものはない。Release reviewで見つかったrepository remediationごとに、
-      complete applicable automated matrixを再実行し、影響するcandidate/profile/fixture/human/manual evidence setを無効化・再生成し、
+      complete applicable automated matrixを再実行し、影響するcandidate/fixture/agent-run evidence setを無効化・再生成し、
       concernが0件になるまでcomplete-diff/tarball reviewを反復する。Bilingual Constitution recordをsole planned validation-only editとして
       完了した後、frozen final tree/final candidateへ全applicable automated gateを再実行する。Outcomeはrepository外へcaptureする。
       その後repositoryをeditした場合は結果を無効にし、final sequence前にremediation、digest/evidence再validation、applicable gate再実行、
@@ -407,9 +407,10 @@ _GATE: Phase 0調査前に合格し、Phase 1設計後に再確認済み。_
       透過的にreadしてbrokenなlinkにfile別diagnosticを付け、revoke済み/late byteを破棄して、physicalに取消不能な
       I/Oの残存riskと解消pathを記録する。
 - [x] **参加しやすさ**: 単一package setup、再現可能なpinned tooling、客観的期待結果、keyboard-first
-      workflow、actionable error、自動・manual accessibility gateで参加の障壁を抑える。Maintainer-owned release studyは
-      必要性、accountable owner、funding、support、privacy、accessibility、rerun policyを公開し、通常のcontributorへ
-      recruitmentまたはreview義務を移さない。
+      workflow、actionable error、自動accessibility gateで参加の障壁を抑える。資金のあるstudyでしか
+      できないことをcontributorに求めない。Manual accessibility matrixは負債ではなく未実行として記録し、
+      初見利用の評価はmaintainerが動かす20 agent sessionである。募集するcohortも、移すreview義務も
+      存在しない。
 
 ### 設計後の再確認
 
@@ -1061,7 +1062,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   この完全なtupleとし、eligibilityによってconsentをnarrowしない。Serverはtuple memberごとにinternal `GlobalToolControl`を
   1つ所有する。Filesystem I/Oを伴わないrequest/`previewId` validation後も、initial enableはfrozen consentと4 controlすべてを
   root admission中operation-localかつ観測不能に保ち、session `globalControl`またはpending stateをまだ作成しない。Retryは
-  existing active consent/control stateを正確なpre-operation snapshotとして使用する。どちらもnew root contextとcandidate
+  admission中existing active consent/control stateを変更せず維持する。どちらもnew root contextとcandidate
   Source/boundary IDをoperation-localに保つ。Owned toolすべてが決定的なadmission outcomeに達した後の1回のcoordinator decisionで
   initial consent/controlをactivateするかretry partitionを適用し、rootをadmitした場合だけ全contextをattachして1 batchへ
   transferする。その後もbatch scan resultとgraph recordは1回のgeneration commitまでtentativeのままにする。
@@ -1073,9 +1074,9 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   readableなdirectoryでないconsent済みrootはそのrootだけを除外し（closed admission outcomeに従って
   absentまたはfailedとして記録する）、admit可能なsiblingを続行させる。それ以外のunexpectedなthrowまたは
   rejectionは通常のerrorとしてattemptをfailさせ、enable/retry transaction全体を
-  abortする。全siblingのtentative context/resultを破棄し、admitted subsetを一切commitせず、正確なpre-operation snapshotを
-  復元する。Initial enableのsnapshotにはactive consent/controlが存在せず、retryではpre-existing consent/controlをtentativeな
-  root authorityなしでretry/disable用に保持する。
+  abortする。全siblingのtentative context/resultを破棄し、admitted subsetを一切commitしない。Initial enableは
+  consent/controlをactivateしておらず、retryのpre-existing consent/controlはadmissionがmutationしないためtentativeな
+  root authorityなしでretry/disable用に保持される。Copyしたsnapshotもrestore stepも存在しない。
   Admit済みsubsetがemptyでoperationのthrow/rejectがない場合、coordinatorは決定的にrejectされたcontrolを記録して
   `active-no-job`を返し、`scanRequestId`、scan job、Source、generationを作らない。1件以上のrootをadmitした場合は、全admitted
   contextとcandidate IDを各controlへatomicにattachし、一緒に、1つの`scanRequestId`、1つのpublication authority、1つの
@@ -1084,7 +1085,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Copilot、Claude、Codexを1つのlogical Sourceへ結合しない。全Sourceを、
   `committable-complete`または`committable-partial`のGlobal generation commit 1回だけで一緒にpublishする。Initialまたはretryには、
   batch levelのscan job、result、観測可能なcommitが正確に1つだけ存在する。
-  Admissionとbatch transfer後、coordinator lock下の最後のoperation-ID/epoch/state checkでresponse dispositionをatomicに
+  Admission後、最後のregistered-operation-ID checkと直後の同期的coordinator settlementでresponse dispositionをatomicに
   選択する。Batch operationがraceに勝てばshared `scanRequestId`付きのqueued acceptanceを返し、全件reject operationなら
   `active-no-job`を返す。Disable barrierが先なら固定の`global-disable-pending` conflictを返してdrainingへ入り、operation-local cleanup後だけunregisterし、
   late mutation/leakを生じさせない。

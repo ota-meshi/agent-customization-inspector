@@ -2,7 +2,7 @@
 
 [日本語](guidance.ja.md)
 
-This is everything you are told about the tool. Your moderator cannot add to it.
+This is everything you are told about the tool. The runner cannot add to it.
 
 ## Starting it
 

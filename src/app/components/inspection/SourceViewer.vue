@@ -127,7 +127,11 @@ const mountError = shallowRef<boolean>(false);
  */
 const MOUNT_ERROR_MESSAGE = 'The source viewer could not be loaded.';
 
-/** The failure rendering's element, so the purge can empty it synchronously. */
+/**
+ * The mounted `<pre>` — the pre-mount placeholder or the failure rendering,
+ * never both, since the placeholder shows only while there is no failure — so
+ * the purge can empty whichever holds authored text synchronously.
+ */
 const fallbackElement = ref<HTMLPreElement | null>(null);
 
 /**
@@ -162,10 +166,10 @@ const dropContent = (): void => {
   // into a fresh model during the one flush before this component unmounts.
   requestedSource += 1;
   disposeViewer();
-  // The editor is not the only place the text can be. The failure rendering
-  // is a DOM text node bound to the props, so it survives until Vue patches
-  // this component away — one flush later, when everything else is already
-  // gone.
+  // The editor is not the only place the text can be. The placeholder and the
+  // failure rendering are both DOM text nodes bound to the props, so either
+  // survives until Vue patches this component away — one flush later, when
+  // everything else is already gone.
   purged.value = true;
   fallbackElement.value?.replaceChildren();
 };
@@ -328,7 +332,29 @@ onBeforeUnmount(() => {
         }}{{ SOURCE_VIEWER_LANGUAGE_TEXT[contentLanguage] }}</span
       >
     </component>
-    <div v-show="!mountError" ref="host" class="aci-source-viewer" />
+    <!-- The editor's box and the placeholder that gives it the file's own
+         height, in one grid cell so the box is as tall as whichever is there
+         rather than as tall as both. The host cannot be hidden while the
+         placeholder stands in for it: Monaco measures its own text inside that
+         element, and an element with no layout is one it cannot measure in. -->
+    <div v-show="!mountError" class="aci-source-viewer-panel__stage">
+      <div ref="host" class="aci-source-viewer" />
+      <!-- The text the editor is about to show, laid out by the browser rather
+           than predicted from the editor's own metrics — same monospace font,
+           and `wordWrap: 'off'` makes a visual line a model line, so no line
+           height of Monaco's is copied here. The box therefore starts at the
+           file's height instead of at one line, and a control below it does
+           not move out from under a reader already pressing it. It is gone in
+           the flush that mounts the editor, which writes the exact height
+           (`monaco.ts` § fit). `aria-hidden` and unfocusable, because the
+           editor publishes this same text: a reader met it twice otherwise. -->
+      <pre
+        v-if="viewer === null && !mountError && !purged"
+        ref="fallbackElement"
+        class="aci-source-viewer__fallback aci-source-viewer__fallback--placeholder"
+        aria-hidden="true"
+        >{{ sourceText }}</pre>
+    </div>
     <!-- Stable rather than inserted with the failure it reports, because a
          region that appears together with its message is not reliably read. -->
     <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
@@ -372,19 +398,22 @@ onBeforeUnmount(() => {
 .aci-source-viewer {
   block-size: auto;
   inline-size: 100%;
-  /* The cap keeps a long document from taking the page, and it is measured
-     against the viewport rather than fixed: at 24rem a 734-byte settings file
-     scrolled inside a 384px window with 620px of empty page under it, which is
-     a second scroll container inside the one the shell keeps (`App.vue`
-     § .aci-app). `max()` keeps the 24rem floor for a short viewport, where a
-     viewport-derived cap would be smaller than the box is worth drawing. */
-  max-block-size: max(24rem, calc(100vh - 14rem));
-  /* One line's worth, not three. The floor exists so a mount with no height
-     yet is not a collapsed box, and Monaco writes the document's own height
-     as soon as it has one — a two-line frontmatter then sat in a box with a
-     line of empty space under it, which reads as a frame the content did not
+  max-block-size: var(--aci-source-viewer-max-block-size);
+  /* One line's worth, not three. The floor is the empty host's: before the
+     editor mounts the placeholder beside it is what carries the file's own
+     height, and after it Monaco writes the document's height — a two-line
+     frontmatter in a three-line box read as a frame the content did not
      fill. */
   min-block-size: 1.5rem;
+}
+
+/* The editor and its placeholder occupy the same cell. */
+.aci-source-viewer-panel__stage {
+  display: grid;
+}
+
+.aci-source-viewer-panel__stage > * {
+  grid-area: 1 / 1;
 }
 
 /* The panel: the name of what is in the editor, and the editor, in one box.
@@ -392,6 +421,14 @@ onBeforeUnmount(() => {
    as "this is the frontmatter" instead of as an unlabelled frame under a
    title. */
 .aci-source-viewer-panel {
+  /* The cap the editor takes and the placeholder predicts, written once so the
+     two cannot settle at different heights. It is measured against the
+     viewport rather than fixed: at 24rem a 734-byte settings file scrolled
+     inside a 384px window with 620px of empty page under it, which is a second
+     scroll container inside the one the shell keeps (`App.vue` § .aci-app).
+     `max()` keeps the 24rem floor for a short viewport, where a
+     viewport-derived cap would be smaller than the box is worth drawing. */
+  --aci-source-viewer-max-block-size: max(24rem, calc(100vh - 14rem));
   background: var(--aci-surface-raised);
   border: 1px solid var(--aci-line);
   border-radius: var(--aci-radius-sm);
@@ -444,5 +481,21 @@ onBeforeUnmount(() => {
   min-block-size: 0;
   overflow: auto;
   padding: 0.5rem 0.625rem;
+}
+
+/* The placeholder stands where the editor will be, so it draws no rule above
+   it — the panel's head already ends in one — and it takes the editor's cap
+   rather than the failure rendering's, or the box would settle at a height the
+   editor never takes. It does not scroll: nothing can reach it to scroll it,
+   and the editor that replaces it is what scrolls. */
+.aci-source-viewer__fallback--placeholder {
+  border-block-start: none;
+  max-block-size: var(--aci-source-viewer-max-block-size);
+  overflow: hidden;
+  /* The editor's box has no padding of its own, so neither does the box
+     standing in for it: the padding the failure rendering carries would be
+     height the editor never takes, and the content below would shift by it on
+     every mount. */
+  padding: 0;
 }
 </style>

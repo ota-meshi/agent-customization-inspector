@@ -967,8 +967,9 @@ PublicなGlobal consent/control/Source stateのいずれかがあるsuccessは`r
 そのSourceを破棄し、何もcommitしない。Repository sequence、そのgeneration、そのIDには触れない。
 未公開operation-local initial enableだけが`cleanup-only`を使い、committed stateを何も変えずにfenceをremoveする。Repeated disableは同じbarrierへjoinする。
 Accept後のfailureではprocessを維持しながらfence、失敗requestのerror、retry/join pathを保持し、unrecoverable
-cleanupはrestartを必要とする。Accept前failureまたはtrue no-opはfenceをnullのままとする。最後のcoordinator lock下
-operation-ID/epoch/state checkによりenableの`202`またはdisableへ負けた`409`を決め、late workによるGlobal state復元を防ぐ。
+cleanupはrestartを必要とする。Accept前failureまたはtrue no-opはfenceをnullのままとする。Enable registrationが
+同じoperation IDを指し続けていることを最後にcheckし、直後に同期的settlementを行うことで、enableの`202`または
+disableへ負けた`409`を決め、late workによるGlobal state復元を防ぐ。Enable専用のepochまたは重複state checkは使わない。
 
 各scanはowning sequenceのcurrent generation — Repository scanはcommit済み`RepositoryScanGeneration`、Global scanは
 commit済み`GlobalScanGeneration` — から開始してreplacementを別に構築する。Complete result、または問題が
@@ -1137,9 +1138,9 @@ runの固定scoringを組み合わせる。
 - Unit/contract coverageなしのbrowser testは遅くfailureの特定が難しいため不採用。
 - Coverage percentageだけではnamed boundary/non-execution invariantを示せないため不採用。
 
-## 11. 仕様再確認の決定（2026-07-17）
+## 11. Sourceの所有、authored value、成果測定
 
-**決定**: Phase 0設計を2026-07-17のclarificationと照合し、次のruleを後続の全design artifactへ引き継ぐ。
+**決定**: 次のruleが全design artifactにわたって成り立つ。
 
 1. Admitしたmember root 1つをmember Global Source 1つとし、Codex、Claude、Copilot、共有agent homeごとに最大1つ、
    1 sessionで0から4つとする。
@@ -1178,9 +1179,9 @@ runの固定scoringを組み合わせる。
 - Mutableかつ非公開のreference environmentは、別maintainerがprotocolを再現したりbaseline変更を解釈したりできないため
   不採用。Thresholdの主張には誰も指名していない凍結測定hostが要り、他所で取った数値はそのマシンの測定である。
 
-## 12. 仕様再確認の決定（2026-07-19）
+## 12. Child-process境界、planning gate、criterionのscope
 
-**決定**: 最終analysis remediationをplanningとimplementationへ引き継ぐ。
+**決定**: planningとimplementationは次のruleに従う。
 
 1. Startup時のbrowser openingを、許可するproductのchild-process surfaceの一方とする（もう一方はreaderが明示的に要求するopen-in-editorである）: macOSでは固定の
    process一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script、それ以外では
@@ -1227,9 +1228,9 @@ dependency baselineを独立にtest可能にする。
 interaction targetをtrace不能なplan-only goalのままにする案、`package.json`だけでversionをpatchする案は、いずれも
 矛盾または第2のundocumented contractを作るため不採用。
 
-## 13. Analysis前のordering決定（2026-07-19）
+## 13. Task生成のdependency gate
 
-**決定**: 次の4つの明示的dependency gateからimplementation taskを再生成する。
+**決定**: implementation taskは次の4つの明示的dependency gateに従う。
 
 1. Setupはbyte衛生を宣言的に所有する: `.gitattributes`がline endingをnormalizeし、`.editorconfig`が
    editor慣習を宣言する。Code formattingはPrettierのものであり、ローカルとCIの`format:check`がゲートする。
@@ -1256,9 +1257,9 @@ presentation fieldは、checkpointを達成不能にするかimplementation自�
 comparisonを全familyのdiscovery/detailより後ろへ水平移動する案も、元のtask orderを壊し、独立してtest可能なfamily
 checkpointを遅らせるため不採用。Comparisonが自身のfamilyのdiscoveryと完全で不活性なdetailより前に来ることはない。
 
-## 14. Cross-artifact remediation決定（2026-07-19）
+## 14. Safetyとmeasurementのcontract
 
-**決定**: 残るsafetyとmeasurement contractをtask再生成前に次のとおり固定する。
+**決定**: safetyとmeasurementのcontractは次のとおりである。
 
 1. Operational-event語彙は存在せず、そのcontent禁止事項も持たない。ErrorはordinaryにReportする。Session Diagnosticは
    別のactionableなsurfaceとして維持し、fixed CLI help/version、1つのlaunch URL、fixed startup warningはpresentation
@@ -1292,9 +1293,9 @@ performance completion、timerに基づくphysical I/O cancellationの主張、�
 mutationとしてscoreすること、server-sideおよびclient-sideのacknowledgement stateは、platform guaranteeを過大に述べる、integrityを弱める、
 またはpresentationとAPI authorizationを混同するため不採用。
 
-## 15. 最終clarification決定（2026-07-20）
+## 15. Closed runtime contract
 
-**決定**: 最終的なuser choiceを1つのclosed runtime contractとして適用する。
+**決定**: 1つのclosed runtime contractが起動、consent、failureのscope、表示を規定する。
 
 1. `process.cwd()`を正確に1回captureする。`--root`がなければ、その文字列を選択したRepository rootとして使う。
    Absolute `--root`はそのまま保持し、relative optionはそのcaptureに対してresolveする。Filesystem/network I/Oは

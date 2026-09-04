@@ -333,7 +333,7 @@ job or authority.
 | Field | Type | Rules |
 |---|---|---|
 | `previewId` | exact 43-character unpadded base64url string | Canonical encoding of an independent 32-byte CSPRNG draw and a process-memory lookup key; a new preview invalidates the previous unconsented preview, while active consent freezes and reuses its exact preview |
-| `previewEpoch` | non-negative safe integer | Internal and never serialized; increments with every newly created preview and binds replacement/revalidation without using an opaque ID as an order value |
+| `previewEpoch` | non-negative safe integer | Internal and never serialized; records the creation order by incrementing with every newly created preview, but is not carried or compared by an enable operation because `previewId` identifies the current record and the operation registration prevents its replacement |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `traversalPlanVersion` | date string | Version of the shipped typed traversal-plan set; with `allowlistVersion` this record-level pair identifies the closed selection policy and canonical selector programs the preview binds |
 | `entries` | exactly four member entries | Fixed Copilot, Claude, Codex, shared-agent-home order |
@@ -373,8 +373,8 @@ rejects it nor grants pre-consent I/O. Only an absent setting selects the docume
 default. An empty, relative, invalid, or post-consent rejected setting never creates
 fallback authority.
 Admission uses only the stored internal raw `lexicalRoot`; it never uses `displayRoot` as a
-path and never rereads the environment. Preview creation/retrieval linearizes under the
-coordinator lock. While consent is active, an initial `GlobalEnableOperation` is registered,
+path and never rereads the environment. The synchronous preview creation/retrieval handlers
+linearize with enable registration without another operation field. While consent is active, an initial `GlobalEnableOperation` is registered,
 or a non-complete `GlobalDisableOperation` retains its preview fence, retrieval returns the
 same DTO-visible object byte-for-byte in field semantics,
 including its ID, and never rereads the environment or creates a replacement.
@@ -562,49 +562,41 @@ operation resolved to is the settled `GlobalEnableResultDto.state`, `queued` or
 `active-no-job`; a barrier that cancelled it answers the fixed `global-disable-pending`
 conflict instead.
 
-Initial enable registers this command and freezes the exact current preview object/epoch
-under the same coordinator lock while keeping the provisional consent, four controls,
-candidate IDs, and all admission outcomes operation-local and unobservable; it
-does not create `globalControl` or mutate `pendingTools` before deterministic validation of
-all four entries finishes. While registered, only the authority-free
-`globalEnableInProgress { kind: 'initial-enable', operationId, previewId }` coordinator
-projection is visible; it disappears when the operation unregisters or atomically creates
-`globalControl`, and never exposes partial tool outcomes. Retry registers the command against the existing active consent
-and snapshots its controls, failed `batchStatus`, diagnostics, and pending state before any
-mutation, then publishes only the authority-free
-`globalEnableInProgress { kind: 'retry', operationId, previewId }` projection. Retry
-validation/admission is otherwise operation-local and unobservable until a
-an atomic batch or active-no-job disposition commits. Root validation/admission
-and scan-job creation run only under the coordinator. Before and after every asynchronous
-boundary, a continuation must prove the same active `operationId`, `commandEpoch`, exact
-preview object/`previewEpoch`, and non-aborted signal plus either the same initial
-operation-local provisional state or the
-same active retry control. Initial enable and retry register those transitions under the
-coordinator lock before changing any session state. Cancellation or disable drains the
-operation so late continuations cannot enqueue work or regain authority.
+Initial enable synchronously registers
+`globalEnableInProgress { kind: 'initial-enable', operationId, previewId }` against the exact
+current preview before the first asynchronous admission. That registration is the preview
+freeze: the preview-creation route refuses replacement while the record stands, so the
+operation carries and compares neither the preview object nor `previewEpoch`. The provisional
+consent, four controls, candidate IDs, and admission outcomes remain operation-local and
+unobservable; no `globalControl` or `pendingTools` mutation occurs before deterministic
+validation of all four entries finishes. Retry likewise registers only the authority-free
+`globalEnableInProgress { kind: 'retry', operationId, previewId }` projection. It does not
+snapshot or mutate the active consent, controls, failed `batchStatus`, diagnostics, or pending
+state during admission, so those values remain exactly as they were until an atomic batch or
+active-no-job disposition commits. Root validation/admission and scan-job creation run only
+under the coordinator. Before each eligible member probe, after that probe, after the complete
+admission, and when synchronous settlement begins, a continuation proves only that the
+registration still names the same `operationId`. No enable-specific command epoch, abort
+signal, preview comparison, or duplicated state guard is required. Cancellation or disable
+clears the registration, so every later check prevents the continuation from enqueueing work
+or regaining authority.
 At most one `GlobalEnableOperation` is running or queued. Deterministic lexical outcomes
 and readable-directory admission partition the tools into rejected and admitted sets. Any
 unexpected throw/rejection unwinds to the session API owner: initial
-enable discards all provisional state without activating consent/control, while retry
-restores its exact pre-operation snapshot; neither commits a partial admitted subset. After
-every owned tool reaches a deterministic validation outcome, the coordinator performs the
-general pre-acceptance response transaction under its lock. It first validates the current
-operation ID/command epoch/preview object/preview epoch/signal and prepares, without publication, either the initial consent plus
-four controls or the retry partition, a candidate batch/`scanRequestId` and
-`queued`, or no job/null ID and `active-no-job`. The
-coordinator then revalidates the same operation ID/command epoch/preview object/preview epoch/
-signal and barrier state under the same lock and only then atomically activates/applies the
-controls, clears the prior `failureCode` for each tool admitted into this accepted batch,
-promotes and enqueues the one candidate batch, creates its `batchStatus`, and sets
-`pendingTools`, or commits active-no-job with null `batchStatus` while retaining/replacing
-only rejected-tool failure codes, chooses the disposition,
-marks the operation complete, unregisters it, and returns the declared result value for
-the devframe channel to serialize. No observer can
-see a per-tool Source commit. If the disable barrier has already linearized before that
-commit, the prepared state is discarded, the check instead chooses
-`global-disable-pending`, and cancellation drains. A drained operation becomes
-`cancelled` and is unregistered before barrier cleanup. Thus either the operation wins with a committed queued acceptance, or the barrier
-wins with the conflict, never both. Terminal operation history is not retained; the one accepted batch
+enable discards its operation-local values without activating consent/control, while retry
+leaves the unmodified active state in place; neither commits a partial admitted subset and no
+snapshot-restoration mechanism is needed. After every owned tool reaches a deterministic
+validation outcome, synchronous settlement first validates the current operation ID. In that
+same uninterrupted turn it constructs and atomically applies either the initial consent plus
+four controls or the retry partition; chooses a candidate batch/`scanRequestId` and `queued`,
+or no job/null ID and `active-no-job`; clears the prior `failureCode` for each tool admitted
+into an accepted batch; creates its `batchStatus` and sets `pendingTools`; and unregisters the
+operation. No observer can see a per-tool Source commit. If the disable barrier linearizes
+first, it clears the registration; the post-admission or settlement-entry operation-ID check
+then chooses `global-disable-pending` without mutating consent/control state. If settlement
+begins first, its synchronous commit completes before a later barrier can interleave. Thus
+either the operation wins with a committed queued acceptance, or the barrier wins with the
+conflict, never both. Terminal operation history is not retained; the one accepted batch
 remains represented by all of its admitted tools in `pendingTools` and by its exact
 `batchStatus.scanRequestId` until it finishes. A failed status remains with empty
 `pendingTools` until retry acceptance or disable.
@@ -622,7 +614,6 @@ itself can record the accepted job's error under its promoted non-null request I
 | `commitKind` | `cleanup-only \| remove-active-state` | Chosen at first acceptance and retained unchanged by every retry; only the second has public Global consent/control/Source state to remove |
 | `baseGenerations` | `{ repository: GenerationNumber, global: GenerationNumber \| null }` | Exact per-sequence committed generations at acceptance; the barrier commits no generation in either sequence — `remove-active-state` discards the whole Global sequence and `cleanup-only` changes no committed state |
 | `status` | `draining \| committing \| failed \| complete` | `failed` retains revoked authority and retryable cleanup state; it is not rolled back to active |
-| `frozenPreview` | internal exact preview reference | Retains the pre-barrier preview through `failed`; preview creation/replacement remains fenced until terminal success |
 
 A no-op disable with no active/queued Global authority and no retained disable failure uses
 the ordinary single-stage response gate and mutates nothing. Otherwise request validation
@@ -630,10 +621,12 @@ and barrier registration linearize under the coordinator lock. On first acceptan
 `remove-active-state` is chosen exactly when public Global consent/control/Source state
 exists; `cleanup-only` is chosen only when cancelling an operation-local initial enable that
 has never published Global consent/control/Source state. A retry of a retained failure
-inherits the failed operation's exact `commitKind`, `baseGenerations`, removal intent, and
-`frozenPreview`; the replacement operation resumes the same cleanup rather than
+inherits the failed operation's exact `commitKind`, `baseGenerations`, and removal intent;
+the replacement operation resumes the same cleanup rather than
 reinitializing it, and never recomputes `commitKind` from the already
-partially cleaned public projection. Thus a failed `remove-active-state` operation remains
+partially cleaned public projection. It inherits no preview, because the preview was never
+the operation's: the consent domain holds the one current preview object, and a barrier that
+is not complete is what stops it being replaced. Thus a failed `remove-active-state` operation remains
 `remove-active-state` until its terminal success removes the public Global graph.
 Acceptance atomically
 increments the epoch, registers this operation, irreversibly revokes affected publication
@@ -653,9 +646,10 @@ operation is cancelled/unregistered by the barrier.
 
 From acceptance through `failed`, `committing`, or retry drain, the barrier remains the
 highest-priority Global fence. Every Global enable/rescan request returns
-the fixed `global-disable-pending` conflict, no queued Global command may dequeue, and preview retrieval
-returns `frozenPreview` without capture/replacement—even when `globalControl` is null because
-only an operation-local initial enable existed. It is also a generation fence: no new
+the fixed `global-disable-pending` conflict, no queued Global command may dequeue, and preview
+retrieval returns the domain's current preview without capture or replacement — even when
+`globalControl` is null because only an operation-local initial enable existed. Only the
+terminal success commit releases it. It is also a generation fence: no new
 Repository rescan is admitted, no generation-mutating command may dequeue, and no scan may
 commit while the barrier is non-complete. A new Repository rescan returns
 the fixed `global-disable-pending` conflict. Any Repository command already running at acceptance is

@@ -4,13 +4,15 @@
 // platform split, macOS spawning the resolved launcher where every other
 // platform goes through the `open` package — and the refusal to launch an
 // editor the probe did not find.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import open from 'open';
 import { getEditor } from 'env-editor';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { delimiter, dirname, join, sep } from 'node:path';
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { delimiter, dirname, join, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DetectedFileOpener } from '../../../src/server/host/file-opener';
 import type { FileOpenTarget } from '../../../src/shared/api-types';
@@ -80,18 +82,20 @@ vi.mock('open', () => ({
 const LAUNCHER = '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code';
 const SUBLIME_LAUNCHER = '/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl';
 /**
- * An absolute directory spelled with the running platform's own separator.
+ * An absolute directory spelled the way the running platform spells one.
  *
  * The probe offers a resolution only when its directory is one PATH names,
  * and it compares the two after putting the PATH entry through `join`
  * (`file-opener.ts`). On Windows `join` rewrites `/` to `\` while `dirname`
  * of a `/`-spelled candidate keeps it, so a POSIX literal handed to `which`
  * and a PATH entry beside it never match and the editor is dropped from the
- * offer. Spelling both through this keeps the machine's two answers in the
- * one shape a machine would give them in.
+ * offer. The root comes from `resolve` rather than from `sep` for the other
+ * half of the same requirement: a Windows path with no drive is relative to
+ * the current drive, so the module's own `resolve` would qualify it and the
+ * assertion's unqualified spelling would name a path the probe never saw.
  */
 function machinePath(...segments: readonly string[]): string {
-  return join(sep, ...segments);
+  return join(resolve(sep), ...segments);
 }
 
 /** The directory the terminal-editor answers below live in, and the one this
@@ -108,6 +112,42 @@ const INVOCATION_CWD = machinePath('work');
 const GLOBAL_ROOT = machinePath('home', '.claude');
 const INSPECTED_ROOTS = [REPOSITORY_ROOT, GLOBAL_ROOT] as const;
 const FILE = '/repo/.agents/AGENTS.md';
+
+/**
+ * A real Repository root holding a `bin/`, plus a directory outside it that is
+ * a symbolic link to that `bin/`. The two exist on disk because the alias is
+ * what the filesystem resolves, and nothing but a filesystem answers it; each
+ * staged tree is removed when the suite ends.
+ *
+ * The root is returned as its own physical location, which is what startup
+ * passes beside the selected spelling (`cli.ts`) — on macOS a temporary
+ * directory is reached through `/var`, itself a link to `/private/var`.
+ */
+async function stageAliasedRepository(): Promise<{
+  readonly repositoryRoot: string;
+  readonly aliasBin: string;
+}> {
+  const staged = await realpath(await mkdtemp(join(tmpdir(), 'aci-opener-')));
+  stagedTrees.push(staged);
+  const repositoryRoot = join(staged, 'repository');
+  const insideBin = join(repositoryRoot, 'bin');
+  await mkdir(insideBin, { recursive: true });
+  // The executables the alias would offer have to exist: what makes the
+  // spelling and the location differ is a link the filesystem follows to a
+  // file that is there.
+  for (const executable of ['code', 'vim']) {
+    await writeFile(join(insideBin, executable), '', { mode: 0o755 });
+  }
+  const aliasBin = join(staged, 'outside-bin');
+  // A junction rather than a symbolic link, because Windows grants an
+  // unelevated process the first and not the second; the type is ignored
+  // everywhere else, and both are what the filesystem resolves through.
+  await symlink(insideBin, aliasBin, 'junction');
+  return { repositoryRoot, aliasBin };
+}
+
+/** Every tree {@link stageAliasedRepository} made, removed when the suite ends. */
+const stagedTrees: string[] = [];
 
 /** An opener holding one resolved editor launcher, as a probe would leave it. */
 function openerWith(...launchers: readonly (readonly [FileOpenTarget, string])[]) {
@@ -151,6 +191,12 @@ afterEach(() => {
   }
   resolvedCommands.clear();
   vi.clearAllMocks();
+});
+
+afterAll(async () => {
+  for (const staged of stagedTrees) {
+    await rm(staged, { recursive: true, force: true });
+  }
 });
 
 describe('the applications a machine offers', () => {
@@ -386,6 +432,82 @@ describe('the terminal editor a machine can host', () => {
       'terminal-editor',
     );
     expect(whichMock).not.toHaveBeenCalledWith(inside, expect.anything());
+  });
+
+  it('drops a PATH entry that is a symbolic link into an inspected root', async () => {
+    // A directory whose own spelling is outside the Repository can point into
+    // it, and a lexical comparison admits it: the repository would then supply
+    // the executable this product offers as an editor and starts (FR-020,
+    // FR-022). The physical location decides, which is why startup passes the
+    // Repository root's own realpath beside its spelling (`cli.ts`).
+    setPlatform('darwin');
+    setConfiguredEditor('code');
+    const staged = await stageAliasedRepository();
+    resolvedCommands.set(join(staged.aliasBin, 'code'), join(staged.aliasBin, 'code'));
+    resolvedCommands.set(SAFE_CODE, SAFE_CODE);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = [staged.aliasBin, SAFE_BIN].join(delimiter);
+    try {
+      await DetectedFileOpener.probe(INVOCATION_CWD, [staged.repositoryRoot]);
+    } finally {
+      process.env['PATH'] = previous;
+    }
+    const probedCandidates = whichMock.mock.calls.map(([command]) => command);
+    expect(probedCandidates).toContain(SAFE_CODE);
+    expect(probedCandidates).not.toContain(join(staged.aliasBin, 'code'));
+  });
+
+  it('refuses a configured editor whose path is a symbolic link into an inspected root', async () => {
+    // The same alias reached the other way: `EDITOR` names a spelling outside
+    // the Repository that resolves inside it, and `which` keeps the outside
+    // spelling, so only the physical location tells the two apart.
+    setPlatform('darwin');
+    const staged = await stageAliasedRepository();
+    const aliased = join(staged.aliasBin, 'vim');
+    setConfiguredEditor(aliased);
+    resolvedCommands.set(aliased, aliased);
+    expect(
+      (await DetectedFileOpener.probe(INVOCATION_CWD, [staged.repositoryRoot])).targets,
+    ).not.toContain('terminal-editor');
+    expect(whichMock).not.toHaveBeenCalledWith(aliased, expect.anything());
+  });
+
+  it('refuses a PATH resolution whose executable file links into an inspected root', async ({
+    skip,
+  }) => {
+    // The PATH directory itself is safely outside the Repository, so the
+    // candidate reaches `which`; only the physical check of `which`'s result
+    // can reject the executable file link before it becomes a launch target.
+    const staged = await stageAliasedRepository();
+    const safeBin = join(dirname(staged.repositoryRoot), 'safe-bin');
+    await mkdir(safeBin);
+    const aliased = join(safeBin, 'vim');
+    try {
+      await symlink(join(staged.repositoryRoot, 'bin', 'vim'), aliased, 'file');
+    } catch (cause) {
+      const code = (cause as NodeJS.ErrnoException).code;
+      if (
+        realPlatform === 'win32' &&
+        (code === 'EPERM' || code === 'EACCES' || code === 'ENOSYS')
+      ) {
+        skip('this Windows host cannot create file symbolic links');
+      }
+      throw cause;
+    }
+    setPlatform('darwin');
+    setConfiguredEditor('vim');
+    resolvedCommands.set(aliased, aliased);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = safeBin;
+    let opener: DetectedFileOpener;
+    try {
+      opener = await DetectedFileOpener.probe(INVOCATION_CWD, [staged.repositoryRoot]);
+    } finally {
+      process.env['PATH'] = previous;
+    }
+
+    expect(whichMock).toHaveBeenCalledWith(aliased, { nothrow: true });
+    expect(opener.targets).not.toContain('terminal-editor');
   });
 
   it('does not probe a catalog launcher inside an inspected root', async () => {

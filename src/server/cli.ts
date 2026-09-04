@@ -35,6 +35,7 @@ import packageJson from '../../package.json' with { type: 'json' };
 import { executeRepositoryScan, runGlobalEnable, startInspectorHost } from './host/devframe-app';
 import { DetectedFileOpener } from './host/file-opener';
 import { GlobalConsentDomain, GlobalRootInputCapture } from './host/global-consent';
+import { resolvePhysicalLocation } from './inspection/traversal';
 import { selectRepositoryRoot, InspectionSession, SessionCoordinator } from './session/session';
 
 // The one capture of the invocation working directory (FR-001), taken at
@@ -130,8 +131,22 @@ const command = define({
     // The selected Repository root and every eligible personal-setup root are
     // settled first because an executable under inspected content must never
     // become an editor this product offers.
+    //
+    // The Repository root is excluded by both its own spelling and the place
+    // it physically is, because the scan reads the second: a root that is a
+    // symbolic link — to `/`, in the case that makes this reachable — is read
+    // wherever the link points, and a lexical comparison against the link's
+    // own spelling would offer every executable under the tree being
+    // inspected (FR-020, FR-022). A personal-setup root is not resolved:
+    // FR-013 forbids touching a proposed one before consent, so those stay
+    // lexical and `file-opener.ts` records what that leaves open.
+    const repositoryRoot = selectRepositoryRoot(invocationCwd, rootOptionValue);
+    const repositoryRootLocation = await resolvePhysicalLocation(repositoryRoot);
     const fileOpener = await DetectedFileOpener.probe(invocationCwd, [
-      selectRepositoryRoot(invocationCwd, rootOptionValue),
+      repositoryRoot,
+      ...(repositoryRootLocation === null || repositoryRootLocation === repositoryRoot
+        ? []
+        : [repositoryRootLocation]),
       ...launcherExclusionRoots,
     ]);
     const session = new InspectionSession({ invocationCwd, rootOptionValue, fileOpener });
@@ -167,12 +182,14 @@ const command = define({
       // roots that excluded inspected launchers and the same allowlist a
       // reader would have reviewed on screen.
       //
-      // Awaited, for the reason the Repository scan above is: the launch line
-      // then prints with both generations committed, so the SPA's one initial
-      // fetch already carries the Global Source. A member nothing could admit
-      // is its control's own `failureCode`, which the consent page states —
-      // the flag reports nothing itself, because the terminal output is the
-      // one launch line (contracts/http-api.md § Host requirements #5).
+      // Awaited, for the reason the Repository scan above is: the personal
+      // setup is read before the launch line prints, so the SPA's one initial
+      // fetch already carries what that reading produced — a committed Global
+      // generation when the batch admitted anything, and, when nothing could
+      // be admitted, no Global generation at all and each member's own
+      // `failureCode` on its control, which the consent page states. The flag
+      // reports neither itself, because the terminal output is the one launch
+      // line (contracts/http-api.md § Host requirements #5).
       //
       // An accepted batch's terminal failure propagates, as the Repository
       // scan's does: there is no host yet on which the session could state a

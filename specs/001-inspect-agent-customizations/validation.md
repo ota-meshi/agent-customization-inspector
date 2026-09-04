@@ -113,15 +113,73 @@ failed batch on `batchStatus` and answers with its acceptance, while the CLI's
 `--inspect-personal-setup` throws it before a host exists, printing no launch URL — the same
 end the automatic Repository scan's failure has. Both cases now pass.
 
-**The launcher-exclusion review remains open.** `DetectedFileOpener` compares an executable
-and each inspected root by lexical spelling. With an inspected root that is a symbolic link to
-`/` and `EDITOR=/usr/bin/vi`, the probe offered `terminal-editor`: the executable is inside the
-tree that root reaches but outside the root's spelling. That conflicts with FR-020, FR-022, and
-the `open-file` contract's requirement to exclude every candidate directory inside an inspected
-root. The SC-004 exception covers a lexically indistinguishable network filesystem, not a local
-root alias, so the source comment cannot establish this as an accepted limitation. The gates
-below do not exercise the alias case. Release approval remains blocked until the implementation
-and a regression test establish the contracted exclusion.
+**A rescan's correlation is the command's own, and the box a viewer will fill is reserved
+before it fills it.** Two surfaces were showing a finished scan's record as the running one's:
+a command answers only once its scan settled, so the request ID a slot held while the next
+command was out named a scan that had already completed, and the progress a refresh brought
+back for it rendered under "This scan". The dispatch now drops that correlation, which is one
+rule in one place rather than a condition in each surface, and the copy states the command —
+`Rescan in progress.` — because this side cannot tell a running scan from one queued behind
+another and must not claim the distinction. Separately, the hook detail's comparison entry sat
+below its declaration viewer and could move while Monaco mounted; it now precedes the viewer,
+as the sibling surfaces do, and the first-click browser regression passes in Chromium, Firefox,
+and WebKit. `SourceViewer` also renders the same text into an inert `<pre>` until the editor
+takes over, but that placeholder does not share Monaco's font and line metrics. Its general
+height-stability claim remains unverified and is not release evidence for other surfaces.
+
+**Two certification jobs the local gates could not see now pass.** The gates below run on
+one machine, and two of CI's run elsewhere. `tests/unit/host/file-opener.test.ts` built its
+absolute fixtures from the path separator alone, which on Windows names a path relative to
+the current drive: the module's own `resolve` qualified it and fifteen assertions then named
+a path the probe never saw. The fixtures are built from a resolved root instead. And the
+hook comparison's entry from a carrier's own detail page pressed a link that the declaration
+viewer above it pushes down as it takes its height, so the press landed where the link no
+longer was and the address stayed the carrier's; the press is retried until the address
+moves, which is what a reader does. Neither is observable on this machine — the first needs
+Windows, the second the certified Linux WebKit — so CI is what establishes them.
+
+**The launcher-exclusion review is only partly resolved.** A spelling is not where a path is:
+an outside `PATH` entry or configured `EDITOR` can be a symbolic link into the Repository,
+and the executable resolver keeps that outside spelling, so a lexical comparison alone would
+offer a repository-supplied executable as an editor and then start it (FR-020, FR-022). The
+implemented part resolves an existing selected Repository root at startup and passes its
+physical location beside its selected spelling. It also compares each launcher candidate —
+each `PATH` entry, a separator-carrying configured editor, and each resolver result — as it is
+spelled and as it physically is. `tests/unit/host/file-opener.test.ts` stages a real aliased
+tree for both candidate directions, and `tests/unit/cli.test.ts` establishes the existing-root
+handoff.
+
+**Release blocker — implementation required.** Three reachable gaps remain outside that
+coverage. First, the pre-consent probe now calls `resolvePhysicalLocation` for every
+outside-spelled launcher candidate. If such a candidate is a symbolic link into a proposed
+personal-setup root, `realpath` follows it into that root before consent, violating FR-013.
+Yet the proposed root itself is still supplied only by spelling, so the same probe neither
+proves the candidate is outside it nor prevents that editor from remaining offered and
+launchable after admission. FR-013 requires lexical proposed-root filtering and zero such
+physical access before the reader's action; it permits physical authorization against every
+admitted root after that action and before launch. Second,
+the Repository root's physical location is captured only once. A missing root is an explicitly
+recoverable `root-unreadable` state — its Diagnostic tells the reader to repair it and rescan —
+so repairing it as a symbolic link after startup is a user-visible lifecycle, not an
+unreachable machine race, and the opener retains only the old lexical exclusion. Third,
+`resolvePhysicalLocation` catches every `realpath` failure and returns null. That leaves a
+Repository root on lexical fallback, while `outsideInspectedRoots` treats a candidate whose
+physical location is unknown as outside and admits it; unexpected `EIO`/`ESTALE`-class failures
+therefore fail open instead of propagating as the rest of the inspection boundary requires.
+SC-004 excludes only a pre-mounted or mapped network filesystem that is lexically
+indistinguishable from a local one. These local aliases are distinguishable through permitted
+post-consent or launch-time resolution and are not that accepted platform limitation.
+
+Keep the physical root/candidate comparisons already present, but split their timing: before
+consent, perform only lexical proposed-root exclusion plus Repository safety work that cannot
+enter a proposed root; after consent and before launch, authorize the candidate physically
+against the current selected Repository root and every currently admitted personal root (or
+perform an equivalent lifecycle-owned revalidation). Refuse authorization when a physical
+comparison cannot be established, and propagate unexpected filesystem errors. Add regressions
+for zero pre-consent I/O through an outside-spelled alias into a proposed root, the same local
+personal-root alias after admission, a missing Repository root repaired as a link before
+rescan/open, and injected unexpected `realpath` failure. Release approval remains blocked until
+those cases satisfy FR-013, FR-020, FR-022, and the `open-file` contract.
 
 Every gate below was run on 2026-09-04 against this tree, after `pnpm run build`, in one
 sitting; the counts are what each run reported.
@@ -131,14 +189,14 @@ sitting; the counts are what each run reported.
 | Format | `pnpm run format:check` | silent, exit 0 |
 | Lint | `pnpm run lint` | silent, exit 0 |
 | Types | `pnpm run typecheck` | silent, exit 0 |
-| Unit | `pnpm run test:unit` | 52 files, 1,224 tests passed |
+| Unit | `pnpm run test:unit` | 52 files, 1,230 tests passed |
 | Contract | `pnpm run test:contract` | 12 files, 405 tests passed |
 | Integration | `pnpm run test:integration` | 11 files, 270 tests passed |
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 4 tests passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 files, 1,899 tests passed; statements 86.14%, lines 86.45% |
+| Coverage | `pnpm run test:coverage` | 75 files, 1,905 tests passed; statements 86.17% (5,955/6,910), branches 71.61% (3,555/4,964), functions 87.44% (1,163/1,330), lines 86.48% (5,837/6,749) |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
 **The browser gate here is one project; the certification matrix is CI's.**
@@ -160,7 +218,7 @@ a local run stands in for none of it. The disposition is unchanged from the tree
 started on — what changed is which commit the certifying run is of.
 
 **The coverage percentages are a run's, not a constant.** This tree's run reported the 75
-files, 1,899 passing tests, and percentages recorded in the row above. No threshold is asserted
+files, 1,905 passing tests, and percentages recorded in the row above. No threshold is asserted
 on them anywhere.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
@@ -170,10 +228,11 @@ threshold is asserted anywhere in this release. The checked-in reference profile
 minted because the profile's benchmark fields changed, its own rule making any field change a
 new, non-comparable ID. It is the reference these observations are read beside and not a claim
 about where they were taken: nothing compares the executing environment with it, so the run
-prints its own. The pass on 2026-09-04 ran on this machine — arm64, Node 24.14.0 — and observed the request-correlated
-status 118 ms and the request-committed operable inventory 607 ms after the rescan was
-dispatched, the filter feedback at 23 ms and the selection feedback at 45 ms; the global setup
-prints these for whoever reads the log, and they describe this machine.
+prints its own. The pass on 2026-09-04 ran on this machine — arm64, Node 24.14.0 — and observed
+the request-correlated status at 340 ms and the request-committed operable inventory at 478.8 ms
+after the rescan was dispatched, the filter feedback at 24.1 ms and the selection feedback at
+44.3 ms; the global setup prints these for whoever reads the log, and they describe this
+machine.
 
 
 ## Outcome-manifest criteria
@@ -261,10 +320,9 @@ exactly the 34 the matrix rows name, with no ID the matrix does not define. A lo
 three-project run on 2026-09-04 passed 32 in every project; `AUTO-2.1.1` and `AUTO-2.4.1`
 passed in chromium and firefox and failed in macOS WebKit, both for the tab-order reason
 recorded above — one cannot reach a link-driven workflow by Tab, the other cannot focus the
-skip link. The certified WebKit is the
-Linux revision CI runs, so the certifying result for this half is CI's, and it is assumed
-rather than observed here — the same disposition T1051 records for the lower-bound matrix.
-No local run stands in for it.
+skip link. The certified WebKit is the Linux revision CI runs, so the certifying result for
+this half is CI's: run `33868211321` executed all 34 `AUTO-*` checks there and passed every
+one, `AUTO-2.1.1` and `AUTO-2.4.1` included. No local run stands in for it.
 
 ### WCAG results
 
@@ -371,6 +429,173 @@ versions; this session has one macOS host. The certification result is what a CI
 matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
+
+**Twenty agent-driven sessions, run on 2026-09-04 against the build carrying this release's
+review corrections, each session started outside this working tree.** The build is
+`pnpm pack` of the tree the release gate above was run on, tarball SHA-256
+`169372b9fa8ff1df8c2ce6d0ec47f67e4eb09702757ed830a6ae34cebad44fdc`, installed with
+`npm install` into one run folder. Each session had its own `repository/` — the all-kind
+fixture built in place by `tests/fixtures/repositories/build-fixtures.ts`, which is where the
+guide's `npx --no-install agent-customization-inspector --no-open` resolves the package — and
+its own four homes under a `HOME` of its own from
+`tests/fixtures/global-homes/build-fixtures.ts`. Each was handed the text of
+`tests/usability/sc001-sc006-study-inputs/guidance.md`, the four prompt files beside it
+verbatim, and the three questions of `response-form.json` as those files stood at commit
+`980ee95229170b68e892e46ed78dd0420fd0a452`; it was scored against `ground-truth.json`
+through `scoring-rubric.json` at that same revision. Each drove a headless
+browser of its own with its own clock. The two equipment conditions were the earlier runs': `--port 0`
+appended to the launch command, and the four home variables set for that command alone. Five
+sessions ran at a time.
+
+**What the isolation was, and what it establishes.** Each session was a Claude CLI print-mode
+process whose working directory was its own session folder, started with `--setting-sources
+user` and with this repository's configuration variables removed from its environment — so no
+project instruction and no memory of this repository was in its runtime. Nineteen of the
+twenty said so unprompted; the twentieth did not address it. That is the condition SC-001's
+no-hint policy asks for and the two earlier runs of this date lacked, and it is what makes
+this run's figures the product's own guidance rather than a mixture.
+
+**The sessions ran on Claude Sonnet 5**, named because an agent-driven run's method includes
+which model drove it: the earlier runs of this date ran on Fable 5.1, so their intervals and
+this run's are not one series.
+
+**What the timed intervals measure here, and why they are not the criterion's.** Three things
+separate them. A session drives a headless browser it wrote itself, so reaching a file means
+learning the page's markup well enough to script a click; four sessions say that is where
+their time went, and one states the consequence plainly — the elapsed figure "mixes genuine
+tool-discovery time with scripting/tooling overhead specific to this headless-Playwright
+evaluation method". The runner handed every task to the session at once rather than presenting
+each when the one before it finished, so a session could read ahead, and sessions 01 and 12
+record that they learned the page in an untimed pass before stamping the T0 they report. And
+the stamps are the sessions' own: SC-001 starts its interval when the prompt is presented,
+which is a moment only the runner can hold. Nothing is adjusted for any of it — the kit's rule
+is that every enrolled session stays in the results — and nothing here may be read as the
+interval the criterion fixes, or as a claim about how long a person would take.
+
+| Workflow | What it measures | Threshold | Result |
+|---|---|---|---|
+| Discovery | SC-001: from the launch command to one discovered file's detail view open within two minutes | 19 of 20 | **Not established: 14 of 20.** The fourteen took 1.7 s to 117.8 s, median 42.6 s. Four are over the limit — sessions 09 (123.5 s), 18 (120.4 s), 06 (443.7 s), and 15 (677.7 s), each attributing the interval to learning the page's markup for its own driver rather than to what the product printed or rendered — and two more are unsuccessful for a launch that died before their timed run began (13, 14), which SC-001 counts as a failure before the timer starts |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` within two minutes | 18 of 20 | **Not established.** All twenty answered the three fields correctly, but no form was presented and none was submitted: the sessions wrote the answers into their own report and stamped the interval themselves, so what is recorded is not the interval the criterion fixes |
+| Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 attempted; 7 complete.** `ground-truth.json` completes this task at the two `changelog` skill copies side by side, which seven reached; the other thirteen compared another drifted pair the fixture holds |
+| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 attempted; 18 complete.** Sessions 17 and 19 named the page's labels for the four directories without the paths the ground truth's match rule asks for |
+| Safety | SC-006 zero-critical gate | no critical issue | **Not established.** No session reported a critical issue, but the report carries one free-text field rather than the predefined safety-event fields the criterion asks for, and nothing scored it |
+
+The inspection median is 0.24 s because there is no form. `response-form.json` names the three
+questions, but the runner never put a form in front of a session and took no submission from
+one: each wrote the answers into its own report and stamped the interval itself. What the
+figures establish is that the three fields were answerable from the open page — every session
+answered them correctly — and not the interval SC-006 fixes, which runs from a presented
+prompt to a submitted form.
+
+Every session's three fields matched `ground-truth.json` with no partial credit: source
+`Repository`, recognizing tools `GitHub Copilot` **and** `OpenAI Codex`, file type
+`Instructions`; none named Claude Code. For discovery, thirteen opened `.claude/CLAUDE.md`,
+the first row of the kind the page shows by default, and seven opened the root `AGENTS.md`.
+
+The comparison task's prompt names no pair, but `ground-truth.json` does: it completes the
+task at the two `changelog` skill copies side by side with a difference named. Seven reached
+that pair — the copy in `.agents/skills/` against the one in `.github/skills/` — and the other
+thirteen reached a different drifted pair the fixture holds, which the material scores as
+unsuccessful however real the drift they found: the two Codex `docs-researcher` agent files, the two `debugger` agent files
+under `.claude/agents/`, `alpha-a` against `alpha-b`, `.github/mcp.json` against `.mcp.json`,
+`reviewer.agent.md` against `reviewer.md`, `AGENTS.md` against `AGENTS.override.md`,
+`CLAUDE.md` against `CLAUDE.local.md`, and one plugin's two marketplace entries. Every session
+named a difference in the pair it chose.
+
+Every session reached the consent page and reported what it proposes. Eighteen named the four
+directories as the page shows them — the three fixture homes and the shared agent home — which
+is what the ground truth's match rule asks for; two named the page's own labels for them
+(`Copilot home`, `Claude home`, `Codex home`, `Shared agent home`) without the paths beside
+them, and are unsuccessful for that. Most stopped at the proposal rather than
+confirming the read, which is what the prompt's "before it reads them" invites; the sessions
+that stopped there recorded that the page states nothing has been read yet. Every session
+stopped its own host and closed its own browser. Whether every session touched only its own
+processes cannot be established: session 12 reports that it swept for its own leftovers with a
+broad `ps` before it understood that `npx` orphans a grandchild, and that among the process
+IDs it killed in that sweep it cannot rule out one belonging to another session. Sessions 04,
+07, and 13 also record broad listings they narrowed afterwards, and 19 records leaving other
+sessions' hosts alone. The sessions shared one machine and one process namespace, which is
+what makes the question askable at all.
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety |
+|---|---|---|---|---|---|
+| 01 | 2.1 s | 0.00 s | unsuccessful, another pair | complete | none |
+| 02 | 48.8 s | 0.00 s | unsuccessful, another pair | complete | none |
+| 03 | 88.2 s | 5.1 s | unsuccessful, another pair | complete | none |
+| 04 | 44.8 s | 6.6 s | unsuccessful, another pair | complete | none |
+| 05 | 1.7 s | 0.00 s | unsuccessful, another pair | complete | none |
+| 06 | 443.7 s, over the limit | 0.00 s | unsuccessful, another pair | complete | none |
+| 07 | 6.4 s | 0.4 s | unsuccessful, another pair | complete | none |
+| 08 | 71.8 s | 4.7 s | complete | complete | none |
+| 09 | 123.5 s, over the limit | 33.9 s | unsuccessful, another pair | complete | none |
+| 10 | 85.7 s | 4.2 s | unsuccessful, another pair | complete | none |
+| 11 | 12.3 s | 40.9 s | unsuccessful, another pair | complete | none |
+| 12 | 1.7 s | 0.00 s | complete | complete | none |
+| 13 | 6.3 s, unsuccessful: a launch died before the timed run | 0.00 s | unsuccessful, another pair | complete | none |
+| 14 | 34.5 s, unsuccessful: a launch died before the timed run | 2.2 s | complete | complete | none |
+| 15 | 677.7 s, over the limit | 0.00 s | unsuccessful, another pair | complete | none |
+| 16 | 40.4 s | 0.00 s | unsuccessful, another pair | complete | none |
+| 17 | 85.0 s | 2.7 s | complete | unsuccessful, labels only | none |
+| 18 | 120.4 s, over the limit | 0.00 s | complete | complete | none |
+| 19 | 117.8 s | 0.1 s | complete | unsuccessful, labels only | none |
+| 20 | 34.9 s | 13.8 s | complete | complete | none |
+
+No session was excluded or replaced, so the fixed denominator and the recorded count are the
+same twenty.
+
+**What the sessions reported about safety.** The report carries one free-text field rather
+than the predefined safety-event fields SC-006 asks for, and the scorer reads none of it, so
+what follows is a reading of twenty prose paragraphs rather than a scored result. No session
+reported a prohibited effect by the product: no request beyond localhost, no execution derived
+from a customization, no mutation of an inspected file, and no browser opened under
+`--no-open`. Several verified the tree by hand — one compared every opened file's modification
+time against the fixture's own and found them unchanged. Two sessions wrote files of their own
+into `repository/` — session 03 two scratch scripts and session 07 seven — from a shell whose
+working directory had drifted there, and both noticed and deleted them; that is the session's
+own tooling in the tree the product reads, not the product writing to it, and it is the kind
+of thing a structured safety field would have recorded rather than left to prose. Every session that reached the consent page reported
+that it reads nothing before the confirmation, and the ones that stopped there quote the page
+saying so. The npm notice several sessions saw at exit is npm's own update check under the
+guide's `npx`, as the earlier runs recorded.
+
+**What the sessions raised about the product.** Session 16 read the Repository status
+`Inspected · some files kept a diagnostic` against the `Source diagnostics` count of 0 as two
+notions of the same word and let it go — the same reading five sessions had before the status
+words were rewritten, now met once and without a search for what the word meant. Five
+sessions (06, 12, 14, 17, 20) met the same status and read it correctly as the fixture's own
+malformed `docs/CLAUDE.md` being reported rather than a fault. Session 05 found that typing
+`/instructions` into the address bar reaches an in-app "Page not found": that path is not a
+route — the routes under it are a file's detail and a range's comparison — so the page is
+answering correctly, and no deep link this product publishes was affected. Session 16 also
+found the instructions comparison pairing `AGENTS.md` with `AGENTS.override.md`, which is what
+that kind's comparison is: two files of one applicability range, whatever their names.
+Session 09 clicked `Compare this instruction file` while looking for the `File` tab, both
+carrying the word; session 11 found a kind tab's accessible name to be the kind and its count
+in one string. Nothing was reported that the product states twice or states wrongly.
+
+**What this run does not establish.** It does not establish SC-001: fourteen of twenty opened
+a file inside the interval, and the criterion asks nineteen. It does not establish SC-006
+either — not its timed half, which needs a form presented and submitted rather than three
+answers a session writes into its own report, and not its zero-critical gate, which needs the
+predefined safety-event fields the report does not carry. What it does establish is narrower
+and worth keeping: every session reached a file, answered the three fields correctly from the
+page, reached a drifted pair and named the drift, and reached the consent page and reported
+what it proposes before anything was read.
+
+It also establishes what the next run has to change, which is the instrument rather than the
+product: the runner must present each task when the one before it finished and stamp the
+intervals itself, put the response form in front of the session and take its submission, give
+each session a browser it can read and act on instead of a Playwright module it must script,
+take structured safety answers, and give each session a process namespace of its own — session
+12 cannot rule out having killed another session's process while sweeping for its own.
+
+It does not establish anything about human first use — least of all here, where four sessions
+spent their interval writing a driver for a page a person would have clicked. It carries no
+capture bundle: what it rests on is each session's own report, kept beside the run's session
+folders outside this repository. And it is one fixture tree: a session met the customization
+files this repository builds for its own tests, not a repository it had never seen.
+
+### The second run of 2026-09-04
 
 **Twenty agent-driven sessions, run on 2026-09-04 against the build that carries the rework
 the first run's findings led to, each launching the Inspector itself.** The build is
@@ -879,6 +1104,15 @@ that would have forced 76 tasks to name a file they do not own was corrected in 
 languages. No ad hoc patch, silenced failure, or speculative abstraction was introduced to
 avoid any of these.
 
+*Open release blocker.* Pre-consent launcher discovery physically resolves every
+outside-spelled candidate, so an alias into a proposed personal-setup root can cross FR-013's
+no-I/O boundary before the reader acts; it nevertheless compares that personal root only by
+spelling. It also retains only the startup physical location of the Repository root and treats
+any failed physical resolution as permission to continue lexically. FR-013 permits the required
+personal-root authorization after consent, and the `root-unreadable` recovery path makes a
+repaired root reachable. The implementation work and regression cases are specified in the
+launcher review above; this is not an accepted residual.
+
 *Resolved rather than residual.* The sealed-capture study kit was machinery with no run
 behind it — twenty first-use participants are not available to this project, so the moderated
 study it existed for does not happen — which is the shape this principle forbids. It is
@@ -930,9 +1164,10 @@ migration to provide. Every runtime dependency is declared as a caret range with
 resolutions owned by the committed lockfile, and each was reviewed for what it reaches at
 user runtime — the record of that review is the Dependency review above.
 
-**Every violation resolved.** No open violation of any principle remains. What remains are
-the two residuals above: one is a standing property of the evidence, and the other is a
-removal this record identifies rather than a question it leaves open.
+**One release-blocking violation remains.** The launcher-exclusion cases above are an open
+FR-013/FR-020/FR-022 violation, not a residual imposed by FR-013 or SC-004. The two actual
+residuals are a standing property of the evidence and a machine-specific browser result the
+certified matrix answers.
 
 ## SC-008 accessibility: Not-applicable revalidation
 
@@ -959,8 +1194,9 @@ vendor marks that carry a colour of their own. What was looked at:
 | 3.3.7 | Nothing is asked twice | The inputs are the shell's one search over names and paths, the inventory's Tool and Source selects, the consent checkbox, and a comparison's two file pickers; none re-asks for information already supplied |
 
 **The Applicable rows' automated half** is recorded above under SC-008 accessibility: 34
-`AUTO-*` IDs, all passing in chromium and firefox, with `AUTO-2.1.1` failing only on the
-uncertified macOS WebKit for the tab-order reason recorded there.
+`AUTO-*` IDs, all passing in chromium and firefox, and all passing in the certified Linux
+WebKit CI runs. `AUTO-2.1.1` and `AUTO-2.4.1` fail only on the uncertified macOS WebKit, for
+the tab-order reason recorded there.
 
 **The `MANUAL-*` IDs are recorded as unexecuted.** Their matrix needs three operating systems
 paired with three screen readers, which this release does not assert

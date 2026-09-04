@@ -42,7 +42,7 @@ instructions and no memory of it in view; only the browser automation it drives 
 loaded from here.
 
 Each session launches its own Inspector from its own `repository/`, so twenty sessions are
-twenty launches and twenty consent states, and no session meets another's. The moderator's
+twenty launches and twenty consent states, and no session meets another's. The runner's
 equipment may append `--port 0` to the guide's command, because the default port is this
 machine's owner's, and may set `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `HOME`
 for the launch command alone, pointing the personal-setup consent at fixture homes built by

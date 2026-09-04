@@ -38,7 +38,7 @@ working treeの外で開始し、そのproject指示もmemoryも視界に持た�
 sessionが駆動するbrowser automationだけである。
 
 各sessionは自分の`repository/`から自分のInspectorを起動する。20 sessionは20回の起動と20個の
-consent状態であり、他のsessionのものに出会うsessionは無い。Moderatorのequipmentは、既定portが
+consent状態であり、他のsessionのものに出会うsessionは無い。Runnerのequipmentは、既定portが
 このmachineの所有者のものであるためguideのcommandに`--port 0`を付けてよく、起動commandだけに
 `COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`、`HOME`を設定して、personal-setupのconsentを
 `tests/fixtures/global-homes/build-fixtures.ts`が構築するfixture homeへ向けてよい。どちらも

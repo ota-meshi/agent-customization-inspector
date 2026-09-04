@@ -287,13 +287,85 @@ describe('session view state — session loss', () => {
     state.dispose();
   });
 
-  it("keeps every accepted command's correlation when a later press is refused", async () => {
-    // Claude's rescan is accepted, then Codex's; pressing Claude again while
-    // Codex's command runs is refused. The refusal belongs to the pressed row
-    // (`globalRescanSourceId`), and each accepted command's correlation is
-    // its own map entry (`activeGlobalScans`), so a second member's
-    // acceptance never severs the first member's running progress and a
-    // refused press moves neither (FR-030).
+  it('holds no correlation while a rescan command is out', async () => {
+    // A command answers once its scan settled (contracts/http-api.md
+    // § rescan-repository), so the ID a slot holds while the next command is
+    // in flight names a scan that has already finished — and the progress a
+    // refresh brought back for it is that finished scan's. Correlating the two
+    // would put a completed scan's own record under "this scan" for as long as
+    // the new command is out, so the dispatch drops it (FR-030).
+    const secondAdmission = Promise.withResolvers<unknown>();
+    let rescans = 0;
+    const completedSnapshot = (scanRequestId: string, generation: number): SessionSnapshot => {
+      const repository = bootstrapSnapshot().sources[0]!;
+      return bootstrapSnapshot({
+        repositoryGeneration: generation,
+        sources: [
+          {
+            ...repository,
+            status: 'ready',
+            generation,
+            scanRequestId,
+            progress: {
+              scanRequestId,
+              phase: 'complete',
+              queuedAt: null,
+              startedAt: '2026-07-24T00:00:01.000Z',
+              visitedEntries: 0,
+              candidateFiles: 0,
+              readBytes: 0,
+              diagnosticCount: 0,
+            },
+          },
+        ],
+      });
+    };
+    const firstCompleted = completedSnapshot('scan-1', 1);
+    const secondCompleted = completedSnapshot('scan-2', 2);
+    const sessions = [bootstrapSnapshot(), firstCompleted, secondCompleted];
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.rescanRepository) {
+          rescans += 1;
+          return rescans === 1
+            ? Promise.resolve({
+                globalContentEpoch: 0,
+                data: {
+                  scanRequestId: 'scan-1',
+                  source: firstCompleted.sources[0],
+                },
+              })
+            : secondAdmission.promise;
+        }
+        return Promise.resolve(sessionResult(sessions.shift() ?? secondCompleted));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.requestRescan();
+    expect(state.activeScanRequestId.value).toBe('scan-1');
+    const second = state.requestRescan();
+    expect(state.rescanState.value).toBe('requesting');
+    expect(state.activeScanRequestId.value).toBeNull();
+    secondAdmission.resolve({
+      globalContentEpoch: 0,
+      data: {
+        scanRequestId: 'scan-2',
+        source: secondCompleted.sources[0],
+      },
+    });
+    await second;
+    expect(state.activeScanRequestId.value).toBe('scan-2');
+    state.dispose();
+  });
+
+  it('moves only the pressed member\u2019s correlation when a later press is refused', async () => {
+    // Claude's rescan reaches its terminal answer, then Codex's does; pressing
+    // Claude again is refused because the host reports work that began
+    // elsewhere. The refusal belongs to the pressed row
+    // (`globalRescanSourceId`), and each command's correlation is its own map
+    // entry (`activeGlobalScans`): the third press drops Claude's completed
+    // correlation and leaves Codex's completed correlation intact (FR-030).
     let rescans = 0;
     const channel = {
       call: (method: SessionRpcFunctionName) => {
@@ -323,10 +395,9 @@ describe('session view state — session loss', () => {
     await state.rescanGlobalSource('source-global-claude');
     expect(state.globalRescanRejection.value).toBe('scan-in-progress');
     expect(state.globalRescanSourceId.value).toBe('source-global-claude');
-    // Both admitted commands stay correlated to their own members: the
-    // coordinator queues the second FIFO rather than replacing the first
-    // (contracts/http-api.md § Concurrency and lifecycle).
-    expect(state.activeGlobalScans.value.get('source-global-claude')).toBe('req-claude');
+    // The refused Claude press says nothing about Codex's completed scan, so
+    // that member keeps its own entry.
+    expect(state.activeGlobalScans.value.has('source-global-claude')).toBe(false);
     expect(state.activeGlobalScans.value.get('source-global-codex')).toBe('req-codex');
     state.dispose();
   });
@@ -366,6 +437,45 @@ describe('session view state — session loss', () => {
     heldFetch.resolve(sessionResult(bootstrapSnapshot()));
     await started;
     expect(state.snapshot.value).toBeNull();
+    state.dispose();
+  });
+
+  it('starts its own fetch for a refresh asked after a purge', async () => {
+    // A purge revokes the settlement authority of every request already out,
+    // the coalesced session fetch among them. Without retiring that slot, a
+    // reader pressing "Refresh status" after a purge joins the doomed request
+    // and watches its answer be discarded on arrival, with nothing on screen
+    // changing and nothing said (FR-027, FR-042).
+    const heldFirstFetch = Promise.withResolvers<unknown>();
+    const heldDisable = Promise.withResolvers<unknown>();
+    let fetches = 0;
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.disableGlobal) {
+          return heldDisable.promise;
+        }
+        fetches += 1;
+        return fetches === 1
+          ? heldFirstFetch.promise
+          : Promise.resolve(sessionResult(bootstrapSnapshot({ sessionId: 'session-b' })));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    const booting = state.start();
+    // The disable command purges before it sends, and its own request stays
+    // out, so the purge is the only thing that has happened when the reader
+    // asks for the status again.
+    const disabling = state.requestGlobalDisable();
+    await state.refresh();
+    expect(fetches).toBe(2);
+    expect(state.snapshot.value?.sessionId).toBe('session-b');
+    // The abandoned request answers late and adopts nothing: its authority
+    // went with the purge.
+    heldFirstFetch.resolve(sessionResult(bootstrapSnapshot()));
+    await booting;
+    expect(state.snapshot.value?.sessionId).toBe('session-b');
+    heldDisable.resolve({ state: 'no-op' });
+    await disabling;
     state.dispose();
   });
 

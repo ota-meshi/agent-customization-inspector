@@ -500,7 +500,7 @@ _GATE: Passed before Phase 0 research and re-checked after Phase 1 design._
       request already ran against the same commit gains nothing by running again beside
       the publishing credential. Every repository remediation found by release review reruns the
       complete applicable automated matrix, invalidates and regenerates every affected
-      candidate/profile/fixture/human or manual evidence set, and repeats complete-diff/tarball
+      candidate/fixture or agent-run evidence set, and repeats complete-diff/tarball
       review until no concern remains. After the bilingual Constitution record is the sole
       planned validation-only edit, all applicable automated gates run once more against the
       frozen final tree and final candidate. Outcomes are captured outside the repository; any
@@ -552,11 +552,12 @@ _GATE: Passed before Phase 0 research and re-checked after Phase 1 design._
       revoked/late bytes, and records the physically uncancellable-I/O residual risk with
       its resolution path.
 - [x] **Welcoming participation**: One-package setup, reproducible pinned tooling,
-      objective expected results, keyboard-first workflows, actionable errors, and
-      automated plus manual accessibility gates keep the project approachable. The
-      maintainer-owned release study publishes its necessity, accountable owner, funding,
-      support, privacy, accessibility, and rerun policy and never shifts recruitment or
-      review obligations to ordinary contributors.
+      objective expected results, keyboard-first workflows, actionable errors, and the
+      automated accessibility gate keep the project approachable. Nothing asks a
+      contributor to do what only a funded study could: the manual accessibility matrix is
+      recorded as unexecuted rather than owed, and the first-use evaluation is twenty
+      maintainer-run agent sessions, with no cohort to recruit and no review obligation to
+      shift.
 
 ### Post-design re-check
 
@@ -1368,8 +1369,8 @@ configuration.
   `GlobalToolControl` for each tuple member. After non-I/O request/`previewId` validation, an
   initial enable keeps the frozen consent and all four controls operation-local and
   unobservable throughout root admission; it creates no session `globalControl` or pending
-  state yet. A retry instead uses the existing active consent/control state as its exact
-  pre-operation snapshot. New root contexts and candidate Source/boundary IDs remain
+  state yet. A retry instead leaves the existing active consent/control state unchanged
+  throughout admission. New root contexts and candidate Source/boundary IDs remain
   operation-local in either case. Only after every owned tool has a deterministic admission
   outcome does one coordinator decision atomically activate the initial consent/controls or
   apply the retry partition and, when roots were admitted, attach every context and transfer
@@ -1385,10 +1386,10 @@ configuration.
   root — recorded as absent or failed per the closed admission outcomes — and
   allows admitted siblings to continue. Any other unexpected throw or
   rejection fails the attempt as an ordinary error and aborts the entire enable/retry transaction: every sibling's
-  tentative context and result is discarded, no admitted subset is committed, and the exact
-  pre-operation snapshot is restored. For initial enable that snapshot has no active
-  consent/control; for retry, the pre-existing consent and controls remain available for
-  retry or disable without acquiring tentative root authority.
+  tentative context and result is discarded and no admitted subset is committed. Initial
+  enable has activated no consent/control, while retry's pre-existing consent and controls
+  remain available for retry or disable because admission never mutated them; no copied
+  snapshot or restoration step exists.
   When the admitted subset is empty and no operation threw or rejected, the coordinator
   records the deterministic rejected controls and returns `active-no-job`; it creates no
   `scanRequestId`, scan job, Source, or generation. When at least one root is admitted, the
@@ -1400,8 +1401,8 @@ configuration.
   through one `committable-complete` or `committable-partial` Global generation
   commit. Initial enable or retry therefore has exactly one batch-level scan job, result, and
   observable commit.
-  After admission and any batch transfer, a final coordinator-locked
-  operation-ID/epoch/state check atomically chooses the response disposition. A batch whose
+  After admission, a final registered-operation-ID check followed immediately by synchronous
+  coordinator settlement atomically chooses the response disposition. A batch whose
   operation wins the race returns queued acceptance with its shared `scanRequestId`; an all-rejected
   operation returns `active-no-job`. A disable-barrier-first race returns the fixed
   `global-disable-pending` conflict, enters

@@ -38,7 +38,7 @@
   "scoringNote": "各項目はページが表示するラベルと突き合わせる。言い回しは違ってよいが、指している出どころ・ツールの集合・種類が違ってはならない。",
   "workflows": {
     "comparison": {
-      "completedWhen": "changelog スキルの2つの写しが左右に並んで表示され、参加者がその違いを1つ挙げた。",
+      "completedWhen": "changelog スキルの2つの写しが左右に並んで表示され、セッションがその違いを1つ挙げた。",
       "theTwoCopies": [
         ".github/skills/changelog/SKILL.md",
         ".agents/skills/changelog/SKILL.md"
@@ -47,10 +47,10 @@
         "description の違い。「from the staged diff」と「from recent commits」",
         "本文の違い。「the staged changes」と「the latest commits」"
       ],
-      "unsuccessful": "左右差分に到達しなかった、または違いを挙げられなかった。"
+      "unsuccessful": "この2つの写しの左右差分に到達しなかった、または両者の違いを挙げられなかった。"
     },
     "consent": {
-      "completedWhen": "個人設定のページが表示され、読み取る前に読むと書かれているディレクトリを参加者が挙げた。",
+      "completedWhen": "個人設定のページが表示され、読み取る前に読むと書かれているディレクトリをセッションが挙げた。",
       "expectedDirectories": [
         "~/.claude",
         "~/.codex",

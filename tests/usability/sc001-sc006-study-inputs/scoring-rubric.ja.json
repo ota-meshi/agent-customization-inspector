@@ -26,12 +26,12 @@
       "threshold": 18
     },
     "comparison": {
-      "successCondition": "2つの写しが左右に並び、違いが1つ挙げられている。",
+      "successCondition": "changelogスキルの2つの写しが左右に並び、両者の違いが1つ挙げられている。",
       "limitSeconds": null,
       "threshold": null
     },
     "consent": {
-      "successCondition": "個人設定のページに到達し、そこに示されたディレクトリを読み上げられている。",
+      "successCondition": "個人設定のページに到達し、そこに示されたディレクトリを挙げられている。",
       "limitSeconds": null,
       "threshold": null
     }
@@ -41,5 +41,5 @@
     "2分の超過",
     "試行を妨げた、または中断させた機材・環境・製品の不具合"
   ],
-  "moderatorPolicy": "定型文はそのまま繰り返してよい。コマンド、画面遷移、操作のヒントは、2つの基準でも計測しないワークフロータスクでも与えない。"
+  "promptPolicy": "定型文はrunnerがそのまま提示し、そのまま繰り返してよい。コマンド、画面遷移、操作のヒントは、2つの基準でも計測しないワークフロータスクでも与えない。"
 }

@@ -358,11 +358,9 @@ test.describe('the hook declaration comparison', () => {
         .locator('.aci-hook-detail__title')
         .getByRole('link', { name: "Compare this event's declarations: SessionStart" }),
     ).toHaveCount(0);
-    // The entry is awaited before it is followed. `click()` waits for the link
-    // to exist, but the detail's own sections settle after it does, and a
-    // press that lands while they are still arriving is one the router never
-    // sees — the address then stays the carrier's, which is what a slower
-    // engine reported.
+    // Do not wait for Monaco here. The regression boundary is the first reader
+    // action while this event's declaration viewer may still be mounting: its
+    // asynchronous fit must not move the entry out from under that action.
     const entry = page.getByRole('link', {
       name: `Compare this event's declarations: ${SHARED_EVENT}`,
     });

@@ -6342,8 +6342,8 @@ dispositionである。
   consent/control/jobをactivateせず、retry stateを不変にし、acceptance後ならshared non-null IDのone retained
   terminal error/no subset commitとすることを`tests/contract/http-api-global.test.ts`で検証する
 - [X] T946 [P] [US4] Production bind前のmember portにはtest-injected typed outcomeだけを使い、fixed-member
-  initial-enable/retry coordinatorのatomic control/admission partition、operation
-  epoch、FIFO、conflict、provisional Source 0件、`active-no-job`、および全nonempty injected admitted
+  initial-enable/retry coordinatorのatomic control/admission partition、registered operation-IDによるcontinuation/
+  settlement-entry check、FIFO、conflict、provisional Source 0件、`active-no-job`、および全nonempty injected admitted
   subsetにone `GlobalBatchScan`/request ID/publication authority/working setを検証する。Retry
   pollingはaccept前に`globalEnableInProgress`だけを公開してexactなpre-operation
   `pendingTools`/`retryableTools`/`batchStatus`/diagnostic projectionを保持し、queued acceptanceがadmitted
@@ -7463,6 +7463,10 @@ dispositionである。
   digestが最初に生まれるのはこのtaskなので、ブロック(1)はそれらを作成する。先行するtaskはどれもそれらを所有せず、T1061はこのtaskの成果物をreviewする。)*
 
 ### 公式エビデンスと依存関係のレビュー
+  *(amended 2026-09-04: このtaskが構築したsealed-capture harness — protocol
+  contract、3つの`scripts/*usability-study*` module、そのcontract/integration/security
+  suite、3つの`study:evidence:*` command — は削除済みである（T1061、T1062）。要件が対象とするのは、bilingualなstudy
+  kitと`tests/usability/sc001-sc006-study-inputs/`配下のtask材料であり、agent駆動のSC-001/SC-006評価はそれを読む。)*
 
 - [X] T1031 Exact host、redirect rejection、explicit network opt-in、complete environment-supported
   content retrieval、partial update も自動の cause ベース判断も生じさせない network/runtime の
@@ -8021,6 +8025,10 @@ participant 20名がこのprojectには得られず、それが存在する理�
   acknowledgementはmatching watchdogが`safe-payload`をACKした後だけ送る。 Topologyはeight long-lived internal
   descendants/processesと記述し、watchdogはadapter childであってsupervisor direct child 8件ではない。
   *(2026-08-10改訂: checklistはT1090まで続く。)*
+  *(amended 2026-09-04: このtaskが実行した3つのstudy-evidence
+  suiteはharnessとともに削除済みである（T1061、T1062）。要件が対象とするのはbilingual task parser自身の結果 —
+  checkbox数、phase数、trace-row数、英日で同一のowned-path集合、out-of-lineな修正機構を持たない自己完結したtask text — であり、`pnpm
+  run test:docs`がそれをgateする。)*
 
 - [X] T1050 integration、package、performance、browser、coverage、documentation の各ゲートを実行し、すべての結果を
   `specs/001-inspect-agent-customizations/validation.md` と
@@ -8398,6 +8406,9 @@ participant 20名がこのprojectには得られず、それが存在する理�
   *(2026-08-10改訂: checklistはT1090まで続く。)* *(2026-09-01改訂: static
   assetのconcernは、equipmentが判定できるpackaged-prefix規則へcontractを修正することで決着したため、reviewは未解決concern
   zeroを報告する。)*
+  *(amended 2026-09-04: このreviewはchecklistが名指すsealed-capture harnessを削除したので、release-candidate
+  reviewはprotocol contract、3つの`scripts/*usability-study*` module、その3 suite、`study:evidence:*`
+  commandを対象としない。評価が読むstudy材料は`tests/usability/sc001-sc006-study-inputs/`配下に残る。)*
 
 - [X] T1062 T1061 concernが0件になるまでrelease-review remediation/evidence-invalidation loopを実行する。Paired
   study kit/input byte/descriptor、scoped correlation privacy
@@ -8693,6 +8704,9 @@ participant 20名がこのprojectには得られず、それが存在する理�
   *(2026-08-10改訂: checklistはT1090まで続く。)* *(2026-09-01改訂:
   このloopが行ったkitの編集はT1056–T1057のevidenceを無効化しない。当該evidenceはkitを使わないagent駆動のrunであり、capture
   bundleを生んでいないためである。)*
+  *(amended 2026-09-04: このloopのinvalidation triggerは、このphaseが削除したsealed-capture
+  harnessを含まない。存在しないものにrepository editは触れられないからである。なお先行evidenceを無効化するのはstudy
+  kitまたはそのinputへのeditであり、その後SC-001/SC-006を再確立するのはT1202自身のrunである。)*
 
 - [X] T1063 Dependency/breaking-change rationale、migration impact、全violation解消、各residual
   uncertaintyのowner/resolution pathを含むprinciple-by-principle release Constitution
@@ -9106,8 +9120,13 @@ readmeは読み手が実際に出会うinterfaceを示す。
   runもSC-001とSC-006を確立しない。全sessionのruntimeがこのrepository自身の指示を持っており、基準の
   no-hint policyはそれを許さず、2回目はsession自身のruntimeのserviceの障害がdiscovery区間の内側で
   3件を切った。再実施は、各sessionをこのworking treeの外で開始し、現在のbuildに対して行う。同日の3回目の試行はsessionを1件も立ち上げられなかった。accountの
-  session limitが20 processすべてを最初のturnの前に拒み、記録すべきrunが存在しないので、この
-  taskは開いたままとする。)*（SC-001、SC-006）
+  session limitが20 processすべてを最初のturnの前に拒み、記録すべきrunが存在しない。4回目は
+  完走し、各sessionをこのworking treeの外で、名指したmodelで開始しており、他のrunの上に記録して
+  いる。どちらの基準も確立しない。理由は結果ではなく計測器である。response formは提示も提出もされず、
+  runnerは全taskを一度に渡してtimestampをsessionに委ね、20 sessionは1つのprocess namespaceを共有した。
+  閾値を外したrunを良い数字のために繰り返さないというkitの規則は妥当なrunについてのものであり、この
+  runは基準が定める区間を実装していない。したがってこのtaskは、同じ測定のやり直しではなく、最初の
+  妥当な測定のために開いたままとする。)*（SC-001、SC-006）
 
 ### 作り直しを名指す記録
 
@@ -9294,7 +9313,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
 | 101 Global 無効化バリアと解体 | US4 | Global 検査を無効にすると、そのセッション状態が完全に解体され、Repository 検査は引き続き利用できる。 |
 | 102 ドキュメント、エビデンス、依存関係のレビュー | リリースエビデンス | 横断suiteがartifactを検証する前に、メンテナーがreview可能なguidance、evidence provenance、dependency decisionを利用できる。 |
 | 103 横断的な検証 | 回帰 | 文書化済みの完成productが横断的な自動regression layerを通過する。 |
-| 104 リリースと成果エビデンス | 測定可能な成果 | 初期リリースが、明示的な自動化、参加者、アクセシビリティ、性能、安全性、残存リスク、憲章準拠のエビデンスを備え、公開可能な状態になる。 |
+| 104 リリースと成果エビデンス | 測定可能な成果 | 初期リリースが、明示的な自動化、初見利用、アクセシビリティ、性能、安全性、残存リスク、憲章準拠のエビデンスを備え、公開可能な状態になる。 |
 | 105 インターフェースの下地 | US1 | すべてのsurfaceがproduct自身のpaletteで描かれ、forced coloursでは読み手のsystem colourへ戻る。 |
 | 106 Shell と Source 状態のサーフェス | US1 | 一覧はlistから始まり、各Source familyの状態はそれ自身のsurfaceを持つ。 |
 | 107 一覧 row の圧縮 | US1 | 1つのfileが1行を占め、認識したproductとその文書化済みsurfaceがその傍らに並ぶ。 |
@@ -9302,6 +9321,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
 | 109 比較サーフェスと作り直しの締め | US3 | 比較は両sideのproductを名指し、並列のまま保たれ、再び開いたgateが再実行される。 |
 | 110 detail見出しの、recognitionが持つ呼び出し名 | US2 | detailは各productの呼び出し名をそのproductの隣で述べ、ファイル自身の事実を見出しの下の行に置く。 |
 | 111 収束 | 共通の前提 | release evidenceとユーザー向けドキュメントが、作り直しの結果であるtreeを記述し、task-set gateがそのtreeで追加されたtaskを覆う。 |
+| 112 収束 | 共通の前提 | validation recordがこのtreeについての1つの記述として読め、story labelのruleが存在するphaseと一致する。 |
 
 ## 依存関係と実行順序
 
@@ -9936,4 +9956,4 @@ directory名、nestedなClaude Code recognitionはroot相対prefix付き — で
 - Credential detection、masking、redaction、reveal control は存在しない。session API に reveal・masking・environment-resolution の function は存在せず、source/comparisonを開く前にも隣にも、authored contentについての注意書きは現れない。
 - 通常の起動、スキャン、ビルド、テストは公式ドキュメントに関してオフラインである。ネットワークへアクセスできるのは、明示的なメンテナー向けソース確認コマンドだけである。
 - 人が作成するリポジトリドキュメントの変更では、英語の正本ファイルと日本語の対応ファイルを必ず同時に更新する。
-- 自動テストの成功はエビデンスであり、網羅的な証明ではない。フェーズ 104 では、完全な文脈での diff、package、participant、accessibility、measurable-outcome、residual-risk のレビューを必要とする。
+- 自動テストの成功はエビデンスであり、網羅的な証明ではない。フェーズ 104 では、完全な文脈での diff、package、初見利用、accessibility、measurable-outcome、residual-risk のレビューを必要とする。

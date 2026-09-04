@@ -950,6 +950,22 @@ onBeforeUnmount(() => {
             }}</span>
           </AuthoredNameText>
         </h3>
+        <!-- The comparison this event's row leads to: the accessible name
+             carries the declared event after the visible phrase, because a
+             carrier view renders one link per event and they would otherwise
+             announce identically (WCAG 2.4.6). -->
+        <p
+          v-if="openEventName === null && event.compareRoute !== null"
+          class="aci-hook-detail__compare"
+        >
+          <NuxtLink
+            class="aci-button aci-button--primary"
+            :to="event.compareRoute"
+            :aria-label="`Compare this event's declarations: ${event.name.singleLineText}`"
+            >Compare this event's declarations
+            <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+          /></NuxtLink>
+        </p>
         <!-- The declaration's groups as one read-only JSON document in the
              Monaco viewer — coloured by the `json` tokenizer a `.json` file's
              model gets (monaco-languages.ts, tokens-only) — in the spelling a
@@ -977,22 +993,6 @@ onBeforeUnmount(() => {
           :content-label="`Declaration ${event.name.singleLineText} of`"
           content-language="json"
         />
-        <!-- The comparison this event's row leads to: the accessible name
-             carries the declared event after the visible phrase, because a
-             carrier view renders one link per event and they would otherwise
-             announce identically (WCAG 2.4.6). -->
-        <p
-          v-if="openEventName === null && event.compareRoute !== null"
-          class="aci-hook-detail__compare"
-        >
-          <NuxtLink
-            class="aci-button aci-button--primary"
-            :to="event.compareRoute"
-            :aria-label="`Compare this event's declarations: ${event.name.singleLineText}`"
-            >Compare this event's declarations
-            <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-          /></NuxtLink>
-        </p>
       </section>
     </template>
   </div>

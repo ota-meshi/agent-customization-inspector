@@ -10,7 +10,9 @@
 // default, and awaited before that launch line when it is given.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resolve } from 'node:path';
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 // The invocation directory is captured once when the CLI module loads, so
 // the spy is installed before the dynamic import below and its value is the
@@ -367,6 +369,31 @@ describe('personal-setup consent', () => {
     // same consent domain, so the consent page states the active consent
     // instead of offering a second capture.
     expect(startHost.mock.calls[0]?.[0].consent?.current()).toBe(preview);
+  });
+
+  it('excludes the place a symbolically linked Repository root physically is', async () => {
+    // The scan reads through the link (FR-024), so an executable at the
+    // link's target is inspected content: excluding only the spelling the
+    // reader typed would offer it and then start it (FR-020, FR-022). The
+    // extreme of this is a root linked to `/`, where every executable on the
+    // machine is inside the tree being inspected.
+    const base = mkdtempSync(join(tmpdir(), 'aci-linked-root-'));
+    try {
+      const target = join(base, 'target');
+      const link = join(base, 'link');
+      mkdirSync(target);
+      // A junction does not require Windows Developer Mode or elevation; the
+      // type is ignored elsewhere, where this is the same directory link.
+      symlinkSync(target, link, 'junction');
+
+      await runInspectorCli(['--no-open', '--root', link]);
+
+      const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
+      expect(excludedRoots).toContain(link);
+      expect(excludedRoots).toContain(realpathSync(target));
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 
   it('uses the same eligible startup roots for launcher exclusion and later consent', async () => {

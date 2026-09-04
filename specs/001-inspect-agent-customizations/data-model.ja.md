@@ -252,7 +252,7 @@ Session APIのconsent routeは、sessionで1つだけ保持した`GlobalRootInpu
 | Field | Type | Rule |
 |---|---|---|
 | `previewId` | exact 43-character unpadded base64url string | 独立した32-byte CSPRNG drawのcanonical encodingでprocess-memory lookup key。新previewは以前の未同意previewをinvalidateし、active consent中はそのexact previewをfreeze/reuse |
-| `previewEpoch` | non-negative safe integer | Internalでserializeしない。新しく作成したpreviewごとにincrementし、opaque IDをorder valueにせずreplacement/revalidationをbindする |
+| `previewEpoch` | non-negative safe integer | Internalでserializeしない。新しく作成したpreviewごとにincrementして作成順を記録するが、current recordは`previewId`で識別しoperation registrationがreplacementを防ぐため、enable operationはこれを運ばず比較もしない |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `traversalPlanVersion` | date string | 同梱typed traversal-plan setのversion。`allowlistVersion`とのこのrecordレベルのpairが、previewがbindするclosed selection policyとcanonical selector programを特定する |
 | `entries` | 正確に4 member entry | Copilot、Claude、Codex、共有agent homeの固定順 |
@@ -284,7 +284,7 @@ Absolute spellingは通常のhome外でもすべて`eligible`とし、その場�
 しない。文書化済みdefaultを選択するのは設定がabsentの場合だけで、empty、relative、invalid、consent後rejectの設定から
 fallback authorityを作らない。
 Admissionは保存済みinternal raw `lexicalRoot`だけを使い、`displayRoot`をpathに使わずenvironmentを再読込しない。
-Preview creation/retrievalはcoordinator lock下でlinearizeする。Consentがactive、initial `GlobalEnableOperation`がregistered、またはnon-complete
+同期的なpreview creation/retrieval handlerは、別のoperation fieldを設けずenable registrationとlinearizeする。Consentがactive、initial `GlobalEnableOperation`がregistered、またはnon-complete
 `GlobalDisableOperation`がpreview fenceを保持する間、
 preview取得はIDを含む同じ保存済みDTO-visible objectをfield semantics上byte-for-byteで返し、environmentを読み直さずreplacementも
 作らない。どちらでもない場合だけretained captureからnew previewを作り、`previewEpoch`をincrementしてprior unconsented previewをreplaceできる。Complete constructionはreplacementより先に完了しなければならないが、その後のDTO/transport serialization failureではnew complete previewが保持され得る。
@@ -424,31 +424,31 @@ settlementがqueueするbatchのものであり、`batchStatus`で公開する�
 settleした`GlobalEnableResultDto.state`、すなわち`queued`または`active-no-job`である。Barrierがcancelした
 場合は固定の`global-disable-pending` conflictで応答する。
 
-Initial enableは同じcoordinator lock下でcommandを登録してexact current preview object/epochをfreezeするが、provisional consent、4件のcontrol、candidate ID、全admission outcomeを
-operation-localかつ観測不能に保ち、4 entryすべての決定的validationが終わる前に`globalControl`を作成せず
-`pendingTools`も変更しない。Registered中に見えるのはauthority-freeな`globalEnableInProgress { kind: 'initial-enable', operationId, previewId }`
-coordinator projectionだけで、partial tool outcomeを公開せず、operation unregisterまたはatomicな`globalControl`作成時に消える。Retryはexisting active consentに対してcommandを登録し、mutation前のcontrol、failed `batchStatus`、
-diagnostic、pending stateをsnapshotしてauthority-freeな`globalEnableInProgress { kind: 'retry', operationId, previewId }` projectionだけをpublishする。
-Retry validation/admissionのその他stateもatomicなbatchまたはactive-no-job disposition commitまでは
-operation-localかつunobservableとする。Root validation/admissionとscan-job作成はcoordinator配下だけで行う。全async boundaryの前後で、同じactive
-`operationId`、`commandEpoch`、exact preview object/`previewEpoch`、non-aborted signalに加え、initialでは同じoperation-local provisional state、retryでは
-同じactive controlを証明する。Initial enableとretryはいずれもsession stateを変更する前にcoordinator lock下でtransitionを
-登録する。Cancellation/disableはoperationをdrainし、late continuationによるjob enqueueやauthority再取得を防ぐ。
+Initial enableは最初のasync admissionより前に、exact current previewに対して
+`globalEnableInProgress { kind: 'initial-enable', operationId, previewId }`を同期的に登録する。このregistration
+自体がpreview freezeである。Recordが存在する間、preview-creation routeがreplacementを拒否するため、operationは
+preview objectも`previewEpoch`も運ばず、比較もしない。Provisional consent、4件のcontrol、candidate ID、
+admission outcomeはoperation-localかつ観測不能に保ち、4 entryすべての決定的validationが終わる前に
+`globalControl`を作成せず`pendingTools`も変更しない。Retryもauthority-freeな
+`globalEnableInProgress { kind: 'retry', operationId, previewId }` projectionだけを登録する。Admission中はactive
+consent、control、failed `batchStatus`、diagnostic、pending stateをsnapshotもmutationもしないため、atomicなbatch
+またはactive-no-job dispositionがcommitするまで、それらはexactly不変のままとなる。Root validation/admissionと
+scan-job作成はcoordinator配下だけで行う。各eligible member probeの前後、complete admission後、および同期的な
+settlement開始時に、継続はregistrationが同じ`operationId`を指していることだけを証明する。Enable専用のcommand
+epoch、abort signal、preview比較、重複state guardは不要である。Cancellation/disableはregistrationをclearするため、
+以後の各checkがlate continuationによるjob enqueueやauthority再取得を防ぐ。
 Running/queued `GlobalEnableOperation`は最大1つとする。決定的なlexical outcomeとreadable-directory admissionはtoolを
 rejected/admitted setへpartitionする。予期しないthrow/rejectionはすべてsession API ownerへunwindする。Initial enableは
-consent/controlをactivateせず全provisional stateを破棄し、retryは正確なpre-operation snapshotを復元する。どちらもpartial
-admitted subsetをcommitしない。全owning toolが決定的validation outcomeへ到達した後、coordinatorはlock下でgeneral
-pre-acceptance response transactionを行う。最初にcurrent operation ID/command epoch/preview object/preview epoch/signalを検証し、publishせず、initial consentと4 control
-またはretry partition、candidate batch/`scanRequestId`と`queued`、あるいはjobなし/null IDと`active-no-job`をprepareする。
-続いて同じlock内で同じ
-operation ID/command epoch/preview object/preview epoch/signal/barrier stateを再検証し、その後だけcontrolをatomic activate/applyする。
-Accepted batchへadmitされた各toolのprior `failureCode`をclearし、candidate batch/IDをpromote/enqueueして`batchStatus`を作り
-`pendingTools`を設定するか、null `batchStatus`でrejected-toolのfailure codeだけをretain/replaceしてactive-no-jobをcommitし、disposition選択、
-`complete`化、unregisterをatomicに行い、宣言済みresult valueをdevframe channelのserialize対象として返す。
-Per-tool Source commitはobserverに一切見えない。Disable barrierがそのcommit前に先にlinearizeした場合、prepared stateをdiscardし、
-同じcheckは`global-disable-pending`を選んでcancellationを
-drainする。Drain済みoperationは`cancelled`となり、barrier cleanup前に
-unregisterする。Operationが先ならcommit済みqueued acceptance、barrierが先ならconflictとなり、両方にはならない。Terminal operation
+consent/controlをactivateせずoperation-local valueを破棄し、retryはmutationされていないactive stateをそのまま維持する。
+どちらもpartial admitted subsetをcommitせず、snapshot restore機構は不要である。全owning toolが決定的validation
+outcomeへ到達した後、同期的なsettlementは最初にcurrent operation IDを検証する。同じ中断不能なturnで、initial
+consentと4 controlまたはretry partitionを構築してatomicにapplyし、candidate batch/`scanRequestId`と`queued`、または
+jobなし/null IDと`active-no-job`を選択し、accepted batchへadmitされた各toolのprior `failureCode`をclearし、
+`batchStatus`を作って`pendingTools`を設定し、operationをunregisterする。Per-tool Source commitはobserverに一切見えない。
+Disable barrierが先にlinearizeした場合はregistrationをclearするため、post-admissionまたはsettlement入口のoperation-ID
+checkがconsent/control stateをmutationせず`global-disable-pending`を選ぶ。Settlementが先に始まった場合は同期commitが
+完了するまで後のbarrierはinterleaveできない。Operationが先ならcommit済みqueued acceptance、barrierが先ならconflictとなり、
+両方にはならない。Terminal operation
 historyは保持せず、単一accepted batchは完了までadmit済みtoolすべてにより`pendingTools`とexact `batchStatus.scanRequestId`へ表される。
 Failed statusはempty `pendingTools`でretry acceptanceまたはdisableまで残る。Commit後のdeliveryでenvelopeを
 再serializeしない。Zero-byte/partial write、socket close、write rejectionでもaccepted control/job/dispositionを維持し、failureも
@@ -463,13 +463,12 @@ stale overlayも記録しない。後のjob自体のfailureだけがpromote済�
 | `commitKind` | `cleanup-only \| remove-active-state` | 最初のacceptance時に選択し全retryで不変。後者だけがremove対象のpublic Global consent/control/Source stateを持つ |
 | `baseGenerations` | `{ repository: GenerationNumber, global: GenerationNumber \| null }` | Acceptance時のsequenceごとのexact commit済みgeneration。Barrierはどちらのsequenceにもgenerationをcommitしない。`remove-active-state`はGlobal sequence全体をdiscardし、`cleanup-only`はcommitted stateを変えない |
 | `status` | `draining \| committing \| failed \| complete` | `failed`はrevoked authorityとretry可能cleanup stateを保持し、activeへrollbackしない |
-| `frozenPreview` | internal exact preview reference | Pre-barrier previewを`failed`中も保持し、terminal successまでpreview creation/replacementをfence |
 
 Active/queued Global authorityもretained disable failureもないno-op disableは通常single-stage response gateを使い、mutationしない。
 それ以外はrequest validation/barrier registrationをcoordinator lock下でlinearizeする。最初のacceptance時にpublic Global consent/control/
 Source stateがあれば`remove-active-state`を選び、public Global stateを一度もpublishしていないoperation-local initial enableだけをcancelする場合に
-限って`cleanup-only`を選ぶ。Retained failureのretryはfailed operationのexact `commitKind`、`baseGenerations`、removal intent、`frozenPreview`を継承する。
-Replacement operationはreinitializeせずsame cleanupを再開し、既に一部cleanupされたpublic projectionから`commitKind`を再計算しない。したがってfailed
+限って`cleanup-only`を選ぶ。Retained failureのretryはfailed operationのexact `commitKind`、`baseGenerations`、removal intentを継承する。
+Replacement operationはreinitializeせずsame cleanupを再開し、既に一部cleanupされたpublic projectionから`commitKind`を再計算しない。previewは継承しない。previewはoperationのものではなく、consent domainが唯一のcurrent preview objectを保持し、completeでないbarrierの存在がそのreplaceを止めるからである。したがってfailed
 `remove-active-state` operationはterminal successでpublic Global graphをremoveするまで`remove-active-state`のままとする。Acceptanceはepoch increment、operation register、
 affected publication authorityの不可逆revoke、existing `globalControl`の`disabling`化、`pendingTools` empty化、`batchStatus` clear、
 `globalContentEpoch` increment、public Global-content access fence activation、active/queued `GlobalEnableOperation`/Global scan abortをatomicに行う。Operation-local initial enableには公開control snapshotがないが、同じ
@@ -480,8 +479,8 @@ internal barrierでrevoke/drainする。このacceptance phaseだけはterminal 
 authorityを公開しない。`globalEnableInProgress`はinitial-enableまたはretry operationがbarrierでcancel/unregisterされた時点で消える。
 
 Acceptanceから`failed`、`committing`、retry drainを通じてbarrierはhighest-priority Global fenceのままとする。全Global enable/rescan requestは
-固定の`global-disable-pending` conflictを返し、queued Global commandをdequeueせず、preview retrievalはnew previewのcreation/replacementなしで`frozenPreview`を返す。
-Operation-local initial enableだけで`globalControl`がnullの場合も同じである。さらにgeneration fenceとして、non-complete barrier中はnew
+固定の`global-disable-pending` conflictを返し、queued Global commandをdequeueせず、preview retrievalはcaptureもreplacementもせずdomainのcurrent previewを返す。
+Operation-local initial enableだけで`globalControl`がnullの場合も同じである。それをreleaseするのはterminal success commitだけである。さらにgeneration fenceとして、non-complete barrier中はnew
 Repository rescanをadmitせず、generation-mutating commandをdequeueせず、scan commitを一切許さない。New Repository rescanは
 固定の`global-disable-pending` conflictを返す。Acceptance時にrunningだったRepository commandはcommit前にrevokeし、terminal disable success後に正確に
 1回だけrequeueしてfailed attemptではreleaseしない。したがってfailed disableとretryの間に`baseGenerations`は変化できず、base mismatchは

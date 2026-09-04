@@ -1245,3 +1245,35 @@ export function isRootEnumerationFailure(error: unknown, root: string): boolean 
   // launch reports as an unexpected failure.
   return path === root && code !== undefined && PATH_CONDITION_FAILURE_CODES.has(code);
 }
+
+/**
+ * Where one path physically is, or null when the filesystem cannot say — a
+ * path that does not exist, or one a link cycle or a permission stops
+ * `realpath` from resolving.
+ *
+ * The editor probe compares spellings, and a spelling is not always where the
+ * path leads: a Repository root reached through a symbolic link is read
+ * wherever the link points, and a `PATH` entry or configured editor spelled
+ * outside the Repository can lead into it. An executable at either is
+ * inspected content that a lexical comparison alone would offer and then start
+ * (FR-020, FR-022); a root that is a link to `/` is the case that makes the
+ * first reachable rather than theoretical. Both callers are the launcher
+ * exclusion — startup for the Repository root (`cli.ts`), the probe for each
+ * candidate (`file-opener.ts` § outsideInspectedRoots) — and the resolution
+ * lives here because filesystem I/O does (QR-003). A proposed personal-setup
+ * root is never passed, because FR-013 forbids touching one before the reader
+ * has consented to it.
+ *
+ * Null rather than a throw: the caller still has the spelling to compare, and
+ * a root nothing can resolve is one the first scan is about to report as
+ * unreadable through its own `root-unreadable` Diagnostic (FR-002).
+ * @param path an inspected root exactly as it was selected, or one launcher
+ *   candidate exactly as the machine spelled it
+ */
+export async function resolvePhysicalLocation(path: string): Promise<string | null> {
+  try {
+    return await realpath(path);
+  } catch {
+    return null;
+  }
+}

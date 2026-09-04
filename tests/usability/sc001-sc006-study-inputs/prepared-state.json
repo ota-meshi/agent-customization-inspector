@@ -13,11 +13,9 @@
     "browserRevision": "1228",
     "browserVersion": "149.0.7827.55",
     "browserDistribution": "chrome-for-testing",
-    "headed": true,
+    "headed": false,
     "contextPersistence": "fresh-nonpersistent",
-    "extensionSet": [],
-    "proxyConfigurationScope": "browser-context-only",
-    "proxyAuthenticationMode": "single-407-basic"
+    "extensionSet": []
   },
-  "moderatorNote": "Open the designated file before presenting the SC-006 prompt. Every participant starts here, whatever happened in SC-001."
+  "preparationNote": "The designated file is open before the SC-006 prompt is presented. Every session starts here, whatever happened in SC-001."
 }

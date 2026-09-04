@@ -767,6 +767,14 @@ export class SessionViewState {
       // first post-purge response establishes one coherent fresh baseline
       // instead of being compared across different host sessions.
       this.#client.resetBaseline();
+      // The coalescing slot is one of those old requests: a fetch issued
+      // before the purge has had its settlement authority revoked with them,
+      // so a reader pressing "Refresh status" after a purge would otherwise
+      // join a request whose answer is discarded on arrival and see nothing
+      // happen. Clearing the slot makes the next call start its own fetch —
+      // the same requirement {@link #refreshFreshly} states for the rescan
+      // recovery, held here for every caller.
+      this.#refreshInFlight = null;
     });
     this.#clientData.register(() => {
       // Everything this module holds from the purged session: the snapshot and
@@ -1391,6 +1399,9 @@ export class SessionViewState {
         recordAcceptance: (scanRequestId) => {
           this.activeScanRequestId.value = scanRequestId;
         },
+        clearCorrelation: () => {
+          this.activeScanRequestId.value = null;
+        },
         version: this.#repositoryCommandVersion,
       },
       () => this.#client.rescanRepository(),
@@ -1424,6 +1435,13 @@ export class SessionViewState {
             [sourceId, scanRequestId],
           ]);
         },
+        clearCorrelation: () => {
+          // This member's entry only, for the same reason: the map's other
+          // entries belong to members this command says nothing about.
+          const remaining = new Map(this.activeGlobalScans.value);
+          remaining.delete(sourceId);
+          this.activeGlobalScans.value = remaining;
+        },
         version: this.#globalCommandVersion,
       },
       () => this.#client.rescanGlobal(sourceId),
@@ -1450,6 +1468,13 @@ export class SessionViewState {
        */
       readonly recordAcceptance: (scanRequestId: string) => void;
       /**
+       * Where a dispatch drops the correlation the previous command left —
+       * the Repository slot's single active ID, or this member's entry of the
+       * Global per-Source map. Paired with {@link recordAcceptance}: the two
+       * are the only writers of that correlation.
+       */
+      readonly clearCorrelation: () => void;
+      /**
        * The slot's own dispatch counter: the settled command's restatement
        * compares against it alone, so the other sequence's dispatch never
        * suppresses this slot's error (FR-030 — two independent sequences).
@@ -1469,13 +1494,17 @@ export class SessionViewState {
     const capturedCommandVersion = slot.version.value;
     slot.state.value = 'requesting';
     slot.rejection.value = null;
-    // The previous command's ID is deliberately kept until the new command is
-    // admitted. Until then the scan that ID names is still the one running —
-    // dispatching again while one is active is exactly the `scan-in-progress`
-    // rejection — and clearing it here would sever the running scan's
-    // correlated progress the moment the user pressed the button a second
-    // time. `accepted` below overwrites it; a rejection or failure leaves the
-    // running scan's correlation intact.
+    // The previous command's correlation goes with the dispatch. A command
+    // answers once its scan settled (contracts/http-api.md
+    // § rescan-repository), so while this one is out the ID that slot holds
+    // names a scan that has already finished, and the progress record a
+    // refresh brought back for it is that finished scan's — which a surface
+    // correlating the two would show as this scan's own (FR-030). Nothing is
+    // severed by dropping it: a second press while one is in flight returns
+    // above, so no running command's correlation is ever the one cleared here.
+    // `accepted` below records the admitted request's; a rejection or failure
+    // leaves the slot with none, which is what "no scan of mine is out" is.
+    slot.clearCorrelation();
     // Same boundary as `refresh`: a purge between the client's guard and this
     // commit must not be overwritten by a command state captured before it.
     const capturedEpoch = this.#clientData.epoch();

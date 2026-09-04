@@ -138,11 +138,15 @@ const rejectionText = computed(() =>
            state: the rescan answers once its scan settled, and until then the
            status above is the snapshot's — by definition the value this scan
            is replacing — so a page that stated only the snapshot would call a
-           running scan finished for as long as it runs. Inside the live region
+           running scan finished for as long as it runs. It says the command is
+           in progress rather than that a scan is running, because this side
+           cannot tell the two apart: an admitted rescan may be queued behind
+           the sequence's running command, and nothing here polls to find out
+           (contracts/http-api.md § rescan-repository). Inside the live region
            so the change is heard with the state it changes; no spinner and no
            progress bar, which earlier reviews took out. -->
       <p v-if="requesting" class="aci-note">
-        Scanning now. The result appears here when it finishes.
+        Rescan in progress. The result appears here when it finishes.
       </p>
 
       <!-- What a "Partial" status is about, stated where the status is read.

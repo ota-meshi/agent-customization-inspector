@@ -1,7 +1,7 @@
 # SC-006 task prompt
 
-Read aloud, verbatim, once the prepared state is ready. May be repeated verbatim on
-request. Nothing may be added.
+Presented verbatim by the runner once the prepared state is ready. May be repeated verbatim
+on request. Nothing may be added.
 
 ---
 

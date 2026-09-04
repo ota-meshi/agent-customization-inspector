@@ -401,7 +401,7 @@ export class GlobalConsentDomain {
    * Releases the frozen preview. Called only inside the disable barrier's
    * terminal success commit (contracts/http-api.md § disable-global): the
    * preview stays retrievable — frozen — through every failed cleanup, and a
-   * a later creation may replace it only once the barrier is gone.
+   * later creation may replace it only once the barrier is gone.
    */
   public release(): void {
     this.#current = null;

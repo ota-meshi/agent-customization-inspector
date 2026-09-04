@@ -13,11 +13,9 @@
     "browserRevision": "1228",
     "browserVersion": "149.0.7827.55",
     "browserDistribution": "chrome-for-testing",
-    "headed": true,
+    "headed": false,
     "contextPersistence": "fresh-nonpersistent",
-    "extensionSet": [],
-    "proxyConfigurationScope": "browser-context-only",
-    "proxyAuthenticationMode": "single-407-basic"
+    "extensionSet": []
   },
-  "moderatorNote": "SC-006 の定型文を読む前に、指定ファイルを開いておく。SC-001 の結果にかかわらず、全員がこの状態から始める。"
+  "preparationNote": "SC-006 の定型文を提示する前に、指定ファイルを開いておく。SC-001 の結果にかかわらず、全 session がこの状態から始める。"
 }

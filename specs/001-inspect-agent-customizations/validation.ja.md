@@ -94,13 +94,60 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 hostが存在する前にそれをthrowしてlaunch URLを出力しない。自動Repository scanのfailureと同じ終わり方で
 ある。両caseとも通過する。
 
-**Launcher exclusionのreviewは未解決である。** `DetectedFileOpener`はexecutableと各inspected rootを
-字面で比較する。`/`へのsymbolic linkをinspected rootとし、`EDITOR=/usr/bin/vi`とすると、probeは
-`terminal-editor`を提供した。executableはrootが到達するtreeの内側にあるが、rootの字面の下にはない。
-これはFR-020、FR-022、およびinspected root内の全candidate directoryを除外する`open-file` contractと
-矛盾する。SC-004の例外は字面で区別できないnetwork filesystemを対象とし、local root aliasではないため、
-source commentだけでaccepted limitationにはできない。下記gateはalias caseを実行していない。
-実装と回帰testがcontractどおりの除外を確立するまでrelease approvalは保留である。
+**Rescanの相関はそのcommand自身のものとし、viewerが埋める箱は埋まる前に確保する。** 2つのsurfaceが、
+終わったscanの記録を実行中のものとして表示していた。commandはそのscanが決着してから答えるので、次の
+commandが飛んでいる間にslotが持つrequest IDは既に完了したscanを指し、refreshが持ち帰ったその進捗が
+「This scan」の下に描かれていた。dispatchでその相関を落とすようにした。surfaceごとに条件を足すのでは
+なく、1つのruleを1か所に置く形である。文言はcommandを述べる`Rescan in progress.`とした。この側は実行中の
+scanとFIFO待ちのscanを区別できず、区別を主張してはいけないからである。別件として、hook detailの比較
+導線はdeclaration viewerの下にあり、Monacoのmount中に位置が動き得た。現在は他のsurfaceと同じくviewer
+より前にあり、初回clickのbrowser回帰はChromium・Firefox・WebKitで通過した。`SourceViewer`もeditorが
+引き継ぐまで同じtextをinertな`<pre>`へ描くが、このplaceholderはMonacoのfontとline metricsを共有しない。
+一般的な高さ安定性は未検証であり、他surfaceのrelease evidenceには用いない。
+
+**Localのgateからは見えない2つのcertification jobを通した。** 以下のgateは1台のmachineで実行し、
+CIのうち2つは別の場所で実行する。`tests/unit/host/file-opener.test.ts`はabsoluteなfixtureを
+path separatorだけから組み立てていたが、Windowsではそれはcurrent driveからの相対pathを表す。
+module自身の`resolve`がそれをdrive付きにするため、15件のassertionはprobeが一度も見ていないpathを
+名指していた。fixtureはresolve済みのrootから組み立てるようにした。またhook comparisonのcarrier
+detailからの導線では、上にある declaration viewerが高さを取る過程でlinkが下へ押し出され、pressは
+linkのなくなった位置に落ちてaddressがcarrierのままになっていた。読み手がするのと同じく、address
+が動くまでpressを再試行する。どちらもこのmachineでは観測できない — 前者はWindows、後者は認証対象の
+Linux WebKitを要する — ため、確立するのはCIである。
+
+**Launcher-exclusion reviewは一部だけ解消している。** 綴りはpathの所在ではない。Repository外の
+`PATH` entryや設定済み`EDITOR`をRepository内へのsymbolic linkにでき、executable resolverはその外側の
+綴りをそのまま返すため、字面だけの比較ではrepositoryが供給する実行fileをeditorとして提供し、起動して
+しまう（FR-020、FR-022）。実装済みの範囲では、startup時に存在する選択済みRepository rootをresolveし、
+選択時の綴りと並べてphysical locationを渡す。さらに各launcher candidate — 各`PATH` entry、separatorを
+含む設定済みeditor、およびresolverの結果 — を、綴りと物理的な位置の両方で比較する。
+`tests/unit/host/file-opener.test.ts`はcandidateの両方向について実際のalias treeをstageし、
+`tests/unit/cli.test.ts`は存在するrootの受け渡しを確立する。
+
+**Release blocker — 実装が必要。** このcoverageの外に、到達可能なgapが3つ残る。第一に、consent前のprobeは
+outside spellingを持つ全launcher candidateについて`resolvePhysicalLocation`を呼ぶ。そのcandidateがproposed
+personal-setup root内へのsymbolic linkなら、`realpath`はconsent前にそのrootへ入り、FR-013に違反する。一方、
+proposed root自身はspellingだけで渡されるため、同じprobeはcandidateがその外側にあることを証明できず、admit後も
+そのeditorをofferしてlaunch可能なままにする。FR-013は読み手のaction前にlexicalなproposed-root filteringと
+この種のphysical access 0件を要求するが、そのaction後、launch前に全admitted rootに対してphysical authorizationを
+行うことは許可する。
+第二に、Repository rootのphysical locationは1回しかcaptureしない。Missing rootは明示的にrecover可能な
+`root-unreadable` stateであり、そのDiagnosticは修復してrescanするよう読み手へ案内する。したがってstartup後に
+symbolic linkとして修復するのはuser-visibleなlifecycleであり、到達不能なmachine raceではないが、openerには
+古いlexical exclusionしか残らない。第三に、`resolvePhysicalLocation`はすべての`realpath` failureをcatchして
+nullを返す。その結果Repository rootはlexical fallbackだけとなり、`outsideInspectedRoots`はphysical locationが
+不明なcandidateを外側としてadmitする。予期しない`EIO`/`ESTALE` classのfailureが、inspection boundaryの他の
+箇所のように伝播せずfail openする。SC-004が除外するのはlocal filesystemとlexicalに識別できない
+pre-mounted/mapped network filesystemだけである。これらのlocal aliasはconsent後またはlaunch時に許可された
+resolveで識別でき、accepted platform limitationには当たらない。
+
+既存のphysical root/candidate比較を維持しつつ、その時点を分けること。Consent前はlexicalなproposed-root exclusionと、
+proposed rootへ入らないRepository safetyだけを行う。Consent後かつlaunch前に、currentな選択済みRepository rootと
+現在admit済みの全personal rootに対してcandidateをphysicalにauthorizeするか、同等のlifecycle-owned revalidationを
+行う。Physical比較を確立できないときは認可せず、予期しないfilesystem errorを伝播させること。Outside spellingから
+proposed root内へ入るaliasについてconsent前I/Oが0件であるcase、admit後の同じlocal personal-root alias、missing
+Repository rootをlinkとして修復してからrescan/openするcase、および予期しない`realpath` failureのinjected caseを
+regressionへ追加すること。これらがFR-013、FR-020、FR-022、`open-file` contractを満たすまでrelease approvalは保留する。
 
 以下のgateはすべて2026-09-04に、`pnpm run build`後のこのtreeに対して、ひと続きで実行した。
 件数は各runが報告した値である。
@@ -110,14 +157,14 @@ source commentだけでaccepted limitationにはできない。下記gateはalia
 | Format | `pnpm run format:check` | 無出力、exit 0 |
 | Lint | `pnpm run lint` | 無出力、exit 0 |
 | Types | `pnpm run typecheck` | 無出力、exit 0 |
-| Unit | `pnpm run test:unit` | 52 file、1,224 test passed |
+| Unit | `pnpm run test:unit` | 52 file、1,230 test passed |
 | Contract | `pnpm run test:contract` | 12 file、405 test passed |
 | Integration | `pnpm run test:integration` | 11 file、270 test passed |
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、4 test passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 file、1,899 test passed。statement 86.14%、line 86.45% |
+| Coverage | `pnpm run test:coverage` | 75 file、1,905 test passed。statement 86.17%（5,955/6,910）、branch 71.61%（3,555/4,964）、function 87.44%（1,163/1,330）、line 86.48%（5,837/6,749） |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
 **ここでのbrowser gateは1 projectであり、certification matrixはCIのものである。**
@@ -138,11 +185,11 @@ revisionにわたるものであり、ここでは再現していない。上表
 いない。変わったのは、認証runがどのcommitに対するものかである。
 
 **Coverageの百分率はあるrunの値であり、定数ではない。** このtreeのrunは、上の行に記録した
-75 file・1,899 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
+75 file・1,905 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
-timingのthresholdをassertしない。Checked-inのreference profile `sc002-smoke-reference-v2`は、hostedなUbuntu 24.04 x86_64 runner上のNode 24.18を記述し、profileのbenchmark fieldが変わって、profile自身の規則がfield変更を新しい非互換IDとするため新設した。これは観測値を読む際の参照であって、観測した場所の主張ではない。実行環境とprofileを比較する機構は無く、runは自分の環境を出力する。2026-09-04のpassはこのmachine — arm64、Node 24.14.0 — で走り、rescan dispatchからrequest相関のstatusまで118 ms、request committedのoperable inventoryまで607 ms、filter feedbackまで23 ms、selection feedbackまで45 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
+timingのthresholdをassertしない。Checked-inのreference profile `sc002-smoke-reference-v2`は、hostedなUbuntu 24.04 x86_64 runner上のNode 24.18を記述し、profileのbenchmark fieldが変わって、profile自身の規則がfield変更を新しい非互換IDとするため新設した。これは観測値を読む際の参照であって、観測した場所の主張ではない。実行環境とprofileを比較する機構は無く、runは自分の環境を出力する。2026-09-04のpassはこのmachine — arm64、Node 24.14.0 — で走り、rescan dispatchからrequest相関のstatusまで340 ms、request committedのoperable inventoryまで478.8 ms、filter feedbackまで24.1 ms、selection feedbackまで44.3 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
 
 ## Outcome manifestによる基準
 
@@ -221,8 +268,9 @@ matrix rowが名指す34件そのもので、matrixが定義しないIDは持た
 project runでは32件が全projectで通過し、`AUTO-2.1.1`と`AUTO-2.4.1`はchromiumとfirefoxで通過し、
 macOS WebKitでは上記のtab orderの理由により失敗した — 一方はlinkで進むworkflowにTabで到達できず、
 もう一方はskip linkにfocusできない。認証対象のWebKitはCIが実行するLinux
-revisionであるため、この側の認証結果はCIのものであり、ここでは観測ではなく前提とする。これは
-T1051がlower-bound matrixについて記録するのと同じ措置である。Localのrunがそれを代替することはない。
+revisionであるため、この側の認証結果はCIのものである。run `33868211321`はそこで34件の`AUTO-*`
+checkをすべて実行し、`AUTO-2.1.1`と`AUTO-2.4.1`を含めて全件通過した。Localのrunがそれを代替する
+ことはない。
 
 ### WCAG results
 
@@ -323,6 +371,151 @@ jobは3つのoperating systemと2つの固定Node.js versionを要するが、�
 host 1台である。Certificationの結果はmatrix上のCI runが生むものであり、記録されているものはない。
 
 ## SC-001とSC-006のfirst-use session
+
+**2026-09-04に、このreleaseのreview修正を載せたbuildに対して、各sessionをこのworking treeの外で
+開始して実施した20件のagent駆動session。** buildは上のrelease gateを実行したtreeの`pnpm pack`で、
+tarballのSHA-256は`169372b9fa8ff1df8c2ce6d0ec47f67e4eb09702757ed830a6ae34cebad44fdc`、これを
+`npm install`で1つのrun folderに入れた。各sessionは自分の`repository/` —
+`tests/fixtures/repositories/build-fixtures.ts`がその場所に構築したall-kind fixtureであり、guideの
+`npx --no-install agent-customization-inspector --no-open`がpackageを解決する場所 — と、
+`tests/fixtures/global-homes/build-fixtures.ts`が自分だけの`HOME`の下に構築した4つのhomeを持つ。
+各sessionにはcommit `980ee95229170b68e892e46ed78dd0420fd0a452`時点の
+`tests/usability/sc001-sc006-study-inputs/guidance.md`の本文、その隣の4つのprompt fileの原文、
+`response-form.json`の3つの質問を渡した。採点は、同じrevisionにある`ground-truth.json`を
+`scoring-rubric.json`で行った。各sessionは自分のheadless browserを自分の時計で駆動した。
+equipmentの2条件は以前のrunと同じである。起動commandに`--port 0`を付けること、そして起動commandだけに
+4つのhome変数を設定すること。同時に走らせたのは5件である。
+
+**隔離が何であり、何を成立させるか。** 各sessionは、自分のsession folderをworking directoryとする
+Claude CLIのprint-mode processであり、`--setting-sources user`で起動し、このrepositoryの設定変数を
+環境から取り除いた。したがってproject指示もこのrepositoryのmemoryも、そのruntimeには無い。20件中19件が
+求められずにそう述べ、残る1件はこの点に触れなかった。これはSC-001のno-hint policyが求める条件であり、
+同日の以前の2 runに欠けていたものである。この条件があるからこそ、このrunの数字は混合ではなくproduct
+自身のguidanceのものになる。
+
+**sessionはClaude Sonnet 5で走った。** agent駆動のrunの方法にはどのmodelが駆動したかが含まれるので
+名指す。同日の以前のrunはFable 5.1で走っており、それらの区間とこのrunの区間は1つの系列ではない。
+
+**ここでの計時区間が測っているものと、それが基準の区間でない理由。** 3点が隔てている。sessionは
+自分で書いたheadless browserを駆動するので、fileへ到達するとはclickをscriptできる程度にpageのmarkup
+を学ぶことである。4 sessionが時間の行き先はそこだと述べ、うち1件は帰結をはっきり書いている。経過
+時間は「genuine tool-discovery timeと、このheadless-Playwrightという評価方法に固有の
+scripting/tooling overheadを混ぜている」。runnerは、前のtaskが終わってから次を提示するのではなく、
+全taskを一度にsessionへ渡したので、sessionは先を読めた。session 01と12は、報告するT0を押す前に、
+計時外のpassでpageを学んだと記録している。そしてそのstampはsession自身のものである。SC-001は
+promptの提示で区間を開始すると定めており、その瞬間を保持できるのはrunnerだけである。いずれについても
+調整は行わない — kitの規則は、登録した全sessionが結果に残ることである — が、ここのどの数字も基準が
+定める区間として、また人がどれだけかかるかの主張として読んではならない。
+
+| Workflow | 測るもの | 閾値 | 結果 |
+|---|---|---|---|
+| Discovery | SC-001: 起動commandから、発見した1 fileのdetail viewを2分以内に開く | 20件中19件 | **確立しない: 20件中14件。** 14件は1.7秒〜117.8秒、中央値42.6秒。上限を超えたのは4件 — session 09（123.5秒）、18（120.4秒）、06（443.7秒）、15（677.7秒）であり、いずれもその区間の行き先を、productが印字・描画したものではなく、自分のdriverのためにpageのmarkupを学ぶことだと述べている — さらに2件（13、14）は、計時runの開始前に起動が死んだために不成功である。SC-001はtimer開始前のfailureも不成功として数える |
+| Inspection | SC-006: 指定`AGENTS.md`の3 fieldを2分以内に回答 | 20件中18件 | **確立しない。** 20件すべてが3 fieldに正しく答えたが、formは提示されず、提出も無い。sessionは自分の報告へ答えを書き、区間も自分で押した。したがって記録されているのは基準が定める区間ではない |
+| Comparison | SC-006のcoverage: 標準comparison task | 20件すべてが試行 | **20件が試行、7件が完了。** `ground-truth.json`はこのtaskを、`changelog` skillの2つの複製を並べたときに完了とする。到達したのは7件で、他の13件はfixtureが持つ別のdrift組を比較した |
+| Global consent | SC-006のcoverage: 標準personal-setup consent task | 20件すべてが試行 | **20件が試行、18件が完了。** session 17と19は、ground truthのmatch ruleが求めるpathではなく、pageのlabelで4つのdirectoryを挙げた |
+| Safety | SC-006のzero-critical gate | critical issueなし | **確立しない。** critical issueを報告したsessionは無いが、報告が持つのは基準が求めるpredefined safety-event fieldではなく自由記述1 fieldであり、それを採点したものも無い |
+
+Inspectionの中央値が0.24秒なのはformが無いからである。`response-form.json`は3つの質問を定めるが、
+runnerはsessionの前にformを置かず、提出も受け取っていない。各sessionは自分の報告へ答えを書き、
+区間も自分で押した。この数字が立証するのは、3 fieldが開いているpageから答えられたこと — 全session
+が正しく答えた — であって、SC-006が定める区間ではない。その区間は、提示したpromptから提出された
+formまでを走る。
+
+全sessionの3 fieldが`ground-truth.json`と部分点なしで一致した — source `Repository`、認識するtool
+`GitHub Copilot`**と**`OpenAI Codex`、file type `Instructions`。Claude Codeを挙げたsessionは無い。
+discoveryでは13件がpageが既定で示すkindの先頭行`.claude/CLAUDE.md`を開き、7件がroot `AGENTS.md`を開いた。
+
+Comparison taskのpromptは組を名指さないが、`ground-truth.json`は名指す。`changelog` skillの2つの
+複製を並べ、差異を述べたときに完了とする。到達したのは7件 — `.agents/skills/`のものと
+`.github/skills/`のもの — で、残る13件はfixtureが持つ別のdrift組に到達した。見つけたdriftが実在で
+あっても、materialはそれを不成功として採点する。Codexの`docs-researcher` agent file 2件、`.claude/agents/`下の
+`debugger` agent file 2件、`alpha-a`と`alpha-b`、`.github/mcp.json`と`.mcp.json`、`reviewer.agent.md`と
+`reviewer.md`、`AGENTS.md`と`AGENTS.override.md`、`CLAUDE.md`と`CLAUDE.local.md`、そしてある plugin の
+marketplace entry 2件である。全sessionが、自分が選んだ組について差異を述べた。
+
+全sessionがconsent pageに到達し、そこが提案するものを報告した。18件はpageが示すとおりに4つの
+directoryを — 3つのfixture homeと共有agent homeを — 挙げた。これがground truthのmatch ruleが求める
+ものである。2件はpage自身のlabel（`Copilot home`、`Claude home`、`Codex home`、
+`Shared agent home`）を、隣のpathなしで挙げており、その点で不成功である。多くは読み取りを確認せず
+提案の段階で止まった。promptの「before it reads them」がそう促すからであり、そこで止まったsessionは、
+pageがまだ何も読んでいないと述べていることを記録した。全sessionが自分のhostを止め、自分のbrowserを閉じた。全sessionが自分のprocessだけに触れたかは
+立証できない。session 12は、`npx`が孫processを孤児にすることを理解する前に、自分の残りprocessを
+広い`ps`で探したと報告し、そのsweepでkillしたprocess IDの中に他のsessionのものが無かったとは
+言い切れないと述べている。session 04、07、13も、後で絞り込んだ広い一覧を記録しており、19は他の
+sessionのhostをそのままにしたと記録している。20 sessionは1台のmachineと1つのprocess namespaceを
+共有しており、そもそもこの問いが立つのはそのためである。
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety |
+|---|---|---|---|---|---|
+| 01 | 2.1秒 | 0.00秒 | 不成功、別の組 | 完了 | なし |
+| 02 | 48.8秒 | 0.00秒 | 不成功、別の組 | 完了 | なし |
+| 03 | 88.2秒 | 5.1秒 | 不成功、別の組 | 完了 | なし |
+| 04 | 44.8秒 | 6.6秒 | 不成功、別の組 | 完了 | なし |
+| 05 | 1.7秒 | 0.00秒 | 不成功、別の組 | 完了 | なし |
+| 06 | 443.7秒、上限超過 | 0.00秒 | 不成功、別の組 | 完了 | なし |
+| 07 | 6.4秒 | 0.4秒 | 不成功、別の組 | 完了 | なし |
+| 08 | 71.8秒 | 4.7秒 | 完了 | 完了 | なし |
+| 09 | 123.5秒、上限超過 | 33.9秒 | 不成功、別の組 | 完了 | なし |
+| 10 | 85.7秒 | 4.2秒 | 不成功、別の組 | 完了 | なし |
+| 11 | 12.3秒 | 40.9秒 | 不成功、別の組 | 完了 | なし |
+| 12 | 1.7秒 | 0.00秒 | 完了 | 完了 | なし |
+| 13 | 6.3秒、不成功: 計時run前に起動が死んだ | 0.00秒 | 不成功、別の組 | 完了 | なし |
+| 14 | 34.5秒、不成功: 計時run前に起動が死んだ | 2.2秒 | 完了 | 完了 | なし |
+| 15 | 677.7秒、上限超過 | 0.00秒 | 不成功、別の組 | 完了 | なし |
+| 16 | 40.4秒 | 0.00秒 | 不成功、別の組 | 完了 | なし |
+| 17 | 85.0秒 | 2.7秒 | 完了 | 不成功、labelのみ | なし |
+| 18 | 120.4秒、上限超過 | 0.00秒 | 完了 | 完了 | なし |
+| 19 | 117.8秒 | 0.1秒 | 完了 | 不成功、labelのみ | なし |
+| 20 | 34.9秒 | 13.8秒 | 完了 | 完了 | なし |
+
+除外も差し替えも無いので、固定の分母と記録した件数は同じ20である。
+
+**sessionがsafetyについて報告したこと。** 報告が持つのは、SC-006が求めるpredefined safety-event
+fieldではなく自由記述1 fieldであり、scorerはそれを一切読まない。したがって以下は、採点結果ではなく
+20件の散文を読んだものである。productによる禁止作用を報告したsessionは無い — localhostの外への
+要求なし、customization由来の実行なし、調査対象fileへのmutationなし、`--no-open`下でproductが
+browserを開くこともない。何件かはtreeを自分で検証し、1件は開いた全fileの更新時刻をfixture自身の
+ものと突き合わせて不変であることを確かめた。2 sessionは自分のfileを`repository/`へ書いた —
+session 03はscratch script 2件、session 07は7件 — shellのworking directoryがそこへ流れた結果であり、
+どちらも気づいて削除した。これはproductが書いたのではなく、productが読むtreeにsession自身のtooling
+が入ったものであり、構造化されたsafety fieldがあれば散文任せにせず記録できた類のことである。consent pageに到達した全sessionが、確認の前には
+何も読まないと報告し、そこで止まったsessionはpageがそう述べている箇所を引用した。何件かが終了時に
+見たnpmのnoticeは、guideの`npx`の下でnpm自身が行う更新確認である。以前のrunが記録したとおりである。
+
+**sessionがproductについて挙げたこと。** session 16はRepositoryの状態
+`Inspected · some files kept a diagnostic`を`Source diagnostics`の0と並べ、同じ語の2つの意味と読んで
+そのままにした。状態語を書き換える前は5 sessionが同じ読みをしていたもので、今回は1件、しかも語の
+意味を探しに行くことなく出会っている。5 session（06、12、14、17、20）は同じ状態に出会い、fixture自身の
+壊れた`docs/CLAUDE.md`が報告されているのであって障害ではないと正しく読んだ。session 05は、address barに
+`/instructions`と打つとapp内の「Page not found」に着くことを見つけた。そのpathはrouteではなく — その下の
+routeはfileのdetailとrangeのcomparisonである — pageは正しく答えており、このproductが公開するdeep linkは
+影響を受けない。session 16はinstructionsのcomparisonが`AGENTS.md`と`AGENTS.override.md`を組にすることも
+見つけたが、それはこのkindのcomparisonそのものである。名前が何であれ、1つのapplicability rangeの2 file
+だからである。session 09は`File` tabを探して`Compare this instruction file`をclickした。どちらも`File`の
+語を持つ。session 11はkind tabのaccessible nameが、kind名と件数を1つの文字列にしたものだと述べた。
+productが同じことを2回述べる、あるいは誤って述べるという報告は無い。
+
+**このrunが確立しないこと。** SC-001は確立しない。20件中14件が区間内にfileを開き、基準は19件を
+求める。SC-006も確立しない。計時の側は、sessionが自分の報告へ書く3つの答えではなく、提示されて
+提出されるformを要する。zero-critical gateの側は、報告が持たないpredefined safety-event fieldを要する。
+このrunが確立するのはより狭く、しかし保つに値することである。全sessionがfileへ到達し、pageから3
+fieldに正しく答え、driftした組へ到達してdriftを述べ、consent pageへ到達して、何かが読まれる前にそこが
+提案するものを報告した。
+
+もう1つ確立するのは、次のrunが変えるべきものが製品ではなく計測器だということである。runnerは、前の
+taskが終わってから次のtaskを提示し、区間を自分で押さなければならない。response formをsessionの前に
+置き、その提出を受け取らなければならない。scriptを書かせるPlaywright moduleではなく、読んで操作できる
+browserを各sessionに渡さなければならない。構造化したsafetyの回答を取らなければならない。そして各
+sessionに自分のprocess namespaceを与えなければならない。session 12は、自分の残りを探すsweepで他の
+sessionのprocessをkillしなかったとは言い切れないと述べている。
+
+人によるfirst useについては何も確立しない。とりわけここでは、4 sessionが、人ならclickしたであろうpage
+のためにdriverを書くことに区間を費やしている。capture bundleは持たない。拠り所は各session自身の報告で
+あり、runのsession folderの隣、このrepositoryの外に置いてある。そしてfixture treeは1つである。session
+が出会ったのはこのrepositoryが自身のtestのために構築するcustomization fileであり、見たことのない
+repositoryではない。
+
+### 2026-09-04の2回目のrun
 
 **2026-09-04に、最初のrunの所見が導いた作り直しを載せたbuildに対して実施した、各sessionが自分で
 Inspectorを起動する20件のagent駆動session。** buildはcommit `e683269`にその日の未commit変更 — railの
@@ -771,6 +964,13 @@ dependency無しにequipmentはそれを判定できない。Contractは判定�
 そして、76 taskに所有しないfileを名指しさせるowned-path要件は、両言語で修正した。これらを避けるための
 その場しのぎのpatch、握り潰し、投機的抽象はいずれも導入していない。
 
+*未解決のrelease blocker。* Consent前のlauncher discoveryはoutside spellingの全candidateをphysicalに
+resolveするため、proposed personal-setup root内へのaliasが、読み手のaction前にFR-013のno-I/O boundaryを
+越え得る一方、そのpersonal root自体とは綴りだけで比較している。さらにRepository rootについてはstartup時の
+physical locationだけを保持し、physical resolveのfailureをすべてlexicalな続行許可として扱う。FR-013は
+consent後の必要なpersonal-root authorizationを許可し、`root-unreadable`のrecovery pathによって修復済みrootへ
+到達できる。必要な実装とregression caseは前掲のlauncher reviewに記載しており、これはaccepted residualではない。
+
 *未決ではなく解消。* Sealed-capture study kitは背後にrunを持たない機構だった。初見のparticipant
 20名がこのprojectには得られず、それが存在する理由であるmoderated studyは行われないからであり、それは
 この原則が禁じる形である。この変更で、protocol contract、3つのsuite、package command、そして唯一の
@@ -815,8 +1015,10 @@ workflowであり、これはcontributorが実際に走らせられるもので�
 dependencyはすべてcaret rangeで宣言し、正確な解決はcommit済みlockfileが所有する。各依存がuser
 runtimeで何に到達するかは検査済みであり、その記録が前掲のDependency reviewである。
 
-**全violationの解消。** どの原則にも未解消のviolationは無い。残るのは上の2つであり、一方はevidenceの
-恒常的な性質、もう一方はこの記録が特定した除去であって、開いたままの問いではない。
+**Releaseをblockするviolationが1件残る。** 前掲のlauncher-exclusion caseは未解決の
+FR-013/FR-020/FR-022 violationであり、FR-013またはSC-004が課すresidualではない。実際に残る
+residualは2件で、1件はevidenceの恒常的な性質、もう1件はcertified matrixが答えるmachine固有の
+browser結果である。
 
 ## SC-008 accessibility: Not-applicableの再検証
 
@@ -842,7 +1044,8 @@ vendor markである。確認した内容:
 | 3.3.7 | 同じことを二度尋ねない | 入力はshellが持つ名前とpathの検索1つ、inventoryのToolとSourceのselect、consent checkbox、comparisonの2つのfile pickerである。いずれも既に与えられた情報を尋ね直さない |
 
 **Applicable rowの自動側**は上記のSC-008 accessibilityに記録している。34件の`AUTO-*` IDがchromiumと
-firefoxで全件通過し、`AUTO-2.1.1`のみ認証外のmacOS WebKitでそこに記録したtab orderの理由により失敗する。
+firefoxで全件通過し、CIが実行する認証対象のLinux WebKitでも全件通過する。`AUTO-2.1.1`と`AUTO-2.4.1`は
+認証外のmacOS WebKitでのみ、そこに記録したtab orderの理由により失敗する。
 
 **`MANUAL-*` IDは未実行として記録する。** そのmatrixは3つのoperating systemと3つのscreen readerの組を
 要し、このreleaseはそれを主張しない（contracts/accessibility-acceptance.ja.md § 判定rule）。

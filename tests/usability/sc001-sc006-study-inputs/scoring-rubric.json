@@ -26,7 +26,7 @@
       "threshold": 18
     },
     "comparison": {
-      "successCondition": "The two copies are side by side and one difference is named.",
+      "successCondition": "The two changelog skill copies are side by side and one difference between them is named.",
       "limitSeconds": null,
       "threshold": null
     },
@@ -41,5 +41,5 @@
     "exceeding two minutes",
     "an equipment, environment, or product failure that prevents or interrupts the attempt"
   ],
-  "moderatorPolicy": "The standardized prompt may be repeated verbatim. No command, navigation, or interface-operation hint may be given, for either criterion or for the untimed workflow tasks."
+  "promptPolicy": "The runner presents the standardized prompt verbatim and may repeat it verbatim. No command, navigation, or interface-operation hint may be given, for either criterion or for the untimed workflow tasks."
 }

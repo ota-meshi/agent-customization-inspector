@@ -85,7 +85,10 @@ const rows = computed(() => {
       // The row whose rescan is out states so from the command's own state,
       // because its root line still shows the snapshot's status — the value
       // this rescan is replacing (`ScanProgress.vue` § the same sentence).
-      scanningNow: requesting.value && requestedSourceId === source.sourceId,
+      // What it states is the command, not a running scan: an admitted rescan
+      // may be queued behind the sequence's running command, and this side
+      // never learns which (contracts/http-api.md § rescan-global).
+      rescanInProgress: requesting.value && requestedSourceId === source.sourceId,
       diagnosticFileCount: diagnosticFileCounts.value.get(source.sourceId) ?? 0,
       staleFailure,
       // A stale overlay explains itself with either the failed request's real
@@ -133,8 +136,10 @@ const rows = computed(() => {
                with no correlated progress to show it states the member and
                the status word the row shows, so a rescan that completed is
                heard as "Copilot home ready." rather than as silence. The
-               member is named because four rows offer the same control and a
-               bare status word says which of them changed to nobody; the root
+               member is named in every branch because four rows offer the
+               same control and a bare status word — or a bare phase, which is
+               what a reader who did not issue the command hears — says which
+               of them changed to nobody; the root
                is not read, because it did not change and is stated once in
                the labelled field above (FR-002). The same rule as the
                Repository region in `InventoryRail.vue`: the Source's name and
@@ -143,11 +148,11 @@ const rows = computed(() => {
                word is already on screen in the labelled field above, and no
                screen states a Source fact twice (FR-030). -->
           <span aria-live="polite" aria-atomic="true">
-            <span v-if="row.scanningNow" class="aci-note"
-              >{{ row.memberText }} — scanning now.</span
+            <span v-if="row.rescanInProgress" class="aci-note"
+              >{{ row.memberText }} — rescan in progress.</span
             >
             <span v-else-if="row.progress" class="aci-note">
-              {{ SCAN_PROGRESS_PHASE_TEXT[row.progress.phase] }} —
+              {{ row.memberText }} — {{ SCAN_PROGRESS_PHASE_TEXT[row.progress.phase] }} —
               {{ row.progress.candidateFiles }}
               {{ row.progress.candidateFiles === 1 ? 'candidate file' : 'candidate files' }},
               {{ row.progress.diagnosticCount }}

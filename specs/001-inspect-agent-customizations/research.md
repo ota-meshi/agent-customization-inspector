@@ -1222,9 +1222,11 @@ operation-local initial enable uses `cleanup-only`, which removes the fence whil
 no committed state. Repeated disable joins the same barrier.
 A post-acceptance failure keeps the fence, the failed request's error,
 and retry/join path while the process stays alive; unrecoverable cleanup requires restart.
-A pre-acceptance failure or true no-op leaves the fence null. A final coordinator-locked
-operation-ID/epoch/state check determines whether enable returns `202` or loses to disable
-with `409`, so late work cannot restore revoked Global state.
+A pre-acceptance failure or true no-op leaves the fence null. A final check that the enable
+registration still names the same operation ID, followed immediately by its synchronous
+settlement, determines whether enable returns `202` or loses to disable with `409`, so late
+work cannot restore revoked Global state; no enable-specific epoch or duplicated state check
+is involved.
 
 Each scan starts from its owning sequence's current generation — a Repository scan from
 the committed `RepositoryScanGeneration`, a Global scan from the committed
@@ -1460,10 +1462,9 @@ release tarball inspection, and the fixed scoring of an agent-driven first-use r
 - Coverage percentage alone was rejected because it does not demonstrate the named
   boundary and non-execution invariants.
 
-## 11. Specification revalidation decisions (2026-07-17)
+## 11. Source ownership, authored values, and outcome measurement
 
-**Decision**: Revalidate the Phase 0 design against the 2026-07-17 clarifications and carry
-the following rules into every later design artifact:
+**Decision**: These rules hold across every design artifact:
 
 1. One admitted member root equals one member Global Source, with at most one
    Source each for Codex, Claude, Copilot, and the shared agent home and zero to four in a
@@ -1513,9 +1514,9 @@ read-only, local, non-executing boundary.
 - A published performance threshold was rejected: asserting one requires a frozen measurement
   host nobody has designated, and a figure taken anywhere else measures that machine.
 
-## 12. Specification revalidation decisions (2026-07-19)
+## 12. Child-process boundary, planning gates, and criterion scope
 
-**Decision**: Carry the final analysis remediations into planning and implementation:
+**Decision**: Planning and implementation hold to these rules:
 
 1. Startup browser opening is one of the two permitted product-initiated child-process
    surfaces — the other is the reader's own explicit open-in-editor request: on macOS the
@@ -1576,9 +1577,9 @@ execution, inferring metadata from arbitrary authored keys, keeping the interact
 as an untracked plan-only goal, and patching versions only in `package.json` were rejected
 because each creates a contradiction or a second undocumented contract.
 
-## 13. Pre-analysis ordering decisions (2026-07-19)
+## 13. Task-generation dependency gates
 
-**Decision**: Regenerate implementation tasks from four explicit dependency gates:
+**Decision**: Implementation tasks follow four explicit dependency gates:
 
 1. Setup owns byte hygiene declaratively: `.gitattributes` normalizes line endings and
    `.editorconfig` declares editor conventions. Code formatting is Prettier's, gated by
@@ -1614,10 +1615,9 @@ every comparison behind all family discovery/detail work was also rejected becau
 breaks the original task order and delays independently testable family checkpoints; a
 comparison still never precedes its own family's discovery and complete inert detail.
 
-## 14. Cross-artifact remediation decisions (2026-07-19)
+## 14. Safety and measurement contracts
 
-**Decision**: Freeze the remaining safety and measurement contracts before regenerating
-tasks:
+**Decision**: The safety and measurement contracts are:
 
 1. There is no operational-event vocabulary and no content prohibition on it: errors are
    reported ordinarily. Session Diagnostics remain the separate actionable surface, and
@@ -1662,9 +1662,10 @@ cancellation, broad semantic analysis, literal atime-as-mutation scoring, and bo
 server-side and client-side acknowledgement state were rejected because they overstate the
 platform guarantee, weaken integrity, or confuse presentation with API authorization.
 
-## 15. Final clarification decisions (2026-07-20)
+## 15. Closed runtime contract
 
-**Decision**: Apply the final user choices as one closed runtime contract:
+**Decision**: One closed runtime contract governs startup, consent, failure scope, and
+display:
 
 1. Capture `process.cwd()` exactly once. With no `--root`, use that string as the selected
    Repository root. Keep an absolute `--root` as given and resolve a relative one against
@@ -1698,7 +1699,7 @@ platform guarantee, weaken integrity, or confuse presentation with API authoriza
    verifies them and their bilingual digest only. A semantic change stops work and requires
    synchronized design plus regenerated plan/tasks before consumption.
 
-**Rationale**: These choices preserve the requested runtime ownership of actual read errors
+**Rationale**: These rules keep runtime ownership of actual read errors
 without making an absent optional path fatal, eliminate user-selectable Global scope, make
 bootstrap identity independent of read authority, and keep malformed text inspectable in
 the exact form the UTF-8 decoder produced.

@@ -34,6 +34,7 @@ import { promisify } from 'node:util';
 import { getEditor, type Editor } from 'env-editor';
 import open from 'open';
 import which from 'which';
+import { resolvePhysicalLocation } from '../inspection/traversal';
 import type { FileOpenTarget } from '../../shared/api-types';
 
 /**
@@ -240,25 +241,63 @@ function comparablePath(invocationCwd: string, path: string): string {
  * without normalizing, so a root reached through a symbolic link — or one
  * whose `..` follows one, where the lexical fold in {@link comparablePath}
  * and the operating system's own resolution disagree (`traversal.ts`
- * § pathBelow) — is read at a location no spelling here names. An executable
- * inside that location is then outside this comparison, and this is the
- * documented residual limitation rather than a gap to close: naming it would
- * take `realpath`, which is filesystem I/O this module does not perform
- * (QR-003) and which FR-013 forbids on a proposed member root before the
- * reader has consented to it. It is the same class as the FR-022 limitation
- * SC-004 records for a lexically indistinguishable network filesystem.
+ * § pathBelow) — is read at a location no spelling here names.
+ *
+ * The caller closes that for the Repository root by passing the place it
+ * physically is beside its own spelling (`cli.ts`; `traversal.ts`
+ * § resolvePhysicalLocation): a root that is a link to `/` would
+ * otherwise leave every executable on the machine outside this comparison
+ * while the scan read them all. A proposed personal-setup root is not
+ * resolved, because FR-013 forbids touching one before the reader has
+ * consented to it, so a member home reached through a link keeps the
+ * documented residual — the same class as the FR-022 limitation SC-004
+ * records for a lexically indistinguishable network filesystem.
  */
 function insideInspectedRoot(candidate: string, inspectedRoots: readonly string[]): boolean {
   return inspectedRoots.some((root) => candidate === root || candidate.startsWith(root + sep));
 }
 
 /**
+ * Whether one launcher candidate may be probed or run: it must lie outside
+ * every inspected root both as it is spelled and where it physically is.
+ *
+ * The spelling alone is not enough in either direction. A `PATH` entry or a
+ * configured `EDITOR` outside the Repository can be a symbolic link into it,
+ * and both the candidate and what `which` resolves keep that outside spelling
+ * — so a repository that ships its own `code` and a link to it would be
+ * offered as "Visual Studio Code" and then started, which is the destination
+ * chosen from inspected content that FR-022 forbids (FR-020).
+ *
+ * The physical comparison is exact for the Repository, whose own physical
+ * location is passed beside its spelling (`cli.ts`; `traversal.ts`
+ * § resolvePhysicalLocation). A personal-setup member root is compared by
+ * spelling only, because FR-013 forbids resolving a proposed one before the
+ * reader has consented to it; {@link insideInspectedRoot} records what that
+ * leaves open.
+ */
+async function outsideInspectedRoots(
+  candidate: string,
+  invocationCwd: string,
+  comparableRoots: readonly string[],
+): Promise<boolean> {
+  if (insideInspectedRoot(comparablePath(invocationCwd, candidate), comparableRoots)) {
+    return false;
+  }
+  const location = await resolvePhysicalLocation(candidate);
+  return (
+    location === null ||
+    !insideInspectedRoot(comparablePath(invocationCwd, location), comparableRoots)
+  );
+}
+
+/**
  * The directories this probe may search, each entry taken from the directory
  * the host was started in — a relative entry is what a shell started there
  * would resolve, so the same directory is searched rather than dropped — less
- * every entry inside an inspected root ({@link insideInspectedRoot}). An empty
- * entry is the invocation directory, as it is for a POSIX `PATH`; it is kept
- * when that directory is outside every inspected root and excluded otherwise.
+ * every entry inside an inspected root ({@link outsideInspectedRoots}), as it
+ * is spelled and as it physically is. An empty entry is the invocation
+ * directory, as it is for a POSIX `PATH`; it is kept when that directory is
+ * outside every inspected root and excluded otherwise.
  *
  * An executable under inspected content must never become the editor this
  * product offers as "Visual Studio Code" and then starts, and reading one is
@@ -272,19 +311,24 @@ function insideInspectedRoot(candidate: string, inspectedRoots: readonly string[
  * machine is the reader's own tooling, which the contract promises to search
  * (contracts/http-api.md § open-file).
  */
-function probeDirectories(
+async function probeDirectories(
   searchPath: string | undefined,
   invocationCwd: string,
   inspectedRoots: readonly string[],
-): readonly string[] {
+): Promise<readonly string[]> {
   if (searchPath === undefined) {
     return [];
   }
   const roots = inspectedRoots.map((root) => comparablePath(invocationCwd, root));
-  return searchPath
+  const admitted: string[] = [];
+  for (const entry of searchPath
     .split(delimiter)
-    .map((entry) => resolve(invocationCwd, unquotePathEntry(entry)))
-    .filter((entry) => !insideInspectedRoot(comparablePath(invocationCwd, entry), roots));
+    .map((value) => resolve(invocationCwd, unquotePathEntry(value)))) {
+    if (await outsideInspectedRoots(entry, invocationCwd, roots)) {
+      admitted.push(entry);
+    }
+  }
+  return admitted;
 }
 
 /**
@@ -333,8 +377,9 @@ function unquotePathEntry(entry: string): string {
  * reader pointed. A relative spelling points from the directory the host was
  * started in, which is where a shell started there would take it. That
  * candidate is rejected before lookup when it lies below an inspected root —
- * `EDITOR=/repo/bin/vi` is never probed however it was spelled. The resolved
- * result is checked again because the lookup owns the final spelling.
+ * `EDITOR=/repo/bin/vi` is never probed however it was spelled, and neither is
+ * an outside spelling that is a link into one. The resolved result is checked
+ * again because the lookup owns the final spelling.
  */
 async function resolveOnSearchPath(
   binary: string,
@@ -343,20 +388,20 @@ async function resolveOnSearchPath(
   inspectedRoots: readonly string[],
 ): Promise<string | null> {
   const roots = inspectedRoots.map((root) => comparablePath(invocationCwd, root));
-  const admitted = (candidate: string): boolean =>
-    !insideInspectedRoot(comparablePath(invocationCwd, candidate), roots);
+  const admitted = (candidate: string): Promise<boolean> =>
+    outsideInspectedRoots(candidate, invocationCwd, roots);
   if (binary.includes('/') || binary.includes(sep)) {
     const candidate = resolve(invocationCwd, binary);
-    if (!admitted(candidate)) {
+    if (!(await admitted(candidate))) {
       return null;
     }
     const named = await which(candidate, { nothrow: true });
-    return named !== null && admitted(named) ? named : null;
+    return named !== null && (await admitted(named)) ? named : null;
   }
-  for (const directory of probeDirectories(searchPath, invocationCwd, inspectedRoots)) {
+  for (const directory of await probeDirectories(searchPath, invocationCwd, inspectedRoots)) {
     const candidate = join(directory, binary);
     const resolved = await which(candidate, { nothrow: true });
-    if (resolved !== null && admitted(resolved)) {
+    if (resolved !== null && (await admitted(resolved))) {
       return resolved;
     }
   }

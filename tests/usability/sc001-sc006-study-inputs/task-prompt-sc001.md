@@ -1,6 +1,7 @@
 # SC-001 task prompt
 
-Read aloud, verbatim. May be repeated verbatim on request. Nothing may be added.
+Presented verbatim by the runner to start the evaluation. May be repeated verbatim on
+request. Nothing may be added.
 
 ---
 

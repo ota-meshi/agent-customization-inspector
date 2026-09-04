@@ -38,7 +38,7 @@
   "scoringNote": "Every field is scored against the label the page displays. Wording may differ; the identified source, tool set, and kind may not.",
   "workflows": {
     "comparison": {
-      "completedWhen": "The two changelog skill copies are on screen side by side and the participant names one difference between them.",
+      "completedWhen": "The two changelog skill copies are on screen side by side and the session names one difference between them.",
       "theTwoCopies": [
         ".github/skills/changelog/SKILL.md",
         ".agents/skills/changelog/SKILL.md"
@@ -47,10 +47,10 @@
         "the description: 'from the staged diff' against 'from recent commits'",
         "the instructions: 'the staged changes' against 'the latest commits'"
       ],
-      "unsuccessful": "No side-by-side view was reached, or no difference was named."
+      "unsuccessful": "No side-by-side view of these two copies was reached, or no difference between them was named."
     },
     "consent": {
-      "completedWhen": "The personal-setup page is on screen and the participant names the directories it says it will read before reading them.",
+      "completedWhen": "The personal-setup page is on screen and the session names the directories it says it will read before reading them.",
       "expectedDirectories": [
         "~/.claude",
         "~/.codex",

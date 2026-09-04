@@ -1495,7 +1495,25 @@ What each target reaches:
   then asks the executable resolver only about an absolute candidate in each remaining
   directory; known installation directories follow the same prefilter. A separator-carrying
   `EDITOR`/`VISUAL` spelling is likewise resolved and rejected before lookup when it lies
-  inside a root. An executable under inspected content is a destination chosen from
+  inside a root. The pre-consent stage compares every proposed personal-setup root only by
+  spelling and performs no candidate resolution that can follow a link into one; FR-013
+  forbids proposed-root I/O before the reader's action. It may establish the Repository
+  root's physical location and perform the Repository-only safety work that does not touch a
+  proposed personal root. Physical candidate comparison remains required because an outside
+  spelling can be a symbolic link into inspected content and the executable resolver keeps
+  that outside spelling, but it belongs to an authorization stage at which every root the
+  resolution can touch has been admitted. Once Global roots are admitted, and immediately
+  before any launch, the host therefore compares the launcher's physical location with the
+  current physical location of the selected Repository root and every admitted personal-setup
+  root. A candidate that cannot be resolved safely without pre-consent access to a proposed
+  root is not authorized at the pre-consent stage. The launch-time comparison also covers a
+  root that was missing at startup and was repaired or replaced before a later successful
+  rescan. Failure to establish either physical location must not authorize the launcher: a
+  path-condition failure refuses that target, while an unexpected filesystem failure
+  propagates as the request's ordinary error. SC-004's exception is only for a pre-mounted or
+  mapped network filesystem that is lexically indistinguishable from a local one; it does not
+  exempt a local symbolic-link alias.
+  An executable under inspected content is a destination chosen from
   inspected content, which FR-022 forbids (FR-020), so the repository's own
   `node_modules/.bin` or `bin/` is never even probed as the editor, while the same
   directories anywhere else on the machine are the reader's own tooling and are searched.
@@ -1716,12 +1734,15 @@ old Global detail/comparison/editor state, and clears the applicable determinist
 failures; the Repository sequence, its generation, and Repository views are
 untouched.
 
-The operation checks its ID/epoch and non-aborted signal before and after each asynchronous
-step, plus the same operation-local provisional state for initial enable or the same active
-control snapshot for retry. Immediately before the one batch enqueue, the coordinator
-atomically activates initial consent/controls or applies the retry partition and verifies
-that resulting active control state. A disable-first ordering
-drains and returns the `global-disable-pending` conflict rejection with no late mutation;
+The operation checks that the session's registration still names its `operationId` before
+and after each eligible member's asynchronous probe, after complete admission, and at the
+start of synchronous settlement. It carries no enable-specific epoch or abort signal and
+does not duplicate the preview or active control state: preview creation is refused while
+the registration stands, and retry leaves the active state unmodified until settlement.
+Immediately after the settlement-entry operation-ID check, the coordinator synchronously
+and atomically activates initial consent/controls or applies the retry partition and, for a
+nonempty admitted subset, creates the one batch. A disable-first ordering clears the
+registration, drains, and returns the `global-disable-pending` conflict rejection with no late mutation;
 an operation-first queued acceptance remains its accepted disposition even if a later
 barrier cancels the batch. A
 throw/rejection after queued acceptance is the terminal failure for the same non-null

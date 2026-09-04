@@ -7408,7 +7408,7 @@ the task would have built.
   `tests/contract/http-api-global.test.ts`
 - [X] T946 [P] [US4] Add failing initial-enable/retry coordinator tests for atomic fixed-member
   control activation and admission partition, using only test-injected typed outcomes for member
-  ports not yet production-bound; operation ID/epoch checks; FIFO generation selection; conflicts;
+  ports not yet production-bound; registered operation-ID continuation and settlement-entry checks; FIFO generation selection; conflicts;
   zero public provisional Source; zero-admitted `active-no-job` with no new job/Source/generation
   and preserved retry state; and exactly one `GlobalBatchScan` with one request ID/publication
   authority/working set for every nonempty injected admitted subset. Prove retry polling before
@@ -8759,6 +8759,12 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   block (1) creates them; no earlier task owns them and T1061 reviews what this task produces.)*
 
 ### Official evidence and dependency review
+  *(amended 2026-09-04: the sealed-capture harness this task built — the protocol contract, the
+  three `scripts/*usability-study*` modules, their contract, integration, and security suites, and
+  the three `study:evidence:*` commands — is removed (T1061, T1062). What the requirement covers
+  is the bilingual study kit and the task material under
+  `tests/usability/sc001-sc006-study-inputs/`, which the agent-driven SC-001/SC-006 evaluation
+  reads.)*
 
 
 
@@ -9405,6 +9411,11 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   watchdog has ACKed its `safe-payload`. Describe the topology as eight long-lived internal
   descendants/processes: watchdogs are adapter children, never eight direct supervisor children.
   *(amended 2026-08-10: the checklist runs through T1090.)*
+  *(amended 2026-09-04: the three study-evidence suites this task ran are removed with the harness
+  (T1061, T1062). What the requirement covers is the bilingual task parser's own result — the
+  checkbox, phase, and trace-row counts, the identical English/Japanese owned-path sets, and
+  self-contained task text with no out-of-line amendment mechanism — which `pnpm run test:docs`
+  gates.)*
 
 - [X] T1050 Run integration, package, performance, browser, coverage, and documentation gates and
   record every result in `specs/001-inspect-agent-customizations/validation.md` and
@@ -9838,6 +9849,10 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   *(amended 2026-08-10: the checklist runs through T1090.)* *(amended 2026-09-01: the static-asset
   concern is settled by amending the contract to the packaged-prefix rule the equipment can
   decide, so the review reports zero open concerns.)*
+  *(amended 2026-09-04: this review removed the sealed-capture harness its checklist names, so the
+  release-candidate review no longer covers the protocol contract, the three
+  `scripts/*usability-study*` modules, their three suites, or the `study:evidence:*` commands. The
+  study material the evaluation reads stays under `tests/usability/sc001-sc006-study-inputs/`.)*
 
 - [X] T1062 Run the release-review remediation and evidence-invalidation loop until T1061 reports
   zero concerns. Any repository edit affecting the paired study kit/input bytes or descriptors,
@@ -10164,6 +10179,10 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   *(amended 2026-08-10: the checklist runs through T1090.)* *(amended 2026-09-01: the kit edits
   this loop made invalidate no T1056–T1057 evidence, because that evidence is an agent-driven run
   that does not use the kit and produced no capture bundle.)*
+  *(amended 2026-09-04: the loop's invalidation triggers no longer include the sealed-capture
+  harness this phase removed, because no repository edit can touch what is not there. What still
+  invalidates prior evidence is an edit to the study kit or its inputs, and T1202's own run is
+  what re-establishes SC-001/SC-006 after one.)*
 
 - [X] T1063 Perform and record the explicit principle-by-principle release Constitution Check,
   including dependency/breaking-change rationale, migration impact, confirmation that every
@@ -10612,7 +10631,14 @@ reopened names them. Each records its result in that file and in
   discovery interval. The repeat starts each session outside this working tree, against the
   current build. A third attempt that day staged no session at all: the account's session
   limit refused all twenty processes before any of them received a first turn, so there is no
-  run to record and the task stays open.)* (SC-001, SC-006)
+  run to record. A fourth ran in full, each session started outside this working tree and on a
+  named model, and is recorded above the others. It establishes neither criterion, and the
+  reason is its instrument rather than its result: no response form was presented or
+  submitted, the runner handed every task over at once and left the timestamps to the
+  sessions, and twenty sessions shared one process namespace. The kit's rule that a run
+  missing a threshold is not repeated for a better number is about a valid run; this one did
+  not implement the intervals the criteria define, so the task stays open for a first valid
+  measurement rather than for a second attempt at the same one.)* (SC-001, SC-006)
 
 ### Records that name the rework
 
@@ -10802,7 +10828,7 @@ account plus a list of what it lacks.
 | 101 Global Disable Barrier and Teardown | US4 | Disabling Global inspection completely tears down its session state and leaves Repository inspection usable. |
 | 102 Documentation, Evidence, and Dependency Review | release evidence | Maintainers have reviewable guidance, evidence provenance, and a dependency decision before the cross-cutting suites validate those artifacts. |
 | 103 Cross-Cutting Verification | regression | The complete documented product passes its cross-cutting automated regression layer. |
-| 104 Release and Outcome Evidence | measured outcomes | The initial release is publication-ready with explicit automated, participant, accessibility, performance, safety, residual-risk, and constitution-compliance evidence. |
+| 104 Release and Outcome Evidence | measured outcomes | The initial release is publication-ready with explicit automated, first-use, accessibility, performance, safety, residual-risk, and constitution-compliance evidence. |
 | 105 Interface Foundation | US1 | Every surface is drawn in the product's own palette, with the reader's system colours restored under forced colours. |
 | 106 Shell and Source State Surfaces | US1 | The inventory starts at the list, and each Source family's state has a surface of its own. |
 | 107 Inventory Row Compression | US1 | One file takes one line, with its recognizing products and their documented surfaces beside it. |
@@ -10810,6 +10836,7 @@ account plus a list of what it lacks.
 | 109 Comparison Surfaces and Rework Closure | US3 | A comparison names the products on each side, stays side by side, and the reopened gates are rerun. |
 | 110 Recognition-Owned Invocation Names on the Detail Head | US2 | A detail states each product's own invocation name beside that product, and its file's facts on the line under the heading. |
 | 111 Convergence | shared prerequisite | The release evidence and the user documentation describe the tree the rework produced, and the task-set gates cover the tasks it added. |
+| 112 Convergence | shared prerequisite | The validation record reads as one account of this tree, and the story-label rule matches the phases that exist. |
 
 ## Dependencies and Execution Order
 
@@ -11716,4 +11743,4 @@ they already state.
 - Credential detection, masking, redaction, and reveal controls are absent. No reveal, masking, or environment-resolution function exists in the session API, and no notice about authored content appears before or beside a source or comparison open.
 - Normal startup, scans, builds, and tests are offline with respect to official documentation. Only the explicit maintainer source-check command may access the network.
 - Every human-authored repository document change updates the English canonical file and Japanese companion together.
-- Passing automated tests is evidence rather than exhaustive proof; Phase 104 requires full-context diff, package, participant, accessibility, measurable-outcome, and residual-risk review.
+- Passing automated tests is evidence rather than exhaustive proof; Phase 104 requires full-context diff, package, first-use, accessibility, measurable-outcome, and residual-risk review.
