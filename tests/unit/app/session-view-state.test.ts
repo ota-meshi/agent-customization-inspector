@@ -209,6 +209,48 @@ describe('session view state — session loss', () => {
     state.dispose();
   });
 
+  it('holds a command in flight until its answer, and frees the control when the call fails', async () => {
+    // A command answers once its scan settled (contracts/http-api.md
+    // § rescan-repository), so the slot stays `requesting` for the scan's
+    // whole duration wherever the reader goes meanwhile — the state is the
+    // shell's, not a page's — and no second dispatch stacks on it. A call
+    // that fails instead of answering must not leave the control inert: the
+    // host's work commits regardless, and "Refresh status" is the way back to
+    // it, so the slot returns to idle and the next press dispatches again.
+    const answer = Promise.withResolvers<unknown>();
+    let rescans = 0;
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.rescanRepository) {
+          rescans += 1;
+          return rescans === 1 ? answer.promise : Promise.reject(new Error('channel lost'));
+        }
+        return Promise.resolve(sessionResult(bootstrapSnapshot()));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    const first = state.requestRescan();
+    expect(state.rescanState.value).toBe('requesting');
+    void state.requestRescan();
+    expect(rescans).toBe(1);
+    answer.resolve({
+      globalContentEpoch: 0,
+      data: {
+        scanRequestId: 'scan-1',
+        source: { ...bootstrapSnapshot().sources[0]!, status: 'ready' },
+      },
+    });
+    await first;
+    expect(state.rescanState.value).toBe('accepted');
+    // The next press dispatches; its call fails, and the slot is free again.
+    await state.requestRescan();
+    expect(rescans).toBe(2);
+    expect(state.rescanState.value).toBe('idle');
+    expect(state.sessionErrorMessage.value).toBe('channel lost');
+    state.dispose();
+  });
+
   it('adopts a Repository acceptance that settles after a Global dispatch', async () => {
     // The two explicit-rescan commands commit into independent sequences the
     // host admits side by side, so each settles in its own token family: a
@@ -421,12 +463,13 @@ describe('session view state — session loss', () => {
     state.dispose();
   });
 
-  it('keeps the enable controls submitting until the accepted refetch is adopted', async () => {
+  it('keeps the enable controls held until the accepted refetch is adopted', async () => {
     // An acceptance is not on screen until the refetched snapshot is adopted:
     // releasing `globalEnableState` at the response re-enables confirm and
     // recapture over the stale preview, and a second confirmation would take
     // the in-progress conflict and display a failure over an accepted
-    // operation.
+    // operation. The answer moves the state from `submitting` to `answered`,
+    // so the page can tell a read still running from a refetch still out.
     let fetches = 0;
     const refetchGate = Promise.withResolvers<null>();
 
@@ -480,11 +523,11 @@ describe('session view state — session loss', () => {
     await Promise.resolve();
     await Promise.resolve();
     // The acceptance settled but the authoritative refetch has not: the
-    // controls must still be held.
+    // controls must still be held, in the answered state.
     const observedDuringRefetch = state.globalEnableState.value;
     refetchGate.resolve(null);
     await confirmed;
-    expect(observedDuringRefetch).toBe('submitting');
+    expect(observedDuringRefetch).toBe('answered');
     expect(state.globalEnableState.value).toBe('idle');
     state.dispose();
   });

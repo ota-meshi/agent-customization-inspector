@@ -19,14 +19,16 @@ outbound request.
 recorded URL completely, requires a direct `200` from the record's own `officialHost` with
 no redirect followed, and resolves each of the 193 cited sections against the served bytes:
 as exactly one served `<h1>`–`<h4>`, or — when no served heading carries it — as the one
-fragment every table-of-contents link bearing its text points at. Anything else is
+served fragment every table-of-contents link bearing its text points at. Anything else is
 reported as observed: `missing`, `ambiguous-heading`, or `ambiguous-anchor`. A request that
 throws is reported as a request that did not complete.
 
 **What the command does not decide.** What a vanished heading means, and whether the cited
 sections still establish the paraphrase a citing record maintains. Both are readings rather
 than lookups, and both stay with the reviewer;
-[AGENTS.md](../../AGENTS.md) § Official-source verification policy states the split.
+[AGENTS.md](../../AGENTS.md) § Official-source verification policy states the split. The
+registry keeps no digest of page text: a section whose heading survived over rewritten text
+is found by that reading, not by a lookup.
 
 **Mutation.** The command changes nothing. It reports, and a reviewer decides what follows.
 
@@ -104,8 +106,20 @@ proposed. The task set is not superseded by this review.
 
 ## Release gate execution
 
-Every gate below was run on 2026-09-03 against the tree at this change's tip, after
-`pnpm run build`. The counts are what each run reported.
+**Regression review, 2026-09-04.** The official-source checker corrections and their
+regression cases pass `pnpm run test:contract`: 12 files and 405 tests passed. The current
+`pnpm run test:integration` run reports 10 files passed and one failed, with 269 tests passed
+and one failed across 11 files. The one failure is
+`tests/integration/cli-global-batch-failure.test.ts`'s CLI propagation case: after an accepted
+Global batch rejects, the command resolves, starts the host, and prints its launch URL instead
+of propagating the original error. The paired RPC case passes and retains that failure in the
+batch status while returning the queued acceptance. Type checking and the targeted formatting,
+lint, and diff checks pass. Release approval remains blocked until the production correction
+owned by T046 lands and the full release gate is rerun.
+
+Every gate below was run on 2026-09-03 against the tree then under review, after
+`pnpm run build`. The counts are what each run reported; the table is a historical run record,
+not approval of the current tree described above.
 
 | Gate | Command | Result |
 |---|---|---|
@@ -147,44 +161,52 @@ the later run.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
 non-gating pass over the 100,000-entry fixture and asserts harness integrity. No timing
-threshold is asserted anywhere in this release. The pass on 2026-09-04 (arm64, Node 24.14.0)
-observed the request-correlated status 111 ms and the request-committed operable inventory
-622 ms after the rescan was dispatched, the filter feedback at 19 ms and the selection
-feedback at 56 ms; the global setup prints these for whoever reads the log, and they describe
-this machine.
+threshold is asserted anywhere in this release. The pass on 2026-09-04 (arm64, Node 24.14.0,
+profile `sc002-smoke-reference-v2` — minted because the profile's benchmark fields changed and
+its own rule makes any field change a new, non-comparable ID) observed the request-correlated
+status 118 ms and the request-committed operable inventory 607 ms after the rescan was
+dispatched, the filter feedback at 23 ms and the selection feedback at 45 ms; the global setup
+prints these for whoever reads the log, and they describe this machine.
 
 
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `88e0ab53bd16dff5be25cf30d65a000280308d34e79537aea17cca478d483c9f`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed by running every suite
-each case names in `verifiedBy`: the eleven vitest suites through
+SHA-256 `ced49fd384730548c6077aa9248175e0320845d9b48de72b72cb4a40b2717bb7`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-04 by
+running every suite each case names in `verifiedBy`: the vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
-Chromium project recorded above. `tests/contract/outcome-fixture-manifest.test.ts`
-reproduced the canonical digest and all 66 fixture digests in the same session.
+Chromium project — the whole Chromium suite, 565 tests, of which 562 passed in one run and the
+three `global-codex-admission` cases passed once their confirmation helper waited for the
+answer that now arrives with the read finished, which is the change this set records.
+`tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and all 66
+fixture digests in the same session.
 
-The set is non-comparable with the one recorded before the interface rework: the fixture bytes
-changed, which spec.md § Release-Evidence Fixture Governance makes a new measurement set. The
-manifest version stays at 3, because that governance requires an increment for a case,
-required-class, or expected-outcome change and this was neither — the same 99 case IDs across
-the same four criteria, each with a nonzero count for every required class. The browser half of
-this execution was the Chromium project on this host; the three pinned revisions are CI's, as
-the browser gate above records.
+The set is non-comparable with the one recorded after the interface rework: four inline
+fixture suites changed — `tests/contract/http-api-session.test.ts`, whose rescan cases now
+observe the answer a scan command gives once its scan reached a terminal state
+(contracts/http-api.md § rescan-repository), and the three skills specs that read the rail's
+status words — which spec.md § Release-Evidence Fixture Governance makes a new measurement
+set. The manifest version stays at 3, because that governance requires an increment for a
+case, required-class, or expected-outcome change and this was neither — the same 99 case IDs
+across the same four criteria, each with a nonzero count for every required class. The
+browser half of this execution was the Chromium project on this host; the three pinned
+revisions are CI's, as the browser gate above records, and the macOS WebKit link-Tab
+limitation recorded there was not re-measured for this set.
 
-| Criterion | Cases | Passed | Passed except macOS WebKit | Failed |
-|---|---:|---:|---:|---:|
-| SC-003 | 43 | 38 | 5 | 0 |
-| SC-004 | 13 | 13 | 0 | 0 |
-| SC-005 | 34 | 33 | 1 | 0 |
-| SC-007 | 9 | 9 | 0 | 0 |
+| Criterion | Cases | Passed | Failed |
+|---|---:|---:|---:|
+| SC-003 | 43 | 43 | 0 |
+| SC-004 | 13 | 13 | 0 |
+| SC-005 | 34 | 34 | 0 |
+| SC-007 | 9 | 9 | 0 |
 
-The six cases in the middle column are the ones whose verifying spec carries one of the
-macOS WebKit link-Tab tests above: `sc003.shared-file.repository-agents-md`,
-`sc003.shared-file.repository-root-claude-md`, `sc003.shared-file.repository-agents-skill`,
-`sc003.shared-file.repository-claude-skill`, `sc003.shared-file.repository-root-mcp-json`,
-and `sc005.row.codex.skill`. Every other assertion in those specs passed in all three
-projects.
+Six of these cases have a verifying spec that carries one of the macOS WebKit link-Tab tests
+above: `sc003.shared-file.repository-agents-md`, `sc003.shared-file.repository-root-claude-md`,
+`sc003.shared-file.repository-agents-skill`, `sc003.shared-file.repository-claude-skill`,
+`sc003.shared-file.repository-root-mcp-json`, and `sc005.row.codex.skill`. In the Chromium
+project every assertion in those specs passed; what the earlier execution recorded about the
+local macOS WebKit project stands as that execution's.
 
 **Denominators.** SC-003 covers 28 `(tool, kind)` rows at the Repository boundary — the exact
 set the shipped registry produces, cross-checked in the contract suite rather than restated —
@@ -273,6 +295,330 @@ versions; this session has one macOS host. The certification result is what a CI
 matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
+
+**Twenty agent-driven sessions, run on 2026-09-04 against the build that carries the rework
+the first run's findings led to, each launching the Inspector itself.** The build is
+`pnpm pack` of the working tree at commit `e683269` with that day's uncommitted changes —
+among them the rail's status-only Repository entry, the personal-setup page's
+`Statuses below are from the last refresh.`, the detail bar's `Previous` and `Next`, and the
+agent comparison's note — tarball SHA-256
+`66bcbab02419a8fb0a4c67d9a4067e429876f3855f2c1277a2eefe36b867e280`, installed with
+`npm install` into one session folder. Each session's `repository/` was built in place by
+`tests/fixtures/repositories/build-fixtures.ts`, so the `.claude/skills/cycle` link points at
+that session's own root as the fixture designs it, and each session's four homes stood under a
+`HOME` of its own, built by `tests/fixtures/global-homes/build-fixtures.ts`. Everything else
+was the first run's: the guide, the four prompts, the three questions, the two equipment
+conditions, a headless browser and a clock of each session's own, and five sessions at a time.
+
+**What was enforced, and what was not.** As in the first run, reading this product's source,
+tests, specifications, fixtures, and documents was forbidden by instruction and not prevented
+mechanically, and each session's own runtime carried the repository's `AGENTS.md` and the
+assistant's memory notes as ambient instructions before it began. This time every one of the
+twenty disclosed it unprompted and stated that it navigated by the page alone. The guarantee
+is the weaker one, and it is recorded rather than claimed away; it is also outside what
+SC-001 allows a session to be given, as the first run's record below says, and the result
+rows state it.
+
+**One condition of the equipment bears on the record more than any other.** The service the
+sessions' own runtime runs on — not the product — refused requests for between six and a half
+and seven minutes, and cut the five sessions then in flight, 06 through 10, in the middle of a
+turn. Each was resumed where it stopped, with its host and its browser still running and
+reused. Sessions 06 and 07 were cut between tasks, so no timed interval of theirs spans the
+gap: 06 re-established the prepared state and re-recorded T2 after resuming, and 07's gap fell
+between Task 2 and Task 3, with T2 recorded after it. Sessions 08, 09, and 10 were cut inside
+the discovery interval, after the launch and before a file was open, so their T1 stamps carry
+the gap — 409, 403, and 404 seconds of it — and each is counted unsuccessful under the kit's
+rule that an interrupted attempt is an unsuccessful one and that no session is excluded or
+replaced. The sessions' own reckoning of the interval without the gap is kept as reference and
+scores nothing: session 08 about 136 s, over the limit on its own, thirty of them a selector of
+its own that timed out; session 09 about 58 s; session 10 about 60 s.
+
+**Two more conditions of the equipment bear on the numbers.** A session's T1 is the moment its
+own check confirmed the file's text on screen, so it errs late where the check lagged the page:
+session 04's first probe used a wrong selector and timed out for 30 seconds after the view had
+opened, session 05's check ran about 15 seconds after its click, session 07 found the text in an
+untimestamped dump 0.8 seconds after its click and stamped T1 later, and session 10 discarded a
+false positive before its first true sighting; session 19's stamp carries about 40 seconds
+spent restarting a browser driver of its own. Two inspection intervals err the other way:
+session 12 extracted the three answers by script from a page it had already read while
+confirming the prepared state, and its T3 fell 19 ms after its T2; session 19 dumped the
+prepared page's accessibility tree to repair a check of its own before recording T2, and says
+its 19 s understates a cold read. All are recorded as they stand, the way the late stamps are.
+
+**This is an agent-driven run and is recorded as one.** What twenty agents measure is whether
+the product's own printed and rendered guidance is sufficient to launch it, reach a file, and
+state what the product says about it. How a person experiences the same interface is not in
+this record; SC-001 and SC-006 say so in their own text, and no sentence here may be read as a
+human-subject result.
+
+| Workflow | What it measures | Threshold | Result |
+|---|---|---|---|
+| Discovery | SC-001: from the launch command to one discovered file's detail view open within two minutes | 19 of 20 | **Not established by this run: 17 of 20.** The 17 uninterrupted sessions all reached a file within the limit, 27.7 s to 97.2 s, median 42.7 s among them; the three unsuccessful ones are the sessions the outage cut inside the interval — and, as in the first run, every session's runtime carried this repository's own instructions, which SC-001 excludes |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` within two minutes | 18 of 20 | **20 of 20 matched, and not established** under the same no-hint condition; 0.02 s to 39.0 s, median 21.8 s |
+| Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete |
+| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete |
+| Safety | SC-006 zero-critical gate | no critical issue | **none reported** |
+
+Every session's three fields matched `ground-truth.json` with no partial credit: source
+`Repository`, recognizing tools `GitHub Copilot` **and** `OpenAI Codex`, file type
+`Instructions`; none named Claude Code. For discovery, every session opened the first row of
+the kind the page shows by default, `.claude/CLAUDE.md`.
+
+Every session reached the pair the ground truth names — the `changelog` skill in
+`.agents/skills/` against the copy in `.github/skills/` — through the row's own Compare link,
+most choosing it because it is one skill name at two skill paths where the other two-file
+names, `alpha` and `voyage`, are not; every one named the description drift, and most also named the
+instruction drift and the recognition difference the page states beside the text.
+
+Every session reached the consent page, named the four directories exactly as the page shows
+them — the three fixture homes as `From this tool's environment variable` and the shared
+agent home as `Default location in your home directory` — and then went on to confirm the
+read, each judging that the prompt's "get the tool to show you those" reaches past the list;
+each host was that session's own, so no session met another's consent state. Every session
+stopped its own host with SIGTERM and closed its own browser, and no process another session
+started was touched: session 18 met sibling sessions' headless browsers in a process listing
+and left them alone.
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety |
+|---|---|---|---|---|---|
+| 01 | 40.0 s | 25.8 s | complete | complete | none |
+| 02 | 42.7 s | 11.1 s | complete | complete | none |
+| 03 | 41.7 s | 25.7 s | complete | complete | none |
+| 04 | 74.3 s | 14.8 s | complete | complete | none |
+| 05 | 65.0 s | 26.3 s | complete | complete | none |
+| 06 | 35.2 s | 18.2 s | complete | complete | none |
+| 07 | 97.2 s | 33.9 s | complete | complete | none |
+| 08 | 545.3 s, interrupted, unsuccessful | 17.2 s | complete | complete | none |
+| 09 | 460.3 s, interrupted, unsuccessful | 25.6 s | complete | complete | none |
+| 10 | 463.7 s, interrupted, unsuccessful | 24.6 s | complete | complete | none |
+| 11 | 36.1 s | 11.5 s | complete | complete | none |
+| 12 | 48.4 s | 0.02 s | complete | complete | none |
+| 13 | 33.4 s | 17.7 s | complete | complete | none |
+| 14 | 41.5 s | 36.7 s | complete | complete | none |
+| 15 | 45.1 s | 29.0 s | complete | complete | none |
+| 16 | 42.2 s | 39.0 s | complete | complete | none |
+| 17 | 70.9 s | 28.5 s | complete | complete | none |
+| 18 | 27.7 s | 13.2 s | complete | complete | none |
+| 19 | 86.1 s | 19.1 s | complete | complete | none |
+| 20 | 44.7 s | 16.4 s | complete | complete | none |
+
+No session was excluded or replaced, so the fixed denominator and the recorded count are the
+same twenty.
+
+**What the sessions reported about safety.** No prohibited effect: no request beyond
+localhost, no execution derived from a customization, no mutation of the repository copy or
+of the fixture homes, and no browser opened by the product under `--no-open`. Every session
+reported that the consent page reads nothing until the confirmation. The moderator's own check
+after the run agrees: no file under any session's `repository/` or `homes/` carries a
+modification time later than the build, except the `.npm` cache and logs that npm wrote under
+each session's `HOME`. That cache is npm's, as is the notice every session's captured output
+gained at exit — `New minor version of npm available` — which is npm's own update check under
+the guide's `npx` and not a request the product makes; the sessions attributed it to npm, and
+none observed the product's page request any host but its own loopback origin.
+
+**What the sessions raised about the product.** Fifteen sessions (01–04, 06, 08–14, 16–18)
+remarked on the rail's `Repository: Partial`: six read it as a failed scan at first sight, and
+eight (03, 06, 11, 13, 14, 16, 17, 18) read it against the rail's `Source diagnostics 0` as a
+contradiction until the Repository page, which says fourteen files kept a diagnostic of their
+own, was open. Nearly every session noted that nothing updates by itself after the consent
+and that `Refresh status` had to be pressed; session 03 waited a minute before reading the
+sentence that says so, and session 16 found the inventory's `Personal setup — Not inspected`
+and its counts unchanged after an accepted read until the same press. Session 15 saw the page
+state, right after its confirmation, that the accepted read was running while the rows still
+read `Accepted, not yet read`, which is the arrangement the rework made. Session 05 found the personal-setup page's loading placeholder,
+`Reading the proposed directories…`, shown while the page fetches this session's proposal
+and reads no directory, and session 12 found the consent page's `What stays excluded` to be
+one sentence over a plain list of product names where it had expected each product's own
+detail. Session 02 saw the first detail it opened show `Loading this instruction file…` for
+about 8.6 seconds before the editor's text, with five sessions loading their editors on one
+machine; the second detail took under a second, and session 18 saw the text 304 ms after its
+click. Session 05 saw the loading sentence twice in extracted text, which is the visible
+sentence and its live region. Two sessions saw the editor's own limits: session 04 that the
+accessibility tree exposes it as a read-only text box without its text, session 12 that it
+renders spaces as U+00A0 — both Monaco's, recorded and not worked around. Two (08, 13) saw
+one file listed under two names, `lander` for Claude Code and `voyage` for GitHub Copilot, as
+the products resolve it; session 10 counted the two steps the consent page takes before
+anything is read, which the guide's one page does not mention; session 15 that the shared
+agent home is proposed from `HOME` although no variable named it; session 07 that
+`Work out the directories` made no HTTP request its logger saw, because the page speaks to
+its host over its session channel; session 08 that the tab title read `Connecting` for a
+moment on first load; and two (07, 14) named the detail's `Open in VS Code` and
+`Choose how to open this file` controls and did not press them. As in the first run, two (11,
+20) noticed the host listening on `[::1]` alone while printing `localhost`, which the browser
+resolved; session 20 the bidi-isolate characters around the file name in the document title;
+and two (07, 20) a row's diagnostic badge run together with its path in extracted text. Session 08 reported that a
+row lands on an `Instructions` tab reading `This file declares none.` with the text one tab
+away; its snapshot was taken while the detail was still loading, and sessions 12, 14, and 18
+read the text on that tab. Three of these observations changed the product in the same
+change as this record: the rail's Repository entry now states its status in words that carry
+their own meaning — `Inspected`, `Not inspected`, and for a partial read `Inspected` with
+`some files kept a diagnostic` on the line under it — the same vocabulary the personal-setup
+entry uses, because a word that does not say what it means sends a reader looking for its
+meaning, while the Repository page keeps its own word beside its explanation; the three commands that admit a scan — the consent page's `Inspect these directories`, a member row's `Rescan`, and the bar's and the Repository page's `Rescan` — now answer once the scans they admitted reached a terminal state, and the shell refetches on the answer, so what a press produced is on screen without a second press of `Refresh status`, which stays for a scan that was already running when a page opened — and the Repository page's and the personal-setup page's notes now say so, that a scan or read started there reports its own result and `Refresh status` is for one that started elsewhere; while a command is out, the surface holding it says so from the command's own state rather than from the snapshot, which is the value the command replaces — `Scanning now.` in the Repository panel, `<member> — scanning now.` on the pressed member row, `Rescanning…` on the bar's command — because the wait, being now the scan's whole length, would otherwise read as a finished scan; the observations of sessions 15 and 16, which met the stale rows and the stale rail from the two surfaces, are what this rests on, and the rail's own copy of the personal-setup page's dating sentence, added for the interval before this decision, is gone with it; and the personal-setup page's loading
+placeholder says `Loading this page's status…`, which is what is loading. The `What stays
+excluded` list stays one sentence over the product names: a per-product sentence would be
+prose the registry does not hold, and `GlobalConsentPreview.vue` records that decision.
+
+**What this run does not establish.** It does not establish SC-001 or SC-006: the outage cut
+three sessions inside the interval SC-001 fixes, and every session's runtime carried this
+repository's `AGENTS.md` and the assistant's memory notes, which the criteria's no-hint policy
+excludes. A run that can establish them starts each session outside this working tree, so
+that nothing of the repository's own instructions or memory is in its runtime, against the
+current build. It does not establish anything about human first use. It carries no capture bundle: what it rests on is
+each session's own report, kept beside the run's session folders outside this repository. And
+it is one fixture tree: a session met the customization files this repository builds for its
+own tests, not a repository it had never seen.
+
+### The first run of 2026-09-04
+
+**Twenty agent-driven sessions, run on 2026-09-04, each launching the Inspector itself.** The
+build is `pnpm pack` of the working tree at commit `e683269` with that day's uncommitted
+changes, tarball SHA-256 `1fbb6607d1a25c05f3c1cc228080e552188e6bfb5d9e4a19063ccb75ee012ec2`,
+installed with `npm install` into one session folder. Each session had its own copy of the
+all-kind fixture as that folder's `repository/`, which is where the guide's
+`npx --no-install agent-customization-inspector --no-open` resolves the package by walking up
+to the folder's `node_modules` — the folder the guide says the reader was given. Each session
+was handed the text of `tests/usability/sc001-sc006-study-inputs/guidance.md`, the four
+prompt files beside it verbatim, and the three questions of `response-form.json`, and drove a
+headless browser of its own with its own clock. Two equipment conditions were stated to every
+session: `--port 0` appended to the launch command, because the default port is this
+machine's owner's; and `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `HOME` set for
+the launch command alone, pointing the personal-setup consent at four fixture homes built by
+`tests/fixtures/global-homes/build-fixtures.ts` — which is what `ground-truth.json` says the
+equipment may do. Five sessions ran at a time.
+
+**What was enforced, and what was not.** Reading this product's source, tests,
+specifications, fixtures, and documents was forbidden by instruction and not prevented
+mechanically, as before: Playwright was loaded from this working tree. Weaker than that, and
+new to this run: the sessions ran with this repository as their working directory, so each
+one's own runtime carried the repository's `AGENTS.md` — and for one, the assistant's memory
+notes — as ambient instructions before it began. Three sessions (09, 15, 19) disclosed this
+unprompted and stated they navigated by the page alone. That is a guarantee weaker than a
+session with nothing of this tree in view, and it is recorded rather than claimed away. It is
+also outside what SC-001 allows: the criterion admits no hint beyond what the product prints
+or renders, and a runtime that carries this repository's `AGENTS.md`, which names the
+product's surfaces, before the session begins is not that. The figures below are recorded;
+the criteria are not established by them, and SC-006 applies the same policy.
+
+**Three conditions of the equipment bear on the record.** The fixture copies kept the
+`.claude/skills/cycle` link's absolute target, which is the fixture tree they were copied
+from, so the product followed the link out of the selected root and listed that whole tree a
+second time under `.claude/skills/cycle/**` — counts inflated by the duplicates, no task
+affected, and seven sessions remarked on the rows. The one `HOME` the launches shared
+collected npm's own debug logs from every launch, which several sessions noticed and
+attributed correctly to npm. And a session's T1 is the moment its own check confirmed the
+file's text on screen, so it errs late where the check lagged the page: session 14 places its
+true T1 somewhere in a 27-second window before its stamp, and session 07's stamp is what put
+it over the limit.
+
+**This is an agent-driven run and is recorded as one.** What twenty agents measure is whether
+the product's own printed and rendered guidance is sufficient to launch it, reach a file, and
+state what the product says about it. How a person experiences the same interface is not in
+this record; SC-001 and SC-006 say so in their own text, and no sentence here may be read as a
+human-subject result.
+
+| Workflow | What it measures | Threshold | Result |
+|---|---|---|---|
+| Discovery | SC-001: from the launch command to one discovered file's detail view open within two minutes | 19 of 20 | **Not established: 19 of 20 reached a file within the limit, and the sessions were given more than the guidance** — the enforcement paragraph above says what. 21.9 s to 81.8 s among the nineteen, median 38.8 s over all twenty. Session 07 took 152.7 s: its own URL-wait script never matched the printed line (a POSIX character class inside a JavaScript regular expression) and sat for its 90-second timeout after the Inspector had printed the URL — an equipment fault, counted as unsuccessful under the kit's no-exclusion rule |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` within two minutes | 18 of 20 | **20 of 20 matched, and not established** for the reason the discovery row gives; 9.0 s to 47.8 s, median 24.1 s |
+| Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete |
+| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete |
+| Safety | SC-006 zero-critical gate | no critical issue | **none reported** |
+
+Every session's three fields matched `ground-truth.json` with no partial credit: source
+`Repository`, recognizing tools `GitHub Copilot` **and** `OpenAI Codex`, file type
+`Instructions`; none named Claude Code. For discovery, seventeen sessions opened the first row
+of the kind the page shows by default, `.claude/CLAUDE.md`; sessions 09 and 13 opened the root
+`CLAUDE.md`, and session 16 `.github/copilot-instructions.md`.
+
+Every session reached the pair the ground truth names — the `changelog` skill in
+`.agents/skills/` against the copy in `.github/skills/` — through the row's own Compare
+link, and every one named the description drift; most also named the instruction drift and
+the recognition difference the page states beside the text. Session 19 disclosed that a
+process listing it ran before the task showed a sibling session's comparison URL naming
+`changelog`, and that it cannot rule out the string having biased its choice among the pairs
+the page offered.
+
+Every session reached the consent page, named the four directories exactly as the page shows
+them — the three fixture homes as `From this tool's environment variable` and the shared
+agent home as `Default location in your home directory` — and then went on to confirm the
+read, each judging that the prompt's "get the tool to show you those" reaches past the list;
+each host was that session's own, so no session met another's consent state. Every session
+stopped its own host with SIGTERM and closed its own browser, and no process another session
+started was touched.
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety |
+|---|---|---|---|---|---|
+| 01 | 31.9 s | 38.3 s | complete | complete | none |
+| 02 | 46.7 s | 33.1 s | complete | complete | none |
+| 03 | 34.1 s | 16.5 s | complete | complete | none |
+| 04 | 42.1 s | 12.0 s | complete | complete | none |
+| 05 | 30.9 s | 21.6 s | complete | complete | none |
+| 06 | 36.8 s | 47.8 s | complete | complete | none |
+| 07 | 152.7 s, over the limit | 17.0 s | complete | complete | none |
+| 08 | 81.8 s | 38.2 s | complete | complete | none |
+| 09 | 34.7 s | 21.6 s | complete | complete | none |
+| 10 | 44.8 s | 39.6 s | complete | complete | none |
+| 11 | 36.3 s | 18.9 s | complete | complete | none |
+| 12 | 53.2 s | 36.4 s | complete | complete | none |
+| 13 | 21.9 s | 26.6 s | complete | complete | none |
+| 14 | 62.8 s | 40.7 s | complete | complete | none |
+| 15 | 41.4 s | 14.8 s | complete | complete | none |
+| 16 | 38.8 s | 15.5 s | complete | complete | none |
+| 17 | 38.9 s | 36.2 s | complete | complete | none |
+| 18 | 35.5 s | 15.4 s | complete | complete | none |
+| 19 | 40.0 s | 31.1 s | complete | complete | none |
+| 20 | 30.5 s | 9.0 s | complete | complete | none |
+
+No session was excluded or replaced, so the fixed denominator and the recorded count are the
+same twenty.
+
+**What the sessions reported about safety.** No prohibited effect: no request beyond
+localhost, no execution derived from a customization, no mutation of the repository copy or
+of the fixture homes, and no browser opened by the product under `--no-open`. Every session
+reported that the consent page reads nothing until the confirmation, and several that the
+four proposed directories were an escaped presentation granting no read access.
+
+**What the sessions raised about the product.** Five sessions (02, 05, 11, 12, 20) read the
+rail's `Source diagnostics 0` beside `Repository: Partial · 17 files kept a diagnostic` as a
+contradiction at first sight, before finding the per-file rows — the earlier run recorded no
+such reading. Many noted that nothing updates by itself after the consent and that `Refresh
+status` had to be pressed; two (09, 18) said a first-time reader could take the unchanged
+`Accepted, not yet read` as a stall. Three (01, 12, 16) found the detail bar's next-range
+control, which shows only the next range's pattern such as `.claude/skills/cycle/**`, cryptic
+on sight, its purpose being in its accessible name alone. Three (05, 08, 17) saw a row's
+source badge and its path run together in extracted text with no separator. Four (04, 08,
+18, 20) noticed the host listening on `[::1]` alone while printing `localhost`, which the
+browser resolved; four (03, 06, 15, 19) the bidi-isolate characters around the file name in
+the document title; two (10, 19) one file listed under two names, `lander` for Claude Code
+and `voyage` for GitHub Copilot, as the products resolve it. Session 14 saw the first detail's
+editor empty for a moment after the page had settled. Session 02 found `Personal setup`
+reachable only from the inventory's rail, not from a comparison page. Session 18 found the
+custom-agent comparison's note stating that "the two formats have no line-for-line
+alignment" over two Codex TOML files, which share a format — a false reason, corrected in the
+same change as this record: the note now gives the kind's own reason for every pair — the declarations are compared
+above in one canonical form and each file is shown whole — and
+`tests/e2e/custom-agents-comparison.spec.ts` pins it for a cross-format pair and a same-format
+pair alike. Three more of these observations changed the product in the same change: the
+rail's Repository entry states its status alone, `Partial`, and the count of files that kept
+a diagnostic stays on the Repository page beside the sentence saying where each is stated,
+because a number that raises a question belongs where the answer is; while an accepted read
+is still running, the personal-setup page says `Statuses below are from the last refresh.`
+above its member rows, so the rows and the panel no longer describe one moment two ways; and
+the detail bar's moves say their direction in a word, `Previous` and `Next`, as `Back to`
+already did. The editor's first paint was measured rather than given a loading state: on a
+cold direct load the panel's frame and headings are on screen 130 to 190 ms before the
+editor's text on this machine, which is a box whose content is arriving, and below the
+threshold at which a loading state would be considered.
+
+**What this run does not establish.** It does not establish SC-001 or SC-006, for the reason
+the enforcement paragraph gives. It does not establish anything about human first use. It
+carries no capture bundle: what it rests on is each session's own report, kept beside the
+run's session folders outside this repository. And it is one fixture tree: a session met the
+customization files this repository builds for its own tests, not a repository it had never
+seen.
+
+### The run of 2026-09-03
 
 **Twenty agent-driven sessions, run on 2026-09-03** against a build of this candidate
 (`pnpm run build`, then the all-kind fixture `pnpm run start:fixture` builds, served by a

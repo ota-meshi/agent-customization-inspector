@@ -216,10 +216,11 @@ const listNeighbours = computed(() => {
   const rows = entries.map((entry) => ({
     // The drawn spelling rather than the label rule, which returns nothing at
     // all for a name with no characters and would leave the move named by its
-    // arrow alone ({@link AuthoredName}; FR-025).
+    // arrow alone, and the announced spelling starts with the drawn one
+    // ({@link AuthoredName}; FR-025, WCAG 2.5.3).
     label: entry.name === null ? 'No plugin name resolved' : new AuthoredName(entry.name).text,
     accessibleLabel:
-      entry.name === null ? 'No plugin name resolved' : new AuthoredName(entry.name).singleLineText,
+      entry.name === null ? 'No plugin name resolved' : new AuthoredName(entry.name).accessibleText,
     route: pluginCarrierDetailRoute(
       entry.carriers[0]?.sourceRelativePath ?? '',
       entry.carriers[0]?.tool ?? 'codex',

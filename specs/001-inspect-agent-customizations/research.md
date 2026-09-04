@@ -222,7 +222,7 @@ policy).
 | Colour-scheme control |                                                                     `shine-and-bright` 0.3.0 | The switch the reader chooses the page's colour scheme with, drawn by the stylesheet that package ships: the component renders the markup those class names select and sets the package's own custom properties, so the sliding knob and the sun-to-moon transition are the package's rather than this repository's. A devDependency whose CSS the client bundle carries, like the icon and grammar packages above; it ships its own license file, so the notice document reads that text where those carry theirs under `licenses/` (FR-043). With forced colours active every `box-shadow` is dropped, which takes the sun and the moon with it while the button's and the knob's borders repaint and the knob still slides — measured 2026-08-25, and the control's accessible name is what states its purpose there (WCAG 1.4.11)                                                       |
 | Lint                  |                      ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Unit/integration      |                                         Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Components/DOM        |                                                     Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Components/DOM        |                                                     Vue Test Utils 2.4.11, happy-dom 20.10.6 | Current releases satisfying Nuxt Test Utils peers; the official-source checker uses happy-dom to parse served HTML into an inert fragment and distinguish actual elements and attributes from tag-shaped text without running scripts or loading subresources                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Browser/a11y          |                                             Playwright 1.61.1, `@axe-core/playwright` 4.12.1 | Current stable browser and accessibility tooling                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Types                 |                                                       `@types/node` 24.13.3, `vue-tsc` 3.3.7 | Latest compatible types for the Node 24 baseline and Vue                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Release               |                                `@changesets/cli` 3.0.1, `@changesets/changelog-github` 1.0.0 | Changesets owns the version bump, the changelog, and the publish: a pull request carrying a change a user receives adds a `.changeset/` entry, and a push to main either opens or updates the release pull request or publishes what that pull request versioned. devDependencies, because the release runs in CI and the published package imports neither. The GitHub changelog generator is selected so each entry links the pull request it came from, and it is one of the two values `.changeset/config.json` states at all — a copied default is a value that has stopped tracking the default it was copied from. `.github/workflows/Release.yml` drives that action's sub-actions rather than the combined action, which is what lets `id-token: write` — what npm trusted publishing exchanges for a publish token — sit on the publishing job alone (AGENTS.md § Release policy) |
@@ -459,8 +459,7 @@ mixed path matrix:
    and rule IDs instead of repeating paths.
 4. **Official sources** are recorded per page in
    [official sources](contracts/official-sources.md) — canonical official URL, exact
-   bounded section anchors, review dates, affected contract IDs, assertions, and semantic
-   fingerprints. A record cites them in its own `evidence` array rather than through a
+   bounded section anchors, review dates, affected contract IDs, and assertions. A record cites them in its own `evidence` array rather than through a
    parallel registry, so the basis sits beside the claim it supports. Checking those
    records is `pnpm run check:official-sources -- --network`, a maintainer-only command
    outside every default chain: it decides what a script can — a direct `200` from the
@@ -596,9 +595,8 @@ Every vendor behavior, Inspector rule, and composition strategy cites its exact 
 `sourceId` values. The official-source record maps those IDs back to bounded URL sections
 and affected contract IDs, so a changed page produces a finite review set. Checked-in
 fixtures and modules validate identifier uniqueness, reciprocal links, English/Japanese
-semantic parity, source anchors, and offline semantic fingerprints. Only the explicit
-maintainer drift check may access the network; it never auto-updates a behavior, rule,
-strategy, assertion, or fingerprint. Product startup and Repository/Global scans never
+semantic parity, and source anchors. Only the explicit maintainer drift check may access
+the network; it never auto-updates a behavior, rule, strategy, or assertion. Product startup and Repository/Global scans never
 fetch documentation.
 
 The registry stores no copied page body. The official-HTTPS host and redirect policy,
@@ -1021,21 +1019,33 @@ while the inspector runs, other local processes and — via DNS rebinding — a 
 page can reach the unauthenticated session (QR-003). The session API still exposes only
 Source-relative paths and closed commands, never absolute filesystem paths.
 
-Before Global consent, expose a
-lexical/no-I/O path preview over the session API as the one server-retained record
-identified by its opaque `previewId`, which confirmation names. Retain
-one operation-local input capture per new unconsented preview: read `COPILOT_HOME`,
-`CLAUDE_CONFIG_DIR`, and `CODEX_HOME` once each in that order; treat only `undefined` as
-absent; when any is absent call imported `node:os.homedir()` once and use active-platform
-`node:path.join` with fixed `.copilot`, `.claude`, and `.codex` suffixes. Do not independently
-select `HOME` or `USERPROFILE`, and perform no existence check during capture. Retain
-the exact raw `lexicalRoot`, the escaped display, and the immutable
-`TraversalPlan` schema/selection-policy/canonical programs in that server-retained record,
-bound to the shipped plans through the `allowlistVersion`/`traversalPlanVersion` pair. Preview parsing
-and transport inherit capacity from Node.js, the browser, and the execution environment;
-the product does not impose a byte limit on the proposed root or escaped display. Enable uses only
-that stored raw value, never reverses display text and never rereads the environment. There is no session-keyed consent digest: the preview is the one server-retained
-record identified by its opaque `previewId`, and enable names that ID. Define no separate liveness RPC or probe. devframe reports host loss
+At session startup, before editor-launcher discovery, retain one immutable Global root-input
+capture: read `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` once each in that order;
+treat only `undefined` as absent; and call imported `node:os.homedir()` once unconditionally,
+because the shared agent home always derives from it. Use active-platform `node:path.join`
+with fixed `.copilot`, `.claude`, and `.codex` suffixes only for absent tool entries, and
+derive `.agents` from the same captured home directory. Do not independently select `HOME`
+or `USERPROFILE`, and perform no existence check during capture. That same capture supplies
+the eligible personal roots excluded from editor-launcher lookup and every consent preview.
+A throw while startup captures, classifies, or escapes those inputs fails before a session
+or browser exists.
+
+Before Global consent, expose a lexical/no-I/O path preview over the session API as the one
+server-retained record identified by its opaque `previewId`, which confirmation names. Each
+preview request is operation-local only in constructing that record from the retained
+session input; neither it nor `--inspect-personal-setup` recaptures process inputs. Construct
+the complete preview object before replacing the current record, so construction failure
+leaves the prior preview current. DTO construction or transport serialization can fail after
+the new preview becomes current; that is the request's ordinary error, and the created
+preview may remain retained. Neither failure creates authority or a job. Retain the exact
+raw `lexicalRoot`, the escaped display, and the immutable `TraversalPlan`
+schema/selection-policy/canonical programs in that server-retained record, bound to the
+shipped plans through the `allowlistVersion`/`traversalPlanVersion` pair. Preview parsing and
+transport inherit capacity from Node.js, the browser, and the execution environment; the
+product does not impose a byte limit on the proposed root or escaped display. Enable uses
+only that stored raw value, never reverses display text and never rereads the environment.
+There is no session-keyed consent digest: the preview is the one server-retained record
+identified by its opaque `previewId`, and enable names that ID. Define no separate liveness RPC or probe. devframe reports host loss
 through its own connection-status signal without being queried. The SPA installs no
 visibility, focus, or unload listener, and a page-lifecycle event triggers neither a purge
 nor a refetch. Define no polling interval, request timeout, retry timer, or memory lease.
@@ -1127,8 +1137,10 @@ config-inspector parity over that default, so the residual exposure of the
 unauthenticated loopback host is a documented limitation (Constitution § Quality and Safety Standards, QR-003)
 bounded by the trusted-workspace model — the session serves only what the launching user
 can already read. The server-retained frozen preview named by consent still proves which
-lexical roots the user saw before the host touches them, and recoverable Node.js or browser
-failures during preview construction fail without authorizing an unseen value.
+lexical roots the user saw before the host touches them. No recoverable Node.js or browser
+failure grants authority over an unseen value: incomplete preview construction leaves the
+prior preview current, while DTO or transport serialization failure after replacement may
+leave the created preview retained.
 devframe's connection-status signal and guarded current RPC outcomes expose session loss
 without persisting data or defining a product timer. Page lifecycle is not a session-loss
 signal and causes no purge or refetch; a discarded document releases its own references,
@@ -1401,8 +1413,9 @@ a source-scoped Diagnostic never fabricates a path to satisfy a display or order
 The 2026-07-17 measurable-outcome revalidation fixes the following objective protocols:
 
 - **SC-001** uses exactly 20 independent first-use sessions, each driven by an autonomous
-  agent given the origin one running Inspector printed and the standardized task prompt and
-  nothing else. At least 19 must open one discovered customization file within two minutes,
+  agent given its own copy of the all-kind fixture, the guidance, and the standardized task
+  prompt and nothing else, started outside this working tree, and launching the Inspector
+  itself from that copy's root. At least 19 must open one discovered customization file within two minutes,
   timed from the prompt to the moment that file's source or details view is open and
   operable. Reaching the Inspector through the printed URL is part of the provided guidance
   and never pauses or restarts the timer. Selecting a root is a product capability the

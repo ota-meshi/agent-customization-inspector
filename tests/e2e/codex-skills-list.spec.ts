@@ -195,7 +195,7 @@ test('shows one row for a name two files declare, with each product\u2019s rule'
       { timeout: 1_000 },
     );
   }).toPass();
-  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u);
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Inspected/u);
   // The row states what each product documents and never orders the two:
   // Codex keeps both and documents no precedence among the scopes, while
   // Copilot — which also recognizes both files — has no single documented
@@ -224,7 +224,7 @@ test('names a skill that declares no name by its skill directory', async ({ page
       timeout: 1_000,
     });
   }).toPass();
-  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u);
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Inspected/u);
   await expect(row.locator('.aci-row-head__name')).toHaveText('nameless');
 });
 
@@ -314,21 +314,16 @@ test('rescans on demand and keeps the status tied to that request', async ({ pag
   // The status is the rail's on this page and the Repository surface's in full
   // (FR-030); both commands are in the bar, so a rescan and the refresh that
   // adopts its result are reachable without leaving the list.
-  await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Ready');
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Inspected');
 
   await page.getByRole('button', { name: 'Rescan repository' }).click();
-  // The command's own status is adopted immediately; the committed result
-  // arrives on an explicit refresh, because nothing polls. Retried for the
-  // same reason as the two cases above: a refresh that lands while the scan is
-  // still running shows `scanning`, and nothing would ever fetch again.
-  await expect(async () => {
-    await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Ready', {
-      timeout: 1_000,
-    });
-  }).toPass();
-  await expect(page.locator('.aci-item')).toHaveCount(2);
-  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u);
+  // The command answers once its scan settled and the shell refetches on that
+  // answer, so the committed result — the added file, and the rail's status
+  // word — is on screen with no other press (contracts/http-api.md
+  // § rescan-repository).
+  await expect(page.locator('.aci-item')).toHaveCount(2, { timeout: 30_000 });
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Inspected');
+  await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Inspected/u);
 });
 
 test('links each definition by its stable tool-and-path identity', async ({ page }) => {

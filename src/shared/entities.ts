@@ -466,6 +466,40 @@ export const SOURCE_STATUS_TEXT: Readonly<Record<SourceStatus, string>> = {
   failed: 'Failed',
 };
 
+/**
+ * Source status text for a surface that states the status with nothing beside
+ * it — the inventory rail's Repository entry — so the words have to carry
+ * their own meaning. {@link SOURCE_STATUS_TEXT} is for the surfaces where the
+ * explanation sits beside the word (the Repository page's status panel, the
+ * personal-setup page's member rows). Each entry is the status word the pill
+ * draws and, for the one status a word alone misstates, the note the rail
+ * puts under the pill: alone, `Partial` was read as a failed scan at first
+ * sight by six of twenty first-use sessions and as contradicting the rail's
+ * zero source-level diagnostics by eight, so `partial` says what it is — a
+ * completed read, some of whose files kept a diagnostic of their own
+ * (validation.md § SC-001 and SC-006 first-use sessions). One table for both
+ * fields rather than a word table and a note table, so a status added later
+ * cannot compile with one and not the other. `Inspected` and `Not inspected`
+ * are the personal-setup entry's own words, so the two Source entries speak
+ * one vocabulary.
+ */
+export const SOURCE_STATUS_STANDALONE_TEXT: Readonly<
+  Record<SourceStatus, { readonly word: string; readonly note: string | null }>
+> = {
+  /** No admitted scan yet: nothing has been read. */
+  idle: { word: 'Not inspected', note: null },
+  /** The admitted scan is in flight. */
+  scanning: { word: 'Scanning', note: null },
+  /** A Global Source draining behind the disable barrier. */
+  disabling: { word: 'Disabling', note: null },
+  /** The latest commit was complete. */
+  ready: { word: 'Inspected', note: null },
+  /** The latest commit was complete for the tree, with file-confined diagnostics kept. */
+  partial: { word: 'Inspected', note: 'some files kept a diagnostic' },
+  /** The latest attempt failed. */
+  failed: { word: 'Failed', note: null },
+};
+
 /** The non-authorizing public presentation of a Source root (FR-002). */
 export interface SourceBoundaryDto {
   /** Injective display-only escaping of the root; never decoded for I/O. */
@@ -645,6 +679,26 @@ export function inlineApplicabilityRangePresentation(value: string): string {
   const escaped = escapedApplicabilityRange(value);
   return rendersNothingVisible(escaped) || /^\s|\s{2,}|\s$/u.test(escaped)
     ? encodeRootPresentation(value)
+    : escaped;
+}
+
+/**
+ * One applicability range as the accessible name beside its visible label
+ * (WCAG 2.5.3 Label in Name; FR-025): {@link accessiblePresentationLabel}'s
+ * rule over the range's own escaping. It starts with the drawn spelling and,
+ * where leading, trailing, or run-together whitespace would collapse two
+ * ranges into one announcement (WCAG 2.4.4), appends the completely
+ * spelled-out presentation that keeps them apart; a range whose escaped
+ * spelling renders nothing visible is the spelled-out presentation alone,
+ * exactly as its visible label is.
+ */
+export function accessibleApplicabilityRangePresentation(value: string): string {
+  const escaped = escapedApplicabilityRange(value);
+  if (rendersNothingVisible(escaped)) {
+    return encodeRootPresentation(value);
+  }
+  return /^\s|\s{2,}|\s$/u.test(escaped)
+    ? `${escaped} (${encodeRootPresentation(value)})`
     : escaped;
 }
 

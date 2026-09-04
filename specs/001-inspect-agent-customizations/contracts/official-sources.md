@@ -4,7 +4,6 @@
 
 **Registry version**: 2026-07-20
 **Official-source review**: 2026-07-20
-**Normalization version**: `1`
 
 This registry is the single normative owner of every `sourceId` used by the three
 vendor contracts and by [Runtime Composition](runtime-composition.md). Vendor and
@@ -27,11 +26,12 @@ Each table row is one official source, identified by a stable key, and owns the 
   are not implied.
 - Each semicolon-separated entry under `sectionAnchors` is an exact rendered heading-text
   descriptor. It is not a CSS/XPath selector or a URL fragment. The drift checker must
-  find exactly one matching heading for every listed entry. Anchor and heading-text
+  resolve every listed entry to exactly one served heading or, when no served heading
+  carries it, to the one served fragment every table-of-contents link bearing that text
+  points at (§ Offline validation and explicit drift review). Anchor and heading-text
   capacity and completion behavior are inherited from Node.js and the execution environment.
 - `reviewedOn` is the date those sections were last read and compared against the claims the citing records make, by whoever performed the comparison. Confirming that a cited heading still exists is a narrower check and does not advance the date. It is authored per row;
   records not re-reviewed during the 2026-07-20 reconciliation retain `2026-07-15`.
-- Every row uses `normalizationVersion: 1`.
 
 Every maintained behavior, rule, and strategy that cites this registry also states, on the
 record itself, how completely its cited sections establish it:
@@ -70,14 +70,12 @@ ID, its URL and host, the exact reviewed headings, the review date, and one main
 paraphrase of what those headings establish for the citing record; copied page text and
 generic product-area targets are forbidden. No field is truncated.
 
-Two fields belong to the maintainer-only drift command (T1032) and exist nowhere until it
-runs. `snapshotFingerprint` is the lowercase SHA-256 of the selected normalized sections,
-`null` before a capture: it digests remote page text, which the offline gate never fetches,
-so writing a value without an actual capture would record evidence that was never gathered.
-`semanticFingerprint` is the lowercase SHA-256 of canonical JSON over the maintained
-paraphrases after a stable sort, recomputed offline once the command has something to sort.
-A per-source reverse index — which behaviors, rules, and strategies a page affects — is
-derived by that same command from the citations; no record publishes one today.
+The registry keeps no digest of page text and no digest of the paraphrases: whether a
+section's text still establishes what a citing record maintains is a reading, and the
+reviewer performs it at every review (AGENTS.md § Official-source verification policy).
+Which behaviors, rules, and strategies a page affects is read from the citations themselves:
+the offline gate resolves every citation to its row, so a changed page's review set is every
+record whose `evidence` names that `sourceId`, and no record publishes a reverse index.
 
 Only these exact official hosts are valid in this release:
 
@@ -270,10 +268,9 @@ Every non-NUL byte stream is decoded once with UTF-8 replacement semantics; inva
 sequences produce `utf-8-replaced`, and the resulting garbled text containing `U+FFFD` remains in the
 complete source used for parsing, extraction, display, and comparison. Maintained OpenAI
 assertions must paraphrase only the selected official sections and must not encode these
-Inspector-owned filesystem or decoding choices. A reconciliation that changes no selected
-official text and no maintained assertion advances no `reviewedOn`, and leaves the two
-fingerprints as they were — which, until the maintainer-only drift command has run, is
-absent.
+Inspector-owned filesystem or decoding choices. That reconciliation read no
+page, so it advanced no `reviewedOn`: the date moves with a reading of the cited sections, and
+moves then whether or not the reading changed an assertion.
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
@@ -305,9 +302,9 @@ above — same URL, same host, and sections drawn from the ones that row lists �
 row reads identically in both languages; and that one source ID resolves to exactly one
 page, so two records cannot disagree about where a page is after it moves.
 
-Reciprocal affected IDs and `semanticFingerprint` recomputation are not covered yet: no
-record publishes a reverse index, and no fingerprint is captured until the maintainer-only
-drift command runs. The tasks that ship them are named in tasks.md.
+No record publishes a reverse index and no fingerprint exists: the review set for a changed
+page is every record whose `evidence` names its `sourceId`, which the citation resolution
+above is what finds.
 
 Only a maintainer explicitly runs the networked drift review, at minimum before every
 frozen release candidate and whenever a material upstream change to a supported surface
@@ -329,21 +326,16 @@ the page's own table of contents, for the heading check only: the site derives t
 the same content, so a fragment link whose text is the cited section names a section the page
 has — one whose heading a client-rendered page did not serve, or one the page renders as
 something other than a heading, as the Claude Code changelog renders each release as a
-labelled entry. The command accepts the section when every such link points at one fragment,
-and reports which sections were established that way; links to two fragments cite two sections
-and establish neither. Without that fallback the check would report drift for every citation
+labelled entry. The command accepts the section when every such link names one fragment
+spelling and the page serves that fragment. A lone target the page does not serve is missing;
+two or more distinct target spellings are ambiguous — including a mixture of live and dead
+targets — because those links cite no one section. The command reports which sections were
+established through the accepted fallback. Without that fallback the check would report drift for every citation
 on such a page — a hard failure the maintainer can only ever dismiss, which is how a gate stops
 being read. A redirect is never silently followed into a new `canonicalUrl`.
 
-Normalization version `1` selects every listed heading through the next heading of equal
-or higher level, removes document chrome and `script`/`style` nodes, preserves prose and
-code text, decodes entities, applies Unicode NFC and LF endings, trims line edges,
-collapses horizontal whitespace, and joins sections in listed order before calculating
-the lowercase SHA-256 `snapshotFingerprint`. Repeated or overlapping selected sections
-are invalid rather than silently deduplicated.
-
 The command reports drift; it never changes a behavior, rule, strategy, assertion, anchor,
-fingerprint, URL, or review date. A maintainer must review every reverse-indexed affected
-record and both language versions, update paraphrased assertions and fingerprints
-explicitly, and only then advance `reviewedOn`. Remote page bodies, snippets, and response
+URL, or review date. A maintainer must review every record whose `evidence` names the
+source and both language versions, update paraphrased assertions explicitly, and only
+then advance `reviewedOn`. Remote page bodies, snippets, and response
 captures are never checked in.

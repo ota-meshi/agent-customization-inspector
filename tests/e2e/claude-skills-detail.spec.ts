@@ -336,7 +336,7 @@ test('keeps a link resolving across a rescan through its path identity', async (
     await page.getByRole('button', { name: 'Refresh status' }).click();
     // The status the refresh adopted is the Repository Source's own surface
     // now; what this page shows of it is the rail's own entry (FR-030).
-    await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u, {
+    await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Inspected/u, {
       timeout: 1_000,
     });
   }).toPass();
@@ -365,7 +365,7 @@ test('rescues focus to the heading when a newer commit replaces the open detail'
     await other.getByRole('button', { name: 'Refresh status' }).click();
     // The status the refresh adopted is the Repository Source's own surface
     // now; what this page shows of it is the rail's own entry (FR-030).
-    await expect(other.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u, {
+    await expect(other.getByRole('link', { name: 'Repository' })).toContainText(/Inspected/u, {
       timeout: 1_000,
     });
   }).toPass();
@@ -429,7 +429,7 @@ test('keeps the reader in the file list when a newer commit replaces the open sk
     await other.getByRole('button', { name: 'Refresh status' }).click();
     // The status the refresh adopted is the Repository Source's own surface
     // now; what this page shows of it is the rail's own entry (FR-030).
-    await expect(other.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u, {
+    await expect(other.getByRole('link', { name: 'Repository' })).toContainText(/Inspected/u, {
       timeout: 1_000,
     });
   }).toPass();

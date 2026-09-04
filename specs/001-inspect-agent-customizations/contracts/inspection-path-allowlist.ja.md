@@ -537,8 +537,8 @@ Contractとfixtureのvalidationは、次をすべて証明しなければなら�
 9. Path-spelling fixtureには、exact raw segmentでreadしそのraw綴りのまま公開されるNFD entry nameと、
    invalid non-NULなfile-content UTF-8をreadableな`utf-8-replaced` textとして別途replacement処理する
    caseを含める。`SourceRelativePath`とdisplay stringからfilesystem pathを再構築しない。
-10. Official-source fixtureは公式HTTPS host、列挙済みanchor、review date、semantic fingerprint、影響contractへの
-   backlink、human-only updateを検証する。Drift resultがbehavior、rule、strategyを自動変更してはならない。
+10. Official-source fixtureは公式HTTPS host、列挙済みanchor、review date、影響contractへのbacklink、
+   human-only updateを検証する。Drift resultがbehavior、rule、strategyを自動変更してはならない。
 11. Unknown matcher、traversal、derivation kind、不正なtoken列または位置、programとcontract tableの
    対応不一致、malformed selector program、duplicate identifier、orphan reference、contract version mismatch、
    英日semantic differenceがあるregistryはfail closedにする。

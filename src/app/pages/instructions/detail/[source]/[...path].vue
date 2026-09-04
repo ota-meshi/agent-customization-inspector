@@ -243,12 +243,12 @@ const listNeighbours = computed(() => {
     ...Map.groupBy(snapshot.value?.instructions ?? [], (entry) => entry.applicabilityRange),
   ];
   const rows = groups.map(([applicabilityRange, entries]) => ({
-    // The drawn spelling, and the single-line one for the accessible name: the
-    // control does not render its own whitespace and an accessible name
-    // collapses it, so `**` and ` **` would otherwise name one move twice
-    // ({@link ApplicabilityRange}; `DetailNavigation.vue`).
+    // The drawn spelling, and the accessible one beside it, which starts with
+    // the drawn spelling (WCAG 2.5.3) and spells the range out after it where
+    // the control's collapsed whitespace would otherwise name `**` and ` **`
+    // as one move ({@link ApplicabilityRange}; `DetailNavigation.vue`).
     label: new ApplicabilityRange(applicabilityRange).text,
-    accessibleLabel: new ApplicabilityRange(applicabilityRange).singleLineText,
+    accessibleLabel: new ApplicabilityRange(applicabilityRange).accessibleText,
     route: detailRoute(
       'instructions',
       entries[0]?.files[0]?.sourceRelativePath ?? '',

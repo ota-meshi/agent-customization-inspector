@@ -34,7 +34,7 @@ import { cli, define } from 'gunshi';
 import packageJson from '../../package.json' with { type: 'json' };
 import { executeRepositoryScan, runGlobalEnable, startInspectorHost } from './host/devframe-app';
 import { DetectedFileOpener } from './host/file-opener';
-import { GlobalConsentDomain } from './host/global-consent';
+import { GlobalConsentDomain, GlobalRootInputCapture } from './host/global-consent';
 import { selectRepositoryRoot, InspectionSession, SessionCoordinator } from './session/session';
 
 // The one capture of the invocation working directory (FR-001), taken at
@@ -113,16 +113,27 @@ const command = define({
       process.exitCode = 1;
       return;
     }
+    // Capture the personal-setup inputs once for the whole session, before
+    // launcher discovery. The same immutable capture is retained for every
+    // consent preview below, so the roots excluded from editor probing cannot
+    // differ from the roots a later confirmation authorizes. A capture failure
+    // is an ownerless startup failure and propagates before a session or
+    // browser exists (FR-013, FR-020, FR-022).
+    const globalRootInputs = new GlobalRootInputCapture();
+    const consent = new GlobalConsentDomain(globalRootInputs);
+    const launcherExclusionRoots = globalRootInputs.entries
+      .filter((entry) => entry.inputState === 'eligible')
+      .map((entry) => entry.lexicalRoot);
     // Probed once, before the session exists: which applications this machine
     // can open a file in is a fact about the machine, and the snapshot offers
     // exactly what this opener can launch (contracts/http-api.md § open-file).
-    // The selected root is resolved first, by the session's own rule, because
-    // the probe removes every `PATH` entry inside it: an executable under
-    // inspected content must never become the editor this product offers
-    // (FR-022).
-    const fileOpener = await DetectedFileOpener.probe(
+    // The selected Repository root and every eligible personal-setup root are
+    // settled first because an executable under inspected content must never
+    // become an editor this product offers.
+    const fileOpener = await DetectedFileOpener.probe(invocationCwd, [
       selectRepositoryRoot(invocationCwd, rootOptionValue),
-    );
+      ...launcherExclusionRoots,
+    ]);
     const session = new InspectionSession({ invocationCwd, rootOptionValue, fileOpener });
     const coordinator = new SessionCoordinator(session);
     const context = { session, coordinator };
@@ -146,20 +157,15 @@ const command = define({
     // the process top level before a loopback listener is created
     // (spec.md Clarifications § Session 2026-07-22).
     await executeRepositoryScan(context, admission.scanRequestId, repositorySourceId, 'repository');
-    // The consent state the Global functions serve. Created here rather than
-    // inside the host definition because the flag below confirms a preview
-    // before the host exists, and the consent page has to show that
-    // confirmation rather than a second capture nobody made (FR-013).
-    const consent = new GlobalConsentDomain();
     if (ctx.values['inspect-personal-setup']) {
       // The flag is the confirmation. It states, in the command the reader
       // typed, the same thing the consent page's checkbox states: read the
       // customization files the allowlist names below the four member
       // directories, and nothing else in them (FR-013, FR-015 through
-      // FR-018, FR-045). The preview is captured first and confirmed as
-      // captured, so what is read is decided by the same three environment
-      // properties, the same derived shared agent home, and the same
-      // allowlist a reader would have reviewed on screen.
+      // FR-018, FR-045). The preview is created from the retained startup
+      // inputs and then confirmed, so what is read is decided by the same
+      // roots that excluded inspected launchers and the same allowlist a
+      // reader would have reviewed on screen.
       //
       // Awaited, for the reason the Repository scan above is: the launch line
       // then prints with both generations committed, so the SPA's one initial
@@ -167,7 +173,7 @@ const command = define({
       // is its control's own `failureCode`, which the consent page states —
       // the flag reports nothing itself, because the terminal output is the
       // one launch line (contracts/http-api.md § Host requirements #5).
-      await runGlobalEnable(context, consent.capture(), { waitForBatch: true });
+      await runGlobalEnable(context, consent.createPreview());
     }
     // Install shutdown handling before the launch line becomes observable.
     // The host calls `onReady` before its `open` browser helper and returns

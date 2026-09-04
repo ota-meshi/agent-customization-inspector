@@ -311,7 +311,8 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 - 閉じた union が定める text は例外です。ラベル表はコンポーネントではなくその union の隣に置いて
   ください。そうすればラベルなしに新しいメンバーを追加してもコンパイルが通らなくなります。
   `entities.ts` が `CUSTOMIZATION_KIND_TEXT`・`SUPPORTED_TOOL_TEXT`・`FILE_ENCODING_TEXT`・
-  `SOURCE_BOUNDARY_ORIGIN_TEXT`・`SOURCE_STATUS_TEXT`・`SAME_NAME_SKILL_RESOLUTION_TEXT` を
+  `SOURCE_BOUNDARY_ORIGIN_TEXT`・`SOURCE_STATUS_TEXT`・`SOURCE_STATUS_STANDALONE_TEXT`・
+  `SAME_NAME_SKILL_RESOLUTION_TEXT` を
   持ち、diagnostic の text は `DIAGNOSTIC_REGISTRY` にあります。どの surface も描画しない
   閉じた union には表が要りません。`DocumentationStatus` と `LifecycleQualifier` は registry 上の
   maintenance record であり、ラベルを付ける場所がありません。
@@ -421,15 +422,17 @@ fieldは実際にレンダリングされた見出しのexact textを保持す�
 - `pnpm run check:official-sources -- --network`が、scriptに判定できる検査をregistry全体に対して
   行う。記録URLが自身のofficial host上でredirectせず`200`を返すこと、引用sectionが解決すること —
   配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそれを担うheadingが配信されていないときは、
-  その本文を持つ目次linkがすべて指す1つのfragmentとして。報告するだけで何も変更せず、build/
+  その本文を持つ目次linkがすべて指す、配信されている1つのfragmentとして。報告するだけで何も変更せず、build/
   start/test/CIのどのchainにも入らない。このrepositoryで唯一outbound requestを行うcommandなので、
   実行するのは人が求めたときだけである。これらを手作業でやり直さないこと。要約器が出した見出し
   一覧はどちらの向きにも根拠にならない。
 - 2つの判断はcommandのものではなく、あなたのものとして残る。見出しが消えたことが何を意味するか —
   ページが移転したのか、sectionが改名されたのか、内容が失われたのか — はcommandには決められない
   ので、sectionをmissingと報告して結論は開いたままにする。引用sectionが保守対象のparaphraseを今も
-  確立しているかは参照ではなく読解である。見出しが残ったまま本文だけ書き換わった場合が、digestも
-  anchorも見逃すdriftそのものである。
+  確立しているかは参照ではなく読解である。見出しが残ったまま本文だけ書き換わった場合は、見出しや
+  fragmentの存在確認では見えないdriftであり、だからこそreviewerがその下の本文を読む。Registryは
+  ページ本文のdigestを持たない（contracts/official-sources.ja.md § Record表記とownership）ので、
+  それを検出するのはその読解だけである。
 - ページはfull URLまたはレンダリングされたtitleで呼ぶ。パスの末尾だけで呼んではならない。
   `https://code.claude.com/docs/en/memory`を「memoryページ」と書くと、実際に取得したページの
   話ではなくassistant自身のmemoryの話に読める。

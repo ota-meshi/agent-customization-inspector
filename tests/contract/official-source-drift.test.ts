@@ -13,6 +13,7 @@ import {
   parseOfficialSourceRegistry,
   rejectionFor,
   renderReport,
+  markdownHeadings,
   resolveCitedSection,
   servedHeadings,
 } from '../../scripts/check-official-sources.ts';
@@ -99,8 +100,10 @@ describe('a cited section', () => {
 
   it('resolves a section no served heading carries through the table of contents', () => {
     // The page ships only its contents list, so the heading exists but no
-    // element carrying it does; the link naming it is then the evidence.
-    const html = '<nav><a href="#adding-a-server">Adding a server</a></nav>';
+    // element carrying it does; the link naming it, and the served fragment
+    // it points at, are then the evidence.
+    const html =
+      '<nav><a href="#adding-a-server">Adding a server</a></nav><section ID="adding-a-server"></section>';
     expect(resolveCitedSection(html, 'Adding a server')).toBe('anchor');
   });
 
@@ -111,9 +114,34 @@ describe('a cited section', () => {
       'ambiguous-heading',
     ],
     [
-      'two table-of-contents links carry it to different fragments',
-      '<a href="#one">Adding a server</a><a href="#two">Adding a server</a>',
+      'two table-of-contents links carry it to different served fragments',
+      '<a href="#one">Adding a server</a><a href="#two">Adding a server</a><i id="one"></i><i id="two"></i>',
       'ambiguous-anchor',
+    ],
+    [
+      'two table-of-contents links carry it to different fragments when one is dead',
+      '<a href="#one">Adding a server</a><a href="#gone">Adding a server</a><i id="one"></i>',
+      'ambiguous-anchor',
+    ],
+    [
+      'a similarly named attribute does not serve the fragment',
+      '<a href="#gone">Adding a server</a><i data-id="gone"></i>',
+      'missing',
+    ],
+    [
+      'an id-looking attribute suffix does not serve the fragment',
+      '<a href="#gone">Adding a server</a><i data-x=" id=gone"></i>',
+      'missing',
+    ],
+    [
+      'an id-looking tag inside another attribute does not serve the fragment',
+      '<a href="#gone">Adding a server</a><div data-x="<i id=gone>"></div>',
+      'missing',
+    ],
+    [
+      'a fragment value with different case does not serve the link target',
+      '<a href="#one">Adding a server</a><i ID="ONE"></i>',
+      'missing',
     ],
     ['nothing carries it', '<h2>Something else</h2>', 'missing'],
   ])('reports %s rather than choosing one', (_label, html, expected) => {
@@ -183,7 +211,7 @@ describe('one checking run', () => {
     const results = await checkOfficialSources([record()], async () => ({
       status: 200,
       url: record().canonicalUrl,
-      ...served('<a href="#adding-a-server">Adding a server</a>'),
+      ...served('<a href="#adding-a-server">Adding a server</a><div id="adding-a-server"></div>'),
     }));
     const report = renderReport(results);
     expect(report).toMatch(/1 sources checked, 0 with drift a reviewer must resolve\./u);
@@ -239,20 +267,18 @@ describe('what the contract makes a hard failure', () => {
     // each release as a labelled entry rather than a heading; its table of
     // contents is what names the release.
     const toc = '<a href="#1-0-45">1.0.45</a>';
-    expect(
-      resolveCitedSection(
-        `<h1>Changelog</h1>${toc}<div id="1-0-45"><button>1.0.45</button></div>`,
-        '1.0.45',
-      ),
-    ).toBe('anchor');
+    const entry = '<div id="1-0-45"><button>1.0.45</button></div>';
+    expect(resolveCitedSection(`<h1>Changelog</h1>${toc}${entry}`, '1.0.45')).toBe('anchor');
     // An in-prose cross-reference to the same fragment is the same one section.
-    expect(resolveCitedSection(`${toc}<p><a href="#1-0-45">1.0.45</a></p>`, '1.0.45')).toBe(
+    expect(resolveCitedSection(`${toc}<p><a href="#1-0-45">1.0.45</a></p>${entry}`, '1.0.45')).toBe(
       'anchor',
     );
+    // A link a removed entry left behind points at nothing the page serves.
+    expect(resolveCitedSection(`${toc}<p>the release is gone</p>`, '1.0.45')).toBe('missing');
     // Links to the fragment under other text name nothing the record cites.
-    expect(resolveCitedSection('<a href="#1-0-45">a</a><a href="#1-0-45">b</a>', '1.0.45')).toBe(
-      'missing',
-    );
+    expect(
+      resolveCitedSection(`<a href="#1-0-45">a</a><a href="#1-0-45">b</a>${entry}`, '1.0.45'),
+    ).toBe('missing');
   });
 
   it('rejects a body whose content type is neither HTML nor Markdown', () => {
@@ -294,5 +320,101 @@ describe('what the contract makes a hard failure', () => {
     }));
     expect(result?.rejection).toBeNull();
     expect(result?.sections).toEqual([{ anchor: 'Adding a server', resolution: 'heading' }]);
+  });
+
+  it('reads no Markdown heading out of a code example or a comment', () => {
+    // A removed section whose title survives in a fenced example, a tilde
+    // fence, or a comment is gone from the page: what a code block shows is
+    // text in a box, not a section.
+    expect(
+      markdownHeadings(
+        [
+          '# Page',
+          '',
+          '```text',
+          '## Custom Prompts',
+          '```',
+          '',
+          '~~~',
+          '## Also fenced',
+          '~~~',
+          '',
+          '<!-- ## Commented out -->',
+          '',
+          '## Kept',
+          '',
+          '````md',
+          '```',
+          '## Inside a longer fence',
+          '```',
+          '````',
+          '',
+          // CommonMark closes a fence on a run at least as long as the opener,
+          // so four backticks end a three-backtick fence.
+          '```js',
+          '## Closed by a longer fence',
+          '````',
+          '',
+          '## After the fences',
+          '',
+        ].join('\n'),
+      ),
+    ).toEqual(['Page', 'Kept', 'After the fences']);
+  });
+
+  it.each([
+    ['backtick/LF', '```', '\n'],
+    ['tilde/LF', '~~~', '\n'],
+    ['backtick/CRLF', '```', '\r\n'],
+    ['tilde/CRLF', '~~~', '\r\n'],
+  ])('ignores table-of-contents markup inside a closed %s fence', (_label, fence, eol) => {
+    const markdown = [
+      `${fence}html`,
+      '<a href="#gone">Gone</a><div id="gone"></div>',
+      fence,
+      '<a href="#live">Live</a><div id="live"></div>',
+      '',
+    ].join(eol);
+    // The Markdown page renders the fenced tags as code text. The live
+    // fragment after the fence proves the fence ended at its closing run,
+    // including under CRLF, rather than consuming the rest of the document.
+    expect(resolveCitedSection(markdown, 'Gone', 'markdown')).toBe('missing');
+    expect(resolveCitedSection(markdown, 'Live', 'markdown')).toBe('anchor');
+  });
+
+  it.each([
+    ['backtick', '```'],
+    ['tilde', '~~~'],
+  ])('ignores table-of-contents markup inside an unclosed %s fence', (_label, fence) => {
+    const markdown = [`${fence}html`, '<a href="#gone">Gone</a><div id="gone"></div>', ''].join(
+      '\n',
+    );
+    expect(resolveCitedSection(markdown, 'Gone', 'markdown')).toBe('missing');
+  });
+
+  it('ignores a fenced dead target without weakening live/dead ambiguity', () => {
+    const fencedDead = [
+      '```html',
+      '<a href="#gone">Adding a server</a>',
+      '```',
+      '<a href="#live">Adding a server</a><div id="live"></div>',
+    ].join('\n');
+    expect(resolveCitedSection(fencedDead, 'Adding a server', 'markdown')).toBe('anchor');
+
+    const servedDead =
+      '<a href="#gone">Adding a server</a>' +
+      '<a href="#live">Adding a server</a><div id="live"></div>';
+    expect(resolveCitedSection(servedDead, 'Adding a server', 'markdown')).toBe('ambiguous-anchor');
+  });
+
+  it('keeps an unspaced trailing hash run in the rendered ATX heading text', () => {
+    expect(markdownHeadings('## C#\n## foo###\n## closed ###\n')).toEqual([
+      'C#',
+      'foo###',
+      'closed',
+    ]);
+    // In particular, trimming the hash must not let the wrong exact
+    // descriptor satisfy the drift gate.
+    expect(resolveCitedSection('## C#\n', 'C', 'markdown')).toBe('missing');
   });
 });

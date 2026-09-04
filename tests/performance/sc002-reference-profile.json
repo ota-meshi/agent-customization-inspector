@@ -1,5 +1,5 @@
 {
-  "profileId": "sc002-smoke-reference-v1",
+  "profileId": "sc002-smoke-reference-v2",
   "profileVersion": 1,
   "operatingSystem": {
     "image": "GitHub Actions hosted-runner image ubuntu-24.04",

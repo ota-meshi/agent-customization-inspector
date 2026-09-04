@@ -656,7 +656,7 @@ Contract and fixture validation must prove all of the following:
    invalid non-NUL file-content UTF-8 as readable `utf-8-replaced` text.
    `SourceRelativePath` values and display strings never reconstruct a filesystem path.
 10. Official-source fixtures validate official HTTPS hosts, enumerated anchors, review dates,
-   semantic fingerprints, affected-contract backlinks, and human-only updates. A drift
+   affected-contract backlinks, and human-only updates. A drift
    result never changes a behavior, rule, or strategy automatically.
 11. The registry fails closed on an unknown matcher, traversal, or derivation kind; an
    invalid token sequence or position; a program/contract-table correspondence

@@ -134,7 +134,7 @@ another machine remains prohibited.
 | `agent-customization-inspector:rescan-repository` | command | Accept one explicit Repository scan command |
 | `agent-customization-inspector:open-file` | command | Open one committed file in an application on the reader's own machine |
 | `agent-customization-inspector:get-global-consent-preview` | read | Current or frozen `GlobalConsentPreview` |
-| `agent-customization-inspector:create-global-consent-preview` | command | Capture and atomically create or replace the unconsented preview |
+| `agent-customization-inspector:create-global-consent-preview` | command | Create or atomically replace the unconsented preview from the retained startup capture |
 | `agent-customization-inspector:enable-global` | command | Confirm the session-wide consent; initial enable and active-consent retry |
 | `agent-customization-inspector:rescan-global` | command | Accept one scan command for one enabled Global Source |
 | `agent-customization-inspector:disable-global` | command | The priority Global-disable barrier |
@@ -213,7 +213,8 @@ its declared result value, and a serialization/encoding or delivery failure afte
 handler returns is reported as that request's ordinary error without rolling back or
 duplicating any state the handler committed — no
 successful result is reported, a partially delivered message is never a partial result,
-and the client refetches the committed generation, exactly as for a transport failure. No domain layer classifies the failure's cause.
+and the client refetches the committed state through its corresponding read, exactly as for a
+transport failure. No domain layer classifies the failure's cause.
 
 Deterministic rejections:
 
@@ -1439,10 +1440,17 @@ request's error message for this same `scanRequestId`. In either case the
 `{ kind: 'diagnostic', diagnosticId }` or `{ kind: 'error', message }`; later success
 clears both, while another Source's commit preserves them.
 
-Outcomes: the acceptance result with the request ID and updated source summary; the
-`scan-in-progress` conflict rejection only for a duplicate running/queued Repository
-command; or the `global-disable-pending` conflict rejection while the disable fence is
-non-null.
+The invocation resolves when the admitted scan reaches its terminal state — the commit of
+its complete or partial generation, or its failure — rather than at admission, so the
+`source` it returns is the Source as the scan left it, and a client that refetches after
+the answer sees the result without a further request. Admission, the request ID, the
+duplicate conflict, and the disable fence are unchanged by this; a command the fence
+caught while it ran or waited answers with the `global-disable-pending` conflict.
+
+Outcomes: the acceptance result with the request ID and the source summary as the scan
+left it; the `scan-in-progress` conflict rejection only for a duplicate running/queued
+Repository command; or the `global-disable-pending` conflict rejection while the disable
+fence is non-null.
 
 ### `agent-customization-inspector:open-file`
 
@@ -1477,12 +1485,18 @@ What each target reaches:
 
 - `visual-studio-code` and `sublime-text` reach an editor the host resolved for this
   machine before it bound its port — the editor's command on `PATH`, or the launcher
-  inside a known installation location when the command is not on `PATH`. `PATH` is
-  searched less every entry inside the selected Repository root: an executable under
-  inspected content is a destination chosen from inspected content, which FR-022
-  forbids, so the repository's own `node_modules/.bin` or `bin/` never supplies the
-  editor, while the same directories anywhere else on the machine are the reader's own
-  tooling and are searched like any other entry. On macOS the
+  inside a known installation location when the command is not on `PATH`. Before any
+  lookup, the host removes every candidate directory inside an inspected root — the
+  selected Repository root and each `eligible` member of the session-start personal-setup
+  capture. It resolves relative and empty `PATH` entries from the invocation directory,
+  then asks the executable resolver only about an absolute candidate in each remaining
+  directory; known installation directories follow the same prefilter. A separator-carrying
+  `EDITOR`/`VISUAL` spelling is likewise resolved and rejected before lookup when it lies
+  inside a root. An executable under inspected content is a destination chosen from
+  inspected content, which FR-022 forbids (FR-020), so the repository's own
+  `node_modules/.bin` or `bin/` is never even probed as the editor, while the same
+  directories anywhere else on the machine are the reader's own tooling and are searched.
+  On macOS the
   document goes to the application by name rather than to that launcher, because an
   editor's own command-line script resolves the editor's user data directory from
   `HOME`: a host whose `HOME` is not the reader's own would start a second instance
@@ -1542,8 +1556,8 @@ rejection.
 
 Parameters: none.
 
-Captures and atomically creates or replaces an unconsented lexical, process-scoped preview
-before any proposed Global path is touched:
+Atomically creates or replaces an unconsented lexical, session-scoped preview from the
+immutable startup inputs, before any proposed Global path is touched:
 
 ```text
 GlobalConsentPreview
@@ -1552,18 +1566,20 @@ GlobalConsentPreview
 └── excludedRuleIds[]
 ```
 
-For every permitted create invocation after coordinator conflicts are checked, the server reads `COPILOT_HOME`,
+Before editor-launcher discovery, session startup reads `COPILOT_HOME`,
 `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once each in that order. Only `undefined` is
-absent; an empty string is present. It calls imported
-`node:os.homedir()` exactly once for that request — the shared agent home member always
-derives from it — and uses active-platform `node:path.join`
-with fixed `.copilot`, `.claude`, or `.codex` suffixes for the corresponding absent entries
-and the fixed `.agents` suffix for the shared agent home. A `member` is one of the closed
+absent; an empty string is present. It calls imported `node:os.homedir()` exactly once for
+the session — the shared agent home member always derives from it — and uses active-platform
+`node:path.join` with fixed `.copilot`, `.claude`, or `.codex` suffixes for the corresponding
+absent entries and the fixed `.agents` suffix for the shared agent home. A `member` is one of the closed
 `copilot | claude | codex | agents` set — the three tool homes and the shared agent home
 (FR-045) — and every `…Tools`-spelled control or batch field carries these member ids.
 It does not independently select `HOME`, `USERPROFILE`, or another home source, and the
 lexical capture/join performs no existence check. Those variables are used only to locate proposed
-Global roots and never to substitute references inside inspected content. The frozen
+Global roots and never to substitute references inside inspected content. The one immutable
+capture is retained for the whole session: eligible entries join the selected Repository root
+as the complete launcher-exclusion set, and every permitted create invocation uses those same
+four strings without rereading process inputs. The frozen
 internal preview record, which is never serialized, additionally keeps each entry's
 `lexicalRoot` as the exact raw string. Empty, relative, invalid, control-containing, and
 backslash-containing values remain exact raw strings with their separate `inputState`. `displayRoot` is
@@ -1571,16 +1587,22 @@ one-way presentation escaping derived from `lexicalRoot`; it is never decoded ba
 path or used as admission input. The preview
 performs no `stat`, `realpath`, directory enumeration, or file read under a
 proposed Global root. Node.js and the execution environment determine whether the value can
-be retained and escaped. A throw/rejection during environment capture, `homedir()`, join,
-retention, presentation encoding, or serialization reaches this pre-acceptance RPC boundary and
-rejects the invocation with its ordinary error (no job or `scanRequestId` is created), creates no read authority, and
-performs no normalization, canonicalization, root creation, or read. Otherwise `displayRoot` shows the exact escaped lexical value; invalid empty
-or relative overrides are shown as invalid instead of falling back. A successful create
-atomically replaces the prior unconsented preview only after its complete result is
-bound. Active consent returns the `consent-preview-frozen` conflict rejection; a
+be retained and escaped. A throw during startup environment capture, `homedir()`, join,
+classification, retention, or presentation encoding fails the ownerless launch before a
+session or browser exists. A later complete preview-object construction failure reaches this
+pre-acceptance RPC boundary, rejects the invocation with its ordinary error, and leaves the
+prior current preview unchanged. A DTO- or transport-serialization failure is reported as the
+request's ordinary error after a complete preview may have been bound, so the newly created
+preview may remain current even though no successful result is delivered.
+Neither failure creates a job, `scanRequestId`, or read authority, or performs normalization,
+canonicalization, root creation, or read. Otherwise `displayRoot` shows the exact escaped lexical value; invalid empty
+or relative overrides are shown as invalid instead of falling back. A completely constructed
+preview atomically replaces the prior unconsented preview before its result is serialized and
+increments the internal, non-serialized `previewEpoch` once.
+Active consent returns the `consent-preview-frozen` conflict rejection; a
 registered enable returns the `global-enable-in-progress` conflict rejection; and a
-disable fence returns the `global-disable-pending` conflict rejection, with no environment
-recapture or state change. The read function
+disable fence returns the `global-disable-pending` conflict rejection, with no process-input
+reread or state change. The read function
 supplies the exact frozen preview for fresh-client recovery; a different preview requires
 disable first. The preview is the one server-retained record identified by its opaque
 `previewId`; enable and retry name that ID, and the server acts only on its own stored
@@ -1606,8 +1628,10 @@ leading UTF-8 BOM alone or whitespace-only content is empty under
 `U+FFFD` is non-whitespace. At most one non-empty Codex instruction file is published.
 
 Outcomes: the created `GlobalConsentPreview`; the `consent-preview-frozen`,
-`global-enable-in-progress`, or `global-disable-pending` conflict rejection; or, for a
-capture/serialization throw or rejection, that request's ordinary pre-acceptance error.
+`global-enable-in-progress`, or `global-disable-pending` conflict rejection; or that request's
+ordinary error. A preview-construction failure is pre-acceptance and preserves the prior
+preview; a DTO- or transport-serialization failure may retain the newly created complete
+preview.
 
 ### `agent-customization-inspector:enable-global`
 
@@ -1714,6 +1738,14 @@ separate active-consent conflict. Even an all-lexically-invalid preview may be
 confirmed and returns the deterministic `active-no-job` state, so there is no separate
 `no-eligible-global-root` outcome.
 
+The invocation resolves once every admitted member's scan has reached its terminal state —
+the batch's commit, or its failure retained on `batchStatus` — so a `queued` disposition is
+answered with the Global generation already committed, and a client that refetches after
+the answer sees it without a further request; `active-no-job` resolves at once, having
+queued nothing. A lost response still loses no batch, because the batch is retained on
+`batchStatus` and a fresh poll recovers it; a batch the disable fence caught answers with
+the `global-disable-pending` conflict.
+
 Outcomes: the acceptance result; the `consent-required`, `allowlist-version-mismatch`, or
 `consent-preview-mismatch` rejection; the `no-retryable-global-tool`,
 `global-enable-in-progress`, or `global-disable-pending` conflict rejection; or, for an
@@ -1750,8 +1782,13 @@ and is retained as the failed request's error message for this `scanRequestId`. 
 later successful complete or partial rescan of the same Source replaces its graph atomically
 and clears both; another Source's commit preserves both.
 
-Outcomes: the acceptance result with the request ID and updated source summary; the
-`stale-resource` rejection for an unknown or removed Source ID; the
+The invocation resolves when the admitted scan reaches its terminal state, exactly as the
+Repository command does, so the `source` it returns is the Source as the scan left it and
+one refetch after the answer shows the result; a command the fence caught while it ran or
+waited answers with the `global-disable-pending` conflict.
+
+Outcomes: the acceptance result with the request ID and the source summary as the scan
+left it; the `stale-resource` rejection for an unknown or removed Source ID; the
 `global-disable-pending` conflict rejection if Global disable is pending/active; or the
 `scan-in-progress` conflict rejection for a duplicate running/queued scan for that Source.
 
@@ -2140,14 +2177,16 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    server-retained preview by its `previewId` — binding the exact raw internal
    `lexicalRoot` values and typed traversal-plan version/program it retains — and
    a changed or superseded preview cannot authorize a read.
-   Only the create function captures the three environment inputs plus the always-derived shared agent home and atomically creates or
-   replaces an unconsented preview; the read function performs zero capture and returns only
+   Session startup captures the three environment inputs plus the always-derived shared agent
+   home exactly once before launcher discovery; the same immutable capture supplies launcher
+   exclusion and every later preview despite process-environment changes. Only the create
+   function atomically creates or replaces an unconsented preview; the read function returns only
    the current or
    frozen preview, including through the disable fence. Missing-current, active-consent,
    in-progress-enable, and disable-fence cases return their documented closed outcomes with
    no accidental replacement.
    Escape-collision, control-character, and backslash fixtures prove that
-   enable uses only the stored raw value, never an environment reread or
+   enable uses only the stored raw value, never a process-input reread or
    `displayRoot` reverse conversion. The parameters have no tool selector and initial
    enable always
    evaluates all four frozen entries. Missing or unreadable consented roots and

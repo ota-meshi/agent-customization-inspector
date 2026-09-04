@@ -310,13 +310,14 @@ const listNeighbours = computed(() => {
     return {
       // The drawn spelling rather than the label rule, which returns nothing at
       // all for a name with no characters and would leave the move named by
-      // its arrow alone ({@link AuthoredName}; FR-025).
+      // its arrow alone, and the announced spelling starts with the drawn one
+      // ({@link AuthoredName}; FR-025, WCAG 2.5.3).
       label:
         entry.event === null ? 'No known hook declarations' : new AuthoredName(entry.event).text,
       accessibleLabel:
         entry.event === null
           ? 'No known hook declarations'
-          : new AuthoredName(entry.event).singleLineText,
+          : new AuthoredName(entry.event).accessibleText,
       // A row is one event, so the move addresses that event's declaration the
       // way the row's own link does (`rows/HookRow.vue`): the carrier route
       // alone would open the whole carrier, which is a different page from the

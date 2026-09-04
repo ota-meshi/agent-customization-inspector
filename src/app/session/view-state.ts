@@ -530,8 +530,17 @@ export class SessionViewState {
    */
   public readonly globalEnableResult = shallowRef<GlobalEnableResultDto | null>(null);
 
-  /** Whether a confirmation is in flight, so the control cannot be pressed twice. */
-  public readonly globalEnableState = shallowRef<'idle' | 'submitting'>('idle');
+  /**
+   * Where the one confirmation stands, so the control cannot be pressed
+   * twice: `submitting` while the confirmation is out — which lasts until
+   * every admitted member's scan settled, because the host answers with the
+   * batch committed (contracts/http-api.md § enable-global) — and `answered`
+   * from the answer until the refetch it starts is adopted. The page states
+   * a read in progress on the first and its recovery offer on the second, so
+   * a confirmation still being read is never described as one whose outcome
+   * could not be fetched.
+   */
+  public readonly globalEnableState = shallowRef<'idle' | 'submitting' | 'answered'>('idle');
 
   /**
    * Reports the active route's title subject as the calling page instance's
@@ -1065,7 +1074,7 @@ export class SessionViewState {
         // Reading the answer's content instead would leave confirm and
         // recapture disabled for good on exactly that path.
         if (
-          this.globalEnableState.value === 'submitting' &&
+          this.globalEnableState.value !== 'idle' &&
           this.#globalEnableVersion.value === capturedGlobalEnableVersion
         ) {
           this.globalEnableState.value = 'idle';
@@ -1271,8 +1280,9 @@ export class SessionViewState {
 
   /**
    * Confirms the preview currently on screen (contracts/http-api.md
-   * § enable-global), then refreshes so the accepted batch's Sources and
-   * controls are what the page renders next.
+   * § enable-global) — an answer that comes once every admitted member's scan
+   * has settled — then refreshes so the committed Sources and controls are
+   * what the page renders next, with no second press asked of the reader.
    *
    * It sends the preview's own two identities and no tool list: what the
    * reader confirmed is the whole preview, and a client-side subset would be a
@@ -1280,7 +1290,7 @@ export class SessionViewState {
    */
   public async confirmGlobalConsent(): Promise<void> {
     const preview = this.consentPreview.value;
-    if (preview === null || this.globalEnableState.value === 'submitting') {
+    if (preview === null || this.globalEnableState.value !== 'idle') {
       return;
     }
     this.globalEnableState.value = 'submitting';
@@ -1291,6 +1301,9 @@ export class SessionViewState {
     this.consentPreviewError.value = null;
     const capturedEpoch = this.#clientData.epoch();
     const outcome = await this.#client.enableGlobal(preview.previewId, preview.allowlistVersion);
+    // Answered: the reading the confirmation started is over, and what
+    // follows is this command's own refetch of the committed state.
+    this.globalEnableState.value = 'answered';
     if (this.#clientData.epoch() !== capturedEpoch) {
       // The same fatal exception the preview guard makes: the unsupported
       // path's own purge moved the epoch, and 'ended' must still land.
@@ -1480,10 +1493,10 @@ export class SessionViewState {
         }
         slot.state.value = 'accepted';
         slot.recordAcceptance(outcome.scanRequestId);
-        // The admission's own `SourceDto` is the Source as of acceptance, so
-        // the row shows `scanning` even if the refresh below is slow or fails.
-        // Waiting for the refresh alone would leave a Ready row beside an
-        // accepted scan.
+        // The answer's own `SourceDto` is the Source as its scan left it —
+        // the command answers once that scan settled (contracts/http-api.md
+        // § rescan-repository, § rescan-global) — so the row shows the result
+        // even if the refresh below is slow or fails.
         if (this.snapshot.value !== null) {
           this.snapshot.value = {
             ...this.snapshot.value,
@@ -1493,10 +1506,10 @@ export class SessionViewState {
           };
         }
         // The committed generation arrives on this refresh — one that starts
-        // after the acceptance. An in-flight fetch may predate it: a "Refresh
-        // status" pressed just before acceptance returns a snapshot with no
-        // accepted scan, and adopting it would overwrite the scanning Source
-        // patched above with a Ready row beside a live active request ID.
+        // after the answer. An in-flight fetch may predate it: a "Refresh
+        // status" pressed before the commit returns the previous generation,
+        // and adopting it would overwrite the Source patched above with the
+        // row the scan replaced.
         await this.#refreshFreshly();
         return;
       case 'rejected':

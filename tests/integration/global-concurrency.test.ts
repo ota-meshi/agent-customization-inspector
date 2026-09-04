@@ -96,12 +96,10 @@ describe('Repository and Global work side by side (T1009)', () => {
         previewId: preview.previewId,
       }),
     );
-    // The enable answers at acceptance and the batch commits behind it: the
-    // committed generation is what a later poll recovers (T1009's enable
-    // completion), and the rescans below run against it.
-    await expect
-      .poll(() => context.session.snapshot().globalControl?.batchStatus, { timeout: 10_000 })
-      .toBeNull();
+    // The enable answers once its batch committed (contracts/http-api.md
+    // § enable-global), so the rescans below run against the committed
+    // generation with no batch left in flight.
+    expect(context.session.snapshot().globalControl?.batchStatus).toBeNull();
     return { context, functions };
   }
 
@@ -121,27 +119,25 @@ describe('Repository and Global work side by side (T1009)', () => {
 
     const rescanRepository = functions.get('agent-customization-inspector:rescan-repository')!;
     const rescanGlobal = functions.get('agent-customization-inspector:rescan-global')!;
-    // Both commands accepted while the other runs: each sequence admits its
-    // own work, and neither acceptance waits for the other's commit.
-    const [repositoryAdmission, globalAdmission] = await Promise.all([
+    // Both commands admitted while the other runs: each sequence admits its
+    // own work, and each answers with its own commit rather than waiting for
+    // the other's (contracts/http-api.md § rescan-repository, § rescan-global).
+    const [repositoryAnswer, globalAnswer] = await Promise.all([
       (rescanRepository.handler as () => Promise<unknown>)(),
       (rescanGlobal.handler as (body: unknown) => Promise<unknown>)({
         sourceId: claudeSourceId,
       }),
     ]);
-    expect(acceptedData<ScanAdmission>(repositoryAdmission).source.status).toBe('scanning');
-    expect(acceptedData<ScanAdmission>(globalAdmission).source.sourceId).toBe(claudeSourceId);
+    const repositoryResult = acceptedData<ScanAdmission>(repositoryAnswer);
+    expect(['ready', 'partial']).toContain(repositoryResult.source.status);
+    expect(repositoryResult.source.progress?.phase).toBe('complete');
+    expect(acceptedData<ScanAdmission>(globalAnswer).source.sourceId).toBe(claudeSourceId);
 
-    await expect
-      .poll(
-        () => {
-          const snapshot = context.session.snapshot();
-          return [snapshot.repositoryGeneration, snapshot.globalGeneration];
-        },
-        { timeout: 15_000 },
-      )
-      .toEqual([before.repositoryGeneration + 1, (before.globalGeneration ?? 0) + 1]);
     const after = context.session.snapshot();
+    expect([after.repositoryGeneration, after.globalGeneration]).toEqual([
+      before.repositoryGeneration + 1,
+      (before.globalGeneration ?? 0) + 1,
+    ]);
     // Each commit advanced only its own sequence, every Source ID survived,
     // and the consent — controls, confirmed set, boundaries — is exactly what
     // it was: a rescan reads what consent already granted and grants nothing

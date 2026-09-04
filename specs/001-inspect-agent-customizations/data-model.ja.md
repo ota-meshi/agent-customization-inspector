@@ -232,30 +232,27 @@ package所有fileのreadに使えるが、build outputをinspected-source fallba
 
 ### GlobalRootInputCapture
 
-New unconsented previewを作るrequestごとに、operation-local captureを1つ作る。Hostはenvironment propertyを
+Sessionごとにeditor-launcher探索前のstartup captureを1つ作る。Hostはenvironment propertyを
 `COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`の固定順で正確に1回ずつreadする。CaptureしたJavaScript
-`undefined`だけをabsentとし、`''`を含む全stringをpresent overrideとする。そのrequestでimport済み
+`undefined`だけをabsentとし、`''`を含む全stringをpresent overrideとする。そのsessionでimport済み
 `node:os.homedir()`を正確に1回callし — 共有agent homeは常にそこからderiveされる — 、そのexact return stringを`capturedHomedir`として保持する。Host自身は`HOME`、
 `USERPROFILE`その他のplatform home inputをread/選択せず、そのplatform behaviorはNode.js APIが所有する。
 
 Fixed mappingは、Copilot → `COPILOT_HOME`または`node:path.join(capturedHomedir, '.copilot')`、Claude →
 `CLAUDE_CONFIG_DIR`または`node:path.join(capturedHomedir, '.claude')`、Codex → `CODEX_HOME`または
-`node:path.join(capturedHomedir, '.codex')`とする。Joinはabsent propertyだけに最大1回行うlexical operationで、existence check
+`node:path.join(capturedHomedir, '.codex')`とする。Joinはそのsessionのabsent propertyだけに最大1回行うlexical operationで、existence check
 その他filesystem operationを行わない。Exact stringを`lexicalRoot`とし、empty、relative、NUL-containingその他表現不能な
 resultもstringのままclosed lexical input stateを受け、別fallbackを行わない。Environment access、`homedir()`、join、retention、
-presentation encoding、preview serializationがthrow/rejectするかrequired stringを作れない場合、
-operation-local captureをdiscardし、session API requestはacceptance前にそのerrorで通常どおり失敗する。Preview、`scanRequestId`、
-consent、root、Source、authorityを作らない。正常previewがcaptureと4 exact rootをfreezeし、active consent retrievalでは繰り返さない。
+classification、presentation encodingがthrowするかrequired stringを作れない場合、sessionもbrowserも存在しないstartupをそのownerless errorで通常どおり失敗させる。Preview、`scanRequestId`、consent、root、Source、authorityを作らない。正常なcaptureはsession全体で変更せず保持する。そのeligible rootを選択済みRepository rootと合わせて完全なlauncher exclusion setとする一方、capture自体はpreviewもauthorityも作らない。
 
 ### GlobalConsentPreview
 
-Session APIのconsent routeは、正確に1つの`GlobalRootInputCapture`からlexical path operationだけで
-このpreviewを作る。作成と返却のどちらでも、候補Global root配下のfilesystem operationを一切行わない。
+Session APIのconsent routeは、sessionで1つだけ保持した`GlobalRootInputCapture`からprocess inputを再読込せずに全previewを作る。作成と返却のどちらでも、候補Global root配下のfilesystem operationを一切行わない。Complete preview objectのconstructionはatomicであり、constructionのthrow/rejectionはcreate requestをacceptance前にordinary errorで失敗させ、prior current previewを変更せず、jobもauthorityも作らない。Complete objectを保持した後のDTO/transport serializationのthrow/rejectionはそのrequestのordinary errorであり、新しく作成したpreviewがcurrentとして保持され得る。この場合もjobやauthorityは作らない。
 
 | Field | Type | Rule |
 |---|---|---|
 | `previewId` | exact 43-character unpadded base64url string | 独立した32-byte CSPRNG drawのcanonical encodingでprocess-memory lookup key。新previewは以前の未同意previewをinvalidateし、active consent中はそのexact previewをfreeze/reuse |
-| `previewEpoch` | non-negative safe integer | Internalでserializeしない。New captured previewごとにincrementし、opaque IDをorder valueにせずreplacement/revalidationをbindする |
+| `previewEpoch` | non-negative safe integer | Internalでserializeしない。新しく作成したpreviewごとにincrementし、opaque IDをorder valueにせずreplacement/revalidationをbindする |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `traversalPlanVersion` | date string | 同梱typed traversal-plan setのversion。`allowlistVersion`とのこのrecordレベルのpairが、previewがbindするclosed selection policyとcanonical selector programを特定する |
 | `entries` | 正確に4 member entry | Copilot、Claude、Codex、共有agent homeの固定順 |
@@ -273,9 +270,9 @@ Session APIのconsent routeは、正確に1つの`GlobalRootInputCapture`からl
 runtimeで導出しない。これらはplan-record形状をversionづけるper-plan `TraversalPlan.schemaVersion`（固定literal `1`）とは
 別物で、plan setの内容ではない。plan setの変更は`schemaVersion`を変えずに`traversalPlanVersion`をbumpする。
 
-Hostはretained raw valueを変えず`RootPresentationEncoding`を適用する。Allocation能力はNode.js、OS、browserから継承する。
-Lexical preview作成中のthrow/rejectionはaccept前のsession API request boundaryへ到達し、`scanRequestId`、normalization、
-canonicalization、root creation、readなしでそのrequestを通常どおり失敗させる。Size-based input stateは作らない。Previewはserverが
+Hostはsession-start captureを構築するときに、retained raw valueを変えず`RootPresentationEncoding`を適用する。Allocation能力はNode.js、OS、browserから継承する。
+Complete captureを保持する前のthrow/rejectionは、上記のownerless startup-failure ruleに従い、sessionもbrowserも存在しない時点で失敗する。Previewや`scanRequestId`を作らず、normalization、
+canonicalization、root creation、readも行わない。Size-based input stateも作らない。Previewはserverが
 保持するopaque `previewId`で識別する唯一のrecordであり、root fieldはいずれもnullableでなく、どのencoding stepも
 escapeの逆変換やUnicode normalizationには依存しない。
 Invalid environment valueはescapeして
@@ -290,7 +287,7 @@ Admissionは保存済みinternal raw `lexicalRoot`だけを使い、`displayRoot
 Preview creation/retrievalはcoordinator lock下でlinearizeする。Consentがactive、initial `GlobalEnableOperation`がregistered、またはnon-complete
 `GlobalDisableOperation`がpreview fenceを保持する間、
 preview取得はIDを含む同じ保存済みDTO-visible objectをfield semantics上byte-for-byteで返し、environmentを読み直さずreplacementも
-作らない。どちらでもない場合だけnew captureを実行し、`previewEpoch`をincrementしてprior unconsented previewをreplaceできる。
+作らない。どちらでもない場合だけretained captureからnew previewを作り、`previewEpoch`をincrementしてprior unconsented previewをreplaceできる。Complete constructionはreplacementより先に完了しなければならないが、その後のDTO/transport serialization failureではnew complete previewが保持され得る。
 Initial operationがconsentをactivateせずterminalになった場合、そのoperationをunregisterした後だけfreezeを解除する。Client purge後にexact
 consent表示を復元する唯一のpathであり、in-flight enableが到達不能previewのauthorityをcommitすることを防ぐ。
 
@@ -461,7 +458,7 @@ stale overlayも記録しない。後のjob自体のfailureだけがpromote済�
 | `commitKind` | `cleanup-only \| remove-active-state` | 最初のacceptance時に選択し全retryで不変。後者だけがremove対象のpublic Global consent/control/Source stateを持つ |
 | `baseGenerations` | `{ repository: GenerationNumber, global: GenerationNumber \| null }` | Acceptance時のsequenceごとのexact commit済みgeneration。Barrierはどちらのsequenceにもgenerationをcommitしない。`remove-active-state`はGlobal sequence全体をdiscardし、`cleanup-only`はcommitted stateを変えない |
 | `status` | `draining \| committing \| failed \| complete` | `failed`はrevoked authorityとretry可能cleanup stateを保持し、activeへrollbackしない |
-| `frozenPreview` | internal exact preview reference | Pre-barrier previewを`failed`中も保持し、terminal successまでpreview capture/replacementをfence |
+| `frozenPreview` | internal exact preview reference | Pre-barrier previewを`failed`中も保持し、terminal successまでpreview creation/replacementをfence |
 
 Active/queued Global authorityもretained disable failureもないno-op disableは通常single-stage response gateを使い、mutationしない。
 それ以外はrequest validation/barrier registrationをcoordinator lock下でlinearizeする。最初のacceptance時にpublic Global consent/control/
@@ -478,7 +475,7 @@ internal barrierでrevoke/drainする。このacceptance phaseだけはterminal 
 authorityを公開しない。`globalEnableInProgress`はinitial-enableまたはretry operationがbarrierでcancel/unregisterされた時点で消える。
 
 Acceptanceから`failed`、`committing`、retry drainを通じてbarrierはhighest-priority Global fenceのままとする。全Global enable/rescan requestは
-固定の`global-disable-pending` conflictを返し、queued Global commandをdequeueせず、preview retrievalはnew capture/replacementなしで`frozenPreview`を返す。
+固定の`global-disable-pending` conflictを返し、queued Global commandをdequeueせず、preview retrievalはnew previewのcreation/replacementなしで`frozenPreview`を返す。
 Operation-local initial enableだけで`globalControl`がnullの場合も同じである。さらにgeneration fenceとして、non-complete barrier中はnew
 Repository rescanをadmitせず、generation-mutating commandをdequeueせず、scan commitを一切許さない。New Repository rescanは
 固定の`global-disable-pending` conflictを返す。Acceptance時にrunningだったRepository commandはcommit前にrevokeし、terminal disable success後に正確に
@@ -541,16 +538,13 @@ locatorもcitationも運ぶDTO fieldは存在しない — ため、buildは`__A
 ことを検査する。
 
 明示的なmaintainer drift commandはcredential、cookie、repository data、その他のlocal stateを送らない。
-Citeされたpageごとに UTF-8のHTML/Markdownを受け付け、全hopがそのcitationのallowlist hostに留まるHTTPS
-redirectだけを追う。Redirect loopはfail closedとする。異なる最終URLへのredirectは`url`を黙って変えずreview
-対象として報告する。Downgrade、cross-host redirect、誤ったcontent type、heading の欠落/重複、decode失敗、
-回復可能なnetwork/runtime失敗はいずれもdrift checkのhard failureとする。
+CiteされたpageごとにUTF-8のHTML/Markdownを受け付け、citationのexact URLとallowlist hostからの直接`200`を
+要求し、redirectは追わない。Redirect、誤ったcontent type、headingの欠落または重複、配信fragmentの未解決
+または曖昧さ、decode失敗、回復可能なnetwork/runtime失敗はいずれもdrift checkのhard failureとする。
 
-Normalizationは各cited headingから同レベル以上の次のheadingまでを選択し、document chromeとscript/style
-nodeを除去し、proseとcode textを保持し、entityをdecodeし、Unicode NFCとLF行末を適用し、行端をtrimし、
-水平whitespaceをcollapseし、列挙順にsectionをjoinしてSHA-256を計算する。Drift結果がbehavior、rule、
-strategyを自動変更することはない。Maintainerはciteしている全recordと両言語のcontract/researchをreviewした
-後、heading、paraphrase、`reviewedOn`を明示的に更新する。Remote pageのtextやresponse bodyはcheck inしない。
+Drift結果がbehavior、rule、strategyを自動変更することはない。Maintainerはciteしている全recordと両言語の
+contract/researchをreviewした後、heading、paraphrase、`reviewedOn`を明示的に更新する。Remote pageのtextや
+response bodyはcheck inしない。
 
 ### DocumentationStatusとLifecycleQualifier
 
@@ -1394,7 +1388,7 @@ Global `inputState`はcaptured stringへ次の正確な順序でassignする。
 
 このclosed algorithm以外のlexical spelling policyを追加しない。`eligible`なrootが使用可能かどうかはconsent後の
 readable-directory admissionだけが判定し、後のNode.js/OS rejectionは通常boundary ruleに
-従う。`isAbsolute`またはstate/presentation constructionのthrowはpreview session API boundaryへpropagateし、previewを作らない。
+従う。`isAbsolute`またはstate/presentation constructionのthrowは、sessionもbrowserも存在しない時点のownerless startup failureとなり、captureもpreviewも作らない。
 どのstepもstringをnormalizeせず、separatorを変更せず、filesystemをcallせず、別rootを黙って選ばない。
 
 ### BrowserState
@@ -1636,8 +1630,8 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
    visibility/unload listenerを設置しない。Transportは独立したliveness probeやpolling intervalなしに
    host lossを報告するが、continuously idleでvisibleなpageにproduct固有のwall-clock保証を設けない。
 12. 全behavior、rule、strategy、source IDは、所有するbilingual contractとexecutable registryで正確に1回だけ
-    定義する。Record自身の`evidence` citationは所有rowのdirect Evidence cellと一致し、official-source逆引きindexと
-    相互一致する。citation、documentation status、lifecycle qualifierはどのDTOも運ばない。
+    定義する。Record自身の`evidence` citationは所有rowのdirect Evidence cellと一致し、引用するofficial-source rowへ
+    解決する。citation、documentation status、lifecycle qualifierはどのDTOも運ばない。
     製品が読まないmaintenance recordだからである。Missing、duplicate、orphan、language-divergentなrecordは
     buildをfailさせる。
 13. Vendor lookup base/traversalとInspector matcherは別record typeである。全Repository matcherはselected

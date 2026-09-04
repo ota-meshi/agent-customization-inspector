@@ -23,13 +23,26 @@ failureでも同じであり、いずれも中断した基準の不成功とし�
 
 ## 各sessionに与えるもの
 
-1つだけ、稼働中のInspectorが印字したoriginである。Selectorもrouteも、interfaceの説明も与えず、
-このrepositoryへのaccessも与えない。Sourceを読むsessionは、探し当てたことではなく答えを読んだ
-ことで測られてしまうからである。
-
-20件すべてが同じtreeに向き合うため、1つのInspectorがrun全体を担う。`pnpm run
-start:fixture`がall-kind fixtureを構築して配信し、それが
+自分だけのfolderとguideである。Folderは`repository/`としてall-kind fixtureを持つ。
+`tests/fixtures/repositories/build-fixtures.ts`がその場所に構築したもので、
 [`ground-truth.json`](sc001-sc006-study-inputs/ground-truth.json)の前提となるtreeである。
+そのdirectoryから`npx --no-install`が見つける場所にrelease candidateのpackageを入れておく。
+Guideは[`guidance.md`](sc001-sc006-study-inputs/guidance.md)の逐語である。Selectorもrouteも、
+interfaceの説明も与えず、このrepositoryへのaccessも与えない。Sourceを読むsessionは、探し当てた
+ことではなく答えを読んだことで測られてしまうからである。
+
+このrepositoryのものがsessionのruntimeに入っていてもならない。SC-001は、productが印字し描画する
+もの以外のhintを許さず、このworking treeの中で開始したsessionは、始める前からrepository自身の
+指示とmemoryを持っており、それらはproductのsurfaceを名指している。したがってsessionはこの
+working treeの外で開始し、そのproject指示もmemoryも視界に持たない。ここから読み込んでよいのは、
+sessionが駆動するbrowser automationだけである。
+
+各sessionは自分の`repository/`から自分のInspectorを起動する。20 sessionは20回の起動と20個の
+consent状態であり、他のsessionのものに出会うsessionは無い。Moderatorのequipmentは、既定portが
+このmachineの所有者のものであるためguideのcommandに`--port 0`を付けてよく、起動commandだけに
+`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`、`HOME`を設定して、personal-setupのconsentを
+`tests/fixtures/global-homes/build-fixtures.ts`が構築するfixture homeへ向けてよい。どちらも
+guidanceではなくequipmentの条件としてsessionに伝える。
 
 ## 何を言ってよいか
 

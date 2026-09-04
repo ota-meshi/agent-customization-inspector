@@ -245,12 +245,15 @@ export interface DetailNeighbour {
   readonly label: string;
   /**
    * The same subject as the fragment spliced into the control's accessible
-   * name. Separate from {@link label} because the two rules differ where a
-   * name has no characters to draw: the control renders this product's
-   * spelled-out spelling, while an accessible name collapses whitespace and
-   * two rows differing only in it must not announce as one move (FR-025,
-   * WCAG 2.4.4; `authored-name.ts`). Required rather than defaulted, so a
-   * kind added later cannot leave a move announced as its arrow alone.
+   * name, directly after the visible direction word. It starts with the drawn
+   * spelling, because the control shows that spelling beside it and a
+   * speech-input user activates the move by saying what they see (WCAG
+   * 2.5.3), and it is separate from {@link label} because an accessible name
+   * collapses whitespace: two rows differing only in it must not announce as
+   * one move, so the spelled-out presentation follows the drawn one where
+   * that would happen (FR-025, WCAG 2.4.4; `entities.ts`
+   * § accessiblePresentationLabel). Required rather than defaulted, so a kind
+   * added later cannot leave a move announced as its arrow alone.
    */
   readonly accessibleLabel: string;
   /**

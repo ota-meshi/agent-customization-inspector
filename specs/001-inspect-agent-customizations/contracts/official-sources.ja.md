@@ -4,7 +4,6 @@
 
 **Registry version**: 2026-07-20
 **Official-source review**: 2026-07-20
-**Normalization version**: `1`
 
 この台帳は、3つのvendor contractと[Runtime Composition](runtime-composition.ja.md)が使用する
 全`sourceId`の唯一のnormative ownerである。Vendor contractとcomposition contractは、全normative
@@ -23,12 +22,13 @@ Source registryはevidence metadataであって、Inspectorのread authorityで�
 - `officialHost`は、そのrecordだけに対するexact host allowlistである。Subdomainやsibling hostを暗黙に
   許可しない。
 - `sectionAnchors`内のsemicolon区切りentryは、それぞれexact rendered heading-text descriptorである。
-  CSS/XPath selectorでもURL fragmentでもない。Drift checkerは、列挙した各entryに対して正確に1つの
-  matching headingを見つけなければならない。Anchorとheading-textのcapacityおよびcompletion behaviorは、
+  CSS/XPath selectorでもURL fragmentでもない。Drift checkerは、列挙した各entryを、配信された正確に
+  1つのheadingへ、または配信されたheadingのどれもそれを担わないときは、その本文を持つtable of
+  contentsのlinkすべてが指す配信済みの1つのfragmentへ解決しなければならない（§ Offline validationと
+  明示drift review）。Anchorとheading-textのcapacityおよびcompletion behaviorは、
   Node.jsと実行環境から継承する。
 - `reviewedOn`は、該当sectionを最後に読み、引用元recordの主張と突き合わせた日であり、実施者は問わない。引用した見出しがまだ存在することの確認はより狭い検査であり、この日付を進めない。rowごとに記述する。
   2026-07-20 reconciliationで再reviewしていないrecordは`2026-07-15`を保持する。
-- 全rowが`normalizationVersion: 1`を使用する。
 
 このregistryを参照する保守対象behavior、rule、strategyはそれぞれ、citeしたsectionがそれをどこまで
 確立しているかを、record自身の上に述べる。
@@ -63,13 +63,11 @@ Registryは以下のrowだけを持つ。Rowを引用するcitationは、source 
 review日、そしてそれらの見出しが引用元recordに対して確立する内容のmaintainedなparaphrase 1件を持つ。
 Page textのcopyとgeneric product-area targetは禁止する。Fieldをtruncateしない。
 
-2つのfieldはmaintainer専用のdrift command（T1032）に属し、それが実行されるまでどこにも存在しない。
-`snapshotFingerprint`は選択したnormalized sectionのlowercase SHA-256で、capture前は`null`とする。
-Remote page textをdigestするが、offline gateはそれをfetchしないため、実際のcaptureなしに値を書くことは
-収集していないevidenceを記録することになる。`semanticFingerprint`はmaintainedなparaphraseをstable sortした
-canonical JSONのlowercase SHA-256で、commandがsort対象を持った時点でoffline再計算する。Sourceごとの
-逆引きindex — あるpageがどのbehavior・rule・strategyに影響するか — も同じcommandがcitationから導出する。
-今日それを公開するrecordは無い。
+Registryはpage textのdigestもparaphraseのdigestも持たない。Sectionの本文が引用元recordの保守する内容を
+今も確立しているかは読解であり、reviewerがreviewのたびにそれを行う（AGENTS.ja.md「公式出典の検証方針」）。
+あるpageがどのbehavior・rule・strategyに影響するかはcitation自身から読む。Offline gateが全citationをその
+rowへ解決するので、変更されたpageのreview setは`evidence`にその`sourceId`を持つ全recordであり、
+逆引きindexを公開するrecordは無い。
 
 このreleaseでは、次のexact official hostだけを許可する。
 
@@ -241,9 +239,9 @@ diagnostic-only outcomeとする。
 NULを含まない全byte streamはUTF-8 replacement semanticsで正確に1回decodeし、invalid sequenceは
 `utf-8-replaced`となり、生成された`U+FFFD`を含む文字化けtextをparsing、extraction、display、comparisonに使用する
 完全なsourceに保持する。Maintained OpenAI assertionは選択した公式sectionだけをparaphraseし、これらInspector所有の
-filesystemまたはdecode方針をencodeしてはならない。選択した公式textもmaintained assertionも変えない
-reconciliationは`reviewedOn`を進めず、2つのfingerprintも当時のままとする — maintainer専用のdrift commandが
-実行されるまで、それは不在である。
+filesystemまたはdecode方針をencodeしてはならない。このreconciliationはpageを読んでいないので、
+`reviewedOn`を進めなかった。この日付は引用sectionを読んだときに進み、その読解がassertionを変えたかどうかに
+かかわらず進む。
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
@@ -274,9 +272,8 @@ Network accessなしで次をvalidateする。各citationがsource ID、credenti
 section — およびそのrowが両言語で同一であること。そして1つのsource IDが正確に1 pageへ解決すること
 — pageが移動した後に2つのrecordが所在で食い違えないこと。
 
-Reciprocal affected IDと`semanticFingerprint`の再計算はまだ対象外である。Reverse indexを公開するrecordは
-無く、fingerprintはmaintainer専用のdrift commandが実行されるまで取得されない。それらを出荷するtaskは
-tasks.mdに記載する。
+Reverse indexを公開するrecordは無く、fingerprintも存在しない。変更されたpageのreview setは`evidence`に
+その`sourceId`を持つ全recordであり、上記のcitation解決がそれを見つける。
 
 Networkを使用するdrift reviewはmaintainerだけが明示実行し、少なくともすべてのfrozen release candidate前と、
 supported surfaceへのmaterialなupstream変更を認知した時点で実行する。
@@ -290,16 +287,10 @@ pnpm run check:official-sources -- --network
 報告する。追跡すれば記録済みURLはcitationが名指すaddressではなく起点になってしまい、移転はreviewerが
 行うcitationの変更である。Request、response、redirect、decodeの
 capacityはNode.jsと実行環境から継承し、recoverableなenvironment failureはfail closedする。HTTPS downgrade、
-cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。配信されたheadingのどれも担わないsectionは、heading checkに限り、ページ自身のtable of contentsから探す。Siteはその一覧を同じcontentから導出するので、引用したsectionを本文に持つfragment linkは、そのページが持つsectionを名指している — client-renderedなページがheadingを配信しなかったsectionも、Claude Code changelogが各releaseをlabel付きentryとして描くように、heading以外の形で描かれるsectionも同じである。Commandは、そうしたlinkがすべて1つのfragmentを指すときにそのsectionを受理し、その方法で確認したsectionを報告する。2つのfragmentを指すlinkは2つのsectionを引用しており、どちらも確認しない。このfallbackがないと、そうしたページ上の全citationに対してdriftを報告することになる。Maintainerが却下する以外にないhard failureは、gateが読まれなくなる原因そのものである。同一host上の
+cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。配信されたheadingのどれも担わないsectionは、heading checkに限り、ページ自身のtable of contentsから探す。Siteはその一覧を同じcontentから導出するので、引用したsectionを本文に持つfragment linkは、そのページが持つsectionを名指している — client-renderedなページがheadingを配信しなかったsectionも、Claude Code changelogが各releaseをlabel付きentryとして描くように、heading以外の形で描かれるsectionも同じである。Commandは、そうしたlinkがすべて1つのfragment spellingを名指し、ページがそのfragmentを配信するときにsectionを受理する。ページが配信しないtargetが1つだけならmissingとし、live/dead targetの混在を含め、異なるtarget spellingが2つ以上ならlinkは1つのsectionを引用していないためambiguousとする。Accepted fallbackで確認したsectionは報告する。このfallbackがないと、そうしたページ上の全citationに対してdriftを報告することになる。Maintainerが却下する以外にないhard failureは、gateが読まれなくなる原因そのものである。同一host上の
 Redirectを黙って追跡して新しい`canonicalUrl`にすることはない。
 
-Normalization version `1`は、列挙した各headingから同level以上の次heading直前までを選択し、document
-chromeと`script`/`style` nodeを除去し、prose/code textを保持し、entity decode、Unicode NFC、LF ending、
-line-edge trim、horizontal-whitespace collapseを適用し、列挙順にsectionをjoinしてlowercase SHA-256の
-`snapshotFingerprint`を計算する。重複またはoverlapするselected sectionは黙ってdeduplicateせずinvalidと
-する。
-
-このcommandはdriftを報告するだけで、behavior、rule、strategy、assertion、anchor、fingerprint、URL、
-review dateを変更しない。Maintainerはreverse indexに含まれる全affected recordと両言語版をreviewし、
-paraphrased assertionとfingerprintを明示更新した後にだけ`reviewedOn`を進める。Remote page body、snippet、
+このcommandはdriftを報告するだけで、behavior、rule、strategy、assertion、anchor、URL、review dateを
+変更しない。Maintainerは`evidence`にそのsourceを持つ全recordと両言語版をreviewし、paraphrased assertionを
+明示更新した後にだけ`reviewedOn`を進める。Remote page body、snippet、
 response captureはcheck inしない。

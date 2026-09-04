@@ -94,7 +94,7 @@ test('the rail reaches each Source family’s own surface and states its status'
   await expect(repository).toBeVisible();
   // A status the reader can act on without leaving the list, which is what
   // replaces the panel this page used to open with (FR-030).
-  await expect(repository).toContainText(/Ready|Partial|Idle|Scanning|Failed/u);
+  await expect(repository).toContainText(/Inspected|Not inspected|Scanning|Failed/u);
 
   const personal = sources.getByRole('link', { name: /^Personal setup/u });
   await expect(personal).toContainText('Not inspected');

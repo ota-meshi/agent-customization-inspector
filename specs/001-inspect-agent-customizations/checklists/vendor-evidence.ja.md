@@ -54,7 +54,7 @@
 - [x] CHK025 一つの`.mcp.json` fileが、一方の認識surfaceではvalidだが、別のsurfaceではmalformedまたはunsupportedである場合に、成功したrecognitionを失わない要件が定義されているか？ [Edge Case, Spec §FR-005 and §FR-028; Gap]
 - [x] CHK026 single-folder workspace、multi-root workspace、nested selected Repository root、およびInspectorのselected root外のruntime `cwd`がvendor applicabilityを変える場合に、それぞれ区別されているか？ [Edge Case, Gap] — 2026-07-21修正: multi-root `.code-workspace` workspaceをGitHub Copilot §Terminology、その直下のsurface boundary注記、Runtime Compositionの`workspace-root` condition factで区別。他の3ケースは既に明示済み。
 - [x] CHK027 利用不能なpage、cross-host redirect、重複heading、取得したmarkupに存在しないsection、および削除されたanchorが、traceabilityを暗黙に弱めることなくevidence failureとして扱われているか？ [Edge Case, Contract: Official Sources §Offline validation and explicit drift review]
-- [x] CHK028 rollingまたは日付のない公式pageと、preview後にrollbackまたはsupersedeされたfeatureが、明示的なversion、closed documentation-status、独立したlifecycle-qualifier要件で扱われているか？ [Edge Case, Assumption] — 2026-07-21修正: Spec §Assumptionsに新bulletを追加し、日付なし/rollingなpageとpreview/rollback/supersedeされたfeatureを`reviewedOn`、section fingerprint、lifecycle qualifier、`conflict`で扱い、`stable`表示や推測による解消を禁止。
+- [x] CHK028 rollingまたは日付のない公式pageと、preview後にrollbackまたはsupersedeされたfeatureが、明示的なversion、closed documentation-status、独立したlifecycle-qualifier要件で扱われているか？ [Edge Case, Assumption] — 2026-07-21修正: Spec §Assumptionsに新bulletを追加し、日付なし/rollingなpageとpreview/rollback/supersedeされたfeatureを`reviewedOn`、lifecycle qualifier、`conflict`で扱い、`stable`表示や推測による解消を禁止。
 
 ## 非機能要件
 
@@ -69,7 +69,7 @@
 
 - [x] CHK035 general guide、reference page、release note、official source repository、および公式issue statementについて、採用するfirst-party source hierarchyが定義されているか？ [Dependency, Gap] — 2026-07-21修正: Official Sources §Record notation and ownershipにvendor横断のhierarchyを定義（guideとreference pageは同格、version-qualifiedなrelease note/changelogは省略に優先、矛盾するassertionは`conflict`のまま、source repositoryとissue statementは代替evidence不可）。
 - [x] CHK036 公式documentationが不完全または内部矛盾し得るという前提と、残る不確実性の必須表現が記載されているか？ [Assumption, Spec §FR-009 and §Assumptions]
-- [x] CHK037 実装前および定期的なvendor specification再調査について、owner、timing、trigger、およびcompletion criteriaが記載されているか？ [Dependency, Spec §Supported Initial Release Customization Files; §QR-005] — 2026-07-21修正: Spec §Supported Initial Release Customization FilesとOfficial Sourcesのdrift reviewに、owner（maintainer）、trigger（すべてのfrozen release candidate前、materialなupstream変更の認知時）、completion criteria（全affected recordと両言語のreview、assertion/fingerprintの明示更新、`reviewedOn`の前進）を明記。
+- [x] CHK037 実装前および定期的なvendor specification再調査について、owner、timing、trigger、およびcompletion criteriaが記載されているか？ [Dependency, Spec §Supported Initial Release Customization Files; §QR-005] — 2026-07-21修正: Spec §Supported Initial Release Customization FilesとOfficial Sourcesのdrift reviewに、owner（maintainer）、trigger（すべてのfrozen release candidate前、materialなupstream変更の認知時）、completion criteria（全affected recordと両言語のreview、assertionの明示更新、`reviewedOn`の前進）を明記。
 
 ## 曖昧さと矛盾
 

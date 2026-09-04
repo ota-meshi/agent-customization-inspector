@@ -559,7 +559,8 @@ is written.
   beside that union, not in the component, so a new member cannot compile
   without its label. `entities.ts` holds `CUSTOMIZATION_KIND_TEXT`,
   `SUPPORTED_TOOL_TEXT`, `FILE_ENCODING_TEXT`, `SOURCE_BOUNDARY_ORIGIN_TEXT`,
-  `SOURCE_STATUS_TEXT`, and `SAME_NAME_SKILL_RESOLUTION_TEXT`; diagnostic text
+  `SOURCE_STATUS_TEXT`, `SOURCE_STATUS_STANDALONE_TEXT`, and
+  `SAME_NAME_SKILL_RESOLUTION_TEXT`; diagnostic text
   lives in `DIAGNOSTIC_REGISTRY`. A closed union no surface renders needs no table:
   `DocumentationStatus` and `LifecycleQualifier` are maintenance records on the
   registry, so nothing labels them.
@@ -714,7 +715,7 @@ documentation work with its own failure modes:
   decide, over the whole registry: that each recorded URL still answers `200` directly on
   its own official host without redirecting, and that each cited section resolves — as
   exactly one served `<h1>`–`<h4>`, or, when no served heading carries it, as the one
-  fragment every table-of-contents link bearing its text points at. It reports and
+  served fragment every table-of-contents link bearing its text points at. It reports and
   changes nothing, and it is outside every build, start, test, and CI chain: it is the one
   command here that makes an outbound request, so it runs when you ask it to. Do not
   re-do those checks by hand; a summarizer's inventory of a page's headings is not
@@ -723,8 +724,10 @@ documentation work with its own failure modes:
   page moved, the section was renamed, the content is gone — the command cannot decide, so
   it reports the section as missing and leaves the conclusion open. Whether the cited
   sections still establish the maintained paraphrase is a reading, not a lookup: a heading
-  that still exists over rewritten text is exactly the drift a digest and an anchor both
-  miss.
+  that still exists over rewritten text is drift that no check of a heading's or a
+  fragment's existence can see, which is why the reviewer reads the text under it. The
+  registry keeps no digest of page text (contracts/official-sources.md § Record notation
+  and ownership), so nothing but that reading detects it.
 - Name a page by its full URL or its rendered title, never by a bare path segment. Writing
   "the memory page" for `https://code.claude.com/docs/en/memory` reads as a claim about the
   assistant's own memory rather than about a page that was actually fetched.

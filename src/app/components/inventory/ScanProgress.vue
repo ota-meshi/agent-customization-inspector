@@ -9,11 +9,13 @@
 //
 // Nothing here updates on its own. The product defines no timer, filesystem
 // watcher, or server-initiated push of inspection data
-// (contracts/http-api.md § get-session), so status advances only when the
-// user asks for it. That is why there is a "Refresh status" control and no
-// pause/resume control: WCAG 2.2.2 applies to automatically updating content,
-// and there is none to pause (contracts/accessibility-acceptance.md
-// § 2.2.2).
+// (contracts/http-api.md § get-session), so status advances only on the
+// reader's own actions: the rescan they command answers once its scan settled
+// and is followed by one refetch (contracts/http-api.md § rescan-repository),
+// and "Refresh status" is for a scan that was already running when this page
+// opened. That is why there is no pause/resume control: WCAG 2.2.2 applies
+// to automatically updating content, and there is none to pause
+// (contracts/accessibility-acceptance.md § 2.2.2).
 //
 // The session is joined here rather than threaded down as props: everything
 // this panel shows is a fact about the session's Repository sequence — its
@@ -132,6 +134,16 @@ const rejectionText = computed(() =>
           </dd>
         </template>
       </dl>
+      <!-- While the command is out, this panel says so from the command's own
+           state: the rescan answers once its scan settled, and until then the
+           status above is the snapshot's — by definition the value this scan
+           is replacing — so a page that stated only the snapshot would call a
+           running scan finished for as long as it runs. Inside the live region
+           so the change is heard with the state it changes; no spinner and no
+           progress bar, which earlier reviews took out. -->
+      <p v-if="requesting" class="aci-note">
+        Scanning now. The result appears here when it finishes.
+      </p>
 
       <!-- What a "Partial" status is about, stated where the status is read.
            It is inside the live region because it is part of the state being
@@ -167,9 +179,15 @@ const rejectionText = computed(() =>
       </button>
       <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
     </p>
+    <!-- Who the refresh is for: not the reader who pressed Rescan, whose
+         command answers with its own result, but a reader holding no command
+         — a scan that began before this page opened, or in another tab —
+         whose only way to the result is to ask (contracts/http-api.md
+         § get-session, § rescan-repository). -->
     <p class="aci-note">
-      Nothing on this page updates by itself. Use “Refresh status” to see the result of a scan that
-      is still running.
+      Nothing on this page updates by itself. A scan you start here reports its own result. Use
+      “Refresh status” for a scan that started elsewhere — in another tab, or before this page
+      opened.
     </p>
   </section>
 </template>

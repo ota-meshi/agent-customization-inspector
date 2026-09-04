@@ -415,10 +415,11 @@ const listNeighbours = computed(() => {
     // § AgentInventoryEntryDto.name).
     // The drawn spelling rather than the label rule, which returns nothing at
     // all for a name with no characters and would leave the move named by its
-    // arrow alone ({@link AuthoredName}; FR-025).
+    // arrow alone, and the announced spelling starts with the drawn one
+    // ({@link AuthoredName}; FR-025, WCAG 2.5.3).
     label: entry.name === null ? 'No known agent name' : new AuthoredName(entry.name).text,
     accessibleLabel:
-      entry.name === null ? 'No known agent name' : new AuthoredName(entry.name).singleLineText,
+      entry.name === null ? 'No known agent name' : new AuthoredName(entry.name).accessibleText,
     // The move carries the row it opens, exactly as that row's own link in the
     // inventory does: a neighbour whose file is listed under two names would
     // otherwise land on the page as the other name's row and offer that row's

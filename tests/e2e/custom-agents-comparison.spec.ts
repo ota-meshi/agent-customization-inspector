@@ -182,6 +182,27 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
   ).toHaveCount(0);
 });
 
+test('gives the same source note to every pair, whatever its two formats', async ({ page }) => {
+  // The surface is the kind's: declarations diffed in one canonical form,
+  // sources side by side, and the note stating that reason — for a pair that
+  // spans TOML and Markdown and for a pair of two Markdown agents alike. A
+  // page whose shape followed the pair's file names would be a rule a reader
+  // cannot learn (`[family].vue` § readyView).
+  const note =
+    'Agent files are not all written in one format, so the blocks above compare them out of their own formats, and each file is shown whole here rather than as one diff — for every pair of this kind, two files of one format included.';
+  await page.goto(
+    compareUrl('reviewer', '.codex/agents/reviewer.toml', '.claude/agents/reviewer.md'),
+  );
+  await expect(page.getByRole('heading', { name: 'Source comparison' })).toBeVisible();
+  await expect(page.locator('main')).toContainText(note);
+
+  await page.goto(
+    compareUrl('planner', '.github/agents/planner.agent.md', '.github/agents/planner.md'),
+  );
+  await expect(page.getByRole('heading', { name: 'Source comparison' })).toBeVisible();
+  await expect(page.locator('main')).toContainText(note);
+});
+
 test('renders the per-tool agent names and the serialized declarations', async ({ page }) => {
   await page.goto(
     compareUrl('reviewer', '.codex/agents/reviewer.toml', '.claude/agents/reviewer.md'),

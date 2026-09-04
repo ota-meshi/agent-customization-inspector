@@ -19,6 +19,7 @@
 // ({@link applicabilityRangePresentation}). Running a range through the name
 // rule turned `src/\[a\]/**` into `src/\[a\]/**`.
 import {
+  accessibleApplicabilityRangePresentation,
   applicabilityRangePresentation,
   inlineApplicabilityRangePresentation,
 } from '../../shared/entities';
@@ -72,12 +73,6 @@ export class ApplicabilityRange {
   }
 
   /**
-   * The name for a surface that collapses whitespace — an accessible name, a
-   * control whose text does not render its own spaces. Two rows differing only
-   * in whitespace must not read as one there
-   * ({@link inlineApplicabilityRangePresentation}).
-   */
-  /**
    * Every spelling of this range a reader can see, for the search that narrows
    * the list by what a row displays (FR-006): the file's own characters and
    * the spelling drawn in their place, or — where no range was declared — this
@@ -88,9 +83,29 @@ export class ApplicabilityRange {
     return this.#declared === null ? [this.text] : [this.#declared, this.text];
   }
 
+  /**
+   * The name for a surface that collapses whitespace and has no visible label
+   * of this range beside it — a heading's accessible name, an `<option>`. Two
+   * rows differing only in whitespace must not read as one there, and there
+   * is no visible spelling to start from
+   * ({@link inlineApplicabilityRangePresentation}).
+   */
   public get singleLineText(): string {
     return this.#declared === null
       ? NO_RANGE_TEXT
       : inlineApplicabilityRangePresentation(this.#declared);
+  }
+
+  /**
+   * The name for a surface that shows {@link text} beside it and collapses
+   * whitespace — a detail move's accessible name: it starts with the drawn
+   * spelling, which a speech-input user says, and spells the range out after
+   * it where two ranges would otherwise collapse into one announcement
+   * (WCAG 2.5.3, WCAG 2.4.4; {@link accessibleApplicabilityRangePresentation}).
+   */
+  public get accessibleText(): string {
+    return this.#declared === null
+      ? NO_RANGE_TEXT
+      : accessibleApplicabilityRangePresentation(this.#declared);
   }
 }

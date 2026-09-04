@@ -553,7 +553,11 @@ onBeforeUnmount(() => {
           @click="requestRescan"
         >
           <RescanIcon aria-hidden="true" />
-          Rescan repository
+          <!-- The bar holds no panel to state a running scan in, so the
+               command's own label says it while the command is out — the
+               same family as the Repository panel's `Retry scan` relabel
+               (`ScanProgress.vue`). -->
+          {{ rescanning ? 'Rescanning…' : 'Rescan repository' }}
         </button>
         <button
           v-if="commandsOffered"

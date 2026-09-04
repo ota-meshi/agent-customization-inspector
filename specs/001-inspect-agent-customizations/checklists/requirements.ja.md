@@ -122,9 +122,11 @@
 - 2026-07-20の検証iteration 19では、Global disableをpre-requestのfull client-data purge、epoch-boundな
   all-inspection-data fence、control-onlyなfailed-barrier recoveryとして定義し、directory-enumeration/hard-link race ruleを
   完成させ、restart fallbackを持つprocess-wide confirmed-close registryを定義した後、すべての項目に合格した。
-- 2026-07-20の検証iteration 20では、固定package所有integrity readとzero-I/O root selectionを分離し、preview construction
-  failureをpreview stateなしのgeneric pre-acceptance Operation Errorとし、明示rescanのmandatory stale overlayを復元し、
-  outcome manifest、digest、contract testをT1041へ割り当てた後、すべての項目に合格した。
+- 2026-07-20の検証iteration 20では、固定package所有integrity readとzero-I/O root selectionを分離し、complete前の
+  preview construction failureをprior previewを保持するgeneric pre-acceptance Operation Errorとする一方、
+  DTO/transport serializationはnew complete previewを保持し得るordinary request errorとした。さらに明示rescanの
+  mandatory stale overlayを復元し、outcome manifest、digest、contract testをT1041へ割り当てた後、すべての項目に
+  合格した。
 - 2026-07-20の検証iteration 21では、repository-root task pathを`./`で明示し、時間指定heartbeat、timeout、memory leaseの
   livenessを観測可能なlifecycle-triggered checkへ置き換えた。さらにFR-024/FR-028 publication taxonomyを定義し、
   confirmed-close済みcandidate-local returned outcomeだけがdiagnostic-only recordを保持でき、root、directory guard、

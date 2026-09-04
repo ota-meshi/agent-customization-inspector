@@ -17,6 +17,7 @@ import {
   escapeControlCharacters,
   isCustomizationKind,
   isSupportedTool,
+  accessibleApplicabilityRangePresentation,
   accessiblePresentationLabel,
   pathPresentationLabel,
   rendersNothingVisible,
@@ -286,6 +287,27 @@ describe('accessiblePresentationLabel', () => {
   it('is the spelled-out form alone where nothing draws, exactly as the visible label is', () => {
     expect(accessiblePresentationLabel(' ')).toBe('\\u0020');
     expect(accessiblePresentationLabel(' ')).toBe(pathPresentationLabel(' '));
+  });
+});
+
+describe('accessibleApplicabilityRangePresentation', () => {
+  it('is the drawn spelling for an ordinary range, backslashes included', () => {
+    expect(accessibleApplicabilityRangePresentation('src/**')).toBe('src/**');
+    expect(accessibleApplicabilityRangePresentation('src/\\*literal*')).toBe('src/\\*literal*');
+  });
+
+  it('starts with the drawn spelling and appends the spelled-out form for whitespace runs', () => {
+    // The detail bar draws the range beside its move, so the move's name
+    // must start with what is drawn (WCAG 2.5.3) while `**` and ` **` stay
+    // announced apart (WCAG 2.4.4, FR-025).
+    const spaced = accessibleApplicabilityRangePresentation(' **');
+    expect(spaced.startsWith(applicabilityRangePresentation(' **'))).toBe(true);
+    expect(spaced).toBe(` ** (${encodeRootPresentation(' **')})`);
+    expect(spaced).not.toBe(accessibleApplicabilityRangePresentation('**'));
+  });
+
+  it('is the spelled-out form alone where nothing draws', () => {
+    expect(accessibleApplicabilityRangePresentation(' ')).toBe(encodeRootPresentation(' '));
   });
 });
 

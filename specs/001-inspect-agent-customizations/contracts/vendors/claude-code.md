@@ -206,7 +206,7 @@ boundary, and every selector is relative to the one consented Claude boundary.
 
 | Rule ID | Global base | Selector program | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `claude.global.instructions` | Exact consented captured `CLAUDE_CONFIG_DIR`; only when absent, `node:path.join` of the request-wide imported `node:os.homedir()` capture and `.claude` | `['CLAUDE.md']` | `exact`; a Global selector is never based at the Repository root | `static-candidate` | `claude.behavior.user.instructions` | FR-013, FR-014, FR-016, FR-018, QR-005 | Accepted by FR-016; all adjacent User configuration and state remain excluded by FR-018 | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.directory.file-reference` |
+| `claude.global.instructions` | Exact consented captured `CLAUDE_CONFIG_DIR`; only when absent, `node:path.join` of the session-start imported `node:os.homedir()` capture and `.claude` | `['CLAUDE.md']` | `exact`; a Global selector is never based at the Repository root | `static-candidate` | `claude.behavior.user.instructions` | FR-013, FR-014, FR-016, FR-018, QR-005 | Accepted by FR-016; all adjacent User configuration and state remain excluded by FR-018 | `anthropic.claude-code.memory.locations-load`; `anthropic.claude-code.directory.file-reference` |
 | `claude.global.rules` | The same exact consented `CLAUDE_CONFIG_DIR` boundary | `['rules', /\.md$/u]` | `direct-child` of the boundary's `rules/` — the depth the user section's own example shows; nested-subdirectory discovery is unstated for the user layer, so no recursive step | `static-candidate` | `claude.behavior.user.rules` | FR-013, FR-014, FR-016, FR-018, QR-005 | Accepted by FR-016 | `anthropic.claude-code.memory.locations-load` |
 | `claude.global.skill` | The same exact consented `CLAUDE_CONFIG_DIR` boundary | `['skills', ANY_NAME, 'SKILL.md']` | `direct-child` then `exact`; the skill name is exactly one direct child. The reserved `skills/synced/<name>/SKILL.md` download tree sits one level deeper than this program reaches — a synced skill is a downloaded copy rather than an authored one, and Claude itself skips a skill authored at the reserved name | `static-candidate` | `claude.behavior.user.skills` | FR-013, FR-014, FR-016, FR-018, QR-005 | Accepted by FR-016 | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.env-vars` |
 | `claude.global.command` | The same exact consented `CLAUDE_CONFIG_DIR` boundary | `['commands', ANY_DIRECTORIES, /\.md$/u]` | `recursive-subtree` within the boundary's `commands/`; subdirectories form command namespaces | `static-candidate` | `claude.behavior.user.commands` | FR-013, FR-014, FR-016, FR-018, QR-005 | Accepted by FR-016 | `anthropic.claude-code.skills.locations-discovery`; `anthropic.claude-code.changelog.legacy-command-nesting` |
@@ -328,8 +328,8 @@ a file, and what a product would select, trust, or default to, no surface states
    relative `command`/`args` values; the Inspector publishes the authored literal and
    joins no base.
 6. The live memory page reviewed on 2026-07-15 states four import hops, while stale search
-   excerpts have shown five. Source records should retain `reviewedOn` and an assertion
-   fingerprint instead of trusting cached snippets.
+   excerpts have shown five. Source records should retain `reviewedOn` and their maintained
+   assertion instead of trusting cached snippets.
 7. A plugin manifest or marketplace catalog present in source is not evidence that Claude
    registered, installed, trusted, enabled, selected, or loaded it.
 8. The same settings locations and precedence are shared across CLI and IDE integrations,

@@ -77,6 +77,16 @@ const rejectionText = computed(() => {
 });
 
 /**
+ * Whether an accepted read is still running: the batch exists and has not
+ * failed. While it is, the panel's summary says the directories are being read
+ * and the rows below say what the last refresh returned — two statements
+ * about one moment, unless the rows are dated.
+ */
+const batchRunning = computed(
+  () => batchStatus.value !== null && batchStatus.value.phase !== 'failed',
+);
+
+/**
  * What consent currently amounts to, in one sentence.
  *
  * Derived from the controls and the batch rather than from the acceptance
@@ -86,8 +96,14 @@ const rejectionText = computed(() => {
  * controls are the current answer and survive a reload.
  */
 const consentSummary = computed(() => {
-  const running = batchStatus.value !== null && batchStatus.value.phase !== 'failed';
-  if (running) {
+  if (sessionViewState.globalEnableState.value === 'submitting' && !batchRunning.value) {
+    // The confirmation answers once the read finished (contracts/http-api.md
+    // § enable-global), so while it is out this page knows that a read is
+    // running and not yet which members were admitted: the count arrives
+    // with the answer, and the sentence below states it then.
+    return 'These directories are being read now. The files appear on the inventory when the read finishes.';
+  }
+  if (batchRunning.value) {
     const count = batchStatus.value!.tools.length;
     return `${count} of these directories ${
       count === 1 ? 'is' : 'are'
@@ -231,6 +247,17 @@ function runAndRefocus(action: () => Promise<void>): void {
   void nextTick(() => heading.value?.focus());
 }
 
+/**
+ * Takes a fresh preview unless a confirmation is out — the click guard behind
+ * the recapture control's `aria-disabled`, which keeps the control focusable
+ * while keeping the recapture out (`main.css` § button[aria-disabled]).
+ */
+function recapturePreview(): void {
+  if (sessionViewState.globalEnableState.value === 'idle') {
+    runAndRefocus(() => sessionViewState.captureConsentPreview());
+  }
+}
+
 // A refresh can unmount the very element that held keyboard focus — another
 // tab's commit replaces the live-operation branch with the Source controls, and
 // another tab's disable replaces the whole page — and focus then falls to the
@@ -269,10 +296,13 @@ watch(
          is the region's text; the visible sentence below is the state itself,
          and carries no region of its own so the two are not two announcements. -->
     <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ previewState === 'loading' ? 'Reading the proposed directories…' : '' }}
+      {{ previewState === 'loading' ? "Loading this page's status…" : '' }}
     </p>
 
-    <p v-if="previewState === 'loading'">Reading the proposed directories…</p>
+    <!-- Names what is loading, which is this page's own state: the proposal
+         is fetched, and no directory is read for it (`view-state.ts`
+         § consentPreviewState). -->
+    <p v-if="previewState === 'loading'">Loading this page's status…</p>
 
     <!-- The two states before a preview exist in a panel of their own, as the
          state of what was consented does below and as the Repository page's
@@ -309,7 +339,7 @@ watch(
         :consent-given="
           controls.length > 0 ||
           enableInProgress !== null ||
-          sessionViewState.globalEnableState.value === 'submitting'
+          sessionViewState.globalEnableState.value !== 'idle'
         "
       />
 
@@ -323,10 +353,15 @@ watch(
           I have read what would be inspected and I want the inspector to read these files
         </label>
       </p>
+      <!-- Inert through `aria-disabled` while the confirmation is out, as
+           every momentarily inert control here is (`main.css`
+           § button[aria-disabled]): the button keeps its place in the tab
+           order and the product's one inert look, and the duplicate press is
+           kept out by the command's own guard. -->
       <p v-if="confirmationOffered && confirmed">
         <button
           type="button"
-          :disabled="sessionViewState.globalEnableState.value === 'submitting'"
+          :aria-disabled="sessionViewState.globalEnableState.value !== 'idle' || undefined"
           @click="runAndRefocus(() => sessionViewState.confirmGlobalConsent())"
         >
           {{ controls.length === 0 ? 'Inspect these directories' : 'Try the failed members again' }}
@@ -339,17 +374,21 @@ watch(
       <p v-if="enableFailureText" class="aci-error">{{ enableFailureText }}</p>
 
       <!-- What consent currently is, taken from the snapshot rather than from
-           the acceptance response. The response describes one moment — the one
-           the batch was queued in — and stops being true as soon as it
-           commits, while the controls and the batch status are the current
-           state and survive a reload, which is what a reader coming back needs
-           to see. -->
+           the confirmation's answer: the controls and the batch status are the
+           current state and survive a reload, which is what a reader coming
+           back needs to see. While the confirmation is still out, the panel
+           says a read is running from this page's own in-flight state,
+           because the answer — and the snapshot's batch with it — arrives
+           only once the read finished. -->
       <!-- The state of what was consented, in a panel of its own — the same
            treatment the Repository page gives its scan status
            (`ScanProgress.vue`): both are a Source family's current state
            rather than the page's explanation of itself, and a reader coming
            back for it should find the same box on either surface. -->
-      <section v-if="controls.length > 0" class="aci-panel">
+      <section
+        v-if="controls.length > 0 || sessionViewState.globalEnableState.value === 'submitting'"
+        class="aci-panel"
+      >
         <h3>What is inspected</h3>
         <p aria-live="polite">{{ consentSummary }}</p>
         <!-- This surface commands its own reads, as the Repository's does: the
@@ -360,13 +399,27 @@ watch(
              no error and no retry, because the retry offer is derived from the
              snapshot too and cannot appear until the reader asks for the
              current state. -->
+        <!-- Who the refresh is for, in the Repository panel's exact form
+             (`ScanProgress.vue`): not the reader who confirmed, whose
+             confirmation answers with the read finished, but a reader holding
+             no command — a read that began before this page opened, or in
+             another tab — whose only way to the result is to ask
+             (contracts/http-api.md § get-session, § enable-global). -->
         <p class="aci-note">
-          Nothing on this page updates by itself. Use “Refresh status” to see the result of a read
-          that is still running.
+          Nothing on this page updates by itself. A read you start here reports its own result. Use
+          “Refresh status” for a read that started elsewhere — in another tab, or before this page
+          opened.
         </p>
         <p>
           <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
         </p>
+        <!-- Right after a confirmation the summary above says the directories
+             are being read while these rows still say what the last refresh
+             returned. The rows are dated rather than re-fetched — nothing
+             here updates by itself, which is what keeps WCAG 2.2.2 not
+             applicable — so for as long as a read this page has not yet taken
+             in is running, one sentence says whose moment the rows are. -->
+        <p v-if="batchRunning" class="aci-note">Statuses below are from the last refresh.</p>
         <ul class="aci-global-consent-page__outcomes">
           <li v-for="control in controls" :key="control.member">
             {{ GLOBAL_MEMBER_TEXT[control.member] }} — {{ GLOBAL_TOOL_STATE_TEXT[control.state] }}
@@ -413,7 +466,7 @@ watch(
            every state). -->
       <template
         v-if="
-          sessionViewState.globalEnableState.value === 'submitting' &&
+          sessionViewState.globalEnableState.value === 'answered' &&
           controls.length === 0 &&
           enableInProgress === null
         "
@@ -460,14 +513,16 @@ watch(
       </template>
 
       <p v-if="enableInProgress === null && controls.length === 0">
-        <!-- Disabled while a confirmation is in flight, like the confirm
-             control above: replacing the preview mid-enable would drop the
-             very preview the acceptance is binding, and the conflict the
-             request would take reads as a failure of an accepted operation. -->
+        <!-- Inert while a confirmation is out, like the confirm control
+             above and through the same `aria-disabled` convention: replacing
+             the preview mid-enable would drop the very preview the acceptance
+             is binding, and the conflict the request would take reads as a
+             failure of an accepted operation. The guard is
+             {@link recapturePreview}'s, because the capture itself has none. -->
         <button
           type="button"
-          :disabled="sessionViewState.globalEnableState.value === 'submitting'"
-          @click="runAndRefocus(() => sessionViewState.captureConsentPreview())"
+          :aria-disabled="sessionViewState.globalEnableState.value !== 'idle' || undefined"
+          @click="recapturePreview"
         >
           Work the directories out again
         </button>

@@ -7,9 +7,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import open from 'open';
+import { getEditor } from 'env-editor';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { delimiter, join, sep } from 'node:path';
+import { delimiter, dirname, join, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DetectedFileOpener } from '../../../src/server/host/file-opener';
 import type { FileOpenTarget } from '../../../src/shared/api-types';
@@ -52,10 +53,7 @@ vi.mock('which', async (importOriginal) => {
     if (held === undefined) {
       return realWhich(command, options as never);
     }
-    // The real `all: true` answers with every match as an array; the probe
-    // filters that list against its named directories, so the double keeps
-    // the same contract.
-    return (options as { all?: boolean }).all ? [held] : held;
+    return held;
   });
   return { default: whichMock };
 });
@@ -100,8 +98,15 @@ function machinePath(...segments: readonly string[]): string {
  *  file puts on PATH so the probe's named-directory membership accepts them. */
 const TERMINAL_EDITOR_DIR = machinePath('usr', 'bin');
 const TERMINAL_EDITOR = join(TERMINAL_EDITOR_DIR, 'vim');
+const SAFE_BIN = machinePath('usr', 'local', 'bin');
+const SAFE_CODE = join(SAFE_BIN, 'code');
 /** The Repository root the probe is told it inspects; every PATH entry inside it is dropped. */
 const REPOSITORY_ROOT = machinePath('repo');
+/** The directory the host was started in, from which a relative entry is taken. */
+const INVOCATION_CWD = machinePath('work');
+/** One personal-setup member root, inspected content exactly as the repository is. */
+const GLOBAL_ROOT = machinePath('home', '.claude');
+const INSPECTED_ROOTS = [REPOSITORY_ROOT, GLOBAL_ROOT] as const;
 const FILE = '/repo/.agents/AGENTS.md';
 
 /** An opener holding one resolved editor launcher, as a probe would leave it. */
@@ -177,7 +182,7 @@ describe('the applications a machine offers', () => {
     // run here; what it finds is the machine's, so only the invariant every
     // machine satisfies is asserted — the default handler is always offered,
     // and the editor appears exactly when a launcher was resolved.
-    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT);
+    const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     expect(opener.targets.slice(-2)).toEqual(['default-application', 'containing-folder']);
   });
 });
@@ -188,8 +193,8 @@ describe('the terminal editor a machine can host', () => {
   // which command the rule asks for rather than which editors the machine
   // running the suite happens to have.
   beforeEach(() => {
-    resolvedCommands.set('vi', join(TERMINAL_EDITOR_DIR, 'vi'));
-    resolvedCommands.set('vim', TERMINAL_EDITOR);
+    resolvedCommands.set(join(TERMINAL_EDITOR_DIR, 'vi'), join(TERMINAL_EDITOR_DIR, 'vi'));
+    resolvedCommands.set(TERMINAL_EDITOR, TERMINAL_EDITOR);
     // A resolution is only offered when its directory is one PATH names, so
     // the directory these answers sit in has to be on it. The machine's own
     // PATH cannot be relied on for that: a Windows runner names no `/usr/bin`.
@@ -201,7 +206,7 @@ describe('the terminal editor a machine can host', () => {
     // can this product give a terminal editor somewhere to run.
     setPlatform('linux');
     setConfiguredEditor('vim');
-    expect((await DetectedFileOpener.probe(REPOSITORY_ROOT)).targets).not.toContain(
+    expect((await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).targets).not.toContain(
       'terminal-editor',
     );
   });
@@ -212,13 +217,17 @@ describe('the terminal editor a machine can host', () => {
     // default and the one such a machine ships.
     setPlatform('darwin');
     setConfiguredEditor(undefined);
-    expect((await DetectedFileOpener.probe(REPOSITORY_ROOT)).targets).toContain('terminal-editor');
+    expect((await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).targets).toContain(
+      'terminal-editor',
+    );
   });
 
   it('offers the terminal editor the reader named', async () => {
     setPlatform('darwin');
     setConfiguredEditor('vim');
-    expect((await DetectedFileOpener.probe(REPOSITORY_ROOT)).targets).toContain('terminal-editor');
+    expect((await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).targets).toContain(
+      'terminal-editor',
+    );
   });
 
   it('offers the platform default when the named editor brings its own window', async () => {
@@ -228,7 +237,9 @@ describe('the terminal editor a machine can host', () => {
     // editor this product may have no entry of its own for — with neither.
     setPlatform('darwin');
     setConfiguredEditor('code');
-    expect((await DetectedFileOpener.probe(REPOSITORY_ROOT)).targets).toContain('terminal-editor');
+    expect((await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).targets).toContain(
+      'terminal-editor',
+    );
   });
 
   it('drops every PATH entry inside the selected Repository root from the probe PATH', async () => {
@@ -239,7 +250,7 @@ describe('the terminal editor a machine can host', () => {
     // the exclusion judges each entry's resolved directory against the root.
     setPlatform('darwin');
     setConfiguredEditor('code');
-    resolvedCommands.set('code', '/usr/local/bin/code');
+    resolvedCommands.set(SAFE_CODE, SAFE_CODE);
     const previous = process.env['PATH'];
     process.env['PATH'] = [
       join(REPOSITORY_ROOT, 'node_modules', '.bin'),
@@ -247,19 +258,17 @@ describe('the terminal editor a machine can host', () => {
       join(REPOSITORY_ROOT, 'node_modules', '.bin', '.'),
       join(REPOSITORY_ROOT, 'bin'),
       REPOSITORY_ROOT,
-      '/usr/local/bin',
+      SAFE_BIN,
     ].join(delimiter);
     try {
-      await DetectedFileOpener.probe(REPOSITORY_ROOT);
+      await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     } finally {
       process.env['PATH'] = previous;
     }
-    const searchedPaths = whichMock.mock.calls
-      .map(([, options]) => (options as { path?: string }).path)
-      .filter((value): value is string => value !== undefined);
-    expect(searchedPaths.length).toBeGreaterThan(0);
-    for (const searched of searchedPaths) {
-      expect(searched).not.toContain(REPOSITORY_ROOT);
+    const probedCandidates = whichMock.mock.calls.map(([command]) => command);
+    expect(probedCandidates).toContain(SAFE_CODE);
+    for (const candidate of probedCandidates) {
+      expect(candidate).not.toContain(REPOSITORY_ROOT);
     }
   });
 
@@ -270,29 +279,128 @@ describe('the terminal editor a machine can host', () => {
     // under `/opt/tools` — or a directory merely named like one — stays.
     setPlatform('darwin');
     setConfiguredEditor('code');
-    resolvedCommands.set('code', '/opt/tools/node_modules/.bin/code');
+    const first = machinePath('opt', 'tools', 'node_modules', '.bin');
+    const second = machinePath('opt', 'notnode_modules', '.bin');
+    const secondCode = join(second, 'code');
+    resolvedCommands.set(secondCode, secondCode);
     const previous = process.env['PATH'];
-    process.env['PATH'] = [
-      '/opt/tools/node_modules/.bin',
-      '/opt/notnode_modules/.bin',
-      '/usr/local/bin',
-    ].join(delimiter);
+    process.env['PATH'] = [first, second, SAFE_BIN].join(delimiter);
     try {
-      await DetectedFileOpener.probe(REPOSITORY_ROOT);
+      await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     } finally {
       process.env['PATH'] = previous;
     }
-    // The catalog probes search their own fixed directories; the PATH-backed
-    // lookups are the ones that must still carry the reader's entries.
-    const searchedPaths = whichMock.mock.calls
-      .map(([, options]) => (options as { path?: string }).path)
-      .filter((value): value is string => value !== undefined);
-    expect(
-      searchedPaths.some((searched) => searched.includes('/opt/tools/node_modules/.bin')),
-    ).toBe(true);
-    expect(searchedPaths.some((searched) => searched.includes('/opt/notnode_modules/.bin'))).toBe(
-      true,
+    const probedCandidates = whichMock.mock.calls.map(([command]) => command);
+    expect(probedCandidates).toContain(join(first, 'code'));
+    expect(probedCandidates).toContain(secondCode);
+  });
+
+  it('drops every PATH entry inside a personal-setup member root as well', async () => {
+    // A consented home is inspected content exactly as the repository is, so
+    // an executable below it is refused by the same rule (FR-020, FR-022).
+    setPlatform('darwin');
+    setConfiguredEditor('code');
+    resolvedCommands.set(SAFE_CODE, SAFE_CODE);
+    const previous = process.env['PATH'];
+    process.env['PATH'] = [join(GLOBAL_ROOT, 'local', 'bin'), GLOBAL_ROOT, SAFE_BIN].join(
+      delimiter,
     );
+    try {
+      await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
+    } finally {
+      process.env['PATH'] = previous;
+    }
+    const probedCandidates = whichMock.mock.calls.map(([command]) => command);
+    expect(probedCandidates).toContain(SAFE_CODE);
+    for (const candidate of probedCandidates) {
+      expect(candidate).not.toContain(GLOBAL_ROOT);
+    }
+  });
+
+  it('searches a relative PATH entry from the directory the host was started in', async () => {
+    // What a shell started there would resolve `tools/bin` to, so the reader's
+    // own entry is searched rather than dropped for being relative.
+    setPlatform('darwin');
+    setConfiguredEditor('code');
+    const toolsBin = join(INVOCATION_CWD, 'tools', 'bin');
+    resolvedCommands.set(join(toolsBin, 'code'), join(toolsBin, 'code'));
+    const previous = process.env['PATH'];
+    process.env['PATH'] = join('tools', 'bin');
+    let opener: DetectedFileOpener;
+    try {
+      opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
+    } finally {
+      process.env['PATH'] = previous;
+    }
+    const probedCandidates = whichMock.mock.calls.map(([command]) => command);
+    expect(probedCandidates).toContain(join(toolsBin, 'code'));
+    expect(opener.targets).toContain('visual-studio-code');
+  });
+
+  it('searches an empty PATH entry as the invocation directory when it is outside the roots', async () => {
+    setPlatform('darwin');
+    setConfiguredEditor('code');
+    const invocationCode = join(INVOCATION_CWD, 'code');
+    resolvedCommands.set(invocationCode, invocationCode);
+    process.env['PATH'] = '';
+
+    const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
+
+    expect(whichMock.mock.calls.map(([command]) => command)).toContain(invocationCode);
+    expect(opener.targets).toContain('visual-studio-code');
+  });
+
+  it('does not probe an empty PATH entry when the invocation directory is inspected', async () => {
+    setPlatform('darwin');
+    setConfiguredEditor('code');
+    const inspectedCode = join(REPOSITORY_ROOT, 'code');
+    resolvedCommands.set(inspectedCode, inspectedCode);
+    process.env['PATH'] = '';
+
+    await DetectedFileOpener.probe(REPOSITORY_ROOT, INSPECTED_ROOTS);
+
+    expect(whichMock).not.toHaveBeenCalledWith(inspectedCode, expect.anything());
+  });
+
+  it('compares an inspected root without regard to case on macOS', async () => {
+    // The default macOS volume reads `/REPO/bin/vim` and `/repo/bin/vim` as one
+    // file, so a spelling that differs from the root's only in case is still
+    // inside it; the comparison folds case rather than asking the volume.
+    setPlatform('darwin');
+    const inside = join(REPOSITORY_ROOT.toUpperCase(), 'bin', 'vim');
+    setConfiguredEditor(inside);
+    resolvedCommands.set(inside, inside);
+    expect((await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).targets).not.toContain(
+      'terminal-editor',
+    );
+  });
+
+  it('refuses a configured editor that resolves inside an inspected root', async () => {
+    // `EDITOR=/repo/bin/vim` names inspected content: the terminal editor is
+    // not offered rather than started from there (FR-020, FR-022).
+    setPlatform('darwin');
+    const inside = join(REPOSITORY_ROOT, 'bin', 'vim');
+    setConfiguredEditor(inside);
+    resolvedCommands.set(inside, inside);
+    expect((await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).targets).not.toContain(
+      'terminal-editor',
+    );
+    expect(whichMock).not.toHaveBeenCalledWith(inside, expect.anything());
+  });
+
+  it('does not probe a catalog launcher inside an inspected root', async () => {
+    setPlatform('linux');
+    setConfiguredEditor(undefined);
+    process.env['PATH'] = SAFE_BIN;
+    const vscode = getEditor('vscode');
+    const catalogPath = vscode.paths[0];
+    expect(catalogPath).toBeDefined();
+    const catalogCandidate = join(dirname(catalogPath!), vscode.binary);
+    resolvedCommands.set(catalogCandidate, catalogCandidate);
+
+    await DetectedFileOpener.probe(INVOCATION_CWD, [...INSPECTED_ROOTS, dirname(catalogCandidate)]);
+
+    expect(whichMock).not.toHaveBeenCalledWith(catalogCandidate, expect.anything());
   });
 
   it('accepts a resolution inside a quoted PATH entry', async () => {
@@ -303,11 +411,11 @@ describe('the terminal editor a machine can host', () => {
     setPlatform('darwin');
     setConfiguredEditor('vim');
     const quotedDir = machinePath('Quoted Dir');
-    resolvedCommands.set('vim', join(quotedDir, 'vim'));
+    resolvedCommands.set(join(quotedDir, 'vim'), join(quotedDir, 'vim'));
     const previous = process.env['PATH'];
     process.env['PATH'] = `"${quotedDir}"`;
     try {
-      const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT);
+      const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
       expect(opener.targets).toContain('terminal-editor');
       execFileAsyncMock.mockResolvedValueOnce(undefined);
       await opener.openFile(FILE, 'terminal-editor');
@@ -330,7 +438,7 @@ describe('the terminal editor a machine can host', () => {
     setPlatform('darwin');
     setConfiguredEditor('/custom/bin/vi');
     resolvedCommands.set('/custom/bin/vi', '/custom/bin/vi');
-    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT);
+    const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     expect(opener.targets).toContain('terminal-editor');
     execFileAsyncMock.mockResolvedValueOnce(undefined);
     await opener.openFile(FILE, 'terminal-editor');
@@ -352,7 +460,7 @@ describe('the terminal editor a machine can host', () => {
     const spacedPath = '/Applications/Vim App/Contents/MacOS/vim';
     setConfiguredEditor(spacedPath);
     resolvedCommands.set(spacedPath, spacedPath);
-    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT);
+    const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     expect(opener.targets).toContain('terminal-editor');
     execFileAsyncMock.mockResolvedValueOnce(undefined);
     await opener.openFile(FILE, 'terminal-editor');
@@ -364,17 +472,35 @@ describe('the terminal editor a machine can host', () => {
     ]);
   });
 
-  it('refuses a relative separator-carrying editor value instead of resolving it', async () => {
-    // `which` checks a separator-carrying value against the working
-    // directory — the inspected repository — so `EDITOR=bin/vim` would offer
-    // an executable the repository ships. Only an absolute spelling is
-    // checked directly; the relative one falls back to the catalog's own
-    // command (FR-022, the same boundary the named-directory membership
-    // draws for PATH lookups).
+  it('resolves a relative separator-carrying editor from the invocation directory', async () => {
+    // A shell started in the invocation directory takes `bin/vim` from there,
+    // so the probe does too when that directory is outside every inspected
+    // root.
     setPlatform('darwin');
     setConfiguredEditor('bin/vim');
-    resolvedCommands.set('bin/vim', '/inspected-repo/bin/vim');
-    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT);
+    const relativeEditor = join(INVOCATION_CWD, 'bin', 'vim');
+    resolvedCommands.set(relativeEditor, relativeEditor);
+    const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
+    expect(opener.targets).toContain('terminal-editor');
+    execFileAsyncMock.mockResolvedValueOnce(undefined);
+    await opener.openFile(FILE, 'terminal-editor');
+    expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+      '-e',
+      expect.stringContaining('quoted form of'),
+      relativeEditor,
+      FILE,
+    ]);
+  });
+
+  it('falls back rather than resolving a relative editor inside an inspected root', async () => {
+    // The same spelling becomes inspected content when the host starts in the
+    // selected Repository root. It is refused, and only the catalog command
+    // outside that root may be offered (FR-020, FR-022).
+    setPlatform('darwin');
+    setConfiguredEditor('bin/vim');
+    const inspectedEditor = join(REPOSITORY_ROOT, 'bin', 'vim');
+    resolvedCommands.set(inspectedEditor, inspectedEditor);
+    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT, INSPECTED_ROOTS);
     expect(opener.targets).toContain('terminal-editor');
     execFileAsyncMock.mockResolvedValueOnce(undefined);
     await opener.openFile(FILE, 'terminal-editor');
@@ -391,7 +517,7 @@ describe('the terminal editor a machine can host', () => {
     // own command for the named editor is what runs, flags unhonoured.
     setPlatform('darwin');
     setConfiguredEditor('vim -u NONE');
-    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT);
+    const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     expect(opener.targets).toContain('terminal-editor');
     execFileAsyncMock.mockResolvedValueOnce(undefined);
     await opener.openFile(FILE, 'terminal-editor');
@@ -403,25 +529,22 @@ describe('the terminal editor a machine can host', () => {
     ]);
   });
 
-  it('skips a candidate outside the named directories and keeps searching', async () => {
-    // `which` on Windows injects the working directory — the inspected
-    // repository — ahead of whatever path it was given, so its first match
-    // can be a committed `vi` no named directory holds. Refusing that
-    // candidate must not end the search: the legitimate installation right
-    // behind it on the named path is the one to offer (FR-022).
+  it('never lets a Windows lookup inject the inspected working directory', async () => {
+    // Every lookup receives an absolute path in a named safe directory, so
+    // `which` never gets the bare command that would make its Windows branch
+    // prepend the inspected process working directory (FR-022).
     setPlatform('darwin');
     setConfiguredEditor(undefined);
-    resolvedCommands.clear();
-    const injected = machinePath('inspected-repo', 'vi');
+    const injected = join(REPOSITORY_ROOT, 'vi');
     const named = join(TERMINAL_EDITOR_DIR, 'vi');
-    whichMock.mockImplementation(async (command, options) =>
-      command === 'vi' && (options as { all?: boolean }).all ? [injected, named] : null,
-    );
-    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT);
+    resolvedCommands.set(injected, injected);
+    resolvedCommands.set(named, named);
+    const opener = await DetectedFileOpener.probe(REPOSITORY_ROOT, INSPECTED_ROOTS);
     expect(opener.targets).toContain('terminal-editor');
     execFileAsyncMock.mockResolvedValueOnce(undefined);
     await opener.openFile(FILE, 'terminal-editor');
-    // The launcher is the allowed second match, never the injected first.
+    expect(whichMock).not.toHaveBeenCalledWith('vi', expect.anything());
+    expect(whichMock).not.toHaveBeenCalledWith(injected, expect.anything());
     expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
       '-e',
       expect.stringContaining('quoted form of'),

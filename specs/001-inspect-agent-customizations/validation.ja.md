@@ -15,12 +15,13 @@
 **commandが判定すること。** registryの52 recordそれぞれについて、記録URLを完全に取得し、record自身の
 `officialHost`からredirectなしの直接`200`を要求し、引用された193 sectionを配信bytesに対して解決する。
 配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそれを担うheadingが配信されていないときは、
-その本文を持つ目次linkがすべて指す1つのfragmentとして。それ以外は観測どおり`missing`、`ambiguous-heading`、
+その本文を持つ目次linkがすべて指す、配信されている1つのfragmentとして。それ以外は観測どおり`missing`、`ambiguous-heading`、
 `ambiguous-anchor`として報告する。requestがthrowした場合は「完了しなかったrequest」として報告する。
 
 **commandが判定しないこと。** 見出しが消えたことの意味と、引用sectionが今も保守対象のparaphraseを
 確立しているか。どちらも参照ではなく読解であり、reviewerに残る。分担は
-[AGENTS.ja.md](../../AGENTS.ja.md)の「公式出典の検証方針」に記述している。
+[AGENTS.ja.md](../../AGENTS.ja.md)の「公式出典の検証方針」に記述している。Registryはpage textのdigestを
+持たない。見出しが残ったまま本文が書き換えられたsectionは、参照ではなくその読解で見つける。
 
 **変更。** commandは何も変更しない。報告するだけで、その後をreviewerが決める。
 
@@ -86,7 +87,18 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 
 ## Release gateの実行
 
-以下のgateはすべて2026-09-03に、`pnpm run build`後のこの変更時点のtreeに対して実行した。件数は各runが報告した値である。
+**2026-09-04の回帰review。** Official-source checkerの修正とその回帰caseは
+`pnpm run test:contract`で通過し、12 file・405 test passedだった。現在の
+`pnpm run test:integration`は、11 file全体で10 file passed・1 file failed、269 test
+passed・1 test failedを報告する。失敗は
+`tests/integration/cli-global-batch-failure.test.ts`のCLI伝播case 1件だけである。受理済みの
+Global batchがrejectした後、元のerrorを伝播せずcommandがresolveし、hostを起動してlaunch URLを
+出力する。対になるRPC caseは通過し、queued acceptanceを返しながら同じfailureをbatch statusへ
+保持する。型検査と対象限定のformat・lint・diff checkは通過した。T046が所有するプロダクション修正を
+反映し、release gate全体を再実行するまでrelease approvalは保留である。
+
+以下のgateはすべて2026-09-03に、`pnpm run build`後の当時review対象だったtreeに対して実行した。
+件数は各runが報告した値であり、下表は過去のrun記録であって、上記の現在のtreeに対するapprovalではない。
 
 | Gate | Command | 結果 |
 |---|---|---|
@@ -126,34 +138,43 @@ revisionにわたるものであり、ここでは再現していない。上表
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
-timingのthresholdをassertしない。2026-09-04のpass（arm64、Node 24.14.0）は、rescan dispatchからrequest相関のstatusまで111 ms、request committedのoperable inventoryまで622 ms、filter feedbackまで19 ms、selection feedbackまで56 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
+timingのthresholdをassertしない。2026-09-04のpass（arm64、Node 24.14.0、profile `sc002-smoke-reference-v2` — profileのbenchmark fieldが変わり、profile自身の規則がfield変更を新しい非互換IDとするため新設した）は、rescan dispatchからrequest相関のstatusまで118 ms、request committedのoperable inventoryまで607 ms、filter feedbackまで23 ms、selection feedbackまで45 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
 
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`88e0ab53bd16dff5be25cf30d65a000280308d34e79537aea17cca478d483c9f`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
-caseは、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。11件のvitest
-suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser
-specは上記のChromium project経由である。`tests/contract/outcome-fixture-manifest.test.ts`は同じsessionでcanonical
-digestと66件のfixture digestすべてを再現した。
+`ced49fd384730548c6077aa9248175e0320845d9b48de72b72cb4a40b2717bb7`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+caseは、2026-09-04に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
+suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser specはChromium
+project経由 — Chromium suite全体565件で、1回のrunで562件が通り、`global-codex-admission`の3件は
+confirmationのhelperが、読み取りが終わってから届くようになった応答を待つように直してから通った。
+それがこのsetの記録する変更そのものである。`tests/contract/outcome-fixture-manifest.test.ts`は
+同じsessionでcanonical digestと66件のfixture digestすべてを再現した。
 
-このsetは、interface rework前に記録したsetとは比較できない。fixture byteが変わっており、spec.md
-§ Release-Evidence Fixture Governanceはそれを新しい測定setとする。manifest versionは3のままである。
-同governanceがincrementを要求するのはcase・required class・expected outcomeの変更であり、今回は
-そのいずれでもない — 同じ4 criteriaにわたる同じ99件のcase IDで、required classごとの件数はすべて
-非ゼロのままである。この実行のbrowser側は、このhostのChromium projectであった。3つのpinned
-revisionはCIのものであり、上のbrowser gateがそれを記録している。
+このsetは、interface rework後に記録したsetとは比較できない。4つのinline fixture suiteが変わった —
+`tests/contract/http-api-session.test.ts`は、rescan caseがscan commandの応答を、そのscanが終端
+状態に達してから得るようになったことを観測し（contracts/http-api.md § rescan-repository）、
+railの状態語を読む3つのskills specも変わった — ので、spec.md § Release-Evidence Fixture
+Governanceはそれを新しい測定setとする。manifest versionは3のままである。同governanceが
+incrementを要求するのはcase・required class・expected outcomeの変更であり、今回はそのいずれでも
+ない — 同じ4 criteriaにわたる同じ99件のcase IDで、required classごとの件数はすべて非ゼロのまま
+である。この実行のbrowser側は、このhostのChromium projectであった。3つのpinned revisionはCIの
+ものであり、上のbrowser gateがそれを記録している。そこに記録したmacOS WebKitのlink-Tabの制約は、
+このsetでは再計測していない。
 
-| Criterion | Case | Passed | macOS WebKitを除きpassed | Failed |
-|---|---:|---:|---:|---:|
-| SC-003 | 43 | 38 | 5 | 0 |
-| SC-004 | 13 | 13 | 0 | 0 |
-| SC-005 | 34 | 33 | 1 | 0 |
-| SC-007 | 9 | 9 | 0 | 0 |
+| Criterion | Case | Passed | Failed |
+|---|---:|---:|---:|
+| SC-003 | 43 | 43 | 0 |
+| SC-004 | 13 | 13 | 0 |
+| SC-005 | 34 | 34 | 0 |
+| SC-007 | 9 | 9 | 0 |
 
-中央列の6 caseは、検証specに上記のmacOS WebKit
-link-Tab testを含むものである。`sc003.shared-file.repository-agents-md`、`sc003.shared-file.repository-root-claude-md`、`sc003.shared-file.repository-agents-skill`、`sc003.shared-file.repository-claude-skill`、`sc003.shared-file.repository-root-mcp-json`、`sc005.row.codex.skill`。これらのspecの他のassertionはすべて3
-projectで通過した。
+これらのcaseのうち6件は、検証specに上記のmacOS WebKit link-Tab testを含む。
+`sc003.shared-file.repository-agents-md`、`sc003.shared-file.repository-root-claude-md`、
+`sc003.shared-file.repository-agents-skill`、`sc003.shared-file.repository-claude-skill`、
+`sc003.shared-file.repository-root-mcp-json`、`sc005.row.codex.skill`である。Chromium projectでは
+それらのspecの全assertionが通過した。localのmacOS WebKit projectについて先の実行が記録したことは、
+その実行のものとして立つ。
 
 **Denominator。** SC-003はRepository boundaryにおける28個の`(tool, kind)`
 row — 出荷済みregistryが生成する正確な集合であり、再記述ではなくcontract
@@ -229,6 +250,293 @@ jobは3つのoperating systemと2つの固定Node.js versionを要するが、�
 host 1台である。Certificationの結果はmatrix上のCI runが生むものであり、記録されているものはない。
 
 ## SC-001とSC-006のfirst-use session
+
+**2026-09-04に、最初のrunの所見が導いた作り直しを載せたbuildに対して実施した、各sessionが自分で
+Inspectorを起動する20件のagent駆動session。** buildはcommit `e683269`にその日の未commit変更 — railの
+状態語だけのRepository項目、personal-setup pageの`Statuses below are from the last refresh.`、
+detail barの`Previous`と`Next`、agent comparisonのnoteを含む — を加えたworking treeの`pnpm pack`で、
+tarballのSHA-256は`66bcbab02419a8fb0a4c67d9a4067e429876f3855f2c1277a2eefe36b867e280`で、これを
+`npm install`で1つのsession folderに入れた。各sessionの`repository/`は
+`tests/fixtures/repositories/build-fixtures.ts`がその場所に構築したので、`.claude/skills/cycle`
+linkはfixtureの設計どおりそのsession自身のrootを指す。各sessionの4つのhomeは自分だけの`HOME`の下に
+あり、`tests/fixtures/global-homes/build-fixtures.ts`が構築した。それ以外はすべて最初のrunと同じである
+— guide、4つのprompt、3つの質問、equipmentの2条件、各session自身のheadless browserと時計、そして
+同時に5件。
+
+**何を強制し、何を強制しなかったか。** 最初のrunと同じく、このproductのsource、test、specification、
+fixture、documentを読むことは指示で禁じ、機構では阻止していない。各session自身のruntimeは、始める
+前からrepositoryの`AGENTS.md`とassistantのmemory noteを周囲の指示として持っていた。今回は20件すべてが
+求められずにこれを開示し、pageだけで操作したと述べた。保証は弱い側のものであり、主張を弱める形で
+そのまま記録する。それはまた、下の最初のrunの記録が述べるとおり、SC-001がsessionに与えることを
+許す範囲の外でもあり、結果の行がそう述べる。
+
+**equipmentの1つの条件が、他のどれよりも記録に効いている。** session自身のruntimeが載っている
+service — productではない — が6分半から7分のあいだ要求を拒み、そのとき走っていた5件、06から10を
+turnの途中で切った。各sessionは止まった場所から再開し、hostもbrowserも走ったままで再利用した。
+session 06と07はtaskの間で切れたので、計時区間はどれも空白をまたがない。06は再開後にprepared
+stateを作り直してT2を取り直し、07の空白はTask 2とTask 3の間に落ち、T2はその後に記録した。
+session 08、09、10はdiscoveryの区間の内側 — 起動の後、fileが開く前 — で切れたので、そのT1のstampは
+空白を含む（それぞれ409秒、403秒、404秒）。中断された試行は不成功であり、どのsessionも除外も
+差し替えもしないというkitの規則により、3件とも不成功として数える。空白を除いた区間のsession自身の
+見積もりは参考として残し、採点には使わない。session 08は約136秒で、それだけで上限超過（うち30秒は
+自身のselectorのtimeout）、session 09は約58秒、session 10は約60秒である。
+
+**equipmentのさらに2つの条件が数字に効いている。** sessionのT1は自分の確認がfileの本文を画面に
+認めた時点なので、確認がpageに遅れた分だけ遅い側に誤る。session 04の最初のprobeは誤ったselectorで
+viewが開いた後30秒timeoutし、session 05の確認はclickの約15秒後に走り、session 07はclickの0.8秒後の
+timestampなしのdumpに本文を見つけながらT1は後で押し、session 10は最初の真の目撃の前に偽陽性を1つ
+捨て、session 19のstampは自身のbrowser driverの再起動に費やした約40秒を含む。inspection区間は
+2件が逆側に誤る。session 12はprepared stateを確認する際に既に読んでいたpageから3つの答えをscriptで
+抽出し、T3はT2の19 ms後に落ちた。session 19はT2を記録する前に、自身の確認を直すためprepared
+pageのaccessibility treeをdumpしており、その19秒は冷えた状態の読みより短いと自ら述べる。いずれも
+遅いstampと同じく、そのまま記録する。
+
+**これはagent駆動のrunであり、そのように記録する。** 20件のagentが測るのは、productが自ら印字し
+描画するguidanceだけで起動し、fileに到達し、productがそのfileについて述べていることを言えるかである。
+同じinterfaceを人がどう体験するかはこの記録に無い。SC-001とSC-006は自身の文面でそう述べており、
+ここのどの文もhuman-subjectの結果として読んではならない。
+
+| Workflow | 測るもの | 閾値 | 結果 |
+|---|---|---|---|
+| Discovery | SC-001: 起動commandから、発見した1 fileのdetail viewを2分以内に開く | 20件中19件 | **このrunでは確立しない: 20件中17件。** 中断されなかった17件はすべて上限内にfileへ到達し、27.7秒〜97.2秒、その中央値42.7秒。不成功の3件は、障害が区間の内側で切ったsessionである — そして最初のrunと同じく、全sessionのruntimeがこのrepository自身の指示を持っており、SC-001はそれを許さない |
+| Inspection | SC-006: 指定`AGENTS.md`の3 fieldを2分以内に回答 | 20件中18件 | **20件中20件が一致、同じno-hint条件により確立しない**。0.02秒〜39.0秒、中央値21.8秒 |
+| Comparison | SC-006のcoverage: 標準comparison task | 20件すべてが試行 | **20件中20件**完了 |
+| Global consent | SC-006のcoverage: 標準personal-setup consent task | 20件すべてが試行 | **20件中20件**完了 |
+| Safety | SC-006のzero-critical gate | critical issueなし | **報告なし** |
+
+全sessionの3 fieldが`ground-truth.json`と部分点なしで一致した — source `Repository`、認識するtool
+`GitHub Copilot`**と**`OpenAI Codex`、file type `Instructions`。Claude Codeを挙げたsessionは無い。
+discoveryでは全sessionが、pageが既定で示すkindの先頭行`.claude/CLAUDE.md`を開いた。
+
+全sessionが、ground truthの名指す組 — `.agents/skills/`の`changelog` skillと`.github/skills/`の
+その複製 — に行自身のCompare linkから到達した。多くは、2 fileを持つ他の名前`alpha`と`voyage`と
+違って1つのskill名が2つのskill pathにあることを理由に選んだ。全件がdescriptionのdriftを述べ、
+多くはinstructionのdriftと、pageが本文の傍らに述べる認識の差も述べた。
+
+全sessionがconsent pageに到達し、pageが示すとおりに4つのdirectoryを — 3つのfixture homeを
+`From this tool's environment variable`、共有agent homeを`Default location in your home directory`
+として — 挙げ、そのうえで読み取りを確認した。各sessionは、promptの「get the tool to show you those」が
+一覧の先まで及ぶと判断した。hostは各session自身のものなので、他のsessionのconsent状態に出会った
+sessionは無い。全sessionが自分のhostをSIGTERMで止め、自分のbrowserを閉じ、他のsessionが起動した
+processに触れていない。session 18はprocess一覧で隣のsessionのheadless browserに出会い、そのままにした。
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety |
+|---|---|---|---|---|---|
+| 01 | 40.0秒 | 25.8秒 | 完了 | 完了 | なし |
+| 02 | 42.7秒 | 11.1秒 | 完了 | 完了 | なし |
+| 03 | 41.7秒 | 25.7秒 | 完了 | 完了 | なし |
+| 04 | 74.3秒 | 14.8秒 | 完了 | 完了 | なし |
+| 05 | 65.0秒 | 26.3秒 | 完了 | 完了 | なし |
+| 06 | 35.2秒 | 18.2秒 | 完了 | 完了 | なし |
+| 07 | 97.2秒 | 33.9秒 | 完了 | 完了 | なし |
+| 08 | 545.3秒、中断、不成功 | 17.2秒 | 完了 | 完了 | なし |
+| 09 | 460.3秒、中断、不成功 | 25.6秒 | 完了 | 完了 | なし |
+| 10 | 463.7秒、中断、不成功 | 24.6秒 | 完了 | 完了 | なし |
+| 11 | 36.1秒 | 11.5秒 | 完了 | 完了 | なし |
+| 12 | 48.4秒 | 0.02秒 | 完了 | 完了 | なし |
+| 13 | 33.4秒 | 17.7秒 | 完了 | 完了 | なし |
+| 14 | 41.5秒 | 36.7秒 | 完了 | 完了 | なし |
+| 15 | 45.1秒 | 29.0秒 | 完了 | 完了 | なし |
+| 16 | 42.2秒 | 39.0秒 | 完了 | 完了 | なし |
+| 17 | 70.9秒 | 28.5秒 | 完了 | 完了 | なし |
+| 18 | 27.7秒 | 13.2秒 | 完了 | 完了 | なし |
+| 19 | 86.1秒 | 19.1秒 | 完了 | 完了 | なし |
+| 20 | 44.7秒 | 16.4秒 | 完了 | 完了 | なし |
+
+除外も差し替えも無いので、固定の分母と記録した件数は同じ20である。
+
+**sessionがsafetyについて報告したこと。** 禁止された作用は無い — localhostの外への要求なし、
+customization由来の実行なし、repositoryの複製にもfixture homeにもmutationなし、`--no-open`下で
+productがbrowserを開くこともない。全sessionが、consent pageは確認までは何も読まないと報告した。
+run後のmoderator自身の確認も一致する。どのsessionの`repository/`と`homes/`の下にも、buildより
+新しい更新時刻を持つfileは無い。例外はnpmが各sessionの`HOME`の下に書いた`.npm`のcacheとlogだけで
+ある。そのcacheはnpmのものであり、全sessionの捕捉した出力が終了時に得たnotice —
+`New minor version of npm available` — も同じくnpmのもので、guideの`npx`の下でnpm自身が行う更新
+確認であって、productが出す要求ではない。sessionはこれをnpmに帰属させ、productのpageが自身の
+loopback origin以外のhostへ要求するのを観測したsessionは無い。
+
+**sessionがproductについて挙げたこと。** 15 session（01〜04、06、08〜14、16〜18）がrailの
+`Repository: Partial`に言及した。6件は一見して失敗したscanと読み、8件（03、06、11、13、14、16、17、
+18）はrailの`Source diagnostics 0`と並べて矛盾と読んだ — 14 fileがそれぞれのdiagnosticを持つと
+述べるRepository pageを開くまでは。ほぼ全sessionが、consent後は何も自動で更新されず`Refresh status`を
+押す必要があったと述べた。session 03はそう述べる文を読むまで1分待ち、session 16は受理した読み取りの
+後もinventoryの`Personal setup — Not inspected`と件数が同じ押下まで変わらないのを見た。session 15は
+確認の直後、行がまだ`Accepted, not yet read`のままで、受理した読み取りが走っているとpageが述べるのを
+見た — 作り直しが作った配置である。session 05は、personal-setup pageの読み込み中のplaceholder
+`Reading the proposed directories…`が、pageがこのsessionの提案を取得してdirectoryを何も読まない間に
+出るのを見つけ、session 12はconsent pageの`What stays excluded`が、製品ごとの内訳を期待したところ、
+1つの文の下に製品名だけを並べたものであるのを見つけた。session 02は、最初に開いたdetailがeditorの
+本文の前に`Loading this instruction file…`を約8.6秒示すのを見た（1つのmachineで5 sessionが
+editorを読み込んでいる状況）。2つ目のdetailは1秒未満で、session 18はclickの304 ms後に本文を見た。
+session 05は読み込み中の文を抽出したtextに2回見た — 見える文とそのlive regionである。2 sessionが
+editor自身の限界を見た。session 04はaccessibility treeがeditorを本文の無いread-onlyのtext boxとして
+公開すること、session 12はspaceをU+00A0として描画すること — どちらもMonacoのもので、記録し、回避
+しない。2件（08、13）は1つのfileがClaude Codeでは`lander`、GitHub Copilotでは`voyage`と、productの
+解決どおり2つの名前で並ぶのを見た。session 10は、何かを読む前にconsent pageが踏む2段階を数え、
+guideの1 pageはそれに触れない。session 15は、共有agent homeがどの変数も名指さないのに`HOME`から
+提案されることを挙げた。session 07は`Work out the directories`が自分のloggerに見えるHTTP要求を
+出さないことを挙げた — pageはhostとsession channelで話すからである。session 08はtab titleが初回
+読み込みの一瞬`Connecting`と読めたことを挙げ、2件（07、14）はdetailの`Open in VS Code`と
+`Choose how to open this file`のcontrolを名指し、押さなかった。最初のrunと同じく、2件（11、20）は
+hostが`localhost`を印字しながら`[::1]`だけでlistenすることに気づき（browserは解決できた）、
+session 20はdocument titleのfile名を囲むbidi-isolate文字を、2件（07、20）は抽出したtextで行の
+diagnostic badgeとpathが区切りなしに連結されるのを挙げた。session 08は、行を開くと本文が
+1 tab先にある`This file declares none.`の`Instructions` tabに着くと報告した。そのsnapshotはdetailが
+まだ読み込み中のときに取られたもので、session 12、14、18はそのtabで本文を読んだ。これらの観察の
+うち3つが、この記録と同じ変更でproductを変えた。railのRepository項目は、状態を意味を自ら担う語 —
+`Inspected`、`Not inspected`、partialな読み取りでは`Inspected`とその下の行の
+`some files kept a diagnostic` — で述べる。personal-setup項目が既に使っている語彙であり、
+意味を言わない語は読み手を意味探しに向かわせるからである。
+Repository pageは説明の隣に自身の語を保つ。scanをadmitする3つのcommand — consent pageの`Inspect these directories`、member行の`Rescan`、barとRepository pageの`Rescan` — は、admitしたscanが終端状態に達してから応答するようになり、shellはその応答で再取得するので、押した結果は`Refresh status`を2度目に押さなくても画面にある。`Refresh status`は、pageを開いた時点で既に走っていたscanのために残り、Repository pageとpersonal-setup
+pageのnoteも今そう述べる — そこで始めたscanや読み取りは自分の結果を報告し、`Refresh status`は他所で
+始まったもののためだと。commandが出ている間、それを持つsurfaceはsnapshot（commandが置き換える当の
+値）からではなくcommand自身の状態からそう述べる — Repository panelの`Scanning now.`、押した
+member行の`<member> — scanning now.`、barのcommandの`Rescanning…` — 待ちがscanの全長になった今、
+そうしなければ終わったscanと読まれるからである。
+session 15と16が2つのsurfaceから古い行と古いrailに出会った観察がこれの拠り所であり、この決定までの間に置いたrailのdating文の複製はこれとともに無くなった。そしてpersonal-setup pageの読み込み中のplaceholderは、読み込んでいる
+当のものを言う`Loading this page's status…`とした。`What stays excluded`の一覧は製品名の上の1文の
+ままである。製品ごとの文はregistryが持たない散文になり、`GlobalConsentPreview.vue`がその決定を
+記録している。
+
+**このrunが確立しないこと。** SC-001もSC-006も確立しない。障害が3 sessionをSC-001の定める区間の
+内側で切り、全sessionのruntimeがこのrepositoryの`AGENTS.md`とassistantのmemory noteを持っており、
+基準のno-hint policyはそれを許さない。確立できるrunは、各sessionをこのworking treeの外で —
+repository自身の指示もmemoryもruntimeに入らないように — 開始し、現在のbuildに対して行う。人による
+first useについては何も確立しない。capture bundleは持たない。拠り所は
+各session自身の報告であり、runのsession folderの隣、このrepositoryの外に置いてある。そしてfixture
+treeは1つである。sessionが出会ったのはこのrepositoryが自身のtestのために構築するcustomization file
+であり、見たことのないrepositoryではない。
+
+### 2026-09-04の最初のrun
+
+**2026-09-04に実施した、各sessionが自分でInspectorを起動する20件のagent駆動session。** buildは
+commit `e683269`にその日の未commit変更を加えたworking treeの`pnpm pack`で、tarballのSHA-256は
+`1fbb6607d1a25c05f3c1cc228080e552188e6bfb5d9e4a19063ccb75ee012ec2`で、これを`npm install`で1つの
+session folderに入れた。各sessionはそのfolderの`repository/`としてall-kind fixtureの自分の複製を持つ。
+guideの`npx --no-install agent-customization-inspector --no-open`は、そこから上へ辿ってfolderの
+`node_modules`にpackageを見つける — guideが「渡されたfolder」と呼ぶものである。各sessionには
+`tests/usability/sc001-sc006-study-inputs/guidance.md`の本文、その隣の4つのprompt fileの原文、
+`response-form.json`の3つの質問を渡し、各sessionは自分のheadless browserを自分の時計で駆動した。
+equipmentの条件として全sessionに2つを伝えた。起動commandに`--port 0`を付けること（既定portはこの
+machineの所有者のもの）。そして起動commandだけに`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`、
+`HOME`を設定し、personal-setupのconsentを`tests/fixtures/global-homes/build-fixtures.ts`が構築する
+4つのfixture homeへ向けること — `ground-truth.json`がequipmentに許すとおりである。同時に走らせたのは
+5件である。
+
+**何を強制し、何を強制しなかったか。** このproductのsource、test、specification、fixture、document
+を読むことは指示で禁じ、前回と同じく機構では阻止していない（Playwrightはこのworking treeから
+読み込んだ）。それより弱く、今回新たに加わった条件がある。sessionはこのrepositoryをworking
+directoryとして走ったので、各session自身のruntimeが、始める前からrepositoryの`AGENTS.md`を —
+1件については assistantのmemory noteも — 周囲の指示として持っていた。3 session（09、15、19）が
+求められずにこれを開示し、pageだけで操作したと述べた。これはこのtreeを何も視界に持たないsessionより
+弱い保証であり、主張を弱める形でそのまま記録する。それはまた、SC-001が許す範囲の外でもある。基準は
+productが印字し描画するもの以外のhintを許さず、productのsurfaceを名指すこのrepositoryの`AGENTS.md`を
+始める前から持つruntimeはそれに当たらない。下の数字は記録であり、基準はそれによって確立されず、
+SC-006も同じpolicyを適用する。
+
+**equipmentの3つの条件が記録に効いている。** fixtureの複製は`.claude/skills/cycle` linkの絶対target
+— 複製元のfixture tree — を保ったので、productはそのlinkを選択したrootの外へ辿り、tree全体を
+`.claude/skills/cycle/**`の下にもう一度列挙した。件数は重複分だけ増え、taskへの影響は無く、7 sessionが
+その行に言及した。起動が共有した1つの`HOME`には各起動のnpm自身のdebug logが溜まり、何件かのsessionが
+気づいてnpmのものと正しく帰属させた。そしてsessionのT1は自分の確認がfileの本文を画面に認めた時点
+なので、確認がpageに遅れた分だけ遅い側に誤る。session 14は真のT1をstampの前27秒の範囲に置き、
+session 07はそのstampが上限超過の原因である。
+
+**これはagent駆動のrunであり、そのように記録する。** 20件のagentが測るのは、productが自ら印字し
+描画するguidanceだけで起動し、fileに到達し、productがそのfileについて述べていることを言えるかである。
+同じinterfaceを人がどう体験するかはこの記録に無い。SC-001とSC-006は自身の文面でそう述べており、
+ここのどの文もhuman-subjectの結果として読んではならない。
+
+| Workflow | 測るもの | 閾値 | 結果 |
+|---|---|---|---|
+| Discovery | SC-001: 起動commandから、発見した1 fileのdetail viewを2分以内に開く | 20件中19件 | **確立しない: 20件中19件が上限内にfileへ到達したが、sessionにはguidance以上のものが与えられていた** — 何がかは上の強制の段落が述べる。19件は21.9秒〜81.8秒、20件全体の中央値38.8秒。session 07は152.7秒 — 自身のURL待ちscriptが印字行に一致せず（JavaScriptの正規表現内のPOSIX文字class）、InspectorがURLを印字した後も90秒のtimeoutまで待った。equipmentの障害であり、kitの除外なしの規則により不成功として数える |
+| Inspection | SC-006: 指定`AGENTS.md`の3 fieldを2分以内に回答 | 20件中18件 | **20件中20件が一致、Discoveryの行と同じ理由で確立しない**。9.0秒〜47.8秒、中央値24.1秒 |
+| Comparison | SC-006のcoverage: 標準comparison task | 20件すべてが試行 | **20件中20件**完了 |
+| Global consent | SC-006のcoverage: 標準personal-setup consent task | 20件すべてが試行 | **20件中20件**完了 |
+| Safety | SC-006のzero-critical gate | critical issueなし | **報告なし** |
+
+全sessionの3 fieldが`ground-truth.json`と部分点なしで一致した — source `Repository`、認識するtool
+`GitHub Copilot`**と**`OpenAI Codex`、file type `Instructions`。Claude Codeを挙げたsessionは無い。
+discoveryでは17 sessionがpageが既定で示すkindの先頭行`.claude/CLAUDE.md`を開き、session 09と13は
+root `CLAUDE.md`を、session 16は`.github/copilot-instructions.md`を開いた。
+
+全sessionが、ground truthの名指す組 — `.agents/skills/`の`changelog` skillと`.github/skills/`の
+その複製 — に行自身のCompare linkから到達し、全件がdescriptionのdriftを述べた。多くはinstructionの
+driftと、compare pageが本文の傍らに述べる認識の差も述べた。session 19は、taskの前に走らせたprocess
+一覧に隣のsessionの`changelog`を含むcomparison URLが見えたこと、pageが提示した組の中からの選択に
+その文字列が影響した可能性を排除できないことを開示した。
+
+全sessionがconsent pageに到達し、pageが示すとおりに4つのdirectoryを — 3つのfixture homeを
+`From this tool's environment variable`、共有agent homeを`Default location in your home directory`
+として — 挙げ、そのうえで読み取りを確認した。各sessionは、promptの「get the tool to show you those」が
+一覧の先まで及ぶと判断した。hostは各session自身のものなので、他のsessionのconsent状態に出会った
+sessionは無い。全sessionが自分のhostをSIGTERMで止め、自分のbrowserを閉じ、他のsessionが起動した
+processに触れていない。
+
+| Session | Discovery | Inspection | Comparison | Consent | Safety |
+|---|---|---|---|---|---|
+| 01 | 31.9秒 | 38.3秒 | 完了 | 完了 | なし |
+| 02 | 46.7秒 | 33.1秒 | 完了 | 完了 | なし |
+| 03 | 34.1秒 | 16.5秒 | 完了 | 完了 | なし |
+| 04 | 42.1秒 | 12.0秒 | 完了 | 完了 | なし |
+| 05 | 30.9秒 | 21.6秒 | 完了 | 完了 | なし |
+| 06 | 36.8秒 | 47.8秒 | 完了 | 完了 | なし |
+| 07 | 152.7秒、上限超過 | 17.0秒 | 完了 | 完了 | なし |
+| 08 | 81.8秒 | 38.2秒 | 完了 | 完了 | なし |
+| 09 | 34.7秒 | 21.6秒 | 完了 | 完了 | なし |
+| 10 | 44.8秒 | 39.6秒 | 完了 | 完了 | なし |
+| 11 | 36.3秒 | 18.9秒 | 完了 | 完了 | なし |
+| 12 | 53.2秒 | 36.4秒 | 完了 | 完了 | なし |
+| 13 | 21.9秒 | 26.6秒 | 完了 | 完了 | なし |
+| 14 | 62.8秒 | 40.7秒 | 完了 | 完了 | なし |
+| 15 | 41.4秒 | 14.8秒 | 完了 | 完了 | なし |
+| 16 | 38.8秒 | 15.5秒 | 完了 | 完了 | なし |
+| 17 | 38.9秒 | 36.2秒 | 完了 | 完了 | なし |
+| 18 | 35.5秒 | 15.4秒 | 完了 | 完了 | なし |
+| 19 | 40.0秒 | 31.1秒 | 完了 | 完了 | なし |
+| 20 | 30.5秒 | 9.0秒 | 完了 | 完了 | なし |
+
+除外も差し替えも無いので、固定の分母と記録した件数は同じ20である。
+
+**sessionがsafetyについて報告したこと。** 禁止された作用は無い — localhostの外への要求なし、
+customization由来の実行なし、repositoryの複製にもfixture homeにもmutationなし、`--no-open`下で
+productがbrowserを開くこともない。全sessionが、consent pageは確認までは何も読まないと報告し、
+何件かは、提示された4つのdirectoryは読み取り権限を与えないescaped presentationであると報告した。
+
+**sessionがproductについて挙げたこと。** 5 session（02、05、11、12、20）が、railの
+`Source diagnostics 0`と`Repository: Partial · 17 files kept a diagnostic`が並ぶのを、fileごとの行を
+見つけるまでは一見矛盾と読んだ — 前回のrunにそう読んだsessionは無かった。多くが、consent後は何も
+自動で更新されず`Refresh status`を押す必要があったと述べ、2件（09、18）は、変わらない
+`Accepted, not yet read`を初めての読み手は停止と取り得ると述べた。3件（01、12、16）は、detail barの
+次range controlが`.claude/skills/cycle/**`のような次rangeのpatternだけを示し、目的はaccessible name
+にしか無いので一見して分かりにくいと述べた。3件（05、08、17）は、抽出したtextで行のsource badgeと
+pathが区切りなしに連結されるのを見た。4件（04、08、18、20）は、hostが`localhost`を印字しながら
+`[::1]`だけでlistenすることに気づいた（browserは解決できた）。4件（03、06、15、19）はdocument title
+のfile名を囲むbidi-isolate文字を、2件（10、19）は1つのfileがClaude Codeでは`lander`、GitHub
+Copilotでは`voyage`と、productの解決どおり2つの名前で並ぶことを挙げた。session 14は最初のdetailの
+editorがpageの安定後しばらく空だったのを見た。session 02は`Personal setup`へinventoryのrailから
+しか行けず、comparison pageからは行けないことを見つけた。session 18は、custom-agent comparisonの
+noteが、形式を共有するCodex TOML 2 fileの上で「the two formats have no line-for-line alignment」と
+述べるのを見つけた — 偽の理由であり、この記録と同じ変更で直した。noteは今、どの組にも
+kind自身の理由 — 宣言は上で1つの正準形として比較し、各fileは丸ごと示す — を述べ、
+`tests/e2e/custom-agents-comparison.spec.ts`が形式の異なる組と同じ組の両方でそれを固定する。
+これらの観察のうちさらに3つが、同じ変更でproductを変えた。railのRepository項目は状態語だけ
+（`Partial`）を述べ、diagnosticを持つfileの件数はRepository pageに、各件がどこに述べられているかを
+言う文の隣に残す — 問いを立てる数字は答えのある場所に置くからである。受理した読み取りがまだ
+走っている間、personal-setup pageはmember行の上に`Statuses below are from the last refresh.`と
+述べ、行とpanelが1つの瞬間を2通りに述べることはなくなった。そしてdetail barの前後移動は、
+`Back to`が既にそうであるように、方向を`Previous`と`Next`の語で述べる。editorの初回描画は
+loading stateを置く代わりに計測した。冷えた状態の直接読み込みで、panelの枠と見出しはeditorの
+本文より130〜190 ms早く画面に出る（このmachine）。中身が届きつつある枠であり、loading stateを
+検討する閾値を下回る。
+
+**このrunが確立しないこと。** SC-001もSC-006も確立しない。理由は強制の段落が述べる。人による
+first useについては何も確立しない。capture bundleは持たない。拠り所は各session自身の報告であり、
+runのsession folderの隣、このrepositoryの外に置いてある。そしてfixture treeは1つである。sessionが
+出会ったのはこのrepositoryが自身のtestのために構築するcustomization fileであり、見たことのない
+repositoryではない。
+
+### 2026-09-03のrun
 
 **2026-09-03に、この候補のbuildに対して実施した20件のagent駆動session。**（`pnpm run build`のあと、
 `pnpm run start:fixture`が構築するall-kind fixtureを、run全体を通じて1つのhostが配信した。）各session

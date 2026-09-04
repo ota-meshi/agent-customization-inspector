@@ -115,7 +115,7 @@ customization-selected destination、別machineへの調査content送信は禁�
 | `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
 | `agent-customization-inspector:open-file` | command | Commit済みfile 1件をreader自身のmachine上のapplicationで開く |
 | `agent-customization-inspector:get-global-consent-preview` | read | Currentまたはfrozenの`GlobalConsentPreview` |
-| `agent-customization-inspector:create-global-consent-preview` | command | Unconsented previewのcaptureとatomicなcreate/replace |
+| `agent-customization-inspector:create-global-consent-preview` | command | Retained startup captureからunconsented previewをcreateまたはatomicにreplace |
 | `agent-customization-inspector:enable-global` | command | Session-wide consentの確認。Initial enableとactive-consent retry |
 | `agent-customization-inspector:rescan-global` | command | Enabled Global Source 1件のscan command受理 |
 | `agent-customization-inspector:disable-global` | command | Priority Global-disable barrier |
@@ -184,7 +184,7 @@ serializationはdevframe channelが所有する。Handlerは宣言済みresult v
 後のserialization/encodingまたはdelivery failureは、handlerがcommitしたstateをrollbackも
 duplicateもせずそのrequestの通常のerrorとして報告する。Successful resultを
 報告せず、部分的にdeliverされたmessageをpartial resultとして扱わず、clientはtransport failureと
-まったく同じようにcommit済みgenerationを再取得する。Domain layerはfailureのcauseを一切classifyしない。
+まったく同じように対応するreadを通じてcommit済みstateを再取得する。Domain layerはfailureのcauseを一切classifyしない。
 
 決定的rejection:
 
@@ -1226,9 +1226,15 @@ commit前にfailureとなった場合、provisional partial resultを含む全un
 `{ kind: 'diagnostic', diagnosticId }`または`{ kind: 'error', message }`を運ぶ。後のsuccessが
 両方をclearし、別Sourceのcommitは両方を保持する。
 
-Outcomes: Request IDとupdated source summary付きacceptance result。Duplicate running/queued
-Repository commandだけ`scan-in-progress` conflict rejection。Disable fenceがnon-nullの間は
-`global-disable-pending` conflict rejection。
+この呼び出しは、admissionの時点ではなく、admitしたscanが終端状態 — completeまたはpartialな
+generationのcommit、あるいはfailure — に達したときに解決する。したがって返す`source`はscanが
+残したままのSourceであり、応答の後に再取得するclientは追加の要求なしに結果を見る。Admission、
+request ID、duplicate conflict、disable fenceはこれによって変わらない。実行中または待機中に
+fenceに捕まったcommandは`global-disable-pending` conflictで応答する。
+
+Outcomes: Request IDと、scanが残したままのsource summary付きacceptance result。Duplicate
+running/queued Repository commandだけ`scan-in-progress` conflict rejection。Disable fenceが
+non-nullの間は`global-disable-pending` conflict rejection。
 
 ### `agent-customization-inspector:open-file`
 
@@ -1259,11 +1265,7 @@ generationへ解決されるため、launchが受け取り得る絶対pathはこ
 
 - `visual-studio-code`と`sublime-text`は、hostがportをbindする前にこのmachineで解決した
   editorへ届ける — `PATH`上のeditor command、またはcommandが`PATH`に無いときは既知の
-  install場所にあるlauncher。`PATH`は、選択したRepository rootの内側にあるentryをすべて除いて
-  検索する。inspectedなcontentの下にある実行fileは、inspectedなcontentから選んだ宛先であり、
-  FR-022がそれを禁じるので、repository自身の`node_modules/.bin`や`bin/`がeditorを供給することは
-  ない。一方、machine上の他の場所にある同じdirectoryは読み手自身のtoolingであり、他のentryと
-  同じく検索する。ただしmacOSでは、そのlauncherではなくapplicationの名前で
+  install場所にあるlauncher。Lookup前に、inspectedなroot — 選択したRepository rootと、session-startのpersonal-setup captureにある各`eligible` member — の内側にある候補directoryをすべて除く。Relativeまたはemptyな`PATH` entryはinvocation directoryからresolveし、残った各directory内のabsolute candidateだけをexecutable resolverへ渡す。既知のinstall directoryにも同じprefilterを適用する。Separatorを含む`EDITOR`/`VISUAL` spellingもresolveし、root内ならlookup前に拒否する。Inspected contentの下にある実行fileはinspected contentから選んだ宛先であり、FR-022がそれを禁じる（FR-020）ので、repository自身の`node_modules/.bin`や`bin/`はeditor候補としてprobeさえしない。一方、machine上の他の場所にある同じdirectoryは読み手自身のtoolingであり、検索する。ただしmacOSでは、そのlauncherではなくapplicationの名前で
   documentを渡す。editor自身のcommand-line scriptはeditorのuser data directoryを`HOME`から
   解決するため、`HOME`が読み手自身のものでないhostでは、その配下に2つ目のinstanceを起動し、
   fileはどこにも開かないからである。
@@ -1313,8 +1315,8 @@ Outcomes: currentまたはfrozenの`GlobalConsentPreview`。`consent-preview-mis
 
 Parameters: なし。
 
-候補Global pathへ触れる前にunconsentedなlexical/process-scoped previewをcaptureし、atomicに
-createまたはreplaceする。
+候補Global pathへ触れる前に、immutableなstartup inputからunconsentedなlexical/session-scoped
+previewをatomicにcreateまたはreplaceする。
 
 ```text
 GlobalConsentPreview
@@ -1323,30 +1325,28 @@ GlobalConsentPreview
 └── excludedRuleIds[]
 ```
 
-Coordinator conflict確認後に許可したcreate invocationごとに、serverは`COPILOT_HOME`、
-`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
-empty stringはpresentとする。そのrequestでimport済み`node:os.homedir()`を
+Editor-launcher探索前のsession startupで、serverは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
+`CODEX_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
+empty stringはpresentとする。そのsessionでimport済み`node:os.homedir()`を
 正確に1回callし — 共有agent home memberは常にそこからderiveされる — 、対応するabsent entryについてactive-platformの`node:path.join`と固定suffix
 `.copilot`、`.claude`、`.codex`を、共有agent homeについて固定suffix `.agents`を使う。`member`はclosedな
 `copilot | claude | codex | agents`集合 — 3つのtool homeと共有agent home（FR-045） — の1つであり、
 `…Tools`と綴られるcontrol/batch fieldはすべてこのmember idを運ぶ。`HOME`、`USERPROFILE`その他home sourceを独自選択せず、
 lexical capture/joinはexistence checkを行わない。それらのvariableは候補Global rootの特定だけに
-使い、inspected content内のreferenceのsubstitutionには使わない。Serializeしないfrozen internal
+使い、inspected content内のreferenceのsubstitutionには使わない。その1つのimmutable captureをsession全体で保持する。Eligible entryを選択済みRepository rootと合わせて完全なlauncher-exclusion setとし、許可されたcreate invocationはすべてprocess inputを再読込せず同じ4 stringを使う。Serializeしないfrozen internal
 preview recordは、各entryの`lexicalRoot`をexact raw stringとして追加保持する。Empty、relative、
 invalid、control-containing、backslash-containing valueは別の`inputState`とともにexact raw
 stringのまま保持する。
 `displayRoot`は`lexicalRoot`由来のone-way presentation escapeであり、pathへdecodeせずadmission
 inputにも使わない。候補Global root配下の`stat`、`realpath`、directory enumeration、file readを
-行わない。Node.jsと実行環境がvalueを保持・escapeできるかを決める。Environment capture、
-`homedir()`、join、retention、presentation encoding、serializationの
-throw/rejectionはこのaccept前RPC boundaryへ到達し、invocationをordinary errorでrejectする
-（jobも`scanRequestId`も作らない）。Read authorityを作らず、normalization、canonicalization、
+行わない。Node.jsと実行環境がvalueを保持・escapeできるかを決める。Startupのenvironment capture、
+`homedir()`、join、classification、retention、presentation encodingのthrowは、sessionもbrowserも存在しないownerless launchをfailさせる。その後のcomplete preview objectのconstruction failureはaccept前RPC boundaryへ到達し、invocationをordinary errorでrejectしてprior current previewを変更しない。DTO/transport serialization failureはcomplete previewをbindした後に起こり得るrequestのordinary errorであり、successful resultがdeliverされなくてもnew previewがcurrentとして残り得る。どちらのfailureもjob、`scanRequestId`、read authorityを作らず、normalization、canonicalization、
 root creation、readを行わない。
 それ以外では`displayRoot`がescape済みの正確なlexical valueを示し、invalidなempty/relative
-overrideはdefaultへ戻さずinvalidと表示する。Successful createはcomplete resultがbindされた後
-だけprior unconsented previewをatomicにreplaceする。Active consentでは`consent-preview-frozen`
+overrideはdefaultへ戻さずinvalidと表示する。Completeにconstructedされたpreviewは、resultのserialize前に
+prior unconsented previewをatomicにreplaceし、internalでserializeしない`previewEpoch`を1回incrementする。Active consentでは`consent-preview-frozen`
 conflict rejection、registered enableでは`global-enable-in-progress` conflict rejection、disable
-fenceでは`global-disable-pending` conflict rejectionを返し、environment recaptureもstate change
+fenceでは`global-disable-pending` conflict rejectionを返し、process inputの再読込もstate change
 も行わない。Read functionがfresh-client recovery用のexact frozen previewを提供し、別previewには
 先にdisableが必要となる。Previewはserverが保持するopaque `previewId`で識別する唯一のrecordで
 あり、enableとretryはそのIDを指名する。Serverは自身のstored recordだけに基づいて動作し、
@@ -1368,8 +1368,7 @@ selectionを終了し、fallbackしない。Optionalな先頭UTF-8 BOMだけ、�
 `U+FFFD`はnon-whitespaceである。Non-emptyなCodex instruction fileを最大1件だけpublishする。
 
 Outcomes: 作成した`GlobalConsentPreview`。`consent-preview-frozen`、
-`global-enable-in-progress`、`global-disable-pending` conflict rejection。
-Capture/serializationのthrow/rejectionではそのrequestのordinaryなaccept前error。
+`global-enable-in-progress`、`global-disable-pending` conflict rejection。またはそのrequestのordinary error。Preview construction failureはaccept前でprior previewを保持し、DTO/transport serialization failureでは新しく作成したcomplete previewが保持され得る。
 
 ### `agent-customization-inspector:enable-global`
 
@@ -1462,6 +1461,13 @@ missing toolが存在すること自体は別のactive-consent conflictを作ら
 invalidなpreviewもconfirmでき、決定的な`active-no-job` stateを返すため、別の
 `no-eligible-global-root` outcomeは存在しない。
 
+この呼び出しは、admitしたすべてのmemberのscanが終端状態 — batchのcommit、または`batchStatus`に
+retainされるそのfailure — に達したときに解決する。したがって`queued` dispositionはGlobal
+generationがcommit済みの状態で応答され、応答の後に再取得するclientは追加の要求なしにそれを見る。
+`active-no-job`は何もqueueしていないので直ちに解決する。Lost responseでもbatchは失われない。
+Batchは`batchStatus`にretainされ、fresh pollがそれを回復する。Disable fenceに捕まったbatchは
+`global-disable-pending` conflictで応答する。
+
 Outcomes: acceptance result。`consent-required`、`allowlist-version-mismatch`、
 `consent-preview-mismatch` rejection。`no-retryable-global-tool`、
 `global-enable-in-progress`、`global-disable-pending` conflict rejection。もしくはunexpectedな
@@ -1495,9 +1501,14 @@ Diagnosticを参照し、1 fileに限定されないthrow/rejectionはdomainを�
 successfulなcompleteまたは
 partial rescanがgraphをatomic replaceして両方をclearし、別Sourceのcommitは両方を保持する。
 
-Outcomes: Request IDとupdated source summary付きacceptance result。Unknown/removed Source IDは
-`stale-resource` rejection、Global disableがpending/activeなら`global-disable-pending` conflict
-rejection、そのSourceのrunning/queued scanとduplicateなら`scan-in-progress` conflict rejection。
+この呼び出しはRepository commandとまったく同じく、admitしたscanが終端状態に達したときに解決する。
+返す`source`はscanが残したままのSourceであり、応答の後の1回の再取得が結果を示す。実行中または
+待機中にfenceに捕まったcommandは`global-disable-pending` conflictで応答する。
+
+Outcomes: Request IDと、scanが残したままのsource summary付きacceptance result。Unknown/removed
+Source IDは`stale-resource` rejection、Global disableがpending/activeなら`global-disable-pending`
+conflict rejection、そのSourceのrunning/queued scanとduplicateなら`scan-in-progress` conflict
+rejection。
 
 ### `agent-customization-inspector:disable-global`
 
@@ -1823,12 +1834,12 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
 8. Global consent previewは候補pathに触れず、confirmationはserverが保持する唯一のpreviewを
    `previewId`で指名して、そのpreviewが保持するexact raw internal `lexicalRoot`とtyped
    traversal-plan version/programをbindする。Changed/superseded previewは
-   readを許可できない。Create functionだけが3件すべてのenvironment inputをcaptureして
-   unconsented previewをatomicにcreate/replaceする。Read functionはcaptureを0回とし、disable
+   readを許可できない。Session startupが3件すべてのenvironment inputと常にderiveする共有agent
+   homeをlauncher探索前に正確に1回captureし、process environmentが変化しても同じimmutable captureをlauncher exclusionと後続の全previewに使う。Create functionだけがunconsented previewをatomicにcreate/replaceする。Read functionは、disable
    fence中も含めcurrent/frozen previewだけを返す。Missing-current、active-consent、
    in-progress-enable、disable-fence caseはaccidental replacementなしで文書化したclosed
    outcomeを返す。Escape-collision、control-character、backslash fixtureは、enableがstored raw
-   valueだけを使ってenvironmentを再読込せず`displayRoot`を
+   valueだけを使ってprocess inputを再読込せず`displayRoot`を
    reverse-convertしないことを証明する。Parameterはmember selectorを持たず、initial enableは凍結
    済みentry 4件すべてを必ずevaluateする。Missing/unreadableなconsented rootと決定的なlexical
    outcomeがrejected memberとadmitted memberをpartitionし、unexpectedなthrow/rejectionは

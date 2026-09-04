@@ -18,6 +18,8 @@ import { resolve } from 'node:path';
 const CAPTURED_CWD = resolve('/captured/invocation');
 const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(CAPTURED_CWD);
 
+const { fileOpenerProbeMock } = vi.hoisted(() => ({ fileOpenerProbeMock: vi.fn() }));
+
 vi.mock('../../src/server/host/devframe-app', () => ({
   startInspectorHost: vi.fn(),
   executeRepositoryScan: vi.fn(),
@@ -34,10 +36,7 @@ vi.mock('../../src/server/host/file-opener', () => ({
   DetectedFileOpener: {
     // The two targets every machine satisfies through its own handlers, and
     // no editor: nothing here asks the session what it would open a file in.
-    probe: async () => ({
-      targets: ['default-application', 'containing-folder'],
-      openFile: vi.fn(),
-    }),
+    probe: fileOpenerProbeMock,
   },
 }));
 
@@ -85,6 +84,11 @@ beforeEach(() => {
     scanRequestId: 'scan-1',
     acceptedTools: ['codex'],
     rejectedTools: [],
+  });
+  fileOpenerProbeMock.mockReset();
+  fileOpenerProbeMock.mockResolvedValue({
+    targets: ['default-application', 'containing-folder'],
+    openFile: vi.fn(),
   });
   startHost.mockReset();
   closeHost = vi.fn().mockResolvedValue(undefined);
@@ -358,12 +362,53 @@ describe('personal-setup consent', () => {
     // Source.
     expect(order).toEqual(['global-committed', 'launch-line']);
     expect(runGlobalEnable).toHaveBeenCalledTimes(1);
-    const [, preview, options] = vi.mocked(runGlobalEnable).mock.calls[0]!;
-    expect(options).toEqual({ waitForBatch: true });
+    const [, preview] = vi.mocked(runGlobalEnable).mock.calls[0]!;
     // What was confirmed is what the host now serves: the same preview, on the
     // same consent domain, so the consent page states the active consent
     // instead of offering a second capture.
     expect(startHost.mock.calls[0]?.[0].consent?.current()).toBe(preview);
+  });
+
+  it('uses the same eligible startup roots for launcher exclusion and later consent', async () => {
+    const original = {
+      COPILOT_HOME: process.env['COPILOT_HOME'],
+      CLAUDE_CONFIG_DIR: process.env['CLAUDE_CONFIG_DIR'],
+      CODEX_HOME: process.env['CODEX_HOME'],
+    };
+    const startupCopilot = resolve('/session/copilot');
+    const changedCopilot = resolve('/changed/copilot');
+    const startupCodex = resolve('/session/codex');
+    process.env['COPILOT_HOME'] = startupCopilot;
+    process.env['CLAUDE_CONFIG_DIR'] = 'relative/claude';
+    process.env['CODEX_HOME'] = startupCodex;
+    vi.mocked(executeRepositoryScan).mockImplementationOnce(async () => {
+      // A later process mutation cannot make the consent preview name a root
+      // different from the one excluded before launcher discovery.
+      process.env['COPILOT_HOME'] = changedCopilot;
+    });
+
+    try {
+      await runInspectorCli(['--no-open', '--inspect-personal-setup']);
+
+      const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
+      expect(excludedRoots).toEqual(
+        expect.arrayContaining([CAPTURED_CWD, startupCopilot, startupCodex]),
+      );
+      expect(excludedRoots).not.toContain('relative/claude');
+      expect(excludedRoots).not.toContain(changedCopilot);
+      const [, preview] = vi.mocked(runGlobalEnable).mock.calls[0]!;
+      expect(preview.entries.find((entry) => entry.member === 'copilot')?.lexicalRoot).toBe(
+        startupCopilot,
+      );
+    } finally {
+      for (const [name, value] of Object.entries(original)) {
+        if (value === undefined) {
+          Reflect.deleteProperty(process.env, name);
+        } else {
+          process.env[name] = value;
+        }
+      }
+    }
   });
 });
 

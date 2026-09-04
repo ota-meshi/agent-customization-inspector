@@ -504,12 +504,20 @@ function definitionsOf(file: FileDetailDto['file']): readonly CustomAgentSideDef
  * The whole ready view as one derivation, null outside 'ready': the two
  * identity sides and the recognition comparison.
  *
- * No raw-source *diff* among them, unlike the skill and prompt surfaces: this
- * kind's two locations are written in two formats, so aligning a Codex
- * agent's TOML against a Markdown agent's frontmatter document byte for byte
- * aligns quoting and delimiters instead of the values and the prose. What the
- * two files actually say is compared as the two halves their own rules split
- * out, which is what the recognition comparison mounts.
+ * No raw-source *diff* among them, unlike the skill and prompt surfaces. The
+ * rule of this surface: what the files declare is diffed in one canonical
+ * form — the technique the MCP comparison uses over `.codex/config.toml`
+ * and `.mcp.json` — and the sources stand side by side, for every pair. The
+ * reason is a property of the kind, not of the pair on screen: agent files
+ * are not all written in one format, so aligning a Codex agent's TOML against
+ * a Markdown agent's frontmatter document byte for byte would align quoting
+ * and delimiters instead of the values and the prose. A pair of two Markdown
+ * files is shown the same way, because a shape that followed the pair's file
+ * names would be a rule a reader cannot learn. How many formats there are is
+ * never stated, here or in the note: the count follows from the rules, and a
+ * sentence carrying it would go stale with nothing to catch it. What the two
+ * files actually say is compared as the two halves their own rules split out,
+ * which is what the recognition comparison mounts.
  *
  * Each file's complete authored source is still on the page, as its own
  * read-only viewer beside the other's: a comparison surface must display a
@@ -977,16 +985,22 @@ onBeforeUnmount(() => {
         :right-path="readyView.sides[1].path"
       >
         <template #source>
-          <!-- Each file whole, as its own viewer rather than as one diff:
-               a comparison surface must display a readable file exactly as
-               written (FR-027), while two files written in two formats have
-               no meaningful byte-for-byte alignment to assert. This is also
-               all a reader gets when a side's extraction failed, which is
-               when the bytes matter most (FR-028). -->
+          <!-- Each file whole, as its own viewer rather than as one diff, for
+               every pair: a comparison surface must display a readable file
+               exactly as written (FR-027), and the shape of this block does
+               not follow the pair — the reason it gives is the kind's, that
+               agent files are not all written in one format, which holds over
+               two Markdown files as much as over TOML against Markdown, and
+               the note says so for that pair in its last clause. The count of
+               formats is left out on purpose; see the ready view's own note.
+               This is also all a reader gets when a side's extraction failed,
+               which is when the bytes matter most (FR-028). -->
           <h3 class="aci-compare-block-title">Source comparison</h3>
           <p class="aci-note">
-            Each side is the file exactly as written, frontmatter included — one viewer per file
-            rather than one diff, because the two formats have no line-for-line alignment.
+            Each side is the file exactly as written, frontmatter included. Agent files are not all
+            written in one format, so the blocks above compare them out of their own formats, and
+            each file is shown whole here rather than as one diff — for every pair of this kind, two
+            files of one format included.
           </p>
           <div class="aci-custom-agent-compare__sources">
             <section v-for="side in readyView.sides" :key="side.caption">

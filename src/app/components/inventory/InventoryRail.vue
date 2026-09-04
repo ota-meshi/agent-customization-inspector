@@ -38,10 +38,9 @@
 // left edge the rail is scanned down.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { NuxtLink } from '#components';
-import { useSessionViewState } from '../../composables/session-view-state';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import {
-  SOURCE_STATUS_TEXT,
+  SOURCE_STATUS_STANDALONE_TEXT,
   type CustomizationKind,
   type SourceStatus,
 } from '../../../shared/entities';
@@ -107,9 +106,6 @@ const selections = computed<readonly InventorySelection[]>(() => [
   ...props.kinds,
   ...NON_KIND_SELECTION_ORDER,
 ]);
-
-/** The session's own state, for the per-Source diagnostic counts below. */
-const sessionViewState = useSessionViewState();
 
 /** The one Repository Source; null until bootstrap adopts a snapshot. */
 const repositorySource = computed(
@@ -196,26 +192,23 @@ const globalStatusText = computed(() => {
 });
 
 /**
- * How many of the Repository's files kept a diagnostic, or null where none
- * did. Stated beside the status because a status word alone does not say how
- * much of the scan is affected, and the reader deciding whether to open the
- * Source's own surface is deciding on that
- * ({@link SessionViewState.diagnosticFileCounts}).
- */
-const repositoryDiagnosticFiles = computed(() => {
-  const sourceId = repositorySource.value?.sourceId;
-  const count =
-    sourceId === undefined ? 0 : (sessionViewState.diagnosticFileCounts.value.get(sourceId) ?? 0);
-  return count === 0 ? null : count;
-});
-
-/**
  * What the Repository entry says, as one string for the live region below: the
- * status word the entry shows, and the diagnostic count it shows beside it,
- * from the same two values the entry draws — so what is announced and what is
- * seen cannot disagree, and `Scanning` and a failure flow through the same
- * path as `Ready` (WCAG 4.1.3). Empty until a Repository exists, so the region
- * is mounted with nothing in it rather than added with its text.
+ * status word the entry shows, from the same value the entry draws — so what
+ * is announced and what is seen cannot disagree, and `Scanning` and a failure
+ * flow through the same path as `Inspected` (WCAG 4.1.3). Empty until a
+ * Repository exists, so the region is mounted with nothing in it rather than
+ * added with its text.
+ *
+ * The standalone status word, with no count of the files that kept a
+ * diagnostic. A count here sat beside the `Source diagnostics` entry, and five
+ * of twenty first-use sessions read the two as one thing counted two ways;
+ * with the count gone, fifteen of the next twenty still stopped at the word
+ * `Partial` — six reading it as a failed scan — because a word that does not
+ * say what it means sends a reader looking for its meaning. So this entry
+ * draws the status in words that carry their own meaning
+ * (`SOURCE_STATUS_STANDALONE_TEXT`), and the count stays on the Repository
+ * page, where it arrives with its answer: each diagnostic is stated where that
+ * file is listed (`ScanProgress.vue`).
  *
  * Not a notice that the rescan was pressed: the status moves through
  * `scanning` to its result, so the press is heard as that movement — and a
@@ -226,11 +219,10 @@ const repositoryAnnouncement = computed(() => {
   if (repositorySource.value === null) {
     return '';
   }
-  const status = SOURCE_STATUS_TEXT[repositorySource.value.status];
-  const files = repositoryDiagnosticFiles.value;
-  return files === null
-    ? `Repository: ${status}.`
-    : `Repository: ${status} · ${files} ${files === 1 ? 'file' : 'files'} kept a diagnostic.`;
+  const { word, note } = SOURCE_STATUS_STANDALONE_TEXT[repositorySource.value.status];
+  // Speech does not wrap, so the note the pill puts on its own line is said
+  // in the same breath as the word.
+  return `Repository: ${word}${note === null ? '' : ` · ${note}`}.`;
 });
 
 /**
@@ -307,17 +299,17 @@ function onKeydown(event: KeyboardEvent, index: number): void {
             { 'aci-inventory-rail__status--warn': repositorySource.status === 'partial' },
           ]"
           ><span class="aci-inventory-rail__status-dot" aria-hidden="true" />{{
-            SOURCE_STATUS_TEXT[repositorySource.status]
-          }}<template v-if="repositoryDiagnosticFiles !== null">
-            &middot; {{ repositoryDiagnosticFiles
-            }}<span class="aci-visually-hidden">
-              {{
-                repositoryDiagnosticFiles === 1
-                  ? ' file kept a diagnostic'
-                  : ' files kept a diagnostic'
-              }}</span
-            ></template
-          ></span
+            SOURCE_STATUS_STANDALONE_TEXT[repositorySource.status].word
+          }}</span
+        >
+        <!-- The status's note, where the status has one, on the line under the
+             pill: a pill holds one word, and the words that make `partial`
+             mean what it means would fold to three lines inside it. In the
+             link, so the move's accessible name carries the note too. -->
+        <span
+          v-if="SOURCE_STATUS_STANDALONE_TEXT[repositorySource.status].note !== null"
+          class="aci-inventory-rail__status-note"
+          >{{ SOURCE_STATUS_STANDALONE_TEXT[repositorySource.status].note }}</span
         >
       </NuxtLink>
       <NuxtLink class="aci-inventory-rail__route" to="/global-consent">
@@ -487,7 +479,8 @@ function onKeydown(event: KeyboardEvent, index: number): void {
   inline-size: 0.375rem;
 }
 
-/* A Source with no state: the words alone, at the status's size. */
+/* Words alone, at the status's size: a Source with no state, or the note a
+   status carries under its pill. */
 .aci-inventory-rail__status-note {
   align-self: flex-start;
   color: var(--aci-muted);

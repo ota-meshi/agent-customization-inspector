@@ -184,7 +184,7 @@ majorの越境、pre-1.0のcaret rangeの移動は今もこのgateに届く（AG
 | Colour-scheme control |                                                                     `shine-and-bright` 0.3.0 | 読み手がpageのcolour schemeを選ぶswitch。描画はこのpackageが同梱するstylesheetのものである: componentはそのclass名が選択するmarkupを描き、packageのcustom propertyを設定するだけなので、knobのスライドとsunからmoonへの変化はこのrepositoryのものではなくpackageのものである。上のiconやgrammar packageと同じく、CSSをclient bundleが運ぶdevDependencyであり、自身のlicense fileを同梱するため、notice documentはそのtextを読む（それらは`licenses/`配下に同梱テキストを置く）(FR-043)。forced colours有効時は`box-shadow`がすべて落ちるためsunとmoonも消えるが、buttonとknobのborderは読み手のpaletteで塗り直され、knobは依然として両端の間を移動する — 2026-08-25に計測。その状況で用途を述べるのはcontrolのaccessible nameである（WCAG 1.4.11）                        |
 | Lint                  |                      ESLint 10.7.0、`@nuxt/eslint` 1.16.0、`@stylistic/eslint-plugin` 5.10.0 | 現行互換stable release。`@stylistic`はESLint 10がcoreから外したstylistic rule（例: `quotes`）を提供する                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Unit/integration      |                                            Vitestとcoverage-v8 4.1.10、Nuxt Test Utils 4.0.3 | Vitest/coverageを同じversionにし、Nuxt supportのtest harnessを使う                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Component/DOM         |                                                     Vue Test Utils 2.4.11、happy-dom 20.10.6 | Nuxt Test Utils peerを満たす現行release                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Component/DOM         |                                                     Vue Test Utils 2.4.11、happy-dom 20.10.6 | Nuxt Test Utils peerを満たす現行release。Official-source checkerはhappy-domでserved HTMLをinert fragmentとしてparseし、scriptを実行せずsubresourceもloadせずに、actualなelement/attributeとtag形のtextを区別する                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Browser/a11y          |                                             Playwright 1.61.1、`@axe-core/playwright` 4.12.1 | 現行stable browser/accessibility tooling                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Type                  |                                                       `@types/node` 24.13.3、`vue-tsc` 3.3.7 | Node 24基準とVueに対応する最新互換type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Release               |                                `@changesets/cli` 3.0.1、`@changesets/changelog-github` 1.0.0 | version bump、changelog、publishをChangesetsが所有する: userが受け取る変更を運ぶpull requestは`.changeset/`のentryを追加し、mainへのpushはrelease pull requestを開くか更新するか、そのpull requestがversionを付けた内容をpublishする。releaseはCIで走り、公開packageはどちらもimportしないためdevDependencyである。changelog generatorはGitHub版を選んでおり、各entryが由来のpull requestへリンクする。これは`.changeset/config.json`が記述する2つの値のうちの1つでもある — 既定値をコピーしたものは、コピー元の既定値を追跡しなくなった値だからである。`.github/workflows/Release.yml`は結合actionではなくそのsub-actionを駆動し、それによってnpm trusted publishingがpublish tokenと交換する`id-token: write`をpublishするjobだけに置ける（AGENTS.md § Release policy） |
@@ -368,7 +368,7 @@ surfaceの全てである。spawnされるどのprocessも、固定の引数とb
    [runtime composition](contracts/runtime-composition.ja.md)に記録する。Strategyはpathを再記述せずbehavior IDと
    rule IDを参照する。
 4. **Official source**はpageごとに[公式資料](contracts/official-sources.ja.md)へ記録する — canonicalな
-   公式URL、正確でboundedなsection anchor、review date、影響contract ID、assertion、semantic fingerprint。
+   公式URL、正確でboundedなsection anchor、review date、影響contract ID、assertion。
    Recordは並行registryを経由せず自身の`evidence`配列でそれらを引用するため、根拠は支える主張の隣に置かれる。
    これらのrecordを照合するのは`pnpm run check:official-sources -- --network`であり、既定chainの外に置く
    maintainer専用commandである。scriptに判定できること — record自身のhostからredirectなしの直接`200`、
@@ -470,9 +470,9 @@ surfaceはspecification変更なしではすべて`excluded`のままとする�
 
 全vendor behavior、Inspector rule、composition strategyは正確な公式`sourceId`を参照する。Official-source
 recordはそれらIDをboundedなURL sectionと影響contract IDへ逆mapするため、page変更時のreview setを有限にできる。
-Checked-in fixtureとmoduleはidentifier uniqueness、相互link、英日semantic parity、source anchor、offline semantic
-fingerprintを検証する。Networkへaccessできるのは明示的なmaintainer drift checkだけで、behavior、rule、
-strategy、assertion、fingerprintを自動更新しない。Product startupとRepository/Global scanはdocumentationを
+Checked-in fixtureとmoduleはidentifier uniqueness、相互link、英日semantic parity、source anchorを検証する。
+Networkへaccessできるのは明示的なmaintainer drift checkだけで、behavior、rule、strategy、assertionを
+自動更新しない。Product startupとRepository/Global scanはdocumentationを
 fetchしない。
 
 Registryはpage bodyをcopyして保持しない。公式HTTPS host/redirect policy、content-type check、
@@ -814,15 +814,25 @@ limitationは防御ではなく文書化する: Inspectorの実行中、他の
 local processと、DNS rebinding経由のmalicious web pageが無認証sessionへ到達し得る（QR-003）。Session APIは
 引き続きSource-relative pathとclosed commandだけを公開し、絶対filesystem pathを使わない。
 
+Session startupでeditor-launcher探索より前に、1つのimmutableなGlobal root-input captureをretainする。
+`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で1回ずつreadし、`undefined`だけをabsentとし、
+import済み`node:os.homedir()`を無条件で1回callする — 共有agent homeは常にそこから導出されるためである。
+Absentなtool entryだけにactive-platform `node:path.join`と固定suffix `.copilot`、`.claude`、`.codex`を使い、
+`.agents`は同じcapture済みhome directoryから導出する。`HOME`/`USERPROFILE`を独自選択せず、capture中にexistence
+checkを行わない。同じcaptureをeditor-launcher lookupから除外するeligibleなpersonal rootとすべてのconsent
+previewに使う。Startupでinputをcapture、classify、またはescapeする間のthrowはsessionもbrowserも存在しない段階でfailする。
+
 Global consent前に、lexical/no-I/O path previewをsession API上で、serverが保持しopaque `previewId`で識別する
-唯一のrecordとして公開し、confirmationがそのIDを指名する。このsectionの固定contractとして、new unconsented previewごとにoperation-local input captureを1つ作る。
-`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で1回ずつreadし、`undefined`だけをabsentとする。1つでも
-absentならimport済み`node:os.homedir()`を1回callして、active-platform `node:path.join`と固定suffix `.copilot`、
-`.claude`、`.codex`を使う。`HOME`/`USERPROFILE`を独自選択せず、capture中にexistence checkを行わない。正確なraw
-`lexicalRoot`、escaped display、immutableな`TraversalPlan` schema/selection-policy/canonical programを、serverが保持する
-そのrecordに保持し、`allowlistVersion`/`traversalPlanVersion` pairで同梱planへbindする。Enableは
-stored raw valueだけを使い、display textから逆変換せず、environmentを再readしない。 Session-keyed consent digestは持たない。Previewはserverが保持しopaque `previewId`で識別する唯一の
-recordであり、enableはそのIDを指名する。
+唯一のrecordとして公開し、confirmationがそのIDを指名する。各preview requestがoperation-localなのはretainedした
+session inputからそのrecordを構築する処理だけであり、preview requestも`--inspect-personal-setup`もprocess inputを
+再captureしない。Completeなpreview objectを構築してからcurrent recordを置き換えるため、construction failureでは
+prior previewがcurrentのまま残る。DTO構築またはtransport serializationはnew previewがcurrentになった後にfailし得る。
+その場合はrequestのordinary errorとなり、作成済みpreviewがretainedされたままになり得る。どちらのfailureもauthorityや
+jobを作らない。正確なraw `lexicalRoot`、escaped display、immutableな`TraversalPlan`
+schema/selection-policy/canonical programを、serverが保持するそのrecordに保持し、
+`allowlistVersion`/`traversalPlanVersion` pairで同梱planへbindする。Enableはstored raw valueだけを使い、display textから
+逆変換せず、environmentを再readしない。Session-keyed consent digestは持たない。Previewはserverが保持しopaque
+`previewId`で識別する唯一のrecordであり、enableはそのIDを指名する。
 また、ordinary responseはbrowser stateを変更する前に、正確なrequest token、capture済み
 `clientDataEpoch`、adopt済み`sessionId`、`globalContentEpoch`、null disable fenceに対してcheckする。
 各SessionSnapshot/FileDetail requestはさらにowning sequenceのgeneration — session snapshotは
@@ -894,8 +904,9 @@ devframe channelを渡り、sanitizer wrapperを持たない。Trade-offは明�
 sessionをgateできるが、ownerはそのdefaultよりconfig-inspector parityを選んだ。したがって無認証loopback
 hostの残余exposureは、sessionが起動userの既に読める内容だけを配信するというtrusted-workspace modelに
 有界化された、文書化済みlimitationである（Constitution § Quality and Safety Standards、QR-003）。Consentが指名するserver保持frozen
-previewは引き続き、hostがpathへ触れる前にuserが見たlexical rootを証明し、preview構築中のNode.jsまたはbrowserの
-recoverable failureは未表示valueをauthorizeせずfailする。devframeのconnection-status signalとguard済みの
+previewは引き続き、hostがpathへ触れる前にuserが見たlexical rootを証明する。RecoverableなNode.jsまたはbrowserの
+failureが未表示valueへのauthorityを与えることはない。Incompleteなpreview constructionではprior previewがcurrentのまま
+残り、置換後のDTOまたはtransport serialization failureでは作成済みpreviewがretainedされたままになり得る。devframeのconnection-status signalとguard済みの
 current RPC outcomeは、dataを永続化せずproduct timerを定義せずにsession lossを公開する。Page lifecycleは
 session-loss signalではなく、purgeもrefetchも行わない。Discardされたdocumentは自身のreferenceをreleaseし、
 bfcache documentが保持するのはaccepted trusted-workspace modelのもとで同じuserが自身のmachine上で見た自身の
@@ -1086,8 +1097,9 @@ policy/remediation advice、conversion、synchronization、formatting、fixing�
 
 2026-07-17のmeasurable-outcome再確認により、次のobjective protocolを固定する。
 
-- **SC-001**は、20件の独立したfirst-use sessionを使用する。各sessionは、稼働中のInspectorが印字した
-  originと標準化task promptだけを与えられた自律agentが駆動する。19件以上が、発見した
+- **SC-001**は、20件の独立したfirst-use sessionを使用する。各sessionは、all-kind fixtureの自分の
+  複製、guidance、標準化task promptだけを与えられ、このworking treeの外で開始し、その複製のrootから
+  自身でInspectorを起動する自律agentが駆動する。19件以上が、発見した
   customization file 1件を2分以内に開かなければならない。計測はpromptの提示から、そのfileの
   source/details viewが開いて操作可能になるまでとする。印字されたURLでInspectorへ到達することは
   提供guidanceの一部であり、timerをpauseもrestartもしない。Rootの選択は自動化されたUser Story 1

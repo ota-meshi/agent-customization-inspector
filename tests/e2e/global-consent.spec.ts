@@ -84,18 +84,16 @@ test('carries one consent from preview through enable, refresh, and disable', as
   // lands on the page heading rather than falling to the body.
   await expect(page.getByRole('heading', { name: 'Inspect your personal setup' })).toBeFocused();
 
-  // The committed statuses, recovered through the page's own manual refresh
-  // (nothing here updates by itself).
-  await expect
-    .poll(
-      async () => {
-        await page.getByRole('button', { name: 'Refresh status' }).click();
-        return main.getByText(/of these directories (was|were) read/u).count();
-      },
-      { timeout: 30_000, intervals: [300] },
-    )
-    .toBe(1);
+  // The confirmation answers once the read finished and the page refetches on
+  // that answer, so the committed statuses arrive with no other press
+  // (contracts/http-api.md § enable-global).
+  await expect(main.getByText(/of these directories (was|were) read/u)).toHaveCount(1, {
+    timeout: 30_000,
+  });
   await expect(main).toContainText('Claude home — Inspected');
+  // Once the read is taken in, the rows are current and no longer dated: the
+  // sentence that dates them while a read is still running is gone.
+  await expect(main).not.toContainText('Statuses below are from the last refresh.');
 
   // The results are on the inventory, under their own family, and the rail
   // states that the personal setup was read (FR-030).

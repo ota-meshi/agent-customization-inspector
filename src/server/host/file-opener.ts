@@ -28,7 +28,7 @@
 // system's own file browser, which is what this action offers.
 import { execFile, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
-import { delimiter, dirname, isAbsolute, join, normalize, resolve, sep } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { getEditor, type Editor } from 'env-editor';
@@ -209,41 +209,69 @@ function catalogSearchPath(candidates: readonly string[]): string | null {
 }
 
 /**
- * The `PATH` this probe searches: the inherited one with every entry inside
- * the selected Repository root removed.
+ * One path as the exclusion compares it: absolute from the directory the host
+ * was started in, normalized, trailing separators dropped — `.`,
+ * `node_modules/.bin/`, and `node_modules/.bin/.` all name the directory they
+ * resolve to — and, on Windows and macOS, without regard to case. Both
+ * platforms' default filesystems compare two spellings of one directory as
+ * the same directory, and the comparison is lexical: nothing here asks the
+ * volume, because reading it is outside the I/O this module performs
+ * (QR-003). Folding case on a case-sensitive macOS volume can at most drop an
+ * editor whose directory is spelled like an inspected root; not folding it on
+ * the default volume would offer, and then start, an executable inside one
+ * (FR-020, FR-022) — so the fold is the side to err on.
+ */
+function comparablePath(invocationCwd: string, path: string): string {
+  const normalized = resolve(invocationCwd, path).replace(/[\\/]+$/u, '');
+  return process.platform === 'win32' || process.platform === 'darwin'
+    ? normalized.toLowerCase()
+    : normalized;
+}
+
+/**
+ * Whether a comparable path lies at or below one of the comparable inspected
+ * roots — the selected Repository root and every personal-setup member root
+ * the machine would offer for consent. An executable there is inspected
+ * content, which this product never executes (FR-020), and a destination
+ * chosen from inspected content is what FR-022 forbids.
+ */
+function insideInspectedRoot(candidate: string, inspectedRoots: readonly string[]): boolean {
+  return inspectedRoots.some((root) => candidate === root || candidate.startsWith(root + sep));
+}
+
+/**
+ * The directories this probe may search, each entry taken from the directory
+ * the host was started in — a relative entry is what a shell started there
+ * would resolve, so the same directory is searched rather than dropped — less
+ * every entry inside an inspected root ({@link insideInspectedRoot}). An empty
+ * entry is the invocation directory, as it is for a POSIX `PATH`; it is kept
+ * when that directory is outside every inspected root and excluded otherwise.
  *
  * An executable under inspected content must never become the editor this
- * product offers as "Visual Studio Code" and then starts: a destination chosen
- * from inspected content is what FR-022 forbids, and reading one is outside
- * the allowlisted I/O this product performs (QR-003). The entry a package
- * manager prepends when it runs a command inside the inspected repository —
- * `npx agent-customization-inspector` there puts that repository's
- * `node_modules/.bin` first — is the ordinary way such an entry arrives, but
- * the rule is the root, not the entry's name: a `bin/` the repository puts on
- * `PATH` itself is the same hazard, and a `node_modules/.bin` elsewhere on the
+ * product offers as "Visual Studio Code" and then starts, and reading one is
+ * outside the allowlisted I/O this product performs (QR-003). The entry a
+ * package manager prepends when it runs a command inside the inspected
+ * repository — `npx agent-customization-inspector` there puts that
+ * repository's `node_modules/.bin` first — is the ordinary way such an entry
+ * arrives, but the rule is the root, not the entry's name: a `bin/` the
+ * repository puts on `PATH` itself, or one below a personal-setup member's
+ * home, is the same hazard, and a `node_modules/.bin` elsewhere on the
  * machine is the reader's own tooling, which the contract promises to search
  * (contracts/http-api.md § open-file).
- *
- * Judged on each entry's normalized absolute spelling with trailing separators
- * dropped — `.`, `node_modules/.bin/`, and `node_modules/.bin/.` all name the
- * directory they resolve to — and, on Windows, without regard to case, which
- * is how that filesystem compares two spellings of one directory.
  */
-function probeSearchPath(selectedRepositoryRoot: string): string | undefined {
-  const inherited = process.env['PATH'];
-  if (inherited === undefined) {
-    return undefined;
+function probeDirectories(
+  searchPath: string | undefined,
+  invocationCwd: string,
+  inspectedRoots: readonly string[],
+): readonly string[] {
+  if (searchPath === undefined) {
+    return [];
   }
-  const comparable = (path: string): string => {
-    const normalized = resolve(normalize(path)).replace(/[\\/]+$/u, '');
-    return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
-  };
-  const root = comparable(selectedRepositoryRoot);
-  const kept = inherited.split(delimiter).filter((entry) => {
-    const candidate = comparable(unquotePathEntry(entry));
-    return candidate !== root && !candidate.startsWith(root + sep);
-  });
-  return kept.join(delimiter);
+  const roots = inspectedRoots.map((root) => comparablePath(invocationCwd, root));
+  return searchPath
+    .split(delimiter)
+    .map((entry) => resolve(invocationCwd, unquotePathEntry(entry)))
+    .filter((entry) => !insideInspectedRoot(comparablePath(invocationCwd, entry), roots));
 }
 
 /**
@@ -270,8 +298,8 @@ function editorNameOf(target: FileOpenTarget): string {
  * it. Spelled once and used by both the probe's exclusion and the
  * named-directory membership below, because the two must read an entry the
  * same way: a quoted repository `.bin` must not evade the exclusion, and a
- * quoted legitimate directory must not fail `isAbsolute` and drop the editor
- * `which` correctly resolved in it.
+ * quoted legitimate directory must not be dropped as unreadable and lose the
+ * editor `which` correctly resolved in it.
  */
 function unquotePathEntry(entry: string): string {
   return entry.length > 1 && entry.startsWith('"') && entry.endsWith('"')
@@ -281,60 +309,45 @@ function unquotePathEntry(entry: string): string {
 
 /**
  * Resolves an executable name on exactly the given search path — and nothing
- * else. `which` on Windows always prepends the process working directory to
- * whatever `path` it was given (its cmd.exe emulation), and this process's
- * working directory is the inspected repository, so a `code.cmd` committed
- * there would otherwise become the executable this product offers as an
- * editor and then starts — a destination chosen from inspected content,
- * which FR-022 forbids. The resolution is therefore accepted only when it
- * sits in a directory the caller actually named; the membership test spells
- * each entry through the same `join`-then-`dirname` normalization `which`
- * itself applies to the path it returns.
+ * else — without ever asking `which` about a candidate under an inspected
+ * root. Each allowed directory is joined to the command before lookup. That
+ * absolute, separator-carrying candidate also prevents `which` on Windows
+ * from injecting the process working directory ahead of the named path and
+ * probing a committed `code.cmd` there (FR-022).
  *
  * A configured value that names a path rather than a command — one carrying
- * a separator — never searches: `which` checks it directly, exactly where
- * the reader pointed, and the working directory plays no part.
- *
- * Every match is read (`all`), and the first allowed one wins: the working
- * directory's injected candidate comes first in `which`'s own order, so
- * refusing only the first match would also lose the legitimate installation
- * sitting right behind it on the named path.
+ * a separator — never searches: `which` checks it directly, exactly where the
+ * reader pointed. A relative spelling points from the directory the host was
+ * started in, which is where a shell started there would take it. That
+ * candidate is rejected before lookup when it lies below an inspected root —
+ * `EDITOR=/repo/bin/vi` is never probed however it was spelled. The resolved
+ * result is checked again because the lookup owns the final spelling.
  */
 async function resolveOnSearchPath(
   binary: string,
   searchPath: string | undefined,
+  invocationCwd: string,
+  inspectedRoots: readonly string[],
 ): Promise<string | null> {
+  const roots = inspectedRoots.map((root) => comparablePath(invocationCwd, root));
+  const admitted = (candidate: string): boolean =>
+    !insideInspectedRoot(comparablePath(invocationCwd, candidate), roots);
   if (binary.includes('/') || binary.includes(sep)) {
-    // Only an absolute spelling is checked directly. `which` resolves a
-    // relative separator-carrying value against this process's working
-    // directory — the inspected repository — and an executable the
-    // repository ships must never become the editor this product offers or
-    // starts (FR-022): the same boundary the named-directory membership
-    // below draws for PATH lookups.
-    if (!isAbsolute(binary)) {
+    const candidate = resolve(invocationCwd, binary);
+    if (!admitted(candidate)) {
       return null;
     }
-    return which(binary, {
-      nothrow: true,
-      ...(searchPath === undefined ? {} : { path: searchPath }),
-    });
+    const named = await which(candidate, { nothrow: true });
+    return named !== null && admitted(named) ? named : null;
   }
-  const resolved = await which(binary, {
-    all: true,
-    nothrow: true,
-    ...(searchPath === undefined ? {} : { path: searchPath }),
-  });
-  if (resolved === null) {
-    return null;
+  for (const directory of probeDirectories(searchPath, invocationCwd, inspectedRoots)) {
+    const candidate = join(directory, binary);
+    const resolved = await which(candidate, { nothrow: true });
+    if (resolved !== null && admitted(resolved)) {
+      return resolved;
+    }
   }
-  const allowed = new Set(
-    (searchPath ?? process.env['PATH'] ?? '')
-      .split(delimiter)
-      .map(unquotePathEntry)
-      .filter((entry) => entry !== '' && isAbsolute(entry))
-      .map((entry) => dirname(join(entry, binary))),
-  );
-  return resolved.find((candidate) => allowed.has(dirname(candidate))) ?? null;
+  return null;
 }
 
 /**
@@ -397,9 +410,9 @@ function terminalEditorCommands(): readonly string[] {
   }
   // A value that cannot run as written still names the editor, so the
   // catalog's own command follows it as the fallback: flags carry
-  // whitespace, and a relative separator-carrying spelling is refused by
-  // {@link resolveOnSearchPath} because it would resolve against the
-  // inspected repository.
+  // whitespace, and a relative separator-carrying spelling is resolved by
+  // {@link resolveOnSearchPath} from the directory the host was started in,
+  // which need not be where the reader meant.
   const relativeWithSeparator =
     (configured.includes('/') || configured.includes(sep)) && !isAbsolute(configured);
   return /\s/u.test(configured) || relativeWithSeparator
@@ -415,20 +428,26 @@ function terminalEditorCommands(): readonly string[] {
  * how to give an editor a window through, and the editor's command must
  * resolve, since it is what runs.
  */
-async function resolveTerminalEditor(selectedRepositoryRoot: string): Promise<string | null> {
+async function resolveTerminalEditor(
+  invocationCwd: string,
+  inspectedRoots: readonly string[],
+): Promise<string | null> {
   if (process.platform !== 'darwin') {
     return null;
   }
   // The same search-path discipline as the editor probes: every `PATH` entry
-  // inside the selected root removed, and the resolution accepted only from a
-  // named directory, so an inspected repository that ships a `vi` of its own
-  // cannot become the executable this product offers as "Terminal editor" and
-  // then starts (FR-022; see {@link probeSearchPath},
-  // {@link resolveOnSearchPath}). An absolute configured value is unaffected —
-  // a separator-carrying command is checked directly, exactly where the reader
-  // pointed.
+  // inside an inspected root removed, and a resolution inside one refused —
+  // a configured `EDITOR=/repo/bin/vi` included — so inspected content cannot
+  // become the executable this product offers as "Terminal editor" and then
+  // starts (FR-020, FR-022; see {@link probeDirectories},
+  // {@link resolveOnSearchPath}).
   for (const command of terminalEditorCommands()) {
-    const resolved = await resolveOnSearchPath(command, probeSearchPath(selectedRepositoryRoot));
+    const resolved = await resolveOnSearchPath(
+      command,
+      process.env['PATH'],
+      invocationCwd,
+      inspectedRoots,
+    );
     if (resolved !== null) {
       return resolved;
     }
@@ -464,9 +483,10 @@ export class DetectedFileOpener implements FileOpener {
 
   /**
    * Probes this machine for the editors the reader may choose from: each
-   * catalog entry's executable on PATH first — less every entry inside
-   * `selectedRepositoryRoot`, the Repository this session inspects
-   * ({@link probeSearchPath}) — then that entry's known installation
+   * catalog entry's executable on PATH first — less every entry inside an
+   * inspected root, the Repository this session inspects and the
+   * personal-setup member roots it would offer for consent
+   * ({@link probeDirectories}) — then that entry's known installation
    * locations. Both are executable lookups outside every inspected Source —
    * they read no inspected content and start no process (QR-003).
    *
@@ -474,13 +494,22 @@ export class DetectedFileOpener implements FileOpener {
    * PATH needs, which is the ordinary macOS case: the launcher sits inside
    * the application bundle, and installing the shell command is a step the
    * reader has to take themselves.
+   * @param invocationCwd the directory the host was started in, from which a
+   *   relative `PATH` entry or configured spelling is taken
+   * @param inspectedRoots the selected Repository root and every
+   *   personal-setup member root, inside which nothing is offered
    */
-  public static async probe(selectedRepositoryRoot: string): Promise<DetectedFileOpener> {
+  public static async probe(
+    invocationCwd: string,
+    inspectedRoots: readonly string[],
+  ): Promise<DetectedFileOpener> {
     const launchers = new Map<FileOpenTarget, string>();
     for (const { target, editor } of EDITOR_TARGETS) {
       const onPath = await resolveOnSearchPath(
         editor.binary,
-        probeSearchPath(selectedRepositoryRoot),
+        process.env['PATH'],
+        invocationCwd,
+        inspectedRoots,
       );
       if (onPath !== null) {
         launchers.set(target, onPath);
@@ -490,7 +519,12 @@ export class DetectedFileOpener implements FileOpener {
       if (catalogPath === null) {
         continue;
       }
-      const bundled = await resolveOnSearchPath(editor.binary, catalogPath);
+      const bundled = await resolveOnSearchPath(
+        editor.binary,
+        catalogPath,
+        invocationCwd,
+        inspectedRoots,
+      );
       if (bundled !== null) {
         launchers.set(target, bundled);
       }
@@ -498,7 +532,7 @@ export class DetectedFileOpener implements FileOpener {
     // After the editors that bring their own window, because it is the reader's
     // configured editor rather than one this catalog names, and because the
     // first target published is the one a plain click uses.
-    const terminalEditor = await resolveTerminalEditor(selectedRepositoryRoot);
+    const terminalEditor = await resolveTerminalEditor(invocationCwd, inspectedRoots);
     if (terminalEditor !== null) {
       launchers.set('terminal-editor', terminalEditor);
     }

@@ -77,11 +77,11 @@ the task would have built.
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
-| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
 | SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194 |
 | SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194 |
 | SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194 |
-| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
 | Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200 |
@@ -650,9 +650,9 @@ the task would have built.
   `tests/contract/vendor-behaviors.test.ts` and `tests/contract/inspection-rules.test.ts`.
   Production exclusion is not provable there: a citation lives on the record that carries it, so no
   import graph separates them and only the built artifact can show the values are gone —
-  `tests/package/verify-package-files.test.ts` owns that assertion. `semanticFingerprint`
-  recomputation is not part of this task: no fingerprint exists until the maintainer-only drift
-  command captures one (T1032)
+  `tests/package/verify-package-files.test.ts` owns that assertion. No fingerprint exists: the
+  registry keeps no digest of page text or paraphrases, and whether a section still establishes a
+  paraphrase is the reviewer's reading (contracts/official-sources.md)
 - [X] T053 [P] [US1] Add failing Codex SKILL tests proving
   `['.agents', 'skills', ANY_NAME, 'SKILL.md']` — anchored at the selected root, with no leading
   `ANY_DIRECTORIES`, because Codex scans upward from its working directory to the repository root
@@ -7141,9 +7141,9 @@ the task would have built.
   owned behavior/strategy/relationship/evidence backlink, exact closed presentation-allowlist
   membership for every emitted relationship kind plus exact extractor applicability to the
   occurrence's actual admitted source form with no unlisted inference or cross-form promotion — a
-  declaration passes no such gate, being the carrier's own key (FR-007) —, reciprocal fingerprints,
-  and offline separation in `tests/contract/inspection-rules.test.ts`, and
-  `tests/contract/runtime-composition.test.ts` *(amended 2026-08-27: the allowlist half is checked
+  declaration passes no such gate, being the carrier's own key (FR-007) —, and offline separation in
+  `tests/contract/inspection-rules.test.ts`, and `tests/contract/runtime-composition.test.ts`
+  *(amended 2026-08-27: the allowlist half is checked
   as absence, because this release ships no relationship-only rule and therefore emits no
   relationship: a row that permits a kind is consumed by nothing. What the graph gate adds instead
   is registry-wide — every rule and strategy edge resolving to the shipped record by identity, every
@@ -7293,17 +7293,17 @@ the task would have built.
   User-only facts `codex.behavior.user.memories`, `codex.behavior.user.prompts`, and
   `claude.behavior.user.workflows` in `tests/fixtures/conformance/vendor-behaviors.json`, and
   `tests/contract/vendor-behaviors.test.ts`
-- [X] T932 [P] [US4] Add failing preview tests for zero filesystem/network I/O and the complete
-  ordered Global `inputState` algorithm: environment-only empty is `present-empty`; U+0000 or an
-  unpaired UTF-16 surrogate is `invalid`; active-platform `path.isAbsolute()` false is `relative`;
-  every other value is `eligible` with its exact string frozen into the preview and carrying no read
-  authority until consent. Also cover exact lexical roots, complete environment-supported escaping,
-  and the exact minimal four-entry frozen preview. Prove capture-or-replace occurs only through the
-  state-changing capture operation; current-preview retrieval is non-mutating. Any thrown/rejected
-  capture, escaping, or serialization operation propagates unchanged from the consent domain with no
-  catch, cause classification, partial DTO/state mutation, or path authority, leaving session API
-  representation to the failed request's ordinarily reported error in
-  `tests/unit/host/global-consent.test.ts`
+- [X] T932 [P] [US4] Add failing preview tests for one session-start input capture with zero
+  filesystem/network I/O and the complete ordered Global `inputState` algorithm: environment-only
+  empty is `present-empty`; U+0000 or an unpaired UTF-16 surrogate is `invalid`; active-platform
+  `path.isAbsolute()` false is `relative`; every other value is `eligible` with its exact string
+  frozen into each preview and carrying no read authority until consent. Cover the three exact,
+  ordered, one-time environment reads, the one unconditional `node:os.homedir()` call, exact lexical
+  roots, complete environment-supported escaping, and the exact minimal four-entry frozen preview.
+  Prove create-or-replace occurs only through the state-changing preview-creation operation, always
+  from the retained startup inputs, while current-preview retrieval is non-mutating and neither path
+  rereads process inputs. A thrown startup input-capture operation propagates unchanged and leaves no
+  capture, preview, or path authority in `tests/unit/host/global-consent.test.ts`
 - [X] T933 [US4] Extend preview tests for immutable typed traversal-plan programs, the
   server-retained raw/display record behind the opaque `previewId`, stale/replayed invalidation, and
   the later enable-request material fixing `confirmedTools` exactly to
@@ -7313,12 +7313,12 @@ the task would have built.
   foundation exists in `tests/unit/host/global-consent.test.ts`
 - [X] T934 [P] [US4] Add failing contracts for the non-mutating consent-preview read function, which
   returns only the current frozen preview or the fixed `consent-preview-missing` rejection, and the
-  state-changing argument-free consent-preview capture function of the session API contract
-  (contracts/http-api.md), which captures and atomically creates/replaces the unconsented preview
-  and returns the created preview. Cover zero proposed-root I/O, active-consent/enable/disable
-  conflicts, and the failed request's ordinary error on a thrown/rejected capture/encoding with zero
-  success bytes, job, retention, or state mutation; the read function never recaptures environment
-  state in `tests/contract/http-api-global.test.ts`
+  state-changing argument-free consent-preview creation function of the session API contract
+  (contracts/http-api.md), which atomically creates/replaces the unconsented preview from the
+  session's retained startup inputs and returns it. Cover zero proposed-root I/O,
+  active-consent/enable/disable conflicts, repeated creation with unchanged roots after process-input
+  mutation, and the read function's pure current-state behavior in
+  `tests/contract/http-api-global.test.ts`
 - [X] T935 [US4] Add failing browser acceptance that reaches the consent route from the launch URL
   rather than by navigating to it directly, covering the fixed-English preview UI's roots,
   plain-language read-scope copy, lexical states, exclusions, ordinarily reported request errors,
@@ -7334,25 +7334,25 @@ the task would have built.
 - [X] T937 [US4] Add reciprocal backlinks for those three pure User-only behavior facts to existing
   official-source records without creating source IDs in the owning registry record's `evidence`
   citations
-- [X] T938 [US4] Implement POST-owned complete environment/default-home preview capture and the
+- [X] T938 [US4] Implement one complete environment/default-home capture at session startup and the
   ordered Global `inputState` algorithm (`present-empty`, `invalid` on U+0000 or an unpaired
-  surrogate, `relative`, otherwise `eligible`), retaining the exact frozen string for `eligible`
-  roots and performing zero filesystem/network I/O. Atomically create-or-replace the preview and
-  apply presentation escaping with no normalization or root creation; expose the frozen record to
-  GET as a pure current-state retrieval. On any thrown/rejected capture, classification, escaping,
-  or serialization operation, propagate unchanged out of the consent domain with no catch, cause
-  classification, partial DTO, stored mutation, or path authority in
+  surrogate, `relative`, otherwise `eligible`), retaining the exact strings for the session and
+  performing zero filesystem/network I/O. From those retained inputs, atomically create-or-replace
+  each preview and apply presentation escaping with no normalization or root creation; expose the
+  frozen record to GET as a pure current-state retrieval. Propagate any thrown/rejected startup
+  capture, classification, or escaping operation unchanged before the session exists, and leave the
+  prior preview current if construction of a replacement does not complete, in
   `src/server/host/global-consent.ts`
 - [X] T939 [US4] Implement memory-only preview records behind opaque `previewId` values, stale
   invalidation, and enable-request binding in `src/server/host/global-consent.ts`
 - [X] T940 [US4] Implement strict paired preview functions in `src/server/host/devframe-app.ts`: the
   non-mutating consent-preview read returns only the current frozen preview or the fixed
-  `consent-preview-missing` rejection, while the argument-free capture function alone
-  captures/atomically creates or replaces an unconsented preview and returns it. The read remains
-  pure current-state retrieval. Preserve exact conflict behavior; let a thrown/rejected
-  capture/encoding fail the request with its real error (serialized as-is by devframe) with no
-  success bytes, job, retention, state mutation, or path authority; the read performs no environment
-  recapture
+  `consent-preview-missing` rejection, while the argument-free creation function alone atomically
+  creates or replaces an unconsented preview from the retained session-start inputs and returns it.
+  Preserve exact conflict behavior and pure current-state retrieval; neither function rereads the
+  environment. A failure before complete preview construction leaves the prior preview unchanged;
+  DTO or transport serialization failure is the request's ordinary error and grants no authority or
+  job, while the already-created complete preview may remain current
 - [X] T941 [US4] Implement accessible preview presentation for exact roots, plain-language
   read-scope copy, lexical states, exclusions, and ordinarily reported request errors without
   Inspector-defined capacity fields/values in `src/app/components/consent/GlobalConsentPreview.vue`
@@ -7647,9 +7647,9 @@ This slice adds the real Copilot port to the same open composite milestone; it i
 ### Four-member foundation
 
 - [X] T1137 [US4] Turn the fixed-member consent operation into the fixed-four member operation
-  FR-013 and FR-045 define, before any member widens: capture the three environment properties as
-  today, call the imported `node:os.homedir()` exactly once per preview, derive the shared agent
-  home as `node:path.join(capturedHomedir, '.agents')`, and freeze four preview entries in fixed
+  FR-013 and FR-045 define, before any member widens: capture the three environment properties once
+  at session startup, call the imported `node:os.homedir()` exactly once for that session, derive the
+  shared agent home as `node:path.join(capturedHomedir, '.agents')`, and freeze four preview entries in fixed
   order in `src/server/host/global-consent.ts`, bumping the
   `allowlistVersion`/`traversalPlanVersion` literals to `2026-08-27` — a widened selector set is a
   different consent, so the old version must stop matching — and pinning the new literals in
@@ -8882,7 +8882,7 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   quickstarts; ordered independent CI jobs; and the bilingual plan/task/quickstart declarations that
   require later release/final reruns—plus all 53 FR/QR/SC trace rows through FR-045 *(amended
   2026-08-04: the trace-row count follows the current FR/QR/SC set.)*, and every declared task ID's
-  mapping (T001 through T1201, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
+  mapping (T001 through T1202, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
   T482–T485, Phase 64’s vacant T654–T657, Phase 67’s vacant T675–T678, and Phases 68–75’s vacant
   T679–T750) *(amended 2026-08-30: the vacant ranges include the withdrawn marketplace Phases 68–75,
   whose T679–T750 the enumeration previously omitted while the same count it must reproduce already
@@ -9057,7 +9057,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   `pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`, and
   `pnpm run test:security -- tests/security/usability-study-evidence.test.ts`, and do not continue
   until all positive and negative cases pass. Require the bilingual task parser to preserve exactly
-  1,113 ordered checkbox IDs, 116 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)* *(amended 2026-08-01: counts corrected to
+  1,114 ordered checkbox IDs, 116 phases, 53 trace rows *(amended 2026-09-03 and 2026-09-04: the counts and the declared range follow the task set as Phase 112 and T1202 extend it.)* *(amended 2026-08-01: counts corrected to
   the current task set)* *(amended 2026-08-04: the trace-row count follows the current
   FR/QR/SC set.)*, identical English/Japanese owned-path sets, and self-contained task text with no
   out-of-line amendment mechanism. Verify the exact five-input phase matrix, closed twenty-member
@@ -9455,12 +9455,13 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
 - [X] T1056 Run the twenty first-use sessions and record SC-001 in
   `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md`. Each session is an
-  independent autonomous agent given the launched origin and the standardized task
-  prompt and nothing else: no selector, no route, and no description of the interface.
-  Launch one Inspector against the all-kind fixture `pnpm run start:fixture` builds, so
-  every session meets the same tree. A session opens one discovered customization file's
-  detail view within two minutes, timed from the prompt, and its own wall clock is what
-  records the interval. Record every session's outcome without exclusion or replacement,
+  independent autonomous agent given its own copy of the all-kind fixture, the guidance,
+  and the standardized task prompt and nothing else: no selector, no route, no description
+  of the interface, and nothing of this repository in its runtime, so it is started outside
+  this working tree. Each session launches the Inspector itself from that copy's root, so
+  every session meets the same tree from a launch of its own. A session opens one discovered
+  customization file's detail view within two minutes, timed from the prompt through the
+  launch, and its own wall clock is what records the interval. Record every session's outcome without exclusion or replacement,
   and record what each reported seeing that could be a safety event *(amended 2026-09-01:
   the sessions are agent-driven rather than a participant cohort, so what the record
   states is what the product's guidance was sufficient for, never a human-subject
@@ -9469,7 +9470,10 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   that kit is since removed (T1061, T1062), and SC-001's own interval starts at the prompt and
   includes launching the Inspector, so a session is not handed a served origin — it launches the
   Inspector itself. The run T1195 records handed each session an origin and is recorded as not
-  establishing SC-001.)*
+  establishing SC-001.)* *(amended 2026-09-04: the body states the self-launch procedure the
+  2026-09-03 note introduced, and adds that a session is started outside this working tree —
+  both runs of 2026-09-04 ran sessions whose runtime carried the repository's own instructions,
+  which SC-001's no-hint policy excludes.)*
 - [X] T1057 Complete the same twenty sessions through SC-006 and the two remaining
   workflows, and record them in `specs/001-inspect-agent-customizations/validation.md`
   and `specs/001-inspect-agent-customizations/validation.ja.md`. Each session opens the
@@ -9723,7 +9727,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   heartbeat boundaries, handoff anchors, stable control session, finalize teardown,
   witness-before-seal ordering, exact retained distributions/streams/handoff/witness/seal pairs, and
   zero sidecar/runtime control/raw/browser/reviewer/mapping residue. Finally review the task
-  parser's exact 1,113 IDs, 116 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)*, owned-path parity, self-contained task text,
+  parser's exact 1,114 IDs, 116 phases, 53 trace rows *(amended 2026-09-03 and 2026-09-04: the counts and the declared range follow the task set as Phase 112 and T1202 extend it.)*, owned-path parity, self-contained task text,
   bilingual semantic/code-literal parity, and all focused/complete gate results; any untested
   branch, stale architecture term, failed check, missing evidence, privacy residue, or unresolved
   concern blocks T1062/T1063. Additionally, review against the complete diff, tarball, and evidence
@@ -10038,8 +10042,8 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   while any concern remains. Only after zero concerns, verify the exact retained distributions,
   three streams, handoff pair, continuity-witness pair, capture-seal pair, five record kinds,
   threshold independence, the exact six-plus-two long-lived exits and reviewer-exit equation, seven
-  aggregate equations, zero prohibited residue, exact 1,113 task IDs, 116 phases, 53 trace rows *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)*,
-  coverage of every declared task ID — T001 through T1201, less the withdrawn Phase 39's vacant
+  aggregate equations, zero prohibited residue, exact 1,114 task IDs, 116 phases, 53 trace rows *(amended 2026-09-03 and 2026-09-04: the counts and the declared range follow the task set as Phase 112 and T1202 extend it.)*,
+  coverage of every declared task ID — T001 through T1202, less the withdrawn Phase 39's vacant
   T436–T439, Phase 45's vacant T482–T485, Phase 64's vacant T654–T657, Phase 67's vacant T675–T678,
   and Phases 68–75's vacant T679–T750, English/Japanese owned-path and semantic parity, no stale
   architecture term, and `git diff --check`; record every invalidation, rerun, digest, safe count,
@@ -10591,8 +10595,20 @@ reopened names them. Each records its result in that file and in
   the repeat after a material change to a primary workflow, and the rework changed all four
   *(amended 2026-09-03: the recorded run handed every session an origin a host was already
   serving, so its timer excludes the launch SC-001's interval includes and the record states
-  SC-001 as not established; a repeat in which each session launches the Inspector itself is
-  still owed, and this task is complete only as the run it records.)* (SC-001, SC-006) (missing)
+  SC-001 as not established; the repeat in which each session launches the Inspector itself is
+  T1202, and this task is complete only as the run it records.)* (SC-001, SC-006) (missing)
+- [X] T1202 Repeat the twenty agent-driven SC-001 and SC-006 sessions so that each session
+  launches the Inspector itself from the intended Repository root — SC-001's interval includes
+  the launch, which the run T1195 records began after — naming the build and the task material
+  under `tests/usability/sc001-sc006-study-inputs/` it scored against, and record the result as an
+  agent-driven run in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` *(amended 2026-09-04: run twice on
+  this date, the second against the build carrying the rework the first run's findings led
+  to. Neither run establishes SC-001 or SC-006: every session's runtime carried this
+  repository's own instructions, which the criteria's no-hint policy excludes, and a service
+  outage on the sessions' own runtime cut three of the second run's sessions inside the
+  discovery interval. The repeat starts each session outside this working tree, against the
+  current build.)* (SC-001, SC-006)
 
 ### Records that name the rework
 
@@ -10604,9 +10620,9 @@ reopened names them. Each records its result in that file and in
 - [X] T1197 Hold the frozen-count text in T1041, T1049, T1061, and T1062 to the shipped freeze in
   `specs/001-inspect-agent-customizations/tasks.md` and
   `specs/001-inspect-agent-customizations/tasks.ja.md`: each of those bodies requires the task
-  parser to reproduce 1,113 ordered checkbox IDs, 116 phases, and 53 trace rows, and coverage of
-  every declared task ID from T001 through T1201 less the vacant ranges each already enumerates
-  *(amended 2026-09-03: the counts and the declared range follow the task set Phase 112 extends.)*. A
+  parser to reproduce 1,114 ordered checkbox IDs, 116 phases, and 53 trace rows, and coverage of
+  every declared task ID from T001 through T1202 less the vacant ranges each already enumerates
+  *(amended 2026-09-03 and 2026-09-04: the counts and the declared range follow the task set as Phase 112 and T1202 extend it.)*. A
   task body records what the task now requires, and a dated amendment note records that it changed
   (AGENTS.md § Documentation content policy) (contradicts)
 - [X] T1198 Add the Story Coverage Matrix rows Phase 110 and this phase have none of, and correct
@@ -11373,7 +11389,15 @@ they already state.
   reader's own `$EDITOR` joins the set on macOS, given a terminal window through the operating
   system's `osascript` automation host: `src/server/host/file-opener.ts` hands its fixed script the
   editor and the path as arguments, so the command line a terminal needs is quoted by that host
-  rather than assembled here.)*
+  rather than assembled here.)* *(amended 2026-09-04: launcher discovery resolves each `PATH`
+  entry — including an empty entry meaning the invocation directory — to an absolute directory,
+  rejects any candidate inside the selected Repository root or an eligible personal-setup root
+  before calling `which`, and probes a bare executable only as an absolute per-directory candidate.
+  A configured command containing a path separator is rejected before probing, and the catalog
+  installation fallback applies the same inspected-root exclusion. The open control clears an old
+  launch error when the reader selects another target, and the installed-launch check distinguishes
+  the shutdown it requests from a process that exited successfully on its own. Unit and package
+  tests cover each boundary.)*
 
 - [X] T1124 Collapse the inventory's files in no kind into a disclosure (2026-08-22). That section
   is defined by absence — an admitted file no kind's inventory lists — so every repository holding

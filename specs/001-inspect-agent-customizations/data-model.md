@@ -296,12 +296,11 @@ but never treats build output as an inspected-source fallback.
 
 ### GlobalRootInputCapture
 
-Each request that creates a new unconsented preview creates one operation-local capture.
-The host reads the three environment properties exactly once in the fixed order,
-always derives the shared agent home from the one `homedir()` capture,
-`COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`. Only a captured JavaScript `undefined`
-means absent; every string, including `''`, is a present override. The host calls the
-already imported `node:os.homedir()` exactly once for that request — the shared agent
+Each session creates one startup capture before editor-launcher discovery. The host reads
+the three environment properties exactly once in the fixed order `COPILOT_HOME`,
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME`. Only a captured JavaScript `undefined` means absent;
+every string, including `''`, is a present override. The host calls the
+already imported `node:os.homedir()` exactly once for that session — the shared agent
 home always derives from it — and retains its exact returned string as `capturedHomedir`. It does not read or
 choose `HOME`, `USERPROFILE`, or another platform home input itself; the Node.js API owns
 that platform behavior.
@@ -310,26 +309,31 @@ The fixed mapping is Copilot → `COPILOT_HOME` or
 `node:path.join(capturedHomedir, '.copilot')`, Claude → `CLAUDE_CONFIG_DIR` or
 `node:path.join(capturedHomedir, '.claude')`, and Codex → `CODEX_HOME` or
 `node:path.join(capturedHomedir, '.codex')`. Each join occurs at most once and only for an
-absent property. It is lexical and performs no existence check or other filesystem
+absent property in that session. It is lexical and performs no existence check or other filesystem
 operation. Its exact string becomes `lexicalRoot`; empty, relative, NUL-containing, or
 otherwise unrepresentable results remain strings and receive the closed lexical input state
 instead of another fallback. If environment access, `homedir()`, joining, retention,
-presentation encoding, or preview serialization throws/rejects or
-cannot produce the required string, the operation-local capture is discarded and the session API
-request fails ordinarily with that error before acceptance. It creates no preview,
-`scanRequestId`, consent, root, Source, or authority. A successful preview owns the capture
-and freezes its four exact roots; active consent retrieval never repeats it.
+classification, or presentation encoding throws or cannot produce the required string, startup
+fails ordinarily with that ownerless error before a session or browser exists. It creates no
+preview, `scanRequestId`, consent, root, Source, or authority. A successful capture is retained
+unchanged for the whole session. Its eligible roots join the selected Repository root as the
+complete launcher-exclusion set, while the capture itself creates no preview or authority.
 
 ### GlobalConsentPreview
 
-The session API consent route creates this preview from exactly one
-`GlobalRootInputCapture` using lexical path operations only. Creating or returning it
-performs no filesystem operation under any proposed Global root.
+The session API consent route creates every preview from the session's one retained
+`GlobalRootInputCapture` without rereading process inputs. Creating or returning it performs
+no filesystem operation under any proposed Global root. Complete preview-object construction
+is atomic: a construction throw/rejection fails that create request ordinarily before
+acceptance, leaves the prior current preview unchanged, and creates no job or authority. Once
+the complete object has been retained, a DTO- or transport-serialization throw/rejection is the
+request's ordinary error and may leave that newly created preview current; it still creates no
+job or authority.
 
 | Field | Type | Rules |
 |---|---|---|
 | `previewId` | exact 43-character unpadded base64url string | Canonical encoding of an independent 32-byte CSPRNG draw and a process-memory lookup key; a new preview invalidates the previous unconsented preview, while active consent freezes and reuses its exact preview |
-| `previewEpoch` | non-negative safe integer | Internal and never serialized; increments with every newly captured preview and binds replacement/revalidation without using an opaque ID as an order value |
+| `previewEpoch` | non-negative safe integer | Internal and never serialized; increments with every newly created preview and binds replacement/revalidation without using an opaque ID as an order value |
 | `allowlistVersion` | date string | Current shipped contract version |
 | `traversalPlanVersion` | date string | Version of the shipped typed traversal-plan set; with `allowlistVersion` this record-level pair identifies the closed selection policy and canonical selector programs the preview binds |
 | `entries` | exactly four member entries | Fixed Copilot, Claude, Codex, shared-agent-home order |
@@ -350,12 +354,12 @@ into the shipped registry, not derived at runtime. They are distinct from the pe
 the plan set's contents; a plan-set change bumps `traversalPlanVersion` without changing
 `schemaVersion`.
 
-The host applies `RootPresentationEncoding` without changing the retained raw value. Its
+The host applies `RootPresentationEncoding` while building the session-start capture, without changing the retained raw value. Its
 ability to allocate that value is inherited from Node.js, the operating system,
-and the browser. A throw/rejection during lexical preview creation reaches the session API request
-boundary before acceptance and fails that request ordinarily without a
-`scanRequestId`, normalization, canonicalization, root creation, or read. It does not create
-a size-based input state. The preview is the one server-retained record identified by its
+and the browser. A throw/rejection before the complete capture is retained follows the ownerless
+startup-failure rule above, before a session or browser exists and without a preview,
+`scanRequestId`, normalization, canonicalization, root creation, or read. It does not create a
+size-based input state. The preview is the one server-retained record identified by its
 opaque `previewId`; neither root field is nullable, and no encoding step relies on
 reversing an escape or on Unicode normalization. An invalid environment value is
 escaped and displayed but is not normalized into an authorized path. Present-empty,
@@ -374,8 +378,10 @@ coordinator lock. While consent is active, an initial `GlobalEnableOperation` is
 or a non-complete `GlobalDisableOperation` retains its preview fence, retrieval returns the
 same DTO-visible object byte-for-byte in field semantics,
 including its ID, and never rereads the environment or creates a replacement.
-Only when neither condition holds may a request perform a new capture, increment
-`previewEpoch`, and replace the prior unconsented preview. If an initial operation terminates
+Only when neither condition holds may a request create a new preview from the retained capture,
+increment `previewEpoch`, and replace the prior unconsented preview. Complete construction must
+finish before that replacement; a later DTO- or transport-serialization failure may leave the
+new complete preview retained. If an initial operation terminates
 without activating consent, its freeze ends only after the operation unregisters. This is
 the only recovery path for redisplaying exact consent after a client purge and prevents an
 in-flight enable from committing authority for an unreachable preview.
@@ -608,7 +614,7 @@ itself can record the accepted job's error under its promoted non-null request I
 | `commitKind` | `cleanup-only \| remove-active-state` | Chosen at first acceptance and retained unchanged by every retry; only the second has public Global consent/control/Source state to remove |
 | `baseGenerations` | `{ repository: GenerationNumber, global: GenerationNumber \| null }` | Exact per-sequence committed generations at acceptance; the barrier commits no generation in either sequence — `remove-active-state` discards the whole Global sequence and `cleanup-only` changes no committed state |
 | `status` | `draining \| committing \| failed \| complete` | `failed` retains revoked authority and retryable cleanup state; it is not rolled back to active |
-| `frozenPreview` | internal exact preview reference | Retains the pre-barrier preview through `failed`; preview capture/replacement remains fenced until terminal success |
+| `frozenPreview` | internal exact preview reference | Retains the pre-barrier preview through `failed`; preview creation/replacement remains fenced until terminal success |
 
 A no-op disable with no active/queued Global authority and no retained disable failure uses
 the ordinary single-stage response gate and mutates nothing. Otherwise request validation
@@ -724,20 +730,14 @@ silently if it is ever misspelled or dropped, so the package suite asserts the b
 carries no URL, host, review date, paraphrase, or locator value.
 
 The explicit maintainer drift command sends no credentials, cookies, repository data, or
-other local state. Per cited page it accepts UTF-8 HTML/Markdown and follows only HTTPS
-redirects whose every hop remains on that citation's allowlisted host; redirect loops fail
-closed. A redirect to a different final URL is reported for review rather than silently
-changing `url`; downgrade, cross-host redirect, wrong content type, missing/duplicate
-heading, decode failure, or a recoverable network/runtime failure is a hard drift-check
-failure.
+other local state. Per cited page it accepts UTF-8 HTML/Markdown, requires a direct `200`
+from the citation's exact URL on its allowlisted host, and follows no redirect. A redirect,
+wrong content type, missing or duplicate heading, unresolved or ambiguous served fragment,
+decode failure, or a recoverable network/runtime failure is a hard drift-check failure.
 
-Normalization selects each cited heading through the next heading of equal or higher level,
-removes document chrome plus script/style nodes, preserves prose and code text, decodes
-entities, applies Unicode NFC and LF endings, trims line edges, collapses horizontal
-whitespace, and joins sections in listed order before SHA-256. A drift result never changes a
-behavior, rule, or strategy automatically. A maintainer reviews every citing record and both
-language contracts/research, then explicitly updates headings, paraphrases, and `reviewedOn`;
-no remote page text or response body is checked in.
+A drift result never changes a behavior, rule, or strategy automatically. A maintainer
+reviews every citing record and both language contracts/research, then explicitly updates
+headings, paraphrases, and `reviewedOn`; no remote page text or response body is checked in.
 
 ### DocumentationStatus and LifecycleQualifier
 
@@ -1810,8 +1810,8 @@ Global `inputState` is assigned in this exact order to the captured string:
 The product adds no lexical spelling policy beyond this closed algorithm; whether an
 `eligible` root is usable is decided only by post-consent readable-directory admission, and
 a later Node.js/OS rejection follows the normal boundary rule. A throw during
-`isAbsolute` or state/presentation construction propagates to the preview session API boundary and
-creates no preview. No step normalizes the string, changes separators, calls the
+`isAbsolute` or state/presentation construction is an ownerless startup failure before a session
+or browser exists and creates no capture or preview. No step normalizes the string, changes separators, calls the
 filesystem, or silently chooses another root.
 
 ### BrowserState
@@ -2123,8 +2123,8 @@ old file records in place.
    wall-clock guarantee for a continuously idle visible page.
 12. Every behavior, rule, strategy, and source ID is defined exactly once in its owning
     bilingual contract and executable registry. A record's own `evidence` citations equal
-    the owning row's direct Evidence cell and are reciprocal with the official-source
-    reverse index. No DTO carries a citation, a documentation status, or a lifecycle
+    the owning row's direct Evidence cell and resolve to the official-source row they
+    cite. No DTO carries a citation, a documentation status, or a lifecycle
     qualifier: they are maintenance records the product never reads. A missing, duplicate,
     orphaned, or language-divergent record fails the build.
 13. Vendor lookup bases/traversal and Inspector matchers are different record types. Every

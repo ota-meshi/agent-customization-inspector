@@ -41,26 +41,32 @@ defineProps<{
       Back to {{ listText }}
     </NuxtLink>
     <!-- Each neighbour is named by its own subject, which is what the move is
-         offering to open. The direction is drawn as an arrow and said in the
-         accessible name, because an arrow beside a name states no direction to
-         a reader who is not looking at it (WCAG 1.1.1). -->
+         offering to open. The direction is drawn as an arrow and said as a
+         word, as the bar's `Back to` says its own: an arrow beside a name
+         alone was found cryptic on sight by three of twenty first-use
+         sessions. The accessible name starts with the visible words — the
+         direction, then the subject's accessible label, which itself starts
+         with the drawn spelling — because a speech-input user activates the
+         move by saying what they see (WCAG 2.5.3), and only then adds which
+         list the move stays in, which the visible words do not say
+         (WCAG 1.1.1). -->
     <NuxtLink
       v-if="previous"
       :to="previous.route"
       class="aci-detail-navigation__move"
-      :aria-label="`Previous in ${listText}: ${previous.accessibleLabel}`"
+      :aria-label="`Previous ${previous.accessibleLabel}, in ${listText}`"
     >
       <PreviousIcon aria-hidden="true" />
-      <span class="aci-detail-navigation__label">{{ previous.label }}</span>
+      Previous <span class="aci-detail-navigation__label">{{ previous.label }}</span>
     </NuxtLink>
     <NuxtLink
       v-if="next"
       :to="next.route"
       class="aci-detail-navigation__move"
-      :aria-label="`Next in ${listText}: ${next.accessibleLabel}`"
+      :aria-label="`Next ${next.accessibleLabel}, in ${listText}`"
     >
       <NextIcon aria-hidden="true" />
-      <span class="aci-detail-navigation__label">{{ next.label }}</span>
+      Next <span class="aci-detail-navigation__label">{{ next.label }}</span>
     </NuxtLink>
   </Teleport>
 </template>

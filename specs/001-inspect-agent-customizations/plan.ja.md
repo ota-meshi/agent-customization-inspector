@@ -165,7 +165,8 @@ compatibility/support window、rollback/support pathを含めるか、理由付�
 default trueとして定義して`--no-open`を提供し、単一のstring-valued `root` optionで`--root <path>`を、
 number-valuedな`port` optionで`--port <number>`を提供し、false-defaultの
 `inspect-personal-setup` booleanを提供する。後者の存在自体がconsentのconfirmationであり、
-entryはpreviewをcaptureして確認し、hostの起動前にcommit済みのGlobal generationをawaitする。
+entryはsession startupでretainedしたGlobal root inputからpreviewを構築して確認し、hostの起動前に
+commit済みのGlobal generationをawaitする。
 自動Repository scanをawaitするのと同じ形である（FR-013）。
 `strict: true`を有効にし、bind前にすべてのpositional/rest argumentを明示的に拒否し、`cli()`をawaitし、
 parser所有のvalidation `AggregateError`を通常どおりnonzeroのprocess exitへ伝播させる。Session作成前に
@@ -219,8 +220,10 @@ tool/kind/source row、source/comparison surface、literal-credential/environmen
 SC-007では全file-confined outcome classとfailure classとする。Release recordはmanifest version/digestと実行した全case IDを示し、missing、
 omitted、unexecuted、mismatched evidenceは該当criterionをfailureにする。
 SC-001とSC-006のfirst-use評価は、release candidateについて1回実施する20件の独立した自律agent
-sessionである。各sessionには稼働中のInspectorが印字したoriginと標準化task promptだけを渡し、
-discovery、inspection、comparison、personal-setup consentを実施させ、除外も置換もせず記録する。
+sessionである。各sessionにはall-kind fixtureの自分の複製、guidance、標準化task promptだけを渡し、
+repository自身の指示がruntimeに入らないようこのworking treeの外で開始させ、その複製のrootから
+session自身にInspectorを起動させ、discovery、inspection、comparison、personal-setup consentを
+実施させ、除外も置換もせず記録する。
 Participant cohort、moderator、reviewer、capture harnessは存在しない。初見のparticipant 20名は
 このprojectには得られないため、この評価は自動runが立証できるものをassertし、runのどの記録も
 agent駆動であったことを明記する。材料は`tests/usability/sc001-sc006-study-inputs/`配下のguidance、
@@ -903,7 +906,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   この製品が導出する事実ではない。Source-level factは架空のsource file relationshipを作らず、tool、説明rule、
   影響を受けるcandidate/relationship-rule IDを保持する。
 - Official-source registryは各behavior、rule、strategyへ相互参照するstable evidence ID、canonicalな公式HTTPS
-  URL、正確なsection anchor、review date、semantic fingerprintを与える。Offline contract/build
+  URL、正確なsection anchor、review dateを与える。Offline contract/build
   validationはchecked-in recordをloadし、これらpageをfetchできるのは明示的なmaintainer drift commandだけと
   する。Startupとscanはdocumentationへaccessせず、remote page textをpackageへcopyしない。
 - Decodeはfileのbyteをreadしてから開始する。`0x00` byteが1つでもあれば
@@ -958,14 +961,17 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Session API payloadはcaller指定filesystem pathではなくIDを使用する。RPC handlerのunexpected failureは
   handlerからpropagateし、devframeがserializeするままdevframe channelを渡る。Sanitizing wrapperやgeneric error
   envelopeは存在せず、startup pathはcatchを持たないためownerless rejectionはprocess top levelへ到達する。
-  Global consentはI/Oなしのlexical previewを使い、serverはそれをopaque `previewId`で識別する
-  唯一のrecordとして保持する。New unconsented previewごとに`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
-  `CODEX_HOME`をこの順で正確に1回ずつreadし、`undefined`だけをabsentとし、import済み
-  `node:os.homedir()`をpreviewごとに正確に1回callする — 共有agent homeは常にそこから導出される（FR-013、FR-045）。Absentなtool entryだけにactive-platformの`node:path.join`と固定suffix `.copilot`、
-  `.claude`、`.codex`を使い、`.agents`は同じ1回のcaptureから導出し、`HOME`/`USERPROFILE`を独自選択しない。Proposed rootはproduct定義のbyte上限ではなくsupported Node.js、browser、
-  platformのstring/path facilityで表現・escapeする。Environmentがproposed rootをrecoverableに表現、escape、retain、
-  serializeできない場合、そのthrow/rejectionを通常のerrorとして変更せずpreviewのsession-API request boundaryへ
-  伝播させ、preview、authority、job、retained failure stateを作成しない。Accepted entryはinternal exact raw
+  CLIはsession startupでeditor-launcher探索前に1つのimmutableなGlobal root-input captureを構築する。
+  `COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に1回ずつreadし、`undefined`だけを
+  absentとし、import済み`node:os.homedir()`を無条件で正確に1回callする — 共有agent homeは常に
+  そこから導出される（FR-013、FR-045）。Absentなtool entryだけにactive-platformの`node:path.join`と固定suffix `.copilot`、
+  `.claude`、`.codex`を使い、`.agents`は同じ1回のcaptureから導出し、`HOME`/`USERPROFILE`を独自選択しない。同じimmutable captureをeditor lookupのeligible root exclusionと、serverが後からopaque `previewId`で識別する唯一のrecordとして保持する全I/Oなしlexical consent previewに使い、preview作成ではprocess inputを再読込しない。Proposed rootはproduct定義のbyte上限ではなくsupported Node.js、browser、
+  platformのstring/path facilityで表現・escapeする。Startup pathでそれらのinputをcapture、classify、または
+  escapeする間のthrowは、sessionもbrowserも存在しない段階でstartupをfailさせる。その後の各preview requestは
+  completeなpreview objectを構築してからcurrent previewを置き換えるため、constructionのthrow/rejectionでは
+  prior previewがcurrentのまま残る。DTO構築またはtransport serializationはnew previewがcurrentになった後に
+  failし得る。その場合はrequestのordinary errorとなり、作成済みpreviewがretainedされたままになり得る。
+  どちらのfailureもauthorityやjobを作らない。Accepted entryはinternal exact raw
   `lexicalRoot`もescaped displayと並べて同じrecordに保持する。Enableは保存済みraw valueだけを使い、`displayRoot`を逆変換せずenvironmentを
   再読込しない。
 - 起動時のbrowser openはproductがstartup openerを通じて所有する。CLIは、hostがFR-022で許可された
@@ -1154,7 +1160,7 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
 
 | Input/phase                                                         | Internal transition                             | I/Oおよびpublic result                                                                                                                                                                                                                                                                 |
 | ------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tool-home設定を`undefined`としてcapture                             | `preview-default`                               | Request全体で1回の`node:os.homedir()` captureから、active-platform `node:path.join`とtool固定`.copilot`/`.claude`/`.codex` suffixを使ってfilesystem I/Oなしでexact stringを計算し、下記ordered rowでclassifyする。このtoolをfixed four-entry confirmationに保持してauthorityを作らない |
+| Tool-home設定を`undefined`としてcapture                             | `preview-default`                               | Session-startの1回の`node:os.homedir()` captureから、active-platform `node:path.join`とtool固定`.copilot`/`.claude`/`.codex` suffixを使ってfilesystem I/Oなしでexact stringを計算し、下記ordered rowでclassifyする。このtoolをfixed four-entry confirmationに保持してauthorityを作らない |
 | Capture済みenvironment設定のlengthが0                               | `inputState: present-empty` / `preview-invalid` | Environment-origin valueだけに最初に適用する。Entryをfixed four-entry confirmationに保持し、fallbackもfilesystem/network I/Oも行わず、そのentry用root、Source、job、generationを作らない                                                                                               |
 | それ以外でexact stringがU+0000またはunpaired UTF-16 surrogateを含む | `inputState: invalid` / `preview-invalid`       | `path.isAbsolute`より前にrejectし、filesystem/network I/O 0件かつauthorityなしでinvalid preview entryだけを保持する                                                                                                                                                                    |
 | それ以外でactive-platform `node:path.isAbsolute`がfalseを返す       | `inputState: relative` / `preview-invalid`      | Filesystem/network I/O 0件でrelative preview entryを保持し、normalize、resolve、fallback、authority作成を行わない                                                                                                                                                                      |

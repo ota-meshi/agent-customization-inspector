@@ -420,13 +420,14 @@ const listNeighbours = computed(() => {
     return {
       // The drawn spelling rather than the label rule, which returns nothing at
       // all for a name with no characters and would leave the move named by its
-      // arrow alone ({@link AuthoredName}; FR-025).
+      // arrow alone, and the announced spelling starts with the drawn one
+      // ({@link AuthoredName}; FR-025, WCAG 2.5.3).
       label:
         entry.name === null ? 'No known server declarations' : new AuthoredName(entry.name).text,
       accessibleLabel:
         entry.name === null
           ? 'No known server declarations'
-          : new AuthoredName(entry.name).singleLineText,
+          : new AuthoredName(entry.name).accessibleText,
       // A row is one server name, so the move addresses that name's declaration
       // the way the row's own link does (`rows/McpRow.vue`): the carrier route
       // alone would open the whole carrier, which is a different page from the

@@ -587,7 +587,7 @@ test('keeps a link resolving across a rescan through its path identity', async (
   // Nothing polls, so the committed result arrives on an explicit refresh.
   await expect(async () => {
     await page.getByRole('button', { name: 'Refresh status' }).click();
-    await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Ready|Partial/u, {
+    await expect(page.getByRole('link', { name: 'Repository' })).toContainText(/Inspected/u, {
       timeout: 1_000,
     });
   }).toPass();

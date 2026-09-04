@@ -101,6 +101,15 @@ async function confirmConsent(page: Page, origin: string): Promise<void> {
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Inspect these directories' }).click();
   await expect(page.locator('main')).toContainText('What is inspected');
+  // The confirmation answers once the read finished and the page refetches on
+  // that answer (contracts/http-api.md § enable-global), so returning only
+  // once the panel states a finished read is what lets the caller reload or
+  // navigate afterwards and meet the committed generation rather than a
+  // batch still running.
+  await expect(page.locator('main')).toContainText(
+    /of these directories (was|were) read|Reading stopped before it finished|Nothing could be inspected/u,
+    { timeout: 30_000 },
+  );
 }
 
 test('confirms with no tool selector and states what was accepted', async ({ page }) => {

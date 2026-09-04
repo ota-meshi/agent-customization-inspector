@@ -117,12 +117,12 @@ bindされたportを述べる場所はprintされたURLだけである。誰か�
 （AGENTS.md § Agent-started process policy）。
 
 `--inspect-personal-setup`は、4つのmember root — 各tool自身の設定ディレクトリと共有agent home — に
-ある文書化済みカスタマイズfileもinspectする。consent pageのcheckboxが認可するのと同じreadを、commandで述べる形である。この
-flagそのものがconfirmationである。CLIは3つの環境プロパティと常にderiveされる共有agent homeからpreviewをcaptureし、captureした
-とおりに確認し、readのcommitを待つ。したがってprintされたURLが現れる時点で、Global Sourceは
-既にinventoryに載っている。各toolがどう終わったか、何が除外されたままかは、これまでどおり
-consent pageにある。flagなしのlaunchは選択されたrepositoryの外を一切readせず、pageは
-ディレクトリの割り出しを申し出る。
+ある文書化済みカスタマイズfileもinspectする。consent pageのcheckboxが認可するのと同じreadを、commandで
+述べる形である。このflagそのものがconfirmationである。CLIはstartupで1回captureしたimmutableなGlobal
+root inputからpreviewを構築して確認し、readのcommitを待つ。したがってprintされたURLが現れる時点で、
+Global Sourceは既にinventoryに載っている。Flagもpreview requestも環境プロパティやhome directoryを
+再captureしない。各toolがどう終わったか、何が除外されたままかは、これまでどおりconsent pageにある。
+Flagなしのlaunchは選択されたrepositoryの外を一切readせず、pageはディレクトリの割り出しを申し出る。
 
 ```bash
 pnpm start --no-open --inspect-personal-setup
@@ -153,9 +153,12 @@ node ../../../dist/cli.mjs --no-open
 CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時はそのexact stringを使う。`--root`は
 受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、relative optionはcaptureした呼び出しdirectoryに対してresolveする。
 明示的なempty valueはsessionまたはbrowser attemptより前に固定actionableかつsource-value-freeなoutputを出して終了し、
-valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされる。
-Selectionは`process.chdir()`を呼ばず、startup failureはsessionやsession-API errorではなくactionableなmessageとともに
-launchを終了させる。
+valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされる。Editor launcherの探索と
+session作成より前に、CLIは文書化された3つのtool-home環境プロパティを固定順で1回ずつcaptureし、
+`node:os.homedir()`を無条件で1回callする。そのretained captureをlauncher lookupから除外するeligibleな
+personal rootとすべてのpreviewに使う。Selectionは`process.chdir()`を呼ばず、startupのinput capture、
+classification、またはdisplay escapeのfailureはsessionやbrowserが存在する前にlaunchを終了させ、
+sessionまたはsession-API errorではなくactionableなmessageを出す。
 
 期待結果:
 
@@ -314,8 +317,8 @@ source checkでnetworkを使えるのはこのcommandだけとする。
 
 1. 全shipped `behaviorId`、`ruleId`、`strategyId`が厳密に1つの所有bilingual contractと対応する
    immutable registryに存在する。全cross-referenceが解決し、recordの`evidence`配列にある全citationが
-   引用先のofficial-sources contract rowと相互一致し、offline testがsemantic fingerprintを再計算する。明示drift checkは
-   official HTTPS hostとexact section selection/normalizationを強制する。Recoverableなnetworkまたは実行環境failureは
+   引用先のofficial-sources contract rowと相互一致する。明示drift checkはofficial HTTPS hostとexact section
+   resolutionを強制する。Recoverableなnetworkまたは実行環境failureは
    behavior/rule/strategy/check-in済みdigestを自動更新せずfail closedし、製品固有の数値fetch capはcontractに含めない。
 2. Vendor lookup base、relative selector、traversal modeをInspector matcherから独立して検証する。全Repository
    selectorはtyped segment array program — literal、regex、非隣接recursive-directory segmentで、globのように
@@ -589,16 +592,22 @@ pnpm exec vitest run --project integration tests/integration/global-boundaries.t
 Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対にinspectしない。確認項目:
 
 1. Consent前にGlobal pathへ一切touchせず、previewを`stat`、`realpath`、enumeration、file readなしでlexicalに
-   派生する。Instrumented captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に1回ずつcaptureし、
-   `undefined`だけをabsentとし、`node:os.homedir()`をpreviewごとに正確に1回callし — 共有agent homeは常にそこから導出される — active-platform
-   `node:path.join`が対応する固定suffixだけを適用することを証明する。`HOME`/`USERPROFILE`の直接選択もexistence checkも行わない。
+   派生する。Instrumented startup captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に
+   1回ずつcaptureし、`undefined`だけをabsentとし、`node:os.homedir()`を無条件で正確に1回callすることを
+   証明する — 共有agent homeは常にそこから導出される。Active-platformの`node:path.join`は対応する固定suffix
+   だけを適用する。同じretained captureをlauncher exclusionとすべてのpreviewに使い、preview requestも
+   `--inspect-personal-setup`もprocess inputを再読込しない。`HOME`/`USERPROFILE`の直接選択もexistence checkも
+   行わない。Capture、classification、またはdisplay escapeのthrowはlauncher探索、session作成、browser
+   attemptより前にstartupをfailさせる。
 2. Consent viewが正確なCopilot/Claude/Codex lexical root、input state、除外を表示し、
    read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。previewが束縛する2つのversionは
    どちらも表示しない。読み手はどちらに対しても行動できず、参照先もなく、それらが守るversion不一致は
    previewが画面にある間には起こりえない — 値はbuildの定数であり、異なるbuildは確認できるpreviewを
    持たないためである。確認は`allowlistVersion`を送信し、hostは一致しないものを拒否する。対はそこに属する。Frozen internal previewは各exact raw `lexicalRoot` stringを別に保持する。
-   `displayRoot`はone-way escaped stringで、decodeしてread authorityにしない。
-   Preview constructionのthrow/rejectionは、`scanRequestId`もauthorityも与えずreal errorを返す。
+   `displayRoot`はone-way escaped stringで、decodeしてread authorityにしない。Completeなpreview objectの構築前に
+   起きたfailureはreal errorを返し、prior current previewを置き換えない。DTO構築またはtransport serializationは
+   completeなpreviewがcurrentになった後にfailし得る。その場合はordinary request errorとなり、新しく作成したpreviewが
+   retainedされたままになり得る。どちらのfailureもauthorityやjobを作らず、`scanRequestId`を発行しない。
 3. Opt-in後は文書化されたmember candidateだけが0から4つの別識別member Global Sourceに表示される。
    Copilot、Claude、Codexごとに最大1つで、各Sourceは正確に1つのrootを持つ。Initial/retry transactionでadmitされた
    全Sourceは、観測可能なper-tool commitなしに1つのatomicなGlobal generationへ一緒に現れる — enable commitは
@@ -698,9 +707,9 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
 
 ### SC-001とSC-006のfirst-use評価
 
-20件の独立した自律agent sessionを、release candidateについて1回実施する。各sessionには稼働中の
-Inspectorが印字したoriginだけを渡し、discovery、inspection、comparison、personal-setup consentを
-実施させる。Runの実施方法、sessionへ言ってよいこと、記録するものは
+20件の独立した自律agent sessionを、release candidateについて1回実施する。各sessionにはall-kind
+fixtureの自分の複製とguidanceだけを渡し、このworking treeの外で開始させ、session自身にInspectorを
+起動させて、discovery、inspection、comparison、personal-setup consentを実施させる。Runの実施方法、sessionへ言ってよいこと、記録するものは
 [`tests/usability/sc001-sc006-study-kit.ja.md`](../../tests/usability/sc001-sc006-study-kit.ja.md)
 にある。Sessionが読むtask prompt、guidance、response form、ground truth、scoring rubricは
 `tests/usability/sc001-sc006-study-inputs/`配下にある。

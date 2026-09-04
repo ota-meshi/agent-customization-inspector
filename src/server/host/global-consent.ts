@@ -7,8 +7,8 @@
 // authorizes reading the customization files the allowlist names below the
 // four member roots — the three product home directories and the shared agent
 // home (FR-045). This module owns everything that happens before that:
-// capturing the three environment properties, deriving the shared agent home
-// from the one homedir() capture, deciding each captured string's lexical
+// retaining the session-start capture of the three environment properties and
+// the one derived shared agent home, deciding each captured string's lexical
 // state, escaping it for display, and retaining the one preview record the
 // later enable request names.
 //
@@ -31,10 +31,12 @@
 //
 // Residual limitation: whether a captured string can be retained and escaped
 // at all is inherited from Node.js, the operating system, and the browser. A
-// throw or rejection anywhere in the capture reaches the session-API request
-// boundary and fails that request with its real error, before acceptance,
-// creating no preview, consent, root, Source, or authority — there is no
-// catch, no cause classification, and no partial record.
+// throw anywhere in the startup capture fails the launch with its real error,
+// before a session or browser exists. A later throw or rejection while the
+// retained capture is turned into a preview reaches the session-API request
+// boundary and fails that request before acceptance, creating no preview,
+// consent, root, Source, or authority — there is no catch, no cause
+// classification, and no partial record.
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
@@ -189,13 +191,14 @@ export function classifyGlobalRoot(
 }
 
 /**
- * One request's capture of the three environment properties and, exactly once,
- * the home directory (data-model.md § GlobalRootInputCapture).
+ * One session's startup capture of the three environment properties and,
+ * exactly once, the home directory (data-model.md § GlobalRootInputCapture).
  *
- * The capture is operation-local: a new one is created for each permitted
- * create invocation, and a failed capture is discarded whole rather than
- * leaving a half-built preview behind. Retrieval of an existing preview never
- * constructs one, which is what makes the read function non-mutating.
+ * The capture is session-local: the CLI creates it before launcher discovery,
+ * and the consent domain retains that same object for every preview the
+ * session creates. A failed capture aborts startup whole rather than leaving a
+ * half-built session behind. Creating or retrieving a preview never re-reads
+ * process inputs, so launcher exclusion and later consent cannot disagree.
  */
 export class GlobalRootInputCapture {
   /**
@@ -207,8 +210,8 @@ export class GlobalRootInputCapture {
 
   /**
    * Reads `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once
-   * each in that order, then calls `node:os.homedir()` exactly once per
-   * capture: the shared agent home always derives from it, and an absent
+   * each in that order, then calls `node:os.homedir()` exactly once for the
+   * session: the shared agent home always derives from it, and an absent
    * property's default joins against the same one string (FR-013).
    *
    * Only a captured `undefined` is absent: every string, `''` included, is a
@@ -221,7 +224,7 @@ export class GlobalRootInputCapture {
     const captured = GLOBAL_TOOL_HOME_ORDER.map(
       (tool) => [tool, environment[GLOBAL_HOME_SOURCES[tool].variable]] as const,
     );
-    // One `homedir()` call for the whole request: a capture whose defaults
+    // One `homedir()` call for the whole session: a capture whose defaults
     // came from several calls could show two different homes for one reader,
     // and the shared agent home below needs it unconditionally (FR-045).
     const capturedHomedir = homedir();
@@ -262,7 +265,7 @@ export class GlobalConsentPreview {
   public readonly previewId: string;
 
   /**
-   * Monotonic capture counter, internal and never serialized. A later request
+   * Monotonic preview counter, internal and never serialized. A later request
    * naming an older epoch is naming a preview this one replaced.
    */
   public readonly previewEpoch: number;
@@ -337,42 +340,48 @@ export class GlobalConsentPreview {
  * (contracts/http-api.md § get-global-consent-preview,
  * § create-global-consent-preview).
  *
- * The pair is deliberately asymmetric. Capture is the only state-changing
- * operation and is the only one that reads the environment; retrieval is a
- * pure lookup of what is already current. That split is what lets a fresh
- * client redisplay the exact consent a previous client was shown — recapturing
- * on read would hand the reader a different preview than the one an in-flight
- * enable is bound to.
+ * The pair is deliberately asymmetric. Creation is the only state-changing
+ * operation, and it materializes a preview from the immutable session-start
+ * inputs; retrieval is a pure lookup of what is already current. That split
+ * is what lets a fresh client redisplay the exact consent a previous client
+ * was shown — deriving another record on read would hand the reader a
+ * different preview than the one an in-flight enable is bound to.
  *
  * The freeze conditions are the session's own states: an active consent, a
  * registered enable operation, or a non-null disable fence. While one holds,
- * {@link capture} is refused and the host answers the conflict its own
+ * {@link createPreview} is refused and the host answers the conflict its own
  * checks name (contracts/http-api.md § create-global-consent-preview).
  */
 export class GlobalConsentDomain {
-  /** The current preview, or null when none has been captured in this process. */
+  /** The one startup input capture every preview in this session shares. */
+  readonly #rootInputs: GlobalRootInputCapture;
+
+  /** The current preview, or null when none has been created in this process. */
   #current: GlobalConsentPreview | null = null;
 
   /**
-   * The next `previewEpoch` to assign. It increments with every newly captured
+   * The next `previewEpoch` to assign. It increments with every newly created
    * preview, so an epoch is never reused within a process.
    */
   #nextEpoch = 0;
 
+  /** Retains the session's one root-input capture without creating a preview. */
+  public constructor(rootInputs: GlobalRootInputCapture = new GlobalRootInputCapture()) {
+    this.#rootInputs = rootInputs;
+  }
+
   /**
-   * Captures the environment and atomically creates or replaces the
-   * unconsented preview, returning what it created.
+   * Atomically creates or replaces the unconsented preview from the retained
+   * session-start inputs, returning what it created.
    *
    * Atomic in the sense the contract requires: the previous preview stays
    * current until the complete new record is bound, so a throw during capture,
    * classification, escaping, or construction leaves the domain exactly as it
-   * was and propagates unchanged to the request boundary.
+   * was and propagates unchanged to the request boundary. No process input is
+   * recaptured here.
    */
-  public capture(environment?: NodeJS.ProcessEnv): GlobalConsentPreview {
-    const captured = new GlobalConsentPreview(
-      new GlobalRootInputCapture(environment),
-      this.#nextEpoch,
-    );
+  public createPreview(): GlobalConsentPreview {
+    const captured = new GlobalConsentPreview(this.#rootInputs, this.#nextEpoch);
     this.#nextEpoch += 1;
     this.#current = captured;
     return captured;
@@ -392,7 +401,7 @@ export class GlobalConsentDomain {
    * Releases the frozen preview. Called only inside the disable barrier's
    * terminal success commit (contracts/http-api.md § disable-global): the
    * preview stays retrievable — frozen — through every failed cleanup, and a
-   * later capture may replace it only once the barrier is gone.
+   * a later creation may replace it only once the barrier is gone.
    */
   public release(): void {
     this.#current = null;

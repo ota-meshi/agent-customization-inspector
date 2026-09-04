@@ -212,9 +212,11 @@ function chooseAndOpen(target: FileOpenTarget): void {
 
 // The failure belongs to the file it was reported for: one instance of this
 // control serves a sequence of files, so a new file starts with no failure
-// beside it rather than the previous file's.
+// beside it rather than the previous file's. A file's identity is its Source
+// and its Source-relative Path together (FR-030) — two personal-setup members
+// can hold one relative path — so either changing is a new file.
 watch(
-  () => props.sourceRelativePath,
+  () => [props.source, props.sourceRelativePath] as const,
   () => {
     failure.value = null;
   },

@@ -198,9 +198,9 @@ blocks T002; missing bilingual validation evidence fails the release gate.
 `open` boolean with a true default to provide `--no-open`, a single string-valued
 `root` option for `--root <path>`, a number-valued `port` option for `--port <number>`,
 and a false-by-default `inspect-personal-setup` boolean whose presence is itself the
-consent confirmation — the entry captures the preview, confirms it, and awaits the
-committed Global generation before the host starts, exactly as it awaits the automatic
-Repository scan (FR-013) — enables `strict: true`, explicitly rejects every
+consent confirmation — the entry constructs the preview from the retained session-start
+Global root inputs, confirms it, and awaits the committed Global generation before the host
+starts, exactly as it awaits the automatic Repository scan (FR-013) — enables `strict: true`, explicitly rejects every
 positional/rest argument before binding, awaits `cli()`, and lets a parser-owned validation
 `AggregateError` propagate ordinarily to a nonzero process exit. Before creating a
 session it captures `process.cwd()` exactly once and rejects an explicit empty `--root`
@@ -286,8 +286,10 @@ outcome class and failure class for SC-007. Release records
 name the manifest version and digest plus every executed case ID; missing, omitted,
 unexecuted, or mismatched evidence fails the affected criterion. The first-use evaluation of
 SC-001 and SC-006 is twenty independent autonomous-agent sessions run once for the release
-candidate: each is given the origin one running Inspector printed and the standardized task
-prompt and nothing else, attempts discovery, inspection, comparison, and personal-setup
+candidate: each is given its own copy of the all-kind fixture, the guidance, and the
+standardized task prompt and nothing else, is started outside this working tree so that
+nothing of the repository's own instructions is in its runtime, launches the Inspector
+itself from that copy's root, attempts discovery, inspection, comparison, and personal-setup
 consent, and is recorded without exclusion or replacement. There is no participant cohort,
 moderator, reviewer, or capture harness — gathering twenty first-use participants is not
 available to this project, so the evaluation asserts what an automated run establishes and
@@ -1141,8 +1143,8 @@ configuration.
   Source-level facts retain the tool, explaining rule, and affected
   candidate/relationship-rule IDs instead of fabricating a source file relationship.
 - The official-source registry gives each behavior, rule, and strategy reciprocal stable
-  evidence IDs, canonical official HTTPS URLs, exact section anchors, review dates,
-  and semantic fingerprints. Offline contract/build validation loads checked-in records;
+  evidence IDs, canonical official HTTPS URLs, exact section anchors, and review dates.
+  Offline contract/build validation loads checked-in records;
   only the explicit maintainer drift command may fetch those pages. Startup and scans do
   not access documentation or copy remote page text into the package.
 - Decoding begins after the file's bytes are read.
@@ -1218,20 +1220,25 @@ configuration.
   unexpected RPC-handler failure propagates out of its handler and crosses the devframe
   channel as devframe serializes it — there is no sanitizing wrapper or generic error
   envelope; the startup path has no catch, so an ownerless rejection reaches the process
-  top level. Global consent uses a no-I/O lexical preview retained server-side as the one
-  record identified by its opaque `previewId`. Each new unconsented preview reads `COPILOT_HOME`,
-  `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once in that order, treats only `undefined`
-  as absent, and calls imported `node:os.homedir()` exactly once per preview — the shared
-  agent home always derives from it (FR-013, FR-045). It uses active-platform
+  top level. At session startup, before editor-launcher discovery, the CLI constructs one
+  immutable Global root-input capture: it reads `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and
+  `CODEX_HOME` exactly once in that order, treats only `undefined` as absent, and calls
+  imported `node:os.homedir()` exactly once unconditionally — the shared agent home always
+  derives from it (FR-013, FR-045). It uses active-platform
   `node:path.join` with the fixed `.copilot`, `.claude`, and `.codex` suffixes only for
   absent tool entries, derives `.agents` from the same one capture, and never
-  independently chooses `HOME` or `USERPROFILE`.
-  Proposed roots are represented and escaped with the supported
-  Node.js, browser, and platform string/path facilities rather than product-defined byte
-  ceilings. If that environment cannot represent, escape, retain, or serialize a
-  proposed root recoverably, the throw/rejection propagates unchanged to the preview
-  session-API request boundary as an ordinary error and creates no preview, authority,
-  job, or retained failure state. Each accepted entry also retains an internal exact raw
+  independently chooses `HOME` or `USERPROFILE`. The same immutable capture supplies the
+  eligible root exclusions for editor lookup and every no-I/O lexical consent preview the
+  server later retains as the one record identified by its opaque `previewId`; preview
+  creation never rereads process inputs.
+  Proposed roots are represented and escaped with the supported Node.js, browser, and
+  platform string/path facilities rather than product-defined byte ceilings. A throw while
+  the startup path captures, classifies, or escapes those inputs fails before a session or
+  browser exists. Each later preview request constructs a complete preview object before it
+  replaces the current one, so a construction throw/rejection leaves the prior preview
+  current. DTO construction or transport serialization can fail after the new preview
+  becomes current; that is the request's ordinary error, and the created preview may remain
+  retained. Neither failure creates authority or a job. Each accepted entry also retains an internal exact raw
   `lexicalRoot` beside its escaped display in that record. Enable uses only the stored raw
   value, never reverses `displayRoot`, and never rereads the environment.
 - Startup browser opening is product-owned through the startup opener: the CLI prints the
@@ -1511,7 +1518,7 @@ configuration.
 
 | Input/phase                                                                | Internal transition                             | I/O and public result                                                                                                                                                                                                                                                                                                                   |
 | -------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tool-home setting is captured as `undefined`                               | `preview-default`                               | From the one request-wide `node:os.homedir()` capture, use active-platform `node:path.join` with that tool's fixed `.copilot`/`.claude`/`.codex` suffix and zero filesystem I/O, then classify the resulting exact string through the ordered rows below; retain this tool in the fixed four-entry confirmation and create no authority |
+| Tool-home setting is captured as `undefined`                               | `preview-default`                               | From the one session-start `node:os.homedir()` capture, use active-platform `node:path.join` with that tool's fixed `.copilot`/`.claude`/`.codex` suffix and zero filesystem I/O, then classify the resulting exact string through the ordered rows below; retain this tool in the fixed four-entry confirmation and create no authority |
 | Captured environment setting has length zero                               | `inputState: present-empty` / `preview-invalid` | Apply this first and only to an environment-origin value; retain the entry in the fixed four-entry confirmation, perform no fallback or filesystem/network I/O, and create no root, Source, job, or generation for it                                                                                                                   |
 | Otherwise the exact string contains U+0000 or an unpaired UTF-16 surrogate | `inputState: invalid` / `preview-invalid`       | Reject before `path.isAbsolute`, retaining only the invalid preview entry with zero filesystem/network I/O and no authority                                                                                                                                                                                                             |
 | Otherwise active-platform `node:path.isAbsolute` returns false             | `inputState: relative` / `preview-invalid`      | Retain the relative preview entry with zero filesystem/network I/O; do not normalize, resolve, fall back, or create authority                                                                                                                                                                                                           |

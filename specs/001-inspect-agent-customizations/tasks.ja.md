@@ -74,11 +74,11 @@ dispositionである。
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
-| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
 | SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194 |
 | SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194 |
 | SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194 |
-| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
 | SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
 | Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200 |
@@ -556,8 +556,9 @@ dispositionである。
   rowへの解決、registry/compiler の失敗契約を `tests/contract/vendor-behaviors.test.ts` と
   `tests/contract/inspection-rules.test.ts` に追加する。Production 除外はそこでは証明できない: citation はそれを運ぶ record
   上にあり、import graph が両者を分離しないため、値が消えていることを示せるのは build 済み artifact
-  だけである。`tests/package/verify-package-files.test.ts` がその assert を所有する。`semanticFingerprint` の再計算は本
-  task の範囲外とする。Maintainer 専用の drift command が捕捉するまで fingerprint は存在しない（T1032）
+  だけである。`tests/package/verify-package-files.test.ts` がその assert を所有する。fingerprint は存在しない:
+  registry は page text や paraphrase の digest を持たず、section が paraphrase を今も確立するかは reviewer の
+  読解である（contracts/official-sources.ja.md）
 - [X] T053 [P] [US1]
   `['.agents', 'skills', ANY_NAME, 'SKILL.md']`（選択されたrootに固定し、先頭の`ANY_DIRECTORIES`を持たない。Codexはworkingディレクトリからrepositoryルートへupwardにscanしdescendしないためである（FR-001））
   が typed plan へ一度だけ compile され、安全な filesystem はその plan だけを実行し、vendor code は match
@@ -6112,8 +6113,8 @@ dispositionである。
   file/connectionゼロ、現在所有する全behavior/strategy/relationship/evidence backlink、emitする全relationship
   kindのexactなclosed presentation-allowlist membershipに加え、そのoccurrenceのactualなadmission済みsource
   formに対するexact extractor applicability、未記載entryの推論とcross-form promotionがゼロであること —
-  宣言はこのgateを通らない。carrier自身のkeyだからである（FR-007） —、reciprocal fingerprint、offline
-  separationについて、Repository subgraph
+  宣言はこのgateを通らない。carrier自身のkeyだからである（FR-007） —、offline separationについて、
+  Repository subgraph
   contractを`tests/contract/inspection-rules.test.ts`、`tests/contract/runtime-composition.test.ts`に追加する
   *(2026-08-27 修正: allowlist側は不在として検査する。このリリースはrelationship-only
   ruleを出荷せず、したがってrelationshipを一切emitしないため、kindを許可するrowはどこからも消費されない。代わりにgraph
@@ -6244,15 +6245,15 @@ dispositionである。
   `codex.behavior.user.memories`、`codex.behavior.user.prompts`、`claude.behavior.user.workflows`
   を具体化し、それらに対する失敗するレジストリ/バックリンクのカバレッジを
   `tests/fixtures/conformance/vendor-behaviors.json`、`tests/contract/vendor-behaviors.test.ts` に追加する
-- [X] T932 [P] [US4] filesystem/network I/O 0件と完全な順序付きGlobal `inputState` algorithmのpreview failing
-  testを追加する: environmentのみのemptyは`present-empty`、U+0000またはunpaired UTF-16 surrogateは`invalid`、active
-  platformの`path.isAbsolute()`がfalseなら`relative`、それ以外の値は`eligible`で、その正確な文字列がpreviewにfreezeされconsentまでread
-  authorityを持たない。正確なlexical root、完全なenvironment-supported escaping、正確で最小の4-entry frozen
-  previewもカバーする。capture-or-replaceがstate-changing capture
-  operationだけで起きること、current-preview取得がnon-mutatingであることを証明する。throw/rejectされたcapture/escaping/serialization
-  operationは、catch・cause分類・partialなDTO/state mutation・path authorityなしにconsent
-  domainから無変更で伝播し、session
-  API表現は失敗したrequestの通常どおり報告されるerrorに委ねることを`tests/unit/host/global-consent.test.ts`で証明する
+- [X] T932 [P] [US4] Session startupのinput capture 1つ、filesystem/network I/O 0件、完全な順序付きGlobal
+  `inputState` algorithmのfailing preview testを追加する: environmentのみのemptyは`present-empty`、U+0000またはunpaired
+  UTF-16 surrogateは`invalid`、active platformの`path.isAbsolute()`がfalseなら`relative`、それ以外の値は`eligible`で、
+  その正確な文字列が各previewにfreezeされconsentまでread authorityを持たない。3つのenvironment propertyをexactな固定順で
+  1回ずつreadすること、`node:os.homedir()`を無条件に1回callすること、exact lexical root、完全な
+  environment-supported escaping、正確で最小の4-entry frozen previewをカバーする。Create-or-replaceは保持済みstartup
+  inputからstate-changingなpreview作成operationだけで起き、current-preview取得はnon-mutatingで、どちらもprocess inputを
+  再読込しないことを証明する。Throwされたstartup input captureは無変更で伝播し、capture、preview、path authorityを残さないことを
+  `tests/unit/host/global-consent.test.ts`で証明する
 - [X] T933 [US4] Immutable typed traversal plan、opaque `previewId`の背後でserverが保持するraw/display
   record、stale/replay invalidation、およびlater enable-request materialの`confirmedTools`をinvalid
   entryも含むclosed fixed order `[copilot, claude, codex, agents]`にexactly固定し、eligibility
@@ -6260,14 +6261,12 @@ dispositionである。
   testを`tests/unit/host/global-consent.test.ts`へ追加する。このPhase-95 test
   boundaryはpreview-onlyとし、consent後のinitial/retry work-set derivationはenable
   foundation作成後のT945–T946が所有する
-- [X] T934 [P] [US4] Non-mutatingなconsent-preview read functionがcurrent frozen
-  previewまたはfixedな`consent-preview-missing` rejectionだけを返すcontractと、session
-  API契約（contracts/http-api.md）のstate-changingでargument-freeなconsent-preview capture
-  functionがunconsented previewをcaptureしてatomic
-  create/replaceし、作成済みpreviewを返すcontractを追加する。Proposed-root I/O 0件、active-consent/enable/disable
-  conflict、capture/encoding throw時に失敗したrequestのordinary errorとなりsuccess byte/job/retention/state
-  mutationが0件であることを検証し、read
-  functionがenvironmentをrecaptureしないことを`tests/contract/http-api-global.test.ts`で証明する
+- [X] T934 [P] [US4] Non-mutatingなconsent-preview read functionがcurrent frozen previewまたはfixedな
+  `consent-preview-missing` rejectionだけを返すcontractと、session API契約（contracts/http-api.md）の
+  state-changingでargument-freeなconsent-preview作成functionが、sessionで保持するstartup inputからunconsented previewを
+  atomicにcreate/replaceして返すcontractを追加する。Proposed-root I/O 0件、active-consent/enable/disable conflict、process
+  input変更後もrootを変えない反復作成、およびread functionのpure current-state behaviorを
+  `tests/contract/http-api-global.test.ts`で証明する
 - [X] T935 [US4] consent route へ直接遷移するのではなく起動 URL から辿り着く経路を含め、固定Englishのpreview
   UIについて、root、平易な言葉によるread-scope説明、lexical state、exclusion、通常どおり報告されるrequest error、keyboard
   review、同意前のsource resultまたはenable requestが0件であることを検証するfailing browser acceptance
@@ -6280,22 +6279,21 @@ dispositionである。
   `src/shared/registries/vendor-behaviors.ts` に追加する
 - [X] T937 [US4] ソース ID を作成せず、これら 3 つの純粋な User-only の振る舞いの事実に対する相互バックリンクを既存の公式ソースレコードへ 対象registry
   recordの`evidence` citation で追加する
-- [X] T938 [US4] POST所有のcomplete environment/default-home preview captureとordered Global
-  `inputState` algorithm（`present-empty`、U+0000またはunpaired
-  surrogateなら`invalid`、`relative`、それ以外は`eligible`）を実装し、`eligible` rootだけにexact
-  frozen文字列を引き継いでfilesystem/network I/Oを0件とする。Normalization/root creationなしのpresentation
-  escapingとatomic create-or-replaceを行い、frozen recordをGETへpure current-state
-  retrievalとして公開する。Capture/classification/escape/serializationのthrow/rejectionはdomainでcatch/cause分類/partial
-  DTO/state mutation/path authority化せず変更なしに伝播する処理を`src/server/host/global-consent.ts`へ実装する
+- [X] T938 [US4] Session startupでcomplete environment/default-home captureを1回行い、ordered Global
+  `inputState` algorithm（`present-empty`、U+0000またはunpaired surrogateなら`invalid`、`relative`、それ以外は
+  `eligible`）を実装し、exact stringをsessionで保持してfilesystem/network I/Oを0件とする。その保持済みinputから各previewを
+  atomicにcreate/replaceし、normalization/root creationなしでpresentation escapingを適用して、frozen recordをGETへpure
+  current-state retrievalとして公開する。Startup capture/classification/escapeのthrow/rejectionはsession作成前に無変更で伝播し、
+  replacementのconstructionが完了しなければprior previewをcurrentのまま残す処理を
+  `src/server/host/global-consent.ts`へ実装する
 - [X] T939 [US4] Opaque `previewId`の背後に置くメモリ内だけのプレビューレコード、古い状態の無効化、有効化要求のバインディングを
   `src/server/host/global-consent.ts` に実装する
-- [X] T940 [US4] `src/server/host/devframe-app.ts`にstrictなpaired preview
-  functionを実装する。Non-mutatingなconsent-preview readはcurrent frozen
-  previewまたはfixedな`consent-preview-missing` rejectionだけを返し、argument-freeなcapture
-  functionだけがunconsented previewをcapture/atomic create-or-replaceして返す。Readはpure current-state
-  retrievalのままにする。Exact conflictを保持し、capture/encoding
-  throwはrequestを実際のerror（devframeがそのままserialize）で失敗させ、success byte/job/retention/state mutation/path
-  authorityを作らず、readはenvironment recaptureしない
+- [X] T940 [US4] `src/server/host/devframe-app.ts`にstrictなpaired preview functionを実装する。Non-mutatingな
+  consent-preview readはcurrent frozen previewまたはfixedな`consent-preview-missing` rejectionだけを返し、argument-freeな
+  作成functionだけが保持済みsession-start inputからunconsented previewをatomicにcreate/replaceして返す。Exact conflictとpure
+  current-state retrievalを維持し、どちらのfunctionもenvironmentを再読込しない。Complete previewのconstruction前のfailureはprior
+  previewを変更せず、DTO/transport serialization failureはrequestのordinary errorとしてauthority/jobを作らない一方、作成済み
+  complete previewはcurrentとして残り得る
 - [X] T941 [US4] 正確な root、平易な言葉によるread-scope説明、state、exclusion、通常どおり報告されるrequest error
   について、Inspector-defined capacity field/value を含まない accessible preview presentation を
   `src/app/components/consent/GlobalConsentPreview.vue` に実装する *(2026-08-30 修正: preview が束ねる version
@@ -6545,8 +6543,8 @@ dispositionである。
 ### 4-member基盤
 
 - [X] T1137 [US4] どのmemberを広げるより先に、fixed-memberのconsent operationをFR-013とFR-045が定義するfixed-four
-  member operationへ変える: 3つのenvironment
-  propertyを従来どおりcaptureし、import済み`node:os.homedir()`をpreviewごとに正確に1回callし、共有agent
+  member operationへ変える: session startupで3つのenvironment
+  propertyを1回captureし、import済み`node:os.homedir()`をそのsessionで正確に1回callし、共有agent
   homeを`node:path.join(capturedHomedir, '.agents')`としてderiveし、固定順の4 preview
   entryを`src/server/host/global-consent.ts`でfreezeする。`allowlistVersion`/`traversalPlanVersion`のliteralを`2026-08-27`へ上げ
   — 広がったselector集合は別のconsentであり、旧versionはmatchを止めなければならない —
@@ -7553,7 +7551,7 @@ dispositionである。
   reviewを立証しない。`tests/documentation/cross-artifact.test.ts`へ、両quickstart、順序付き独立CI
   job、後続release/final rerunを要求するbilingual plan/task/quickstart declarationを含むrunnable command/stable
   ID、FR-045までの全53 FR/QR/SC trace row *(2026-08-04 修正: trace rowの件数は現在のFR/QR/SC集合に従う。)*、宣言済みtask
-  IDすべてのmapping（T001からT1201まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
+  IDすべてのmapping（T001からT1202まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
   *(2026-08-30 修正: 欠番の範囲に取り下げたmarketplaceフェーズ68–75を含めた。同じgateが再現すべきtask件数は既にそれらを除外していたが、列挙が漏れていた。)*
   *(2026-08-24 修正: 件数と欠番の範囲は現在のtask
   setに従う。取り下げたフェーズ64と67がその欠番を残す。)*を検証し、prefixなしbasenameにownershipを依存するtaskを
@@ -7697,7 +7695,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
 
 - [X] T1049 Targeted study-evidence gate
   `pnpm run test:contract -- tests/contract/usability-study-evidence.test.ts`、`pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`、`pnpm run test:security -- tests/security/usability-study-evidence.test.ts`を実行し、全positive/negative
-  caseがpassするまで先へ進まない。Bilingual task parserでexact 1,113 ordered checkbox ID、116 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*
+  caseがpassするまで先へ進まない。Bilingual task parserでexact 1,114 ordered checkbox ID、116 phase、53 trace row *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*
   *(2026-08-01 修正: 現在のtask setに合わせて件数を補正)* *(2026-08-04 修正: trace
   rowの件数は現在のFR/QR/SC集合に従う。)*、English/Japaneseのidentical owned-path set、out-of-line amendment
   mechanismのないself-contained task textを要求する。Exact five-input phase matrix、closed twenty-member
@@ -8063,9 +8061,10 @@ participant 20名がこのprojectには得られず、それが存在する理�
 - [X] T1056 20件のfirst-useセッションを実行し、SC-001を
   `specs/001-inspect-agent-customizations/validation.md`と
   `specs/001-inspect-agent-customizations/validation.ja.md`に記録する。各セッションは独立した
-  自律agentであり、起動したoriginと定型taskプロンプトだけを与える。selectorもrouteもinterfaceの
-  説明も与えない。`pnpm run start:fixture`がbuildする全kind fixtureに対してInspectorを1つ起動し、
-  全セッションが同じtreeに出会うようにする。セッションはpromptからの2分以内に、発見された
+  自律agentであり、全kind fixtureの自分の複製、guidance、定型taskプロンプトだけを与える。selectorも
+  routeもinterfaceの説明も与えず、このrepositoryのものをruntimeに入れないため、このworking treeの
+  外で開始する。各セッションはその複製のrootから自身でInspectorを起動し、全セッションが同じtreeに
+  自分の起動から出会うようにする。セッションはpromptから起動を含めた2分以内に、発見された
   customization file 1件のdetail viewを開き、区間は自身のwall clockで記録する。全セッションの
   outcomeを除外も置換もせず記録し、safety eventになり得るものとして各セッションが報告した内容も
   記録する *(2026-09-01 修正: セッションはparticipant cohortではなくagent駆動であるため、
@@ -8074,7 +8073,10 @@ participant 20名がこのprojectには得られず、それが存在する理�
   使用せず、recordはそう述べる。)* *(2026-09-03 修正: そのkitはその後削除され（T1061、T1062）、
   SC-001自身の区間はprompt提示で始まりInspectorの起動を含むので、sessionには配信済みのoriginを渡さず、
   session自身がInspectorを起動する。T1195が記録するrunは各sessionにoriginを渡しており、SC-001を
-  確立しないものとして記録されている。)*
+  確立しないものとして記録されている。)* *(2026-09-04 修正: 本文を2026-09-03の注記が導入した
+  self-launch手順に改め、sessionをこのworking treeの外で開始することを加えた。2026-09-04の2回の
+  runはどちらも、repository自身の指示をruntimeに持つsessionで走っており、SC-001のno-hint policyは
+  それを許さない。)*
 - [X] T1057 同じ20セッションをSC-006と残る2つのworkflowまで完了し、
   `specs/001-inspect-agent-customizations/validation.md`と
   `specs/001-inspect-agent-customizations/validation.ja.md`に記録する。各セッションは指定された
@@ -8291,7 +8293,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
   cardinality、unchanged record kind/effect row/sole-writer chain、heartbeat boundary、handoff
   anchor、stable control session、finalize teardown、witness-before-seal order、exact retained
   distribution/stream/handoff/witness/seal pair、sidecar/runtime control/raw/browser/reviewer/mapping
-  residue 0件を確認する。最後にtask parserのexact 1,113 ID、116 phase、53 trace row *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*、owned-path
+  residue 0件を確認する。最後にtask parserのexact 1,114 ID、116 phase、53 trace row *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*、owned-path
   parity、self-contained task text、bilingual semantic/code-literal parity、全focused/complete gate
   resultをreviewし、untested branch、stale architecture term、failed check、missing evidence、privacy
   residue、unresolved concernがあればT1062/T1063をblockする。 加えて、次のbrowser-observation、outcome、ordering
@@ -8579,8 +8581,8 @@ participant 20名がこのprojectには得られず、それが存在する理�
   diff/tarballに対してT1061を再実行し、concernが残る間T1061 → remediation → focused gate → complete gate → full
   studyを反復する。Concern 0件の後だけ、exact retained distribution、stream 3件、handoff pair、continuity-witness
   pair、capture-seal pair、record kind 5件、threshold independence、exact six-plus-two long-lived
-  exitとreviewer-exit equation、aggregate equation 7件、prohibited residue 0件、exact task ID 1,113件、phase
-  116件、trace row 53件 *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*、宣言済み task ID すべての coverage — T001 から T1201 まで、取り下げたフェーズ39の欠番
+  exitとreviewer-exit equation、aggregate equation 7件、prohibited residue 0件、exact task ID 1,114件、phase
+  116件、trace row 53件 *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*、宣言済み task ID すべての coverage — T001 から T1202 まで、取り下げたフェーズ39の欠番
   T436–T439、フェーズ45の欠番 T482–T485、フェーズ64の欠番 T654–T657、フェーズ67の欠番 T675–T678、フェーズ68–75の欠番 T679–T750
   を除く、English/Japanese owned-path/semantic parity、stale architecture term
   0件、`git diff --check`をverifyする。全invalidation、rerun、digest、safe count、aggregate、cleanup、final
@@ -9092,7 +9094,16 @@ readmeは読み手が実際に出会うinterfaceを示す。
   Outcomes は主要workflowへの実質的な変更の後に繰り返すことを求めており、reworkは4つすべてを変更
   した *(2026-09-03 修正: 記録したrunは各sessionにhostが既に配信しているoriginを渡したので、その
   timerはSC-001の区間が含む起動を含まず、recordはSC-001を未確立と述べる。各sessionが自分でInspectorを
-  起動する繰り返しはなお負っており、このtaskは記録したrunとしてだけ完了である。)*（SC-001、SC-006）（missing）
+  起動する繰り返しはT1202であり、このtaskは記録したrunとしてだけ完了である。)*（SC-001、SC-006）（missing）
+- [X] T1202 SC-001 と SC-006 の agent駆動session 20件を、各sessionが意図した Repository root から
+  自分で Inspector を起動する形で繰り返す — SC-001 の区間は起動を含み、T1195 が記録する run は
+  その後から始まっていた —。そのbuildと `tests/usability/sc001-sc006-study-inputs/` の採点材料を
+  名指して、結果をagent駆動の実行として `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する *(amended 2026-09-04:
+  この日に2回実施し、2回目は最初のrunの所見が導いた作り直しを載せたbuildに対して行った。どちらの
+  runもSC-001とSC-006を確立しない。全sessionのruntimeがこのrepository自身の指示を持っており、基準の
+  no-hint policyはそれを許さず、2回目はsession自身のruntimeのserviceの障害がdiscovery区間の内側で
+  3件を切った。再実施は、各sessionをこのworking treeの外で開始し、現在のbuildに対して行う。)*（SC-001、SC-006）
 
 ### 作り直しを名指す記録
 
@@ -9104,9 +9115,9 @@ readmeは読み手が実際に出会うinterfaceを示す。
 - [X] T1197 `specs/001-inspect-agent-customizations/tasks.md` と
   `specs/001-inspect-agent-customizations/tasks.ja.md` で、T1041、T1049、T1061、T1062 の凍結
   countの記述を出荷済みのfreezeに合わせる。これら4つの本文は、task parserが ordered checkbox ID
-  1,113件、phase 116件、trace row 53件を再現すること、および T001 から T1201 までの宣言済み task ID
+  1,114件、phase 116件、trace row 53件を再現すること、および T001 から T1202 までの宣言済み task ID
   すべて（各本文が既に列挙している欠番を除く）のcoverageを要求する
-  *(2026-09-03 修正: countと宣言範囲はフェーズ 112 が拡張した task set に従う。)*。taskの本文はそのtaskが現在
+  *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*。taskの本文はそのtaskが現在
   要求するものを記録し、日付入りの amendment noteが変更されたことを記録する
   （AGENTS.md § Documentation content policy）（contradicts）
 - [X] T1198 フェーズ 110 とこのフェーズが持たないStory Coverage Matrixの行を追加し、109 で止まって
@@ -9742,6 +9753,11 @@ directory名、nestedなClaude Code recognitionはroot相対prefix付き — で
   setは`specs/001-inspect-agent-customizations/plan.md`を、いずれも両言語で改訂する。 *(amended 2026-08-22:
   macOSではreader自身の`$EDITOR`も対象に加わり、OSの`osascript` automation hostを通じてterminal windowを与える:
   `src/server/host/file-opener.ts`は固定scriptへeditorとpathをargumentとして渡すため、terminalが必要とするcommand行のquotingはここではなくそのhostが行う。)*
+  *(2026-09-04修正: launcher discoveryは、invocation directoryを意味するempty entryを含む各`PATH` entryをabsolute
+  directoryへresolveし、選択済みRepository rootまたはeligibleなpersonal-setup root内のcandidateを`which`呼び出し前にrejectし、
+  bare executableだけをdirectoryごとのabsolute candidateとしてprobeする。Path separatorを含む設定commandはprobe前にrejectし、catalogの
+  installation fallbackにも同じinspected-root exclusionを適用する。Open controlはreaderが別targetを選ぶと古いlaunch errorをclearし、
+  installed-launch checkは自身が要求したshutdownとprocessの自発的な正常終了を区別する。各boundaryをunit/package testでcoverする。)*
 
 - [X] T1124 一覧のどのkindにも属さないfileをdisclosureへ畳む（2026-08-22）。このsectionは不在で定義される — inspection
   ruleがadmitしたが、どのkindのinventoryにも載らないfile —

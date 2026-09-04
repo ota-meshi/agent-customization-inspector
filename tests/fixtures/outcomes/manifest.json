@@ -29,7 +29,7 @@
     "tests/contract/http-api-session.test.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/contract/http-api-session.test.ts",
-      "sha256": "952e15753e4af41400510cc7fbf5e493d89777c1d5810a984d71b8f996f94aaf"
+      "sha256": "51be67e4578419b5e04ddabc1af60287bc70ae877cb0df242cc8bb347841945f"
     },
     "tests/e2e/claude-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -119,7 +119,7 @@
     "tests/e2e/claude-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-detail.spec.ts",
-      "sha256": "f1f8612d7ad8fa1224c7feea3142c7d6fdf8371557aed7a7024abc851afca014"
+      "sha256": "6412cb8547768886563d63c5fd875a2d1a9f50328cb35ec0c2a7e30e61ddbe52"
     },
     "tests/e2e/claude-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -199,12 +199,12 @@
     "tests/e2e/codex-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-skills-detail.spec.ts",
-      "sha256": "3d52b00cd8822ca7dd2d39abf682808812efd2276efdde9f2fc6050e2612d56a"
+      "sha256": "d4073a9f8b90fe31411acfd38dcf55b3f9386fc9ebc9f295593c3177d0951143"
     },
     "tests/e2e/codex-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-skills-list.spec.ts",
-      "sha256": "79534d2693e5bda72e304ee799e1da623484aca4099418720f300433175ead3c"
+      "sha256": "391ec9a90a7a3264a2525cfc85c051ec232de3b24fb75debe1ac446ea9e02281"
     },
     "tests/e2e/comparison.spec.ts": {
       "kind": "inline-fixture-suite",

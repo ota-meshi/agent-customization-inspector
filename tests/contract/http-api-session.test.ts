@@ -9,7 +9,6 @@
 // exists: before acceptance a failure is just this invocation's error and
 // leaves no trace, while after acceptance the invocation has already resolved
 // and the terminal failure must be findable on the Source it belongs to.
-import { setImmediate } from 'node:timers/promises';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -162,8 +161,12 @@ describe('rescan-repository admission', () => {
     expect(Object.keys(result).sort()).toEqual(['data', 'globalContentEpoch']);
     expect(result.data.scanRequestId).toMatch(/^[A-Za-z0-9_-]{22}$/u);
     expect(result.data.source.scanRequestId).toBe(result.data.scanRequestId);
-    expect(result.data.source.status).toBe('scanning');
+    // Answered once the admitted scan settled, so the Source in the answer is
+    // the one the scan left: its result, under this command's own ID
+    // (contracts/http-api.md § rescan-repository).
+    expect(result.data.source.status).toBe('ready');
     expect(result.data.source.progress?.scanRequestId).toBe(result.data.scanRequestId);
+    expect(result.data.source.progress?.phase).toBe('complete');
   });
 
   it('returns the fixed scan-in-progress conflict for a duplicate command', async () => {
@@ -173,7 +176,9 @@ describe('rescan-repository admission', () => {
     const context = hostContext();
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
 
-    await fn.handler();
+    // The first invocation answers only once its scan settles, which this one
+    // never does; the duplicate arrives while it is out.
+    void fn.handler();
     const duplicate = await fn.handler();
     expect(duplicate).toEqual({ error: { code: 'scan-in-progress' } });
   });
@@ -193,8 +198,7 @@ describe('rescan-repository admission', () => {
     const context = hostContext();
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
     const result = (await fn.handler()) as CommandResult<ScanAdmission>;
-    // The accepted job resolves after the invocation returned its acceptance.
-    await setImmediate();
+    // The invocation answers with the commit, so nothing is waited for here.
 
     const snapshot = context.session.snapshot();
     expect(snapshot.repositoryGeneration).toBe(1);
@@ -222,12 +226,11 @@ describe('the ordinary request-owned failure lifecycle (FR-030)', () => {
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
 
     const result = (await fn.handler()) as CommandResult<ScanAdmission>;
-    await setImmediate();
 
     const snapshot = context.session.snapshot();
-    // The invocation already resolved with its acceptance, so the terminal
-    // failure is retained where the data model defines it — never re-thrown
-    // into a later unrelated invocation.
+    // The invocation answered once the accepted job failed, so the terminal
+    // failure is retained where the data model defines it — never thrown into
+    // the invocation, which still answers with its acceptance.
     expect(snapshot.snapshotState).toBe('stale-after-fatal-rescan');
     expect(snapshot.staleFailures).toEqual([
       expect.objectContaining({
@@ -344,7 +347,6 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     const before = await getSession(context);
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
     await fn.handler();
-    await setImmediate();
     const after = await getSession(context);
     // The Repository Source survives every commit: a client holding its ID
     // from generation 0 still names the same Source afterwards.
@@ -370,7 +372,6 @@ describe('the Repository session envelope this release publishes (T916)', () => 
       files: [file('AGENTS.md'), file('CLAUDE.md')],
     });
     await fn.handler();
-    await setImmediate();
     expect((await getSession(context)).data.files.map((entry) => entry.sourceRelativePath)).toEqual(
       ['AGENTS.md', 'CLAUDE.md'],
     );
@@ -380,7 +381,6 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     // must not survive it (FR-030).
     vi.mocked(runSourceScan).mockResolvedValue({ ...emptyPublication, files: [file('CLAUDE.md')] });
     await fn.handler();
-    await setImmediate();
     const after = await getSession(context);
     expect(after.data.files.map((entry) => entry.sourceRelativePath)).toEqual(['CLAUDE.md']);
     expect(after.data.repositoryGeneration).toBe(2);
@@ -391,13 +391,11 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
     vi.mocked(runSourceScan).mockResolvedValue(emptyPublication);
     await fn.handler();
-    await setImmediate();
 
     // An accepted explicit rescan that terminates fatally is the one operation
     // that creates the overlay, and it carries that request's own message.
     vi.mocked(runSourceScan).mockRejectedValue(new Error('injected rescan failure'));
     await fn.handler();
-    await setImmediate();
     const stale = context.session.snapshot();
     expect(stale.snapshotState).toBe('stale-after-fatal-rescan');
     // The overlay names the failed attempt's own message and the generation it
@@ -416,7 +414,6 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     // Nothing but a successful replacement clears it.
     vi.mocked(runSourceScan).mockResolvedValue(emptyPublication);
     await fn.handler();
-    await setImmediate();
     const recovered = context.session.snapshot();
     expect(recovered.staleFailures).toEqual([]);
     expect(recovered.snapshotState).toBe('current');
@@ -428,7 +425,6 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     const context = hostContext();
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
     const admitted = (await fn.handler()) as CommandResult<ScanAdmission>;
-    await setImmediate();
     const committed = context.session.snapshot();
 
     // The request is terminal: a second completion for that ID — a duplicated
@@ -452,7 +448,6 @@ describe('the Repository session envelope this release publishes (T916)', () => 
     const context = hostContext();
     const fn = registerFunctions(context).get('agent-customization-inspector:rescan-repository')!;
     await fn.handler();
-    await setImmediate();
     // The published envelope carries identities, states, and counts. A
     // judgement about a reader's own files — a score, a severity ranking, a
     // validity claim — has no field to travel in (QR-001, FR-032).

@@ -7,8 +7,8 @@
 // What it decides is what a script can decide: that a recorded URL still
 // answers on its own official host without redirecting, and that each cited
 // section still resolves — as a served heading, or, when no served heading
-// carries it, as the one fragment every table-of-contents link bearing its
-// text points at. What it does not
+// carries it, as the one served fragment every table-of-contents link bearing
+// its text points at. What it does not
 // decide is what a vanished heading means, or whether the sections still
 // establish the paraphrase a record maintains; those stay the reviewer's, and
 // AGENTS.md § Official-source verification policy says so.
@@ -17,6 +17,7 @@
 // as itself, with no partial write and no automatic cause-based conclusion.
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { type DocumentFragment as HappyDocumentFragment, Window } from 'happy-dom';
 
 /** The registry this checker reads, relative to the repository root. */
 const REGISTRY_PATH = 'specs/001-inspect-agent-customizations/contracts/official-sources.md';
@@ -45,13 +46,13 @@ export interface OfficialSourceRecord {
 export type SectionResolution =
   /** Exactly one served heading element carries that text. */
   | 'heading'
-  /** No served heading carries it; every table-of-contents link bearing it points at one fragment. */
+  /** No served heading carries it; every table-of-contents link bearing it points at one served fragment. */
   | 'anchor'
   /** More than one served heading carries that text, so no one heading is cited. */
   | 'ambiguous-heading'
   /** No served heading carries it, and links bearing it point at two or more fragments. */
   | 'ambiguous-anchor'
-  /** Neither a served heading nor a table-of-contents link carries it. */
+  /** No served heading or matching link establishes one served fragment. */
   | 'missing';
 
 /** One record's outcome, as this checker observed it. */
@@ -119,31 +120,39 @@ export function unwrapCode(cell: string): string {
 }
 
 /**
- * The text of every heading element the response served, in document order.
- * Read from the bytes rather than from a rendered tree: what this checker can
- * observe is what the host sent.
- * @param html the complete served body
+ * Parses the served HTML as an inert fragment. A DOM parser, rather than a
+ * markup-shaped regular expression, is what distinguishes real elements from
+ * tag text inside an attribute, comment, or script. Assigning a template's
+ * `innerHTML` does not execute scripts or load subresources.
  */
-export function servedHeadings(html: string): string[] {
-  const headings: string[] = [];
-  for (const match of html.matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/giu)) {
-    headings.push(collapseText(String(match[1])));
-  }
-  return headings;
+function servedFragment(html: string): HappyDocumentFragment {
+  const template = new Window().document.createElement('template');
+  template.innerHTML = html;
+  return template.content;
+}
+
+/** Rendered text in the exact normalized form registry anchors use. */
+function normalizedRenderedText(text: string): string {
+  return text
+    .replaceAll(/\p{Cf}/gu, '')
+    .replaceAll(/\s+/gu, ' ')
+    .trim();
 }
 
 /**
- * One heading's text with markup stripped, the five XML entities decoded, and
- * whitespace collapsed, which is the form a rendered heading is cited by.
- *
- * Five, not the HTML named-character-reference table: every one of the
- * registry's cited headings is plain ASCII with no reference in it, so a
- * decoder for the rest would be a mechanism with no row behind it. The
- * `normalizationVersion: 1` clause that decodes references in full belongs to
- * `snapshotFingerprint`, which the contract defers and this command does not
- * compute (contracts/official-sources.md). A served heading carrying a
- * reference this misses is reported as a missing section — loudly, for a
- * maintainer to read — never as a silent match.
+ * The text of every heading element the response served, in document order.
+ * Parsed from the bytes the host sent; no client script is run.
+ * @param html the complete served body
+ */
+export function servedHeadings(html: string): string[] {
+  return [...servedFragment(html).querySelectorAll('h1, h2, h3, h4')].map((heading) =>
+    normalizedRenderedText(heading.textContent ?? ''),
+  );
+}
+
+/**
+ * One HTML fragment's parsed text with whitespace collapsed, which is the
+ * form a rendered heading or link is cited by.
  *
  * A format character (Unicode `Cf`) renders as nothing, so it is no part of
  * the rendered text a heading is cited by and is dropped: code.claude.com
@@ -152,16 +161,7 @@ export function servedHeadings(html: string): string[] {
  * @param fragment the element's inner bytes
  */
 export function collapseText(fragment: string): string {
-  return fragment
-    .replaceAll(/<[^>]*>/gu, '')
-    .replaceAll('&amp;', '&')
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#39;', "'")
-    .replaceAll(/\p{Cf}/gu, '')
-    .replaceAll(/\s+/gu, ' ')
-    .trim();
+  return normalizedRenderedText(servedFragment(fragment).textContent ?? '');
 }
 
 /** The two body syntaxes the command accepts (contracts/official-sources.md). */
@@ -215,22 +215,44 @@ export function bodySyntax(contentType: string): BodySyntax | null {
 }
 
 /**
+ * A Markdown body with its fenced code blocks and HTML comments removed,
+ * which is what a heading is read from: a `## Custom Prompts` line inside a
+ * code example is text the page shows in a box, not a section it has, and
+ * reading it as one would keep a removed section established for as long as
+ * the example quotes it. A fence closes on a run of the same character at
+ * least as long as the one that opened it (CommonMark § Fenced code blocks);
+ * an unclosed fence runs to the end of the document, as it renders.
+ * @param markdown the complete served body
+ */
+function markdownProse(markdown: string): string {
+  return markdown
+    .replaceAll(/\r\n?/gu, '\n')
+    .replaceAll(
+      /^ {0,3}(?<fence>(?<char>[`~])\k<char>{2,})[^\n]*\n[\s\S]*?(?:^ {0,3}\k<fence>\k<char>*[ \t]*$|(?![\s\S]))/gmu,
+      '',
+    )
+    .replaceAll(/<!--[\s\S]*?-->/gu, '');
+}
+
+/**
  * Every heading a Markdown body serves, in document order. ATX only: the
  * registry cites rendered heading text, and a setext underline carries the same
  * text one line above it, which this reads as a paragraph rather than guessing.
+ * Read from the prose ({@link markdownProse}), never from a code example.
  * @param markdown the complete served body
  */
 export function markdownHeadings(markdown: string): string[] {
-  return [...markdown.matchAll(/^ {0,3}#{1,4}[ \t]+(.+?)[ \t]*#*[ \t]*$/gmu)].map((match) =>
-    String(match[1]).replaceAll(/\s+/gu, ' ').trim(),
-  );
+  return [
+    ...markdownProse(markdown).matchAll(/^ {0,3}#{1,4}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/gmu),
+  ].map((match) => String(match[1]).replaceAll(/\s+/gu, ' ').trim());
 }
 
 /**
  * How one cited section resolves against a served body. A heading element is
  * the primary evidence; when no served heading carries the text, the page's
  * table of contents is — the fragment links bearing that text, which must all
- * point at one fragment, because two fragments cite no one section.
+ * point at one fragment the page serves, because two fragments cite no one
+ * section and a dead link cites none.
  * @param html the complete served body
  * @param anchor the exact rendered heading text the record cites
  */
@@ -266,13 +288,24 @@ export function resolveCitedSection(
   // in-prose cross-reference name the same one section, while two fragments
   // are two sections and cite neither (contracts/official-sources.md
   // § Offline validation and explicit drift review).
+  const fragment = servedFragment(syntax === 'markdown' ? markdownProse(body) : body);
   const targets = new Set<string>();
-  for (const link of body.matchAll(/<a\b[^>]*\bhref="#([^"]*)"[^>]*>([\s\S]*?)<\/a>/giu)) {
-    if (collapseText(String(link[2])) === wanted) {
-      targets.add(String(link[1]));
+  for (const link of fragment.querySelectorAll('a[href]')) {
+    const href = link.getAttribute('href');
+    if (href?.startsWith('#') && normalizedRenderedText(link.textContent ?? '') === wanted) {
+      targets.add(href.slice(1));
     }
   }
-  if (targets.size === 1) {
+  // A link is evidence only of a fragment the page serves: a link a removed
+  // section left behind points at nothing, and counting it would keep a lost
+  // section established for as long as the dead link stays. The parsed
+  // element's actual `id` attribute is case-insensitive by HTML rules, while
+  // the fragment value itself remains case-sensitive.
+  const servedFragments = new Set(
+    [...fragment.querySelectorAll('[id]')].map((element) => element.getAttribute('id') ?? ''),
+  );
+  const servedTargets = [...targets].filter((fragment) => servedFragments.has(fragment));
+  if (targets.size === 1 && servedTargets.length === 1) {
     return 'anchor';
   }
   return targets.size > 1 ? 'ambiguous-anchor' : 'missing';

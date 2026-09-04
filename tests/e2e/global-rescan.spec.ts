@@ -167,7 +167,10 @@ test('keeps a partial member partial across its own rescan, counting its files',
   // progress to show it states the member and the status word the row shows,
   // so the same sentence is what a completed rescan is heard as (WCAG 4.1.3;
   // `GlobalSourceControls.vue`). The member is named because four rows offer
-  // the same control; the root is not read, because it did not change.
+  // the same control; the root is not read, because it did not change. It is
+  // visually hidden — the status word is already on screen in the row's
+  // labelled field, and no screen states a Source fact twice (FR-030) — so it
+  // is asserted as text content rather than as visible text.
   await expect(main).toContainText('Copilot home partial.');
 
   // A new readable file marks the rescan's commit; the broken link stays, so

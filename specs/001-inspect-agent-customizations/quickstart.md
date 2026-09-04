@@ -138,14 +138,14 @@ port someone is holding for their own use; the suites launch that way for the sa
 
 `--inspect-personal-setup` also inspects the documented customization files in the four
 member roots — the tools' own configuration directories and the shared agent home — the
-same read the consent page's checkbox authorizes, stated
-in the command instead. The flag _is_ the confirmation: the CLI captures the preview from
-the three environment properties and the always-derived shared agent home, confirms it as
-captured, and waits for the read to
-commit, so the printed URL appears with the Global Source already on the inventory. What
-each tool ended as, and what stays excluded, is on the consent page as it always is;
-without the flag a launch reads nothing outside the selected repository, and the page
-offers to work the directories out.
+same read the consent page's checkbox authorizes, stated in the command instead. The flag
+_is_ the confirmation: the CLI constructs the preview from the immutable Global root inputs
+captured once at startup, confirms it, and waits for the read to commit, so the printed URL
+appears with the Global Source already on the inventory. Neither the flag nor a preview
+request recaptures the environment properties or home directory. What each tool ended as,
+and what stays excluded, is on the consent page as it always is; without the flag a launch
+reads nothing outside the selected repository, and the page offers to work the directories
+out.
 
 ```bash
 pnpm start --no-open --inspect-personal-setup
@@ -181,8 +181,13 @@ The CLI captures the invocation `process.cwd()` once. Omission uses that exact s
 option is resolved against the captured invocation directory. An explicit empty value exits
 with fixed actionable, source-value-free output before a session or browser attempt. A
 missing value is rejected at the same boundary by Gunshi's typed argument validation.
-Selection never calls `process.chdir()`, and a startup failure ends the launch with an
-actionable message rather than a session or session-API error.
+Before editor-launcher discovery and session creation, the CLI also captures the three
+documented tool-home environment properties once in fixed order and calls
+`node:os.homedir()` once unconditionally. That retained capture supplies both the eligible
+personal roots excluded from launcher lookup and every preview. Selection never calls
+`process.chdir()`, and a startup input-capture, classification, or display-escape failure
+ends the launch before a session or browser exists, with an actionable message rather than
+a session or session-API error.
 
 Expected:
 
@@ -374,8 +379,8 @@ Verify:
 1. Every shipped `behaviorId`, `ruleId`, and `strategyId` occurs in exactly one owning
    bilingual contract and its matching immutable registry. Every cross-reference resolves,
    and every citation in a record's `evidence` array is reciprocal with the official-sources
-   contract row it cites; offline tests recompute its semantic fingerprint. The explicit
-   drift check enforces official HTTPS hosts plus exact section selection and normalization.
+   contract row it cites. The explicit drift check enforces official HTTPS hosts plus exact
+   section resolution.
    Recoverable network or execution-environment failures fail closed without auto-updating
    a behavior, rule, strategy, or checked-in digest; no product-specific numeric fetch cap is
    part of the contract.
@@ -724,11 +729,15 @@ The test harness supplies isolated fake tool homes; it must never inspect the de
 real home directory. Verify:
 
 1. No Global path is touched before consent; the preview is derived lexically without
-   `stat`, `realpath`, enumeration, or file reads. Instrumented capture proves each of
-   `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` is captured exactly once in that order; only
-   `undefined` is absent; `node:os.homedir()` is called exactly once per preview — the shared agent home always derives from it; and
-   active-platform `node:path.join` applies only the fixed corresponding suffix. No direct
-   `HOME`/`USERPROFILE` selection or existence check occurs.
+   `stat`, `realpath`, enumeration, or file reads. Instrumented startup capture proves each
+   of `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` is captured exactly once in that
+   order; only `undefined` is absent; and `node:os.homedir()` is called exactly once
+   unconditionally — the shared agent home always derives from it. Active-platform
+   `node:path.join` applies only the fixed corresponding suffix. The same retained capture
+   supplies launcher exclusions and every preview, while neither a preview request nor
+   `--inspect-personal-setup` rereads process inputs. No direct `HOME`/`USERPROFILE`
+   selection or existence check occurs. A capture, classification, or display-escape throw
+   fails startup before launcher discovery, session creation, or a browser attempt.
 2. The consent view shows the exact Copilot, Claude, and Codex lexical roots, input
    states, and exclusions, with the read scope explained in plain language rather than
    per-pattern path displays. It shows neither version the preview binds: a reader can act
@@ -737,9 +746,12 @@ real home directory. Verify:
    build holds no preview to confirm. The confirmation submits `allowlistVersion` and the
    host refuses one that no longer matches, which is where the pair belongs. The frozen
    internal preview separately retains each exact raw `lexicalRoot` string;
-   `displayRoot` is a one-way escaped string and is never decoded into
-   read authority. A preview-construction throw/rejection returns its real error with no
-   `scanRequestId` or granted authority.
+   `displayRoot` is a one-way escaped string and is never decoded into read authority. A
+   failure before a complete preview object is constructed returns its real error and does
+   not replace the prior current preview. DTO construction or transport serialization can
+   fail after a complete preview becomes current; that is an ordinary request error and the
+   newly created preview may remain retained. Neither failure grants authority, creates a
+   job, or issues a `scanRequestId`.
 3. After opt-in, only the documented member candidates appear under zero to four
    separately identified member Global Sources—at most one each for Copilot, Claude,
    Codex, and the shared agent home—and every Source has exactly one root. Every admitted Source from the
@@ -883,7 +895,8 @@ real home directory. Verify:
 ### SC-001 and SC-006 first-use evaluation
 
 Twenty independent autonomous-agent sessions, run once for the release candidate. Each is
-given the origin one running Inspector printed and nothing else, and each attempts discovery,
+given its own copy of the all-kind fixture and the guidance and nothing else, is started
+outside this working tree, launches the Inspector itself, and attempts discovery,
 inspection, comparison, and personal-setup consent. How a run is performed, what may be said
 to a session, and what is written down are in
 [`tests/usability/sc001-sc006-study-kit.md`](../../tests/usability/sc001-sc006-study-kit.md);

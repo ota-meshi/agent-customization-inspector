@@ -4,15 +4,15 @@
 //
 // The pair is asymmetric on purpose, and that asymmetry is what this suite
 // pins. The read function returns only what is already current and never
-// captures; the capture function is the only one that reads the environment
-// and the only one that creates or replaces a preview. A read that recaptured
-// would hand a recovering client a different preview than the one a later
-// enable is bound to — so "the read never recaptures" is a contract clause,
-// not an implementation detail.
+// creates; the create function is the only one that creates or replaces a
+// preview from the immutable session-start root inputs. A read that derived a
+// new record would hand a recovering client a different preview than the one a
+// later enable is bound to — so "the read returns only the retained record" is
+// a contract clause, not an implementation detail.
 //
 // Neither function takes a parameter, which is the other half of the position:
 // there is no tool selector, no proposed root, and no way for a client to
-// narrow the three entries or proposeenance a root of its own.
+// narrow the four entries or propose a root of its own.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -162,7 +162,7 @@ describe('get-global-consent-preview', () => {
 });
 
 describe('create-global-consent-preview', () => {
-  it('captures all four entries in the fixed order, with no selector', () => {
+  it('creates all four entries in the fixed order, with no selector', () => {
     process.env[GLOBAL_HOME_VARIABLES.copilot] = '/env/copilot';
     process.env[GLOBAL_HOME_VARIABLES.claude] = '/env/claude';
     process.env[GLOBAL_HOME_VARIABLES.codex] = '/env/codex';
@@ -226,19 +226,19 @@ describe('create-global-consent-preview', () => {
     expect(preview.entries[1]?.displayRoot).toBe('relative/claude');
   });
 
-  it('atomically replaces the previous unconsented preview', () => {
-    const { read, create } = previewFunctions();
+  it('atomically replaces the previous unconsented preview without recapturing inputs', () => {
     process.env[GLOBAL_HOME_VARIABLES.codex] = '/env/first';
+    const { read, create } = previewFunctions();
     const first = payload(create());
     process.env[GLOBAL_HOME_VARIABLES.codex] = '/env/second';
     const second = payload(create());
 
-    // A new preview invalidates the previous one: the read function returns
-    // only the newest, so the replaced ID names nothing the server still
-    // holds.
+    // A new preview invalidates the previous one but preserves this session's
+    // startup inputs: a process mutation cannot change either the exclusion
+    // roots or what a later confirmation authorizes.
     expect(second.previewId).not.toBe(first.previewId);
     expect(payload(read())).toEqual(second);
-    expect(second.entries[2]?.displayRoot).toBe('/env/second');
+    expect(second.entries[2]?.displayRoot).toBe('/env/first');
   });
 
   it('is registered as a command, so it declares itself state-changing', () => {
@@ -520,12 +520,14 @@ describe('enable-global', () => {
       allowlistVersion: preview.allowlistVersion,
       previewId: preview.previewId,
     };
-    accepted(await enableCall(body));
-    // While the accepted batch is in flight, retry is not offered at all:
-    // `pendingTools` is nonempty, so a confirmation takes the in-progress
-    // conflict rather than settling a second batch over the running one
-    // (contracts/http-api.md § enable-global).
+    // The confirmation answers once its batch settled, so the second one is
+    // issued while the first is still out: while an enable is registered or
+    // its batch is in flight, retry is not offered at all — a confirmation
+    // takes the in-progress conflict rather than settling a second batch over
+    // the running one (contracts/http-api.md § enable-global).
+    const first = enableCall(body);
     expect(await enableCall(body)).toEqual({ error: { code: 'global-enable-in-progress' } });
+    accepted(await first);
     await expect
       .poll(() => context.session.snapshot().globalControl?.batchStatus, { timeout: 10_000 })
       .toBeNull();
@@ -576,11 +578,9 @@ describe('enable-global', () => {
       expect(first.state).toBe('queued');
       expect(first.acceptedTools).toEqual(['copilot', 'claude', 'agents']);
       expect(first.rejectedTools).toEqual(['codex']);
-      // The accepted batch runs behind the response; wait for its commit so
-      // the published Sources exist before the retry runs beside them.
-      await expect
-        .poll(() => context.session.snapshot().globalControl?.batchStatus, { timeout: 10_000 })
-        .toBeNull();
+      // The confirmation answered with its batch committed, so the published
+      // Sources already exist before the retry runs beside them.
+      expect(context.session.snapshot().globalControl?.batchStatus).toBeNull();
       const before = context.session.snapshot();
       const publishedSourceIds = before.sources
         .filter((source) => source.kind === 'global')
@@ -766,20 +766,22 @@ describe('rescan-global (T1008; contracts/http-api.md § rescan-global)', () => 
   it('admits one command per Source, correlates its ID, and commits N+1', async () => {
     const { context, rescan, codexSourceId } = await publishedHost();
     const before = context.session.snapshot();
-    const admission = acceptedData<ScanAdmission>(await rescan({ sourceId: codexSourceId }));
-    // The admission names the command and the Source it is for, and the same
-    // opaque ID rides on the Source's own progress (FR-030).
-    expect(admission.source.sourceId).toBe(codexSourceId);
-    expect(admission.source.status).toBe('scanning');
-    expect(admission.source.progress?.scanRequestId).toBe(admission.scanRequestId);
-    // A second command for the same Source while the first is running or
-    // queued is the declared conflict, never a coalesced or second read.
+    // The command answers once its scan settled, so the duplicate is issued
+    // while the first is still out: a second command for the same Source
+    // while the first is running or queued is the declared conflict, never a
+    // coalesced or second read.
+    const first = rescan({ sourceId: codexSourceId });
     expect(await rescan({ sourceId: codexSourceId })).toEqual({
       error: { code: 'scan-in-progress' },
     });
-    await expect
-      .poll(() => context.session.snapshot().globalGeneration, { timeout: 10_000 })
-      .toBe((before.globalGeneration ?? 0) + 1);
+    const admission = acceptedData<ScanAdmission>(await first);
+    // The answer names the command and the Source as its scan left it, and
+    // the same opaque ID rides on the Source's own progress (FR-030).
+    expect(admission.source.sourceId).toBe(codexSourceId);
+    expect(['ready', 'partial']).toContain(admission.source.status);
+    expect(admission.source.progress?.scanRequestId).toBe(admission.scanRequestId);
+    expect(admission.source.progress?.phase).toBe('complete');
+    expect(context.session.snapshot().globalGeneration).toBe((before.globalGeneration ?? 0) + 1);
     const after = context.session.snapshot();
     // The Global sequence advanced exactly once; the Repository sequence and
     // every Source ID stayed as they were.

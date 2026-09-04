@@ -82,6 +82,10 @@ const rows = computed(() => {
     return {
       source,
       memberText: source.member === null ? 'Unknown member' : GLOBAL_MEMBER_TEXT[source.member],
+      // The row whose rescan is out states so from the command's own state,
+      // because its root line still shows the snapshot's status — the value
+      // this rescan is replacing (`ScanProgress.vue` § the same sentence).
+      scanningNow: requesting.value && requestedSourceId === source.sourceId,
       diagnosticFileCount: diagnosticFileCounts.value.get(source.sourceId) ?? 0,
       staleFailure,
       // A stale overlay explains itself with either the failed request's real
@@ -122,9 +126,10 @@ const rows = computed(() => {
               SOURCE_BOUNDARY_ORIGIN_TEXT[row.source.boundary.origin]
             }}, {{ SOURCE_STATUS_TEXT[row.source.status] }})
           </span>
-          <!-- One announcement region per member, so a status that changed on
-               "Refresh status" is heard as that member's rather than as a
-               re-reading of the whole list (WCAG 4.1.3). It never empties:
+          <!-- One announcement region per member, so a status that changed —
+               on the rescan's own answer, which comes once its scan settled,
+               or on "Refresh status" — is heard as that member's rather than
+               as a re-reading of the whole list (WCAG 4.1.3). It never empties:
                with no correlated progress to show it states the member and
                the status word the row shows, so a rescan that completed is
                heard as "Copilot home ready." rather than as silence. The
@@ -133,16 +138,22 @@ const rows = computed(() => {
                is not read, because it did not change and is stated once in
                the labelled field above (FR-002). The same rule as the
                Repository region in `InventoryRail.vue`: the Source's name and
-               the status the screen shows, and nothing that stayed the same. -->
+               the status the screen shows, and nothing that stayed the same.
+               The sentence is visually hidden, as that region is: the status
+               word is already on screen in the labelled field above, and no
+               screen states a Source fact twice (FR-030). -->
           <span aria-live="polite" aria-atomic="true">
-            <span v-if="row.progress" class="aci-note">
+            <span v-if="row.scanningNow" class="aci-note"
+              >{{ row.memberText }} — scanning now.</span
+            >
+            <span v-else-if="row.progress" class="aci-note">
               {{ SCAN_PROGRESS_PHASE_TEXT[row.progress.phase] }} —
               {{ row.progress.candidateFiles }}
               {{ row.progress.candidateFiles === 1 ? 'candidate file' : 'candidate files' }},
               {{ row.progress.diagnosticCount }}
               {{ row.progress.diagnosticCount === 1 ? 'diagnostic' : 'diagnostics' }}
             </span>
-            <span v-else class="aci-note">
+            <span v-else class="aci-visually-hidden">
               {{ row.memberText }} {{ SOURCE_STATUS_TEXT[row.source.status].toLowerCase() }}.
             </span>
             <span v-if="row.diagnosticFileCount > 0" class="aci-note">

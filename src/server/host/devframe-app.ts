@@ -346,16 +346,18 @@ export async function executeGlobalBatch(
  * Turns one confirmed preview into read authority and runs the batch it
  * accepts: registers the operation, admits every member the production ports
  * resolve, settles the disposition, and — when a batch was queued — scans each
- * admitted root and commits the Global generation
- * (contracts/http-api.md § enable-global).
+ * admitted root, commits the Global generation, and returns only once every
+ * admitted member's scan has settled (contracts/http-api.md § enable-global).
  *
- * One function for the two confirmations this product accepts, because they
- * differ only in whether they wait. `enable-global` answers the reader as soon
- * as the batch is accepted and lets it run behind the response, so a lost
- * response loses no batch — a fresh poll recovers it from `batchStatus`. The
- * CLI's `--inspect-personal-setup` has nobody to answer and awaits it, so its
- * launch line prints with the Global generation already committed, exactly as
- * the automatic Repository scan completes before the host starts.
+ * One function for the two confirmations this product accepts, and both wait
+ * for the batch. `enable-global` answers the reader who confirmed with the
+ * generation already committed, so the refetch that follows the answer shows
+ * what the confirmation read and no second press is asked for; a lost
+ * response still loses no batch, because the batch is retained on
+ * `batchStatus` and a fresh poll recovers it. The CLI's
+ * `--inspect-personal-setup` awaits it for the same reason the automatic
+ * Repository scan completes before the host starts: its launch line prints
+ * with the Global generation already committed.
  *
  * A conflicting registration is the caller's to report; every other outcome is
  * the settled disposition, `active-no-job` included — a confirmation nothing
@@ -365,7 +367,6 @@ export async function executeGlobalBatch(
 export async function runGlobalEnable(
   context: InspectorHostContext,
   preview: GlobalConsentPreview,
-  options: { readonly waitForBatch: boolean },
 ): Promise<GlobalEnableResultDto | DeterministicRejection> {
   // A confirmation over an active consent is the same-preview retry
   // (contracts/http-api.md § enable-global): the server derives the exact
@@ -454,18 +455,18 @@ export async function runGlobalEnable(
   // beside an explicit member rescan, and a disable accepted mid-batch waits
   // out its reads before committing (contracts/http-api.md § disable-global).
   const scanRequestId = result.scanRequestId;
-  const batch = context.coordinator.runGlobalTransaction(() =>
-    executeGlobalBatch(context, scanRequestId, members),
-  );
-  if (options.waitForBatch) {
-    await batch;
-    return result;
+  try {
+    await context.coordinator.runGlobalTransaction(() =>
+      executeGlobalBatch(context, scanRequestId, members),
+    );
+  } catch {
+    // A batch that failed is answered with the same acceptance: the failure
+    // is already retained once on the failed `batchStatus` by
+    // `executeGlobalBatch`, which is what the contract makes of a throw after
+    // queued acceptance (contracts/http-api.md § enable-global), and the
+    // consent surface states it from there. Nothing is thrown past here, so
+    // an accepted batch's rejection never ends the caller.
   }
-  void batch.catch(() => {
-    // The job's own failure is already retained on the failed `batchStatus` by
-    // `executeGlobalBatch`; this catch exists so an accepted batch's rejection
-    // does not become an unhandled rejection at the process top level.
-  });
   return result;
 }
 
@@ -816,32 +817,50 @@ export function createInspectorDevframe(
             // functional outcome (contracts/http-api.md § rescan-repository).
             return { error: { code: 'scan-in-progress' } };
           }
-          // The invocation resolves with its acceptance; the accepted job's
-          // terminal failure is retained as the Source's stale overlay with
-          // the failed request's real error message, never re-thrown into a
-          // later unrelated invocation (FR-030). The work runs through the
-          // sequence's FIFO chain, so it starts only once every earlier
-          // accepted command of its sequence settled (contracts/http-api.md
-          // § rescan-repository).
-          void context.coordinator
-            .runInSequence(repository.sourceId, admission.scanRequestId, () =>
-              executeRepositoryScan(
-                context,
-                admission.scanRequestId,
-                repository.sourceId,
-                // An explicit rescan of the published Repository Source: a
-                // deterministic root failure belongs to that Source's stale
-                // overlay, not the automatic-scan repository owner
-                // (data-model.md § Diagnostic).
-                `published-source:${repository.sourceId}`,
-              ),
-            )
-            .catch((error: unknown) => {
-              context.coordinator.failScan(admission.scanRequestId, {
-                kind: 'error',
-                message: error instanceof Error ? error.message : String(error),
-              });
+          // Resolves once the admitted scan reached its terminal state — the
+          // commit of its complete or partial generation, or its failure —
+          // rather than at admission (contracts/http-api.md
+          // § rescan-repository): the answer then carries the result the
+          // reader pressed for, and the client's one refetch after it shows
+          // that result without a second press. The accepted job's terminal
+          // failure is retained as the Source's stale overlay with the failed
+          // request's real error message, never thrown into this invocation
+          // (FR-030). The work runs through the sequence's FIFO chain, so it
+          // starts only once every earlier accepted command of its sequence
+          // settled.
+          try {
+            await context.coordinator.runInSequence(
+              repository.sourceId,
+              admission.scanRequestId,
+              () =>
+                executeRepositoryScan(
+                  context,
+                  admission.scanRequestId,
+                  repository.sourceId,
+                  // An explicit rescan of the published Repository Source: a
+                  // deterministic root failure belongs to that Source's stale
+                  // overlay, not the automatic-scan repository owner
+                  // (data-model.md § Diagnostic).
+                  `published-source:${repository.sourceId}`,
+                ),
+            );
+          } catch (error: unknown) {
+            context.coordinator.failScan(admission.scanRequestId, {
+              kind: 'error',
+              message: error instanceof Error ? error.message : String(error),
             });
+          }
+          if (
+            context.session.globalDisableInProgress !== null ||
+            context.session.globalContentEpoch !== snapshot.globalContentEpoch
+          ) {
+            // The disable barrier caught the command while it ran or waited:
+            // whatever it produced belongs to a world the client purges
+            // before rendering, so this answers with the same fixed conflict
+            // every fenced command takes (contracts/http-api.md
+            // § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const updated = context.session
             .snapshot()
             .sources.find((source) => source.sourceId === repository.sourceId);
@@ -906,28 +925,41 @@ export function createInspectorDevframe(
             // (contracts/http-api.md § rescan-global).
             return { error: { code: 'scan-in-progress' } };
           }
-          // The invocation resolves with its acceptance; the accepted job's
+          // Resolves once the admitted scan reached its terminal state rather
+          // than at admission, exactly as the Repository command does
+          // (contracts/http-api.md § rescan-global): the accepted job's
           // terminal failure is retained as the Source's stale overlay with
           // the failed request's real error message (FR-030). The work runs
           // through the Global sequence's FIFO chain, so two members'
-          // accepted commands run and publish in acceptance order
-          // (contracts/http-api.md § rescan-global).
-          void context.coordinator
-            .runInSequence(published.sourceId, admission.scanRequestId, () =>
-              executeGlobalMemberRescan(
-                context,
-                admission.scanRequestId,
-                published.sourceId,
-                member,
-                root,
-              ),
-            )
-            .catch((error: unknown) => {
-              context.coordinator.failScan(admission.scanRequestId, {
-                kind: 'error',
-                message: error instanceof Error ? error.message : String(error),
-              });
+          // accepted commands run and publish in acceptance order.
+          try {
+            await context.coordinator.runInSequence(
+              published.sourceId,
+              admission.scanRequestId,
+              () =>
+                executeGlobalMemberRescan(
+                  context,
+                  admission.scanRequestId,
+                  published.sourceId,
+                  member,
+                  root,
+                ),
+            );
+          } catch (error: unknown) {
+            context.coordinator.failScan(admission.scanRequestId, {
+              kind: 'error',
+              message: error instanceof Error ? error.message : String(error),
             });
+          }
+          if (
+            context.session.globalDisableInProgress !== null ||
+            context.session.globalContentEpoch !== snapshot.globalContentEpoch
+          ) {
+            // The barrier caught the command while it ran or waited; the same
+            // fixed conflict every fenced command takes
+            // (contracts/http-api.md § disable-global).
+            return { error: { code: 'global-disable-pending' } };
+          }
           const updated = context.session
             .snapshot()
             .sources.find((source) => source.sourceId === published.sourceId);
@@ -947,13 +979,13 @@ export function createInspectorDevframe(
         type: 'query',
         // The non-mutating half of the strict pair
         // (contracts/http-api.md § get-global-consent-preview): it returns
-        // only the already-current process-memory preview and never captures
-        // environment values, creates, replaces, or invalidates one. That is
+        // only the already-current process-memory preview and never creates,
+        // replaces, or invalidates one. That is
         // what lets a fresh client redisplay the exact consent a previous
         // client was shown — recapturing here would hand the reader a
         // different preview than the one a later enable is bound to.
         //
-        // It needs no freeze check of its own: capture is the only operation
+        // It needs no freeze check of its own: creation is the only operation
         // that replaces the record, so while consent is active this returns
         // the exact preview that consent was given for.
         handler: (): CommandResult<GlobalConsentPreviewDto> | DeterministicRejection => {
@@ -973,19 +1005,19 @@ export function createInspectorDevframe(
       ctx.rpc.register({
         name: 'agent-customization-inspector:create-global-consent-preview',
         type: 'command',
-        // The state-changing half: the only operation that reads the three
-        // environment properties, and the only one that creates or replaces a
-        // preview (contracts/http-api.md § create-global-consent-preview).
+        // The state-changing half: the only operation that creates or replaces
+        // a preview from the immutable session-start root inputs
+        // (contracts/http-api.md § create-global-consent-preview).
         //
         // It takes no parameters, so there is no selector a client could use
-        // to narrow the three tools or to propose a root of its own: the roots
-        // come from the environment this process was started with, and all
-        // three are always evaluated.
+        // to narrow the four members or to propose a root of its own: the roots
+        // come from the session-start capture, and all four are always
+        // evaluated.
         //
-        // A throw during capture, classification, escaping, or serialization
-        // is deliberately not caught here. It reaches this pre-acceptance RPC
-        // boundary, devframe serializes it as-is, and no preview, job,
-        // `scanRequestId`, retention, or path authority exists as a result.
+        // A throw during preview construction or serialization is deliberately
+        // not caught here. It reaches this pre-acceptance RPC boundary,
+        // devframe serializes it as-is, and no preview, job, `scanRequestId`,
+        // retention, or path authority exists as a result.
         handler: (): CommandResult<GlobalConsentPreviewDto> | DeterministicRejection => {
           if (context.session.globalDisableInProgress !== null) {
             // The disable fence blocks capture and replacement: preview
@@ -1009,7 +1041,7 @@ export function createInspectorDevframe(
           if (context.session.globalConsent !== null) {
             return { error: { code: 'consent-preview-frozen' } };
           }
-          const preview = consent.capture();
+          const preview = consent.createPreview();
           return {
             globalContentEpoch: context.session.snapshot().globalContentEpoch,
             data: preview.toDto(),
@@ -1081,12 +1113,21 @@ export function createInspectorDevframe(
             // record this host holds may be confirmed.
             return { error: { code: 'consent-preview-mismatch' } };
           }
-          // The batch runs behind the response, so a lost response loses no
-          // batch: a fresh poll recovers it from `batchStatus` (data-model.md
+          // Answered once every admitted member's scan settled, so the reader
+          // who confirmed sees the result of that confirmation on the refetch
+          // that follows the answer, without a second press; a lost response
+          // still loses no batch, because the batch is retained on
+          // `batchStatus` and a fresh poll recovers it (data-model.md
           // § GlobalEnableOperation).
-          const result = await runGlobalEnable(context, preview, { waitForBatch: false });
+          const result = await runGlobalEnable(context, preview);
           if ('error' in result) {
             return result;
+          }
+          if (context.session.globalDisableInProgress !== null) {
+            // The barrier caught the batch while it ran: the same fixed
+            // conflict every fenced command takes (contracts/http-api.md
+            // § disable-global).
+            return { error: { code: 'global-disable-pending' } };
           }
           return {
             globalContentEpoch: context.session.snapshot().globalContentEpoch,
@@ -1232,11 +1273,12 @@ export interface StartInspectorHostOptions {
   readonly openerAbortSignal?: AbortSignal;
   /**
    * The consent state the Global functions serve, when the caller holds one
-   * already. The CLI's `--inspect-personal-setup` captures and confirms a
-   * preview before the host exists, and the consent page must show that
+   * already. The CLI's `--inspect-personal-setup` creates and confirms a
+   * preview from the session-start inputs before the host exists, and the consent page must show that
    * confirmation rather than a second, unconsented capture — so the domain the
    * flag used is the domain the handlers get. Omitted, the definition creates
-   * its own empty one, which is what a session with no such flag has (FR-013).
+   * a domain holding its own startup inputs but no current preview, which is
+   * what a session with no such flag has (FR-013).
    */
   readonly consent?: GlobalConsentDomain;
 }

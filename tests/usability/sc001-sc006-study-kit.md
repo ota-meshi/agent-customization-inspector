@@ -25,13 +25,29 @@ unsuccessful result for the criterion it interrupted.
 
 ## What each session is given
 
-One thing: the origin the running Inspector printed. No selector, no route, no description of
-the interface, and no access to this repository — a session that reads the source is
-measured on having read the answer rather than on having found it.
+A folder of its own and the guide. The folder holds the all-kind fixture as `repository/`,
+built in place by `tests/fixtures/repositories/build-fixtures.ts` — the tree
+[`ground-truth.json`](sc001-sc006-study-inputs/ground-truth.json) is written against — with
+the release candidate's package installed where `npx --no-install` finds it from that
+directory. The guide is [`guidance.md`](sc001-sc006-study-inputs/guidance.md), verbatim. No
+selector, no route, no description of the interface, and no access to this repository — a
+session that reads the source is measured on having read the answer rather than on having
+found it.
 
-All twenty meet the same tree, so one Inspector serves the whole run. `pnpm run start:fixture`
-builds and serves the all-kind fixture, which is the tree
-[`ground-truth.json`](sc001-sc006-study-inputs/ground-truth.json) is written against.
+Nothing of this repository may be in a session's runtime either. SC-001 admits no hint beyond
+what the product prints or renders, and a session started inside this working tree carries
+the repository's own instructions and memory before it begins, which name the product's
+surfaces. A session is therefore started outside this working tree, with no project
+instructions and no memory of it in view; only the browser automation it drives may be
+loaded from here.
+
+Each session launches its own Inspector from its own `repository/`, so twenty sessions are
+twenty launches and twenty consent states, and no session meets another's. The moderator's
+equipment may append `--port 0` to the guide's command, because the default port is this
+machine's owner's, and may set `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `HOME`
+for the launch command alone, pointing the personal-setup consent at fixture homes built by
+`tests/fixtures/global-homes/build-fixtures.ts`; both are stated to the session as equipment
+conditions rather than as guidance.
 
 ## What may be said
 

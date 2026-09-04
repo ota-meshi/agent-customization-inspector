@@ -21,6 +21,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { rm } from 'node:fs/promises';
+
+import {
+  buildGlobalHomeFixture,
+  type GlobalHomeFixture,
+} from '../fixtures/global-homes/build-fixtures';
 import { buildAllCustomizationKindFixture } from '../fixtures/repositories/build-fixtures';
 import { tabUntilFocused } from './keyboard';
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
@@ -30,6 +36,12 @@ import { openRepositoryStatus, waitForInventory } from './repository-status';
 const PRIMARY_WORKFLOWS = ['discovery', 'inspection', 'comparison', 'global-consent'] as const;
 
 let fixture: { readonly root: string };
+/**
+ * The personal-setup member homes the launch points the consent capture at,
+ * so the Global consent workflow below enables and disables inspection of
+ * fixture directories rather than of this machine's own homes.
+ */
+let homes: GlobalHomeFixture;
 let host: LaunchedHost;
 
 // Not serial: `playwright.config.ts` already runs one worker with
@@ -39,11 +51,13 @@ let host: LaunchedHost;
 
 test.beforeAll(async () => {
   fixture = buildAllCustomizationKindFixture('aci-accessibility');
-  host = await launchHost(fixture.root);
+  homes = buildGlobalHomeFixture('aci-accessibility-homes');
+  host = await launchHost(fixture.root, homes.environment);
 });
 
 test.afterAll(async () => {
   await stopHost(host);
+  await rm(homes.base, { recursive: true, force: true });
 });
 
 /** Opens the committed inventory and waits for it to be operable. */
@@ -284,35 +298,99 @@ test('AUTO-1.4.13 no hover or focus content requiring dismissal exists', async (
 });
 
 test('AUTO-2.1.1 every primary workflow is operable from the keyboard', async ({ page }) => {
-  await openInventory(page);
-  const reached: string[] = [];
+  // Each workflow is reached by Tab and completed by Enter or Space, and its
+  // completion state is what is asserted: reaching a control proves it can
+  // hold focus, not that a keyboard user can finish the work behind it
+  // (SC-008; contracts/accessibility-acceptance.md § 2.1.1). `page.goto` is
+  // the address bar, which is not an operation of the product.
+  const completed: string[] = [];
 
-  // discovery: the rescan control the inventory offers.
+  // discovery: the inventory's rescan, dispatched and settled — the control is
+  // operable again and the committed inventory is back on the page.
+  await openInventory(page);
   await page.locator('h1').focus();
-  if (await tabUntilFocused(page, page.getByRole('button', { name: 'Rescan repository' }))) {
-    reached.push('discovery');
+  const rescan = page.getByRole('button', { name: 'Rescan repository' });
+  if (await tabUntilFocused(page, rescan)) {
+    await page.keyboard.press('Enter');
+    await expect(rescan).toBeEnabled();
+    await waitForInventory(page);
+    completed.push('discovery');
   }
 
-  // inspection: the first file link in the committed inventory.
+  // inspection: the first file link in the committed inventory opens the
+  // file's own detail, which is a route of its own with a heading and a way
+  // back.
+  await openInventory(page);
   await page.locator('h1').focus();
   if (await tabUntilFocused(page, page.locator('.aci-item a').first(), 80)) {
-    reached.push('inspection');
+    await page.keyboard.press('Enter');
+    await expect(page).not.toHaveURL(`${host.origin}/`);
+    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Back to/u })).toBeVisible();
+    completed.push('inspection');
   }
 
-  // comparison: the range's own compare link.
+  // comparison: the range's own compare link opens the comparison, which
+  // renders its two sides in the diff editor.
+  await openInventory(page);
   await page.locator('h1').focus();
   if (await tabUntilFocused(page, page.getByRole('link', { name: /Compare/u }).first(), 120)) {
-    reached.push('comparison');
+    await page.keyboard.press('Enter');
+    await expect(page).not.toHaveURL(`${host.origin}/`);
+    await expect(page.locator('.monaco-diff-editor').first()).toBeVisible();
+    completed.push('comparison');
   }
 
-  // global consent: the rail's own Source entry, which is how the inventory
-  // offers the personal setup now (FR-030).
+  // global consent: from the inventory's rail entry to the personal setup's
+  // own page, through its offer, its confirmation, and its enable, and back
+  // out through its disable — every step by key, against fixture homes.
+  await openInventory(page);
   await page.locator('h1').focus();
   if (await tabUntilFocused(page, page.getByRole('link', { name: /personal setup/iu }), 40)) {
-    reached.push('global-consent');
+    await page.keyboard.press('Enter');
+    const offer = page.getByRole('button', { name: 'Work out the directories' });
+    await expect(offer).toBeVisible();
+    await page.locator('h1').focus();
+    expect(await tabUntilFocused(page, offer), 'the offer is not in the tab order').toBe(true);
+    await page.keyboard.press('Enter');
+    const confirmation = page.getByLabel(
+      'I have read what would be inspected and I want the inspector to read these files',
+    );
+    await expect(confirmation).toBeVisible();
+    // The page moves focus to its heading once the preview is shown, so the
+    // walk resumes from there.
+    expect(await tabUntilFocused(page, confirmation, 60), 'the confirmation is unreachable').toBe(
+      true,
+    );
+    await page.keyboard.press('Space');
+    const enable = page.getByRole('button', { name: 'Inspect these directories' });
+    expect(await tabUntilFocused(page, enable), 'the enable is unreachable').toBe(true);
+    await page.keyboard.press('Enter');
+    // The committed members are recovered through the page's own "Refresh
+    // status" — nothing here updates by itself (contracts/http-api.md
+    // § get-session) — so that control is pressed by key until they appear.
+    const members = page.getByRole('button', { name: 'Rescan: Copilot home', exact: true });
+    await expect
+      .poll(
+        async () => {
+          await page.locator('h1').focus();
+          if (await tabUntilFocused(page, page.getByRole('button', { name: 'Refresh status' }))) {
+            await page.keyboard.press('Enter');
+          }
+          return members.count();
+        },
+        { timeout: 30_000, intervals: [300] },
+      )
+      .toBe(1);
+    const disable = page.getByRole('button', { name: 'Disable personal inspection' });
+    await page.locator('h1').focus();
+    expect(await tabUntilFocused(page, disable, 60), 'the disable is unreachable').toBe(true);
+    await page.keyboard.press('Enter');
+    await expect(disable).toHaveCount(0);
+    completed.push('global-consent');
   }
 
-  expect(reached.toSorted()).toEqual([...PRIMARY_WORKFLOWS].toSorted());
+  expect(completed.toSorted()).toEqual([...PRIMARY_WORKFLOWS].toSorted());
 });
 
 test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({
@@ -529,8 +607,24 @@ test('AUTO-2.5.2 pointer actions do not complete on the down event', async ({ pa
 });
 
 test('AUTO-2.5.3 a visible label is contained in the accessible name', async ({ page }) => {
+  // axe's rule for this criterion is tagged experimental and so does not run
+  // under the tag: selecting the rule by name is what runs it. A detail page
+  // adds the bar's moves, whose accessible names say more than their visible
+  // words (`DetailNavigation.vue`), so the rule is run there as well.
+  const labelInName = async (): Promise<void> => {
+    const results = await new AxeBuilder({ page })
+      .withRules(['label-content-name-mismatch'])
+      .analyze();
+    expectNoViolations(
+      results.violations.map((violation) => ({ id: violation.id, help: violation.help })),
+      'AUTO-2.5.3',
+    );
+  };
   await openInventory(page);
-  expectNoViolations(await axeViolations(page, ['wcag253']), 'AUTO-2.5.3');
+  await labelInName();
+  await page.goto(new URL('/instructions/detail/repository/.claude/CLAUDE.md', host.origin).href);
+  await expect(page.getByRole('link', { name: /^Next /u })).toBeVisible();
+  await labelInName();
 });
 
 test('AUTO-2.5.8 pointer targets meet the minimum size or a recorded exception', async ({
@@ -675,9 +769,11 @@ test('AUTO-3.3.3 a diagnostic offers a practical next step', async ({ page }) =>
   // outcomes publish diagnostics. A file-scoped record is stated on its own
   // row, and the practical next step this criterion asks for is that the
   // reader is told there is something to look at and where: the rail says
-  // `Partial` beside the way to the Repository Source's own surface, and that
-  // surface says how many files kept one.
-  await expect(page.getByRole('link', { name: 'Repository' })).toContainText('Partial');
+  // that some files kept a diagnostic beside the way to the Repository
+  // Source's own surface, and that surface says how many.
+  const repositoryEntry = page.getByRole('link', { name: 'Repository' });
+  await expect(repositoryEntry).toContainText('Inspected');
+  await expect(repositoryEntry).toContainText('some files kept a diagnostic');
   const status = await openRepositoryStatus(page);
   await expect(status).toContainText('Partial');
   await expect(status).toContainText('kept a diagnostic of their own');

@@ -188,7 +188,7 @@ FR-016とFR-018は、下記の文書化済みuserカスタマイズfileをadmit�
 
 | Rule ID | Global base | Selector program | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `claude.global.instructions` | 正確なconsent済みcapture済み`CLAUDE_CONFIG_DIR`。Absent時だけrequest-wideなimport済み`node:os.homedir()` captureと`.claude`を`node:path.join`した値 | `['CLAUDE.md']` | `exact`。Global selectorはRepository rootを基点にしない | `static-candidate` | `claude.behavior.user.instructions` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。隣接する全User configuration/stateはFR-018によりexcluded | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.directory.file-reference` |
+| `claude.global.instructions` | 正確なconsent済みcapture済み`CLAUDE_CONFIG_DIR`。Absent時だけsession-startのimport済み`node:os.homedir()` captureと`.claude`を`node:path.join`した値 | `['CLAUDE.md']` | `exact`。Global selectorはRepository rootを基点にしない | `static-candidate` | `claude.behavior.user.instructions` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted。隣接する全User configuration/stateはFR-018によりexcluded | `anthropic.claude-code.memory.locations-load`、`anthropic.claude-code.directory.file-reference` |
 | `claude.global.rules` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['rules', /\.md$/u]` | boundaryの`rules/`の`direct-child` — user節自身の例が示す深さ。User layerのnested-subdirectory discoveryは記述がないため、recursive stepを持たない | `static-candidate` | `claude.behavior.user.rules` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.memory.locations-load` |
 | `claude.global.skill` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['skills', ANY_NAME, 'SKILL.md']` | `direct-child`の後に`exact`。skill名は正確に直下1階層である。予約された`skills/synced/<name>/SKILL.md` download treeはこのprogramが届く深さより1階層深く、それがFR-018の求める境界である: synced skillはauthorしたものではなくdownloadされたcopyであり、予約名でauthorしたskillはClaude自身がskipする | `static-candidate` | `claude.behavior.user.skills` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.env-vars` |
 | `claude.global.command` | 同じ正確なconsent済み`CLAUDE_CONFIG_DIR` boundary | `['commands', ANY_DIRECTORIES, /\.md$/u]` | boundaryの`commands/`内の`recursive-subtree`。SubdirectoryはCommand namespaceを形成する | `static-candidate` | `claude.behavior.user.commands` | FR-013、FR-014、FR-016、FR-018、QR-005 | FR-016によりaccepted | `anthropic.claude-code.skills.locations-discovery`、`anthropic.claude-code.changelog.legacy-command-nesting` |
@@ -293,8 +293,8 @@ group化される名前、`instructions` rowがgroup化される範囲 — の�
    algorithmは定義しておらず、relative `command`/`args`値の解決baseを確立するcited pageも無い。
    Inspectorはauthoredなliteralを公開し、baseをjoinしない。
 6. 2026-07-15に確認したlive memory pageはimportを4 hopと記載するが、古いsearch excerptには5と
-   表示されたものがある。Cached snippetを信用せず、source recordに`reviewedOn`とassertion
-   fingerprintを保持すべきである。
+   表示されたものがある。Cached snippetを信用せず、source recordに`reviewedOn`とmaintained
+   assertionを保持すべきである。
 7. Source内にplugin manifestやmarketplace catalogが存在しても、Claudeが登録、install、trust、
    enable、select、loadした証拠にはならない。
 8. CLIとIDE integrationは同じsettings locationとprecedenceを共有するが、feature subsetとembedded

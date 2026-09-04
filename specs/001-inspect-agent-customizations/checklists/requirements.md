@@ -146,9 +146,11 @@
   control-only failed-barrier recovery; completing directory-enumeration and hard-link race
   rules; and defining one process-wide confirmed-close registry with restart fallback.
 - Validation iteration 20 passed all items on 2026-07-20 after separating fixed package-owned
-  integrity reads from zero-I/O root selection, making preview construction failures generic
-  pre-acceptance Operation Errors with no preview state, restoring mandatory explicit-rescan
-  stale overlays, and assigning the outcome manifest, digest, and contract test to T1041.
+  integrity reads from zero-I/O root selection, making incomplete preview construction a generic
+  pre-acceptance Operation Error that preserves the prior preview while DTO/transport serialization
+  remains an ordinary request error that may retain the new complete preview, restoring mandatory
+  explicit-rescan stale overlays, and assigning the outcome manifest, digest, and contract test to
+  T1041.
 - Validation iteration 21 passed all items on 2026-07-20 after making repository-root task
   paths explicit with `./`; replacing timed heartbeat, timeout, and memory-lease liveness with
   observable lifecycle-triggered checks; and defining the FR-024/FR-028 publication taxonomy
