@@ -18,6 +18,14 @@ export default defineConfig({
   workers: 1,
   forbidOnly: true,
   retries: 0,
+  // The default 30 s, doubled. A test's timeout bounds its fixtures too, and
+  // the first test of a run is the one charged for launching the browser:
+  // WebKit took 11.1 s and 13.7 s of it on the certification runners against
+  // about a second for every test after it, and once the whole 30 s, which
+  // failed the run in fixture setup. With `retries: 0` a cold start that runs
+  // long is a certification failure rather than a slow test, so the bound is
+  // set where the launch fits.
+  timeout: 60_000,
   reporter: [['list'], ['html', { open: 'never' }]],
   projects: [
     {

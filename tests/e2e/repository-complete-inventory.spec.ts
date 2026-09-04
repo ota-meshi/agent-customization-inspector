@@ -196,18 +196,27 @@ test('clears a focused element of the bar at the width the bar wraps at', async 
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(host.origin);
   await page.waitForSelector('.aci-app__bar');
-  const wrapped = await page.evaluate(() => ({
-    barHeight: document.querySelector('.aci-app__bar')!.getBoundingClientRect().height,
-    scrollPadding: Number.parseFloat(
-      getComputedStyle(document.documentElement).scrollPaddingBlockStart,
-    ),
-  }));
-  // The bar does wrap at this width — without that this test would pass on a
-  // one-line bar and assert nothing.
-  expect(wrapped.barHeight).toBeGreaterThan(60);
-  // To within a pixel: two measurements of one edge need not agree to the last
-  // representable fraction.
-  expect(wrapped.scrollPadding).toBeCloseTo(wrapped.barHeight, 1);
+  // Retried, because the bar grows when the session arrives and the token is
+  // published from the observation of that growth, which is delivered after
+  // the layout it reports and before the frame is painted. A single read can
+  // land between the two and see a height no reader is shown — 41px published
+  // against an 81.84px bar, measured on a certification runner. What has to
+  // hold is that the two agree once the bar has settled; a bar held at the
+  // one-line value never converges and this times out.
+  await expect(async () => {
+    const wrapped = await page.evaluate(() => ({
+      barHeight: document.querySelector('.aci-app__bar')!.getBoundingClientRect().height,
+      scrollPadding: Number.parseFloat(
+        getComputedStyle(document.documentElement).scrollPaddingBlockStart,
+      ),
+    }));
+    // The bar does wrap at this width — without that this test would pass on a
+    // one-line bar and assert nothing.
+    expect(wrapped.barHeight).toBeGreaterThan(60);
+    // To within a pixel: two measurements of one edge need not agree to the last
+    // representable fraction.
+    expect(wrapped.scrollPadding).toBeCloseTo(wrapped.barHeight, 1);
+  }).toPass();
 
   // And a link scrolled to its top lands clear of the bar rather than under it.
   const cleared = await page.evaluate(async () => {
