@@ -553,13 +553,14 @@ describe('the terminal editor a machine can host', () => {
   });
 
   it('runs an absolute terminal editor rather than the default of that name', async () => {
-    // The catalog reads `/custom/bin/vi` as an unknown editor — it takes the
-    // last segment as an id and no entry is named `vi` — so classifying by
+    // The catalog reads an absolute spelling as an unknown editor — it takes
+    // the last segment as an id and no entry is named `vi` — so classifying by
     // the whole value would call the reader's own executable non-terminal
     // and start whatever `vi` PATH offers instead.
     setPlatform('darwin');
-    setConfiguredEditor('/custom/bin/vi');
-    resolvedCommands.set('/custom/bin/vi', '/custom/bin/vi');
+    const absoluteEditor = machinePath('custom', 'bin', 'vi');
+    setConfiguredEditor(absoluteEditor);
+    resolvedCommands.set(absoluteEditor, absoluteEditor);
     const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     expect(opener.targets).toContain('terminal-editor');
     execFileAsyncMock.mockResolvedValueOnce(undefined);
@@ -567,19 +568,19 @@ describe('the terminal editor a machine can host', () => {
     expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
       '-e',
       expect.stringContaining('quoted form of'),
-      '/custom/bin/vi',
+      absoluteEditor,
       FILE,
     ]);
   });
 
   it('keeps an absolute editor path that carries spaces, exactly as written', async () => {
-    // `/Applications/Vim App/.../vim` and `vim -u NONE` read alike
-    // lexically; the resolution tells them apart, because `which` checks a
+    // An absolute `…/Vim App/…/vim` and `vim -u NONE` read alike lexically;
+    // the resolution tells them apart, because `which` checks a
     // separator-carrying value directly. A real executable at the exact
     // spelling is what the reader named, so that is what runs — never the
     // PATH's own `vim`.
     setPlatform('darwin');
-    const spacedPath = '/Applications/Vim App/Contents/MacOS/vim';
+    const spacedPath = machinePath('Applications', 'Vim App', 'Contents', 'MacOS', 'vim');
     setConfiguredEditor(spacedPath);
     resolvedCommands.set(spacedPath, spacedPath);
     const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);

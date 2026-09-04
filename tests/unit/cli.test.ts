@@ -390,7 +390,13 @@ describe('personal-setup consent', () => {
 
       const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
       expect(excludedRoots).toContain(link);
-      expect(excludedRoots).toContain(realpathSync(target));
+      // Resolved from the link, because that is the root startup selected and
+      // the exclusion holds what `realpath` answers for it. Naming `target`
+      // instead assumes the directory has one spelling, and the Windows runner
+      // reported two — so the assertion asked for a string the probe was never
+      // handed. The two entries stay distinct either way: a link and its target
+      // are different names.
+      expect(excludedRoots).toContain(realpathSync(link));
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
