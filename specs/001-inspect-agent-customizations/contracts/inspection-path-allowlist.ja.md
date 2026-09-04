@@ -321,7 +321,7 @@ product内で唯一のpattern評価であり、一度に1つのentry nameへ適�
 readするagentが見るものを表示するからである。Targetがmissingまたはunreadableなlinkはそのfileの
 `file-unreadable` Diagnosticになり、recursiveなtraversalはreal pathで訪問済みdirectoryを追跡して
 link cycleがscanの終了を妨げないようにする。Hard linkは通常のfileであり、physical-identity grouping、
-read-once semantics、primary/alias path selectionは存在しない。`.git`、`.hg`、`.svn`、`node_modules`という名前のdirectoryには決して入らない。VCS内部は
+read-once semantics、primary/alias path selectionは存在しない。`.git`、`.hg`、`.svn`、`node_modules`という名前のdirectoryには決して入らない。VCS内部の名前は、それを含むvolume自身の名前のidentityに従う。`.GIT`のようなcase variantは、そのvolumeが`.git`として解決する場合は除外し、case-sensitiveなvolume上でその綴りにより別directoryとしてauthorされた場合は対象に残す。別entryからVCS内部へ到達してもrepository customizationにはならないため、resolved pathにも同じ規則を適用する。VCS内部は
 repository自身の機構であってrepositoryでauthorされたcustomizationではない。`node_modules`
 directoryはpackage managerがinstallしたpackageを保持するため、その中のcustomization fileは
 それをshipしたpackageのものであり、検査対象のrepositoryでauthorされたものではなくmanifestと

@@ -53,14 +53,11 @@ test('shows one enabled Repository Source with an empty inventory', async ({ pag
   await expect(page.getByRole('navigation', { name: 'Sources' }).locator('..')).toContainText(
     'None recognized.',
   );
-  await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
-  await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
-
   // The Source's own state is its own surface (FR-002, FR-030). The launch URL
   // is published only after the automatic first scan commits, so the one-fetch
   // shell cannot become stranded on generation 0.
   const status = await openRepositoryStatus(page);
-  await expect(status).toContainText('Ready');
+  await expect(status).toContainText('Inspected');
   // The escaped, non-authorizing root presentation: display-only, and the
   // page states as much beside it. The fixture is selected with --root, so the
   // boundary reports that origin rather than the invocation directory.

@@ -231,7 +231,9 @@ test('states a read that failed where the file is listed, and stays partial', as
   // commits `partial` and each failure is stated where its own file is listed
   // (FR-028). The status is the Source's, not a modal.
   const status = await openRepositoryStatus(page);
-  await expect(status).toContainText('Partial');
+  // One word for one status, and the count this panel states itself: what the
+  // word cannot say, the sentence beside it does.
+  await expect(status).toContainText('Inspected');
   await expect(status).toContainText('kept a diagnostic of their own');
 });
 

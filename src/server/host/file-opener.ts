@@ -274,6 +274,19 @@ function insideInspectedRoot(candidate: string, inspectedRoots: readonly string[
  * spelling only, because FR-013 forbids resolving a proposed one before the
  * reader has consented to it; {@link insideInspectedRoot} records what that
  * leaves open.
+ *
+ * Resolving a candidate is not proposed-root I/O and does not become it when
+ * the candidate leads into a personal home: the operand is a `PATH` entry or a
+ * configured editor, never one of the four proposed roots, and a resolution
+ * that passes through a home does so because the machine's own tooling was
+ * spelled through it. The executable lookup below already resolves the same
+ * candidate the same way, so this adds no class of pre-consent I/O that the
+ * probe did not perform before it.
+ *
+ * A candidate the filesystem cannot resolve is admitted on its spelling alone.
+ * Refusing it instead would take an editor away from a reader over a transient
+ * error on a path that has already passed the lexical comparison, and the
+ * probe's whole purpose is to offer what the machine actually has.
  */
 async function outsideInspectedRoots(
   candidate: string,

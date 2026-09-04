@@ -311,7 +311,7 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
 - 閉じた union が定める text は例外です。ラベル表はコンポーネントではなくその union の隣に置いて
   ください。そうすればラベルなしに新しいメンバーを追加してもコンパイルが通らなくなります。
   `entities.ts` が `CUSTOMIZATION_KIND_TEXT`・`SUPPORTED_TOOL_TEXT`・`FILE_ENCODING_TEXT`・
-  `SOURCE_BOUNDARY_ORIGIN_TEXT`・`SOURCE_STATUS_TEXT`・`SOURCE_STATUS_STANDALONE_TEXT`・
+  `SOURCE_BOUNDARY_ORIGIN_TEXT`・`SOURCE_STATUS_STANDALONE_TEXT`・
   `SAME_NAME_SKILL_RESOLUTION_TEXT` を
   持ち、diagnostic の text は `DIAGNOSTIC_REGISTRY` にあります。どの surface も描画しない
   閉じた union には表が要りません。`DocumentationStatus` と `LifecycleQualifier` は registry 上の

@@ -190,6 +190,22 @@
    2.4.11): the padding is what the browser keeps clear when it scrolls one into
    view, for a Tab, an anchor, and a programmatic `scrollIntoView` alike. */
 :root {
+  /* The type every read-only source surface is laid out in — the single-file
+     viewer, the comparison diffs, and the inert `<pre>` that stands in for a
+     viewer until its editor mounts. One declaration, because `monaco.ts` reads
+     it off each editor's own container rather than keeping a copy
+     (§ typeMetricsOf), and because a placeholder that predicted a different
+     size than the editor took moved whatever sat under it at mount. In `rem`,
+     so a reader who enlarges text without zooming moves all of them — the
+     editor's own default is an absolute pixel count no stylesheet reaches.
+
+     The value is this product's rather than the editor's: Monaco defaults to
+     12px on macOS and 14px everywhere else, so the source a reader saw was one
+     size on their machine and another on the next. 14px is what every
+     certified browser drew, and one value is what a surface can hold a
+     placeholder to. */
+  --aci-source-font-size: 0.875rem;
+  --aci-source-line-height: 1.1875rem;
   scroll-padding-block-start: var(--aci-sticky-bar);
 }
 

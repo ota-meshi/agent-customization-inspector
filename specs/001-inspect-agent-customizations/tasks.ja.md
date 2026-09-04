@@ -72,16 +72,16 @@ dispositionである。
 | QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
 | QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
-| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201 |
+| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
 | SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
-| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194 |
-| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194 |
-| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203 |
+| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203 |
+| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203 |
 | SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
-| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194 |
+| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
-| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200 |
+| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200, T1205 |
 
 ---
 
@@ -940,7 +940,7 @@ dispositionである。
   を提示することもできない。)* *(2026-07-28修正: 描画される値でcontract識別子であるものは1つもない。rule
   ID、behaviorまたはstrategyのID、matcher lookup base、closedなstatus値は、いずれもregistry recordまたはwire
   vocabularyを解決するものであり、自分のファイルを読んでいる人が尋ねた何にも答えない。したがっていずれもunionの隣の表を通して描画する:
-  `src/shared/entities.ts`の`CUSTOMIZATION_KIND_TEXT`、`SUPPORTED_TOOL_TEXT`、`FILE_ENCODING_TEXT`、`SOURCE_BOUNDARY_ORIGIN_TEXT`、`SOURCE_STATUS_TEXT`、`SAME_NAME_SKILL_RESOLUTION_TEXT`、`src/shared/api-text.ts`の`SCAN_PROGRESS_PHASE_TEXT`、diagnostic
+  `src/shared/entities.ts`の`CUSTOMIZATION_KIND_TEXT`、`SUPPORTED_TOOL_TEXT`、`FILE_ENCODING_TEXT`、`SOURCE_BOUNDARY_ORIGIN_TEXT`、`SOURCE_STATUS_STANDALONE_TEXT`、`SAME_NAME_SKILL_RESOLUTION_TEXT`、`src/shared/api-text.ts`の`SCAN_PROGRESS_PHASE_TEXT`、diagnostic
   textは`DIAGNOSTIC_REGISTRY`である。`api-types.ts`はruntime codeを出荷しないため、`api-text.ts`を`*-text.ts`
   companionとして置く。DTOが運ぶIDは`string`ではなくそのclosed unionとして型付けし、それが表の完全性を保つ（FR-007）。)* *(2026-08-02 修正:
   維持管理上の field caption は描画しない。detail は file が書いた key で frontmatter を列挙しており、同じ画面にある値の傍らに catalog
@@ -7076,397 +7076,22 @@ dispositionである。
   admissionは読み取り認可のrecordに留まり、vendorが文書化していることは維持管理contractに残るため、どのsurfaceもcondition、applicability、order、runtime
   state、provenance、documentation statusをprojectしない（FR-009。T091/T1068/T1042）。)* *(2026-08-30 修正:
   この文書は読者がツールを起動して読むために開くものなので、その読者に必要なことを載せる。ここで誰も参照しないcontractは、それを所有するartifactが既に述べている。)*
-- [X] T1030 SC-001/SC-006 study-evidence harnessを4つのordered acceptance blockで実装する。(1) Paired inputs
-  and normative contract:
-  `tests/usability/sc001-sc006-study-kit.md`と`tests/usability/sc001-sc006-study-kit.ja.md`、`tests/usability/sc001-sc006-study-inputs/`配下のtwenty-member
-  bilingual
-  bundle（participant member 16件と、どのdistributionにも渡さないscoring member 4件）、`tests/usability/sc001-sc006-study-inputs.json`、`tests/usability/sc001-sc006-study-inputs.sha256`を作成し、semantically
-  equivalentかつcandidate-independentに保ち、`specs/001-inspect-agent-customizations/contracts/usability-study-evidence.md`と`specs/001-inspect-agent-customizations/contracts/usability-study-evidence.ja.md`をexact
-  protocol
-  ownerとし、そのentityを`specs/001-inspect-agent-customizations/data-model.md`および`specs/001-inspect-agent-customizations/data-model.ja.md`と整合させる。`StudyBrowserAttemptBinding`（`schemaVersion`,`studyRunId`,`browserAttemptId`,`subjectId`,`inspectorProcessId`,`state`）、`StudyBrowserRequestCandidate`（`schemaVersion`,`studyRunId`,`browserAttemptId`,`correlationId`,`actorClass`,`authorityClass`,`requestClass`,`targetClass`,`methodClass`,`originClass`,`effectClass`,`sameInspectorHost`,`productAttributable`,`prohibited`）、`StudyServerCorrelationClaim`（`schemaVersion`,`studyRunId`,`correlationId`,`subjectId`,`inspectorProcessId`,`actorClass`,`authorityClass`,`requestClass`,`targetClass`,`methodClass`,`originClass`,`effectClass`,`sameInspectorHost`,`productAttributable`,`prohibited`）のexact
-  root orderを維持する。Raw-value banをcapture/evidence IPC crossingまたはretained/log/output/digest
-  boundaryにscopeし、Basic credential、exact Fetch Metadata/Origin/Referer header、raw
-  `X-Inspector-Study-Correlation`のrequired ephemeral loopback-wire
-  receipt/processingだけを許可して直ちにdiscardする。Strictly decoded canonical 43-character safe IDだけがsafe
-  IPCをcrossし、`correlationId`としてretainされ、canonical safe-payload/downstream evidence-digest
-  chainへ入れる。`pnpm run study:evidence:inputs -- materialize`はsupervisorだけをlaunchする。そのexisting
-  supervisor上の`study:evidence:capture -- start`がlong-lived internal descendant/process exact
-  8件をlaunchしてstream 3件をopenする。Start時にsupervisorだけがfresh subject token exact 20件をordered
-  setとして生成・所有し、次の各`StudyBrowserAttemptBinding`へnext
-  tokenだけをdistributeし、study-harnessはscheduleだけを行う。Exact runtime-only
-  `StudySupervisorRuntimeBootstrap`
-  rootを`schemaVersion`,`workRootLexicalValue`,`workRootCanonicalValue`,`workRootIdentity`,`controlEndpoint`,`controlToken`の順で定義する。Authenticated
-  supervisor `ready`のchild-to-parent sequence `0`後、materializerはparent-to-child sequence
-  `0`でexact-once `runtime-bootstrap`を送る。Supervisorはlexical/canonical/identity root
-  tupleをvalidateしてexact endpointをbindし、accepted `acknowledgement`を返し、その後だけroot
-  mutationを許可する。Materializerはtransfer/frame copyを直ちにwipeし、successful role-specific lifecycle
-  closeではedgeだけをdetachしてsupervisorをliveに保ち、validation/bind/ACK
-  failureはabortする。Environmentとargvをauthorityにしない。Raw path、endpoint、token、exact
-  `StudySupervisorRuntimeBootstrap` frame/HMAC processingだけをruntime-bootstrap sensitive privacy
-  exceptionとし、capture/evidence、retained data、log、output、digest inputへ入れない。Exact runtime-only
-  `StudyBrowserProxyRuntimeBinding`
-  rootを`schemaVersion`,`studyRunId`,`browserProxyAuthority`の順で定義する。Supervisorがadapter/watchdog
-  registration 6件すべてをACKした後だけexact-once `browser-proxy-binding`を送り、adapterがvalidate/bindしてaccepted
-  `acknowledgement`を返した後だけ`stream-control: start`、`capture-start`、start completionを許可する。Transfer
-  bufferをwipeし、raw authorityはstopまでcanonical route上のsupervisor/adapter dedicated
-  memoryとliveなattempt-local DevTools request/browser
-  contextだけに保ち、checkpoint/continuationで一致させ、stopでwipeし、environment/argv/evidence
-  routeを禁止する。Supervisor/brokerがfresh
-  `StudyBrowserAttemptBinding`を生成し、stateを`prepared | open | terminalizing | closed`とする。Distinct
-  fresh 32-byte/43-character `browserProxyMarkerSecret`とexact runtime-only
-  `StudyBrowserProxyMarkerBinding` root
-  `schemaVersion`,`studyRunId`,`browserAttemptId`,`browserProxyMarkerSecret`,`state`を生成し、stateを`prepared | active | destroyed`とする。`attempt-binding`はstudy-harness/study-browser-adapterだけへ、authenticated
-  `proxy-marker-install`はsupervisorからstudy-browser-adapterへdirectに送る。`browserAttemptId`をこれらのruntime
-  memory、authenticated frame、browser candidateだけに保ち、browser
-  process/context/profile/configuration/credential/request/application/evidenceへ入れない。Installはpreparedにとどめる。Prepared-binding
-  both ACK後かつparticipant `npx`前にadapterだけがcertified isolated
-  profileをlaunchし、`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`でexact
-  bootstrapを完了する。Bodyless `407 Proxy Authentication Required`のonly
-  headerは順に`Proxy-Authenticate: Basic realm="inspector-study"`,`Connection: close`、canonical Basic
-  retryはexact 1件、bodyless `204 No Content`のonly
-  headerは`Connection: close`とし、DNS/application/forwarding/candidate/correlation/evidence
-  effectを0件にする。Authenticated bootstrap ACKはmarker copyだけをatomically activeへmoveし、attempt
-  bindingはlater product readiness/open-snapshot dual ACKまでpreparedに保つ。Healthy external
-  browser/environment/bootstrap failureはactiveを経ずmarker copyをdestroyしてadapter-sourced
-  `equipment-failure`を生成し、internal adapter/proxy/controller/CDP/authentication/IPC/child
-  faultはsynthesisせずinvalidateする。以後各study-browser requestにcanonical Basic credential exact
-  1件を要求し、close/abort/crash/child exit/authentication failureでattempt/marker/secret/install
-  frame/browser copyをwipeする。Exact runtime-only `StudyParticipantNavigationGrant` root
-  `schemaVersion`,`studyRunId`,`browserAttemptId`,`correlationId`,`state`と`state: armed | consumed | destroyed`を定義する。Product-probe
-  readiness後、sole expected initial navigation直前にsupervisorがfresh armed grantを作り、proxy
-  injection前にpage/browser codeへ公開せずstudy-browser-adapterへ送る。Fetch Metadataをhuman
-  attestationではなくconsistencyだけとする。Valid secret + current armed grant + exact
-  navigate/document/?1/missing-Origin/none-or-same-origin + exact authorized-static
-  targetだけをparticipantとしgrant correlation IDを使ってonce consumeする。Current grantなし、nonexact
-  target、user-activated page-script navigation、またはprior grant consumption後のfresh participant-shaped
-  HTTP observationはvalid-secret unknownとし、open binding IDsとfresh proxy-generated correlation
-  ID、`productAttributable: true`、`prohibited: true`を使うautomatic-critical browser-only
-  rowとしてDNS/socket/body/response
-  exposure前にblockし、grantをconsumeせずrunもinvalidateしない。Replayed/duplicate/stale authenticated IPC
-  candidate、simultaneous grant-consumption attempt、authenticated attempt/correlation/target
-  mismatchはforward 0件、run invalid、state destroyとする。Bundled-SPAはvalid secret + missing
-  `Sec-Fetch-User` +
-  [exact-issued `Origin` OR (missing `Origin` AND exact-issued `Referer`)]だけとし、extension/browser-only、その他valid-secret
-  unknown/prohibited、missing/invalid-secret unrelated actor rowを保つ。Six headerをindependently
-  compare/discardし、server claimはregistered outer/open-binding
-  equalityを持つparticipant/SPAだけに許可する。Allowed edgeごとにordinary unidirectional anonymous inherited pipe
-  exact 2本、`parent-to-child`と`child-to-parent`をcreateし、IPC
-  materialをenvironment、argv、file、socket、named endpoint、control endpointへ置かない。Parent-to-child
-  pipeは32-byte `channelSeed`、32-byte `bootstrapNonce`、32-byte `channelId`の順のexact 96 binary
-  byteで始まり、EOFを挟まず同じopen pipeでLF-framed parent-to-child messageへ切り替わる。Childはframe parsing前にexact 96
-  byteをconsumeし、byte 96以後をすべてframe dataとして扱い、byte 96前のEOF/closeをrejectする。Child-to-parent
-  pipeはauthenticated `ready` sequence `0`で始める。`ready` payloadのexact
-  rootは`schemaVersion`,`bootstrapNonce`,`componentRunId`で、`schemaVersion: 1`、canonical bootstrap
-  nonce、canonical component
-  IDを持ち、parentはseed/nonceをdestroyする前にこれをauthenticate/consumeする。全`acknowledgement` payloadのexact
-  rootは`schemaVersion`,`acknowledgedSequence`,`result`、`result: accepted`とし、全`lifecycle`
-  payloadのexact rootは`schemaVersion`,`event`、`event: close | abort | child-exit`とする。Exact
-  `StudyStreamControl`
-  rootを`schemaVersion`,`controlSessionId`,`studyRunId`,`workRootIdentityCommitment`,`candidateIdentityCommitment`,`candidateSha256`,`studyInputManifestSha256`,`streamRole`,`command`,`checkpointRequestId`,`handoffSha256`の順で定義し、immutable
-  binding fieldは全commandでstart value
-  exactをrepeatし、`command: start | checkpoint | anchor-handoff | stop`とする。Exact
-  `StudyStreamControlResult`
-  rootを`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`command`,`checkpointRequestId`,`sequence`,`monotonicNs`,`envelopeSha256`の順で定義する。Start
-  resultはcapture-startとfirst heartbeat後だけvalidで、そのfirst-heartbeat
-  positionをreportする。Supervisorは各stream fileをcreate/validateしてdedicated append-only handle exact
-  1件をopenし、fixed child-visible descriptor `5`でsupervisor -> adapter ->
-  watchdogへhandleだけを渡す。Descriptor `3`はparent-to-child pipe read end、descriptor `4`はchild-to-parent
-  pipe write endのままとし、descriptor `5`をthird IPC pipe/channelにしない。Descriptor `5`はadapter/watchdog
-  modeだけに存在し、他roleではabsent/closedとする。Path、cwd、environment、argvをauthorityにしない。Adapterはfile
-  accessなしのtransfer-onlyでwatchdog registration後にcopyをcloseし、supervisorはupstream registration
-  ACK後にcopyをcloseし、watchdogがidentity/authorityをvalidateしてsole
-  holder/writerになる。Adapterは`stream-control`とreverse
-  `stream-control-result`をbyte-identicalにrelayし、start/checkpoint/anchor-handoff/stopはexact semantic
-  resultをwaitし、stopはresult -> handle close -> clean exitの順とする。Wrong
-  handle/slot/role/root/order/result、adapter access、extra holder/writer、early close、lifecycle
-  failureは全copyをcloseしてrunをinvalidateする。Exact runtime-only `StudyProcessLifecycleAttestation`
-  rootを`schemaVersion`,`processRole`,`streamRole`,`componentRunId`,`instanceId`,`processRunId`,`event`,`exitCode`,`signal`の順で定義する。`processRole`はnamed
-  adapter 3件、named watchdog
-  3件、`reviewer-one`,`reviewer-two`のいずれか、adapter/watchdogの`streamRole`はexact
-  stream、reviewerの`streamRole`は`not-applicable`、`event`は`registered | exited`、registrationは`exitCode: null`,`signal: null`、accepted
-  exitは`exitCode: 0`,`signal: null`とする。Sibling edgeなしのexact
-  matrixを`materializer -> supervisor`（`runtime-bootstrap | lifecycle` /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> study-harness`（`attempt-binding | terminalization-decision | lifecycle`
-  /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> scoring-moderator`（`scoring-context | acknowledgement | lifecycle`
-  /
-  `ready | workflow-outcome | process-lifecycle-attestation | acknowledgement | lifecycle`）、`scoring-moderator -> reviewer-one | reviewer-two`（`review-case | lifecycle`
-  /
-  `ready | reviewer-vote | acknowledgement | lifecycle`）、`supervisor -> study-browser-adapter`（`browser-proxy-binding | stream-writer-binding | attempt-binding | proxy-marker-install | participant-navigation-grant | browser-broker-decision | safe-payload | workflow-outcome | terminalization-decision | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | browser-request-candidate | attempt-terminalization | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、`supervisor -> product-instrumentation-adapter | inspector-server-ledger-adapter`（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、`each *-adapter -> matching *-watchdog`（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）に閉じる。Moderator、adapter、watchdog
-  edgeの`acknowledgement`はimmediately preceding valid
-  `process-lifecycle-attestation`をacceptできるが、permitted directionの`workflow-outcome`
-  acknowledgementはmatching
-  watchdogが`safe-payload`をacceptした後だけ送る。`browser-request-candidate`,`attempt-terminalization`,`stream-control`には代わりに`candidate-forward`,`terminalization-decision`,`stream-control-result`を返す。Start
-  completion前にadapter 3件/watchdog 3件すべてのregistrationを要求する。Supervisorは各adapter registrationをdirect
-  acceptしてlater clean OS exitをobserveし、各adapterはwatchdog registrationをacceptしてlater watchdog clean
-  OS exitをobserveしたattestationをrelayし、scoring-moderatorは各reviewer registrationとmoderator-observed
-  clean exitをrelayする。Witnessはdirect adapter exit 3件、adapter-attested watchdog exit 3件、directly
-  observed orchestrator exit
-  2件、`ephemeralReviewerProcessExitCount === reviewVoteCount`を証明し、nonclean/missing/duplicate/mismatch/wrong-parent/reordered
-  lifecycle attestationはrun invalidとする。Exact `StudyBrowserBrokerDecision`
-  rootを`schemaVersion`,`studyRunId`,`browserAttemptId`,`correlationId`,`decision`の順で定義し、`decision: candidate-forward | browser-only-released | joined-pair-released`とする。`candidate-forward`だけをsole
-  candidate acceptance/forwarding authorizationとし、separate candidate
-  acknowledgementを存在させない。Run/attempt/subject/process IDとcause
-  `product-exit | browser-exit | equipment-failure | premature-probe-close`を持つexact
-  attempt-terminalization/terminalization-decision payload、およびcanonical
-  grant/workflow-outcome/review-case rootを定義する。
-  Study-harnessはscheduleだけを行い、scoring-moderatorだけがexact `StudyWorkflowOutcomeSubmission` root
-  `schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`outcomeClass`,`automaticIssueCorrelationId`,`reviewDisposition`,`reviewerOneClassification`,`reviewerTwoClassification`をconstructしてsupervisorへsubmitし、supervisorがvalidateしてstudy-browser-adapterへforwardし、adapterは同じorderのcanonical
-  workflow recordだけを`safe-payload`としてwatchdogへrelayする。Harness submissionとdirect/bypass producer
-  routeをrejectする。Terminal causeはexact source—`product-exit`はsupervisorのdirect
-  observation、`browser-exit`はactual browser process/context
-  exitをobserveしたstudy-browser-adapter、`equipment-failure`はadapter/proxy/IPCがhealthyなexternal
-  browser/bootstrap/environment failureについてsole designated equipment
-  observerである同adapter、`premature-probe-close`はsupervisor direct—だけからacceptしfirst valid
-  causeを採用する。Internal adapter/proxy/marker/authentication/IPC/implementation/child faultはequipment
-  outcomeをsynthesizeせずrunをinvalidateする。Wrong-source/concurrent/late/duplicate
-  causeをrejectし、supervisorはbyte-identical `terminalization-decision`をharness/browser
-  adapterへfanoutする。Adapterはbrowser/grant/marker/reservation/candidate/pending
-  stateをdestroyするがterminalizing bindingを維持し、harnessはmoderator/supervisor-owned synthesisとfinal
-  closed dual ACKまでterminalizing bindingとfixed remaining-workflow scheduleを維持する。 Byte-identical
-  `attempt-binding` snapshotをreplicateする。Preparedはharness/browser adapterの両方へ送りmarker
-  install/launch前にboth ACK、readiness時はfresh process IDを持つopenを両方へ送りreadiness
-  return/grant/candidate前にboth ACK、terminalization decisionで両copyをterminalizingへmoveする。Outcome
-  4件後はclosedを両方へ送りadapterがattempt-local cleanup後にACKし、both closed ACK後だけcopy destroy/next
-  attemptを許可する。Normal completionはauthenticated probe close、accepted outcome 4件、pending join
-  0件の後だけsame closed snapshot/ACK pathを使う。Skip/reorder/stale/duplicate/mismatch/partial ACKをrejectする。
-  Candidate body execution前にexact `StudyPreReadinessBootstrapProof` root
-  `schemaVersion`,`productId`,`bootstrapEventId`とcommand `register-pre-readiness-probe` request
-  `studyRunId`,`subjectId`,`bootstrapProof`を要求し、private `preReadinessProbeId`を返す。Runtime-only
-  `StudyPreReadinessProductBuffer` root
-  `schemaVersion`,`studyRunId`,`subjectId`,`preReadinessProbeId`,`state`とstate
-  `open | readiness-bound | terminalization-bound | destroyed`を定義する。`buffer-pre-readiness-product-event`
-  requestは`preReadinessProbeId`,`destinationRole`,`payload`、destinationは`product-instrumentation`だけ、responseは`null`とし、後の`register-product-probe`
-  requestは`studyRunId`,`preReadinessProbeId`,`readinessProof`,`requestedDestinationRoles`とする。Readiness後の`submit-product-event`
-  exact outer rootは`inspectorProcessId`,`destinationRole`,`payload`とし、outer processだけがregistered
-  probeをauthenticateし、`StudyServerCorrelationClaim` payload内のsubject/process IDはopen bindingとそのouter
-  processの双方へindependently exact一致させる。Exact `StudyPreReadinessProductObservationDraft`をcanonical
-  observation root order
-  `schemaVersion`,`eventCode`,`eventId`,`correlationId`,`subjectId`,`inspectorProcessId`,`observationClass`,`actorClass`,`authorityClass`,`requestClass`,`targetClass`,`methodClass`,`originClass`,`effectClass`,`workflowClass`,`outcomeClass`,`automaticIssueCorrelationId`,`reviewDisposition`,`reviewerOneClassification`,`reviewerTwoClassification`,`sameInspectorHost`,`productAttributable`,`prohibited`で定義する。Process/workflow/automatic/review
-  fieldは全て`not-applicable`、evidence/claimではなく、buffer IDはprivate runtime stateだけに保つ。Pre-readiness
-  observationごとにsafe draftをclassifyしてraw inputを直ちにdiscardし、effect前にsubmitし、ACK後だけeffect
-  continuationを許可する。Supervisor orderでhash/route/evidence化せずstoreし、全ACKed
-  draftをpreserveする。Readinessではbufferを`open -> readiness-bound`へmoveしfresh `inspectorProcessId`とfresh
-  evidence event/correlation IDでcanonical payloadを再構築し、orderどおりadapter ACK releaseし、empty
-  bufferもdestroyし、attempt-open dual ACK完了後にresponseする。Pre-readiness
-  exitでは`open -> terminalization-bound`へmoveし`inspectorProcessId: not-applicable`とfresh evidence
-  IDでpayloadを再構築し、ACK releaseしてempty bufferもterminalization/synthesis前にdestroyし、abrupt exit後もACKed
-  eventをpreserveする。Bootstrap point未到達exitはnormal pre-readiness terminalizationとしてreviewed failure
-  4件を作る。Bootstrap point到達後はregistration ACKまでcandidate body/effect 0件とし、identity/registration/ACK
-  failureはsynthesisせずinvalidateする。Non-target/helper processはlocal discardしregister/evidence
-  0件とし、identity/register/ACK/replay/raw-bearing/wrong-destination
-  faultはrunをinvalidateする。Openかつexact-matchingな`StudyCurrentSubjectScoringContext`が存在する間だけ、nonworkflow
-  prohibited observationをsame run/subject/process/workflowへvalidate/tagし、required downstream
-  watchdog ACKまたはACKsを得てからaccepted observationとしてcommitし、supervisor
-  mirrorをupdateし、moderatorのauthenticated updated-`scoring-context` ACKを得て、その後だけrelease/outcome
-  submissionを許可する。Pre-readinessまたはcontext-free observationはprocess/workflow/link
-  fieldを`not-applicable`に保ち、contextをupdateせず、later linkも禁止する。Source-supplied workflow
-  tagをignore/rejectしてlate/cross-context/reordered updateをfailする。Eligible grant-backed
-  requestはadapter reserve without state change -> grantをarmedのままsupervisor validation/pending store
-  -> sole acceptance + atomic canonical grant consumeであるexact one-use `candidate-forward` -> adapter
-  copy validation/consume/forwardの順とし、generic candidate acknowledgementを設けない。Simultaneous
-  consumption attemptまたはreplay/duplicate/stale/mismatched authenticated IPC candidateはforward 0件、run
-  invalid、state destroyとし、fresh post-consumption HTTP observationはblocked unknown/prohibited
-  non-invalidating branchを使う。Participant candidate correlationはsupervisor-generated grant ID
-  exact、他browser requestはfresh proxy-generated
-  IDとし、different/mismatchをrejectする。Subject/workflowごとにdistinct human reviewer
-  pairをattempt前assignし、human identity、collector process/component identity、case-local
-  assignmentのcross-case reuse（literal slot labelとsanitized/drained/reset済みterminal
-  surfaceの再利用を除く）を禁止する。Reviewer identity/pair
-  mappingを禁止する境界はrepository/work-root、runtime、capture、evidence、bundle、log、output、digestだけとし、それらの外側のseparate
-  access-controlled administrative roster/assignment recordでunique-pair auditを可能にし、retention
-  policyに従ってdestroyする。First workflow前failureでもlive observationを維持し、failureだけがpaired
-  collectorをspawnし、recording/replayを禁止する。Exact frame
-  rootを`schemaVersion`,`channelId`,`sequence`,`direction`,`senderRole`,`receiverRole`,`messageType`,`authenticationTag`,`payload`とし、各directionを`0`からexact
-  +1とする。`K_p2c = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0parent-to-child\0") || bootstrapNonce || channelId || ASCII(parentRole) || 0x00 || ASCII(childRole) || 0x00)`をderiveし、exact
-  `K_c2p = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0child-to-parent\0") || bootstrapNonce || channelId || ASCII(childRole) || 0x00 || ASCII(parentRole) || 0x00)`をderiveする。MACをexact
-  `ASCII("study-inherited-ipc-frame-v1\0") || ASCII(direction) || 0x00 || compact canonical exact-root frame bytes with authenticationTag:null and no LF`とし、populated
-  compact JSON wire frameへexactly one LFを加える。State change前にconstant-time verifyし、first authenticated
-  child-ready後に`channelSeed`と`bootstrapNonce`をdestroyし、direction-specific keyはedge
-  lifetimeだけ保持する。Wrong edge/role/type/channel/direction/order/tag、partial/trailing
-  frame、skip、duplicate、replay、late/post-close input、unexpected child exitをrejectし、control
-  commandを追加せずkey/frame/sequence stateをwipeする。Brokerをtimer-freeかつatomicにする。State
-  changeなしでreserveし、grantをarmedのままauthenticated candidateをpendingとしてvalidate/storeし、sole
-  acceptance + atomic canonical grant consumeであるexact one-use
-  `candidate-forward`を送り、adapterがcopyをvalidate/consumeしてforwardし、generic candidate
-  acknowledgementを設けない。Server claimをauthenticateしてstored candidateへjoinし、safe browser/server
-  pairをexactly once releaseしてからsingle success/completion ACKを送り、application handlingはそのpost-release
-  ACKを待つ。Late claim、unmatched transaction/request、IPC EOF/error/close、probe/attempt
-  end、stop、abort、crash、child exit、その他lifecycle boundaryはtransactionをcloseし、partial
-  pairをreleaseせずcandidate、claim、binding、marker、pending
-  stateをwipeし、clock、deadline、timerを設けない。Runtime-only `StudyCurrentSubjectScoringContext`をexact root
-  order
-  `schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`automaticIssueCorrelationId`,`terminalizationClass`,`state`で定義する。Automatic
-  IDはinitial
-  `not-applicable`、terminalizationは`none | product-exit | browser-exit | equipment-failure`、stateは`open | submitted | destroyed`とする。そのcontextがopenの間だけ、downstream
-  ACK後にacceptedとなったexact same run/subject/process/workflowのfirst nonworkflow prohibited
-  observationへcontext `workflowClass`を持たせ、automatic correlation `not-applicable` -> that first
-  matching ID onceとterminalization `none` -> mapped cause onceだけを許可し、post-terminalization remaining
-  contextはそのcauseでinitializeして他mutation/reversal/replacementをrejectする。Pre-readiness/context-free
-  observationはworkflow/link `not-applicable`を維持しlater contextをmutateしない。Supervisor mirror
-  update、authenticated updated-context ACK、moderator submissionの順を要求する。Exact
-  `StudyWorkflowOutcomeSubmission` root
-  `schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`outcomeClass`,`automaticIssueCorrelationId`,`reviewDisposition`,`reviewerOneClassification`,`reviewerTwoClassification`を定義して`automaticIssueCorrelationId`を`outcomeClass`直後に置き、canonical
-  workflow payloadも同じorderとする。Objectively successful workflowはcontext candidateがあってもautomatic
-  ID/disposition/voteを常に`not-applicable`にする。Failed workflowでeligibleなalready accepted
-  same-run/subject/process/workflow candidateがある場合だけそのexact
-  IDと`automatic-critical`をsubmitしてreviewを0件にし、candidateなしfailureだけが`not-applicable`をsubmitしてreviewを完了する。Missing/mismatch/reuseをrejectし、accepted
-  automatic observationはoutcomeと独立にexact 1回countする。Exact runtime-only `StudySafetyReviewCase`
-  rootを`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`caseClass`の順で定義し、`caseClass: nonautomatic-workflow-failure`とする。Exact
-  `StudySafetyReviewVote`
-  rootを`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`reviewerSlot`,`classification`の順で定義し、`reviewerSlot: reviewer-one | reviewer-two`とする。Valid
-  automatic linkのない全failureで、moderatorはraw response/rubricをcall-localだけに持ち、either vote前にfresh
-  isolated reviewer-one/twoへbyte-identical safe caseを送り、両reviewerはout-of-band human-viewing
-  boundaryでsame live workflowをobserveし、first
-  voteをhiddenにする。Dispositionは`not-applicable | automatic-critical | reviewer-cleared | reviewer-confirmed-critical | reviewer-disagreement-critical`だけとする。Issue
-  identityは`automatic:<correlationId>`と`reviewer:<subjectId>:<workflowClass>`だけからderiveし、`suspectedWorkflowBlockerCount`は全reviewer
-  disposition、`reviewVoteCount === 2 * suspectedWorkflowBlockerCount`、critical totalはderived ID
-  deduplicationとする。Attempt/reviewer assignment後（pre-readiness/accepted workflow
-  0件かつ`inspectorProcessId: not-applicable`を含む）のproduct/browser/equipment
-  failureまたはpremature-probe-closeでは、supervisorがaccepted
-  outcomeをfreezeしてjoinをcloseし、bindingをprepared/open -> terminalizingへmoveしてcontext
-  routingをcoordinateし、scoring-moderatorだけがharnessのunchanged fixed remaining-workflow
-  scheduleに従うexact failure + required
-  reviewを4件までconstructする。Harnessはoutcomeをsynthesizeせず、harnessのbinding/scheduleとadapterのterminalizing
-  bindingはall four routed outcomeとclosed dual ACK完了まで保持する。Accepted 0件ではfailure 4件すべてにpreassigned
-  live-observing pairのvote exact
-  2件を要求する。Prematureは`terminalizationClass: equipment-failure`へmapする。Harness/orchestrator/adapter/watchdog/reviewer
-  failureはrunをinvalidateする。Attemptはsequentialでparticipant 01–19がall four後close、participant
-  20はcheckpoint前discoveryまででsole possible open attempt、continuationはremaining 3件だけとする。Capture
-  startはattempt bootstrap前のrun-levelだけとする。Materialization時のprocess treeはmaterializer ->
-  supervisorだけとし、existing supervisorがstart時にlong-lived orchestrator 2件とadapter
-  3件をlaunchし、各adapterがmatching watchdog、scoring-moderatorがreviewed failureごとのfresh reviewer
-  pairをlaunchする。Start completion前にadapter/watchdog 6件すべてのaccepted `StudyProcessLifecycleAttestation`
-  registrationを要求し、その後exact `processes` 6件とexact ordered
-  `orchestrators`（`study-harness`、`scoring-moderator`）を返す。Stopはlive reviewer 0件/long-lived internal
-  descendant/process clean exit 8件を要求し、witness provenanceはsupervisor-observed adapter exit
-  3件、adapter-attested watchdog exit 3件、supervisor-observed orchestrator exit 2件、moderator-attested
-  reviewer exitと`ephemeralReviewerProcessExitCount === reviewVoteCount`とする。Exact 80/threshold
-  independence、record kind、handoff/witness/seal pair、retained set、runtime/reviewer residue
-  0件をpreserveする。(2) Failing tests:
-  `tests/contract/usability-study-evidence.test.ts`、`tests/integration/usability-study-evidence.test.ts`、`tests/security/usability-study-evidence.test.ts`で、全positive、boundary、spoof、replay、lifecycle、raw-sentinel、real-child
-  IPC、actual-browser、residue、reviewer
-  truth-table、aggregate-equation、chain、handoff、witness、seal、retained-layout caseを先にencodeする。(3)
-  Scripts: その後、self-contained
-  static-`node:`の`scripts/build-usability-study-inputs.mjs`、`scripts/verify-usability-study-evidence.mjs`、`scripts/run-usability-study-capture.mjs`でclosed
-  bundle/distributionとprotocolを実装し、five-input phase matrix、stable authenticated control
-  session、exact finalize witness/teardown、single-file import/entry closure、`./package.json`のexact
-  `study:evidence:inputs`、`study:evidence:capture`、`study:evidence:verify` entryを維持する。(4) Focused
-  pass: このtaskでcandidate tarball digestをcompute/freezeせず、targeted suite 3件をすべてpassさせる。
-  加えて、次のbrowser-observation、outcome、ordering
-  invariantを定義・実装する。Supervisor-to-study-browser-adapterの`safe-payload`は、forwarded/joined accepted
-  stateとnonforwarded blocked stateを区別するvalidated stored candidateから再構成し、supervisorがcanonical
-  serialization前にcurrent workflowをtagしたsafe nonworkflow browser
-  observationだけに許可する。Adapterはそのcandidateとの一致を要求し、study-browser-watchdogへ`safe-payload`としてrelayしてauthenticated
-  ACKを返す。 このtypeによるworkflow record、source-supplied workflow tag、moderator/`workflow-outcome`
-  bypassを全てrejectする。 Blocked browser-only observationではwatchdog
-  ACKを`browser-only-released`より前に要求し、joined browser/server
-  pairではstudy-browser-watchdogとinspector-server-ledger-watchdog双方のpayload
-  ACKを`joined-pair-released`より前に要求し、その後success/completion ACK exact 1件を返し、application
-  handlingをそのfinal ACKまでblockする。 Context `automaticIssueCorrelationId`はcandidateだけとして扱う。Objectively
-  successful
-  workflowはcandidateがあっても`automaticIssueCorrelationId: not-applicable`をsubmitし、`not-applicable`を使い、review
-  process/voteを0件にする。Candidateがあるfailed workflowはそのexact
-  IDをsubmitして`automatic-critical`を使いreview/voteを0件にし、candidateがないfailed
-  workflowは`not-applicable`をsubmitしてreviewを完了する。 Accepted automatic
-  eventはworkflowのsuccess/failureに関係なく`automatic:<correlationId>` issue exact 1件をindependently
-  deriveし、`automaticCriticalIssueCount`へexact 1回countする。 Accepted pre-readiness automatic
-  eventは`workflowClass: not-applicable`と`automaticIssueCorrelationId: not-applicable`を維持し、workflow
-  outcomeへlinkせず、そのissue/countは生成する。 Readinessのexact orderを、全prebuffer payload ACKとbuffer
-  destruction -> open attempt-binding dual ACK -> discovery `scoring-context` ACK -> readiness
-  response -> grant/navigationとし、全gapでbrowser candidate emissionを禁止する。 Inter-workflowのexact
-  orderを、previous outcomeの全downstream `workflow-outcome`/watchdog ACK -> previous context
-  `submitted` then `destroyed` -> next `scoring-context` ACK -> next prompt/timer/task
-  startとし、overlap/early actionを禁止する。 さらに、該当する実装または検証で次のcanonical equipment/runtime boundaryを要求する。
-  Supervisorをsole participant launch controllerかつdirect OS observerとする。External-equipment fd
-  `6`を通じ、shellを使わずverified subject-repository cwdで、exact LF-terminated
-  `npx --no-install agent-customization-inspector --no-open` 1行、sanitized probe/control/run/subject
-  environmentだけを用い、raw candidate/proxy valueを含めず、command
-  bufferを直ちにwipeしてparticipantをlaunchする。Pre-bootstrap exitを含むparticipant exitはsupervisor-sourced
-  `product-exit`とし、harnessはscheduleだけを行う。Authenticated probe
-  close時は、already-exitedなら`product-exit`、still-liveなら`premature-probe-close`をatomically選ぶ。
-  `materialize`時にsanitized equipment `PATH`へpinned npxとreserved initially-empty external store-bin
-  slotを固定し、materializer/inputsはcandidate
-  byteをreadもrequireもしない。`verify-inputs`後かつ`start`前に、authorized setupはexact candidateとfrozen
-  production graphから同じnetwork/scripts-disabled
-  slotへprovisionしてdigest-bindし、start時にsupervisorがinherited slotからsole audited binaryをpinned
-  `npx --no-install`でresolveして再検証する。Unknown post-materialize path/control/environment routeを設けない。Raw
-  tarball pathをchild environment/argvへ入れず、distributionを変更せず、alternate
-  PATH/global/cache/network/install/fallback/substituteをrejectし、abort/stop/finalize時にstoreをdestroyしてabsenceをverifyする。
-  External-equipment fd `7`はexact runtime-only external record
-  `StudyModeratorInput`を受け、そのrootを`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`response`,`timing`,`groundTruth`,`rubric`の順とし、compact
-  canonical UTF-8 JSON + exactly one LFでencodeする。`timing`はcanonical nonnegative decimal string、raw
-  `response`、`groundTruth`、`rubric`はcanonical JSON stringとする。Normally completed workflowごとにrecord
-  exact 1件を要求する。Terminalization時は`terminalization-decision`から未実行remaining-workflow
-  failureをsynthesizeし、recordを読まない。Parse failure、complete line前のEOF、extra/trailing
-  input、replay、late/cross-context input、noncanonical valueをrejectし、empty
-  response/timingをfabricateせず、raw valueをretainせず、全input bufferをwipeする。 External-equipment fd `8`とfd
-  `9`をisolated reviewer slotとする。Complete caseをdisplayした後だけLF-terminated enum
-  `product-caused-blocker | not-product-caused-blocker` exact 1行をenableし、fresh one-use
-  collectorを使い、first voteをhiddenにし、raw inputを直ちにwipeし、echo/history/record/log/cross-slot
-  outputを禁止する。Human identity、collector `componentRunId`/process identity、case
-  assignmentはreuseせず、literal `reviewer-one`/`reviewer-two` labelとsanitized terminal
-  surfaceだけはdrain/reset後にreuseできる。 Browser adapterはsole anonymous remote-debugging-pipe
-  external-equipment exceptionを通じ、digest-verified pinned Chromiumとそのcontextをdirect
-  launch/ownする。`Target.createBrowserContext`を`proxyServer`と`disposeOnDetach`付きでcallし、各`Fetch.authRequired`へexactly
-  one `Fetch.continueWithAuth` Basic credential responseを返し、raw proxy/marker materialをDevTools
-  requestとattempt
-  contextだけにtransientに保ち、environment、argv、profile、history、log、evidenceへ入れず、wipe/destroyし、browser/context
-  exitをdirect observeする。Healthy external browser/environment/bootstrap failureはadapter
-  `equipment-failure`とし、internal adapter/proxy/controller/CDP/auth/IPC/child
-  faultはsynthesisせずinvalidateする。Adapter crashまたはDevTools-pipe EOF時、supervisorはequipment
-  descendant/context terminationとfresh-profile cleanupをverifyするまでnext
-  attempt/finalizeをblockし、negative cleanup testでorphan Chromium/context 0件を証明する。 Raw proxyのonly
-  routeをcaller-transient -> authenticated runtime-control `StudyLiveBinding` -> supervisor memory ->
-  one-use `browser-proxy-binding` -> adapter memory -> DevTools request/contextとする。 各adapter
-  registrationのsupervisor ACK後、exact path-free `StudyStreamWriterRuntimeBinding`
-  rootを`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`captureComponentRunId`,`captureInstanceId`,`captureProcessRunId`,`writerFileIdentity`,`writerLinkCount`,`writerOpenMode`の順で送る。`writerFileIdentity`はexact
-  existing path-free
-  `StudyRuntimeIdentityTuple`、`writerLinkCount: 1`、`writerOpenMode: append-only`とし、fd
-  `5`はprotocol固定でroot fieldに含めない。AdapterはACKしてbyte-identical
-  `stream-writer-binding`をwatchdogへrelayし、watchdogがverifyしてregisterした後、adapterとsupervisorがACKする。Descriptor
-  `5`はspawn時だけinheritでき、extra duplicateを禁止する。 Exact start orderをadapter-registration ACK ->
-  `stream-writer-binding` relay/ACK -> watchdog verification/registration -> adapter/supervisor ACK
-  -> all six registrations -> `browser-proxy-binding` ACK ->
-  startとする。Browser-adapterとmatching-watchdog registrationはproxy
-  binding前にsupervisor-ACK済みとし、そのACKで`stream-control: start`、`capture-start`、start completionをgateする。
-  Eligible candidate orderをstate changeなしのadapter reservation -> grantをarmedのままsupervisor
-  validation/pending store -> sole acceptance + atomic canonical grant consumeであるexact one-use
-  `candidate-forward` -> adapter copy validation/consume/forwardとする。Predecision consumeとgeneric
-  candidate acknowledgementを設けない。Blocked `safe-payload`はvalidated/stored
-  candidateだけからderiveし、accepted forwarded/joined stateとnonforwarded blocked stateを明示的に区別する。
-  Supervisor workflow tagをcanonical serialization前にapplyし、その後downstream ACK -> accept/count ->
-  mirror/moderator ACK -> release/outcomeの順とし、postaccept mutation/backfillを禁止する。
-  `StudyStreamControl`と`StudyStreamControlResult`の両方でcommand/`checkpointRequestId`
-  matrixをenforceする。`start`はcommand/resultとも`not-applicable`、`checkpoint`はfresh canonical ID exact
-  1件、`anchor-handoff`と`stop`はcurrent accepted checkpoint IDを使う。Wrong command/result
-  pair、mismatch、stale/reused/future ID、noncanonical N/A spellingをrejectする。
-  `StudyBrowserBrokerDecision`では`candidate-forward`と`joined-pair-released`にcurrent
-  non-`not-applicable` `browserAttemptId`を要求し、`browser-only-released`はbound valid-marker
-  requestならcurrent IDを要求し、missing/invalid-marker unrelated requestだけ`not-applicable`を許可する。
-  Pre-readiness
-  terminalの`StudyWorkflowOutcomeSubmission`、`StudySafetyReviewCase`、両`StudySafetyReviewVote`
-  recordでは全`inspectorProcessId`をmatching `not-applicable`とする。 全`workflow-outcome`
-  acknowledgementはmatching watchdogが`safe-payload`をACKした後だけ送る。 Topologyはeight long-lived internal
-  descendants/processesと記述し、watchdogはadapter childであってsupervisor direct child 8件ではない。
-  *(2026-08-10改訂: request観測の真理表はdevframe transport — connection-discovery metadataを含むpackaged
-  serving、RPC channel upgrade、Inspector側で観測するdispatch済みRPC関数 —
-  を分類し、観測tupleはcapability分類を持たない。unauthenticatedなloopback transportはrequest
-  capabilityを定義しないため。usability-study-evidence.ja.md § Closed privacy-safe payload。)* *(2026-08-30
-  修正: study kit、bundle、manifest、companion
-  digestが最初に生まれるのはこのtaskなので、ブロック(1)はそれらを作成する。先行するtaskはどれもそれらを所有せず、T1061はこのtaskの成果物をreviewする。)*
-
-### 公式エビデンスと依存関係のレビュー
-  *(amended 2026-09-04: このtaskが構築したsealed-capture harness — protocol
-  contract、3つの`scripts/*usability-study*` module、そのcontract/integration/security
-  suite、3つの`study:evidence:*` command — は削除済みである（T1061、T1062）。要件が対象とするのは、bilingualなstudy
-  kitと`tests/usability/sc001-sc006-study-inputs/`配下のtask材料であり、agent駆動のSC-001/SC-006評価はそれを読む。)*
+- [X] T1030 SC-001/SC-006の評価材料を作り、両言語で対にして保つ。
+  `tests/usability/sc001-sc006-study-kit.md`と`tests/usability/sc001-sc006-study-kit.ja.md`、
+  および`tests/usability/sc001-sc006-study-inputs/`配下のbilingual bundle — guidance、4つの
+  標準task prompt、response form、ground truth、scoring rubric — を作成し、両言語を意味的に
+  等価に保ち、各memberをcandidate buildから独立に保つ。材料が述べることは製品が行うことでなければ
+  ならない。製品が持たないsurfaceを名指すpromptやguidanceの文は、それを読むsessionを誤誘導する。
+  Bilingualな対応は`tests/documentation/cross-artifact.test.ts`がgateする
+  *(2026-08-10 修正: request-observation truth tableはdevframe transportを分類する — connection-discovery
+  metadataを含むpackaged serving、RPC channel upgrade、Inspector側で観測するdispatch済みRPC function — 。
+  Observation tupleはcapability分類を持たない。認証のないloopback transportはrequest capabilityを
+  定義しないからである。)* *(2026-08-30 修正: study kitとbundleはこのtaskで初めて存在するので、
+  それらを所有する先行taskは無く、T1061がこのtaskの成果をreviewする。)*
+  *(2026-09-04 修正: このtaskが構築したsealed-capture harness — protocol contract、3つの
+  `scripts/*usability-study*` module、そのcontract/integration/security suite、3つの
+  `study:evidence:*` command — は削除済みである（T1061、T1062）。本文は、存在しない機構ではなく
+  残っている材料を述べる。)*（SC-001、SC-006）
 
 - [X] T1031 Exact host、redirect rejection、explicit network opt-in、complete environment-supported
   content retrieval、partial update も自動の cause ベース判断も生じさせない network/runtime の
@@ -7557,7 +7182,7 @@ dispositionである。
   reviewを立証しない。`tests/documentation/cross-artifact.test.ts`へ、両quickstart、順序付き独立CI
   job、後続release/final rerunを要求するbilingual plan/task/quickstart declarationを含むrunnable command/stable
   ID、FR-045までの全53 FR/QR/SC trace row *(2026-08-04 修正: trace rowの件数は現在のFR/QR/SC集合に従う。)*、宣言済みtask
-  IDすべてのmapping（T001からT1202まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
+  IDすべてのmapping（T001からT1205まで、取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を除く）
   *(2026-08-30 修正: 欠番の範囲に取り下げたmarketplaceフェーズ68–75を含めた。同じgateが再現すべきtask件数は既にそれらを除外していたが、列挙が漏れていた。)*
   *(2026-08-24 修正: 件数と欠番の範囲は現在のtask
   setに従う。取り下げたフェーズ64と67がその欠番を残す。)*を検証し、prefixなしbasenameにownershipを依存するtaskを
@@ -7699,336 +7324,17 @@ participant 20名がこのprojectには得られず、それが存在する理�
 
 ### 成果エビデンスと最終ゲート
 
-- [X] T1049 Targeted study-evidence gate
-  `pnpm run test:contract -- tests/contract/usability-study-evidence.test.ts`、`pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`、`pnpm run test:security -- tests/security/usability-study-evidence.test.ts`を実行し、全positive/negative
-  caseがpassするまで先へ進まない。Bilingual task parserでexact 1,114 ordered checkbox ID、116 phase、53 trace row *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*
-  *(2026-08-01 修正: 現在のtask setに合わせて件数を補正)* *(2026-08-04 修正: trace
-  rowの件数は現在のFR/QR/SC集合に従う。)*、English/Japaneseのidentical owned-path set、out-of-line amendment
-  mechanismのないself-contained task textを要求する。Exact five-input phase matrix、closed twenty-member
-  bilingual input bundleと20 distribution、unchanged work-root/candidate identity、stable authenticated
-  control session、final candidate rehash、exact handoff/witness/seal write order、self-contained
-  static-`node:` script、real `process.execPath` child role、actual participant `npx` probe
-  readiness、browser-helper stripping、prohibited retained binding/path/secret/raw value
-  0件をverifyする。Scoped privacy boundaryをpositive/negativeに証明する。Required raw Basic、Fetch
-  Metadata/Origin/Referer、correlation-header byteはephemeral loopback-wire
-  receipt/processingだけに存在して直ちにdiscardされ、capture/evidence IPCまたはretained/log/output/digest
-  boundaryをcrossしてはならない。Strictly decoded canonical 43-character IDだけが`correlationId`としてsafe
-  IPC、canonical payload、payload digest、chain、handoff、witness、seal verificationへ残る。Supervisor-owned
-  attempt/marker generation、study-browser-adapterへのdirect prepared-only install、actual bootstrap
-  success ACKでmarker copyだけをatomic activateし、attemptはlater readiness/open-snapshot dual
-  ACKまでpreparedに維持すること、prepared failure destruction、`browserAttemptId`のbrowser/evidence exposure
-  0件をexerciseする。Capture startがrun-levelだけで、stream live後の各sequential attempt `npx` probe直前にfresh
-  profile/secret/bootstrapがあることを証明する。Certified profileでexact revision/version/distribution/isolated
-  surface、bodyless 407のordered only headers
-  `Proxy-Authenticate: Basic realm="inspector-study"`,`Connection: close`、Basic retry 1件、sole header
-  `Connection: close`のbodyless 204をverifyし、全deviation/residueをrejectする。Exact
-  `StudyParticipantNavigationGrant` root/lifecycleをexerciseし、Fetch Metadata
-  aloneがattestationにならないことを証明する。Armed one-use grant + exact participant tuple + exact
-  authorized-static targetだけをparticipantとする。Fresh no-grant/nonexact-target/user-activated
-  page-script/post-consumption HTTP observationはopen IDs、fresh proxy-generated correlation
-  IDを持つblocked valid-secret unknown/product-attributable/prohibited/automatic-critical/browser-only
-  rowとしinvalidateしない。Replay/duplicate/stale authenticated IPC candidateとsimultaneous consumption
-  attemptはinvalidateする。SPA、extension、missing/invalid-secret、six-header independent
-  projection/immediate discard、static/RPC forwarding、server-claim equalityの全negativeを維持する。Real child
-  processを使い、closed matrix edgeごとにordinary unidirectional inherited pipe exact
-  2本、`parent-to-child`と`child-to-parent`があり、environment/argv/file/socket/named/control endpoint
-  transport 0件であることをverifyする。Sibling edgeなしのexact closed
-  matrixをexerciseする。`materializer -> supervisor`（`runtime-bootstrap | lifecycle` /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> study-harness`（`attempt-binding | terminalization-decision | lifecycle`
-  /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> scoring-moderator`（`scoring-context | acknowledgement | lifecycle`
-  /
-  `ready | workflow-outcome | process-lifecycle-attestation | acknowledgement | lifecycle`）、`scoring-moderator -> reviewer-one | reviewer-two`（`review-case | lifecycle`
-  /
-  `ready | reviewer-vote | acknowledgement | lifecycle`）、`supervisor -> study-browser-adapter`（`browser-proxy-binding | stream-writer-binding | attempt-binding | proxy-marker-install | participant-navigation-grant | browser-broker-decision | safe-payload | workflow-outcome | terminalization-decision | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | browser-request-candidate | attempt-terminalization | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、`supervisor -> product-instrumentation-adapter | inspector-server-ledger-adapter`（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、各adapter
-  -> matching
-  watchdog（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle` /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）
-  Testするexact association/barrierは次のとおり。Materializationはsupervisorだけをlaunchし、そのexisting
-  supervisor上のstartがlong-lived internal descendant/process 8件とstream
-  3件をlaunchする。Start時にsupervisorがordered fresh subject token 20件を生成・所有し、next attempt bindingへnext
-  tokenだけをdistributeし、harnessはscheduleだけを行う。Exact runtime-only `StudySupervisorRuntimeBootstrap`
-  rootは`schemaVersion`,`workRootLexicalValue`,`workRootCanonicalValue`,`workRootIdentity`,`controlEndpoint`,`controlToken`。Supervisor
-  `ready` child-to-parent sequence `0`後、materializerはexact-once `runtime-bootstrap` parent-to-child
-  sequence `0`を送り、supervisorはroot identityをvalidateしてendpointをbindし、accepted
-  `acknowledgement`を返し、その後だけroot mutationを許可する。Transfer/frame dataをwipeし、role-specific successful
-  closeはedgeだけdetachしてsupervisorをliveに保ち、failureはabortする。Raw path/endpoint/tokenはこのexact
-  authenticated bootstrap validation/bind/ACK privacy
-  exceptionだけで許可し、environment、argv、capture、evidence、retained data、log、output、digest inputへ入れない。Exact
-  runtime-only `StudyBrowserProxyRuntimeBinding`
-  rootは`schemaVersion`,`studyRunId`,`browserProxyAuthority`。Supervisorがadapter/watchdog registration
-  6件すべてをACKした後だけexact-once `browser-proxy-binding`を送り、adapterがvalidate/bindしてaccepted
-  `acknowledgement`を返した後だけ`stream-control: start`、`capture-start`、start completionを許可する。Transfer
-  bufferをwipeし、raw authorityはstopまでcanonical route上のsupervisor/adapter dedicated
-  memoryとliveなattempt-local DevTools request/browser
-  contextだけに保ち、checkpoint/continuationで一致させ、stopでwipeし、environment/argv/evidence routeを禁止する。Exact
-  runtime-only `StudyProcessLifecycleAttestation`
-  rootは`schemaVersion`,`processRole`,`streamRole`,`componentRunId`,`instanceId`,`processRunId`,`event`,`exitCode`,`signal`。Process
-  roleはadapter 3件、watchdog 3件、`reviewer-one`,`reviewer-two`、adapter/watchdogはexact stream
-  role、reviewerは`not-applicable`、eventは`registered | exited`、registrationは`exitCode: null`/`signal: null`、clean
-  exitは`exitCode: 0`/`signal: null`とする。Adapter/watchdog registration 6件、supervisor direct
-  observationによるadapter exit 3件/orchestrator exit 2件、adapter-attested watchdog exit
-  3件、moderator-attested reviewer
-  registration/exit、`ephemeralReviewerProcessExitCount === reviewVoteCount`を要求し、nonclean/invalid
-  lifecycle dataはinvalidateする。Moderator、adapter、watchdog edgeの`acknowledgement`はimmediately
-  preceding valid `process-lifecycle-attestation`をacceptできるが、permitted directionの`workflow-outcome`
-  acknowledgementはmatching
-  watchdogが`safe-payload`をacceptした後だけ送る。`browser-request-candidate`,`attempt-terminalization`,`stream-control`には代わりに`candidate-forward`,`terminalization-decision`,`stream-control-result`を返す。Exact
-  `StudyStreamControl`
-  rootは`schemaVersion`,`controlSessionId`,`studyRunId`,`workRootIdentityCommitment`,`candidateIdentityCommitment`,`candidateSha256`,`studyInputManifestSha256`,`streamRole`,`command`,`checkpointRequestId`,`handoffSha256`で、全commandにimmutable
-  start bindingをrepeatし、`command: start | checkpoint | anchor-handoff | stop`を使う。Exact
-  `StudyStreamControlResult`
-  rootは`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`command`,`checkpointRequestId`,`sequence`,`monotonicNs`,`envelopeSha256`。Adapterは`stream-control`/`stream-control-result`をbyte-identicalにrelayし、start
-  resultはcapture-start + first
-  heartbeat後にそのpositionをreportする。Supervisorは各fileをcreate/validateし、append-only handle exact
-  1件をchild-visible descriptor `5`でsupervisor -> adapter -> watchdogへ渡す。Descriptor `3`はp2c
-  read、`4`はc2p writeのままで、`5`をthird pipe/channelにせずadapter/watchdog
-  roleだけに存在させ、他roleではabsent/closedとする。Adapterはpass-onlyでwatchdog
-  registration後にcloseし、supervisorはupstream registration ACK後にcloseし、watchdogをsole
-  holder/writerとする。Stopはsemantic result -> handle close -> clean exitの順とし、wrong
-  route/slot/holder/order/resultは全copyをcloseしてinvalidateする。Exact `submit-product-event` outer root
-  `inspectorProcessId`,`destinationRole`,`payload`もenforceし、outer processだけがregistered
-  probeをauthenticateし、inner `StudyServerCorrelationClaim`はsubject/processをopen bindingとそのouter
-  processへindependently一致させる。 Security-critical entityとschemaを直接associateする。Fresh 32-byte/canonical
-  43-character `browserProxyMarkerSecret`はexact runtime-only `StudyBrowserProxyMarkerBinding` root
-  `schemaVersion`,`studyRunId`,`browserAttemptId`,`browserProxyMarkerSecret`,`state`に属し、`state: prepared | active | destroyed`とする。Adapter-owned
-  bootstrapは`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`でbodyless
-  `407 Proxy Authentication Required`を受け、そのonly ordered
-  headerを`Proxy-Authenticate: Basic realm="inspector-study"`,`Connection: close`とし、canonical retry
-  1件後にsole header `Connection: close`のbodyless `204 No Content`を受ける。Exact
-  `StudyBrowserBrokerDecision`
-  rootは`schemaVersion`,`studyRunId`,`browserAttemptId`,`correlationId`,`decision`、`decision: candidate-forward | browser-only-released | joined-pair-released`とする。Exact
-  runtime-only `StudyCurrentSubjectScoringContext`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`automaticIssueCorrelationId`,`terminalizationClass`,`state`、`state: open | submitted | destroyed`とする。Exact
-  `StudyWorkflowOutcomeSubmission`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`outcomeClass`,`automaticIssueCorrelationId`,`reviewDisposition`,`reviewerOneClassification`,`reviewerTwoClassification`とする。Exact
-  runtime-only `StudySafetyReviewCase`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`caseClass`、`caseClass: nonautomatic-workflow-failure`とする。Exact
-  `StudySafetyReviewVote`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`reviewerSlot`,`classification`、`reviewerSlot: reviewer-one | reviewer-two`とする。Exact
-  `StudyBrowserBrokerDecision`、grant、terminalization、workflow-outcome、review-case payload
-  root/enumをmutation-testする。Study-harnessはscheduleだけ、scoring-moderatorだけがexact
-  `StudyWorkflowOutcomeSubmission`をconstruct/submitし、supervisor validate/forward、browser adapter
-  canonical record、watchdog `safe-payload`とする。Harness/direct/bypass submissionをfailする。Exact
-  source—product-exitはsupervisor-observedだけ、browser-exitはactual browser process/context
-  exitをobserveしたstudy-browser-adapterだけ、equipment-failureはadapter/proxy/IPCがhealthyなexternal
-  browser/bootstrap/environment failureについてdesignated equipment
-  observerである同adapterだけ、premature-probe-closeはsupervisorだけ—のfirst-wins/rejectionをtestし、internal
-  adapter/proxy/marker/authentication/IPC/implementation/child faultをinvalidateする。Byte-identical
-  decision後、adapterはbrowser/grant/marker/reservation/candidate/pendingをcleanupしterminalizing
-  bindingを維持し、harnessはmoderator/supervisor-owned synthesisとclosed dual ACKまでterminalizing
-  binding/fixed scheduleを維持する。 Byte-identical prepared/open/closed `attempt-binding`
-  snapshot、dual-ACK barrier、decision-driven terminalizing copy、adapter
-  cleanup-before-closed-ACK、normal closeのprobe close/outcome 4件/join 0件gate、both closed
-  ACK後だけdestroy/next、全skip/reorder/stale/duplicate/mismatch/partial-ACK negativeをtestする。 Exact
-  `StudyPreReadinessBootstrapProof` root `schemaVersion`,`productId`,`bootstrapEventId`、exact
-  `StudyPreReadinessProductBuffer` root
-  `schemaVersion`,`studyRunId`,`subjectId`,`preReadinessProbeId`,`state`とstate
-  `open | readiness-bound | terminalization-bound | destroyed`、`register-pre-readiness-probe`
-  request `studyRunId`,`subjectId`,`bootstrapProof` ->
-  `preReadinessProbeId`、`buffer-pre-readiness-product-event` request
-  `preReadinessProbeId`,`destinationRole`,`payload` -> `null`、extended `register-product-probe`
-  request `studyRunId`,`preReadinessProbeId`,`readinessProof`,`requestedDestinationRoles` ->
-  `inspectorProcessId`、exact `StudyPreReadinessProductObservationDraft` canonical root/order、全N/A
-  process/workflow/automatic/review field、pre-bind evidence/claim/hash/route 0件、sole
-  product-instrumentation destination、private runtime buffer ID、immediate raw
-  discard、draft-before-effect/ACK-before-effect-continuation、exact
-  open-to-readiness-bound/terminalization-bound transition、readiness fresh-process bind + fresh
-  evidence ID + ordered adapter-ACK release + empty-buffer destroy + attempt-open dual
-  ACK後response、pre-readiness N/A bind + fresh evidence ID + ordered ACK
-  release/destroy後terminalization、abrupt-exit ACKed event preservation、exit-before-bootstrap normal
-  four-failure synthesis、bootstrap-reached registration-ACK barrier/candidate body-effect
-  0件、non-target/helper
-  discard/no-register/no-evidence、全identity/register/ACK/replay/raw/wrong-destination
-  failureをtestする。Open exact-matching
-  `StudyCurrentSubjectScoringContext`内だけでsame-run/subject/process/workflow validation/tag ->
-  downstream watchdog ACK(s) -> accepted observation -> supervisor mirror update -> authenticated
-  moderator updated-context ACK -> release/outcomeをtestする。Pre-ready/context-free
-  rowはprocess/workflow/link N/A、context mutation 0件、later link 0件とし、source
-  workflow、late/cross/reordered/replacement updateをrejectする。Adapter
-  reserve-without-state-change/supervisor
-  pending-store-with-grant-armed/`candidate-forward`-plus-atomic-consume/adapter-validation-and-forwardをgeneric
-  candidate acknowledgementなしでrace-testし、eligible participant candidateはsupervisor grant
-  correlation、他fresh HTTP observationはfresh proxy IDとする。Simultaneous
-  consumptionまたはreplay/duplicate/stale/mismatched authenticated IPCはforward
-  0件でinvalidate/destroyし、fresh no-grant/wrong-target/page-script/post-consumption HTTP
-  rowはblockedのままinvalidateしない。Distinct human pairをsubject/workflowごとにattempt前assignしてhuman
-  identity、collector process/component identity、case-local assignmentのcross-case reuse（literal slot
-  labelとsanitized/drained/reset済みterminal surfaceの再利用を除く）を禁止する。Identity/pair
-  mappingはrepository/work-root/runtime/capture/evidence/bundle/log/output/digest boundary外のseparate
-  access-controlled administrative roster/assignment recordだけに置いてunique-pair auditとretention-policy
-  destructionを要求し、pre-readiness/zero-accepted failureのlive observation、synthesized failure
-  4件それぞれのvote 2件、failure-only paired collector、recording/replay 0件をcoverする。Parent-to-child
-  pipeがexact 96 binary byteの`channelSeed`/`bootstrapNonce`/`channelId`で始まりEOFなしでLF-framed
-  messageへcontinueし、96 byte前のEOF/closeをrejectし、post-96 byteをframe byteとして扱うこと、child-to-parent
-  pipeがauthenticated `ready` sequence `0`で始まることを証明する。Exact `ready` payload root
-  `schemaVersion`,`bootstrapNonce`,`componentRunId`、`schemaVersion: 1`、canonical bootstrap
-  nonce/component ID、seed/nonce destruction前のparent authentication/consumption、exact
-  `acknowledgement` payload root
-  `schemaVersion`,`acknowledgedSequence`,`result`と`result: accepted`、exact `lifecycle` payload root
-  `schemaVersion`,`event`と`event: close | abort | child-exit`をverifyする。全listed edge/role/message
-  row、exact frame root
-  `schemaVersion`,`channelId`,`sequence`,`direction`,`senderRole`,`receiverRole`,`messageType`,`authenticationTag`,`payload`、per-direction
-  `0` then exact +1、exact
-  `K_p2c = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0parent-to-child\0") || bootstrapNonce || channelId || ASCII(parentRole) || 0x00 || ASCII(childRole) || 0x00)`、exact
-  `K_c2p = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0child-to-parent\0") || bootstrapNonce || channelId || ASCII(childRole) || 0x00 || ASCII(parentRole) || 0x00)`、exact
-  MAC preimage
-  `ASCII("study-inherited-ipc-frame-v1\0") || ASCII(direction) || 0x00 || compact canonical exact-root frame bytes with authenticationTag:null and no LF`、populated
-  compact JSON wire frame plus exactly one LF、constant-time verification、authenticated
-  ready後のseed/nonce destruction、wrong
-  edge/role/type/channel/direction/order/tag、partial/trailing、skip/duplicate/replay/late/post-close、early
-  EOF、child replacement/exit、wipe caseをexerciseする。Brokerがclock、deadline、timerを持たず、adapter reserve
-  without state change -> grantをarmedのままsupervisor validation/pending store -> exact one-use
-  `candidate-forward` sole acceptance + atomic canonical grant consume -> adapter copy
-  validation/consume/forward -> claim authenticate/join -> exactly-once pair release -> single
-  success/completion ACKをenforceし、application handlingをそのpost-release ACKまでblockすることを証明する。Late
-  claim、connection/IPC EOF/error/close、request/transaction end、probe/attempt
-  end、stop、abort、crash、child exit、全lifecycle boundaryをrace/fault-testし、partial release
-  0件とcandidate/claim/binding/marker/pending complete wipeを要求する。Expanded
-  `StudyCurrentSubjectScoringContext` exact root
-  `schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`automaticIssueCorrelationId`,`terminalizationClass`,`state`をexerciseする。Correlation
-  `not-applicable` -> first matching accepted observation once、terminalization `none` -> mapped
-  cause onceだけを許可し、post-terminalization remaining contextをmapped
-  causeでinitializeし、他mutation/reversal/replacementをrejectする。Context correlationはfailure-link
-  candidateだけとし、submission/canonical
-  payloadの`outcomeClass`直後に置く。Successはcandidateがあっても常にN/A/no-review、eligible accepted exact
-  same-run/subject/process/workflow
-  candidateを持つfailureだけがautomatic-critical/no-review、candidate-free failureはexact
-  `StudySafetyReviewCase` root
-  `schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`caseClass`と`caseClass: nonautomatic-workflow-failure`を使ってreviewする。他failureではexact
-  review-case、moderator call-local raw input、either vote前のfresh isolated reviewer 2件とbyte-identical
-  safe case、same live workflowのhuman observation、hidden first vote、acceptance前の両process
-  exitを要求する。Dispositionはexact
-  `not-applicable | automatic-critical | reviewer-cleared | reviewer-confirmed-critical | reviewer-disagreement-critical`だけとし、valid
-  truth row、derived automatic/reviewer IDだけを許可してmissing/mismatch/reuse、unreviewed failure、vote
-  leakage、reviewer reuseをrejectする。Seal fields
-  `automaticCriticalIssueCount`,`suspectedWorkflowBlockerCount`,`reviewVoteCount`,`reviewDisagreementCount`,`reviewerCriticalIssueCount`,`criticalIssueCount`,`zeroCriticalIssueGate`をrecompute/mutate-testし、全reviewer
-  dispositionのsuspected
-  count、`reviewVoteCount === 2 * suspectedWorkflowBlockerCount`、confirmed/disagreement
-  counting、`automatic:<correlationId>`/`reviewer:<subjectId>:<workflowClass>`
-  deduplication、total-count/zero-gate equationを含める。Exact sequential scheduleを証明する。Participant
-  01–19は各4件完了後closeし、participant 20 discoveryがSC-001 20件のcheckpointとsole possible open
-  attemptを作り、continuationはremaining 3件を完了する。Accepted workflow
-  0–4件後のcrashをtestし、product/browser/equipment/premature-probe
-  terminalizationではsupervisorがcontextをfreeze/routeし、scoring-moderatorがunchanged harness
-  scheduleに従うremaining reviewed outcomeをconstructし、harnessはsynthesizeしない。Harness/adapter
-  terminalizing bindingをall four routed outcomeとclosed dual
-  ACKまで保持し、prematureをequipment-failureへmapする。Harness/orchestrator/adapter/watchdog/reviewer
-  failureはinvalidateし、accepted rowをduplicateしない。Exact capture-script self-reexec mode/process
-  tree、start responseのexact `processes` 6件 + exact ordered
-  `orchestrators`（`study-harness`、`scoring-moderator`）、stopのreviewer 0件/long-lived exit
-  8件、witnessのstream exit 6件 + orchestrator exit 2件 +
-  `ephemeralReviewerProcessExitCount === reviewVoteCount`、thresholdから独立したexact 80、record kind
-  5件、uninterrupted stream、heartbeat boundary、role/effect row、handoff anchor、threshold-failing seal
-  completion、既存retained distribution/stream/handoff pair/continuity-witness pair/capture-seal
-  pairを維持し、sidecar/final runtime controlを0件にする。その後、frozen install、exact Playwright browser
-  install、build、lint、typecheck、unit、complete contract、complete security
-  gateを実行し、全resultを`specs/001-inspect-agent-customizations/validation.md`と`specs/001-inspect-agent-customizations/validation.ja.md`へ記録する。
-  加えて、次のbrowser-observation、outcome、ordering
-  invariantをpositive/negative/race/mutation-testする。Supervisor-to-study-browser-adapterの`safe-payload`は、forwarded/joined
-  accepted stateとnonforwarded blocked stateを区別するvalidated stored
-  candidateから再構成し、supervisorがcanonical serialization前にcurrent workflowをtagしたsafe nonworkflow browser
-  observationだけに許可する。Adapterはそのcandidateとの一致を要求し、study-browser-watchdogへ`safe-payload`としてrelayしてauthenticated
-  ACKを返す。 このtypeによるworkflow record、source-supplied workflow tag、moderator/`workflow-outcome`
-  bypassを全てrejectする。 Blocked browser-only observationではwatchdog
-  ACKを`browser-only-released`より前に要求し、joined browser/server
-  pairではstudy-browser-watchdogとinspector-server-ledger-watchdog双方のpayload
-  ACKを`joined-pair-released`より前に要求し、その後success/completion ACK exact 1件を返し、application
-  handlingをそのfinal ACKまでblockする。 Context `automaticIssueCorrelationId`はcandidateだけとして扱う。Objectively
-  successful
-  workflowはcandidateがあっても`automaticIssueCorrelationId: not-applicable`をsubmitし、`not-applicable`を使い、review
-  process/voteを0件にする。Candidateがあるfailed workflowはそのexact
-  IDをsubmitして`automatic-critical`を使いreview/voteを0件にし、candidateがないfailed
-  workflowは`not-applicable`をsubmitしてreviewを完了する。 Accepted automatic
-  eventはworkflowのsuccess/failureに関係なく`automatic:<correlationId>` issue exact 1件をindependently
-  deriveし、`automaticCriticalIssueCount`へexact 1回countする。 Accepted pre-readiness automatic
-  eventは`workflowClass: not-applicable`と`automaticIssueCorrelationId: not-applicable`を維持し、workflow
-  outcomeへlinkせず、そのissue/countは生成する。 Readinessのexact orderを、全prebuffer payload ACKとbuffer
-  destruction -> open attempt-binding dual ACK -> discovery `scoring-context` ACK -> readiness
-  response -> grant/navigationとし、全gapでbrowser candidate emissionを禁止する。 Inter-workflowのexact
-  orderを、previous outcomeの全downstream `workflow-outcome`/watchdog ACK -> previous context
-  `submitted` then `destroyed` -> next `scoring-context` ACK -> next prompt/timer/task
-  startとし、overlap/early actionを禁止する。 さらに、該当する実装または検証で次のcanonical equipment/runtime boundaryを要求する。
-  Supervisorをsole participant launch controllerかつdirect OS observerとする。External-equipment fd
-  `6`を通じ、shellを使わずverified subject-repository cwdで、exact LF-terminated
-  `npx --no-install agent-customization-inspector --no-open` 1行、sanitized probe/control/run/subject
-  environmentだけを用い、raw candidate/proxy valueを含めず、command
-  bufferを直ちにwipeしてparticipantをlaunchする。Pre-bootstrap exitを含むparticipant exitはsupervisor-sourced
-  `product-exit`とし、harnessはscheduleだけを行う。Authenticated probe
-  close時は、already-exitedなら`product-exit`、still-liveなら`premature-probe-close`をatomically選ぶ。
-  `materialize`時にsanitized equipment `PATH`へpinned npxとreserved initially-empty external store-bin
-  slotを固定し、materializer/inputsはcandidate
-  byteをreadもrequireもしない。`verify-inputs`後かつ`start`前に、authorized setupはexact candidateとfrozen
-  production graphから同じnetwork/scripts-disabled
-  slotへprovisionしてdigest-bindし、start時にsupervisorがinherited slotからsole audited binaryをpinned
-  `npx --no-install`でresolveして再検証する。Unknown post-materialize path/control/environment routeを設けない。Raw
-  tarball pathをchild environment/argvへ入れず、distributionを変更せず、alternate
-  PATH/global/cache/network/install/fallback/substituteをrejectし、abort/stop/finalize時にstoreをdestroyしてabsenceをverifyする。
-  External-equipment fd `7`はexact runtime-only external record
-  `StudyModeratorInput`を受け、そのrootを`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`response`,`timing`,`groundTruth`,`rubric`の順とし、compact
-  canonical UTF-8 JSON + exactly one LFでencodeする。`timing`はcanonical nonnegative decimal string、raw
-  `response`、`groundTruth`、`rubric`はcanonical JSON stringとする。Normally completed workflowごとにrecord
-  exact 1件を要求する。Terminalization時は`terminalization-decision`から未実行remaining-workflow
-  failureをsynthesizeし、recordを読まない。Parse failure、complete line前のEOF、extra/trailing
-  input、replay、late/cross-context input、noncanonical valueをrejectし、empty
-  response/timingをfabricateせず、raw valueをretainせず、全input bufferをwipeする。 External-equipment fd `8`とfd
-  `9`をisolated reviewer slotとする。Complete caseをdisplayした後だけLF-terminated enum
-  `product-caused-blocker | not-product-caused-blocker` exact 1行をenableし、fresh one-use
-  collectorを使い、first voteをhiddenにし、raw inputを直ちにwipeし、echo/history/record/log/cross-slot
-  outputを禁止する。Human identity、collector `componentRunId`/process identity、case
-  assignmentはreuseせず、literal `reviewer-one`/`reviewer-two` labelとsanitized terminal
-  surfaceだけはdrain/reset後にreuseできる。 Browser adapterはsole anonymous remote-debugging-pipe
-  external-equipment exceptionを通じ、digest-verified pinned Chromiumとそのcontextをdirect
-  launch/ownする。`Target.createBrowserContext`を`proxyServer`と`disposeOnDetach`付きでcallし、各`Fetch.authRequired`へexactly
-  one `Fetch.continueWithAuth` Basic credential responseを返し、raw proxy/marker materialをDevTools
-  requestとattempt
-  contextだけにtransientに保ち、environment、argv、profile、history、log、evidenceへ入れず、wipe/destroyし、browser/context
-  exitをdirect observeする。Healthy external browser/environment/bootstrap failureはadapter
-  `equipment-failure`とし、internal adapter/proxy/controller/CDP/auth/IPC/child
-  faultはsynthesisせずinvalidateする。Adapter crashまたはDevTools-pipe EOF時、supervisorはequipment
-  descendant/context terminationとfresh-profile cleanupをverifyするまでnext
-  attempt/finalizeをblockし、negative cleanup testでorphan Chromium/context 0件を証明する。 Raw proxyのonly
-  routeをcaller-transient -> authenticated runtime-control `StudyLiveBinding` -> supervisor memory ->
-  one-use `browser-proxy-binding` -> adapter memory -> DevTools request/contextとする。 各adapter
-  registrationのsupervisor ACK後、exact path-free `StudyStreamWriterRuntimeBinding`
-  rootを`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`captureComponentRunId`,`captureInstanceId`,`captureProcessRunId`,`writerFileIdentity`,`writerLinkCount`,`writerOpenMode`の順で送る。`writerFileIdentity`はexact
-  existing path-free
-  `StudyRuntimeIdentityTuple`、`writerLinkCount: 1`、`writerOpenMode: append-only`とし、fd
-  `5`はprotocol固定でroot fieldに含めない。AdapterはACKしてbyte-identical
-  `stream-writer-binding`をwatchdogへrelayし、watchdogがverifyしてregisterした後、adapterとsupervisorがACKする。Descriptor
-  `5`はspawn時だけinheritでき、extra duplicateを禁止する。 Exact start orderをadapter-registration ACK ->
-  `stream-writer-binding` relay/ACK -> watchdog verification/registration -> adapter/supervisor ACK
-  -> all six registrations -> `browser-proxy-binding` ACK ->
-  startとする。Browser-adapterとmatching-watchdog registrationはproxy
-  binding前にsupervisor-ACK済みとし、そのACKで`stream-control: start`、`capture-start`、start completionをgateする。
-  Eligible candidate orderをstate changeなしのadapter reservation -> grantをarmedのままsupervisor
-  validation/pending store -> sole acceptance + atomic canonical grant consumeであるexact one-use
-  `candidate-forward` -> adapter copy validation/consume/forwardとする。Predecision consumeとgeneric
-  candidate acknowledgementを設けない。Blocked `safe-payload`はvalidated/stored
-  candidateだけからderiveし、accepted forwarded/joined stateとnonforwarded blocked stateを明示的に区別する。
-  Supervisor workflow tagをcanonical serialization前にapplyし、その後downstream ACK -> accept/count ->
-  mirror/moderator ACK -> release/outcomeの順とし、postaccept mutation/backfillを禁止する。
-  `StudyStreamControl`と`StudyStreamControlResult`の両方でcommand/`checkpointRequestId`
-  matrixをenforceする。`start`はcommand/resultとも`not-applicable`、`checkpoint`はfresh canonical ID exact
-  1件、`anchor-handoff`と`stop`はcurrent accepted checkpoint IDを使う。Wrong command/result
-  pair、mismatch、stale/reused/future ID、noncanonical N/A spellingをrejectする。
-  `StudyBrowserBrokerDecision`では`candidate-forward`と`joined-pair-released`にcurrent
-  non-`not-applicable` `browserAttemptId`を要求し、`browser-only-released`はbound valid-marker
-  requestならcurrent IDを要求し、missing/invalid-marker unrelated requestだけ`not-applicable`を許可する。
-  Pre-readiness
-  terminalの`StudyWorkflowOutcomeSubmission`、`StudySafetyReviewCase`、両`StudySafetyReviewVote`
-  recordでは全`inspectorProcessId`をmatching `not-applicable`とする。 全`workflow-outcome`
-  acknowledgementはmatching watchdogが`safe-payload`をACKした後だけ送る。 Topologyはeight long-lived internal
-  descendants/processesと記述し、watchdogはadapter childであってsupervisor direct child 8件ではない。
-  *(2026-08-10改訂: checklistはT1090まで続く。)*
-  *(amended 2026-09-04: このtaskが実行した3つのstudy-evidence
-  suiteはharnessとともに削除済みである（T1061、T1062）。要件が対象とするのはbilingual task parser自身の結果 —
-  checkbox数、phase数、trace-row数、英日で同一のowned-path集合、out-of-lineな修正機構を持たない自己完結したtask text — であり、`pnpm
-  run test:docs`がそれをgateする。)*
+- [X] T1049 Task setのgate `pnpm run test:docs` を実行し、全caseがpassするまで先へ進まない。
+  Bilingual task parserがexact 1,117 ordered checkbox ID、117 phase、53 trace rowを保つこと、
+  英日で同一のowned-path集合を持つこと、out-of-lineな修正機構を持たない自己完結したtask textで
+  あること、そしてT001からT1205まで（取り下げたフェーズ39の欠番T436–T439、フェーズ45の欠番
+  T482–T485、フェーズ64の欠番T654–T657、フェーズ67の欠番T675–T678、フェーズ68–75の欠番T679–T750を
+  除く）の宣言済みtask IDすべてがtrace rowに名指されることを要求する
+  *(2026-08-01 修正: countを現在のtask setに合わせた)* *(2026-08-04 修正: trace-row countは現在の
+  FR/QR/SC setに従う。)* *(2026-08-10 修正: checklistはT1090まで。)*
+  *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と 113 が拡張した task set に従う。)*
+  *(2026-09-04 修正: このtaskが併せて実行していた3つのstudy-evidence suiteはharnessとともに削除済み
+  である（T1061、T1062）。したがってgateする対象はtask set自身である。)*（SC-006）
 
 - [X] T1050 integration、package、performance、browser、coverage、documentation の各ゲートを実行し、すべての結果を
   `specs/001-inspect-agent-customizations/validation.md` と
@@ -8078,9 +7384,8 @@ participant 20名がこのprojectには得られず、それが存在する理�
   customization file 1件のdetail viewを開き、区間は自身のwall clockで記録する。全セッションの
   outcomeを除外も置換もせず記録し、safety eventになり得るものとして各セッションが報告した内容も
   記録する *(2026-09-01 修正: セッションはparticipant cohortではなくagent駆動であるため、
-  recordが述べるのはproductのguidanceで何ができたかであり、human-subjectの結果ではない。
-  `scripts/`のsealed-capture kitは、moderatedなstudyが必要とする機構として残る。このrunはそれを
-  使用せず、recordはそう述べる。)* *(2026-09-03 修正: そのkitはその後削除され（T1061、T1062）、
+  recordが述べるのはproductのguidanceで何ができたかであり、human-subjectの結果ではない。)*
+  *(2026-09-03 修正: sealed-capture kitは削除済みであり（T1061、T1062）、
   SC-001自身の区間はprompt提示で始まりInspectorの起動を含むので、sessionには配信済みのoriginを渡さず、
   session自身がInspectorを起動する。T1195が記録するrunは各sessionにoriginを渡しており、SC-001を
   確立しないものとして記録されている。)* *(2026-09-04 修正: 本文を2026-09-03の注記が導入した
@@ -8119,596 +7424,35 @@ participant 20名がこのprojectには得られず、それが存在する理�
 
 - [X] T1060 Checked-in outcome-fixture manifestのversion、SHA-256 digest、実行した正確なcase
   IDをvalidateして記録し、`specs/001-inspect-agent-customizations/validation.md`と`specs/001-inspect-agent-customizations/validation.ja.md`で証明する
-- [X] T1061 Release-candidateのcomplete diff/tarball reviewを実施し、全checked
-  branch/resultを`specs/001-inspect-agent-customizations/validation.md`と`specs/001-inspect-agent-customizations/validation.ja.md`へ記録する。`specs/001-inspect-agent-customizations/contracts/usability-study-evidence.md`、`specs/001-inspect-agent-customizations/contracts/usability-study-evidence.ja.md`、`specs/001-inspect-agent-customizations/data-model.md`、`specs/001-inspect-agent-customizations/data-model.ja.md`のpaired
-  normative protocol/model、`tests/usability/sc001-sc006-study-inputs/`配下のclosed inputs/study
-  kit、exact `./package.json` study command、self-contained
-  static-`node:`の`scripts/build-usability-study-inputs.mjs`、`scripts/verify-usability-study-evidence.mjs`、`scripts/run-usability-study-capture.mjs`、`tests/contract/usability-study-evidence.test.ts`、`tests/integration/usability-study-evidence.test.ts`、`tests/security/usability-study-evidence.test.ts`のcomplete
-  positive/negative coverageをreviewする。Scoped raw
-  boundaryが全artifact、serializer、adapter、verifier、log、validation record、sentinel testで一致することを要求する。Raw
-  Basic credential、raw
-  `Sec-Fetch-Dest`,`Sec-Fetch-Mode`,`Sec-Fetch-Site`,`Sec-Fetch-User`,`Origin`,`Referer`、raw
-  correlation-header byteはrequired ephemeral loopback-wire
-  receipt/processingだけに存在でき、直ちにdiscardする。Capture/evidence IPCまたはretained/log/output/digest
-  boundaryをcrossさせず、strictly decoded canonical 43-character `correlationId`だけをsafe retained/hashed
-  exceptionとする。Supervisor ownershipとfresh attempt ID/bindingのlimited runtime
-  distribution、study-browser-adapterへのdirect prepared-only marker install、adapter bootstrap、success
-  ACKでmarker copyだけをatomic activateし、attemptをreadiness/open-snapshot dual
-  ACKまでpreparedに維持すること、prepared failure destruction、browser/evidence exposure banをreviewする。Run-level
-  capture startが全per-attempt profile/secret/bootstrapに先行することを確認する。Certified browser profileとexact
-  bootstrap—exact declared header setのbodyless 407、canonical retry 1件、sole
-  `Connection: close`のbodyless 204、effect/residue 0件—をreviewする。Exact one-use
-  `StudyParticipantNavigationGrant`をreviewし、Fetch Metadataをconsistencyだけにする。Participantにはcurrent
-  armed grant + exact tuple + static targetを要求し、grantなし/replay/nonexact/page-script mutationをopen
-  IDsのvalid-secret
-  unknown、attributable/prohibited/automatic-critical/browser-onlyにする。SPA/extension/other-secret
-  actor row、six-header projection/discard、participant/SPA-only server claimを維持する。Allowed
-  edgeごとにordinary unidirectional inherited pipe exact
-  2本、`parent-to-child`と`child-to-parent`をreviewし、environment/argv/file/socket/named/control
-  endpointを0件にする。Parent-to-child pipeはexact 96 binary byte、32-byte `channelSeed`、32-byte
-  `bootstrapNonce`、32-byte `channelId`で始まり、same pipeをopenのままLF-framed parent-to-child
-  messageへcontinueする。Childはframe parse前にexact 96 byteをconsumeし、96 byte前のEOF/closeをrejectし、byte
-  96後の全byteをframe dataとして扱い、bootstrapとframeの間にEOFを期待しない。Child-to-parent first frameはauthenticated
-  `ready` sequence `0`とする。Sibling edgeなしのexact closed
-  matrixをreviewする。`materializer -> supervisor`（`runtime-bootstrap | lifecycle` /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> study-harness`（`attempt-binding | terminalization-decision | lifecycle`
-  /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> scoring-moderator`（`scoring-context | acknowledgement | lifecycle`
-  /
-  `ready | workflow-outcome | process-lifecycle-attestation | acknowledgement | lifecycle`）、`scoring-moderator -> reviewer-one | reviewer-two`（`review-case | lifecycle`
-  /
-  `ready | reviewer-vote | acknowledgement | lifecycle`）、`supervisor -> study-browser-adapter`（`browser-proxy-binding | stream-writer-binding | attempt-binding | proxy-marker-install | participant-navigation-grant | browser-broker-decision | safe-payload | workflow-outcome | terminalization-decision | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | browser-request-candidate | attempt-terminalization | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、`supervisor -> product-instrumentation-adapter | inspector-server-ledger-adapter`（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、各adapter
-  -> matching
-  watchdog（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle` /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）
-  Reviewするexact association/barrierは次のとおり。Materializationはsupervisorだけをlaunchし、そのexisting
-  supervisor上のstartがlong-lived internal descendant/process 8件とstream
-  3件をlaunchする。Start時にsupervisorがordered fresh subject token 20件を生成・所有し、next attempt bindingへnext
-  tokenだけをdistributeし、harnessはscheduleだけを行う。Exact runtime-only `StudySupervisorRuntimeBootstrap`
-  rootは`schemaVersion`,`workRootLexicalValue`,`workRootCanonicalValue`,`workRootIdentity`,`controlEndpoint`,`controlToken`。Supervisor
-  `ready` child-to-parent sequence `0`後、materializerはexact-once `runtime-bootstrap` parent-to-child
-  sequence `0`を送り、supervisorはroot identityをvalidateしてendpointをbindし、accepted
-  `acknowledgement`を返し、その後だけroot mutationを許可する。Transfer/frame dataをwipeし、role-specific successful
-  closeはedgeだけdetachしてsupervisorをliveに保ち、failureはabortする。Raw path/endpoint/tokenはこのexact
-  authenticated bootstrap validation/bind/ACK privacy
-  exceptionだけで許可し、environment、argv、capture、evidence、retained data、log、output、digest inputへ入れない。Exact
-  runtime-only `StudyBrowserProxyRuntimeBinding`
-  rootは`schemaVersion`,`studyRunId`,`browserProxyAuthority`。Supervisorがadapter/watchdog registration
-  6件すべてをACKした後だけexact-once `browser-proxy-binding`を送り、adapterがvalidate/bindしてaccepted
-  `acknowledgement`を返した後だけ`stream-control: start`、`capture-start`、start completionを許可する。Transfer
-  bufferをwipeし、raw authorityはstopまでcanonical route上のsupervisor/adapter dedicated
-  memoryとliveなattempt-local DevTools request/browser
-  contextだけに保ち、checkpoint/continuationで一致させ、stopでwipeし、environment/argv/evidence routeを禁止する。Exact
-  runtime-only `StudyProcessLifecycleAttestation`
-  rootは`schemaVersion`,`processRole`,`streamRole`,`componentRunId`,`instanceId`,`processRunId`,`event`,`exitCode`,`signal`。Process
-  roleはadapter 3件、watchdog 3件、`reviewer-one`,`reviewer-two`、adapter/watchdogはexact stream
-  role、reviewerは`not-applicable`、eventは`registered | exited`、registrationは`exitCode: null`/`signal: null`、clean
-  exitは`exitCode: 0`/`signal: null`とする。Adapter/watchdog registration 6件、supervisor direct
-  observationによるadapter exit 3件/orchestrator exit 2件、adapter-attested watchdog exit
-  3件、moderator-attested reviewer
-  registration/exit、`ephemeralReviewerProcessExitCount === reviewVoteCount`を要求し、nonclean/invalid
-  lifecycle dataはinvalidateする。Moderator、adapter、watchdog edgeの`acknowledgement`はimmediately
-  preceding valid `process-lifecycle-attestation`をacceptできるが、permitted directionの`workflow-outcome`
-  acknowledgementはmatching
-  watchdogが`safe-payload`をacceptした後だけ送る。`browser-request-candidate`,`attempt-terminalization`,`stream-control`には代わりに`candidate-forward`,`terminalization-decision`,`stream-control-result`を返す。Exact
-  `StudyStreamControl`
-  rootは`schemaVersion`,`controlSessionId`,`studyRunId`,`workRootIdentityCommitment`,`candidateIdentityCommitment`,`candidateSha256`,`studyInputManifestSha256`,`streamRole`,`command`,`checkpointRequestId`,`handoffSha256`で、全commandにimmutable
-  start bindingをrepeatし、`command: start | checkpoint | anchor-handoff | stop`を使う。Exact
-  `StudyStreamControlResult`
-  rootは`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`command`,`checkpointRequestId`,`sequence`,`monotonicNs`,`envelopeSha256`。Adapterは`stream-control`/`stream-control-result`をbyte-identicalにrelayし、start
-  resultはcapture-start + first
-  heartbeat後にそのpositionをreportする。Supervisorは各fileをcreate/validateし、append-only handle exact
-  1件をchild-visible descriptor `5`でsupervisor -> adapter -> watchdogへ渡す。Descriptor `3`はp2c
-  read、`4`はc2p writeのままで、`5`をthird pipe/channelにせずadapter/watchdog
-  roleだけに存在させ、他roleではabsent/closedとする。Adapterはpass-onlyでwatchdog
-  registration後にcloseし、supervisorはupstream registration ACK後にcloseし、watchdogをsole
-  holder/writerとする。Stopはsemantic result -> handle close -> clean exitの順とし、wrong
-  route/slot/holder/order/resultは全copyをcloseしてinvalidateする。Exact `submit-product-event` outer root
-  `inspectorProcessId`,`destinationRole`,`payload`もenforceし、outer processだけがregistered
-  probeをauthenticateし、inner `StudyServerCorrelationClaim`はsubject/processをopen bindingとそのouter
-  processへindependently一致させる。 Security-critical entityとschemaを直接associateする。Fresh 32-byte/canonical
-  43-character `browserProxyMarkerSecret`はexact runtime-only `StudyBrowserProxyMarkerBinding` root
-  `schemaVersion`,`studyRunId`,`browserAttemptId`,`browserProxyMarkerSecret`,`state`に属し、`state: prepared | active | destroyed`とする。Adapter-owned
-  bootstrapは`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`でbodyless
-  `407 Proxy Authentication Required`を受け、そのonly ordered
-  headerを`Proxy-Authenticate: Basic realm="inspector-study"`,`Connection: close`とし、canonical retry
-  1件後にsole header `Connection: close`のbodyless `204 No Content`を受ける。Exact
-  `StudyBrowserBrokerDecision`
-  rootは`schemaVersion`,`studyRunId`,`browserAttemptId`,`correlationId`,`decision`、`decision: candidate-forward | browser-only-released | joined-pair-released`とする。Exact
-  runtime-only `StudyCurrentSubjectScoringContext`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`automaticIssueCorrelationId`,`terminalizationClass`,`state`、`state: open | submitted | destroyed`とする。Exact
-  `StudyWorkflowOutcomeSubmission`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`outcomeClass`,`automaticIssueCorrelationId`,`reviewDisposition`,`reviewerOneClassification`,`reviewerTwoClassification`とする。Exact
-  runtime-only `StudySafetyReviewCase`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`caseClass`、`caseClass: nonautomatic-workflow-failure`とする。Exact
-  `StudySafetyReviewVote`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`reviewerSlot`,`classification`、`reviewerSlot: reviewer-one | reviewer-two`とする。Exact
-  `StudyBrowserBrokerDecision`、grant、attempt-terminalization/decision、workflow-outcome、`StudySafetyReviewCase`
-  payload root/enumをreviewする。 Exact
-  `StudyPreReadinessBootstrapProof`/`StudyPreReadinessProductBuffer`
-  root/state、`register-pre-readiness-probe`/`buffer-pre-readiness-product-event`/extended
-  `register-product-probe` root、exact `StudyPreReadinessProductObservationDraft` root/N/A
-  field/no-prebind-evidence rule、private buffer
-  ID、raw-discard/draft-before-effect/ACK-before-effect-continuation、open-to-readiness-bound/terminalization-bound
-  transition、fresh evidence-ID reconstruction、ordered adapter-ACK release、empty-buffer
-  destruction、attempt-open dual ACK、readiness/pre-ready-exit bind-release-destroy
-  ordering、abrupt-exit ACKed-prefix preservation、exit-before-bootstrap normal four-failure
-  handling、bootstrap-to-registration-ACK body/effect 0件barrier、non-target/helper
-  discard/registration-evidence 0件、全identity/register/ACK/replay/raw/wrong-destination
-  negativeをreviewする。Sole moderator production/supervisor routingとexact-source
-  taxonomy—supervisor-observed product-exitだけ、browser adapterのactual
-  browser-exitまたはadapter/proxy/IPC healthy時のexternal equipment-failureだけ、supervisor
-  premature-probe-closeだけ、internal adapter/proxy/marker/authentication/IPC/implementation/child
-  fault
-  invalidation—をreviewする。Decision後adapterはbrowser/grant/marker/reservation/candidate/pendingをdestroyしてterminalizing
-  bindingを維持し、harnessはsynthesizeせず、moderator/supervisor-owned synthesis/closed dual
-  ACKまでbinding/fixed scheduleを維持する。Prepared/open/closed barrier、open exact-matching context
-  validation/tag -> downstream ACK(s) -> accepted observation -> mirror/update ACK ->
-  outcome、pre-ready/context-free N/A/no-update、adapter reserve-without-state-change/supervisor
-  pending-store-with-grant-armed/`candidate-forward`-plus-atomic-consume/adapter-validation-and-forward/generic
-  candidate acknowledgement 0件、fresh blocked HTTPとauthenticated replay/race invalidation、distinct
-  human pairとrepository/work-root/runtime/capture/evidence/bundle/log/output/digest
-  boundary外のseparate access-controlled administrative roster/assignment recordによるunique-pair
-  audit/retention-policy destruction、cross-case reuse/recording/replay 0件をreviewする。Exact frame
-  rootを`schemaVersion`,`channelId`,`sequence`,`direction`,`senderRole`,`receiverRole`,`messageType`,`authenticationTag`,`payload`とし、各directionを`0`から開始してexact
-  +1とする。`K_p2c = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0parent-to-child\0") || bootstrapNonce || channelId || ASCII(parentRole) || 0x00 || ASCII(childRole) || 0x00)`と`K_c2p = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0child-to-parent\0") || bootstrapNonce || channelId || ASCII(childRole) || 0x00 || ASCII(parentRole) || 0x00)`を要求する。MAC
-  preimageを`ASCII("study-inherited-ipc-frame-v1\0") || ASCII(direction) || 0x00 || compact canonical exact-root frame bytes with authenticationTag:null and no LF`とし、populated
-  compact JSON wire frameへexactly one LFを加える。Exact `ready` payload root
-  `schemaVersion`,`bootstrapNonce`,`componentRunId`、`schemaVersion: 1`、canonical nonce/component
-  ID、seed/nonce destruction前のparent authentication/consumption、exact `acknowledgement` payload root
-  `schemaVersion`,`acknowledgedSequence`,`result`と`result: accepted`、exact `lifecycle` payload root
-  `schemaVersion`,`event`と`event: close | abort | child-exit`を要求する。Constant-time tag
-  verification、direction-specific key、first authenticated ready後だけの`channelSeed`/`bootstrapNonce`
-  destruction、matrix/role/type/channel/direction/sequence
-  closure、replay/order/partial/trailing/late/post-close/child-exit failure、control-enum
-  expansionなしのcomplete key/frame/sequence wipeをreviewする。Timer-free brokerがadapter reserve without
-  state change -> grantをarmedのままsupervisor validation/pending store -> exact one-use
-  `candidate-forward` sole acceptance + atomic canonical grant consume -> adapter copy
-  validation/consume/forward -> claim authenticate/join -> safe browser/server pair exactly-once
-  release -> success/completion ACK exact 1件をatomicに実行し、application handlingをpost-release
-  ACKまでblockすることを確認する。Late claim、unmatched transaction/request、connection close/error、IPC
-  EOF/close/error、probe/attempt end、stop、abort、crash、child exit、その他lifecycle
-  boundaryではtransactionをcloseし、partial pairをreleaseせずcandidate/claim/binding/marker/pending
-  stateをwipeする。`automaticIssueCorrelationId`と`terminalizationClass`を持つexpanded scoring context exact
-  rootをreviewする。Correlation `not-applicable` -> first matching accepted observation
-  once、terminalization `none` -> mapped cause onceだけを許可し、post-terminalization remaining
-  contextをmapped causeでinitializeして他mutation/reversal/replacementをrejectする。Automatic
-  correlationをsubmission/canonical payloadの`outcomeClass`直後に置きfailure-link
-  candidateだけとして扱う。Successは常にN/A/no-review、eligible accepted exact same-run/subject/process/workflow
-  observationを持つfailureはautomatic-critical/no-review、candidate-free failureはN/A + exact
-  reviewとする。他failureはexact review case、moderator call-local raw input、either vote前のfresh isolated
-  reviewer pair、byte-identical safe case、same live workflowをobserveするhuman 2人、hidden first
-  vote、acceptance前process exitを要求する。Allowed disposition 5件、valid truth row、exact derived
-  automatic/reviewer ID、context/reviewer cleanup、missing/mismatch/reuse/leakage/reuse
-  negativeをenforceする。Seal fields
-  `automaticCriticalIssueCount`,`suspectedWorkflowBlockerCount`,`reviewVoteCount`,`reviewDisagreementCount`,`reviewerCriticalIssueCount`,`criticalIssueCount`,`zeroCriticalIssueGate`をtrustせずrecomputeし、全reviewer
-  dispositionのsuspected
-  count、`reviewVoteCount === 2 * suspectedWorkflowBlockerCount`、reviewer-confirmed-criticalまたはreviewer-disagreement-critical
-  derived issueごとの`reviewerCriticalIssueCount` entry
-  1件、`automatic:<correlationId>`/`reviewer:<subjectId>:<workflowClass>` deduplicated-union
-  cardinalityとしての`criticalIssueCount`、total 0かつcomplete exact-80
-  setの場合だけの`zeroCriticalIssueGate`をverifyする。Participant 01–19のfour-workflow後close、participant 20
-  discovery/checkpoint/remaining-three continuation、open
-  attempt最大1件、product/browser/equipment/premature-probeについてsupervisorがrouteしscoring-moderatorがunchanged
-  harness scheduleでconstructしharness/adapter bindingをclosed dual ACKまで保持するterminalizing
-  synthesis（premature -> equipment-failure）、harness/orchestrator/adapter/watchdog/reviewer
-  failureのrun invalidationを確認する。Exact self-reexec mode/process tree、startのexact `processes` 6件 +
-  exact ordered `orchestrators`（`study-harness`、`scoring-moderator`）、stopのreviewer 0件/long-lived
-  clean exit 8件、witnessのstream exit 6件/orchestrator exit
-  2件/`ephemeralReviewerProcessExitCount === reviewVoteCount`、thresholdから独立したexact 20×4 workflow
-  cardinality、unchanged record kind/effect row/sole-writer chain、heartbeat boundary、handoff
-  anchor、stable control session、finalize teardown、witness-before-seal order、exact retained
-  distribution/stream/handoff/witness/seal pair、sidecar/runtime control/raw/browser/reviewer/mapping
-  residue 0件を確認する。最後にtask parserのexact 1,114 ID、116 phase、53 trace row *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*、owned-path
-  parity、self-contained task text、bilingual semantic/code-literal parity、全focused/complete gate
-  resultをreviewし、untested branch、stale architecture term、failed check、missing evidence、privacy
-  residue、unresolved concernがあればT1062/T1063をblockする。 加えて、次のbrowser-observation、outcome、ordering
-  invariantをcomplete
-  diff/tarball/evidenceからreviewする。Supervisor-to-study-browser-adapterの`safe-payload`は、forwarded/joined
-  accepted stateとnonforwarded blocked stateを区別するvalidated stored
-  candidateから再構成し、supervisorがcanonical serialization前にcurrent workflowをtagしたsafe nonworkflow browser
-  observationだけに許可する。Adapterはそのcandidateとの一致を要求し、study-browser-watchdogへ`safe-payload`としてrelayしてauthenticated
-  ACKを返す。 このtypeによるworkflow record、source-supplied workflow tag、moderator/`workflow-outcome`
-  bypassを全てrejectする。 Blocked browser-only observationではwatchdog
-  ACKを`browser-only-released`より前に要求し、joined browser/server
-  pairではstudy-browser-watchdogとinspector-server-ledger-watchdog双方のpayload
-  ACKを`joined-pair-released`より前に要求し、その後success/completion ACK exact 1件を返し、application
-  handlingをそのfinal ACKまでblockする。 Context `automaticIssueCorrelationId`はcandidateだけとして扱う。Objectively
-  successful
-  workflowはcandidateがあっても`automaticIssueCorrelationId: not-applicable`をsubmitし、`not-applicable`を使い、review
-  process/voteを0件にする。Candidateがあるfailed workflowはそのexact
-  IDをsubmitして`automatic-critical`を使いreview/voteを0件にし、candidateがないfailed
-  workflowは`not-applicable`をsubmitしてreviewを完了する。 Accepted automatic
-  eventはworkflowのsuccess/failureに関係なく`automatic:<correlationId>` issue exact 1件をindependently
-  deriveし、`automaticCriticalIssueCount`へexact 1回countする。 Accepted pre-readiness automatic
-  eventは`workflowClass: not-applicable`と`automaticIssueCorrelationId: not-applicable`を維持し、workflow
-  outcomeへlinkせず、そのissue/countは生成する。 Readinessのexact orderを、全prebuffer payload ACKとbuffer
-  destruction -> open attempt-binding dual ACK -> discovery `scoring-context` ACK -> readiness
-  response -> grant/navigationとし、全gapでbrowser candidate emissionを禁止する。 Inter-workflowのexact
-  orderを、previous outcomeの全downstream `workflow-outcome`/watchdog ACK -> previous context
-  `submitted` then `destroyed` -> next `scoring-context` ACK -> next prompt/timer/task
-  startとし、overlap/early actionを禁止する。 さらに、該当する実装または検証で次のcanonical equipment/runtime boundaryを要求する。
-  Supervisorをsole participant launch controllerかつdirect OS observerとする。External-equipment fd
-  `6`を通じ、shellを使わずverified subject-repository cwdで、exact LF-terminated
-  `npx --no-install agent-customization-inspector --no-open` 1行、sanitized probe/control/run/subject
-  environmentだけを用い、raw candidate/proxy valueを含めず、command
-  bufferを直ちにwipeしてparticipantをlaunchする。Pre-bootstrap exitを含むparticipant exitはsupervisor-sourced
-  `product-exit`とし、harnessはscheduleだけを行う。Authenticated probe
-  close時は、already-exitedなら`product-exit`、still-liveなら`premature-probe-close`をatomically選ぶ。
-  `materialize`時にsanitized equipment `PATH`へpinned npxとreserved initially-empty external store-bin
-  slotを固定し、materializer/inputsはcandidate
-  byteをreadもrequireもしない。`verify-inputs`後かつ`start`前に、authorized setupはexact candidateとfrozen
-  production graphから同じnetwork/scripts-disabled
-  slotへprovisionしてdigest-bindし、start時にsupervisorがinherited slotからsole audited binaryをpinned
-  `npx --no-install`でresolveして再検証する。Unknown post-materialize path/control/environment routeを設けない。Raw
-  tarball pathをchild environment/argvへ入れず、distributionを変更せず、alternate
-  PATH/global/cache/network/install/fallback/substituteをrejectし、abort/stop/finalize時にstoreをdestroyしてabsenceをverifyする。
-  External-equipment fd `7`はexact runtime-only external record
-  `StudyModeratorInput`を受け、そのrootを`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`response`,`timing`,`groundTruth`,`rubric`の順とし、compact
-  canonical UTF-8 JSON + exactly one LFでencodeする。`timing`はcanonical nonnegative decimal string、raw
-  `response`、`groundTruth`、`rubric`はcanonical JSON stringとする。Normally completed workflowごとにrecord
-  exact 1件を要求する。Terminalization時は`terminalization-decision`から未実行remaining-workflow
-  failureをsynthesizeし、recordを読まない。Parse failure、complete line前のEOF、extra/trailing
-  input、replay、late/cross-context input、noncanonical valueをrejectし、empty
-  response/timingをfabricateせず、raw valueをretainせず、全input bufferをwipeする。 External-equipment fd `8`とfd
-  `9`をisolated reviewer slotとする。Complete caseをdisplayした後だけLF-terminated enum
-  `product-caused-blocker | not-product-caused-blocker` exact 1行をenableし、fresh one-use
-  collectorを使い、first voteをhiddenにし、raw inputを直ちにwipeし、echo/history/record/log/cross-slot
-  outputを禁止する。Human identity、collector `componentRunId`/process identity、case
-  assignmentはreuseせず、literal `reviewer-one`/`reviewer-two` labelとsanitized terminal
-  surfaceだけはdrain/reset後にreuseできる。 Browser adapterはsole anonymous remote-debugging-pipe
-  external-equipment exceptionを通じ、digest-verified pinned Chromiumとそのcontextをdirect
-  launch/ownする。`Target.createBrowserContext`を`proxyServer`と`disposeOnDetach`付きでcallし、各`Fetch.authRequired`へexactly
-  one `Fetch.continueWithAuth` Basic credential responseを返し、raw proxy/marker materialをDevTools
-  requestとattempt
-  contextだけにtransientに保ち、environment、argv、profile、history、log、evidenceへ入れず、wipe/destroyし、browser/context
-  exitをdirect observeする。Healthy external browser/environment/bootstrap failureはadapter
-  `equipment-failure`とし、internal adapter/proxy/controller/CDP/auth/IPC/child
-  faultはsynthesisせずinvalidateする。Adapter crashまたはDevTools-pipe EOF時、supervisorはequipment
-  descendant/context terminationとfresh-profile cleanupをverifyするまでnext
-  attempt/finalizeをblockし、negative cleanup testでorphan Chromium/context 0件を証明する。 Raw proxyのonly
-  routeをcaller-transient -> authenticated runtime-control `StudyLiveBinding` -> supervisor memory ->
-  one-use `browser-proxy-binding` -> adapter memory -> DevTools request/contextとする。 各adapter
-  registrationのsupervisor ACK後、exact path-free `StudyStreamWriterRuntimeBinding`
-  rootを`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`captureComponentRunId`,`captureInstanceId`,`captureProcessRunId`,`writerFileIdentity`,`writerLinkCount`,`writerOpenMode`の順で送る。`writerFileIdentity`はexact
-  existing path-free
-  `StudyRuntimeIdentityTuple`、`writerLinkCount: 1`、`writerOpenMode: append-only`とし、fd
-  `5`はprotocol固定でroot fieldに含めない。AdapterはACKしてbyte-identical
-  `stream-writer-binding`をwatchdogへrelayし、watchdogがverifyしてregisterした後、adapterとsupervisorがACKする。Descriptor
-  `5`はspawn時だけinheritでき、extra duplicateを禁止する。 Exact start orderをadapter-registration ACK ->
-  `stream-writer-binding` relay/ACK -> watchdog verification/registration -> adapter/supervisor ACK
-  -> all six registrations -> `browser-proxy-binding` ACK ->
-  startとする。Browser-adapterとmatching-watchdog registrationはproxy
-  binding前にsupervisor-ACK済みとし、そのACKで`stream-control: start`、`capture-start`、start completionをgateする。
-  Eligible candidate orderをstate changeなしのadapter reservation -> grantをarmedのままsupervisor
-  validation/pending store -> sole acceptance + atomic canonical grant consumeであるexact one-use
-  `candidate-forward` -> adapter copy validation/consume/forwardとする。Predecision consumeとgeneric
-  candidate acknowledgementを設けない。Blocked `safe-payload`はvalidated/stored
-  candidateだけからderiveし、accepted forwarded/joined stateとnonforwarded blocked stateを明示的に区別する。
-  Supervisor workflow tagをcanonical serialization前にapplyし、その後downstream ACK -> accept/count ->
-  mirror/moderator ACK -> release/outcomeの順とし、postaccept mutation/backfillを禁止する。
-  `StudyStreamControl`と`StudyStreamControlResult`の両方でcommand/`checkpointRequestId`
-  matrixをenforceする。`start`はcommand/resultとも`not-applicable`、`checkpoint`はfresh canonical ID exact
-  1件、`anchor-handoff`と`stop`はcurrent accepted checkpoint IDを使う。Wrong command/result
-  pair、mismatch、stale/reused/future ID、noncanonical N/A spellingをrejectする。
-  `StudyBrowserBrokerDecision`では`candidate-forward`と`joined-pair-released`にcurrent
-  non-`not-applicable` `browserAttemptId`を要求し、`browser-only-released`はbound valid-marker
-  requestならcurrent IDを要求し、missing/invalid-marker unrelated requestだけ`not-applicable`を許可する。
-  Pre-readiness
-  terminalの`StudyWorkflowOutcomeSubmission`、`StudySafetyReviewCase`、両`StudySafetyReviewVote`
-  recordでは全`inspectorProcessId`をmatching `not-applicable`とする。 全`workflow-outcome`
-  acknowledgementはmatching watchdogが`safe-payload`をACKした後だけ送る。 Topologyはeight long-lived internal
-  descendants/processesと記述し、watchdogはadapter childであってsupervisor direct child 8件ではない。
-  *(2026-08-10改訂: checklistはT1090まで続く。)* *(2026-09-01改訂: static
-  assetのconcernは、equipmentが判定できるpackaged-prefix規則へcontractを修正することで決着したため、reviewは未解決concern
-  zeroを報告する。)*
-  *(amended 2026-09-04: このreviewはchecklistが名指すsealed-capture harnessを削除したので、release-candidate
-  reviewはprotocol contract、3つの`scripts/*usability-study*` module、その3 suite、`study:evidence:*`
-  commandを対象としない。評価が読むstudy材料は`tests/usability/sc001-sc006-study-inputs/`配下に残る。)*
+- [X] T1061 Release-candidateのdiffとtarballのreviewを完了し、確認した分岐とその結果を
+  `specs/001-inspect-agent-customizations/validation.md`と
+  `specs/001-inspect-agent-customizations/validation.ja.md`に記録する。変更行だけでなく完全な
+  diffを文脈の中で読む。周囲のdata flow、支配する仕様とcontract、各変更を所有するtask、欠陥が
+  到達するsurfaceである。Packed tarballはnpmが配るものとしてreviewする — file list、`bin`の
+  target、bundleされたthird-party notice — 。`tests/usability/sc001-sc006-study-inputs/`配下の
+  評価材料は、SC-001/SC-006の記録が採点する対象としてreviewする。Evidenceが不十分な箇所は、
+  推論を事実として示すのではなく不確実性として報告する
+  *(2026-08-10 修正: checklistはT1090まで。)* *(2026-09-01 修正: static-assetのconcernは、
+  equipmentが判定できるpackaged-prefix ruleへcontractを修正することで解消したので、reviewは
+  open concern 0件を報告する。)* *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と
+  113 が拡張した task set に従う。)* *(2026-09-04 修正: このreviewはchecklistが名指していた
+  sealed-capture harness — protocol contract、3つの`scripts/*usability-study*` module、その3 suite、
+  `study:evidence:*` command — を削除したので、本文は退役させた機構ではなくreviewが現在
+  対象とするものを述べる。)*（SC-003、SC-004、SC-005、SC-007、QR-004）
 
-- [X] T1062 T1061 concernが0件になるまでrelease-review remediation/evidence-invalidation loopを実行する。Paired
-  study kit/input byte/descriptor、scoped correlation privacy
-  boundary、`StudyBrowserAttemptBinding`/`StudyBrowserRequestCandidate`/`StudyServerCorrelationClaim`、exact
-  runtime
-  `StudyBrowserProxyMarkerBinding`/`StudyParticipantNavigationGrant`/`StudyCurrentSubjectScoringContext`/`StudySafetyReviewCase`/`StudySafetyReviewVote`
-  root/lifecycle、exact `StudyBrowserBrokerDecision`/`StudyAttemptTerminalization`
-  payload、attempt-binding replication/ACK
-  barrier、`browserAttemptId`/`browserProxyMarkerSecret`、certified Chromium profile/bootstrap/Fetch
-  Metadata table、inherited IPC bootstrap/frame/HMAC/payload root、process topology、timer-free broker
-  ordering、workflow producer/routing、reviewer assignment/review fields/truth
-  table、automatic/reviewer issue identity、seal aggregate、exact 80/threshold logic、record
-  kind/chain、handoff/witness/seal、retained layout、cleanup、privacy schemaに影響するrepository editは、prior
-  focused gateとcomplete T1056–T1057
-  evidenceを無効にする。各edit後、まず`pnpm run test:contract -- tests/contract/usability-study-evidence.test.ts`、`pnpm run test:integration -- tests/integration/usability-study-evidence.test.ts`、`pnpm run test:security -- tests/security/usability-study-evidence.test.ts`を再実行する。Scoped
-  raw boundaryをpositive/negativeに証明する。Raw Basic credential、raw
-  `Sec-Fetch-Dest`,`Sec-Fetch-Mode`,`Sec-Fetch-Site`,`Sec-Fetch-User`,`Origin`,`Referer`、raw
-  correlation-header byteはrequired ephemeral loopback-wire
-  receipt/processingだけに存在でき直ちにdiscardし、capture/evidence IPCまたはretained/log/output/digest
-  boundaryをcrossさせず、strictly decoded canonical 43-character `correlationId`だけをsafe retained/hashed
-  exceptionとする。Supervisor-owned fresh attempt/marker generation、study-browser-adapterへのdirect
-  prepared-only install、adapter bootstrap ACKでmarker copyだけをatomic
-  activateし、attemptをreadiness/open-snapshot dual ACKまでpreparedに維持すること、failure destruction、limited
-  attempt-ID runtime distribution、browser/evidence exposure 0件を再証明する。Run-level capture start後、stream
-  live中の各attempt直前にfresh profile/secret/bootstrapを行う。Certified exact profile/bootstrapの407 exact
-  two-header set、Basic retry 1件、204 sole-header set、effect/residue 0件を再証明する。Exact one-use
-  `StudyParticipantNavigationGrant` lifecycle、Fetch-Metadata consistency-only actor
-  classification、grantなし/replay/nonexact/page-script participant-shaped negativeのvalid-secret
-  unknown automatic-critical/browser-only処理、全SPA/extension/missing-invalid/header
-  discard/forwarding/server-claim ruleを再証明する。Allowed edgeごとにordinary unidirectional inherited pipe
-  exact 2本、`parent-to-child`と`child-to-parent`をreal-child
-  testで再実行し、environment/argv/file/socket/named/control endpointを0件にする。Parent-to-child exact 96-byte
-  binary prefix、32-byte `channelSeed`、32-byte `bootstrapNonce`、32-byte `channelId`からsame open
-  pipe上でEOFなしにLF frameへcontinueすること、childがparse前にexact 96
-  byteをconsumeしてEOF/close-before-96をrejectしpost-96 byteを全てframe dataとして扱うこと、child-to-parent first
-  authenticated `ready` sequence `0`を再証明する。Sibling edgeなしのexact closed
-  matrixをrerunする。`materializer -> supervisor`（`runtime-bootstrap | lifecycle` /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> study-harness`（`attempt-binding | terminalization-decision | lifecycle`
-  /
-  `ready | acknowledgement | lifecycle`）、`supervisor -> scoring-moderator`（`scoring-context | acknowledgement | lifecycle`
-  /
-  `ready | workflow-outcome | process-lifecycle-attestation | acknowledgement | lifecycle`）、`scoring-moderator -> reviewer-one | reviewer-two`（`review-case | lifecycle`
-  /
-  `ready | reviewer-vote | acknowledgement | lifecycle`）、`supervisor -> study-browser-adapter`（`browser-proxy-binding | stream-writer-binding | attempt-binding | proxy-marker-install | participant-navigation-grant | browser-broker-decision | safe-payload | workflow-outcome | terminalization-decision | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | browser-request-candidate | attempt-terminalization | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、`supervisor -> product-instrumentation-adapter | inspector-server-ledger-adapter`（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle`
-  /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）、各adapter
-  -> matching
-  watchdog（`stream-writer-binding | safe-payload | stream-control | acknowledgement | lifecycle` /
-  `ready | stream-control-result | process-lifecycle-attestation | acknowledgement | lifecycle`）
-  各invalidation後にreproveするexact
-  association/barrierは次のとおり。Materializationはsupervisorだけをlaunchし、そのexisting
-  supervisor上のstartがlong-lived internal descendant/process 8件とstream
-  3件をlaunchする。Start時にsupervisorがordered fresh subject token 20件を生成・所有し、next attempt bindingへnext
-  tokenだけをdistributeし、harnessはscheduleだけを行う。Exact runtime-only `StudySupervisorRuntimeBootstrap`
-  rootは`schemaVersion`,`workRootLexicalValue`,`workRootCanonicalValue`,`workRootIdentity`,`controlEndpoint`,`controlToken`。Supervisor
-  `ready` child-to-parent sequence `0`後、materializerはexact-once `runtime-bootstrap` parent-to-child
-  sequence `0`を送り、supervisorはroot identityをvalidateしてendpointをbindし、accepted
-  `acknowledgement`を返し、その後だけroot mutationを許可する。Transfer/frame dataをwipeし、role-specific successful
-  closeはedgeだけdetachしてsupervisorをliveに保ち、failureはabortする。Raw path/endpoint/tokenはこのexact
-  authenticated bootstrap validation/bind/ACK privacy
-  exceptionだけで許可し、environment、argv、capture、evidence、retained data、log、output、digest inputへ入れない。Exact
-  runtime-only `StudyBrowserProxyRuntimeBinding`
-  rootは`schemaVersion`,`studyRunId`,`browserProxyAuthority`。Supervisorがadapter/watchdog registration
-  6件すべてをACKした後だけexact-once `browser-proxy-binding`を送り、adapterがvalidate/bindしてaccepted
-  `acknowledgement`を返した後だけ`stream-control: start`、`capture-start`、start completionを許可する。Transfer
-  bufferをwipeし、raw authorityはstopまでcanonical route上のsupervisor/adapter dedicated
-  memoryとliveなattempt-local DevTools request/browser
-  contextだけに保ち、checkpoint/continuationで一致させ、stopでwipeし、environment/argv/evidence routeを禁止する。Exact
-  runtime-only `StudyProcessLifecycleAttestation`
-  rootは`schemaVersion`,`processRole`,`streamRole`,`componentRunId`,`instanceId`,`processRunId`,`event`,`exitCode`,`signal`。Process
-  roleはadapter 3件、watchdog 3件、`reviewer-one`,`reviewer-two`、adapter/watchdogはexact stream
-  role、reviewerは`not-applicable`、eventは`registered | exited`、registrationは`exitCode: null`/`signal: null`、clean
-  exitは`exitCode: 0`/`signal: null`とする。Adapter/watchdog registration 6件、supervisor direct
-  observationによるadapter exit 3件/orchestrator exit 2件、adapter-attested watchdog exit
-  3件、moderator-attested reviewer
-  registration/exit、`ephemeralReviewerProcessExitCount === reviewVoteCount`を要求し、nonclean/invalid
-  lifecycle dataはinvalidateする。Moderator、adapter、watchdog edgeの`acknowledgement`はimmediately
-  preceding valid `process-lifecycle-attestation`をacceptできるが、permitted directionの`workflow-outcome`
-  acknowledgementはmatching
-  watchdogが`safe-payload`をacceptした後だけ送る。`browser-request-candidate`,`attempt-terminalization`,`stream-control`には代わりに`candidate-forward`,`terminalization-decision`,`stream-control-result`を返す。Exact
-  `StudyStreamControl`
-  rootは`schemaVersion`,`controlSessionId`,`studyRunId`,`workRootIdentityCommitment`,`candidateIdentityCommitment`,`candidateSha256`,`studyInputManifestSha256`,`streamRole`,`command`,`checkpointRequestId`,`handoffSha256`で、全commandにimmutable
-  start bindingをrepeatし、`command: start | checkpoint | anchor-handoff | stop`を使う。Exact
-  `StudyStreamControlResult`
-  rootは`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`command`,`checkpointRequestId`,`sequence`,`monotonicNs`,`envelopeSha256`。Adapterは`stream-control`/`stream-control-result`をbyte-identicalにrelayし、start
-  resultはcapture-start + first
-  heartbeat後にそのpositionをreportする。Supervisorは各fileをcreate/validateし、append-only handle exact
-  1件をchild-visible descriptor `5`でsupervisor -> adapter -> watchdogへ渡す。Descriptor `3`はp2c
-  read、`4`はc2p writeのままで、`5`をthird pipe/channelにせずadapter/watchdog
-  roleだけに存在させ、他roleではabsent/closedとする。Adapterはpass-onlyでwatchdog
-  registration後にcloseし、supervisorはupstream registration ACK後にcloseし、watchdogをsole
-  holder/writerとする。Stopはsemantic result -> handle close -> clean exitの順とし、wrong
-  route/slot/holder/order/resultは全copyをcloseしてinvalidateする。Exact `submit-product-event` outer root
-  `inspectorProcessId`,`destinationRole`,`payload`もenforceし、outer processだけがregistered
-  probeをauthenticateし、inner `StudyServerCorrelationClaim`はsubject/processをopen bindingとそのouter
-  processへindependently一致させる。 Security-critical entityとschemaを直接associateする。Fresh 32-byte/canonical
-  43-character `browserProxyMarkerSecret`はexact runtime-only `StudyBrowserProxyMarkerBinding` root
-  `schemaVersion`,`studyRunId`,`browserAttemptId`,`browserProxyMarkerSecret`,`state`に属し、`state: prepared | active | destroyed`とする。Adapter-owned
-  bootstrapは`http://inspector-study.invalid/.well-known/proxy-auth-bootstrap`でbodyless
-  `407 Proxy Authentication Required`を受け、そのonly ordered
-  headerを`Proxy-Authenticate: Basic realm="inspector-study"`,`Connection: close`とし、canonical retry
-  1件後にsole header `Connection: close`のbodyless `204 No Content`を受ける。Exact
-  `StudyBrowserBrokerDecision`
-  rootは`schemaVersion`,`studyRunId`,`browserAttemptId`,`correlationId`,`decision`、`decision: candidate-forward | browser-only-released | joined-pair-released`とする。Exact
-  runtime-only `StudyCurrentSubjectScoringContext`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`automaticIssueCorrelationId`,`terminalizationClass`,`state`、`state: open | submitted | destroyed`とする。Exact
-  `StudyWorkflowOutcomeSubmission`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`outcomeClass`,`automaticIssueCorrelationId`,`reviewDisposition`,`reviewerOneClassification`,`reviewerTwoClassification`とする。Exact
-  runtime-only `StudySafetyReviewCase`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`caseClass`、`caseClass: nonautomatic-workflow-failure`とする。Exact
-  `StudySafetyReviewVote`
-  rootは`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`reviewerSlot`,`classification`、`reviewerSlot: reviewer-one | reviewer-two`とする。Exact
-  browser-broker-decision、grant、terminalization、workflow-outcome、review-case payload
-  root/enumを再証明する。 Exact `StudyPreReadinessBootstrapProof`/`StudyPreReadinessProductBuffer`
-  root/state、`register-pre-readiness-probe`/`buffer-pre-readiness-product-event`/extended
-  `register-product-probe` root、exact `StudyPreReadinessProductObservationDraft` root/N/A
-  field/no-prebind-evidence rule、private buffer
-  ID、raw-discard/draft-before-effect/ACK-before-effect-continuation、open-to-readiness-bound/terminalization-bound
-  transition、fresh evidence-ID reconstruction、ordered adapter-ACK release、empty-buffer
-  destruction、attempt-open dual ACK、readiness/pre-ready-exit bind-release-destroy
-  ordering、abrupt-exit ACKed-prefix preservation、exit-before-bootstrap normal four-failure
-  handling、bootstrap-to-registration-ACK body/effect 0件barrier、non-target/helper
-  discard/registration-evidence 0件、全identity/register/ACK/replay/raw/wrong-destination
-  negativeを再証明する。Sole moderator production/supervisor routingとexact-source
-  taxonomy—supervisor-observed product-exitだけ、browser adapterのactual
-  browser-exitまたはadapter/proxy/IPC healthy時のexternal equipment-failureだけ、supervisor
-  premature-probe-closeだけ、internal adapter/proxy/marker/authentication/IPC/implementation/child
-  fault
-  invalidation—を再証明する。Decision後adapterはbrowser/grant/marker/reservation/candidate/pendingをdestroyしてterminalizing
-  bindingを維持し、harnessはsynthesizeせず、moderator/supervisor-owned synthesis/closed dual
-  ACKまでbinding/fixed scheduleを維持する。Prepared/open/closed barrier、open exact-matching context
-  validation/tag -> downstream ACK(s) -> accepted observation -> mirror/update ACK ->
-  outcome、pre-ready/context-free N/A/no-update、adapter reserve-without-state-change/supervisor
-  pending-store-with-grant-armed/`candidate-forward`-plus-atomic-consume/adapter-validation-and-forward/generic
-  candidate acknowledgement 0件、fresh blocked HTTPとauthenticated replay/race invalidation、distinct
-  human pairとrepository/work-root/runtime/capture/evidence/bundle/log/output/digest
-  boundary外のseparate access-controlled administrative roster/assignment recordによるunique-pair
-  audit/retention-policy destruction、cross-case reuse/recording/replay 0件を再証明する。Exact frame root
-  `schemaVersion`,`channelId`,`sequence`,`direction`,`senderRole`,`receiverRole`,`messageType`,`authenticationTag`,`payload`、各direction
-  `0` then exact
-  +1、`K_p2c = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0parent-to-child\0") || bootstrapNonce || channelId || ASCII(parentRole) || 0x00 || ASCII(childRole) || 0x00)`、`K_c2p = HMAC-SHA-256(channelSeed, ASCII("study-inherited-ipc-key-v1\0child-to-parent\0") || bootstrapNonce || channelId || ASCII(childRole) || 0x00 || ASCII(parentRole) || 0x00)`、MAC
-  preimage
-  `ASCII("study-inherited-ipc-frame-v1\0") || ASCII(direction) || 0x00 || compact canonical exact-root frame bytes with authenticationTag:null and no LF`、populated
-  compact JSON wire frameだけへのexactly one LFを要求する。Exact `ready` payload root
-  `schemaVersion`,`bootstrapNonce`,`componentRunId`と`schemaVersion: 1`とcanonical nonce/component
-  ID、seed/nonce destruction前のparent authentication/consumption、exact `acknowledgement` payload root
-  `schemaVersion`,`acknowledgedSequence`,`result`と`result: accepted`、exact `lifecycle` payload root
-  `schemaVersion`,`event`と`event: close | abort | child-exit`、constant-time
-  verification、direction-specific key、one-use bootstrap、role/message
-  closure、replay/order/partial/trailing/late/post-close/child-exit/wipe rejection、control-command
-  expansion 0件を要求する。Timer-free atomic order adapter reserve without state change ->
-  grantをarmedのままsupervisor validation/pending store -> exact one-use `candidate-forward` sole
-  acceptance + atomic canonical grant consume -> adapter copy validation/consume/forward -> claim
-  authenticate/join -> exactly-once safe pair release -> success/completion ACK exact
-  1件を再証明し、application handlingをpost-release ACKまでblockする。Late claim、unmatched
-  transaction/request、connection close/error、IPC EOF/close/error、probe/attempt
-  end、stop、abort、crash、child exit、その他lifecycle boundaryでcandidate/claim/binding/marker/pending
-  stateをclose/wipeし、partial pairをreleaseしないことを再証明する。Expanded scoring context
-  root/lifecycleを再証明する。Automatic correlation `not-applicable` -> first matching accepted ID
-  once、terminalization `none` -> mapped cause onceだけを許可し、post-terminalization remaining
-  contextをmapped causeでinitializeして他mutation/reversal/replacementをrejectする。Automatic
-  correlationをoutcomeClass直後へ置き、same-run/subject/process/workflow accepted-observation
-  linkを要求する。全nonautomatic failureでexact review-case root、moderator-owned call-local raw
-  response/rubric、either vote前のfresh isolated reviewer process 2件とbyte-identical
-  case、same-live-workflow human observation、hidden first vote、acceptance前の両exitを再証明する。Allowed
-  disposition 5件だけ、全truth row、derived issue identity、missing/mismatch/reuse/leakage
-  negativeをenforceする。`automaticCriticalIssueCount`,`suspectedWorkflowBlockerCount`,`reviewVoteCount`,`reviewDisagreementCount`,`reviewerCriticalIssueCount`,`criticalIssueCount`,`zeroCriticalIssueGate`をrecompute/mutation-testし、全reviewer
-  dispositionのsuspected count、`reviewVoteCount === 2 * suspectedWorkflowBlockerCount`、exact
-  confirmed/disagreement counting、`automatic:<correlationId>`/`reviewer:<subjectId>:<workflowClass>`
-  deduplicated union、total/zero-gate equationを含める。Focused gateがpassしたらcomplete T1049–T1050 automated
-  gateを再実行しcandidateをrebuild/freezeする。New empty external work root、endpoint、token、certified isolated
-  browser surface、marker secret、IPC seed/nonce/channel ID、process ID、study IDをprovisionし、independent
-  issue IDはprovisionしない。Candidate/proxyをreadせずinputをrematerialize/verifyし、final
-  candidateをstart時だけbindする。Participant 01–19 four-workflow close、participant 20 discovery
-  checkpoint/remaining-three continuation、open attempt最大1件、exact terminalization
-  synthesis/invalidation branch、exact 80 workflow/review、aggregate
-  recomputation、stop、cleanup、finalize witness/teardown、witness-before-seal outputまでcomplete
-  T1056とT1057を再実行する。Exact self-reexec mode/process tree、startのexact `processes` 6件 + exact ordered
-  `orchestrators` 2件、stopのreviewer 0件/long-lived exit 8件、witnessのstream exit 6件/orchestrator exit
-  2件/`ephemeralReviewerProcessExitCount === reviewVoteCount`を再証明する。Resulting complete
-  diff/tarballに対してT1061を再実行し、concernが残る間T1061 → remediation → focused gate → complete gate → full
-  studyを反復する。Concern 0件の後だけ、exact retained distribution、stream 3件、handoff pair、continuity-witness
-  pair、capture-seal pair、record kind 5件、threshold independence、exact six-plus-two long-lived
-  exitとreviewer-exit equation、aggregate equation 7件、prohibited residue 0件、exact task ID 1,114件、phase
-  116件、trace row 53件 *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*、宣言済み task ID すべての coverage — T001 から T1202 まで、取り下げたフェーズ39の欠番
-  T436–T439、フェーズ45の欠番 T482–T485、フェーズ64の欠番 T654–T657、フェーズ67の欠番 T675–T678、フェーズ68–75の欠番 T679–T750
-  を除く、English/Japanese owned-path/semantic parity、stale architecture term
-  0件、`git diff --check`をverifyする。全invalidation、rerun、digest、safe count、aggregate、cleanup、final
-  resultに加えて、SC-003/SC-004/SC-005/SC-007のrelease-evidence fixture-manifest transition
-  record—実際の初回manifest作成をprior revisionなしとして記録するか、またはpriorとcurrentの`manifestVersion`値、変更されたcase
-  ID・required-class定義・expected outcome、および各denominator-semantics変更に対する明示的なreviewer decision/review
-  reference(automated transition contract testはこのhuman
-  reviewを確立しない)—を`specs/001-inspect-agent-customizations/validation.md`と`specs/001-inspect-agent-customizations/validation.ja.md`へ記録し、`specs/001-inspect-agent-customizations/tasks.md`と`specs/001-inspect-agent-customizations/tasks.ja.md`を再checkし、failed
-  threshold/gate、stale evidence、missing review、privacy residue、unresolved concernがあればT1063をblockする。
-  加えて、次のbrowser-observation、outcome、ordering
-  invariantを各invalidation/rerun後にreproveする。Supervisor-to-study-browser-adapterの`safe-payload`は、forwarded/joined
-  accepted stateとnonforwarded blocked stateを区別するvalidated stored
-  candidateから再構成し、supervisorがcanonical serialization前にcurrent workflowをtagしたsafe nonworkflow browser
-  observationだけに許可する。Adapterはそのcandidateとの一致を要求し、study-browser-watchdogへ`safe-payload`としてrelayしてauthenticated
-  ACKを返す。 このtypeによるworkflow record、source-supplied workflow tag、moderator/`workflow-outcome`
-  bypassを全てrejectする。 Blocked browser-only observationではwatchdog
-  ACKを`browser-only-released`より前に要求し、joined browser/server
-  pairではstudy-browser-watchdogとinspector-server-ledger-watchdog双方のpayload
-  ACKを`joined-pair-released`より前に要求し、その後success/completion ACK exact 1件を返し、application
-  handlingをそのfinal ACKまでblockする。 Context `automaticIssueCorrelationId`はcandidateだけとして扱う。Objectively
-  successful
-  workflowはcandidateがあっても`automaticIssueCorrelationId: not-applicable`をsubmitし、`not-applicable`を使い、review
-  process/voteを0件にする。Candidateがあるfailed workflowはそのexact
-  IDをsubmitして`automatic-critical`を使いreview/voteを0件にし、candidateがないfailed
-  workflowは`not-applicable`をsubmitしてreviewを完了する。 Accepted automatic
-  eventはworkflowのsuccess/failureに関係なく`automatic:<correlationId>` issue exact 1件をindependently
-  deriveし、`automaticCriticalIssueCount`へexact 1回countする。 Accepted pre-readiness automatic
-  eventは`workflowClass: not-applicable`と`automaticIssueCorrelationId: not-applicable`を維持し、workflow
-  outcomeへlinkせず、そのissue/countは生成する。 Readinessのexact orderを、全prebuffer payload ACKとbuffer
-  destruction -> open attempt-binding dual ACK -> discovery `scoring-context` ACK -> readiness
-  response -> grant/navigationとし、全gapでbrowser candidate emissionを禁止する。 Inter-workflowのexact
-  orderを、previous outcomeの全downstream `workflow-outcome`/watchdog ACK -> previous context
-  `submitted` then `destroyed` -> next `scoring-context` ACK -> next prompt/timer/task
-  startとし、overlap/early actionを禁止する。 さらに、該当する実装または検証で次のcanonical equipment/runtime boundaryを要求する。
-  Supervisorをsole participant launch controllerかつdirect OS observerとする。External-equipment fd
-  `6`を通じ、shellを使わずverified subject-repository cwdで、exact LF-terminated
-  `npx --no-install agent-customization-inspector --no-open` 1行、sanitized probe/control/run/subject
-  environmentだけを用い、raw candidate/proxy valueを含めず、command
-  bufferを直ちにwipeしてparticipantをlaunchする。Pre-bootstrap exitを含むparticipant exitはsupervisor-sourced
-  `product-exit`とし、harnessはscheduleだけを行う。Authenticated probe
-  close時は、already-exitedなら`product-exit`、still-liveなら`premature-probe-close`をatomically選ぶ。
-  `materialize`時にsanitized equipment `PATH`へpinned npxとreserved initially-empty external store-bin
-  slotを固定し、materializer/inputsはcandidate
-  byteをreadもrequireもしない。`verify-inputs`後かつ`start`前に、authorized setupはexact candidateとfrozen
-  production graphから同じnetwork/scripts-disabled
-  slotへprovisionしてdigest-bindし、start時にsupervisorがinherited slotからsole audited binaryをpinned
-  `npx --no-install`でresolveして再検証する。Unknown post-materialize path/control/environment routeを設けない。Raw
-  tarball pathをchild environment/argvへ入れず、distributionを変更せず、alternate
-  PATH/global/cache/network/install/fallback/substituteをrejectし、abort/stop/finalize時にstoreをdestroyしてabsenceをverifyする。
-  External-equipment fd `7`はexact runtime-only external record
-  `StudyModeratorInput`を受け、そのrootを`schemaVersion`,`studyRunId`,`subjectId`,`inspectorProcessId`,`workflowClass`,`response`,`timing`,`groundTruth`,`rubric`の順とし、compact
-  canonical UTF-8 JSON + exactly one LFでencodeする。`timing`はcanonical nonnegative decimal string、raw
-  `response`、`groundTruth`、`rubric`はcanonical JSON stringとする。Normally completed workflowごとにrecord
-  exact 1件を要求する。Terminalization時は`terminalization-decision`から未実行remaining-workflow
-  failureをsynthesizeし、recordを読まない。Parse failure、complete line前のEOF、extra/trailing
-  input、replay、late/cross-context input、noncanonical valueをrejectし、empty
-  response/timingをfabricateせず、raw valueをretainせず、全input bufferをwipeする。 External-equipment fd `8`とfd
-  `9`をisolated reviewer slotとする。Complete caseをdisplayした後だけLF-terminated enum
-  `product-caused-blocker | not-product-caused-blocker` exact 1行をenableし、fresh one-use
-  collectorを使い、first voteをhiddenにし、raw inputを直ちにwipeし、echo/history/record/log/cross-slot
-  outputを禁止する。Human identity、collector `componentRunId`/process identity、case
-  assignmentはreuseせず、literal `reviewer-one`/`reviewer-two` labelとsanitized terminal
-  surfaceだけはdrain/reset後にreuseできる。 Browser adapterはsole anonymous remote-debugging-pipe
-  external-equipment exceptionを通じ、digest-verified pinned Chromiumとそのcontextをdirect
-  launch/ownする。`Target.createBrowserContext`を`proxyServer`と`disposeOnDetach`付きでcallし、各`Fetch.authRequired`へexactly
-  one `Fetch.continueWithAuth` Basic credential responseを返し、raw proxy/marker materialをDevTools
-  requestとattempt
-  contextだけにtransientに保ち、environment、argv、profile、history、log、evidenceへ入れず、wipe/destroyし、browser/context
-  exitをdirect observeする。Healthy external browser/environment/bootstrap failureはadapter
-  `equipment-failure`とし、internal adapter/proxy/controller/CDP/auth/IPC/child
-  faultはsynthesisせずinvalidateする。Adapter crashまたはDevTools-pipe EOF時、supervisorはequipment
-  descendant/context terminationとfresh-profile cleanupをverifyするまでnext
-  attempt/finalizeをblockし、negative cleanup testでorphan Chromium/context 0件を証明する。 Raw proxyのonly
-  routeをcaller-transient -> authenticated runtime-control `StudyLiveBinding` -> supervisor memory ->
-  one-use `browser-proxy-binding` -> adapter memory -> DevTools request/contextとする。 各adapter
-  registrationのsupervisor ACK後、exact path-free `StudyStreamWriterRuntimeBinding`
-  rootを`schemaVersion`,`controlSessionId`,`studyRunId`,`streamRole`,`captureComponentRunId`,`captureInstanceId`,`captureProcessRunId`,`writerFileIdentity`,`writerLinkCount`,`writerOpenMode`の順で送る。`writerFileIdentity`はexact
-  existing path-free
-  `StudyRuntimeIdentityTuple`、`writerLinkCount: 1`、`writerOpenMode: append-only`とし、fd
-  `5`はprotocol固定でroot fieldに含めない。AdapterはACKしてbyte-identical
-  `stream-writer-binding`をwatchdogへrelayし、watchdogがverifyしてregisterした後、adapterとsupervisorがACKする。Descriptor
-  `5`はspawn時だけinheritでき、extra duplicateを禁止する。 Exact start orderをadapter-registration ACK ->
-  `stream-writer-binding` relay/ACK -> watchdog verification/registration -> adapter/supervisor ACK
-  -> all six registrations -> `browser-proxy-binding` ACK ->
-  startとする。Browser-adapterとmatching-watchdog registrationはproxy
-  binding前にsupervisor-ACK済みとし、そのACKで`stream-control: start`、`capture-start`、start completionをgateする。
-  Eligible candidate orderをstate changeなしのadapter reservation -> grantをarmedのままsupervisor
-  validation/pending store -> sole acceptance + atomic canonical grant consumeであるexact one-use
-  `candidate-forward` -> adapter copy validation/consume/forwardとする。Predecision consumeとgeneric
-  candidate acknowledgementを設けない。Blocked `safe-payload`はvalidated/stored
-  candidateだけからderiveし、accepted forwarded/joined stateとnonforwarded blocked stateを明示的に区別する。
-  Supervisor workflow tagをcanonical serialization前にapplyし、その後downstream ACK -> accept/count ->
-  mirror/moderator ACK -> release/outcomeの順とし、postaccept mutation/backfillを禁止する。
-  `StudyStreamControl`と`StudyStreamControlResult`の両方でcommand/`checkpointRequestId`
-  matrixをenforceする。`start`はcommand/resultとも`not-applicable`、`checkpoint`はfresh canonical ID exact
-  1件、`anchor-handoff`と`stop`はcurrent accepted checkpoint IDを使う。Wrong command/result
-  pair、mismatch、stale/reused/future ID、noncanonical N/A spellingをrejectする。
-  `StudyBrowserBrokerDecision`では`candidate-forward`と`joined-pair-released`にcurrent
-  non-`not-applicable` `browserAttemptId`を要求し、`browser-only-released`はbound valid-marker
-  requestならcurrent IDを要求し、missing/invalid-marker unrelated requestだけ`not-applicable`を許可する。
-  Pre-readiness
-  terminalの`StudyWorkflowOutcomeSubmission`、`StudySafetyReviewCase`、両`StudySafetyReviewVote`
-  recordでは全`inspectorProcessId`をmatching `not-applicable`とする。 全`workflow-outcome`
-  acknowledgementはmatching watchdogが`safe-payload`をACKした後だけ送る。 Topologyはeight long-lived internal
-  descendants/processesと記述し、watchdogはadapter childであってsupervisor direct child 8件ではない。
-  *(2026-08-10改訂: checklistはT1090まで続く。)* *(2026-09-01改訂:
-  このloopが行ったkitの編集はT1056–T1057のevidenceを無効化しない。当該evidenceはkitを使わないagent駆動のrunであり、capture
-  bundleを生んでいないためである。)*
-  *(amended 2026-09-04: このloopのinvalidation triggerは、このphaseが削除したsealed-capture
-  harnessを含まない。存在しないものにrepository editは触れられないからである。なお先行evidenceを無効化するのはstudy
-  kitまたはそのinputへのeditであり、その後SC-001/SC-006を再確立するのはT1202自身のrunである。)*
+- [ ] T1062 T1061がconcern 0件を報告するまでrelease-reviewのremediation loopを回す。そのreviewが
+  見つけたrepository editごとに、適用可能な自動matrixを完全に再実行する。
+  `tests/usability/sc001-sc006-study-inputs/`配下の評価材料への編集、またはprimary workflowへの
+  編集は、SC-001/SC-006の記録を無効化し、新しいrunのためにT1202へ戻す（spec.md § SC-001、SC-006）。
+  各roundの後、concernが無くなるまで完全なdiffとtarballのreviewを繰り返す
+  *(2026-08-10 修正: checklistはT1090まで。)* *(2026-09-01 修正: このloopが行ったkit編集は
+  T1056–T1057のevidenceを無効化しない。そのevidenceはkitを使わず、capture bundleを生まなかった
+  agent駆動のrunだからである。)* *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と
+  113 が拡張した task set に従う。)* *(2026-09-04 修正: このloopのinvalidation triggerは、この
+  phaseが削除したsealed-capture harnessを含まない。存在しないものにrepository editは触れられない
+  からである。本文は残っているtriggerを述べる。)*（SC-003、SC-004、SC-005、SC-007、QR-004）
 
-- [X] T1063 Dependency/breaking-change rationale、migration impact、全violation解消、各residual
+- [ ] T1063 Dependency/breaking-change rationale、migration impact、全violation解消、各residual
   uncertaintyのowner/resolution pathを含むprinciple-by-principle release Constitution
   Checkを`specs/001-inspect-agent-customizations/validation.md`と`specs/001-inspect-agent-customizations/validation.ja.md`へ実施・記録し、matching
   pull-request review checkを要求する。そのbilingual recordをT1062後のsole planned validation-only
@@ -8817,10 +7561,10 @@ railへ、各Source family自身の状態をそれ自身のsurfaceへ置く。
   barへ移し、すべてのrouteがそれらを持ち、どのsurfaceも重複して持たないようにする（FR-030、FR-044）
 - [X] T1152 [US1] `src/app/components/inventory/InventoryKindTabs.vue` を
   `src/app/components/inventory/InventoryRail.vue` へ置き換える。statusと各familyのsurfaceへの導線を
-  伴うSource family、次にclosedなkind catalog、次にどのkindの一覧でもない2つのfileの一覧を並べる（
+  伴うSource family、次にclosedなkind catalog、次にどのkindの一覧でもない1つのfile一覧を並べる（
   FR-030）
 - [X] T1153 [US1] `src/app/pages/index.vue` をlistから始まるよう作り直す: Repositoryのpanelなし、個
-  人設定のpanelなし、常設のconsent linkなし、そしてkindではない2つの一覧は、一覧の下に付け足すのでは
+  人設定のpanelなし、常設のconsent linkなし、そしてkindではない一覧は、一覧の下に付け足すのでは
   なくrailから選ぶ（FR-002、FR-028、FR-030）
 - [X] T1154 [US1] `src/app/components/inventory/InventoryFilters.vue` のpath fieldを1つの検索へ置き
   換え、`src/app/composables/filters.ts` を通してそれを運ぶ。rowは名前かSource-relative pathのいずれ
@@ -8828,10 +7572,10 @@ railへ、各Source family自身の状態をそれ自身のsurfaceへ置く。
 - [X] T1155 [US1] Bar、rail、Repositoryの状態surfaceがrenderする英語のcopyを、それをrenderする
   componentの中に追加する
 
-- [X] T1178 [US1] どのkindのrowでもない2つの一覧にSourceの選択を提供し、Toolの選択はそこでは出さない
+- [X] T1178 [US1] どのkindのrowでもない一覧にSourceの選択を提供し、Toolの選択はそこでは出さない
   ようにする。対象は `src/app/components/inventory/InventoryFilters.vue`、
-  `src/app/composables/filters.ts`、`src/app/pages/index.vue`。どのkindにも入らないファイルも
-  source単位の診断もSourceには属する一方、どちらも製品を名指さないためである（FR-006）
+  `src/app/composables/filters.ts`、`src/app/pages/index.vue`。どのkindにも入らないファイルは
+  Sourceに属する一方、どの製品にも認識されていないためである（FR-006）
 - [X] T1180 [US1] documentのスクロール中もbarとrailを画面に残す。対象は `src/app/App.vue`、
   `src/app/styles/main.css`、`src/app/pages/index.vue`。barは唯一のスクロールcontainerの上端に、
   page側ではなく自身のspacingを持って留まり、railはbarの高さに一致するtokenの分だけ下に留まる。
@@ -9142,9 +7886,9 @@ readmeは読み手が実際に出会うinterfaceを示す。
 - [X] T1197 `specs/001-inspect-agent-customizations/tasks.md` と
   `specs/001-inspect-agent-customizations/tasks.ja.md` で、T1041、T1049、T1061、T1062 の凍結
   countの記述を出荷済みのfreezeに合わせる。これら4つの本文は、task parserが ordered checkbox ID
-  1,114件、phase 116件、trace row 53件を再現すること、および T001 から T1202 までの宣言済み task ID
+  1,117件、phase 117件、trace row 53件を再現すること、および T001 から T1205 までの宣言済み task ID
   すべて（各本文が既に列挙している欠番を除く）のcoverageを要求する
-  *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と T1202 が拡張した task set に従う。)*。taskの本文はそのtaskが現在
+  *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と 113 が拡張した task set に従う。)*。taskの本文はそのtaskが現在
   要求するものを記録し、日付入りの amendment noteが変更されたことを記録する
   （AGENTS.md § Documentation content policy）（contradicts）
 - [X] T1198 フェーズ 110 とこのフェーズが持たないStory Coverage Matrixの行を追加し、109 で止まって
@@ -9205,6 +7949,60 @@ readmeは読み手が実際に出会うinterfaceを示す。
   その省略を許せていない。T1198 はこの行を名指しながら、§ 構成 と Story Coverage の注記だけを
   修正した。これを覆うgateは存在しない。免除は番号で列挙せず「すべての収束フェーズ」として書き、
   後の収束実行が同じ行を再び開かないようにする（QR-004）（partial）
+---
+
+## フェーズ 113: 収束
+
+**目的**: artifactをその同一性で名指す2つの記録 — outcome manifestのdigestと、readmeが示す
+screenshot — に、このtreeが実際に持つartifactを名指させる。
+
+**独立したテスト**: `shasum -a 256 tests/fixtures/outcomes/manifest.json` を実行し、そのdigestが
+両言語のvalidation recordに載っていることを確認する。稼働中のsessionの傍らで `./README.md` を
+開き、画面に出ているrailが本文の上の画像にあることを確認する。`pnpm run test:docs` を実行し、
+拡張されたtask setに対してpassすることを確認する。
+
+**可視チェックポイント**: どちらの記録をtreeと照合しても、同じものが見つかる。
+
+### エビデンスの同一性
+
+- [X] T1203 CRITICAL 記録されたoutcome-manifestのdigestに、check inされたmanifestを名指させる。
+  対象は `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md`。両者はcanonical SHA-256 を
+  `58e3a057a3713d0896efd472527d3d2f73c89f4ade794a05c0fd07942cf372f5` と記録しているが、
+  `shasum -a 256 tests/fixtures/outcomes/manifest.json` は
+  `784ea623d2120935e9a7153be6f3f73e67e7ed0e5953c900ef396999765911f1` を返す。これは
+  `tests/fixtures/outcomes/manifest.sha256` が保持する値であり、`specs/` のどこにも現れない。
+  編集の前に、記録された実行がどちらに対して走ったのかを決めること。99件のcase実行より前に
+  manifestが現在のbyteへ到達していたなら、digestの行は転記の誤りとして直す。実行より後に変わった
+  なら、spec.md § Release-Evidence Fixture Governance によりそのbyteは新しい比較不能な
+  measurement setであり、caseはラベルの付け替えではなく再実行して記録する。
+  `tests/contract/outcome-fixture-manifest.test.ts` はmanifestとその companion file だけを
+  照合し、どちらの記録にも届かないため、これを検出したものはない。この値がずれたのは2度目であり、
+  修正はそれを踏まえること（憲章 IV、SC-003、SC-004、SC-005、SC-007）（contradicts）
+
+### readme の screenshot
+
+- [X] T1204 CRITICAL `docs/images/inventory.png` と `docs/images/comparison.png` を現行の
+  interfaceに対して撮り直し、`./README.md` と `./README.ja.md` のalt textが各画像の内容を
+  なお説明しているかを確認する。commit済みの画像は 2026-09-03 のもので、以後 `src/` の61ファイルが
+  変わっている。一覧の画像はrailに `Source diagnostics` という項目を映しているが、productはもはや
+  それをrenderせず、`InventoryRail.vue` に残るのは削除理由を述べたコメントだけである。同じ画像の
+  Repositoryの状態は `Partial · 14` と読めるが、railは現在
+  `SOURCE_STATUS_STANDALONE_TEXT[...].word` だけをrenderし、注記はその下の行に置き、画像にはない
+  route markを傍らに描く。`package.json.files` は `docs/images` を同梱するため、これらはnpmが
+  配信するものである（憲章 IV、QR-004、T1029）（contradicts）
+
+### Task set の gate
+
+- [X] T1205 このフェーズが追加するtaskに対してtask setのgateを回復する。
+  `specs/001-inspect-agent-customizations/tasks.md`、
+  `specs/001-inspect-agent-customizations/tasks.ja.md`、
+  `tests/documentation/cross-artifact.test.ts` において、T1203・T1204・T1205 を両言語の Normative
+  Requirement Traceability matrix で名指し — manifestの記録は SC-003/SC-004/SC-005/SC-007、
+  screenshotは QR-004、このtask set作業は Constitution/project-governance の行 — suiteが固定する
+  3つのliteralを移す: `DECLARED_TASK_IDS` が組み立ての基にする最上位のtask IDを 1202 から 1205 へ、
+  凍結されたcountを task 1,114件・phase 116件から 1,117件・117件へ。このtaskが走るまで
+  `pnpm run test:docs` は追加されたIDでfailする（憲章 III）（missing）
 ---
 
 ## ストーリーカバレッジマトリクス

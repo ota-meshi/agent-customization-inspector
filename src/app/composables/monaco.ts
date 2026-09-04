@@ -220,6 +220,31 @@ function dropStaleAnnouncementWrappers(announcements: HTMLElement): void {
 type MonacoApi = typeof import('monaco-editor/esm/vs/editor/editor.api.js');
 
 /**
+ * The font size and line height the container's own stylesheet sets, as
+ * Monaco's options take them.
+ *
+ * Read from the computed style rather than written here: the same two values
+ * lay out the inert `<pre>` a viewer draws until its editor mounts, and a
+ * second copy of them is what would make the two boxes disagree. They are
+ * declared in `rem` (`main.css` § --aci-source-font-size), so a reader who
+ * enlarges text without zooming moves both.
+ *
+ * `parseFloat` of a computed length is a pixel number in every engine the
+ * certification matrix pins; a `line-height` of `normal` computes to a length
+ * as well, because the element has a font by then.
+ */
+function typeMetricsOf(container: HTMLElement): {
+  readonly fontSize: number;
+  readonly lineHeight: number;
+} {
+  const style = getComputedStyle(container);
+  return {
+    fontSize: Number.parseFloat(style.fontSize),
+    lineHeight: Number.parseFloat(style.lineHeight),
+  };
+}
+
+/**
  * One mounted read-only source surface, owned by the component that made it.
  * Constructed only by its own {@link SourceViewerHandle.mount}, which is what
  * awaits the editor module and creates the editor this class then owns.
@@ -382,6 +407,14 @@ export class SourceViewerHandle {
     const editor = monaco.editor.create(container, {
       value: '',
       ariaContainerElement: announcements,
+      // The type metrics are the container's own, so this editor and the inert
+      // `<pre>` standing in for it before it mounts are laid out from one
+      // definition ({@link typeMetricsOf}). Monaco's defaults are absolute
+      // pixels no stylesheet reaches: with them, a reader who enlarges text
+      // without zooming grew the placeholder and not the editor, and the box
+      // jumped at mount by the difference — under the very control the
+      // placeholder exists to hold still.
+      ...typeMetricsOf(container),
       theme: themeForDisplay(colorScheme.value === 'dark', forcedColors.matches),
       // Monaco's own high-contrast detection is off because this handle owns
       // the theme: it derives one value from the reader's colour scheme and the
@@ -671,7 +704,14 @@ export class SourceDiffHandle {
         ambiguousCharacters: false,
       },
     };
-    const editor = monaco.editor.createDiffEditor(container, options);
+    const editor = monaco.editor.createDiffEditor(container, {
+      ...options,
+      // The same type the single-file viewer takes, from this container's own
+      // computed style: the two are one family of read-only source surfaces,
+      // and a reader who enlarges text must not find one of them following and
+      // the other fixed ({@link typeMetricsOf}).
+      ...typeMetricsOf(container),
+    });
     // Everything after the editor's construction runs under a rollback: a
     // failure anywhere in it — the environment-determined construction
     // failure research.md § 7 names — must not strand the editor, a model

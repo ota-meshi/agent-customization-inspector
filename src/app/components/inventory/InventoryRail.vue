@@ -67,6 +67,13 @@ const props = defineProps<{
   counts: ReadonlyMap<InventorySelection, number>;
   /** Every Source the current generation published, in snapshot order. */
   sources: readonly SourceDto[];
+  /**
+   * Whether an accepted personal-setup read is still out. A batch publishes no
+   * member Source until it commits, so this is the only thing that tells a
+   * running read from one that never started (`view-state.ts`
+   * § runningGlobalBatch, and this client's own confirmation while it is out).
+   */
+  globalReadInProgress: boolean;
 }>();
 
 /**
@@ -140,8 +147,15 @@ const GLOBAL_STATUS_ENTRY: Readonly<
 > = {
   /** A member whose latest attempt failed; the reader has to retry it. */
   failed: { rank: 0, counted: true, text: 'failed' },
-  /** A member whose commit kept file-confined diagnostics; there is something to read. */
-  partial: { rank: 1, counted: true, text: 'partial' },
+  /**
+   * A member whose commit kept file-confined diagnostics; there is something
+   * to read. Named by what was kept rather than by the contract's own word:
+   * `partial` is the status value, and the Repository entry beside this one
+   * already says `some files kept a diagnostic` for the same state, so the two
+   * Source families read alike (validation.md § SC-001 and SC-006 first-use
+   * sessions).
+   */
+  partial: { rank: 1, counted: true, text: 'with diagnostics' },
   /** A scan in flight: the counts beside the kinds are still provisional. */
   scanning: { rank: 2, counted: false, text: 'Scanning' },
   /** The disable barrier is draining this member's results away. */
@@ -185,6 +199,13 @@ const globalStatus = computed<SourceStatus | null>(() => {
  * that there is something to go and read (FR-030).
  */
 const globalStatusText = computed(() => {
+  if (props.globalReadInProgress) {
+    // A read is out and has committed nothing yet, so no member Source exists
+    // to report: without this the entry would say `Not inspected` of homes
+    // being read at that moment. `Scanning` because that is what this entry
+    // says while one member's own rescan runs — one event, one word.
+    return GLOBAL_STATUS_ENTRY.scanning.text;
+  }
   const status = globalStatus.value;
   if (status === null) {
     return 'Not inspected';
@@ -193,7 +214,11 @@ const globalStatusText = computed(() => {
   if (!entry.counted) {
     return entry.text;
   }
-  return `${globalSources.value.filter((source) => source.status === status).length} ${entry.text}`;
+  // The counted states name what they count. `1 with diagnostics` says one of
+  // what; the members are homes, which is what every one of them is called
+  // (`GLOBAL_MEMBER_TEXT`).
+  const counted = globalSources.value.filter((source) => source.status === status).length;
+  return `${counted} ${counted === 1 ? 'home' : 'homes'} ${entry.text}`;
 });
 
 /**

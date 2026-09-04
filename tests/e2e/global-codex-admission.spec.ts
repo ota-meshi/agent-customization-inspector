@@ -375,7 +375,7 @@ test('inspects the personal setup from the command line, with no consent click',
       page
         .getByRole('navigation', { name: 'Sources' })
         .getByRole('link', { name: /^Personal setup/u }),
-    ).toContainText(/Inspected|\d+ partial/u);
+    ).toContainText(/Inspected|\d+ homes? with diagnostics/u);
     // And the consent page states the active consent rather than offering to
     // work the directories out — the flag used the same consent state the
     // handlers serve.

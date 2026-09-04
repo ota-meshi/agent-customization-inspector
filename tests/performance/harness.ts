@@ -33,7 +33,7 @@ import type { Browser, Page } from 'playwright';
 // fact), and the predicate's independence comes from how it combines them,
 // not from a second copy.
 import { SCAN_PROGRESS_PHASE_TEXT } from '../../src/shared/api-text';
-import { SOURCE_STATUS_TEXT } from '../../src/shared/entities';
+import { SOURCE_STATUS_STANDALONE_TEXT } from '../../src/shared/entities';
 
 /** The one authored content of every matching `SKILL.md` in the fixture. */
 export const SC002_SKILL_CONTENT = '# Performance skill\n\nDeterministic SC-002 fixture content.\n';
@@ -493,7 +493,9 @@ export async function openSettledInventory(
         }
         return settled;
       },
-      [SOURCE_STATUS_TEXT.ready, SOURCE_STATUS_TEXT.partial, SOURCE_STATUS_TEXT.failed],
+      // Two labels, not three: `ready` and `partial` are one word, because one
+      // table states a Source's status wherever it is shown.
+      [SOURCE_STATUS_STANDALONE_TEXT.ready.word, SOURCE_STATUS_STANDALONE_TEXT.failed.word],
       { polling: 250, timeout: 120_000 },
     );
     return { browser, page };
@@ -586,7 +588,7 @@ export async function readBackSessionIdentifiers(origin: string): Promise<Sc002S
 // digest freezes that review event without holding a second copy of any
 // label.
 const REVIEWED_STATUS_WORDING_SHA256 =
-  'fe67ba03ebbf417ddda7d0220fdf74593ae5ed054b3cb5a6efade8df3554f91b';
+  'c3cca773646e53a917d511720ed8b56e41c82de811791ae1c9685a2b20488335';
 
 /**
  * The canonical listing the review seal covers: each measured status wording
@@ -597,7 +599,7 @@ export function statusWordingListing(): string {
   const lines = [
     ...Object.entries(SCAN_PROGRESS_PHASE_TEXT).map(([phase, label]) => `phase:${phase}=${label}`),
     ...(['scanning', 'ready', 'partial', 'failed'] as const).map(
-      (status) => `status:${status}=${SOURCE_STATUS_TEXT[status]}`,
+      (status) => `status:${status}=${SOURCE_STATUS_STANDALONE_TEXT[status].word}`,
     ),
   ];
   return lines.toSorted().join('\n');
@@ -1016,10 +1018,10 @@ export async function runSc002MeasuredRun(
       {
         expectedRows: manifest.matchingFiles,
         phaseLabels,
-        scanningLabel: SOURCE_STATUS_TEXT.scanning,
-        readyLabel: SOURCE_STATUS_TEXT.ready,
-        partialLabel: SOURCE_STATUS_TEXT.partial,
-        failedLabel: SOURCE_STATUS_TEXT.failed,
+        scanningLabel: SOURCE_STATUS_STANDALONE_TEXT.scanning.word,
+        readyLabel: SOURCE_STATUS_STANDALONE_TEXT.ready.word,
+        partialLabel: SOURCE_STATUS_STANDALONE_TEXT.partial.word,
+        failedLabel: SOURCE_STATUS_STANDALONE_TEXT.failed.word,
         terminalPhaseLabel: SCAN_PROGRESS_PHASE_TEXT.complete,
         statusDeadline: 120_000,
         inventoryDeadline: 300_000,

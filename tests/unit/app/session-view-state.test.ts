@@ -14,13 +14,14 @@
 import { DevframeConnectionError } from 'devframe/client';
 import { describe, expect, it, vi } from 'vitest';
 
-import { SessionViewState } from '../../../src/app/session/view-state';
+import { SessionViewState, runningGlobalBatch } from '../../../src/app/session/view-state';
 import {
   SESSION_RPC_FUNCTIONS,
   type SessionRpcFunctionName,
 } from '../../../src/app/session/api-client';
 import type {
   FileDetailDto,
+  GlobalBatchPhase,
   McpCarrierDetailDto,
   PermissionPolicyDetailDto,
   InspectionDataResult,
@@ -438,6 +439,37 @@ describe('session view state — session loss', () => {
     await started;
     expect(state.snapshot.value).toBeNull();
     state.dispose();
+  });
+
+  it('publishes the personal-setup batch that is still running, and null otherwise', () => {
+    // The predicate both surfaces answer for that read with: the personal-setup
+    // page, which dates its rows while one is out, and the inventory, which
+    // passes it to the rail so the entry says `Scanning` rather than
+    // `Not inspected` of homes being read (contracts/http-api.md
+    // § enable-global).
+    const withBatch = (phase: GlobalBatchPhase | null): SessionSnapshot => ({
+      ...bootstrapSnapshot(),
+      globalControl:
+        phase === null
+          ? null
+          : {
+              state: 'active',
+              previewId: 'preview-1',
+              confirmedTools: ['copilot', 'claude', 'codex', 'agents'],
+              controls: [],
+              pendingTools: ['codex'],
+              retryableTools: [],
+              batchStatus: { scanRequestId: 'batch-1', tools: ['codex'], phase, failureRef: null },
+            },
+    });
+    expect(runningGlobalBatch(withBatch('waiting'))?.scanRequestId).toBe('batch-1');
+    expect(runningGlobalBatch(withBatch('reading'))?.tools).toEqual(['codex']);
+    // A failed batch is not a read still running: the page offers its retry
+    // rather than saying the directories are being read.
+    expect(runningGlobalBatch(withBatch('failed'))).toBeNull();
+    // No batch at all, and no snapshot at all: nothing is out either way.
+    expect(runningGlobalBatch(withBatch(null))).toBeNull();
+    expect(runningGlobalBatch(null)).toBeNull();
   });
 
   it('starts its own fetch for a refresh asked after a purge', async () => {

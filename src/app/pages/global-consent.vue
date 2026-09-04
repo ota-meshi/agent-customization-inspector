@@ -36,6 +36,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import GlobalConsentPreview from '../components/consent/GlobalConsentPreview.vue';
 import GlobalSourceControls from '../components/consent/GlobalSourceControls.vue';
 import DetailNavigation from '../components/inspection/DetailNavigation.vue';
+import { runningGlobalBatch } from '../session/view-state';
 import { useSessionViewState } from '../composables/session-view-state';
 import {
   GLOBAL_MEMBER_TEXT,
@@ -77,14 +78,13 @@ const rejectionText = computed(() => {
 });
 
 /**
- * Whether an accepted read is still running: the batch exists and has not
- * failed. While it is, the panel's summary says the directories are being read
- * and the rows below say what the last refresh returned — two statements
- * about one moment, unless the rows are dated.
+ * Whether an accepted read is still running. While it is, the panel's summary
+ * says the directories are being read and the rows below say what the last
+ * refresh returned — two statements about one moment, unless the rows are
+ * dated. The predicate is the session module's, because the inventory's rail
+ * answers for the same read (`view-state.ts` § runningGlobalBatch).
  */
-const batchRunning = computed(
-  () => batchStatus.value !== null && batchStatus.value.phase !== 'failed',
-);
+const runningBatch = computed(() => runningGlobalBatch(sessionViewState.snapshot.value));
 
 /**
  * What consent currently amounts to, in one sentence.
@@ -95,16 +95,24 @@ const batchRunning = computed(
  * reader their files are "being read now" when the reading is over. The
  * controls are the current answer and survive a reload.
  */
+/**
+ * The Global sequence's committed generation, or null before the sequence
+ * exists. Read from the snapshot rather than counted here: one sequence has
+ * one number, and the session publishes it (FR-030).
+ */
+const globalGeneration = computed(() => sessionViewState.snapshot.value?.globalGeneration ?? null);
+
 const consentSummary = computed(() => {
-  if (sessionViewState.globalEnableState.value === 'submitting' && !batchRunning.value) {
+  if (sessionViewState.globalEnableState.value === 'submitting' && runningBatch.value === null) {
     // The confirmation answers once the read finished (contracts/http-api.md
     // § enable-global), so while it is out this page knows that a read is
     // running and not yet which members were admitted: the count arrives
     // with the answer, and the sentence below states it then.
     return 'These directories are being read now. The files appear on the inventory when the read finishes.';
   }
-  if (batchRunning.value) {
-    const count = batchStatus.value!.tools.length;
+  const running = runningBatch.value;
+  if (running !== null) {
+    const count = running.tools.length;
     return `${count} of these directories ${
       count === 1 ? 'is' : 'are'
     } being read now. The files appear on the inventory when the read finishes.`;
@@ -403,6 +411,19 @@ watch(
         class="aci-panel"
       >
         <h3>What is inspected</h3>
+        <!-- The Global sequence's committed generation, which FR-030 puts on
+             this Source family's own surface beside its roots, statuses, and
+             rescans. Once for the family rather than once per member: the four
+             homes commit as one batch into one sequence, so a number per row
+             would be one fact written four times. Absent until that sequence
+             exists, because there is no committed generation to state before
+             the first batch commits. The Repository panel's own idiom
+             (`ScanProgress.vue`), so a reader coming from it finds the same
+             pair on this surface. -->
+        <dl v-if="globalGeneration !== null" class="aci-definition-grid">
+          <dt>Committed generation</dt>
+          <dd>{{ globalGeneration }}</dd>
+        </dl>
         <p aria-live="polite">{{ consentSummary }}</p>
         <!-- This surface commands its own reads, as the Repository's does: the
              bar's scan commands stop at the inventory, which is the one surface
@@ -432,7 +453,7 @@ watch(
              here updates by itself, which is what keeps WCAG 2.2.2 not
              applicable — so for as long as a read this page has not yet taken
              in is running, one sentence says whose moment the rows are. -->
-        <p v-if="batchRunning" class="aci-note">Statuses below are from the last refresh.</p>
+        <p v-if="runningBatch" class="aci-note">Statuses below are from the last refresh.</p>
         <ul class="aci-global-consent-page__outcomes">
           <li v-for="control in controls" :key="control.member">
             {{ GLOBAL_MEMBER_TEXT[control.member] }} — {{ GLOBAL_TOOL_STATE_TEXT[control.state] }}

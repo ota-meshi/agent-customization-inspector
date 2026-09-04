@@ -23,7 +23,7 @@ import {
   FILE_ENCODING_TEXT,
   SAME_NAME_SKILL_RESOLUTION_TEXT,
   SOURCE_BOUNDARY_ORIGIN_TEXT,
-  SOURCE_STATUS_TEXT,
+  SOURCE_STATUS_STANDALONE_TEXT,
   SUPPORTED_TOOL_TEXT,
 } from '../../../src/shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../src/shared/registries/behavior-text';
@@ -40,7 +40,17 @@ const TABLES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   SAME_NAME_SKILL_RESOLUTION_TEXT,
   SCAN_PROGRESS_PHASE_TEXT,
   SOURCE_BOUNDARY_ORIGIN_TEXT,
-  SOURCE_STATUS_TEXT,
+  // One record per status: the word every surface states, and the note a
+  // surface with nothing more exact puts under it. Both reach a screen, so
+  // both are checked.
+  SOURCE_STATUS_STANDALONE_WORD: Object.fromEntries(
+    Object.entries(SOURCE_STATUS_STANDALONE_TEXT).map(([status, entry]) => [status, entry.word]),
+  ),
+  SOURCE_STATUS_STANDALONE_NOTE: Object.fromEntries(
+    Object.entries(SOURCE_STATUS_STANDALONE_TEXT)
+      .filter(([, entry]) => entry.note !== null)
+      .map(([status, entry]) => [status, entry.note!]),
+  ),
   SUPPORTED_TOOL_TEXT,
   VENDOR_SURFACE_TEXT,
 };

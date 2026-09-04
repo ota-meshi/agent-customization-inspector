@@ -397,7 +397,9 @@ onBeforeUnmount(() => {
    drawn twice. */
 .aci-source-viewer {
   block-size: auto;
+  font-size: var(--aci-source-font-size);
   inline-size: 100%;
+  line-height: var(--aci-source-line-height);
   max-block-size: var(--aci-source-viewer-max-block-size);
   /* One line's worth, not three. The floor is the empty host's: before the
      editor mounts the placeholder beside it is what carries the file's own
@@ -490,6 +492,17 @@ onBeforeUnmount(() => {
    and the editor that replaces it is what scrolls. */
 .aci-source-viewer__fallback--placeholder {
   border-block-start: none;
+  /* The editor's own type: the placeholder stands in for the box the editor
+     will take, and a box is as tall as its lines times its leading. The family
+     is deliberately not shared — `wordWrap: 'off'` makes a visual line a model
+     line in both, so the two agree on height whatever they measure a character
+     at. What is left is Monaco's horizontal scrollbar, which it reserves under
+     a document with a line too long for the box and the `<pre>` does not: 12px
+     on one panel of the hook detail's five, at every text size (measured
+     2026-09-04), against the whole document's height before this. It is not
+     chased, because reserving it would be Monaco's own constant copied here. */
+  font-size: var(--aci-source-font-size);
+  line-height: var(--aci-source-line-height);
   max-block-size: var(--aci-source-viewer-max-block-size);
   overflow: hidden;
   /* The editor's box has no padding of its own, so neither does the box

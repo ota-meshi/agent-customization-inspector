@@ -385,8 +385,12 @@ target is missing or unreadable yields that file's `file-unreadable` Diagnostic,
 recursive traversal tracks visited directories by real path so a link cycle cannot
 prevent a scan from terminating. Hard links are ordinary files: there is no
 physical-identity grouping, no read-once semantics, and no primary/alias path selection.
-A directory named `.git`, `.hg`, `.svn`, or `node_modules` is never entered. VCS
-internals are the repository's own machinery rather than customizations authored in it; a
+A directory named `.git`, `.hg`, `.svn`, or `node_modules` is never entered. A VCS-internal
+name follows the containing volume's own name identity: a case variant such as `.GIT` is
+excluded when that volume resolves it as `.git`, while a distinct directory authored with
+that spelling on a case-sensitive volume remains eligible. Resolved paths apply the same
+rule, because reaching VCS internals through another entry does not make them repository
+customizations. VCS internals are the repository's own machinery rather than customizations authored in it; a
 `node_modules` directory holds packages a package manager installed, so a customization
 file inside one belongs to the package that shipped it and is reproduced from the manifest
 and lockfile rather than authored in the repository under inspection. A product may still

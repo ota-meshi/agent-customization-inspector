@@ -112,12 +112,12 @@ test.describe('instruction rows with an admitted carrier', () => {
     // The carrier's two candidacies add two entries beside Instructions: the
     // MCP entry for the declarations inside the file (`codex.repo.config`) and
     // the settings entry for the document they sit in (`codex.repo.settings`).
-    // The two lists that belong to no kind are always in the rail beside them,
-    // so the kinds are counted by name rather than by the strip's length.
+    // The list that belongs to no kind is always in the rail beside them, so
+    // the kinds are counted by name rather than by the strip's length.
     await expect(page.getByRole('tab', { name: /^Instructions/u })).toHaveCount(1);
     await expect(page.getByRole('tab', { name: /^MCP/u })).toHaveCount(1);
     await expect(page.getByRole('tab', { name: /^Settings \/ Config/u })).toHaveCount(1);
-    await expect(page.getByRole('tab')).toHaveCount(5);
+    await expect(page.getByRole('tab')).toHaveCount(4);
     // The instruction rows still never name the carrier.
     const instructionsText = await page.getByRole('tabpanel').innerText();
     expect(instructionsText).not.toContain('config.toml');

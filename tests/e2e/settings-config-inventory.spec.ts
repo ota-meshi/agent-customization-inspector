@@ -103,10 +103,9 @@ test.describe('the unified settings and configuration inventory', () => {
     // Arrow keys step the tab strip, and Enter or Space selects; the WAI-ARIA
     // tabs pattern this app shares (QR-004).
     await page.keyboard.press('End');
-    // The rail closes with the two entries that belong to no kind, so the end
-    // of the strip is "Source diagnostics" and the last kind is two steps back.
-    await expect(page.getByRole('tab', { name: /^Source diagnostics/u })).toBeFocused();
-    await page.keyboard.press('ArrowUp');
+    // The rail closes with the one entry that belongs to no kind, so the end of
+    // the strip is "Files in no kind" and the last kind is one step back.
+    await expect(page.getByRole('tab', { name: /^Files in no kind/u })).toBeFocused();
     await page.keyboard.press('ArrowUp');
     await expect(page.getByRole('tab', { name: /Settings \/ Config/u })).toBeFocused();
     await page.keyboard.press('Enter');

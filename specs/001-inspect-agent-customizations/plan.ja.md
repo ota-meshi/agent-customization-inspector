@@ -671,8 +671,11 @@ colour-scheme control — に加えて、一覧自身のscan commandを持つ。
 だからである: 各Sourceの状態surfaceは自分のscanを述べ、そこで命じるので、そのrouteでbarにcommandを置けば
 1つの画面に同じcontrolが2つ並ぶ。Railは画面上にどのrowがあるかを決めるものを持つ: statusと
 各familyの状態surfaceへの導線を伴うSource family、次にclosedなkind catalog、次にkindの一覧ではないが
-fileの一覧ではある2つ、`Files in no kind`と`Source diagnostics`である。Railの構成員はこの1つの試験から従う:
-fileの一覧はrailの項目であり、Sourceの状態はrouteである。Railの項目はiconを持たない — `Rule`や`Hook`の
+fileの一覧ではある唯一の項目`Files in no kind`である。Railの構成員はこの1つの試験から従う:
+fileの一覧はrailの項目であり、Sourceの状態はrouteである。Source自身のdiagnosticがそこに無いのも
+同じ理由による。それはfileを1つも並べず、唯一のSource単位のcodeはscanを失敗させてinventoryを
+commitしないので、inventoryが出ている画面ではその項目は常に`0`だった。各Sourceは自分のものを
+自分のsurfaceで述べる。Railの項目はiconを持たない — `Rule`や`Hook`の
 傍らのmarkは、読み手が語より先に得る情報を足さず、すべてのlabelを共有の左端から押し出す。railは縦に走査
 されるものであり、それこそが失われる — したがってこのUIが出荷するiconは意味を運ぶものだけである:
 vendorのmarkと、検索・rescan・colour-scheme・開閉・pageを出る各controlの操作glyphである。

@@ -38,7 +38,6 @@ import type {
   OutputStyleInventoryEntryDto,
   PluginInventoryEntryDto,
   RuleInventoryEntryDto,
-  SerializedDiagnostic,
   SessionSnapshot,
   SettingsInventoryEntryDto,
   SkillInventoryEntryDto,
@@ -372,25 +371,6 @@ export class InventoryFilterView {
    * rows against ({@link unrecognizedRows}).
    */
   public readonly unrecognizedTotal: ComputedRef<number>;
-
-  /**
-   * How many Source-scoped diagnostics the generation published before any
-   * filter narrows them ({@link sourceScopedDiagnostics}).
-   */
-  public readonly sourceScopedDiagnosticTotal: ComputedRef<number>;
-
-  /**
-   * The generation's diagnostics that belong to a Source rather than to one of
-   * its files, narrowed by the Source selection, in snapshot order. A file's
-   * own record is stated on that file's row, so what is left is the records
-   * with no row to attach to (FR-028).
-   *
-   * The Source filter applies because such a record names the Source it is
-   * about; the tool selection does not, because a Source-level diagnostic is
-   * not tied to a product and narrowing by one would empty the list under a
-   * question it cannot answer (FR-006).
-   */
-  public readonly sourceScopedDiagnostics: ComputedRef<readonly SerializedDiagnostic[]>;
 
   /**
    * The Source selection the rows are actually filtered by: the caller's choice
@@ -1195,22 +1175,6 @@ export class InventoryFilterView {
         // against the repository's index is a file the list drops entirely,
         // taking its diagnostic with it (FR-028, FR-030).
         fileMatches(file.sourceRelativePath, file.sourceId),
-      ),
-    );
-
-    // The same shape: one walk over the records with no row to attach to, seen
-    // once whole and once narrowed.
-    const unattachedDiagnostics = computed(() =>
-      (snapshot.value?.diagnostics ?? []).filter(
-        (diagnostic) => diagnostic.sourceRelativePath === null,
-      ),
-    );
-    this.sourceScopedDiagnosticTotal = computed(() => unattachedDiagnostics.value.length);
-    this.sourceScopedDiagnostics = computed(() =>
-      unattachedDiagnostics.value.filter(
-        (diagnostic) =>
-          effectiveSource.value === null ||
-          kindById.value.get(diagnostic.sourceId) === effectiveSource.value,
       ),
     );
 

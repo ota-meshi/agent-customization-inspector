@@ -94,6 +94,76 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 hostが存在する前にそれをthrowしてlaunch URLを出力しない。自動Repository scanのfailureと同じ終わり方で
 ある。両caseとも通過する。
 
+**railの個人設定の項目は、何を数えているかを述べ、読み取り中は`Scanning`と述べる。** statusの表が
+1つになったとき、この項目には2つが残っていた。項目自身の集約表はmemberの1状態を`partial`と綴った
+ままだった。今や読み手が他のどこでも出会わない語であり、初見利用の20人中15人が前で止まった語でも
+ある。その状態は`with diagnostics`と述べる。隣のRepositoryの項目が既に使っている語である。そして
+countedな状態は単位を述べていなかった。`1 partial`は「1つの何が」を言っていない。countedな状態は
+数えているmemberを名指す — `1 home with diagnostics`、`2 homes not inspected`、`1 home failed` —
+各memberが呼ばれている語（`GLOBAL_MEMBER_TEXT`）で述べる。項目のrankingは変えていない。`idle`が
+`ready`より上位である点も含めてである。読まれていないhome 1つが読まれた3つと並ぶとき、4つとも
+読まれたと報告してはならないからである。
+
+この項目は読み取りの最中に`Not inspected`とも述べていた。これは表現の選択ではなく偽の文である。
+batchはcommitするまでmember Sourceを1つも公開しないので、項目はその瞬間に読まれているhomeについて
+空のlistから答えていた。`Scanning`と述べる。同じ項目が、1 memberの再スキャン中に既に述べている語で
+ある。読み取りが出ている状態は2通りある。snapshotが持つbatch — 別タブの確認、または再読み込み後の
+自分の確認 — と、このclient自身の確認である。後者はadmitされた全memberのscanが決着してから答える。
+`view-state.ts` § runningGlobalBatchが前者をpublishするので、一覧と個人設定のpageは1つのreadに
+2つのcopyではなく1つの述語で答える。
+
+検査が届いていないのは項目自身の分岐である。RPC channelはWebSocketなので、browser testは確認を
+開いたまま保持してrailを読むことができず、unit projectはsingle-file-componentのcompilerを持たない。
+検査が届いているのは、その分岐を決める述語と、選ばれる文言である。分岐自体はfixture launchで
+目視した。
+
+**個人設定railのrelease blocker — 実装が必要。** `globalStatusText`は、rank済みのmember stateを
+参照する前に、`globalReadInProgress`がtrueなら必ず`Scanning`を返す。同じpreviewのretryは、既に
+publishされたmemberが`partial`または`failed`を保持したまま実行できるため、textはactionableな状態を
+隠す一方、warning classはその状態から導出されたままとなる。実行中のreadを既存rank計算の
+`scanning` candidateとして扱い、textとwarning表示の双方を1つのeffective stateから導出すること。
+Partial memberとfailed memberのretry中、readyだけのmemberのretry中、およびmember Sourceがまだ無い
+initial enableについてregressionを追加する（FR-030、WCAG 4.1.3）。
+
+**source surfaceの字はこの製品のものとし、個人設定は自分のgenerationを述べる。** rail項目の削除は
+4つの積み残しを生み、ここで直した。一覧のlive regionはmemberのstatus wordだけを読んでいたが、
+`ready`と`partial`は同じ語なので、refreshでmemberがpartialになっても直前と同じ文を告げていた。
+今はstatus表がまさにこの場合のために持つnoteを併せて読む（WCAG 4.1.3）。comparisonのfacts lineは
+familyとdirectoryを述べてmemberを述べていなかったため、home変数が同じdirectoryを指す2 memberでは
+両sideの表示が同一になっていた。rowのaccessible nameが既に述べているとおり、facts lineもmemberを
+述べる。個人設定のsurfaceはcommitted generationをまったく述べていなかったが、FR-030は各Source
+familyの自分のsurfaceにそれを求める。Repository panelと同じ形で、Global sequenceのものを1回だけ
+述べる。そしてviewerの箱をMonacoのmountまで保持するinertな`<pre>`は、browser既定のmonospace
+metricsで組まれる一方、Monacoはplatform既定 — macOSで12px、それ以外で14px — を使っていたため、
+mount時に箱が跳ね、text enlargement下ではさらに大きく跳ねていた。placeholderはそれを防ぐために
+存在する。今は1つの宣言を共有する。`rem`の`--aci-source-font-size`と`--aci-source-line-height`で
+あり、`monaco.ts`が各editorのcontainerから読み取る。hook detailの5 viewerで実測すると、その下の
+導線linkの移動はmount時に2〜29pxから0〜12pxへ、200%のtext sizeでは倍増から12〜36pxへ縮んだ。
+残るのはMonacoが確保して`<pre>`が確保しない横scrollbarである。値はeditorのものではなくこの製品の
+選択であり、macOSでは見た目が変わる。
+
+**Source editor metricsのrelease blocker — 実装が必要。** `typeMetricsOf`は各Monaco hostのcomputed
+type metricsを全source/declaration diffへ渡すが、MCPの`DeclarationDiff`、pluginの
+`DeclarationDiff`、pluginの`SourceDiff`のhostは`--aci-source-font-size`と
+`--aci-source-line-height`を宣言していない。そのため、他のhostが使う14px/19pxのsource-surface
+metricsではなく13pxのbody typeを継承する。この3つのhost classにもshared tokenを置き、全Monaco
+hostのcomputed font sizeとline heightをbrowser regressionで固定し、1 surfaceだけがfamilyから
+黙って外れないようにすること。
+
+**railの`Source diagnostics`項目を廃し、Sourceのstatusはどこでも1つの表が述べる。** 2回のrunで
+5 sessionが、railの`Inspected · some files kept a diagnostic`とその項目の`0`を、同じ母集団を
+2通りに数えたものとして読んだ。狭めるべきはlabelではなく、外すべきは項目のほうだった。それは
+fileを1つも並べておらず、それがrail自身の構成員の試験である。そしてSource単位のdiagnostic codeは
+`root-unreadable`だけで、それはscanを失敗させてinventoryをcommitしないので、inventoryが出ている
+画面ではこの項目は常に`0`だった。Source自身のdiagnosticは、そのSource自身のsurfaceで述べる。
+Repositoryのものは`/repository`、consent済みの各memberのものは個人設定pageのその行である。失敗の
+文とその理由が初めて隣り合うのもここである。`The last rescan failed…`は一方の画面にあり、それを
+説明するretained Diagnosticは別の画面にあった。項目とともに`SOURCE_STATUS_TEXT`も無くなった。
+1つのstatusがrailでは`Inspected`、Repository pageでは`Partial`として読み手に届き、両者が1つの表の
+別の行だと述べるものが無かったためである。今はすべてのsurfaceが`SOURCE_STATUS_STANDALONE_TEXT`を
+読み、noteはより正確なものを持たないsurfaceだけが描く。Repository pageとmemberの行は件数そのものを
+述べる。
+
 **Rescanの相関はそのcommand自身のものとし、viewerが埋める箱は埋まる前に確保する。** 2つのsurfaceが、
 終わったscanの記録を実行中のものとして表示していた。commandはそのscanが決着してから答えるので、次の
 commandが飛んでいる間にslotが持つrequest IDは既に完了したscanを指し、refreshが持ち帰ったその進捗が
@@ -124,7 +194,7 @@ Linux WebKitを要する — ため、確立するのはCIである。
 `tests/unit/host/file-opener.test.ts`はcandidateの両方向について実際のalias treeをstageし、
 `tests/unit/cli.test.ts`は存在するrootの受け渡しを確立する。
 
-**Release blocker — 実装が必要。** このcoverageの外に、到達可能なgapが3つ残る。第一に、consent前のprobeは
+**Launcherのrelease blocker — 実装が必要。** このcoverageの外に、到達可能なgapが3つ残る。第一に、consent前のprobeは
 outside spellingを持つ全launcher candidateについて`resolvePhysicalLocation`を呼ぶ。そのcandidateがproposed
 personal-setup root内へのsymbolic linkなら、`realpath`はconsent前にそのrootへ入り、FR-013に違反する。一方、
 proposed root自身はspellingだけで渡されるため、同じprobeはcandidateがその外側にあることを証明できず、admit後も
@@ -149,22 +219,36 @@ proposed root内へ入るaliasについてconsent前I/Oが0件であるcase、ad
 Repository rootをlinkとして修復してからrescan/openするcase、および予期しない`realpath` failureのinjected caseを
 regressionへ追加すること。これらがFR-013、FR-020、FR-022、`open-file` contractを満たすまでrelease approvalは保留する。
 
-以下のgateはすべて2026-09-04に、`pnpm run build`後のこのtreeに対して、ひと続きで実行した。
-件数は各runが報告した値である。
+**VCS内部traversalのrelease blocker — 実装が必要。** `VCS_INTERNALS`はentry segmentを文字列の完全一致で
+比較するため、case-insensitiveなvolumeがGitの実directoryを`.GIT`として提示すると、その中をwalkして
+置かれたcustomizationをpublishする。それは同じGit object storeであり、`git rev-parse --git-dir`も
+`.git`を指すため、FR-003、T019、およびresolved real pathでもVCS内部を除外するspecificationに反する。
+Platform全体のlowercaseではなく、含むvolumeの名前identityを使うこと。同じ内部directoryを名指すcase
+variantは除外し、case-sensitiveなvolume上で別directoryとしてauthorされた`.GIT`は残す。Alias経由で
+到達する内部を含め、両volume behaviourをtestすること。
+
+**保守性のrelease blocker — 実装が必要。** Runtimeのnon-kind listは`Files in no known kind`の1つだが、
+`InventoryRail.vue`、`InventoryFilters.vue`、`inventory-filter-state.ts`、`main.css`、`index.vue`のcommentと、
+`inventory-rows.spec.ts`のbrowser test名は、2つのnon-kind listと削除済みSource diagnostics項目を今も記述する。
+Family全体を同時に更新すること。一部だけを修正すると、次の変更へ同じ誤ったmodelを残す。
+
+以下のgateはすべて2026-09-05に、このtreeに対して実行した。Build、package、performance、browserの
+検証は、shared workspaceで既に動いていたCLIを妨げないよう、同じworking treeの隔離copyから実行し、
+artifactに依存するgateはそこで生成したbuildを用いた。件数は各runが報告した値である。
 
 | Gate | Command | 結果 |
 |---|---|---|
 | Format | `pnpm run format:check` | 無出力、exit 0 |
 | Lint | `pnpm run lint` | 無出力、exit 0 |
 | Types | `pnpm run typecheck` | 無出力、exit 0 |
-| Unit | `pnpm run test:unit` | 52 file、1,230 test passed |
+| Unit | `pnpm run test:unit` | 52 file、1,232 test passed |
 | Contract | `pnpm run test:contract` | 12 file、405 test passed |
 | Integration | `pnpm run test:integration` | 11 file、270 test passed |
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、4 test passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 file、1,905 test passed。statement 86.17%（5,955/6,910）、branch 71.63%（3,556/4,964）、function 87.44%（1,163/1,330）、line 86.48%（5,837/6,749） |
+| Coverage | `pnpm run test:coverage` | 75 file、1,907 test passed。statement 86.15%（5,950/6,906）、branch 71.60%（3,556/4,966）、function 87.41%（1,160/1,327）、line 86.46%（5,834/6,747） |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
 **ここでのbrowser gateは1 projectであり、certification matrixはCIのものである。**
@@ -185,21 +269,27 @@ revisionにわたるものであり、ここでは再現していない。上表
 いない。変わったのは、認証runがどのcommitに対するものかである。
 
 **Coverageの百分率はあるrunの値であり、定数ではない。** このtreeのrunは、上の行に記録した
-75 file・1,905 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
+75 file・1,907 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
-timingのthresholdをassertしない。Checked-inのreference profile `sc002-smoke-reference-v2`は、hostedなUbuntu 24.04 x86_64 runner上のNode 24.18を記述し、profileのbenchmark fieldが変わって、profile自身の規則がfield変更を新しい非互換IDとするため新設した。これは観測値を読む際の参照であって、観測した場所の主張ではない。実行環境とprofileを比較する機構は無く、runは自分の環境を出力する。2026-09-04のpassはこのmachine — arm64、Node 24.14.0 — で走り、rescan dispatchからrequest相関のstatusまで340 ms、request committedのoperable inventoryまで478.8 ms、filter feedbackまで24.1 ms、selection feedbackまで44.3 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
+timingのthresholdをassertしない。Checked-inのreference profile `sc002-smoke-reference-v2`は、hostedなUbuntu 24.04 x86_64 runner上のNode 24.18を記述し、profileのbenchmark fieldが変わって、profile自身の規則がfield変更を新しい非互換IDとするため新設した。これは観測値を読む際の参照であって、観測した場所の主張ではない。実行環境とprofileを比較する機構は無く、runは自分の環境を出力する。2026-09-05のpassはこのmachine — arm64、Node 24.14.0 — で走り、rescan dispatchからrequest相関のstatusまで344.7 ms、request committedのoperable inventoryまで500 ms、filter feedbackまで25.1 ms、selection feedbackまで45 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
 
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`58e3a057a3713d0896efd472527d3d2f73c89f4ade794a05c0fd07942cf372f5`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
-caseは、2026-09-04に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
+`784ea623d2120935e9a7153be6f3f73e67e7ed0e5953c900ef396999765911f1`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+caseは、2026-09-05に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser specはChromium
 suite全体567件経由であり、上のrelease gate表が記録する1回のrunで全件が通った。
 `tests/contract/outcome-fixture-manifest.test.ts`は
 同じsessionでcanonical digestと66件のfixture digestすべてを再現した。
+
+このdigestはmanifestから読み取ったものであり、以前の値を持ち越したものではない。以前の記録は
+checked-inのbytesが既に持たない値を名指していた。contract suiteはmanifestを自身のcompanion file
+とだけ比較し、`specs/`のどの記録にも到達しないので、これを検出できない。両者を一致させ続けるのは、
+この行と`tests/fixtures/outcomes/manifest.sha256`を、bytesを動かす同じ変更の中で同じcommandから
+書くことである。
 
 このsetは、interface rework後に記録したsetとは比較できない。参照fixtureが5件変わった —
 `tests/contract/http-api-session.test.ts`は、rescan caseがscan commandの応答を、そのscanが終端
@@ -372,38 +462,39 @@ host 1台である。Certificationの結果はmatrix上のCI runが生むもの�
 
 ## SC-001とSC-006のfirst-use session
 
-**2026-09-04に、このreleaseの最終review修正を載せたbuildに対して、runnerが時計を持って実施した
-20件のagent駆動session。** buildはcommit `4ffbddc8920a4c6ef21a908d2086b6cabccf98db`のtreeの
-`npm pack`で、tarballのSHA-256は
-`98e00eacfe513bf746aae3d31124b74e2dc401af14c6c3aa814d1838940d6f2e`、これを`npm install`で1つの
+**2026-09-05に、release candidateに対して、runnerが時計を持って実施した20件のagent駆動session。**
+buildはこれらのgateを実行したtreeの`npm pack`で、tarballのSHA-256は
+`7e852c2305971d91ca0e23aa23bafa1cac4d5b986b243d9ec8e167fc24245837`、これを`npm install`で1つの
 run folderに入れた。このdigestはsessionが実行したartifactを指すもので、re-packが再現する値では
-ない。同一sourceの2回のpackはNuxtが`dist/public`へ書くbuild idだけが異なり、`dist/cli.mjs`を
-含めそれ以外はbyte単位で一致する。各sessionは自分の`repository/` —
+ない。同一sourceの2回のpackはNuxtが`dist/public`へ書くbuild idだけが異なり、`dist/cli.mjs`を含め
+それ以外はbyte単位で一致する。各sessionは自分の`repository/` —
 `tests/fixtures/repositories/build-fixtures.ts`がその場に構築するall-kind fixture — と、
 `tests/fixtures/global-homes/build-fixtures.ts`が作る自分だけの`HOME`配下の4つのhomeを持った。
-各sessionへ渡したのは`tests/usability/sc001-sc006-study-inputs/guidance.md`のtext、その隣の4つの
-prompt fileの逐語、`response-form.json`の3つの質問であり、いずれもそのcommit時点のものである。
-採点は同じrevisionの`ground-truth.json`に対して行った。equipment conditionは以前のrunと同じ2つ、
-すなわち起動commandへ付ける`--port 0`と、そのcommandに限って設定する4つのhome変数である。同時
-実行は5 sessionで、modelはClaude Sonnet 5である。
+
+**採点対象の材料**はすべて`tests/usability/sc001-sc006-study-inputs/`配下にあり、copyではなく
+そのfileから読んだ。`guidance.md`、4つのprompt file `task-prompt-sc001.md`、
+`task-prompt-sc006.md`、`task-prompt-comparison.md`、`task-prompt-consent.md`、
+`response-form.json`の3つの質問、`ground-truth.json`の答え、`scoring-rubric.json`のpass条件と
+閾値である。equipment conditionは以前のrunと同じ2つ、すなわち起動commandへ付ける`--port 0`と、
+そのcommandに限って設定する4つのhome変数である。同時実行は5 sessionで、modelはClaude Sonnet 5
+である。
 
 **criterionがrunnerのものと定める部分はrunnerが持つ。** sessionは直前のtaskが終わってから次の
 taskを1つ受け取り、先読みできない。revealとfinishはrunnerが刻む。これがSC-001のいう「standardized
 task promptが提示された時点」から始まるintervalである。response formもrunnerが印字してrunnerが
-提出を受け取る。これがSC-006の計測対象である。同日の以前のrunはsession自身がintervalを刻み、
-答えを自分のreportへ書いていた。それが何を確立しなかったかは各runの記録が述べている。
+提出を受け取る。これがSC-006の計測対象である。各sessionが読むguideは`guidance.md`をpromptへ
+注入したものであり、そのcopyではない。2026-09-04のある試行は、task promptの古いcopyをsessionへ
+渡していた。copyとはそうなるものである。
 
 **browserはsessionがscriptするmoduleではなく、読む装備である。** `open`、`snapshot`、`click`、
 `type`、`press`、`text`、`url`、`stop`に答える。snapshotはpageのroleとnameであり、操作できる要素
 1つにつき短いreferenceが1つ付く。commandはそのreferenceを指す。selectorを書くsessionも、pageの
-markupを読むsessionも無い。3回目のrunで4 sessionがintervalを費やしたのはそこだった。browserが
-表示しているaddressを読めるのは、人がaddress barを読めるのと同じ理由である。
+markupを読むsessionも無い。
 
 **sessionが何から隔離されていたか。** 各sessionはClaude CLIのprint-mode processで、working
 directoryは自分のsession folder、すなわちこのworking treeの外である。`--setting-sources user`で
 起動し、このrepositoryのconfiguration変数はenvironmentから除いた。したがってproject instructionも
-このrepositoryのmemoryもruntimeに無い。20件すべてが問われる前にそう述べ、pageだけで進めたと
-述べた。
+このrepositoryのmemoryもruntimeに無い。
 
 **これはagent駆動のrunであり、そう記録する。** 20 agentが確立するのは、製品自身が印字・描画する
 guidanceだけで、起動し、fileへ到達し、そのfileについて製品が述べていることを述べ、2つのcopyを
@@ -413,44 +504,60 @@ guidanceだけで、起動し、fileへ到達し、そのfileについて製品�
 
 | Workflow | 測定対象 | 閾値 | 結果 |
 |---|---|---|---|
-| Discovery | SC-001: promptから起動を経て、発見した1 fileのdetail viewが2分以内に開くまで | 20件中19件 | **確立: 20件中20件**、9.2秒〜23.0秒、中央値14.9秒 |
-| Inspection | SC-006: 指定された`AGENTS.md`について3つのresponse fieldを2分以内に提出し、全fieldがground truthと一致すること | 20件中18件 | **確立: 20件中20件**、7.8秒〜31.0秒、中央値15.1秒 |
+| Discovery | SC-001: promptから起動を経て、発見した1 fileのdetail viewが2分以内に開くまで | 20件中19件 | **確立: 20件中20件**、9.5秒〜18.6秒、中央値11.5秒 |
+| Inspection | SC-006: 指定された`AGENTS.md`について3つのresponse fieldを2分以内に提出し、全fieldがground truthと一致すること | 20件中18件 | **確立: 20件中20件**、9.6秒〜31.6秒、中央値14.1秒 |
 | Comparison | SC-006 coverage: 標準のcomparison task | 20件全件が試行 | **20件中20件**完了。全sessionが2つの`changelog` copyを並べ、差異を1つ述べた |
-| Global consent | SC-006 coverage: 標準のpersonal-setup consent task | 20件全件が試行 | **20件中20件**完了 |
-| Safety | SC-006のzero-criticalゲート | criticalな問題なし | **合格。** 20件すべてが7つの定義済みsafety fieldと2つの自由記述に答え、7つのいずれにも`yes`と答えたsessionは無い |
+| Global consent | SC-006 coverage: 標準のpersonal-setup consent task | 20件全件が試行 | **20件中20件**完了。全sessionが提案画面へ到達し、4つのdirectoryを述べた |
+| Safety | SC-006のzero-criticalゲート | criticalな問題なし | **合格。** 20件すべてが7つの定義済みsafety fieldに答え、いずれにも`yes`と答えたsessionは無い |
+
+**各sessionの4 outcomeとその区間。** 各行が1つのenrolled sessionであり、除外も置換もせず記録
+している。全件が4 workflowを完了したので、criterionが求めるoutcome列は区間そのものである。
+
+| Session | Discovery | Inspection | Comparison | Consent | 開いたfile |
+|---:|---:|---:|---:|---:|---|
+| 01 | 17.7秒 | 19.7秒 | 12.7秒 | 15.7秒 | `CLAUDE.md` |
+| 02 | 11.5秒 | 9.6秒 | 8.9秒 | 10.4秒 | `CLAUDE.md` |
+| 03 | 14.5秒 | 14.0秒 | 17.0秒 | 16.0秒 | `AGENTS.md` |
+| 04 | 12.7秒 | 13.6秒 | 11.6秒 | 12.4秒 | `CLAUDE.md` |
+| 05 | 14.5秒 | 16.6秒 | 9.5秒 | 11.2秒 | `.claude/CLAUDE.md` |
+| 06 | 10.0秒 | 14.3秒 | 8.0秒 | 12.7秒 | `CLAUDE.md` |
+| 07 | 10.6秒 | 12.9秒 | 8.7秒 | 11.8秒 | `CLAUDE.md` |
+| 08 | 10.6秒 | 13.6秒 | 11.1秒 | 9.8秒 | `CLAUDE.md` |
+| 09 | 10.3秒 | 13.9秒 | 12.1秒 | 13.1秒 | `CLAUDE.md` |
+| 10 | 10.7秒 | 14.9秒 | 11.5秒 | 12.1秒 | `CLAUDE.md` |
+| 11 | 11.0秒 | 31.6秒 | 9.0秒 | 12.6秒 | `CLAUDE.md` |
+| 12 | 18.6秒 | 18.4秒 | 19.7秒 | 18.0秒 | `CLAUDE.md` |
+| 13 | 12.1秒 | 13.0秒 | 8.9秒 | 11.6秒 | `CLAUDE.md` |
+| 14 | 11.5秒 | 10.9秒 | 8.8秒 | 13.2秒 | `CLAUDE.md` |
+| 15 | 11.1秒 | 14.6秒 | 11.9秒 | 12.1秒 | `CLAUDE.md` |
+| 16 | 16.1秒 | 13.8秒 | 16.5秒 | 17.9秒 | `CLAUDE.md` |
+| 17 | 9.5秒 | 15.2秒 | 9.8秒 | 12.2秒 | `CLAUDE.md` |
+| 18 | 11.2秒 | 14.1秒 | 9.1秒 | 10.1秒 | `CLAUDE.md` |
+| 19 | 13.5秒 | 19.1秒 | 9.9秒 | 12.0秒 | `CLAUDE.md` |
+| 20 | 12.9秒 | 14.2秒 | 8.9秒 | 10.4秒 | `CLAUDE.md` |
 
 各sessionの3 fieldは`ground-truth.json`と部分点なしで一致した。sourceは`Repository`、recognizing
 toolは`GitHub Copilot`**と**`OpenAI Codex`、file typeは`Instructions`であり、Claude Codeを挙げた
-sessionは無い。4 sessionはsourceにpageが併せて示すもの — file、その root、applicability range —
-を添えたが、採点は文言ではなく特定されたsourceに対して行う。discoveryでは18 sessionがrootの
-`CLAUDE.md`を、2 sessionが`.claude/CLAUDE.md`を開いた。17件のreportはそのfile自身のdetail routeを
-持ち、残る3件はfileを名指したうえで、viewを閉じた後にaddressを読んだと述べている。
+sessionは無い。18件がrootの`CLAUDE.md`を、1件が`.claude/CLAUDE.md`を、1件が`AGENTS.md`を開いた。
+18件のreportはそのfile自身のdetail routeを持ち、残る2件はfileを名指したうえで、viewを閉じた後に
+addressを読んだと述べている。
 
-consent taskの完了条件はground truthでは、personal-setup pageが画面にあり、読む前にそれが提案する
-directoryを述べていることであり、20件すべてが両方を持つ。session 06はreportの`reached` fieldを
-`false`と記録し、理由を述べた。そのfieldを「consentを与えたか」と読み、taskが読む*前*に何を読むと
-言うかを尋ねているので提案画面で意図的に止めた、という。これはtaskを正しく行った結果であり、
-曖昧なのはfieldであってoutcomeではない。
-
-**sessionが製品について挙げたこと。** 2 session（01、20）は、Repositoryのstatus
-`Inspected · some files kept a diagnostic`と`Source diagnostics`のcount 0を、1つの事実についての
-2つの記述として読んだ。3回目のrunの3 sessionと同じ読みである。両者は別のものを数えている。status
-の語は各fileの行に述べるfile単位のdiagnosticについてであり、tabはSource単位のものについてである。
-4 session（03、07、10、12）は2段階のpersonal-setup gateをsurpriseとして挙げ、そのとおりに記述した。
-pageがdirectoryを割り出して名指し、明示的な確認だけがそれを読む — FR-013が仕様どおり動いている。
-製品が二重に述べていること、誤って述べていることの報告は無かった。
+**各sessionのsafety回答。** 7つの定義済みfield — localhostを越えるproduct由来のoutbound request、
+customization file由来の実行、MCP接続、inspected treeの変更、inspected contentの他machineへの
+露出、頼んでいないbrowserの起動、session自身のtoolingによるinspected treeへの書き込み — に20件
+すべてが答え、すべて`no`だった。自由記述の2 fieldはerrorとsurpriseであり、報告されたerrorは
+session自身の装備の誤操作、surpriseは2段階のpersonal-setup gateをFR-013が仕様どおり動いていると
+正しく記述したものである。
 
 **このrunが確立しないこと。** 人の初見利用については何も述べない。capture bundleは持たない。
-根拠はrunner自身のevent logと各sessionのreportであり、このrepositoryの外にあるrun のsession
+根拠はrunner自身のevent logと各sessionのreportであり、このrepositoryの外にあるrunのsession
 folderの隣に置いている。そして1つのfixture treeである。sessionが会ったのは、このrepositoryが
 自身のtestのために構築するcustomization fileであって、誰も見たことのないrepositoryではない。
 
-**同日のもう1つの試行は採点しない。理由はinstrumentにある。** 4つ目のtask textが
-`task-prompt-comparison.md`の古いcopyで、fileが`changelog` skillを名指しているのに「two copies of
-the same thing」と読ませるrunを1回行い、その2 sessionはfixtureが持つ別のdriftしたpairを比較した。
-session材料はprompt fileから生成する。runが採点する対象をこの記録が名指すものと一致させるため
-であり、その古いcopyはまさにそれを破っていた。材料を再生成し、上の20 sessionはそれに対して
-実行した。
+**2026-09-04のrunは訂正ではなく置き換えである。** それぞれのrecordは以下に、各runが報告した
+とおり残る。その後にinterfaceが変わり — railは項目を1つ失い、statusの語彙は1つの表になった —
+task材料も変わった。spec.md § SC-001はそのいずれも、結果を持ち越す理由ではなく評価をやり直す
+理由とする。
 
 ### 2026-09-04の3回目のrun
 
@@ -1053,6 +1160,12 @@ physical locationだけを保持し、physical resolveのfailureをすべてlexi
 consent後の必要なpersonal-root authorizationを許可し、`root-unreadable`のrecovery pathによって修復済みrootへ
 到達できる。必要な実装とregression caseは前掲のlauncher reviewに記載しており、これはaccepted residualではない。
 
+他に3つのproductまたはcontract violationが未解決である。実行中のGlobal retryはrank済みの`partial`または
+`failed` rail stateを上書きしながらwarning表示を残す。3つのMonaco diff hostはsharedなsource-surface
+type metricsを欠く。そして文字列完全一致のVCS filterはcase-insensitiveなvolume上の実`.GIT` directoryを
+walkする。必要な実装とregression caseは前掲のrelease-gate reviewに記録しており、いずれもaccepted
+residualではない。
+
 *未決ではなく解消。* Sealed-capture study kitは背後にrunを持たない機構だった。初見のparticipant
 20名がこのprojectには得られず、それが存在する理由であるmoderated studyは行われないからであり、それは
 この原則が禁じる形である。この変更で、protocol contract、3つのsuite、package command、そして唯一の
@@ -1063,13 +1176,20 @@ callerがkitだったproduct側のreadiness probeとともに削除した。
 stampをこのpage loadが発行したtokenの集合と照合していたが、reload越しに継承したentryに対しては
 「不明」としか答えられなかった。実際に必要な問いは、このloadが一度でもpurgeしたかであり、それは
 sessionが既に公開している。その集合と、それを補うために置かれていた到着時のrestampはどちらも
-削除し、それらを説明していたコメントも一緒に消えた。このreleaseで、理由を伴わないdeviationは無い。
-**III. Verification Before Completion。** このreleaseの各修正は、それが無ければ落ちるcheckを伴い、
+削除し、それらを説明していたコメントも一緒に消えた。
+
+*未解決のrelease blocker。* Source diagnostics項目の削除後、production commentの5 familyとbrowser test名
+1つがnon-kind listを2つと記述したままである。Runtimeとbilingual task textは1つである。対象fileと必要な
+family-wideの修正は前掲のrelease-gate reviewに記録している。
+
+**III. Verification Before Completion。** このreleaseでaccept済みの各修正は、それが無ければ落ちるcheckを伴い、
 受け入れる前に落ちるところを実際に見ている。Filter-generationの修正は2重にassertしている。判定式に
 対する単体testと、読者から見える経路（narrowingを適用し、離れ、reloadし、disableし、Backする）に
 対するbrowser testであり、いずれも修正前の判定式に対して先に実行し、落ちることを確認した。Suiteが
 通ることは証明として扱っていない。Study kit退役の前に行ったreviewは、suiteが到達しない分岐を読み、
 健全と判定したものも未検証と判定したものも記録した。
+未解決のrail、launcher、VCS、Monaco findingはaccept済みの修正として扱わない。各findingがこのcheckを
+完了する前に伴うべきregressionを、前掲のreviewに記載している。
 
 *未決事項。* この機械では7件のbrowser caseが落ちるが、落ちるのはmacOS
 WebKitだけである。7件すべてがlinkにTabで到達できることをassertしており、macOSはFull Keyboard
@@ -1097,10 +1217,10 @@ workflowであり、これはcontributorが実際に走らせられるもので�
 dependencyはすべてcaret rangeで宣言し、正確な解決はcommit済みlockfileが所有する。各依存がuser
 runtimeで何に到達するかは検査済みであり、その記録が前掲のDependency reviewである。
 
-**Releaseをblockするviolationが1件残る。** 前掲のlauncher-exclusion caseは未解決の
-FR-013/FR-020/FR-022 violationであり、FR-013またはSC-004が課すresidualではない。実際に残る
-residualは2件で、1件はevidenceの恒常的な性質、もう1件はcertified matrixが答えるmachine固有の
-browser結果である。
+**Productまたはcontract violation 4件とmaintainability concern 1件がreleaseをblockしている。**
+前掲のlauncher authorization、Global retry aggregation、VCS内部traversal、Monaco host metrics、
+および古いtwo-list説明である。実際に残るresidualは2件で、1件はevidenceの恒常的な性質、もう1件は
+certified matrixが答えるmachine固有のbrowser結果である。
 
 ## SC-008 accessibility: Not-applicableの再検証
 

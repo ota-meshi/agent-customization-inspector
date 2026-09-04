@@ -3,45 +3,42 @@
 // The rail lists three groups, and only two of them select a panel. The Source
 // families at the top are routes — a Source's own state is a surface of its
 // own, not a list of files — while everything below them selects what the
-// panel beside the rail shows: one of the closed customization kinds, the
-// files no kind lists, or the diagnostics that belong to no single file.
+// panel beside the rail shows: one of the closed customization kinds, or the
+// files no kind lists.
 //
 // Membership follows one test. A list of files is a rail entry, whatever its
 // heading; a Source's state is a route. That is what puts `Files in no kind`
-// and `Diagnostics` here rather than below the inventory, where they used to
-// sit behind a disclosure and a heading a reader reached by scrolling past
-// sixty rows.
+// here rather than below the inventory, where it used to sit behind a
+// disclosure and a heading a reader reached by scrolling past sixty rows — and
+// what kept a Source's own diagnostics out: they list no file, they are a
+// Source's state, and each Source's own surface is where they are stated.
 import { CUSTOMIZATION_KIND_TEXT, type CustomizationKind } from '../../../shared/entities';
 
 /**
- * The two panels the rail selects that are not a customization kind. Kept as
- * their own union rather than widened into `CustomizationKind`: neither is a
- * kind a rule recognizes, and a kind catalog that named them would be a second
- * copy of the shipped catalog with two extra members (data-model.md
- * § Inventory unit).
+ * The panel the rail selects that is not a customization kind. Kept as its own
+ * union rather than widened into `CustomizationKind`: it is not a kind a rule
+ * recognizes, and a kind catalog that named it would be a second copy of the
+ * shipped catalog with an extra member (data-model.md § Inventory unit). One
+ * member today, and a union because what it is stays true of it: a later list
+ * that is no kind's inventory joins it here.
  */
 export type NonKindSelection =
   /** Files an inspection rule admitted that no kind tab lists. */
-  | 'files-in-no-kind'
-  /** Diagnostics that belong to a Source rather than to one of its files. */
-  | 'diagnostics';
+  'files-in-no-kind';
 
-/** Everything the rail can put in the panel: a recognized kind, or one of the two lists. */
+/** Everything the rail can put in the panel: a recognized kind, or the one list that is no kind's. */
 export type InventorySelection = CustomizationKind | NonKindSelection;
 
 /**
  * The closed presentation order of {@link NonKindSelection}, which is also the
- * order the rail renders them in: the files first, because a file in no kind
- * is still a file the reader was looking for, and the Source-level diagnostics
- * last, being the only entry that lists no file at all.
+ * order the rail renders it in.
  *
  * Typed as a non-empty tuple, because the inventory's default selection is its
- * first entry: a generation that recognized no kind still has these two, so
+ * first entry: a generation that recognized no kind still has this one, so
  * there is always an entry to select (`pages/index.vue` § activeSelection).
  */
 export const NON_KIND_SELECTION_ORDER: readonly [NonKindSelection, ...NonKindSelection[]] = [
   'files-in-no-kind',
-  'diagnostics',
 ];
 
 /**
@@ -90,23 +87,10 @@ export const INVENTORY_SELECTION_UNIT_TEXT: Readonly<
   'settings/config': { one: 'file', many: 'files' },
   /** One file an inspection rule admitted that no kind lists. */
   'files-in-no-kind': { one: 'file', many: 'files' },
-  /** One diagnostic belonging to a Source rather than to one of its files. */
-  diagnostics: { one: 'diagnostic', many: 'diagnostics' },
 };
 
 export const INVENTORY_SELECTION_TEXT: Readonly<Record<InventorySelection, string>> = {
   ...CUSTOMIZATION_KIND_TEXT,
   /** The heading the list of rule-admitted, kind-less files carries. */
   'files-in-no-kind': 'Files in no kind',
-  /**
-   * The heading the Source-level diagnostic list carries. It names the unit it
-   * counts, because every other item in the rail's group counts the rows of a
-   * file list and this one counts a Source's own diagnostics: with the same
-   * shape and no qualifier, a reader carries the rule the siblings taught them
-   * and reads `0` against a Source's own `14 files kept a diagnostic` as the
-   * same population counted twice (AGENTS.md § Consistency). The qualifier
-   * belongs on the label rather than in the panel's note, because the label is
-   * what a reader has before deciding whether to open the panel.
-   */
-  diagnostics: 'Source diagnostics',
 };

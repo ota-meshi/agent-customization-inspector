@@ -274,6 +274,10 @@ onBeforeUnmount(() => {
 /* Monaco lays out inside a sized box and collapses to nothing without a
    definite height; the same sizing contract as the single-file viewer. */
 .aci-instruction-source-diff {
+  /* The type every read-only source surface is laid out in, which `monaco.ts`
+     reads off this element rather than keeping a copy (§ typeMetricsOf). */
+  font-size: var(--aci-source-font-size);
+  line-height: var(--aci-source-line-height);
   block-size: auto;
   max-block-size: 28rem;
   border: 1px solid var(--aci-line);

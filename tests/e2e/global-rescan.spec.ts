@@ -161,7 +161,7 @@ test('keeps a partial member partial across its own rescan, counting its files',
   // Stated on the personal setup's own surface, which is where that Source's
   // state lives (FR-030). The origin leads the status inside the parentheses
   // (T1003, FR-002).
-  await expect(main).toContainText(', Partial)');
+  await expect(main).toContainText(', Inspected)');
   await expect(main).toContainText('1 file kept a diagnostic of its own');
   // The member's announcement region never empties: with no correlated
   // progress to show it states the member and the status word the row shows,
@@ -171,7 +171,7 @@ test('keeps a partial member partial across its own rescan, counting its files',
   // visually hidden — the status word is already on screen in the row's
   // labelled field, and no screen states a Source fact twice (FR-030) — so it
   // is asserted as text content rather than as visible text.
-  await expect(main).toContainText('Copilot home partial.');
+  await expect(main).toContainText('Copilot home inspected.');
 
   // A new readable file marks the rescan's commit; the broken link stays, so
   // the recommitted member is `partial` again rather than repaired by rescan.
@@ -194,9 +194,9 @@ test('keeps a partial member partial across its own rescan, counting its files',
     .toBe(1);
   // The origin now leads the status inside the parentheses (T1003, FR-002).
   await page.goto(new URL('/global-consent', host.origin).href);
-  await expect(main).toContainText(', Partial)');
+  await expect(main).toContainText(', Inspected)');
   await expect(main).toContainText('1 file kept a diagnostic of its own');
-  await expect(main).toContainText('Copilot home partial.');
+  await expect(main).toContainText('Copilot home inspected.');
 });
 
 test('retains prior results on a fatal rescan and recovers with an explicit retry', async ({

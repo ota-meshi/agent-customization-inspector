@@ -16,6 +16,7 @@
 // harness still expands, walks, and digests the fixture, and that one scan and
 // its two standardized interactions still produce a figure at all.
 import { existsSync } from 'node:fs';
+import { cpus } from 'node:os';
 import type { TestProject } from 'vitest/node';
 
 import { CLI_ENTRY } from '../e2e/launch-host';
@@ -45,7 +46,17 @@ export default async function runSmokePassOnce(project: TestProject): Promise<vo
       profileId: record.profileId,
       manifestVersion: record.manifestVersion,
       manifestSha256: record.manifestSha256,
-      environment: { architecture: process.arch, runtime: process.versions.node },
+      // The machine this pass actually ran on, printed beside the profile ID
+      // so a number taken here is never read as one taken in the reference
+      // environment the profile declares. The pass is non-gating and publishes
+      // no measurement set, so a run elsewhere is useful and is not refused —
+      // it is named (`sc002-reference-profile.json` § benchmark.notes).
+      environment: {
+        platform: process.platform,
+        architecture: process.arch,
+        logicalProcessors: cpus().length,
+        runtime: process.versions.node,
+      },
       scanRequestId: record.scanRequestId,
       baselineGeneration: record.baselineGeneration,
       committedGeneration: record.committedGeneration,

@@ -191,14 +191,9 @@ test.describe('a Claude instruction file whose declarations cannot be parsed', (
     await expect(fileEntries.filter({ hasText: 'CLAUDE.md' })).toContainText(
       'This file could not be parsed',
     );
-    // The failure is confined: the file beside it carries none, and the
-    // source-level list stays empty because the record belongs to a file.
+    // The failure is confined: the file beside it carries none.
     await expect(fileEntries.filter({ hasText: 'CLAUDE.local.md' })).not.toContainText(
       'This file could not be parsed',
     );
-    // The Source-level list is its own rail entry now: a record that belongs to
-    // a file is on that file's row, so this one stays empty (FR-028).
-    await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
-    await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
   });
 });

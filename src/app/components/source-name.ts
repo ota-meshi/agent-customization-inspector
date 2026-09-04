@@ -109,22 +109,34 @@ export function fileSourceHomeOf(sources: readonly SourceDto[], sourceId: string
 }
 
 /**
- * The Source half of one compared file's facts line: the family it is of and,
- * where that family holds more than one Source, the directory it was in — in
- * that order, ready for the kind and read-outcome facts the page appends.
+ * The Source half of one compared file's facts line: the family it is of,
+ * the member whose home it came from, and the directory it was in — in that
+ * order, ready for the kind and read-outcome facts the page appends.
  *
  * The family is stated unconditionally, unlike a list heading: a facts line
  * identifies one side on a page whose two sides can be two Sources — one
  * consented home's file beside another member's — so the family word carries
- * meaning even in a single-Source session (FR-002, FR-030). The directory
- * stays gated the way every per-file directory is
- * ({@link sourceRootOf}).
+ * meaning even in a single-Source session (FR-002, FR-030). The member and the
+ * directory stay gated the way every per-file member and directory is
+ * ({@link fileSourceHomeOf}, {@link sourceRootOf}).
+ *
+ * The member is named because the directory alone does not always tell two
+ * sides apart: two members' home variables can point at one directory, and the
+ * facts line is the whole of what identifies a side when a comparison holds
+ * exactly two files and offers no picker to step through. The row's own
+ * accessible name already carries it ({@link fileSourceQualifierOf}),
+ * so this is what a reader sees agreeing with what a reader hears.
  */
 export function sourceFactsOf(sources: readonly SourceDto[], sourceId: string): readonly string[] {
   for (const source of sources) {
     if (source.sourceId === sourceId) {
+      const home = fileSourceHomeOf(sources, sourceId);
       const root = sourceRootOf(sources, source.kind, sourceId);
-      return [SOURCE_KIND_TEXT[source.kind], ...(root === null ? [] : [root])];
+      return [
+        SOURCE_KIND_TEXT[source.kind],
+        ...(home === null ? [] : [home]),
+        ...(root === null ? [] : [root]),
+      ];
     }
   }
   return [];

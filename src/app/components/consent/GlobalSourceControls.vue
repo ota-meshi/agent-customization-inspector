@@ -19,8 +19,13 @@
 // member Global Source, which is the page's own condition for the panel.
 import { computed } from 'vue';
 import { GLOBAL_MEMBER_TEXT, SCAN_PROGRESS_PHASE_TEXT } from '../../../shared/api-text';
-import { SOURCE_STATUS_TEXT, SOURCE_BOUNDARY_ORIGIN_TEXT } from '../../../shared/entities';
+import {
+  SOURCE_STATUS_STANDALONE_TEXT,
+  SOURCE_BOUNDARY_ORIGIN_TEXT,
+} from '../../../shared/entities';
+import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import { useSessionViewState } from '../../composables/session-view-state';
+import type { SerializedDiagnostic } from '../../../shared/api-types';
 
 const sessionViewState = useSessionViewState();
 
@@ -65,6 +70,20 @@ function requestRescan(sourceId: string): void {
 }
 
 /**
+ * The sentence one retained Diagnostic's code carries, or null when the
+ * committed generation no longer holds that record. Reached by the stale
+ * overlay of a member whose failed rescan retained a Diagnostic rather than an
+ * error message.
+ */
+function messageOfDiagnostic(
+  diagnostics: readonly SerializedDiagnostic[],
+  diagnosticId: string,
+): string | null {
+  const retained = diagnostics.find((diagnostic) => diagnostic.diagnosticId === diagnosticId);
+  return retained === undefined ? null : DIAGNOSTIC_REGISTRY[retained.code].message;
+}
+
+/**
  * Each member row's own view of the shared command state: its stale overlay,
  * its correlated progress — matched against its own entry of the per-Source
  * admitted map, so neither a refused press nor another member's acceptance
@@ -77,6 +96,7 @@ const rows = computed(() => {
   const requestedSourceId = sessionViewState.globalRescanSourceId.value;
   const rejection = sessionViewState.globalRescanRejection.value;
   const staleFailures = sessionViewState.snapshot.value?.staleFailures ?? [];
+  const diagnostics = sessionViewState.snapshot.value?.diagnostics ?? [];
   return sources.value.map((source) => {
     const staleFailure = staleFailures.find((entry) => entry.sourceId === source.sourceId) ?? null;
     return {
@@ -91,12 +111,32 @@ const rows = computed(() => {
       rescanInProgress: requesting.value && requestedSourceId === source.sourceId,
       diagnosticFileCount: diagnosticFileCounts.value.get(source.sourceId) ?? 0,
       staleFailure,
-      // A stale overlay explains itself with either the failed request's real
-      // error message or a retained Diagnostic; only the message variant has
-      // text of its own, and the Diagnostic variant is already rendered by
-      // the diagnostic list.
+      // What the stale overlay says beyond "the last rescan failed": the
+      // failed request's own error message, or the sentence the retained
+      // Diagnostic's code carries. Both variants are stated on this row,
+      // because it is this member's own surface — the Diagnostic variant used
+      // to be left to a list in the inventory rail, which put the failure and
+      // its reason on two different screens.
       staleFailureMessage:
-        staleFailure?.failureRef.kind === 'error' ? staleFailure.failureRef.message : null,
+        staleFailure === null
+          ? null
+          : staleFailure.failureRef.kind === 'error'
+            ? staleFailure.failureRef.message
+            : (messageOfDiagnostic(diagnostics, staleFailure.failureRef.diagnosticId) ?? null),
+      // This member's own diagnostics, less the one the overlay above already
+      // states: a Source's own state is stated on that Source's own surface,
+      // and a file's own record is stated on that file's row (FR-028).
+      sourceDiagnosticMessages: diagnostics
+        .filter(
+          (diagnostic) =>
+            diagnostic.sourceRelativePath === null &&
+            diagnostic.sourceId === source.sourceId &&
+            !(
+              staleFailure?.failureRef.kind === 'diagnostic' &&
+              staleFailure.failureRef.diagnosticId === diagnostic.diagnosticId
+            ),
+        )
+        .map((diagnostic) => DIAGNOSTIC_REGISTRY[diagnostic.code].message),
       progress:
         source.progress !== null &&
         activeScans.get(source.sourceId) === source.progress.scanRequestId
@@ -127,7 +167,7 @@ const rows = computed(() => {
           <span class="aci-global-source-controls__root">
             {{ row.source.boundary.displayRoot }} ({{
               SOURCE_BOUNDARY_ORIGIN_TEXT[row.source.boundary.origin]
-            }}, {{ SOURCE_STATUS_TEXT[row.source.status] }})
+            }}, {{ SOURCE_STATUS_STANDALONE_TEXT[row.source.status].word }})
           </span>
           <!-- One announcement region per member, so a status that changed —
                on the rescan's own answer, which comes once its scan settled,
@@ -159,7 +199,8 @@ const rows = computed(() => {
               {{ row.progress.diagnosticCount === 1 ? 'diagnostic' : 'diagnostics' }}
             </span>
             <span v-else class="aci-visually-hidden">
-              {{ row.memberText }} {{ SOURCE_STATUS_TEXT[row.source.status].toLowerCase() }}.
+              {{ row.memberText }}
+              {{ SOURCE_STATUS_STANDALONE_TEXT[row.source.status].word.toLowerCase() }}.
             </span>
             <span v-if="row.diagnosticFileCount > 0" class="aci-note">
               {{ row.diagnosticFileCount }}
@@ -171,6 +212,14 @@ const rows = computed(() => {
               The last rescan failed, so the previous scan result is still shown and may be out of
               date.
               <template v-if="row.staleFailureMessage">{{ row.staleFailureMessage }}</template>
+            </span>
+            <!-- What this member's own diagnostics say, on this member's own
+                 row. Inside the announcement region because they are part of
+                 the state being announced: a scan that failed on the home
+                 commits no inventory for it, so this sentence is the whole of
+                 what happened to that member. -->
+            <span v-for="message in row.sourceDiagnosticMessages" :key="message" class="aci-error">
+              {{ message }}
             </span>
             <span v-if="row.rejectionText" class="aci-error">{{ row.rejectionText }}</span>
           </span>

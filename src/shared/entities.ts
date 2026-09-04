@@ -450,38 +450,26 @@ export type SourceStatus =
   /** The last attempt failed while any prior committed snapshot was retained. */
   | 'failed';
 
-/** The label shown for each status; see {@link SOURCE_BOUNDARY_ORIGIN_TEXT}. */
-export const SOURCE_STATUS_TEXT: Readonly<Record<SourceStatus, string>> = {
-  /** Label for a bootstrapped Source with no admitted scan. */
-  idle: 'Idle',
-  /** Label for a Source whose admitted scan is in flight. */
-  scanning: 'Scanning',
-  /** Label for a Global Source draining behind the disable barrier. */
-  disabling: 'Disabling',
-  /** Label for a Source whose latest commit was complete. */
-  ready: 'Ready',
-  /** Label for a Source whose latest commit retained file-confined diagnostics. */
-  partial: 'Partial',
-  /** Label for a Source whose latest attempt failed. */
-  failed: 'Failed',
-};
-
 /**
- * Source status text for a surface that states the status with nothing beside
- * it — the inventory rail's Repository entry — so the words have to carry
- * their own meaning. {@link SOURCE_STATUS_TEXT} is for the surfaces where the
- * explanation sits beside the word (the Repository page's status panel, the
- * personal-setup page's member rows). Each entry is the status word the pill
- * draws and, for the one status a word alone misstates, the note the rail
- * puts under the pill: alone, `Partial` was read as a failed scan at first
- * sight by six of twenty first-use sessions and as contradicting the rail's
- * zero source-level diagnostics by eight, so `partial` says what it is — a
- * completed read, some of whose files kept a diagnostic of their own
- * (validation.md § SC-001 and SC-006 first-use sessions). One table for both
+ * The words every surface states a Source's status in. One table, because a
+ * Source shown in two places is one fact: a second table gave the rail
+ * `Inspected` and the Repository page `Partial` for one status, and a reader
+ * moving between them had no way to know the two were rows of one table
+ * (validation.md § SC-001 and SC-006 first-use sessions).
+ *
+ * Each entry is the status word, and — for the one status a word alone
+ * misstates — the note a surface with nothing else to say puts under it.
+ * `Partial` alone was read as a failed scan at first sight by six of twenty
+ * first-use sessions, so `partial` says what it is instead: a completed read,
+ * some of whose files kept a diagnostic of their own. One table for both
  * fields rather than a word table and a note table, so a status added later
- * cannot compile with one and not the other. `Inspected` and `Not inspected`
- * are the personal-setup entry's own words, so the two Source entries speak
- * one vocabulary.
+ * cannot compile with one and not the other.
+ *
+ * A surface draws the note only when it has nothing more exact. The rail's
+ * Repository entry does; the Repository page and the personal-setup rows do
+ * not, because each states the count itself — `14 files kept a diagnostic of
+ * their own` is the same fact with the number in it, and the note beside it
+ * would be that sentence written twice (FR-030).
  */
 export const SOURCE_STATUS_STANDALONE_TEXT: Readonly<
   Record<SourceStatus, { readonly word: string; readonly note: string | null }>

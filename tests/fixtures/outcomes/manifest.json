@@ -69,7 +69,7 @@
     "tests/e2e/claude-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-instructions-inventory.spec.ts",
-      "sha256": "aacb80837a229e6006ceecdf9bf7f4d9fbb508d44bbacac7e367ff45c2acdf98"
+      "sha256": "b32bdc67e26465d7379e1da7bba1971114728ec7390b40978dbcb80b66196e60"
     },
     "tests/e2e/claude-mcp-files-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -164,7 +164,7 @@
     "tests/e2e/codex-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-instructions-inventory.spec.ts",
-      "sha256": "19cffc9a1eacd7f3c5ffc85f2bb917e591efe961d4132f7b7605f8c9b7492c1f"
+      "sha256": "e4270be813e3911e4c6b05ce0119c0d3f7fce27f8acffd07784a6f50233e5ca7"
     },
     "tests/e2e/codex-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -249,7 +249,7 @@
     "tests/e2e/copilot-instructions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-instructions-inventory.spec.ts",
-      "sha256": "ae9b6eb3c5b0ca1594a82f4f7c2956b6bfe0d31002698e2bf42cbb642b7fa882"
+      "sha256": "b704f2f52c91f942bf881278c9626e3277a26db8e639d8b478a930147b5cb7fb"
     },
     "tests/e2e/copilot-plugins-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -299,7 +299,7 @@
     "tests/e2e/inspection-safety.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/inspection-safety.spec.ts",
-      "sha256": "e87d7af54266af1cf23468aec2cbb86f0210a1207bd866adc4fab9f031b126df"
+      "sha256": "ed797d66e066d5afb28ead946c95d46e4a31f294032291a1c6be83c5204c04cd"
     },
     "tests/e2e/mcp-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -329,7 +329,7 @@
     "tests/e2e/settings-config-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/settings-config-inventory.spec.ts",
-      "sha256": "9f89ac8a7e90453b924187ae846936e47c6b8a54612298f342fe98b436d726ef"
+      "sha256": "0a5bd598d841f15cfc3bc196a477f1fa8476fb60d5a11c8632598f5b9af7d17a"
     }
   },
   "criteria": [

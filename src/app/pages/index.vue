@@ -24,12 +24,12 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 import type { SourceKind } from '../../shared/api-types';
 import { GLOBAL_MEMBER_TEXT } from '../../shared/api-text';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import DiagnosticList from '../components/diagnostics/DiagnosticList.vue';
 import InventoryFilters from '../components/inventory/InventoryFilters.vue';
 import InventoryRail from '../components/inventory/InventoryRail.vue';
 import InventoryList from '../components/inventory/InventoryList.vue';
 import ToolLegend from '../components/inventory/ToolLegend.vue';
 import UnclassifiedList from '../components/inventory/UnclassifiedList.vue';
+import { runningGlobalBatch } from '../session/view-state';
 import { useSessionViewState } from '../composables/session-view-state';
 import { recordInventoryReturnPoint } from '../router.options';
 import { useInventoryFilters } from '../composables/filters';
@@ -45,7 +45,7 @@ import {
   useInventoryFilterState,
 } from '../composables/inventory-filter-state';
 import {
-  SOURCE_STATUS_TEXT,
+  SOURCE_STATUS_STANDALONE_TEXT,
   type CustomizationKind,
   type SupportedTool,
 } from '../../shared/entities';
@@ -255,23 +255,22 @@ watch(snapshot, async () => {
 
 /**
  * How many rows each rail entry would show: the kind counts the filters
- * already derive, plus the two lists that are no kind's inventory. One map
+ * already derive, plus the one list that is no kind's inventory. One map
  * rather than a count per entry, because the rail renders one column of them
  * and a second derivation of the same numbers could disagree with the rows.
  *
- * Both non-kind entries carry the Source narrowing the rows themselves carry,
- * so the number beside an entry is the number of rows behind it.
+ * That entry carries the Source narrowing the rows themselves carry, so the
+ * number beside it is the number of rows behind it.
  */
 const railCounts = computed<ReadonlyMap<InventorySelection, number>>(() => {
   const counts = new Map<InventorySelection, number>(filters.kindCounts.value);
   counts.set('files-in-no-kind', filters.unrecognizedRows.value.length);
-  counts.set('diagnostics', filters.sourceScopedDiagnostics.value.length);
   return counts;
 });
 
 /**
- * The entry in view: the two non-kind panels when one of them is chosen, and
- * otherwise the kind the list is actually rendering.
+ * The entry in view: the non-kind panel when it is chosen, and otherwise the
+ * kind the list is actually rendering.
  *
  * Derived from what is on screen rather than from the raw choice, because the
  * two part company: a commit that takes the last row of the chosen kind away
@@ -286,8 +285,8 @@ const railCounts = computed<ReadonlyMap<InventorySelection, number>>(() => {
  * so it comes back on its own when a later commit offers that kind again.
  *
  * Total, because a tablist has one selected tab: a generation that recognized
- * no kind at all still offers the two entries that belong to none, and the
- * first of them is what is selected there. The rail derives its own tab stop
+ * no kind at all still offers the entry that belongs to none, and that is what
+ * is selected there. The rail derives its own tab stop
  * from this one value rather than defaulting a second time
  * (`InventoryRail.vue` § tabStop).
  */
@@ -296,15 +295,15 @@ const activeSelection = computed<InventorySelection>(
 );
 
 /**
- * The kind the panel is showing, or null when the entry in view is one of the
- * two that belong to no kind. Derived from {@link activeSelection} rather than
+ * The kind the panel is showing, or null when the entry in view is the one
+ * that belongs to no kind. Derived from {@link activeSelection} rather than
  * from the reader's raw non-kind choice, so the default above — the first
  * entry, where nothing was recognized — reaches the panel, the legend, and the
  * counts as the selection it already is on the rail.
  */
 const kindInView = computed<CustomizationKind | null>(() => {
   const selection = activeSelection.value;
-  return selection === 'files-in-no-kind' || selection === 'diagnostics' ? null : selection;
+  return selection === 'files-in-no-kind' ? null : selection;
 });
 
 /**
@@ -335,12 +334,10 @@ const matchCount = computed(() => {
 const totalRowCount = computed<number>(() => {
   const kind = kindInView.value;
   if (kind === null) {
-    // The two lists that belong to no kind have their own unnarrowed
-    // populations (`filters.ts`), which is what their summary compares the
-    // visible rows against.
-    return activeSelection.value === 'files-in-no-kind'
-      ? filters.unrecognizedTotal.value
-      : filters.sourceScopedDiagnosticTotal.value;
+    // The list that belongs to no kind has its own unnarrowed population
+    // (`filters.ts`), which is what its summary compares the visible rows
+    // against.
+    return filters.unrecognizedTotal.value;
   }
   const committed = snapshot.value;
   if (committed === null) {
@@ -408,24 +405,48 @@ const globalSources = computed(
 );
 
 /**
+ * Whether an accepted personal-setup read is still out, which the rail needs
+ * because a batch publishes no member Source until it commits: without it the
+ * rail's personal-setup entry says `Not inspected` of homes being read at that
+ * moment.
+ *
+ * Two ways to be out, and a reader can be on this page for either: a batch the
+ * snapshot carries — another tab's confirmation, or this one's after a reload
+ * — and this client's own confirmation, which answers only once every admitted
+ * member's scan settled, so until then no batch is in any snapshot it holds
+ * (contracts/http-api.md § enable-global).
+ */
+const globalReadInProgress = computed(
+  () =>
+    runningGlobalBatch(snapshot.value) !== null ||
+    sessionViewState.globalEnableState.value === 'submitting',
+);
+
+/**
  * The one sentence the panel's live region announces: which tools' personal
  * directories have been read, and how each ended.
  *
  * Named tools rather than a count, because that is what a reader needs to know
  * without looking — and no root, because a root belongs in the labelled field
  * below where it is stated as the escaped presentation it is (FR-002).
+ *
+ * Each member's status word carries its note where the table has one, because
+ * this sentence has nothing more exact to say and the word alone is not the
+ * whole state: `ready` and `partial` are one word, so a member that came back
+ * from a refresh with a file-confined diagnostic would otherwise be announced
+ * in the sentence it was announced in before (WCAG 4.1.3).
  */
 const globalSourcesAnnouncement = computed(() =>
   globalSources.value.length === 0
     ? ''
     : `Your personal setup was inspected: ${globalSources.value
-        .map(
-          (source) =>
-            `${source.member === null ? 'Unknown member' : GLOBAL_MEMBER_TEXT[source.member]} ${SOURCE_STATUS_TEXT[
-              source.status
-            ].toLowerCase()}`,
-        )
-        .join(', ')}.`,
+        .map((source) => {
+          const { word, note } = SOURCE_STATUS_STANDALONE_TEXT[source.status];
+          const member =
+            source.member === null ? 'Unknown member' : GLOBAL_MEMBER_TEXT[source.member];
+          return `${member} ${word.toLowerCase()}${note === null ? '' : `, ${note}`}`;
+        })
+        .join('; ')}.`,
 );
 </script>
 
@@ -461,6 +482,7 @@ const globalSourcesAnnouncement = computed(() =>
             :active-selection="activeSelection"
             :counts="railCounts"
             :sources="snapshot.sources"
+            :global-read-in-progress="globalReadInProgress"
             @select="selection = $event"
           />
         </div>
@@ -536,28 +558,6 @@ const globalSourcesAnnouncement = computed(() =>
           <UnclassifiedList
             :files="filters.unrecognizedRows.value"
             :diagnostics="snapshot.diagnostics"
-          />
-        </section>
-
-        <!-- Diagnostics that belong to a Source rather than to one of its files.
-           A file's own diagnostic is stated on that file's row, which is where
-           a reader meets the file it is about (FR-028). -->
-        <section
-          v-else-if="activeSelection === 'diagnostics'"
-          :id="inventoryPanelId('diagnostics')"
-          role="tabpanel"
-          :aria-label="INVENTORY_SELECTION_TEXT.diagnostics"
-        >
-          <!-- Only what the heading cannot say. The rail item and this heading
-               both name the unit, so a note opening on the same qualifier would
-               state it twice on one screen; what is left is the question a
-               reader arrives with, having seen a count of zero beside a Source
-               that kept diagnostics of its own. `A file's own` draws the
-               contrast by itself, so it needs no preface. -->
-          <p class="aci-note">A file's own diagnostic is stated on that file's row.</p>
-          <DiagnosticList
-            :diagnostics="filters.sourceScopedDiagnostics.value"
-            :sources="snapshot.sources"
           />
         </section>
 

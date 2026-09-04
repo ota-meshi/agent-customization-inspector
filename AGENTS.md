@@ -559,7 +559,7 @@ is written.
   beside that union, not in the component, so a new member cannot compile
   without its label. `entities.ts` holds `CUSTOMIZATION_KIND_TEXT`,
   `SUPPORTED_TOOL_TEXT`, `FILE_ENCODING_TEXT`, `SOURCE_BOUNDARY_ORIGIN_TEXT`,
-  `SOURCE_STATUS_TEXT`, `SOURCE_STATUS_STANDALONE_TEXT`, and
+  `SOURCE_STATUS_STANDALONE_TEXT`, and
   `SAME_NAME_SKILL_RESOLUTION_TEXT`; diagnostic text
   lives in `DIAGNOSTIC_REGISTRY`. A closed union no surface renders needs no table:
   `DocumentationStatus` and `LifecycleQualifier` are maintenance records on the

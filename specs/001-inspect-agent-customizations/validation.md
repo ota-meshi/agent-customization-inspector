@@ -113,6 +113,84 @@ failed batch on `batchStatus` and answers with its acceptance, while the CLI's
 `--inspect-personal-setup` throws it before a host exists, printing no launch URL — the same
 end the automatic Repository scan's failure has. Both cases now pass.
 
+**The rail's personal-setup entry says what it counts, and says `Scanning` while a read is
+out.** Two things were left in that entry when the status tables became one. Its own aggregate
+table still spelled one member state `partial` — the word a reader meets nowhere else now, and
+the one fifteen of twenty first-use sessions stopped at — so that state reads `with
+diagnostics`, the words the Repository entry beside it already uses. And a counted state named
+no unit: `1 partial` said one of what. The counted states now name the members they count —
+`1 home with diagnostics`, `2 homes not inspected`, `1 home failed` — in the word every member
+is called by (`GLOBAL_MEMBER_TEXT`). The entry's ranking is unchanged, `idle` above `ready`
+included: it stays because one unread home beside three read ones must not be reported as
+four read.
+
+The entry also said `Not inspected` while a read was running, which is a false sentence rather
+than a presentation: a batch publishes no member Source until it commits, so the entry was
+answering from an empty list about homes being read at that moment. It says `Scanning` — the
+word the same entry already says while one member's own rescan runs. Two things make a read
+out: a batch the snapshot carries, which is another tab's confirmation or this one's after a
+reload, and this client's own confirmation, which answers only once every admitted member's
+scan settled. `view-state.ts` § runningGlobalBatch publishes the first, so the inventory and
+the personal-setup page answer for one read with one predicate rather than two copies of it.
+
+What is not covered by a check is the entry's own branch: the RPC channel is a WebSocket, so a
+browser test cannot hold the confirmation open long enough to read the rail while it is out,
+and the unit project has no single-file-component compiler. What is covered is the predicate
+that decides it and the wording it selects; the branch itself was read on a fixture launch.
+
+**Personal-setup rail release blocker — implementation required.** `globalStatusText` returns
+`Scanning` whenever `globalReadInProgress` is true, before consulting the ranked member state.
+A same-preview retry can run while already-published members retain `partial` or `failed`, so
+the text hides the actionable state while the warning class still derives from it. Treat the
+running read as a `scanning` candidate in the existing rank calculation and derive both text
+and warning treatment from that one effective state. Add regressions for a partial member and
+a failed member during retry, ready-only members during retry, and the initial enable before
+any member Source exists (FR-030; WCAG 4.1.3).
+
+**A source surface's type is this product's, and the personal setup states its generation.**
+Removing the rail entry left four things behind, each fixed here. The inventory's live region
+read a member's status word alone, and `ready` and `partial` are one word, so a refresh that
+found a member newly partial announced the sentence it had announced before; it now carries the
+note the status table holds for exactly that case (WCAG 4.1.3). A comparison's facts line named
+the family and the directory but not the member, so two members whose home variables point at
+one directory identified two sides identically — the member is named there now, as the row's
+accessible name already named it. The personal-setup surface stated no committed generation at
+all, which FR-030 requires of each Source family's own surface; it states the Global sequence's
+once, in the Repository panel's own idiom. And the inert `<pre>` that holds a viewer's box until
+Monaco mounts was laid out in the browser's own monospace metrics while Monaco used its
+platform default — 12px on macOS, 14px elsewhere — so the box jumped at mount, further under
+text enlargement, which is what the placeholder exists to prevent. The two now share one
+declaration: `--aci-source-font-size` and `--aci-source-line-height` in `rem`, which
+`monaco.ts` reads off each editor's own container. Measured on the hook detail's five viewers,
+the entry link below them moves 0–12px at mount instead of 2–29px, and 12–36px instead of a
+doubling, at 200% text size; what is left is the horizontal scrollbar Monaco reserves and a
+`<pre>` does not. The value is the product's own choice rather than the editor's, which is a
+change of appearance on macOS.
+
+**Source-editor metrics release blocker — implementation required.** `typeMetricsOf` applies
+each Monaco host's computed type metrics to every source and declaration diff, but the MCP
+`DeclarationDiff`, plugin `DeclarationDiff`, and plugin `SourceDiff` hosts do not declare
+`--aci-source-font-size` and `--aci-source-line-height`. They therefore inherit the 13px body
+type instead of the 14px/19px source-surface metrics the other hosts use. Put the shared tokens
+on those three host classes as well, and freeze every Monaco host's computed font size and line
+height in a browser regression so one surface cannot silently depart from the family.
+
+**The rail's `Source diagnostics` entry is gone, and one table states a Source's status
+everywhere.** Five first-use sessions across two runs read the rail's
+`Inspected · some files kept a diagnostic` against that entry's `0` as one population counted
+twice. The entry was the thing to remove rather than the label to narrow: it listed no file,
+which is the rail's own membership test, and the only Source-scoped diagnostic code —
+`root-unreadable` — fails the scan and commits no inventory, so on every screen that had an
+inventory to show it read `0`. A Source's own diagnostics are now stated on that Source's own
+surface: the Repository's on `/repository`, each consented member's on its row of the
+personal-setup page. That is also where the failure sentence and its reason first stand
+together — `The last rescan failed…` used to be on one screen and the retained Diagnostic that
+explains it on another. With the entry gone, `SOURCE_STATUS_TEXT` went too: one status reached
+a reader as `Inspected` on the rail and `Partial` on the Repository page, and nothing said the
+two were rows of one table. Every surface reads `SOURCE_STATUS_STANDALONE_TEXT` now, and draws
+its note only where it has nothing more exact — the Repository page and the member rows state
+the count itself.
+
 **A rescan's correlation is the command's own, and the box a viewer will fill is reserved
 before it fills it.** Two surfaces were showing a finished scan's record as the running one's:
 a command answers only once its scan settled, so the request ID a slot held while the next
@@ -149,7 +227,7 @@ spelled and as it physically is. `tests/unit/host/file-opener.test.ts` stages a 
 tree for both candidate directions, and `tests/unit/cli.test.ts` establishes the existing-root
 handoff.
 
-**Release blocker — implementation required.** Three reachable gaps remain outside that
+**Launcher release blocker — implementation required.** Three reachable gaps remain outside that
 coverage. First, the pre-consent probe now calls `resolvePhysicalLocation` for every
 outside-spelled launcher candidate. If such a candidate is a symbolic link into a proposed
 personal-setup root, `realpath` follows it into that root before consent, violating FR-013.
@@ -181,22 +259,41 @@ personal-root alias after admission, a missing Repository root repaired as a lin
 rescan/open, and injected unexpected `realpath` failure. Release approval remains blocked until
 those cases satisfy FR-013, FR-020, FR-022, and the `open-file` contract.
 
-Every gate below was run on 2026-09-04 against this tree, after `pnpm run build`, in one
-sitting; the counts are what each run reported.
+**VCS-internal traversal release blocker — implementation required.** `VCS_INTERNALS` compares
+entry segments by exact string, so a case-insensitive volume that presents Git's actual
+directory as `.GIT` is walked and publishes a customization placed inside it. That is the same
+Git object store — `git rev-parse --git-dir` still identifies `.git` — and contradicts FR-003,
+T019, and the specification's requirement to exclude VCS internals on the resolved real path.
+Use the containing volume's name identity rather than platform-wide lowercasing: exclude a
+case variant when it names the same internal directory, while retaining a genuinely distinct
+authored `.GIT` on a case-sensitive volume. Cover both volume behaviours, including an
+internal reached through an alias.
+
+**Maintenance release blocker — implementation required.** The runtime has one non-kind list,
+`Files in no known kind`, but comments in `InventoryRail.vue`, `InventoryFilters.vue`,
+`inventory-filter-state.ts`, `main.css`, and `index.vue`, plus the title of the browser test in
+`inventory-rows.spec.ts`, still describe two non-kind lists and the removed Source-diagnostics
+entry. Update the whole family together; leaving only some of those statements corrected would
+preserve the same false model for the next change.
+
+Every gate below was run on 2026-09-05 against this tree. Build, package, performance, and
+browser verification ran from an isolated copy of the same working tree so an already-running
+CLI in the shared workspace was not disrupted; the artifact-dependent gates used the build
+produced there. The counts are what each run reported.
 
 | Gate | Command | Result |
 |---|---|---|
 | Format | `pnpm run format:check` | silent, exit 0 |
 | Lint | `pnpm run lint` | silent, exit 0 |
 | Types | `pnpm run typecheck` | silent, exit 0 |
-| Unit | `pnpm run test:unit` | 52 files, 1,230 tests passed |
+| Unit | `pnpm run test:unit` | 52 files, 1,232 tests passed |
 | Contract | `pnpm run test:contract` | 12 files, 405 tests passed |
 | Integration | `pnpm run test:integration` | 11 files, 270 tests passed |
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 4 tests passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 files, 1,905 tests passed; statements 86.17% (5,955/6,910), branches 71.63% (3,556/4,964), functions 87.44% (1,163/1,330), lines 86.48% (5,837/6,749) |
+| Coverage | `pnpm run test:coverage` | 75 files, 1,907 tests passed; statements 86.15% (5,950/6,906), branches 71.60% (3,556/4,966), functions 87.41% (1,160/1,327), lines 86.46% (5,834/6,747) |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
 **The browser gate here is one project; the certification matrix is CI's.**
@@ -218,7 +315,7 @@ a local run stands in for none of it. The disposition is unchanged from the tree
 started on — what changed is which commit the certifying run is of.
 
 **The coverage percentages are a run's, not a constant.** This tree's run reported the 75
-files, 1,905 passing tests, and percentages recorded in the row above. No threshold is asserted
+files, 1,907 passing tests, and percentages recorded in the row above. No threshold is asserted
 on them anywhere.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
@@ -228,23 +325,30 @@ threshold is asserted anywhere in this release. The checked-in reference profile
 minted because the profile's benchmark fields changed, its own rule making any field change a
 new, non-comparable ID. It is the reference these observations are read beside and not a claim
 about where they were taken: nothing compares the executing environment with it, so the run
-prints its own. The pass on 2026-09-04 ran on this machine — arm64, Node 24.14.0 — and observed
-the request-correlated status at 340 ms and the request-committed operable inventory at 478.8 ms
-after the rescan was dispatched, the filter feedback at 24.1 ms and the selection feedback at
-44.3 ms; the global setup prints these for whoever reads the log, and they describe this
+prints its own. The pass on 2026-09-05 ran on this machine — arm64, Node 24.14.0 — and observed
+the request-correlated status at 344.7 ms and the request-committed operable inventory at 500 ms
+after the rescan was dispatched, the filter feedback at 25.1 ms and the selection feedback at
+45 ms; the global setup prints these for whoever reads the log, and they describe this
 machine.
 
 
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `58e3a057a3713d0896efd472527d3d2f73c89f4ade794a05c0fd07942cf372f5`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-04 by
+SHA-256 `784ea623d2120935e9a7153be6f3f73e67e7ed0e5953c900ef396999765911f1`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-05 by
 running every suite each case names in `verifiedBy`: the vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
 whole Chromium suite, 567 tests, all passing in the one run the release-gate table above
 records. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
 all 66 fixture digests in the same session.
+
+The digest is read from the manifest rather than carried forward: an earlier record named a
+value the checked-in bytes no longer had, and the contract suite could not have caught it
+because it compares the manifest against its own companion file and reaches no record in
+`specs/`. What keeps the two together is that this line and
+`tests/fixtures/outcomes/manifest.sha256` are written from the same command in the change that
+moves the bytes.
 
 The set is non-comparable with the one recorded after the interface rework: five referenced
 fixtures changed — `tests/contract/http-api-session.test.ts`, whose rescan cases now
@@ -430,42 +534,43 @@ matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
 
-**Twenty agent-driven sessions, run on 2026-09-04 against the build carrying this release's
-final review corrections, with the runner holding the clock.** The build is `npm pack` of the
-tree at commit `4ffbddc8920a4c6ef21a908d2086b6cabccf98db`, tarball SHA-256
-`98e00eacfe513bf746aae3d31124b74e2dc401af14c6c3aa814d1838940d6f2e`, installed with
+**Twenty agent-driven sessions, run on 2026-09-05 against the release candidate, with the
+runner holding the clock.** The build is `npm pack` of the tree these gates were run on,
+tarball SHA-256
+`7e852c2305971d91ca0e23aa23bafa1cac4d5b986b243d9ec8e167fc24245837`, installed with
 `npm install` into one run folder. The digest names the artifact the sessions ran rather than
 a value a re-pack reproduces: two packs of one source differ in the build id Nuxt writes into
 `dist/public`, and everything else — `dist/cli.mjs` included — is byte-identical between them.
 Each session had its own `repository/`, the all-kind fixture built in place by
 `tests/fixtures/repositories/build-fixtures.ts`, and its own four homes under a `HOME` of its
-own from `tests/fixtures/global-homes/build-fixtures.ts`. Each was handed the text of
-`tests/usability/sc001-sc006-study-inputs/guidance.md`, the four prompt files beside it
-verbatim, and the three questions of `response-form.json` as those files stand at that commit,
-and was scored against `ground-truth.json` at the same revision. The two equipment conditions
-were the earlier runs': `--port 0` appended to the launch command, and the four home variables
-set for that command alone. Five sessions ran at a time, on Claude Sonnet 5.
+own from `tests/fixtures/global-homes/build-fixtures.ts`.
+
+**The material it scored against**, all of it under
+`tests/usability/sc001-sc006-study-inputs/` and read from those files rather than copied:
+`guidance.md`, the four prompt files `task-prompt-sc001.md`, `task-prompt-sc006.md`,
+`task-prompt-comparison.md`, and `task-prompt-consent.md`, the three questions of
+`response-form.json`, the answers in `ground-truth.json`, and the pass conditions and
+thresholds in `scoring-rubric.json`. The two equipment conditions were the earlier runs':
+`--port 0` appended to the launch command, and the four home variables set for that command
+alone. Five sessions ran at a time, on Claude Sonnet 5.
 
 **The runner owns what the criteria say it owns.** A session receives one task when the one
 before it finished and cannot read ahead; the reveal and the finish are stamped by the runner,
 which is what SC-001 means by the interval starting "when the standardized task prompt is
 presented"; and the response form is printed by the runner and submitted back to it, which is
-what SC-006 times. The earlier runs of this date had the sessions stamp their own intervals
-and write their answers into their own reports, and their records say what that did not
-establish.
+what SC-006 times. The guide each session reads is `guidance.md` injected into its prompt, not
+a copy of it: an earlier attempt of 2026-09-04 handed its sessions a stale copy of one task
+prompt, which is what a copy does.
 
 **The browser is equipment the session reads rather than a module it scripts.** It answers
 `open`, `snapshot`, `click`, `type`, `press`, `text`, `url`, and `stop`; a snapshot is the
 page's roles and names with one short reference per actionable element, and a reference is
-what a command names. No session writes a selector or reads the page's markup, which is what
-four sessions of the third run spent their interval on. The address the browser shows is
-readable for the same reason a person can read an address bar.
+what a command names. No session writes a selector or reads the page's markup.
 
 **What the sessions were isolated from.** Each was a Claude CLI print-mode process whose
 working directory was its own session folder, outside this working tree, started with
 `--setting-sources user` and with this repository's configuration variables removed from its
 environment, so no project instruction and no memory of this repository was in its runtime.
-All twenty stated so unprompted and stated that they navigated by the page alone.
 
 **This is an agent-driven run and is recorded as one.** What twenty agents establish is
 whether the product's own printed and rendered guidance is sufficient to launch it, reach a
@@ -476,38 +581,54 @@ here may be read as a human-subject result.
 
 | Workflow | What it measures | Threshold | Result |
 |---|---|---|---|
-| Discovery | SC-001: from the prompt through the launch to one discovered file's detail view open within two minutes | 19 of 20 | **Established: 20 of 20**, 9.2 s to 23.0 s, median 14.9 s |
-| Inspection | SC-006: the three response fields for the designated `AGENTS.md` submitted within two minutes, every field matching the ground truth | 18 of 20 | **Established: 20 of 20**, 7.8 s to 31.0 s, median 15.1 s |
+| Discovery | SC-001: from the prompt through the launch to one discovered file's detail view open within two minutes | 19 of 20 | **Established: 20 of 20**, 9.5 s to 18.6 s, median 11.5 s |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` submitted within two minutes, every field matching the ground truth | 18 of 20 | **Established: 20 of 20**, 9.6 s to 31.6 s, median 14.1 s |
 | Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete: every session put the two `changelog` copies side by side and named a difference |
-| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete |
-| Safety | SC-006 zero-critical gate | no critical issue | **Passed.** All twenty answered all seven predefined safety fields plus the two open ones, and no session answered any of the seven `yes` |
+| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete: every session reached the proposal page and named its four directories |
+| Safety | SC-006 zero-critical gate | no critical issue | **Passed.** All twenty answered all seven predefined safety fields, and no session answered any of them `yes` |
+
+**Every session's own four outcomes and their intervals.** Each row is one enrolled session,
+recorded without exclusion or replacement; every one completed all four workflows, so the
+outcome column the criterion asks for is the interval itself.
+
+| Session | Discovery | Inspection | Comparison | Consent | File opened |
+|---:|---:|---:|---:|---:|---|
+| 01 | 17.7 s | 19.7 s | 12.7 s | 15.7 s | `CLAUDE.md` |
+| 02 | 11.5 s | 9.6 s | 8.9 s | 10.4 s | `CLAUDE.md` |
+| 03 | 14.5 s | 14.0 s | 17.0 s | 16.0 s | `AGENTS.md` |
+| 04 | 12.7 s | 13.6 s | 11.6 s | 12.4 s | `CLAUDE.md` |
+| 05 | 14.5 s | 16.6 s | 9.5 s | 11.2 s | `.claude/CLAUDE.md` |
+| 06 | 10.0 s | 14.3 s | 8.0 s | 12.7 s | `CLAUDE.md` |
+| 07 | 10.6 s | 12.9 s | 8.7 s | 11.8 s | `CLAUDE.md` |
+| 08 | 10.6 s | 13.6 s | 11.1 s | 9.8 s | `CLAUDE.md` |
+| 09 | 10.3 s | 13.9 s | 12.1 s | 13.1 s | `CLAUDE.md` |
+| 10 | 10.7 s | 14.9 s | 11.5 s | 12.1 s | `CLAUDE.md` |
+| 11 | 11.0 s | 31.6 s | 9.0 s | 12.6 s | `CLAUDE.md` |
+| 12 | 18.6 s | 18.4 s | 19.7 s | 18.0 s | `CLAUDE.md` |
+| 13 | 12.1 s | 13.0 s | 8.9 s | 11.6 s | `CLAUDE.md` |
+| 14 | 11.5 s | 10.9 s | 8.8 s | 13.2 s | `CLAUDE.md` |
+| 15 | 11.1 s | 14.6 s | 11.9 s | 12.1 s | `CLAUDE.md` |
+| 16 | 16.1 s | 13.8 s | 16.5 s | 17.9 s | `CLAUDE.md` |
+| 17 | 9.5 s | 15.2 s | 9.8 s | 12.2 s | `CLAUDE.md` |
+| 18 | 11.2 s | 14.1 s | 9.1 s | 10.1 s | `CLAUDE.md` |
+| 19 | 13.5 s | 19.1 s | 9.9 s | 12.0 s | `CLAUDE.md` |
+| 20 | 12.9 s | 14.2 s | 8.9 s | 10.4 s | `CLAUDE.md` |
 
 Every session's three fields matched `ground-truth.json` with no partial credit: source
 `Repository`, recognizing tools `GitHub Copilot` **and** `OpenAI Codex`, file type
-`Instructions`; none named Claude Code. Four sessions qualified the source with what the page
-also showed — the file, its root, or its applicability range — which the material scores on
-the identified source rather than the wording. For discovery, eighteen opened the root
-`CLAUDE.md` and two opened `.claude/CLAUDE.md`. Seventeen reports carry that file's own detail
-route; the other three name the file and say they read the address after the view had been
+`Instructions`; none named Claude Code. Eighteen opened the root `CLAUDE.md`, one opened
+`.claude/CLAUDE.md`, and one opened `AGENTS.md`; eighteen reports carry that file's own detail
+route, and the other two name the file and say they read the address after the view had been
 closed.
 
-The consent task is completed by the ground truth at the personal-setup page on screen with
-the directories it proposes named before anything is read, and all twenty carry both. Session
-06 recorded the report's own `reached` field as `false` and said why: it read the field as
-asking whether it had granted consent, and it deliberately stopped at the proposal screen
-because the task asks what the tool says it will read *before* it reads it. That is the task
-performed correctly and a field of the report that asks a second question; the field is what
-is ambiguous, not the outcome.
-
-**What the sessions raised about the product.** Two sessions (01, 20) read the Repository
-status `Inspected · some files kept a diagnostic` against the `Source diagnostics` count of 0
-as two statements of one fact — the same reading three sessions of the third run had. The two
-count different things: the status word is about the file-confined diagnostics stated on each
-file's row, and the tab is about the Source-scoped ones. Four sessions (03, 07, 10, 12)
-described the two-step personal-setup gate as a surprise and described it correctly — the page
-works the directories out and names them, and only an explicit confirmation reads them, which
-is FR-013 behaving as specified. Nothing was reported that the product states twice or states
-wrongly.
+**Every session's safety answers.** The seven predefined fields — a product-issued outbound
+request beyond localhost, execution derived from a customization file, an MCP connection, a
+mutation of the inspected tree, exposure of inspected content to another machine, a browser
+opened without being asked, and a write into the inspected tree by the session's own tooling —
+were answered by all twenty, and every answer was `no`. The two open fields are errors met and
+anything surprising: the errors reported are the sessions' own equipment mistakes, and the
+surprises are the two-step personal-setup gate described correctly as FR-013 behaving as
+specified.
 
 **What this run does not establish.** It says nothing about human first use. It carries no
 capture bundle: what it rests on is the runner's own event log and each session's report, kept
@@ -515,13 +636,10 @@ beside the run's session folders outside this repository. And it is one fixture 
 sessions met the customization files this repository builds for its own tests, not a
 repository none of them had seen.
 
-**One attempt of this date is not scored, and the reason is the instrument.** A run was made
-whose fourth task text was a stale copy of `task-prompt-comparison.md`, reading "two copies of
-the same thing" where the file names the `changelog` skill; two of its sessions compared
-another drifted pair the fixture holds. The session material is generated from the prompt
-files so that what a run scores against is what this record names, and that is exactly what
-the copy defeated. The material was regenerated and the twenty sessions above were run against
-it.
+**The runs of 2026-09-04 are superseded rather than corrected.** Their record stands below as
+what each reported. The interface changed after them — the rail lost an entry and the status
+vocabulary became one table — and so did the task material, each of which spec.md § SC-001
+makes a reason to repeat the evaluation rather than to carry a result forward.
 
 ### The third run of 2026-09-04
 
@@ -1199,7 +1317,7 @@ that would have forced 76 tasks to name a file they do not own was corrected in 
 languages. No ad hoc patch, silenced failure, or speculative abstraction was introduced to
 avoid any of these.
 
-*Open release blocker.* Pre-consent launcher discovery physically resolves every
+*Open release blockers.* Pre-consent launcher discovery physically resolves every
 outside-spelled candidate, so an alias into a proposed personal-setup root can cross FR-013's
 no-I/O boundary before the reader acts; it nevertheless compares that personal root only by
 spelling. It also retains only the startup physical location of the Repository root and treats
@@ -1207,6 +1325,13 @@ any failed physical resolution as permission to continue lexically. FR-013 permi
 personal-root authorization after consent, and the `root-unreadable` recovery path makes a
 repaired root reachable. The implementation work and regression cases are specified in the
 launcher review above; this is not an accepted residual.
+
+Three other product or contract violations are open. A running Global retry overrides a
+ranked `partial` or `failed` rail state while leaving its warning treatment in place; three
+Monaco diff hosts omit the shared source-surface type metrics; and exact-string VCS filtering
+walks the actual `.GIT` directory on a case-insensitive volume. Their required implementation
+and regression cases are recorded in the release-gate review above; none is an accepted
+residual.
 
 *Resolved rather than residual.* The sealed-capture study kit was machinery with no run
 behind it — twenty first-use participants are not available to this project, so the moderated
@@ -1220,16 +1345,22 @@ it. The inventory's filter-generation predicate compared a history entry's stamp
 of tokens this page load had issued, which could only ever answer "unknown" for an entry
 inherited across a reload; the question it actually needed was whether this load had purged at
 all, which the session already publishes. The set and the arrival-time restamp that existed to
-compensate for it are both gone, and the comments that explained them went with them. No
-deviation in this release stands without its stated reason.
+compensate for it are both gone, and the comments that explained them went with them.
 
-**III. Verification Before Completion.** Every correction in this release carries a check
-that fails without it, and each was watched failing before it was accepted. The
+*Open release blocker.* Removing the Source-diagnostics entry left five production comment
+families and one browser-test title describing two non-kind lists. The runtime and the
+bilingual task text have one. The exact files and required family-wide correction are recorded
+in the release-gate review above.
+
+**III. Verification Before Completion.** Every accepted correction in this release carries a
+check that fails without it, and each was watched failing before it was accepted. The
 filter-generation fix is asserted twice — a unit test over the predicate and a browser test
 over the reader-visible path (apply a narrowing, leave, reload, disable, and go back) — and
 both were run against the unfixed predicate first and seen to fail. A passing suite is not
 treated as proof: the review that preceded the study kit's retirement read the branches its
 suites did not reach, and recorded what it found sound as well as what it found unverified.
+The open rail, launcher, VCS, and Monaco findings are not treated as accepted corrections; the
+review above specifies the regressions each must carry before this check can complete.
 
 *Residual.* Seven browser cases fail on this machine and only on macOS WebKit;
 all seven assert that a link is reachable by pressing Tab, which macOS does not do unless the
@@ -1259,8 +1390,9 @@ migration to provide. Every runtime dependency is declared as a caret range with
 resolutions owned by the committed lockfile, and each was reviewed for what it reaches at
 user runtime — the record of that review is the Dependency review above.
 
-**One release-blocking violation remains.** The launcher-exclusion cases above are an open
-FR-013/FR-020/FR-022 violation, not a residual imposed by FR-013 or SC-004. The two actual
+**Four product or contract violations and one maintainability concern remain release
+blocking.** They are the launcher authorization, Global retry aggregation, VCS-internal
+traversal, Monaco host metrics, and stale two-list explanations recorded above. The two actual
 residuals are a standing property of the evidence and a machine-specific browser result the
 certified matrix answers.
 

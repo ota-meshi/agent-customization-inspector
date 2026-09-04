@@ -150,7 +150,9 @@ test.describe('a session that browsed the tree', () => {
     // count are the Repository Source's own facts, so they are stated on that
     // Source's surface (FR-030).
     const status = await openRepositoryStatus(page);
-    await expect(status).toContainText('Partial');
+    // One word for one status: this panel and the rail read from one table, and
+    // what a word alone cannot say is the count this panel states itself.
+    await expect(status).toContainText('Inspected');
     await expect(status).toContainText('1 file kept a diagnostic of its own');
     await page.goto(host.origin);
     await page.getByRole('tab', { name: /^Skill/u }).click();
@@ -183,27 +185,17 @@ test.describe('a first scan that cannot read its root', () => {
   test('keeps the generation-0 Source and its own diagnostic, with no stale overlay', async ({
     page,
   }) => {
-    await page.goto(host.origin);
-    // A root that cannot be read is the Source's own diagnostic rather than
-    // any file's, so it is listed under the entry that holds exactly those
-    // (FR-002, FR-028).
-    //
-    // The count is asserted with the row because this is the only state that
-    // draws the list at all: every other diagnostic this product publishes is
-    // a file's and is stated on that file's row, so a regression here shows up
-    // as an empty list nobody is looking at.
-    await expect(page.getByRole('tab', { name: /^Source diagnostics/u })).toContainText('1');
-    await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
-    const diagnostics = page.getByRole('tabpanel');
-    // The row names whose diagnostic it is and which root the Source selected,
-    // because a source-level record belongs to a Source rather than to a path
-    // the reader can otherwise find on a row (FR-030).
-    await expect(diagnostics).toContainText('Repository');
-    await expect(diagnostics).toContainText(unreadable);
-    await expect(diagnostics).toContainText('The selected root does not exist or cannot be read');
-
     await page.goto(new URL('/repository', host.origin).href);
     const main = page.locator('main');
+    // A root that cannot be read is the Source's own diagnostic rather than any
+    // file's, so it is stated on that Source's own surface (FR-002, FR-028).
+    // This is the only state that produces one at all — every other diagnostic
+    // this product publishes is a file's and is stated on that file's row — so
+    // a regression here is a sentence nobody would otherwise miss.
+    await expect(main).toContainText('The selected root does not exist or cannot be read');
+    // The root the Source selected is stated once, in the labelled field that
+    // owns it, rather than repeated beside the sentence (FR-002, FR-030).
+    await expect(main).toContainText(unreadable);
     // No partial inventory, no stale overlay — there is no prior commit to be
     // stale against — and the session stays operable so a rescan can be
     // dispatched once the root is readable again (FR-002).

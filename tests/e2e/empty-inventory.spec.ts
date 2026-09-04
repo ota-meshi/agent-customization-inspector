@@ -31,19 +31,20 @@ test.afterAll(async () => {
 test('selects the first entry and says the kinds are empty on the rail', async ({ page }) => {
   await page.goto(host.origin);
   const tabs = page.getByRole('tab');
-  await expect(tabs).toHaveCount(2);
+  // One tab, because the one entry that belongs to no kind is the only entry a
+  // generation that recognized nothing still has.
+  await expect(tabs).toHaveCount(1);
 
   // A tablist has one selected tab, and the page's selection is what decides
-  // which: with no kind recognized, that is the first entry that belongs to
-  // none (`pages/index.vue` § activeSelection, WAI-ARIA tabs pattern).
+  // which: with no kind recognized, that is the entry that belongs to none
+  // (`pages/index.vue` § activeSelection, WAI-ARIA tabs pattern).
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
-  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'false');
   await expect(page.getByRole('tabpanel')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Files in no kind' })).toBeVisible();
 
   // The empty group is the rail's, so the rail says so: in the panel the
-  // sentence would sit under the heading of whichever entry is selected and
-  // would vanish when the reader moved to the other one.
+  // sentence would sit under the heading of the selected entry, where it reads
+  // as a fact about that entry rather than about the group.
   const rail = page.getByRole('navigation', { name: 'Sources' }).locator('..');
   await expect(rail).toContainText('None recognized.');
   await expect(page.getByRole('tabpanel')).not.toContainText('None recognized.');
@@ -54,8 +55,6 @@ test('gives the selected list an empty state rather than blank space', async ({ 
   // The entry is selectable whatever its count, so its panel says what it holds
   // rather than drawing its note over nothing (`UnclassifiedList.vue`).
   await expect(page.getByRole('tabpanel')).toContainText('No files.');
-  await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
-  await expect(page.getByRole('tabpanel')).toContainText('No source-level diagnostics');
   // The rail's sentence is about the scan, not about the entry in view, so it
   // stands on either.
   await expect(page.getByRole('navigation', { name: 'Sources' }).locator('..')).toContainText(

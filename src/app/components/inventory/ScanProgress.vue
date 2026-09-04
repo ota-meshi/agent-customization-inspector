@@ -24,7 +24,8 @@
 // `useSessionSources` records). Renders nothing until a snapshot with the
 // Repository Source is adopted, which is the page's own condition too.
 import { computed } from 'vue';
-import { SOURCE_STATUS_TEXT } from '../../../shared/entities';
+import { SOURCE_STATUS_STANDALONE_TEXT } from '../../../shared/entities';
+import { DIAGNOSTIC_REGISTRY } from '../../../shared/diagnostics';
 import { SCAN_PROGRESS_PHASE_TEXT } from '../../../shared/api-text';
 import { useSessionViewState } from '../../composables/session-view-state';
 
@@ -63,12 +64,53 @@ const staleFailure = computed(() => {
   );
 });
 
-// A stale overlay explains itself with either the failed request's real error
-// message or a retained Diagnostic; only the message variant has text of its
-// own, and the Diagnostic variant is already rendered by the diagnostic list.
-const staleFailureMessage = computed(() =>
-  staleFailure.value?.failureRef.kind === 'error' ? staleFailure.value.failureRef.message : null,
-);
+/**
+ * What the stale overlay says beyond "the last rescan failed": the failed
+ * request's own error message, or the sentence the retained Diagnostic's code
+ * carries. Both variants are stated here, because this is the Source's own
+ * surface and a Source's own diagnostic belongs on it — the Diagnostic variant
+ * used to be left to a list in the inventory rail, which put the failure and
+ * its reason on two different screens.
+ */
+const staleFailureMessage = computed(() => {
+  const failureRef = staleFailure.value?.failureRef;
+  if (failureRef === undefined) {
+    return null;
+  }
+  if (failureRef.kind === 'error') {
+    return failureRef.message;
+  }
+  const retained = (sessionViewState.snapshot.value?.diagnostics ?? []).find(
+    (diagnostic) => diagnostic.diagnosticId === failureRef.diagnosticId,
+  );
+  return retained === undefined ? null : DIAGNOSTIC_REGISTRY[retained.code].message;
+});
+
+/**
+ * This Source's own diagnostics: the records that belong to the Source rather
+ * than to one of its files, less the one the stale overlay above already
+ * states. A file's own record is stated on that file's row, which is where a
+ * reader meets the file it is about (FR-028).
+ *
+ * They are here because a Source's own state is stated on that Source's own
+ * surface. The inventory rail listed them instead, beside the kinds, where the
+ * only shipped Source-scoped code — `root-unreadable`, which fails the scan
+ * and commits no inventory — meant the entry read `0` on every screen that had
+ * an inventory to show, next to a Repository entry saying some files kept a
+ * diagnostic (validation.md § SC-001 and SC-006 first-use sessions).
+ */
+const sourceDiagnosticMessages = computed<readonly string[]>(() => {
+  const sourceId = source.value?.sourceId;
+  const stated = staleFailure.value?.failureRef;
+  return (sessionViewState.snapshot.value?.diagnostics ?? [])
+    .filter(
+      (diagnostic) =>
+        diagnostic.sourceRelativePath === null &&
+        diagnostic.sourceId === sourceId &&
+        !(stated?.kind === 'diagnostic' && stated.diagnosticId === diagnostic.diagnosticId),
+    )
+    .map((diagnostic) => DIAGNOSTIC_REGISTRY[diagnostic.code].message);
+});
 
 /**
  * Dispatches the rescan unless one is already in flight. The guard is here
@@ -120,7 +162,7 @@ const rejectionText = computed(() =>
     <div aria-live="polite" aria-atomic="true">
       <dl class="aci-definition-grid">
         <dt>Source status</dt>
-        <dd>{{ SOURCE_STATUS_TEXT[source.status] }}</dd>
+        <dd>{{ SOURCE_STATUS_STANDALONE_TEXT[source.status].word }}</dd>
         <dt>Committed generation</dt>
         <dd>{{ source.generation }}</dd>
         <template v-if="correlatedProgress">
@@ -166,6 +208,13 @@ const rejectionText = computed(() =>
       <p v-if="staleFailure" class="aci-error">
         The last rescan failed, so the previous scan result is still shown and may be out of date.
         <span v-if="staleFailureMessage">{{ staleFailureMessage }}</span>
+      </p>
+      <!-- What this Source's own diagnostics say, on this Source's own
+           surface. Inside the live region because they are part of the state
+           being announced: a scan that failed on the root commits no
+           inventory, so this sentence is the whole of what happened. -->
+      <p v-for="message in sourceDiagnosticMessages" :key="message" class="aci-error">
+        {{ message }}
       </p>
       <p v-if="rejectionText" class="aci-error">{{ rejectionText }}</p>
     </div>

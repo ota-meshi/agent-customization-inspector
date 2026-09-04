@@ -175,6 +175,16 @@ export type TraversalScanResult =
  * {@link isVcsInternalPath} (contracts/inspection-path-allowlist.md).
  * Exported so any other enumeration excludes exactly the same names rather
  * than keeping a second list that could drift from this one.
+ *
+ * Matched as the filesystem spelled the entry. On a case-insensitive volume a
+ * directory Git manages can be spelled `.GIT`, and this walk enters it: what
+ * decides is the volume's own name resolution, which no platform check
+ * answers — macOS ships both kinds of volume — and folding case by platform
+ * would hide a `.GIT` a reader authored on a case-sensitive one. The outcome
+ * of entering is that a customization file inside VCS machinery is listed,
+ * which is over-listing on a surface whose whole claim is that being listed is
+ * not being loaded; nothing is executed and nothing outside the selected root
+ * is read.
  */
 export const VCS_INTERNALS = new Set(['.git', '.hg', '.svn']);
 

@@ -119,10 +119,9 @@ test('the inventory itself states no Source root, status, or generation', async 
   await expect(page.getByText('This label is an escaped presentation')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Scan status' })).toHaveCount(0);
   await expect(page.getByText('Committed generation')).toHaveCount(0);
-  // And the two lists that are no kind's inventory are rail entries rather
-  // than sections a reader scrolls past the rows to reach.
+  // And the list that is no kind's inventory is a rail entry rather than a
+  // section a reader scrolls past the rows to reach.
   await expect(page.getByRole('tab', { name: /^Files in no kind/u })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /^Source diagnostics/u })).toBeVisible();
 });
 
 test('one search matches a row by its name and by its path', async ({ page }) => {

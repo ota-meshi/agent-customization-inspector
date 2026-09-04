@@ -847,9 +847,11 @@ no panel of its own to carry them: each Source's state surface states its scan a
 it there, so a bar command on those routes would be the same control twice on one screen.
 The rail carries what decides which rows are on screen: the Source families with their
 statuses and the way to each family's own state surface, then the closed kind catalog, then
-the two lists that are lists of files without being a kind's inventory, `Files in no kind`
-and `Source diagnostics`. Membership of the rail follows from that one test: a list of files is a
-rail entry, and a Source's state is a route. Nothing in the rail carries an icon — a mark
+`Files in no kind`, the one list of files that is no kind's inventory. Membership of the rail
+follows from that one test: a list of files is a rail entry, and a Source's state is a route —
+which is also why a Source's own diagnostics are not there. They list no file, and the only
+Source-scoped code fails the scan and commits no inventory, so the entry read `0` on every
+screen that had an inventory to show; each Source states its own on its own surface. Nothing in the rail carries an icon — a mark
 beside `Rule` or `Hook` adds no information a reader gets before the word, and it moves
 every label off a shared left edge, which is what a rail is scanned down — so the icons
 this UI ships are the ones that carry meaning: the vendor marks, and the operation glyphs

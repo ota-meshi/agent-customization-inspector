@@ -622,70 +622,10 @@ describe('inventory filters over the committed snapshot', () => {
     expect(filters.view.unrecognizedRows.value).toHaveLength(1);
   });
 
-  it('narrows the Source-level diagnostics by Source and by nothing else', () => {
-    // The Diagnostics list holds the records that belong to a Source rather
-    // than to one of its files — a file's own record is stated on that file's
-    // row — so the Source selection narrows it and the tool selection cannot:
-    // such a record names no product (FR-006, FR-028).
-    const globalSource: SourceDto = {
-      ...REPOSITORY_SOURCE,
-      sourceId: 'src-global-codex',
-      kind: 'global',
-      member: 'codex',
-      boundary: { displayRoot: '/home/reader/.codex', origin: 'environment' },
-    };
-    const snapshot = shallowRef<SessionSnapshot | null>(
-      snapshotWith([file('.agents/skills/greet/SKILL.md')], [], {
-        sources: [REPOSITORY_SOURCE, globalSource],
-        diagnostics: [
-          {
-            diagnosticId: 'diag-repo-root',
-            code: 'root-unreadable',
-            sourceId: 'src-repo',
-            sourceRelativePath: null,
-          },
-          {
-            diagnosticId: 'diag-global-root',
-            code: 'root-unreadable',
-            sourceId: 'src-global-codex',
-            sourceRelativePath: null,
-          },
-          {
-            // A file's own record, which the file's row states instead.
-            diagnosticId: 'diag-file',
-            code: 'file-unreadable',
-            sourceId: 'src-repo',
-            sourceRelativePath: 'AGENTS.md',
-          },
-        ],
-      }),
-    );
-    const filters = withSelection(snapshot);
-    expect(filters.view.sourceScopedDiagnostics.value.map((entry) => entry.diagnosticId)).toEqual([
-      'diag-repo-root',
-      'diag-global-root',
-    ]);
-    // The unnarrowed population the result summary compares against.
-    expect(filters.view.sourceScopedDiagnosticTotal.value).toBe(2);
-
-    filters.source.value = 'global';
-    expect(filters.view.sourceScopedDiagnostics.value.map((entry) => entry.diagnosticId)).toEqual([
-      'diag-global-root',
-    ]);
-    expect(filters.view.sourceScopedDiagnosticTotal.value).toBe(2);
-
-    // A tool selection leaves the list alone: no product is named by any of
-    // these records, so narrowing by one would empty a list under a question
-    // it cannot answer.
-    filters.source.value = null;
-    filters.tool.value = 'codex';
-    expect(filters.view.sourceScopedDiagnostics.value).toHaveLength(2);
-  });
-
   it('publishes the unnarrowed count of the files in no kind beside the narrowed rows', () => {
-    // The two lists that belong to no kind carry the Source narrowing, so the
-    // summary beside them compares the rows on screen against the population
-    // the generation published (FR-006).
+    // The list that belongs to no kind carries the Source narrowing, so the
+    // summary beside it compares the rows on screen against the population the
+    // generation published (FR-006).
     const globalSource: SourceDto = {
       ...REPOSITORY_SOURCE,
       sourceId: 'src-global-codex',

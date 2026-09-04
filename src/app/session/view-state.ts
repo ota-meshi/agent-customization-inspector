@@ -63,6 +63,7 @@ import { SkillComparisonState } from '../composables/skill-comparison';
 import type {
   FileDetailDto,
   FileOpenTarget,
+  GlobalBatchStatusDto,
   GlobalConsentPreviewDto,
   GlobalEnableResultDto,
   GlobalFenceRecoverySnapshot,
@@ -2523,6 +2524,26 @@ export class SessionViewState {
     this.#openContentOwners.add(disposer);
     return () => this.#openContentOwners.delete(disposer);
   }
+}
+
+/**
+ * The accepted personal-setup batch that is still running, or null: a batch
+ * exists and has not failed (contracts/http-api.md § enable-global).
+ *
+ * Written once and read by both surfaces that answer for that read — the
+ * personal-setup page, which says how many directories are being read and
+ * dates the rows beneath it, and the inventory, which passes the rail a
+ * running read so its personal-setup entry says `Scanning` rather than
+ * `Not inspected`. Two copies of this rule would be two answers to one
+ * question.
+ *
+ * The batch rather than a boolean, because one of those callers needs what it
+ * holds: a caller given only "yes" would have to fetch the batch again and
+ * assert it is there.
+ */
+export function runningGlobalBatch(snapshot: SessionSnapshot | null): GlobalBatchStatusDto | null {
+  const batch = snapshot?.globalControl?.batchStatus ?? null;
+  return batch === null || batch.phase === 'failed' ? null : batch;
 }
 
 /**

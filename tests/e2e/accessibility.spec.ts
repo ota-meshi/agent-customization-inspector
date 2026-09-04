@@ -116,7 +116,7 @@ test('AUTO-1.3.1 structure is programmatically represented', async ({ page }) =>
   await expect(page.getByRole('tablist')).toBeVisible();
   await expect(page.getByRole('tabpanel')).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Sources' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /^Source diagnostics/u })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^Files in no kind/u })).toBeVisible();
 });
 
 test('AUTO-1.3.2 DOM order carries the intended reading order', async ({ page }) => {
@@ -775,13 +775,11 @@ test('AUTO-3.3.3 a diagnostic offers a practical next step', async ({ page }) =>
   await expect(repositoryEntry).toContainText('Inspected');
   await expect(repositoryEntry).toContainText('some files kept a diagnostic');
   const status = await openRepositoryStatus(page);
-  await expect(status).toContainText('Partial');
+  // One word for one status, wherever it is shown: the rail and this panel
+  // read from one table, and the panel states the count the rail's note only
+  // says the shape of.
+  await expect(status).toContainText('Inspected');
   await expect(status).toContainText('kept a diagnostic of their own');
-  await page.getByRole('link', { name: /Back to /u }).click();
-  // The source-level list states its own state rather than leaving the panel
-  // blank, so a reader is never left guessing whether it failed to render.
-  await page.getByRole('tab', { name: /^Source diagnostics/u }).click();
-  await expect(page.getByText('No source-level diagnostics.')).toBeVisible();
 });
 
 test('AUTO-3.3.8 opening the printed session URL requires no authentication', async ({ page }) => {
