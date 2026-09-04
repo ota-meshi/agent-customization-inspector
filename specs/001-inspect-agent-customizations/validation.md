@@ -196,7 +196,7 @@ sitting; the counts are what each run reported.
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 4 tests passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 files, 1,905 tests passed; statements 86.17% (5,955/6,910), branches 71.61% (3,555/4,964), functions 87.44% (1,163/1,330), lines 86.48% (5,837/6,749) |
+| Coverage | `pnpm run test:coverage` | 75 files, 1,905 tests passed; statements 86.17% (5,955/6,910), branches 71.63% (3,556/4,964), functions 87.44% (1,163/1,330), lines 86.48% (5,837/6,749) |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
 **The browser gate here is one project; the certification matrix is CI's.**
@@ -429,6 +429,101 @@ versions; this session has one macOS host. The certification result is what a CI
 matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
+
+**Twenty agent-driven sessions, run on 2026-09-04 against the build carrying this release's
+final review corrections, with the runner holding the clock.** The build is `npm pack` of the
+tree at commit `4ffbddc8920a4c6ef21a908d2086b6cabccf98db`, tarball SHA-256
+`98e00eacfe513bf746aae3d31124b74e2dc401af14c6c3aa814d1838940d6f2e`, installed with
+`npm install` into one run folder. The digest names the artifact the sessions ran rather than
+a value a re-pack reproduces: two packs of one source differ in the build id Nuxt writes into
+`dist/public`, and everything else — `dist/cli.mjs` included — is byte-identical between them.
+Each session had its own `repository/`, the all-kind fixture built in place by
+`tests/fixtures/repositories/build-fixtures.ts`, and its own four homes under a `HOME` of its
+own from `tests/fixtures/global-homes/build-fixtures.ts`. Each was handed the text of
+`tests/usability/sc001-sc006-study-inputs/guidance.md`, the four prompt files beside it
+verbatim, and the three questions of `response-form.json` as those files stand at that commit,
+and was scored against `ground-truth.json` at the same revision. The two equipment conditions
+were the earlier runs': `--port 0` appended to the launch command, and the four home variables
+set for that command alone. Five sessions ran at a time, on Claude Sonnet 5.
+
+**The runner owns what the criteria say it owns.** A session receives one task when the one
+before it finished and cannot read ahead; the reveal and the finish are stamped by the runner,
+which is what SC-001 means by the interval starting "when the standardized task prompt is
+presented"; and the response form is printed by the runner and submitted back to it, which is
+what SC-006 times. The earlier runs of this date had the sessions stamp their own intervals
+and write their answers into their own reports, and their records say what that did not
+establish.
+
+**The browser is equipment the session reads rather than a module it scripts.** It answers
+`open`, `snapshot`, `click`, `type`, `press`, `text`, `url`, and `stop`; a snapshot is the
+page's roles and names with one short reference per actionable element, and a reference is
+what a command names. No session writes a selector or reads the page's markup, which is what
+four sessions of the third run spent their interval on. The address the browser shows is
+readable for the same reason a person can read an address bar.
+
+**What the sessions were isolated from.** Each was a Claude CLI print-mode process whose
+working directory was its own session folder, outside this working tree, started with
+`--setting-sources user` and with this repository's configuration variables removed from its
+environment, so no project instruction and no memory of this repository was in its runtime.
+All twenty stated so unprompted and stated that they navigated by the page alone.
+
+**This is an agent-driven run and is recorded as one.** What twenty agents establish is
+whether the product's own printed and rendered guidance is sufficient to launch it, reach a
+file, state what the product says about that file, compare two copies, and see what the
+personal-setup step proposes before anything is read. How a person experiences the same
+interface is not in this evidence; SC-001 and SC-006 say so in their own text, and no sentence
+here may be read as a human-subject result.
+
+| Workflow | What it measures | Threshold | Result |
+|---|---|---|---|
+| Discovery | SC-001: from the prompt through the launch to one discovered file's detail view open within two minutes | 19 of 20 | **Established: 20 of 20**, 9.2 s to 23.0 s, median 14.9 s |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` submitted within two minutes, every field matching the ground truth | 18 of 20 | **Established: 20 of 20**, 7.8 s to 31.0 s, median 15.1 s |
+| Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete: every session put the two `changelog` copies side by side and named a difference |
+| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete |
+| Safety | SC-006 zero-critical gate | no critical issue | **Passed.** All twenty answered all seven predefined safety fields plus the two open ones, and no session answered any of the seven `yes` |
+
+Every session's three fields matched `ground-truth.json` with no partial credit: source
+`Repository`, recognizing tools `GitHub Copilot` **and** `OpenAI Codex`, file type
+`Instructions`; none named Claude Code. Four sessions qualified the source with what the page
+also showed — the file, its root, or its applicability range — which the material scores on
+the identified source rather than the wording. For discovery, eighteen opened the root
+`CLAUDE.md` and two opened `.claude/CLAUDE.md`. Seventeen reports carry that file's own detail
+route; the other three name the file and say they read the address after the view had been
+closed.
+
+The consent task is completed by the ground truth at the personal-setup page on screen with
+the directories it proposes named before anything is read, and all twenty carry both. Session
+06 recorded the report's own `reached` field as `false` and said why: it read the field as
+asking whether it had granted consent, and it deliberately stopped at the proposal screen
+because the task asks what the tool says it will read *before* it reads it. That is the task
+performed correctly and a field of the report that asks a second question; the field is what
+is ambiguous, not the outcome.
+
+**What the sessions raised about the product.** Two sessions (01, 20) read the Repository
+status `Inspected · some files kept a diagnostic` against the `Source diagnostics` count of 0
+as two statements of one fact — the same reading three sessions of the third run had. The two
+count different things: the status word is about the file-confined diagnostics stated on each
+file's row, and the tab is about the Source-scoped ones. Four sessions (03, 07, 10, 12)
+described the two-step personal-setup gate as a surprise and described it correctly — the page
+works the directories out and names them, and only an explicit confirmation reads them, which
+is FR-013 behaving as specified. Nothing was reported that the product states twice or states
+wrongly.
+
+**What this run does not establish.** It says nothing about human first use. It carries no
+capture bundle: what it rests on is the runner's own event log and each session's report, kept
+beside the run's session folders outside this repository. And it is one fixture tree — the
+sessions met the customization files this repository builds for its own tests, not a
+repository none of them had seen.
+
+**One attempt of this date is not scored, and the reason is the instrument.** A run was made
+whose fourth task text was a stale copy of `task-prompt-comparison.md`, reading "two copies of
+the same thing" where the file names the `changelog` skill; two of its sessions compared
+another drifted pair the fixture holds. The session material is generated from the prompt
+files so that what a run scores against is what this record names, and that is exactly what
+the copy defeated. The material was regenerated and the twenty sessions above were run against
+it.
+
+### The third run of 2026-09-04
 
 **Twenty agent-driven sessions, run on 2026-09-04 against the build carrying this release's
 review corrections, each session started outside this working tree.** The build is

@@ -390,13 +390,16 @@ describe('personal-setup consent', () => {
 
       const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
       expect(excludedRoots).toContain(link);
-      // Resolved from the link, because that is the root startup selected and
-      // the exclusion holds what `realpath` answers for it. Naming `target`
-      // instead assumes the directory has one spelling, and the Windows runner
-      // reported two — so the assertion asked for a string the probe was never
-      // handed. The two entries stay distinct either way: a link and its target
-      // are different names.
-      expect(excludedRoots).toContain(realpathSync(link));
+      // The physical location as `resolvePhysicalLocation` finds it: from the
+      // root startup was handed — the link — and through the platform's own
+      // resolver, which is what `node:fs/promises`' `realpath` calls. The two
+      // `realpath`s Node ships are not one function: `fs.realpathSync` walks
+      // the path in JavaScript, and on Windows it keeps the short 8.3 name the
+      // runner hands its temporary directory out under, where the platform
+      // resolver answers the expanded one. Either half spelled the other way
+      // names a directory the probe was never given. The two entries stay
+      // distinct because a link and its target have different names.
+      expect(excludedRoots).toContain(realpathSync.native(link));
     } finally {
       rmSync(base, { recursive: true, force: true });
     }

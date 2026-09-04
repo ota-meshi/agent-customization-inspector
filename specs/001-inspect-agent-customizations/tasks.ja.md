@@ -9111,7 +9111,7 @@ readmeは読み手が実際に出会うinterfaceを示す。
   した *(2026-09-03 修正: 記録したrunは各sessionにhostが既に配信しているoriginを渡したので、その
   timerはSC-001の区間が含む起動を含まず、recordはSC-001を未確立と述べる。各sessionが自分でInspectorを
   起動する繰り返しはT1202であり、このtaskは記録したrunとしてだけ完了である。)*（SC-001、SC-006）（missing）
-- [ ] T1202 SC-001 と SC-006 の agent駆動session 20件を、各sessionが意図した Repository root から
+- [X] T1202 SC-001 と SC-006 の agent駆動session 20件を、各sessionが意図した Repository root から
   自分で Inspector を起動する形で繰り返す — SC-001 の区間は起動を含み、T1195 が記録する run は
   その後から始まっていた —。そのbuildと `tests/usability/sc001-sc006-study-inputs/` の採点材料を
   名指して、結果をagent駆動の実行として `specs/001-inspect-agent-customizations/validation.md` と
@@ -9126,7 +9126,11 @@ readmeは読み手が実際に出会うinterfaceを示す。
   runnerは全taskを一度に渡してtimestampをsessionに委ね、20 sessionは1つのprocess namespaceを共有した。
   閾値を外したrunを良い数字のために繰り返さないというkitの規則は妥当なrunについてのものであり、この
   runは基準が定める区間を実装していない。したがってこのtaskは、同じ測定のやり直しではなく、最初の
-  妥当な測定のために開いたままとする。)*（SC-001、SC-006）
+  妥当な測定のために開いたままとする。5回目のrunがその妥当な測定であり、最初に記録している。runnerは
+  直前のtaskが終わってから次のtaskを提示して両端を刻み、response formを印字して提出を受け取り、
+  各sessionにはscriptするのではなく読むbrowserを与え、safetyの回答を基準自身のfieldとして取る。
+  どちらの基準も満たした。同日の6回目の試行は採点しないものとして記録する。4つ目のtask textが
+  prompt fileの古いcopyで、採点対象がこの記録の名指す材料ではなかったためである。)*（SC-001、SC-006）
 
 ### 作り直しを名指す記録
 

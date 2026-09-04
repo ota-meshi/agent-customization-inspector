@@ -10618,7 +10618,7 @@ reopened names them. Each records its result in that file and in
   serving, so its timer excludes the launch SC-001's interval includes and the record states
   SC-001 as not established; the repeat in which each session launches the Inspector itself is
   T1202, and this task is complete only as the run it records.)* (SC-001, SC-006) (missing)
-- [ ] T1202 Repeat the twenty agent-driven SC-001 and SC-006 sessions so that each session
+- [X] T1202 Repeat the twenty agent-driven SC-001 and SC-006 sessions so that each session
   launches the Inspector itself from the intended Repository root — SC-001's interval includes
   the launch, which the run T1195 records began after — naming the build and the task material
   under `tests/usability/sc001-sc006-study-inputs/` it scored against, and record the result as an
@@ -10638,7 +10638,13 @@ reopened names them. Each records its result in that file and in
   sessions, and twenty sessions shared one process namespace. The kit's rule that a run
   missing a threshold is not repeated for a better number is about a valid run; this one did
   not implement the intervals the criteria define, so the task stays open for a first valid
-  measurement rather than for a second attempt at the same one.)* (SC-001, SC-006)
+  measurement rather than for a second attempt at the same one. A fifth run is the valid
+  measurement and is the one recorded first: the runner presents each task when the one before
+  it finished and stamps both ends, prints the response form and takes its submission, gives
+  each session a browser it reads rather than one it scripts, and takes the safety answers as
+  the criterion's own fields. Both criteria are met. A sixth attempt of that day is recorded as
+  unscored: its fourth task text was a stale copy of the prompt file, so what it scored against
+  was not the material this record names.)* (SC-001, SC-006)
 
 ### Records that name the rework
 

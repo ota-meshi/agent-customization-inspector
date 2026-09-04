@@ -164,7 +164,7 @@ regressionへ追加すること。これらがFR-013、FR-020、FR-022、`open-f
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、4 test passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 file、1,905 test passed。statement 86.17%（5,955/6,910）、branch 71.61%（3,555/4,964）、function 87.44%（1,163/1,330）、line 86.48%（5,837/6,749） |
+| Coverage | `pnpm run test:coverage` | 75 file、1,905 test passed。statement 86.17%（5,955/6,910）、branch 71.63%（3,556/4,964）、function 87.44%（1,163/1,330）、line 86.48%（5,837/6,749） |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
 **ここでのbrowser gateは1 projectであり、certification matrixはCIのものである。**
@@ -371,6 +371,88 @@ jobは3つのoperating systemと2つの固定Node.js versionを要するが、�
 host 1台である。Certificationの結果はmatrix上のCI runが生むものであり、記録されているものはない。
 
 ## SC-001とSC-006のfirst-use session
+
+**2026-09-04に、このreleaseの最終review修正を載せたbuildに対して、runnerが時計を持って実施した
+20件のagent駆動session。** buildはcommit `4ffbddc8920a4c6ef21a908d2086b6cabccf98db`のtreeの
+`npm pack`で、tarballのSHA-256は
+`98e00eacfe513bf746aae3d31124b74e2dc401af14c6c3aa814d1838940d6f2e`、これを`npm install`で1つの
+run folderに入れた。このdigestはsessionが実行したartifactを指すもので、re-packが再現する値では
+ない。同一sourceの2回のpackはNuxtが`dist/public`へ書くbuild idだけが異なり、`dist/cli.mjs`を
+含めそれ以外はbyte単位で一致する。各sessionは自分の`repository/` —
+`tests/fixtures/repositories/build-fixtures.ts`がその場に構築するall-kind fixture — と、
+`tests/fixtures/global-homes/build-fixtures.ts`が作る自分だけの`HOME`配下の4つのhomeを持った。
+各sessionへ渡したのは`tests/usability/sc001-sc006-study-inputs/guidance.md`のtext、その隣の4つの
+prompt fileの逐語、`response-form.json`の3つの質問であり、いずれもそのcommit時点のものである。
+採点は同じrevisionの`ground-truth.json`に対して行った。equipment conditionは以前のrunと同じ2つ、
+すなわち起動commandへ付ける`--port 0`と、そのcommandに限って設定する4つのhome変数である。同時
+実行は5 sessionで、modelはClaude Sonnet 5である。
+
+**criterionがrunnerのものと定める部分はrunnerが持つ。** sessionは直前のtaskが終わってから次の
+taskを1つ受け取り、先読みできない。revealとfinishはrunnerが刻む。これがSC-001のいう「standardized
+task promptが提示された時点」から始まるintervalである。response formもrunnerが印字してrunnerが
+提出を受け取る。これがSC-006の計測対象である。同日の以前のrunはsession自身がintervalを刻み、
+答えを自分のreportへ書いていた。それが何を確立しなかったかは各runの記録が述べている。
+
+**browserはsessionがscriptするmoduleではなく、読む装備である。** `open`、`snapshot`、`click`、
+`type`、`press`、`text`、`url`、`stop`に答える。snapshotはpageのroleとnameであり、操作できる要素
+1つにつき短いreferenceが1つ付く。commandはそのreferenceを指す。selectorを書くsessionも、pageの
+markupを読むsessionも無い。3回目のrunで4 sessionがintervalを費やしたのはそこだった。browserが
+表示しているaddressを読めるのは、人がaddress barを読めるのと同じ理由である。
+
+**sessionが何から隔離されていたか。** 各sessionはClaude CLIのprint-mode processで、working
+directoryは自分のsession folder、すなわちこのworking treeの外である。`--setting-sources user`で
+起動し、このrepositoryのconfiguration変数はenvironmentから除いた。したがってproject instructionも
+このrepositoryのmemoryもruntimeに無い。20件すべてが問われる前にそう述べ、pageだけで進めたと
+述べた。
+
+**これはagent駆動のrunであり、そう記録する。** 20 agentが確立するのは、製品自身が印字・描画する
+guidanceだけで、起動し、fileへ到達し、そのfileについて製品が述べていることを述べ、2つのcopyを
+比較し、personal-setupが読む前に何を提案するかを見るのに十分か、である。同じinterfaceを人がどう
+経験するかはこのevidenceに無い。SC-001とSC-006自身がそう述べており、ここのどの文もhuman-subjectの
+結果として読んではならない。
+
+| Workflow | 測定対象 | 閾値 | 結果 |
+|---|---|---|---|
+| Discovery | SC-001: promptから起動を経て、発見した1 fileのdetail viewが2分以内に開くまで | 20件中19件 | **確立: 20件中20件**、9.2秒〜23.0秒、中央値14.9秒 |
+| Inspection | SC-006: 指定された`AGENTS.md`について3つのresponse fieldを2分以内に提出し、全fieldがground truthと一致すること | 20件中18件 | **確立: 20件中20件**、7.8秒〜31.0秒、中央値15.1秒 |
+| Comparison | SC-006 coverage: 標準のcomparison task | 20件全件が試行 | **20件中20件**完了。全sessionが2つの`changelog` copyを並べ、差異を1つ述べた |
+| Global consent | SC-006 coverage: 標準のpersonal-setup consent task | 20件全件が試行 | **20件中20件**完了 |
+| Safety | SC-006のzero-criticalゲート | criticalな問題なし | **合格。** 20件すべてが7つの定義済みsafety fieldと2つの自由記述に答え、7つのいずれにも`yes`と答えたsessionは無い |
+
+各sessionの3 fieldは`ground-truth.json`と部分点なしで一致した。sourceは`Repository`、recognizing
+toolは`GitHub Copilot`**と**`OpenAI Codex`、file typeは`Instructions`であり、Claude Codeを挙げた
+sessionは無い。4 sessionはsourceにpageが併せて示すもの — file、その root、applicability range —
+を添えたが、採点は文言ではなく特定されたsourceに対して行う。discoveryでは18 sessionがrootの
+`CLAUDE.md`を、2 sessionが`.claude/CLAUDE.md`を開いた。17件のreportはそのfile自身のdetail routeを
+持ち、残る3件はfileを名指したうえで、viewを閉じた後にaddressを読んだと述べている。
+
+consent taskの完了条件はground truthでは、personal-setup pageが画面にあり、読む前にそれが提案する
+directoryを述べていることであり、20件すべてが両方を持つ。session 06はreportの`reached` fieldを
+`false`と記録し、理由を述べた。そのfieldを「consentを与えたか」と読み、taskが読む*前*に何を読むと
+言うかを尋ねているので提案画面で意図的に止めた、という。これはtaskを正しく行った結果であり、
+曖昧なのはfieldであってoutcomeではない。
+
+**sessionが製品について挙げたこと。** 2 session（01、20）は、Repositoryのstatus
+`Inspected · some files kept a diagnostic`と`Source diagnostics`のcount 0を、1つの事実についての
+2つの記述として読んだ。3回目のrunの3 sessionと同じ読みである。両者は別のものを数えている。status
+の語は各fileの行に述べるfile単位のdiagnosticについてであり、tabはSource単位のものについてである。
+4 session（03、07、10、12）は2段階のpersonal-setup gateをsurpriseとして挙げ、そのとおりに記述した。
+pageがdirectoryを割り出して名指し、明示的な確認だけがそれを読む — FR-013が仕様どおり動いている。
+製品が二重に述べていること、誤って述べていることの報告は無かった。
+
+**このrunが確立しないこと。** 人の初見利用については何も述べない。capture bundleは持たない。
+根拠はrunner自身のevent logと各sessionのreportであり、このrepositoryの外にあるrun のsession
+folderの隣に置いている。そして1つのfixture treeである。sessionが会ったのは、このrepositoryが
+自身のtestのために構築するcustomization fileであって、誰も見たことのないrepositoryではない。
+
+**同日のもう1つの試行は採点しない。理由はinstrumentにある。** 4つ目のtask textが
+`task-prompt-comparison.md`の古いcopyで、fileが`changelog` skillを名指しているのに「two copies of
+the same thing」と読ませるrunを1回行い、その2 sessionはfixtureが持つ別のdriftしたpairを比較した。
+session材料はprompt fileから生成する。runが採点する対象をこの記録が名指すものと一致させるため
+であり、その古いcopyはまさにそれを破っていた。材料を再生成し、上の20 sessionはそれに対して
+実行した。
+
+### 2026-09-04の3回目のrun
 
 **2026-09-04に、このreleaseのreview修正を載せたbuildに対して、各sessionをこのworking treeの外で
 開始して実施した20件のagent駆動session。** buildは上のrelease gateを実行したtreeの`pnpm pack`で、
