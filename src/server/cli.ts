@@ -35,7 +35,7 @@ import packageJson from '../../package.json' with { type: 'json' };
 import { executeRepositoryScan, runGlobalEnable, startInspectorHost } from './host/devframe-app';
 import { DetectedFileOpener } from './host/file-opener';
 import { GlobalConsentDomain } from './host/global-consent';
-import { InspectionSession, SessionCoordinator } from './session/session';
+import { selectRepositoryRoot, InspectionSession, SessionCoordinator } from './session/session';
 
 // The one capture of the invocation working directory (FR-001), taken at
 // module load before any argument validation. Selection never calls
@@ -116,7 +116,13 @@ const command = define({
     // Probed once, before the session exists: which applications this machine
     // can open a file in is a fact about the machine, and the snapshot offers
     // exactly what this opener can launch (contracts/http-api.md § open-file).
-    const fileOpener = await DetectedFileOpener.probe();
+    // The selected root is resolved first, by the session's own rule, because
+    // the probe removes every `PATH` entry inside it: an executable under
+    // inspected content must never become the editor this product offers
+    // (FR-022).
+    const fileOpener = await DetectedFileOpener.probe(
+      selectRepositoryRoot(invocationCwd, rootOptionValue),
+    );
     const session = new InspectionSession({ invocationCwd, rootOptionValue, fileOpener });
     const coordinator = new SessionCoordinator(session);
     const context = { session, coordinator };

@@ -18,8 +18,8 @@ outbound request.
 **What the command decides.** For each of the registry's 52 records it retrieves the
 recorded URL completely, requires a direct `200` from the record's own `officialHost` with
 no redirect followed, and resolves each of the 193 cited sections against the served bytes:
-as exactly one served `<h1>`–`<h4>`, or — on a client-rendered page that serves no such
-element — as its table-of-contents anchor slug appearing exactly once. Anything else is
+as exactly one served `<h1>`–`<h4>`, or — when no served heading carries it — as the one
+fragment every table-of-contents link bearing its text points at. Anything else is
 reported as observed: `missing`, `ambiguous-heading`, or `ambiguous-anchor`. A request that
 throws is reported as a request that did not complete.
 
@@ -30,10 +30,18 @@ than lookups, and both stay with the reviewer;
 
 **Mutation.** The command changes nothing. It reports, and a reviewer decides what follows.
 
-**Network runs.** None in this change. The command was exercised against its contract suite
-only (`tests/contract/official-source-drift.test.ts`), which drives every decision path with
-injected retrieval. The reviewed source set and any classified drift from a networked run
-are recorded here when one is performed.
+**Network runs.** 2026-09-04, over all 52 records. The first run reported 18 sections
+missing. Seventeen were on code.claude.com pages whose headings are served with a zero-width
+space inside each heading's own anchor link, which the checker's text normalization had kept;
+it now drops format characters, and those sections resolve as served headings. One was
+`vscode.copilot.instructions`, whose heading `Use multiple AGENTS.md files (experimental)` is
+now rendered `Use multiple AGENTS.md files` with the experimental label beside it; the citation
+was updated after re-reading the three cited sections against every record that maintains a
+paraphrase from them. The run after that fix reported the two changelog records, whose cited
+releases the page renders as labelled entries rather than headings and lists in its table of
+contents; the fallback now reads that list, and each of the four entries was re-read against
+the paraphrase it backs. The final run reported 52 sources checked, 0 with drift, and named
+those four sections as established through the table of contents.
 
 ## Presentation Allowlist freeze
 
@@ -109,7 +117,7 @@ Every gate below was run on 2026-09-03 against the tree at this change's tip, af
 | Integration | `pnpm run test:integration` | 10 files, 268 tests passed |
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
-| Performance | `pnpm run test:performance` | 2 files, 6 tests passed |
+| Performance | `pnpm run test:performance` | 2 files, 4 tests passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 564 passed |
 | Coverage | `pnpm run test:coverage` | 74 files, 1,870 tests passed; statements 86.25%, lines 86.57% |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
@@ -139,7 +147,11 @@ the later run.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
 non-gating pass over the 100,000-entry fixture and asserts harness integrity. No timing
-threshold is asserted anywhere in this release.
+threshold is asserted anywhere in this release. The pass on 2026-09-04 (arm64, Node 24.14.0)
+observed the request-correlated status 111 ms and the request-committed operable inventory
+622 ms after the rescan was dispatched, the filter feedback at 19 ms and the selection
+feedback at 56 ms; the global setup prints these for whoever reads the log, and they describe
+this machine.
 
 
 ## Outcome-manifest criteria
@@ -222,6 +234,21 @@ failed in macOS WebKit for the tab-order reason recorded above. The certified We
 Linux revision CI runs, so the certifying result for this half is CI's, and it is assumed
 rather than observed here — the same disposition T1051 records for the lower-bound matrix.
 No local run stands in for it.
+
+**`AUTO-2.1.2` certifies the exit from the editor on all three browsers.** Chromium and WebKit
+assert a bounded forward-Tab exit. On the pinned Firefox revision, Tab does not leave Monaco's
+input textarea, while Shift+Tab leaves it on the first press, so Firefox explicitly asserts that
+backward exit. Measured on 2026-09-04
+with a capture-phase `keydown` listener on `window`: every press reaches the page with
+`defaultPrevented` false, no `focusin` follows, and `document.activeElement` stays
+`textarea.inputarea` — Monaco is not consuming the key, so `tabFocusMode: true` and the
+Ctrl+M toggle, which govern whether it does, change nothing. Firefox's forward sequential
+focus navigation does not move from the textarea Monaco renders at 0×0 on that engine alone
+(`canUseZeroSizeTextarea = isFirefox` in its text-area edit context; 1px on the others).
+Chromium, whose input element is a `div.native-edit-context`, and WebKit release focus on
+the first press. The test records the forward-Tab exemption, no workaround is installed in this
+repository, and forward exit on Firefox stands as an open limitation of the editor on that
+engine.
 
 **The manual half is outside the criterion.** The 36 `MANUAL-*` IDs would be executed over
 `3 × 5 × 3 × 8 × 3 = 1,080` keyed cells each — 38,880 cells requiring macOS with VoiceOver,

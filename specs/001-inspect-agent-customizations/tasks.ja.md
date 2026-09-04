@@ -406,7 +406,7 @@ dispositionである。
 
 **目的**: Repositoryを読み取らずに、最初のuser-visible product incrementを提供する。
 
-**独立テスト**: Host起動またはbrowser openingより前に、generation 0がcaptured invocation `cwd`/`--root`からlexicalにselectedされたexactly one enabled idle Repository Sourceをstable opaque `sourceId`、escaped non-authorizing boundary、empty files/Diagnostics、null `scanRequestId`、filesystem I/O 0件で同期的に構築することを検証する。その後packageをinstallし、fixture invocation `cwd`からoptional `--root`あり/なしでlaunchしてautomatic startup scan後にprinted loopback URLを開き、browserがcommit済みのReady Repository Sourceをescaped non-authorizing boundaryおよびempty files/Diagnosticsとともに表示することを検証する。
+**独立テスト**: Host起動またはbrowser openingより前に、generation 0がcaptured invocation `cwd`/`--root`からlexicalにselectedされたexactly one enabled idle Repository Sourceをstable opaque `sourceId`、escaped non-authorizing boundary、empty files/Diagnostics、null `scanRequestId`、filesystem I/O 0件で同期的に構築することを検証する。その後fixture invocation `cwd`からoptional `--root`あり/なしで`dist/cli.mjs`をlaunchしてautomatic startup scan後にprinted loopback URLを開き、browserがcommit済みのReady Repository Sourceをescaped non-authorizing boundaryおよびempty files/Diagnosticsとともに表示することを検証する。 *(2026-09-04 修正: このphaseのpackage testは無関係なworking directoryからbuilt entryを使い、lower-bound CI matrixでのinstalled-tarball launchはT1051が所有する。)*
 
 **目に見えるチェックポイント**: Browser screenが起動し、product contentはほぼ何も表示されない。
 
@@ -456,9 +456,11 @@ dispositionである。
   rejection、awaited host startup、正確なpackage field、closed loopback URLとprinted-URL
   fallback、無関係なworking directoryからのbuilt shell配信、調査対象fixtureが変更されないこと、graceful
   shutdownを`tests/unit/cli.test.ts`と`tests/package/npx-launch.test.ts`でカバーする。このPhase 3 package
-  testにおける「isolation」は無関係なworking directoryだけを意味する。Packed
-  tarballからのinstallと、inspection由来valueがbrowser openingへ到達しないことを含むcomplete
-  packed-entry/default-browser/helper/environment instrumentationはT917が所有する。
+  testにおける「isolation」は無関係なworking directoryだけを意味する。Inspection由来valueがbrowser
+  openingへ到達しないことを含むcompleteなpacked-entry/default-browser/helper/environment instrumentationは
+  T917が所有し、lower-bound CI matrixで1つのpack済みtarballをinstallしてlaunchする責務はT1051が所有する。
+  *(2026-09-04 修正: package gateはtarball installに必要なnetworkなしで意図して実行し、install済みpackageの
+  pathはcross-platform certificationが所有する。)*
 - [X] T044 [US1] Packaged boot shellがexact one enabled Repository Source、そのescaped non-authorizing
   selected-root label、empty files/Diagnosticsを表示し、keyboard focusを先頭に置き、Repository picker/ancestor
   discoveryを提供しないこと、およびtransportが報告するhost喪失が操作なしにrender済みSourceをpurgeしてsessionを終了させることを`tests/e2e/boot.spec.ts`でbrowser
@@ -1433,11 +1435,12 @@ dispositionである。
   inventoryだけをacceptし、generic/loading/unchanged/prior/automatic stateを拒否する。2つのstandardized
   interactionを計測し、profile/manifest version/digestとrequest ID/generationを記録してnon-gating smoke
   passを1回実行する。対象は`tests/performance/sc002-reference-profile.json`、`tests/performance/repository-scan.test.ts`、`tests/performance/inventory-interactions.test.ts`とし、exact
-  10-run 9/10 protocolはT918へ延期する。このsuite自身のgateを同じ変更で復活させる: `./vitest.config.ts`の`performance`
+  passのprotocolはT918が所有する。このsuite自身のgateを同じ変更で復活させる: `./vitest.config.ts`の`performance`
   project、`./package.json`の`test:performance` script、`./.github/workflows/ci.yml`のCI
   job、`specs/001-inspect-agent-customizations/quickstart.md`/`specs/001-inspect-agent-customizations/quickstart.ja.md`のgate行・期待結果のbullet・そのdirectoryを名指すcommand。suiteが空の間はいずれも削除してある。まだ存在しないsuiteは宣言できないからである:
   空のprojectはrunをそのままfailさせ、それを通す許可を与えれば、誰も書いていない検証について成功を報告することになる。復元するbulletはこのtask自身のnon-gating
-  smoke passを述べる。T918がそれを、自身が所有する最終の10 run中9 run protocolへ書き換える。
+  smoke passを述べ、T918はそれをperformance gateの全体として保つ *(2026-09-04修正: T918が測定protocolを
+  撤回したため、このtaskが復元するpassがgateである)*。
 - [X] T184 [US1] 統合 filter、multi-recognition、keyboard use、inventory からの source exposure
   なしに関するブラウザー回帰を `tests/e2e/skills-inventory.spec.ts` に追加する *(2026-08-08修正: admission はどの surface
   も読み出さない read-authorization 記録に留まるため、provenance は表示されない（T1068）。)*
@@ -6051,8 +6054,8 @@ dispositionである。
   overlayを作成または置換し、throw/rejectionでは失敗したrequestのerror messageだけを、rootを読めなかった場合はsource-scoped
   `root-unreadable` Diagnosticを参照し、pre-acceptance
   failureではoverlayを作らず、正常replacement後だけclearすることを要求する。以上を`tests/contract/http-api-session.test.ts`で証明する
-- [X] T917 [P] [US1] 隔離install、fixed assets、同一tarball、反復指定をparserのlast valueへ解決するoptional
-  `--root`の完全なpackaged Gunshi CLI testを追加する: invocation
+- [X] T917 [P] [US1] 無関係なworking directoryによるisolation、fixed assets、反復指定をparserのlast valueへ
+  解決するoptional `--root`の完全なpackaged Gunshi CLI testを追加する: invocation
   `process.cwd()`を1回captureし、省略時はその正確な文字列を保持する。絶対optionはそのまま保持し、相対optionはlexicalな`node:path`
   operationだけでcaptureに対して解決する。packed entry全体を計測する: CLI import前はfixedなpackage所有以外のproduct所有read
   0件を許し、その後のroot selectionはfilesystem/network I/O 0件かつ`process.chdir()`なしを要求し、明示的なempty
@@ -6065,19 +6068,22 @@ dispositionである。
   suite（`tests/unit/cli.test.ts`）が直接駆動して所有する。このtaskが足すのはpackaged側である: packed
   entry経由のoptionalおよび繰り返しの`--root`、working directoryの変更やoutbound
   connectionがあればlaunchを失敗させるpreload、subcommandを持たない1つのmode、packed processが終了する形での空root拒否。)*
+  *(2026-09-04 修正: このpackage suiteはinstallなしで`dist/cli.mjs`をlaunchする。Networkを使うpathは
+  cross-platform lower-bound certificationに属するため、新しいdirectoryへの1つのCI tarballのinstallとlaunchは
+  T1051が所有する。)*
 - [X] T918 [P] [US1] T183をfinal registryへ拡張し、1つの変更しないprofile/fixtureでnon-gatingなsmoke passを1回実行する
-  *(2026-09-03 修正: 10 runのprotocolは、それが測っていた基準（T1052）とともに撤回された。)*。Run
-  1直前と各run直後にprofileがbindする`tests/performance/sc002-fixture-manifest.json`のversion/canonical
+  *(2026-09-03 修正: このtaskがかつてgateしていた測定protocolは、それが測っていた基準（T1052）とともに撤回された。
+  別のmachineで測った数値は、この製品ではなくそのmachineの測定だからである。passがgateである。)*。Run直前と
+  直後にprofileがbindする`tests/performance/sc002-fixture-manifest.json`のversion/canonical
   digest、`tests/performance/sc002-fixture-manifest.sha256`、参照する全content digestを再計算して、missing
-  entryまたはdriftがあればset全体を無効とする。各自動first
-  scanをtiming外で待ち、明示rescanを正確に1件dispatchして`scanRequestId`をcaptureし、両timerをdispatch時に開始して、qualifying
-  visible/assistive statusとcommit済みgeneration inventoryへ同じIDを要求する。Prior/automatic stateを拒否し、同じ9
-  run以上に1秒status、10秒inventory、2つの100 ms未満interactionを要求する。各runで同じprofile ID/manifest
-  version/canonical digestを繰り返し、request ID/generation/environmentを記録し、personal identifier/absolute
-  user pathだけを省略してcache reset/snapshot reuse/cross-profile
-  comparisonを拒否する。対象は`tests/performance/repository-scan.test.ts`と`tests/performance/inventory-interactions.test.ts`とする。T183が`specs/001-inspect-agent-customizations/quickstart.md`と`specs/001-inspect-agent-customizations/quickstart.ja.md`へ復元したperformanceの期待結果bulletを、同じ変更でこのtaskの10
-  run中9 run protocolへ更新する。 *(2026-08-27 修正: 10-run protocol、digestの再検証、run ごとのrequest
-  correlationはどこでもgateする。4つの閾値は、check-in済みprofileが宣言するhost上ではassertし、それ以外では記録する。別のmachineで測った同じ数値は、この製品ではなくそのmachineの測定だからである。)*
+  entryまたはdriftがあればset全体を無効とする。自動first scanをtiming外で待ち、明示rescanを正確に1件dispatchして
+  `scanRequestId`をcaptureし、両timerをdispatch時に開始して、qualifying visible/assistive statusとcommit済み
+  generation inventoryへ同じIDを要求する。Prior/automatic stateを拒否し、thresholdはassertしない。同じprofile
+  ID/manifest version/canonical digestを繰り返し、request ID/generation/environmentを記録し、personal
+  identifier/absolute user pathだけを省略してcache reset/snapshot reuse/cross-profile comparisonを拒否する。
+  対象は`tests/performance/repository-scan.test.ts`と`tests/performance/inventory-interactions.test.ts`とし、
+  run自体はprojectのglobal setupで行い、その数値を出力する。T183が`specs/001-inspect-agent-customizations/quickstart.md`と`specs/001-inspect-agent-customizations/quickstart.ja.md`へ復元したperformanceの期待結果bulletを、同じ変更でこのsmoke passへ更新する。
+  *(2026-08-27 修正: digestの再検証とrequest correlationはどこでもgateする。)*
 - [X] T919 [US1] Inventory、filter、multi-recognition、Diagnostics、empty state、request-correlated
   rescan/retry、keyboard use、atomic replacement、明示的なdetail request外でのsource/metadata/sensitive-value
   exposure 0件に関するRepository-complete browser acceptanceと文書化済みdiscovery command
@@ -8065,7 +8071,10 @@ participant 20名がこのprojectには得られず、それが存在する理�
   記録する *(2026-09-01 修正: セッションはparticipant cohortではなくagent駆動であるため、
   recordが述べるのはproductのguidanceで何ができたかであり、human-subjectの結果ではない。
   `scripts/`のsealed-capture kitは、moderatedなstudyが必要とする機構として残る。このrunはそれを
-  使用せず、recordはそう述べる。)*
+  使用せず、recordはそう述べる。)* *(2026-09-03 修正: そのkitはその後削除され（T1061、T1062）、
+  SC-001自身の区間はprompt提示で始まりInspectorの起動を含むので、sessionには配信済みのoriginを渡さず、
+  session自身がInspectorを起動する。T1195が記録するrunは各sessionにoriginを渡しており、SC-001を
+  確立しないものとして記録されている。)*
 - [X] T1057 同じ20セッションをSC-006と残る2つのworkflowまで完了し、
   `specs/001-inspect-agent-customizations/validation.md`と
   `specs/001-inspect-agent-customizations/validation.ja.md`に記録する。各セッションは指定された
@@ -9081,7 +9090,9 @@ readmeは読み手が実際に出会うinterfaceを示す。
   実行として `specs/001-inspect-agent-customizations/validation.md` と
   `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。spec.md § Measurable
   Outcomes は主要workflowへの実質的な変更の後に繰り返すことを求めており、reworkは4つすべてを変更
-  した（SC-001、SC-006）（missing）
+  した *(2026-09-03 修正: 記録したrunは各sessionにhostが既に配信しているoriginを渡したので、その
+  timerはSC-001の区間が含む起動を含まず、recordはSC-001を未確立と述べる。各sessionが自分でInspectorを
+  起動する繰り返しはなお負っており、このtaskは記録したrunとしてだけ完了である。)*（SC-001、SC-006）（missing）
 
 ### 作り直しを名指す記録
 
@@ -9878,8 +9889,7 @@ directory名、nestedなClaude Code recognitionはroot相対prefix付き — で
 4. Nonempty admitted subsetではexactly one shared-ID `GlobalBatchScan`を実行し、0〜4個のseparate member Sourceをone completeまたはpartial Global generationで同時にatomic publishしてcarried Sourcesを保持しrootをmergeしない。Empty deterministic subsetはjobもgenerationも作らない。
 5. Global の再スキャン/回復と、優先ゼロ I/O 無効化バリアを追加する。
 6. Documentation/evidence/dependency reviewを完了し、その完成artifactに対してcross-cutting suiteを実行する。Remediationごとにprior post-review resultを無効にし、全applicable automated gateと影響evidence protocolを再実行し、concern 0件までcomplete-diff/tarball reviewを反復する。
-7. SC-001～SC-008のdenominator、threshold、pass/fail、closed twenty-member study-input bundle/canonical manifest digest、exact `study-inputs/`/`repository/` distribution layoutとderived-tree digest rootを検証済みの20件すべておよびseparateなcandidate/equipment/runtime binding、final packed-candidate digest、exact `pnpm run study:evidence:inputs -- materialize`、`pnpm run study:evidence:verify -- inputs`、`pnpm run study:evidence:capture -- start`、`pnpm run study:evidence:capture -- checkpoint`、`pnpm run study:evidence:verify -- checkpoint`、`pnpm run study:evidence:verify -- continuation`、`pnpm run study:evidence:capture -- stop`、`pnpm run study:evidence:verify -- finalize`のoutcome、opaque ID/root/countだけを含みraw evidence data 0件のrecomputed cross-stream `StudyCaptureSeal` digest、Node.js engines contract全体とexact lower-bound/browser certification sample、residual riskを記録する。
-   このsequenceはphase-closedとする。`INSPECTOR_STUDY_WORK_ROOT`、`INSPECTOR_STUDY_CONTROL_ENDPOINT`、`INSPECTOR_STUDY_CONTROL_TOKEN`はmaterializeからfinalize、`INSPECTOR_STUDY_CANDIDATE_TARBALL`はmaterialize/verify-inputsでforbiddenかつstartからfinalizeだけrequired、`INSPECTOR_STUDY_BROWSER_PROXY_AUTHORITY`はstartからstopだけrequiredとする。Stopはsupervisorをretainし、finalizeはcontrolをteardownして`StudyContinuityWitness`を`StudyCaptureSeal`より前にwriteする。
+7. SC-001～SC-008のdenominator、threshold、pass/fail、`tests/usability/sc001-sc006-study-inputs/`のtask materialと20件のagent駆動sessionが採点対象としたground truth（participant cohortではなくagent駆動のrunとして記録する。spec.md § Clarifications, Session 2026-09-01）、outcome-fixture manifestのversionとcanonical digest、final packed-candidate digest、Node.js engines contract全体とexact lower-bound/browser certification sample、residual riskを記録する。sealed-capture kit、そのpackage command、環境変数、sealは削除済みであり（spec.md § Clarifications, Session 2026-09-01。T1061、T1062）、ここでそれらを実行も記録もしない。
 8. 原則ごとの明示的なrelease Constitution Checkを記録し、対応するpull request review checkを必須とし、その結果生じるrepository evidence editをすべて完了する。
 9. Repositoryをfreezeした状態でcomplete applicable automated matrixとread-only complete-diff/tarball reviewを再実行し、`pnpm run test:docs`と`git diff --check`で終える。Outcomeはexternal release/pull-request check logだけへcaptureする。その後repositoryをeditした場合は全outcomeを無効にし、Constitution/final-tree gateの再実行前にstep 6/T1062へ戻る。
 

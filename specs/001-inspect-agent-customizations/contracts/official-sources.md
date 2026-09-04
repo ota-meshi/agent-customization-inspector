@@ -221,7 +221,7 @@ and does not admit an unregistered source repository or issue as substitute evid
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files (experimental)`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-08-19` |
+| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-09-04` |
 | `vscode.copilot.customization` | <https://code.visualstudio.com/docs/agent-customization/overview> | `code.visualstudio.com` | `Use customizations in a monorepo` | `2026-08-19` |
 | `vscode.copilot.settings` | <https://code.visualstudio.com/docs/agents/reference/ai-settings> | `code.visualstudio.com` | `Chat settings`; `Custom instructions settings`; `Reusable prompt files settings`; `Custom agents settings`; `Agent skills settings`; `Agent plugins settings` | `2026-08-19` |
 | `vscode.copilot.prompts` | <https://code.visualstudio.com/docs/agent-customization/prompt-files> | `code.visualstudio.com` | `Prompt file locations`; `Prompt file format`; `Create a prompt file`; `Use a prompt file in chat` | `2026-08-22` |
@@ -252,8 +252,8 @@ and does not admit an unregistered source repository or issue as substitute evid
 | `anthropic.claude-code.plugins.components-scopes` | <https://code.claude.com/docs/en/plugins-reference> | `code.claude.com` | `Plugin installation scopes`; `Skills-directory plugins`; `Hooks`; `Plugin manifest schema`; `File locations reference`; `Plugin caching and file resolution` | `2026-08-27` |
 | `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources`; `Require marketplaces for your team` | `2026-08-25` |
 | `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-25` |
-| `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`; `1.0.51` | `2026-08-22` |
-| `anthropic.claude-code.changelog.nested-skill-discovery` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.6`; `2.1.178` | `2026-08-06` |
+| `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`; `1.0.51` | `2026-09-04` |
+| `anthropic.claude-code.changelog.nested-skill-discovery` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.6`; `2.1.178` | `2026-09-04` |
 
 ## OpenAI official sources
 
@@ -324,13 +324,16 @@ recorded URL a starting point instead of the address the citation names, and a r
 a citation change the reviewer makes. Request, response, redirect, and decoding capacity comes from Node.js and
 the execution environment; a recoverable environment failure fails closed. An HTTPS
 downgrade, cross-host redirect, wrong content type, decoding failure, or missing or duplicate
-heading is a hard failure. A client-rendered page is the one exception, and only for the
-heading check: such a page serves its table of contents and no `<h*>` element at all, so the
-heading exists while no element carrying it does. The command accepts a cited heading whose
-anchor slug appears exactly once in the served table of contents, and reports which headings
-were established that way. Without that carve-out the check would report drift for every
-citation on a client-rendered page — a hard failure the maintainer can only ever dismiss,
-which is how a gate stops being read. A redirect is never silently followed into a new `canonicalUrl`.
+heading is a hard failure. A section no served heading carries is then looked for in
+the page's own table of contents, for the heading check only: the site derives that list from
+the same content, so a fragment link whose text is the cited section names a section the page
+has — one whose heading a client-rendered page did not serve, or one the page renders as
+something other than a heading, as the Claude Code changelog renders each release as a
+labelled entry. The command accepts the section when every such link points at one fragment,
+and reports which sections were established that way; links to two fragments cite two sections
+and establish neither. Without that fallback the check would report drift for every citation
+on such a page — a hard failure the maintainer can only ever dismiss, which is how a gate stops
+being read. A redirect is never silently followed into a new `canonicalUrl`.
 
 Normalization version `1` selects every listed heading through the next heading of equal
 or higher level, removes document chrome and `script`/`style` nodes, preserves prose and

@@ -63,7 +63,7 @@
         "url": "https://code.claude.com/docs/en/changelog",
         "officialHost": "code.claude.com",
         "sections": ["1.0.45", "1.0.51"],
-        "reviewedOn": "2026-08-22",
+        "reviewedOn": "2026-09-04",
         "establishes": "Release 1.0.45 restored subdirectory-derived namespacing in command names, so .claude/commands/frontend/component.md is /frontend:component rather than /component, and release 1.0.51 fixed the same nesting for user-level commands — the two scopes this strategy composes."
       },
       {
@@ -287,7 +287,7 @@
         "url": "https://code.claude.com/docs/en/changelog",
         "officialHost": "code.claude.com",
         "sections": ["2.1.178"],
-        "reviewedOn": "2026-08-06",
+        "reviewedOn": "2026-09-04",
         "establishes": "Release 2.1.178 introduces the nested-clash retention this strategy records — on a name clash the nested skill appears as <dir>:<name> so both stay available — and anchors the retention half of this pipeline at 2.1.178+."
       },
       {
@@ -840,9 +840,9 @@
         "sections": [
           "Types of instruction files",
           "Instruction priority",
-          "Use multiple AGENTS.md files (experimental)"
+          "Use multiple AGENTS.md files"
         ],
-        "reviewedOn": "2026-08-19",
+        "reviewedOn": "2026-09-04",
         "establishes": "VS Code combines every applicable instruction file into the chat context with no specific order guaranteed; when conflicts occur the documented priority is personal, then repository, then organization instructions, with every applicable set still provided; and nested AGENTS.md selection is an experimental setting that leaves the choice to the model."
       },
       {

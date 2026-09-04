@@ -14,8 +14,8 @@
 
 **commandが判定すること。** registryの52 recordそれぞれについて、記録URLを完全に取得し、record自身の
 `officialHost`からredirectなしの直接`200`を要求し、引用された193 sectionを配信bytesに対して解決する。
-配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそのelementを配信しないclient renderingのページでは
-目次のanchor slugがちょうど1回現れることとして。それ以外は観測どおり`missing`、`ambiguous-heading`、
+配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそれを担うheadingが配信されていないときは、
+その本文を持つ目次linkがすべて指す1つのfragmentとして。それ以外は観測どおり`missing`、`ambiguous-heading`、
 `ambiguous-anchor`として報告する。requestがthrowした場合は「完了しなかったrequest」として報告する。
 
 **commandが判定しないこと。** 見出しが消えたことの意味と、引用sectionが今も保守対象のparaphraseを
@@ -24,9 +24,16 @@
 
 **変更。** commandは何も変更しない。報告するだけで、その後をreviewerが決める。
 
-**Network実行。** この変更では行っていない。契約suite（`tests/contract/official-source-drift.test.ts`）
-だけで検証しており、そこでは取得を注入して全判定経路を通している。networked runを行った場合の
-reviewed source setと分類済みdriftはここに記録する。
+**Network実行。** 2026-09-04、52 record全件に対して実行した。初回のrunは18 sectionをmissingと報告した。
+うち17件はcode.claude.comのページで、各headingが自身のanchor linkの内側にzero-width spaceを含んで
+配信されており、checkerのtext正規化がそれを残していた。現在はformat characterを落とすので、これらの
+sectionは配信されたheadingとして解決する。残る1件は`vscode.copilot.instructions`で、heading
+`Use multiple AGENTS.md files (experimental)`は今は`Use multiple AGENTS.md files`と描画され、experimental
+labelはその横に置かれている。引用した3 sectionを、そこからparaphraseを保守する全recordに対して読み直した
+うえでcitationを更新した。その修正後のrunはchangelogの2 recordを報告した。引用したreleaseをこのページは
+headingではなくlabel付きentryとして描き、table of contentsに列挙している。fallbackは今その一覧を読み、
+4 entryそれぞれを裏付けるparaphraseに対して読み直した。最終runは52 sources checked、0 with driftを報告し、
+その4 sectionをtable of contents経由で確認したものとして挙げた。
 
 ## Presentation Allowlistの凍結
 
@@ -91,7 +98,7 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 | Integration | `pnpm run test:integration` | 10 file、268 test passed |
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
-| Performance | `pnpm run test:performance` | 2 file、6 test passed |
+| Performance | `pnpm run test:performance` | 2 file、4 test passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 564 passed |
 | Coverage | `pnpm run test:coverage` | 74 file、1,870 test passed。statement 86.25%、line 86.57% |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
@@ -119,7 +126,7 @@ revisionにわたるものであり、ここでは再現していない。上表
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
-timingのthresholdをassertしない。
+timingのthresholdをassertしない。2026-09-04のpass（arm64、Node 24.14.0）は、rescan dispatchからrequest相関のstatusまで111 ms、request committedのoperable inventoryまで622 ms、filter feedbackまで19 ms、selection feedbackまで56 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
 
 ## Outcome manifestによる基準
 
@@ -189,6 +196,19 @@ project runでは33件が全projectで通過し、`AUTO-2.1.1`はchromiumとfire
 WebKitでは上記のtab orderの理由により失敗した。認証対象のWebKitはCIが実行するLinux
 revisionであるため、この側の認証結果はCIのものであり、ここでは観測ではなく前提とする。これは
 T1051がlower-bound matrixについて記録するのと同じ措置である。Localのrunがそれを代替することはない。
+
+**`AUTO-2.1.2`は3 browserすべてでeditorからの脱出を認証する。** ChromiumとWebKitでは上限付きの前向き
+Tab脱出をassertする。pinされたFirefox revisionでは、TabはMonacoの入力textareaから出ない。一方
+Shift+Tabは最初の押下で出るので、その後ろ向きの脱出をFirefoxで明示的にassertする。2026-09-04に`window`の
+capture phaseの`keydown`
+listenerで測定した。どの押下もページに`defaultPrevented`がfalseのまま届き、`focusin`は続かず、
+`document.activeElement`は`textarea.inputarea`のままである — Monacoはkeyを消費していないので、
+Monacoがkeyを取るかどうかを決める`tabFocusMode: true`とCtrl+M toggleは何も変えない。Firefoxの
+前向きのsequential focus navigationは、Monacoがそのengineでだけ0×0で描くtextarea（text-area edit contextの
+`canUseZeroSizeTextarea = isFirefox`。他のengineでは1px）から動かない。入力elementが
+`div.native-edit-context`であるChromiumと、WebKitは最初の押下でfocusを解放する。Testは前向きTabの免除を
+明記し、このrepositoryにworkaroundは入れておらず、Firefoxでの前向きの脱出はそのengine上のeditorの未解決の
+limitationとして残る。
 
 **Manualな側はcriterionの外にある。** 36件の`MANUAL-*` IDは、`3 × 5 × 3 × 8 × 3 = 1,080`個の
 keyed cellそれぞれに対して実行することになる — 合計38,880 cellで、VoiceOver付きmacOS、NVDA付き

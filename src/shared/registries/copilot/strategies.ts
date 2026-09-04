@@ -53,9 +53,9 @@ export const COPILOT_VSCODE_INSTRUCTIONS_LAYERING_STRATEGY = {
           sections: [
             'Types of instruction files',
             'Instruction priority',
-            'Use multiple AGENTS.md files (experimental)',
+            'Use multiple AGENTS.md files',
           ],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-04',
           establishes:
             'VS Code combines every applicable instruction file into the chat context with no specific order guaranteed; when conflicts occur the documented priority is personal, then repository, then organization instructions, with every applicable set still provided; and nested AGENTS.md selection is an experimental setting that leaves the choice to the model.',
         },

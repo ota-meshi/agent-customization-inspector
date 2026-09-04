@@ -123,11 +123,12 @@ transitive code and makes the package manifest describe what the CLI loads. The
 [tsdown dependency documentation](https://tsdown.dev/options/dependencies) distinguishes
 external dependencies from explicit `alwaysBundle` behavior, and its
 [entry documentation](https://tsdown.dev/options/entry) defines the named multi-entry
-form. A tarball smoke test is the reliable proof that the web, CLI, and
-safe-filesystem layer are included and load from their packaged locations.
-It installs the tarball into an isolated fixture and actually invokes the executable with
-`npx --no-install`, rather than merely inspecting the `bin` mapping; the exact shebang and
-executable mode are asserted before launch.
+form. Two launch checks prove that the web, CLI, and safe-filesystem layer load from their
+packaged locations. The package tests run `dist/cli.mjs` from an unrelated working directory
+without installing a tarball and separately assert the exact shebang. The
+`certify-lower-bounds` CI matrix installs the build job's one tarball into a fresh directory,
+resolves its executable with `npx --no-install`, and launches the installed `bin` rather than
+merely inspecting its mapping; the package manager owns creating the executable install link.
 The committed lockfile — every resolved version with its integrity hash — makes the
 production closure stable and its payloads byte-fixed for the first release without
 re-scanning content the hashes already fix and without a test that restates the lockfile's
@@ -161,7 +162,7 @@ EBADENGINE warning); the CLI re-checks neither the declared string nor the runni
 version, because re-implementing that policy in a second place can only drift, and the
 packed exact string is asserted by the package tests and release gate.
 Package fixtures cover the packed manifest fields, the exact shebang, the two required
-`dist/` entries, and post-pack execution;
+`dist/` entries, and `dist/cli.mjs` execution from an unrelated working directory;
 they do not define or test product file-size or item-count boundaries.
 
 **Alternatives considered**:
@@ -464,8 +465,9 @@ mixed path matrix:
    records is `pnpm run check:official-sources -- --network`, a maintainer-only command
    outside every default chain: it decides what a script can — a direct `200` from the
    record's own host with no redirect followed, and each cited section resolving as one
-   served heading or as a client-rendered page's single table-of-contents anchor slug — and
-   leaves the two readings that are not a lookup to the reviewer. What each review
+   served heading or, when no served heading carries it, as the one fragment every
+   table-of-contents link bearing its text points at — and leaves the two readings that are
+   not a lookup to the reviewer. What each review
    concluded is recorded in [validation.md](validation.md).
 
 **Evidence-status decision:** documentation completeness and upstream lifecycle are
@@ -1297,8 +1299,9 @@ remain explicit platform limitations.
 **Decision**: Maintain vendor conformance fixtures and negative near-misses, plus
 fixtures for symlink-transparent reads, encodings, recoverable environment failures, literal credentials,
 environment-variable references, imports, executable declarations, and malformed formats.
-Test pure recognizers/parsers and literal-display DTOs, the session API
-contract, source boundary integration, packed `npx` behavior, the 100k/500 performance
+Test pure recognizers/parsers and literal-display DTOs, the session API contract, source
+boundary integration, `dist/cli.mjs` package-entry launch from an unrelated working directory,
+CI installed-tarball launch, the 100k/500 performance
 case, and all four Playwright user stories. Evaluate SC-008 against the complete 55-row
 WCAG 2.2 Level A/AA applicability matrix and objective pass rule in
 [the accessibility acceptance contract](contracts/accessibility-acceptance.md), combining
@@ -1356,7 +1359,8 @@ Run the pure Node.js integration suite on macOS, Linux, and Windows, covering
 symlink-transparent reads, a broken link's `file-unreadable` diagnostic, link-cycle scan
 termination, unreadable files, binary content, every byte decode outcome,
 a missing or unreadable root, per-file failure isolation with a `partial` commit,
-fatal-rescan rollback to the last committed snapshot, and post-pack execution.
+and fatal-rescan rollback to the last committed snapshot. In each lower-bound job, separately
+install and launch the build job's one tarball.
 Instrument tests with local fixture roots and all product socket/HTTP(S)/DNS/SMB/URI/image/
 remote-reference/MCP surfaces. Separately classify and validate the two exact FR-022 authorized
 internal loopback classes at the issued `localhost` authority—static/SPA

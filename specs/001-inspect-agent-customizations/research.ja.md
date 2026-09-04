@@ -100,9 +100,11 @@ node_modulesをexternalにすると、
 platform-sensitiveまたは変化するtransitive codeの暗黙inlineを避け、CLIがloadするものをmanifestで
 表せる。[tsdown dependency documentation](https://tsdown.dev/options/dependencies)はexternal dependencyと
 明示的`alwaysBundle`を区別し、[entry documentation](https://tsdown.dev/options/entry)はnamed multi-entry形式を
-定義する。Web、CLI、safe-filesystem layerがpackaged locationからloadできることはtarball
-smoke testで証明する。Tarballをisolated fixtureへinstallしてexecutableを実際に`npx --no-install`でinvokeし、
-`bin` mappingのinspectionだけで済ませない。起動前にexact shebang/executable modeもassertする。
+定義する。Web、CLI、safe-filesystem layerがpackaged locationからloadできることは2つのlaunch checkで
+証明する。Package testはtarballをinstallせず、無関係なworking directoryから`dist/cli.mjs`を実行し、
+exact shebangを別にassertする。`certify-lower-bounds` CI matrixはbuild jobの1つのtarballを新しい
+directoryへinstallし、executableを`npx --no-install`で解決して、`bin` mappingをinspectするだけでなく
+install済み`bin`をlaunchする。Executableなinstall linkの作成はpackage managerが所有する。
 commit済みlockfile — integrity hash付きの各resolved version — が、hashが既に固定したcontentを再scanせず、
 lockfile自身の値をtestで再記述もせずに、初期リリースのproduction closureをstableにし
 payloadをbyte-fixedにする。
@@ -128,7 +130,8 @@ Node.js互換性はpacked `engines.node` rangeだけで宣言し、package manag
 engines機構でenforceする（pnpmとyarnは既定でmismatchを拒否し、classic npmはEBADENGINE warningを出す）。
 CLIは宣言済みstringも実行中versionも再検査しない。同じpolicyを2箇所目に再実装してもdriftしか
 生まないためであり、packed exact stringはpackage testとrelease gateでassertする。
-Package fixtureはpacked manifest field、exact shebang、必須の2つの`dist/` entry、pack後実行を扱い、
+Package fixtureはpacked manifest field、exact shebang、必須の2つの`dist/` entry、無関係なworking
+directoryからの`dist/cli.mjs`実行を扱い、
 product独自のfile-size/item-count境界を定義・検証しない。
 
 **検討した代案**:
@@ -369,8 +372,9 @@ surfaceの全てである。spawnされるどのprocessも、固定の引数とb
    Recordは並行registryを経由せず自身の`evidence`配列でそれらを引用するため、根拠は支える主張の隣に置かれる。
    これらのrecordを照合するのは`pnpm run check:official-sources -- --network`であり、既定chainの外に置く
    maintainer専用commandである。scriptに判定できること — record自身のhostからredirectなしの直接`200`、
-   および各引用sectionが配信された見出し1件、あるいはclient renderingページの目次anchor slug 1件として
-   解決すること — を判定し、参照ではない2つの読解はreviewerに残す。各reviewの結論は
+   および各引用sectionが配信された見出し1件、あるいはそれを担う見出しが配信されていないときはその本文を
+   持つ目次linkがすべて指す1つのfragmentとして解決すること — を判定し、参照ではない2つの読解は
+   reviewerに残す。各reviewの結論は
    [validation.ja.md](validation.ja.md)に記録する。
 
 **Evidence statusの決定:** Documentation completenessとupstream lifecycleは直交させる。Atomicなbehavior、
@@ -1034,7 +1038,8 @@ source scopeのDiagnosticが表示またはordering fieldを満たすためにpa
 
 **決定**: Vendor conformance fixtureとnegative near-missに加え、symlink-transparent read、encoding、recoverableな環境failure、literal
 credential、環境変数参照、import、executable declaration、malformed formatのfixtureを保守する。
-Pure recognizer/parserとliteral-display DTO、session API contract、source boundary integration、pack済み`npx`、
+Pure recognizer/parserとliteral-display DTO、session API contract、source boundary integration、無関係なworking
+directoryからの`dist/cli.mjs` package-entry launchとCIのinstalled-tarball launch、
 100k/500 performance case、4つのPlaywright user storyをtestする。SC-008は
 [accessibility受入contract](contracts/accessibility-acceptance.ja.md)のWCAG 2.2 Level A/AA全55行applicability matrixと
 客観的pass ruleに対し、criterion固有のstable check IDと指定済みautomated、keyboard、manual evidenceを組み合わせて評価する。
@@ -1065,7 +1070,8 @@ sequence generation、file existenceでlate response/rejectionを拒否するこ
 integration suiteを実行し、symlink-transparent read、broken linkの`file-unreadable` diagnostic、
 link cycleでのscan終了、unreadable file、binary content、全byte decode
 outcome、missing/unreadableなroot、`partial` commitによるper-file failure分離、最後にcommitした
-snapshotへのfatal-rescan rollback、pack後実行を扱う。Local fixture rootとproductの全
+snapshotへのfatal-rescan rollbackを扱う。各lower-bound jobでは、build jobの1つのtarballを別にinstallして
+launchする。Local fixture rootとproductの全
 socket/HTTP(S)/DNS/SMB/URI/image/remote-reference/MCP surfaceをinstrumentする。発行済みのexactな`localhost` authorityにおける
 2つのexactなFR-022 authorized internal loopback class、すなわちpackaged UI asset向けstatic/SPA `GET`/`HEAD`と
 local session API channelを別々に分類・検証する。Inspected contentにより、それ以外のFR-022で定義したdirect product-issued outbound request、MCP connection、child process、dynamic evaluation、product-issued

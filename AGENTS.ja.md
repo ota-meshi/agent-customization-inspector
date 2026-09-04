@@ -420,8 +420,8 @@ fieldは実際にレンダリングされた見出しのexact textを保持す�
 
 - `pnpm run check:official-sources -- --network`が、scriptに判定できる検査をregistry全体に対して
   行う。記録URLが自身のofficial host上でredirectせず`200`を返すこと、引用sectionが解決すること —
-  配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそのelementを配信しないclient renderingの
-  ページでは目次のanchor slugがちょうど1回現れることとして。報告するだけで何も変更せず、build/
+  配信された`<h1>`–`<h4>`のちょうど1件として、あるいはそれを担うheadingが配信されていないときは、
+  その本文を持つ目次linkがすべて指す1つのfragmentとして。報告するだけで何も変更せず、build/
   start/test/CIのどのchainにも入らない。このrepositoryで唯一outbound requestを行うcommandなので、
   実行するのは人が求めたときだけである。これらを手作業でやり直さないこと。要約器が出した見出し
   一覧はどちらの向きにも根拠にならない。

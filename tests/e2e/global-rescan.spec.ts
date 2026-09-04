@@ -163,6 +163,12 @@ test('keeps a partial member partial across its own rescan, counting its files',
   // (T1003, FR-002).
   await expect(main).toContainText(', Partial)');
   await expect(main).toContainText('1 file kept a diagnostic of its own');
+  // The member's announcement region never empties: with no correlated
+  // progress to show it states the member and the status word the row shows,
+  // so the same sentence is what a completed rescan is heard as (WCAG 4.1.3;
+  // `GlobalSourceControls.vue`). The member is named because four rows offer
+  // the same control; the root is not read, because it did not change.
+  await expect(main).toContainText('Copilot home partial.');
 
   // A new readable file marks the rescan's commit; the broken link stays, so
   // the recommitted member is `partial` again rather than repaired by rescan.
@@ -187,6 +193,7 @@ test('keeps a partial member partial across its own rescan, counting its files',
   await page.goto(new URL('/global-consent', host.origin).href);
   await expect(main).toContainText(', Partial)');
   await expect(main).toContainText('1 file kept a diagnostic of its own');
+  await expect(main).toContainText('Copilot home partial.');
 });
 
 test('retains prior results on a fatal rescan and recovers with an explicit retry', async ({

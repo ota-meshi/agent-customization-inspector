@@ -10,7 +10,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkOfficialSources,
-  headingAnchorSlug,
   parseOfficialSourceRegistry,
   rejectionFor,
   renderReport,
@@ -98,9 +97,9 @@ describe('a cited section', () => {
     expect(resolveCitedSection(html, 'Adding a server')).toBe('heading');
   });
 
-  it('resolves a client-rendered page through its one table-of-contents slug', () => {
+  it('resolves a section no served heading carries through the table of contents', () => {
     // The page ships only its contents list, so the heading exists but no
-    // element carrying it does; the slug is then the evidence.
+    // element carrying it does; the link naming it is then the evidence.
     const html = '<nav><a href="#adding-a-server">Adding a server</a></nav>';
     expect(resolveCitedSection(html, 'Adding a server')).toBe('anchor');
   });
@@ -112,8 +111,8 @@ describe('a cited section', () => {
       'ambiguous-heading',
     ],
     [
-      'two anchors carry its slug',
-      '<a href="#adding-a-server">a</a><a href="#adding-a-server">b</a>',
+      'two table-of-contents links carry it to different fragments',
+      '<a href="#one">Adding a server</a><a href="#two">Adding a server</a>',
       'ambiguous-anchor',
     ],
     ['nothing carries it', '<h2>Something else</h2>', 'missing'],
@@ -121,19 +120,19 @@ describe('a cited section', () => {
     expect(resolveCitedSection(html, 'Adding a server')).toBe(expected);
   });
 
-  it('derives a slug the way a documentation site does', () => {
-    expect(headingAnchorSlug('Adding per-repository MCP servers')).toBe(
-      'adding-per-repository-mcp-servers',
-    );
-    expect(headingAnchorSlug('Commands (alternative skill format)')).toBe(
-      'commands-alternative-skill-format',
-    );
-  });
-
   it('reads a heading through the markup and entities a host serves', () => {
     expect(servedHeadings('<h2 class="x">Skills <code>&amp;</code>\n  commands</h2>')).toEqual([
       'Skills & commands',
     ]);
+  });
+
+  it('drops a format character a host draws inside a heading', () => {
+    // code.claude.com places a zero-width space inside each heading's own
+    // anchor link; the rendered heading carries no such character, so neither
+    // does the text a record cites.
+    expect(
+      servedHeadings('<h2 id="auto-memory"><a href="#auto-memory">\u200B</a>Auto memory</h2>'),
+    ).toEqual(['Auto memory']);
   });
 });
 
@@ -235,13 +234,25 @@ describe('what the contract makes a hard failure', () => {
     expect(resolveCitedSection('<h2>Adding a server</h2>', 'Adding a server')).toBe('heading');
   });
 
-  it('reads a table-of-contents slug only on a page that serves no heading at all', () => {
-    const toc = '<a href="#adding-a-server">Adding a server</a>';
-    // The client-rendered shape the carve-out exists for.
-    expect(resolveCitedSection(toc, 'Adding a server')).toBe('anchor');
-    // The same stale link on a page that does serve headings: the cited one is
-    // gone, and the leftover link must not stand in for it.
-    expect(resolveCitedSection(`<h2>Something else</h2>${toc}`, 'Adding a server')).toBe('missing');
+  it('reads the table of contents past headings that are not the cited one', () => {
+    // The Claude Code changelog serves the site's own headings and renders
+    // each release as a labelled entry rather than a heading; its table of
+    // contents is what names the release.
+    const toc = '<a href="#1-0-45">1.0.45</a>';
+    expect(
+      resolveCitedSection(
+        `<h1>Changelog</h1>${toc}<div id="1-0-45"><button>1.0.45</button></div>`,
+        '1.0.45',
+      ),
+    ).toBe('anchor');
+    // An in-prose cross-reference to the same fragment is the same one section.
+    expect(resolveCitedSection(`${toc}<p><a href="#1-0-45">1.0.45</a></p>`, '1.0.45')).toBe(
+      'anchor',
+    );
+    // Links to the fragment under other text name nothing the record cites.
+    expect(resolveCitedSection('<a href="#1-0-45">a</a><a href="#1-0-45">b</a>', '1.0.45')).toBe(
+      'missing',
+    );
   });
 
   it('rejects a body whose content type is neither HTML nor Markdown', () => {

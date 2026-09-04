@@ -477,7 +477,7 @@ the task would have built.
 
 **Purpose**: Deliver the first user-visible product increment without reading the Repository.
 
-**Independent Test**: Before the host starts or a browser opens, verify that generation 0 is constructed synchronously with exactly one enabled idle Repository Source selected lexically from the captured invocation `cwd`/`--root`, a stable opaque `sourceId`, an escaped non-authorizing boundary, empty files/Diagnostics, a null `scanRequestId`, and zero filesystem I/O. Then install the package, launch from a fixture invocation `cwd` with and without optional `--root`, and open the printed loopback URL after the automatic startup scan; verify that the browser displays the committed Ready Repository Source with its escaped non-authorizing boundary and empty files/Diagnostics.
+**Independent Test**: Before the host starts or a browser opens, verify that generation 0 is constructed synchronously with exactly one enabled idle Repository Source selected lexically from the captured invocation `cwd`/`--root`, a stable opaque `sourceId`, an escaped non-authorizing boundary, empty files/Diagnostics, a null `scanRequestId`, and zero filesystem I/O. Then launch `dist/cli.mjs` from a fixture invocation `cwd` with and without optional `--root`, and open the printed loopback URL after the automatic startup scan; verify that the browser displays the committed Ready Repository Source with its escaped non-authorizing boundary and empty files/Diagnostics. *(amended 2026-09-04: this phase's package test uses the built entry from an unrelated working directory; T1051 owns installed-tarball launch in the lower-bound CI matrix.)*
 
 **Visible Checkpoint**: The browser screen starts and displays almost no product content.
 
@@ -534,9 +534,12 @@ the task would have built.
   host startup, exact package fields, the closed loopback URL and printed-URL fallback, serving the
   built shell from an unrelated working directory, an unmodified inspected fixture, and graceful
   shutdown in `tests/unit/cli.test.ts` and `tests/package/npx-launch.test.ts`. This Phase 3 package
-  test's “isolation” is only the unrelated working directory; T917 owns installation from the packed
-  tarball and complete packed-entry/default-browser/helper/environment instrumentation, including
-  proof that no inspection-derived value reaches browser opening.
+  test's “isolation” is only the unrelated working directory. T917 owns complete
+  packed-entry/default-browser/helper/environment instrumentation, including proof that no
+  inspection-derived value reaches browser opening; T1051 owns installing and launching the one
+  packed tarball in the lower-bound CI matrix. *(amended 2026-09-04: the package gate intentionally
+  runs without the network a tarball installation needs, while cross-platform certification owns
+  the installed-package path.)*
 - [X] T044 [US1] Add browser acceptance for the packaged boot shell showing exactly one enabled
   Repository Source with its escaped non-authorizing selected-root label, empty files and
   Diagnostics, keyboard focus at the top, and no Repository picker or ancestor discovery, plus a
@@ -1706,7 +1709,7 @@ the task would have built.
   standardized interactions, record profile/manifest version/digest plus request ID/generation, and
   run one non-gating smoke pass in `tests/performance/sc002-reference-profile.json`,
   `tests/performance/repository-scan.test.ts`, and
-  `tests/performance/inventory-interactions.test.ts`; defer the exact 10-run 9/10 protocol to T918.
+  `tests/performance/inventory-interactions.test.ts`; T918 owns the pass's protocol.
   Restore this suite's own gate in the same change: the `performance` project in
   `./vitest.config.ts`, the `test:performance` script in `./package.json`, the CI job in
   `./.github/workflows/ci.yml`, and its gate line, its expected-result bullet, and any command
@@ -1715,8 +1718,9 @@ the task would have built.
   — all removed while the suite was empty, because a suite that does not exist yet cannot be
   declared: an empty project fails the run outright, and the allowance that would let it pass
   instead would report success for a verification nobody wrote. The restored bullet states this
-  task's own non-gating smoke pass; T918 rewrites it to the final ten-run, nine-of-ten protocol it
-  owns.
+  task's own non-gating smoke pass, which T918 keeps as the whole of the performance gate
+  *(amended 2026-09-04: T918 withdrew its measurement protocol, so the pass this task
+  restores is the gate)*.
 - [X] T184 [US1] Add browser regression for unified filters, multi-recognition, keyboard use, and no
   source exposure from inventory in `tests/e2e/skills-inventory.spec.ts` *(amended 2026-08-08: an
   admission stays a read-authorization record no surface reads out, so nothing displays provenance
@@ -7061,8 +7065,8 @@ the task would have built.
   a thrown or rejected operation or the source-scoped `root-unreadable` Diagnostic when the root
   could not be read; pre-acceptance failures create no overlay, and a successful replacement alone
   clears it in `tests/contract/http-api-session.test.ts`
-- [X] T917 [P] [US1] Add complete packaged Gunshi CLI tests for isolated install, fixed assets, same
-  tarball, and optional `--root`, a repeated option resolving to the parser's last value: capture
+- [X] T917 [P] [US1] Add complete packaged Gunshi CLI tests for unrelated-working-directory
+  isolation, fixed assets, and optional `--root`, a repeated option resolving to the parser's last value: capture
   invocation `process.cwd()` once and preserve its exact string when omitted; keep an absolute
   option as given and resolve a relative option against the capture with lexical `node:path`
   operations only. Instrument the entire packed entry: permit only fixed package-owned zero
@@ -7079,28 +7083,30 @@ the task would have built.
   directly; what this task adds is the packaged half — the optional and repeated `--root` through
   the packed entry, a preload that fails the launch if it changes a working directory or opens an
   outbound connection, one mode with no subcommand, and the empty-root rejection as the packed
-  process exits.)*
+  process exits.)* *(amended 2026-09-04: this package suite launches `dist/cli.mjs` without an
+  install; T1051 owns fresh-directory installation and launch of the one CI tarball because that
+  networked path belongs to cross-platform lower-bound certification.)*
 - [X] T918 [P] [US1] Extend T183 to the final registry and execute the one non-gating smoke pass
-  against one unchanged profile/fixture *(amended 2026-09-03: the ten-run protocol is withdrawn
-  with the criterion it measured, T1052.)*: recompute and require the profile-bound
+  against one unchanged profile/fixture *(amended 2026-09-03: the measurement protocol this task
+  once gated is withdrawn with the criterion it measured, T1052, because a figure measured on
+  another machine is a measurement of that machine rather than of this product; the pass is the
+  gate.)*: recompute and require the profile-bound
   `tests/performance/sc002-fixture-manifest.json` version/canonical digest,
   `tests/performance/sc002-fixture-manifest.sha256`, and every referenced content digest immediately
-  before run 1 and after every run, invalidating the full set on any missing entry or drift; wait
-  for each automatic first scan outside timing, dispatch exactly one explicit rescan, capture its
+  before and after the run, invalidating the full set on any missing entry or drift; wait for the
+  automatic first scan outside timing, dispatch exactly one explicit rescan, capture its
   `scanRequestId`, start both timers at dispatch, and require the same ID on the qualifying
-  visible/assistive status and committed-generation inventory; reject prior/automatic state, require
-  the same at least nine runs to satisfy 1-second status, 10-second inventory, and both sub-100-ms
-  interactions, repeat the same profile ID/manifest version/canonical digest and record request
-  ID/generation/environment for every run, omit only personal identifiers/absolute user paths, and
+  visible/assistive status and committed-generation inventory; reject prior/automatic state, assert
+  no threshold, repeat the profile ID/manifest version/canonical digest and record request
+  ID/generation/environment for the run, omit only personal identifiers/absolute user paths, and
   reject cache reset/snapshot reuse/cross-profile comparison in
   `tests/performance/repository-scan.test.ts` and
-  `tests/performance/inventory-interactions.test.ts`. Update the performance expected-result bullet
-  T183 restored in `specs/001-inspect-agent-customizations/quickstart.md` and
-  `specs/001-inspect-agent-customizations/quickstart.ja.md` to this task's ten-run, nine-of-ten
-  protocol, in the same change. *(amended 2026-08-27: the ten-run protocol, its digest revalidation,
-  and its per-run request correlation are gated everywhere; the four thresholds are asserted on the
-  host the checked-in profile declares and recorded elsewhere, because the same figures measured on
-  another machine are a measurement of that machine rather than of this product.)*
+  `tests/performance/inventory-interactions.test.ts`, with the run itself in the project's global
+  setup, which prints its figures. Update the performance expected-result bullet T183 restored in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` to this smoke pass, in the same change.
+  *(amended 2026-08-27: the digest revalidation and the request correlation are gated
+  everywhere.)*
 - [X] T919 [US1] Add Repository-complete browser acceptance plus the documented discovery command
   target for inventory, filters, multi-recognition, diagnostics, empty state, request-correlated
   rescan/retry, keyboard use, atomic replacement, zero source/metadata/sensitive-value exposure
@@ -8758,9 +8764,11 @@ This slice adds the real Copilot port to the same open composite milestone; it i
 - [X] T1031 Add failing official-source checker contracts for exact hosts, redirect rejection,
   explicit network opt-in, complete environment-supported content retrieval, thrown/rejected network
   or runtime operations with no partial update or automatic cause-based decision, non-mutating drift
-  reporting, and cited-heading resolution against either a served `<h*>` element or, on a
-  client-rendered page that serves no such element, the table-of-contents anchor slug appearing
-  exactly once, in `tests/contract/official-source-drift.test.ts`
+  reporting, and cited-section resolution against either a served `<h*>` element or, when no
+  served heading carries it, the one fragment every table-of-contents link bearing its text
+  points at, in `tests/contract/official-source-drift.test.ts` *(amended 2026-09-04: the fallback
+  reads the table-of-contents links bearing the cited text, because the Claude Code changelog
+  renders each release as a labelled entry rather than a heading and lists it there)*
 - [X] T1032 Implement the explicit networked official-source checker, register its standalone
   maintainer-only `check:official-sources` script outside every default build/start/test/CI chain,
   run it, and record the reviewed source set and classified drift without automatic behavior changes
@@ -9457,7 +9465,11 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   the sessions are agent-driven rather than a participant cohort, so what the record
   states is what the product's guidance was sufficient for, never a human-subject
   result. The sealed-capture kit under `scripts/` stays as the machinery a moderated
-  study would need; this run does not use it, and the record says so.)*
+  study would need; this run does not use it, and the record says so.)* *(amended 2026-09-03:
+  that kit is since removed (T1061, T1062), and SC-001's own interval starts at the prompt and
+  includes launching the Inspector, so a session is not handed a served origin — it launches the
+  Inspector itself. The run T1195 records handed each session an origin and is recorded as not
+  establishing SC-001.)*
 - [X] T1057 Complete the same twenty sessions through SC-006 and the two remaining
   workflows, and record them in `specs/001-inspect-agent-customizations/validation.md`
   and `specs/001-inspect-agent-customizations/validation.ja.md`. Each session opens the
@@ -10577,7 +10589,10 @@ reopened names them. Each records its result in that file and in
   agent-driven run in `specs/001-inspect-agent-customizations/validation.md` and
   `specs/001-inspect-agent-customizations/validation.ja.md`. spec.md § Measurable Outcomes requires
   the repeat after a material change to a primary workflow, and the rework changed all four
-  (SC-001, SC-006) (missing)
+  *(amended 2026-09-03: the recorded run handed every session an origin a host was already
+  serving, so its timer excludes the launch SC-001's interval includes and the record states
+  SC-001 as not established; a repeat in which each session launches the Inspector itself is
+  still owed, and this task is complete only as the run it records.)* (SC-001, SC-006) (missing)
 
 ### Records that name the rework
 
@@ -11641,8 +11656,7 @@ they already state.
 4. For a nonempty admitted subset, run exactly one shared-ID `GlobalBatchScan` and atomically publish zero to four separate member Sources together through one complete or partial Global generation, preserving carried Sources and never merging roots; an empty deterministic subset creates no job or generation.
 5. Add Global rescan/recovery and the priority zero-I/O disable barrier.
 6. Complete documentation/evidence/dependency review, then run the cross-cutting suites against those completed artifacts; after every remediation, invalidate prior post-review results, rerun all applicable automated gates and affected evidence protocols, and repeat complete-diff/tarball review until it reports no concern.
-7. Record SC-001–SC-008 denominators, thresholds, and pass/fail results; the closed twenty-member study-input bundle and canonical manifest digest; all twenty verified exact `study-inputs/`/`repository/` distribution layouts and derived-tree digest roots with candidate/equipment/runtime bindings kept separate; the final packed-candidate digest; the exact outcomes for `pnpm run study:evidence:inputs -- materialize`, `pnpm run study:evidence:verify -- inputs`, `pnpm run study:evidence:capture -- start`, `pnpm run study:evidence:capture -- checkpoint`, `pnpm run study:evidence:verify -- checkpoint`, `pnpm run study:evidence:verify -- continuation`, `pnpm run study:evidence:capture -- stop`, and `pnpm run study:evidence:verify -- finalize`; the recomputed cross-stream `StudyCaptureSeal` digest with opaque IDs, roots, and counts only and zero raw evidence data; the full Node.js engines contract plus exact lower-bound/browser certification samples; and residual risks.
-   This sequence is phase-closed: `INSPECTOR_STUDY_WORK_ROOT`, `INSPECTOR_STUDY_CONTROL_ENDPOINT`, and `INSPECTOR_STUDY_CONTROL_TOKEN` span materialize through finalize; `INSPECTOR_STUDY_CANDIDATE_TARBALL` is forbidden for materialize/verify-inputs and required only start through finalize; `INSPECTOR_STUDY_BROWSER_PROXY_AUTHORITY` is required only start through stop. Stop retains the supervisor, while finalize tears down control and writes `StudyContinuityWitness` before `StudyCaptureSeal`.
+7. Record SC-001–SC-008 denominators, thresholds, and pass/fail results; the task material under `tests/usability/sc001-sc006-study-inputs/` and the ground truth the twenty agent-driven sessions scored against, recorded as an agent-driven run and never as a participant cohort (spec.md § Clarifications, Session 2026-09-01); the outcome-fixture manifest version and canonical digest; the final packed-candidate digest; the full Node.js engines contract plus exact lower-bound/browser certification samples; and residual risks. The sealed-capture kit, its package commands, its environment variables, and its seals are removed (spec.md § Clarifications, Session 2026-09-01; T1061, T1062), so nothing here runs or records them.
 8. Record the explicit principle-by-principle release Constitution Check and require the matching pull request review check; complete every resulting repository evidence edit.
 9. With the repository now frozen, rerun the complete applicable automated matrix and read-only complete-diff/tarball review, ending with `pnpm run test:docs` and `git diff --check`; capture outcomes only in the external release/pull-request check log. Any later repository edit invalidates every outcome and returns to step 6/T1062 before the Constitution and final-tree gates repeat.
 

@@ -6,8 +6,9 @@
 //
 // What it decides is what a script can decide: that a recorded URL still
 // answers on its own official host without redirecting, and that each cited
-// section still resolves — as a served heading, or on a client-rendered page as
-// the table-of-contents anchor slug appearing exactly once. What it does not
+// section still resolves — as a served heading, or, when no served heading
+// carries it, as the one fragment every table-of-contents link bearing its
+// text points at. What it does not
 // decide is what a vanished heading means, or whether the sections still
 // establish the paraphrase a record maintains; those stay the reviewer's, and
 // AGENTS.md § Official-source verification policy says so.
@@ -44,13 +45,13 @@ export interface OfficialSourceRecord {
 export type SectionResolution =
   /** Exactly one served heading element carries that text. */
   | 'heading'
-  /** No heading element carries it, and its slug appears exactly once as an anchor. */
+  /** No served heading carries it; every table-of-contents link bearing it points at one fragment. */
   | 'anchor'
   /** More than one served heading carries that text, so no one heading is cited. */
   | 'ambiguous-heading'
-  /** No heading carries it and its slug appears more than once. */
+  /** No served heading carries it, and links bearing it point at two or more fragments. */
   | 'ambiguous-anchor'
-  /** Neither a heading nor a single anchor slug carries it. */
+  /** Neither a served heading nor a table-of-contents link carries it. */
   | 'missing';
 
 /** One record's outcome, as this checker observed it. */
@@ -118,20 +119,6 @@ export function unwrapCode(cell: string): string {
 }
 
 /**
- * The anchor slug a documentation site derives from a heading's own text. It is
- * the fallback identity on a client-rendered page, where the heading exists but
- * no element carrying it is served.
- * @param heading the exact rendered heading text
- */
-export function headingAnchorSlug(heading: string): string {
-  return heading
-    .toLowerCase()
-    .replaceAll(/[^\p{Letter}\p{Number}\s-]/gu, '')
-    .trim()
-    .replaceAll(/\s+/gu, '-');
-}
-
-/**
  * The text of every heading element the response served, in document order.
  * Read from the bytes rather than from a rendered tree: what this checker can
  * observe is what the host sent.
@@ -157,6 +144,11 @@ export function servedHeadings(html: string): string[] {
  * compute (contracts/official-sources.md). A served heading carrying a
  * reference this misses is reported as a missing section — loudly, for a
  * maintainer to read — never as a silent match.
+ *
+ * A format character (Unicode `Cf`) renders as nothing, so it is no part of
+ * the rendered text a heading is cited by and is dropped: code.claude.com
+ * places a zero-width space inside each heading's own anchor link, and
+ * keeping it would report every heading on that host as missing.
  * @param fragment the element's inner bytes
  */
 export function collapseText(fragment: string): string {
@@ -167,6 +159,7 @@ export function collapseText(fragment: string): string {
     .replaceAll('&gt;', '>')
     .replaceAll('&quot;', '"')
     .replaceAll('&#39;', "'")
+    .replaceAll(/\p{Cf}/gu, '')
     .replaceAll(/\s+/gu, ' ')
     .trim();
 }
@@ -235,9 +228,9 @@ export function markdownHeadings(markdown: string): string[] {
 
 /**
  * How one cited section resolves against a served body. A heading element is
- * the primary evidence; a client-rendered page serves none, and there the
- * table-of-contents anchor slug is the evidence — but only when it appears
- * exactly once, because two occurrences cite no one section.
+ * the primary evidence; when no served heading carries the text, the page's
+ * table of contents is — the fragment links bearing that text, which must all
+ * point at one fragment, because two fragments cite no one section.
  * @param html the complete served body
  * @param anchor the exact rendered heading text the record cites
  */
@@ -260,23 +253,29 @@ export function resolveCitedSection(
   if (headings.length > 1) {
     return 'ambiguous-heading';
   }
-  // The carve-out is one page shape, not one failed lookup: a client-rendered
-  // page serves its table of contents and no `<h*>` element at all. A page that
-  // serves headings and simply does not serve this one has lost the heading,
-  // and a stale table-of-contents link left behind is exactly what would hide
-  // that (contracts/official-sources.md § Offline validation and explicit
-  // drift review).
-  if (served.length > 0) {
-    return 'missing';
+  // No served heading carries it, so the page's own table of contents is the
+  // remaining evidence: the site derives that list from the same content, so
+  // a fragment link whose text is the cited section names a section the page
+  // has — one whose heading a client-rendered page did not serve, or one the
+  // page renders as something other than a heading, as the code.claude.com
+  // changelog renders each release as a labelled entry and lists it here.
+  // Headings the page serves for its own chrome do not block the fallback:
+  // what would hide a lost section is a link to it that stayed behind, and a
+  // generated table of contents loses the entry with the section. Every link
+  // bearing the text must point at one fragment — a table of contents and an
+  // in-prose cross-reference name the same one section, while two fragments
+  // are two sections and cite neither (contracts/official-sources.md
+  // § Offline validation and explicit drift review).
+  const targets = new Set<string>();
+  for (const link of body.matchAll(/<a\b[^>]*\bhref="#([^"]*)"[^>]*>([\s\S]*?)<\/a>/giu)) {
+    if (collapseText(String(link[2])) === wanted) {
+      targets.add(String(link[1]));
+    }
   }
-  const slug = headingAnchorSlug(anchor);
-  const occurrences = [...body.matchAll(/(?:href|id)="#?([^"]+)"/giu)].filter(
-    (match) => match[1] === slug,
-  ).length;
-  if (occurrences === 1) {
+  if (targets.size === 1) {
     return 'anchor';
   }
-  return occurrences > 1 ? 'ambiguous-anchor' : 'missing';
+  return targets.size > 1 ? 'ambiguous-anchor' : 'missing';
 }
 
 /**

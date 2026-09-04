@@ -1259,7 +1259,11 @@ generationへ解決されるため、launchが受け取り得る絶対pathはこ
 
 - `visual-studio-code`と`sublime-text`は、hostがportをbindする前にこのmachineで解決した
   editorへ届ける — `PATH`上のeditor command、またはcommandが`PATH`に無いときは既知の
-  install場所にあるlauncher。ただしmacOSでは、そのlauncherではなくapplicationの名前で
+  install場所にあるlauncher。`PATH`は、選択したRepository rootの内側にあるentryをすべて除いて
+  検索する。inspectedなcontentの下にある実行fileは、inspectedなcontentから選んだ宛先であり、
+  FR-022がそれを禁じるので、repository自身の`node_modules/.bin`や`bin/`がeditorを供給することは
+  ない。一方、machine上の他の場所にある同じdirectoryは読み手自身のtoolingであり、他のentryと
+  同じく検索する。ただしmacOSでは、そのlauncherではなくapplicationの名前で
   documentを渡す。editor自身のcommand-line scriptはeditorのuser data directoryを`HOME`から
   解決するため、`HOME`が読み手自身のものでないhostでは、その配下に2つ目のinstanceを起動し、
   fileはどこにも開かないからである。

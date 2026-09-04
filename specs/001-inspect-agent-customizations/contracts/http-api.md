@@ -1477,7 +1477,12 @@ What each target reaches:
 
 - `visual-studio-code` and `sublime-text` reach an editor the host resolved for this
   machine before it bound its port — the editor's command on `PATH`, or the launcher
-  inside a known installation location when the command is not on `PATH`. On macOS the
+  inside a known installation location when the command is not on `PATH`. `PATH` is
+  searched less every entry inside the selected Repository root: an executable under
+  inspected content is a destination chosen from inspected content, which FR-022
+  forbids, so the repository's own `node_modules/.bin` or `bin/` never supplies the
+  editor, while the same directories anywhere else on the machine are the reader's own
+  tooling and are searched like any other entry. On macOS the
   document goes to the application by name rather than to that launcher, because an
   editor's own command-line script resolves the editor's user data directory from
   `HOME`: a host whose `HOME` is not the reader's own would start a second instance

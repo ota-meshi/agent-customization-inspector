@@ -328,9 +328,11 @@ Expected:
 - At the Phase 3 checkpoint, package tests launch `dist/cli.mjs` from an unrelated working
   directory and verify the packaged shell, closed manifest fields, printed-URL fallback,
   unchanged inspected fixture, and graceful shutdown. This is packaged-path isolation only:
-  the current gate neither installs a tarball nor invokes an installed package link. T917 owns
-  the final-release test that packs and installs into an isolated fixture and launches
-  `npx --no-install` without relying on the working tree or a runtime download.
+  the gate neither installs a tarball nor invokes an installed package link. T917 extends this
+  same non-installing path with the complete packed-entry/default-browser/helper/environment
+  instrumentation. T1051's `certify-lower-bounds` matrix owns installing the build job's one
+  tarball into a fresh directory, resolving its package link with `npx --no-install`, and
+  launching that installed copy.
   The production-graph tests assert exactly the eleven approved direct dependencies
   `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml` — their resolved versions
   and integrity hashes stay owned by the committed
@@ -1206,8 +1208,14 @@ Any later repository edit invalidates every outcome and approval and returns to 
 candidate/study/evidence digest revalidation, applicable gate reruns, and complete-diff review
 before the Constitution/final-gate sequence.
 
-After T917, the final-release `pnpm run test:package` gate must install the newly packed
-tarball into an isolated fixture, spawn
-`npx --no-install agent-customization-inspector --no-open`, observe a valid loopback launch
-URL, assert that the launched CLI spawned no browser-helper child, and terminate the process;
-inspecting the tarball or mapping alone is not a launch test.
+The installed-tarball launch is CI's: the `Launch the packed tarball` step of the lower-bound
+job in `.github/workflows/ci.yml` installs the newly packed tarball into a fresh directory,
+resolves the bin through `npx --no-install agent-customization-inspector --help`, and then runs
+`scripts/check-installed-launch.mjs` against the installed package, which starts what its `bin`
+names with `--no-open --port 0`, observes the one loopback launch line, fetches the packaged
+shell there, and ends the process. `pnpm run test:package` runs `dist/cli.mjs` from an
+unrelated working directory and asserts the packed manifest, the launch line, the served
+shell, the unmutated fixture, and graceful shutdown; it does not install the tarball, because
+an install needs the network the package gate deliberately does without
+(`tests/package/npx-launch.test.ts` § scope note). Inspecting the tarball or its file mapping
+alone is not a launch test on either path.

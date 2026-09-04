@@ -1412,6 +1412,30 @@ function sortInventory(
  * selected root, and a missing or unreadable root fails that scan with the
  * source-scoped `root-unreadable` Diagnostic (FR-002).
  */
+/**
+ * The Repository root an invocation selects (FR-002): the captured working
+ * directory when `--root` was omitted, the option value unchanged when it is
+ * absolute, and the option resolved against the captured directory when it is
+ * relative. `node:path` operations only — no filesystem is touched, so this
+ * makes no claim about whether the root exists, and it never probes for a
+ * repository marker to find one.
+ *
+ * One function rather than the session's own expression, because the CLI
+ * needs the same answer before the session exists: the editor probe removes
+ * every `PATH` entry inside this root (`file-opener.ts` § probeSearchPath),
+ * and two spellings of the selection would be two roots.
+ */
+export function selectRepositoryRoot(
+  invocationCwd: string,
+  rootOptionValue: string | null,
+): string {
+  return rootOptionValue === null
+    ? invocationCwd
+    : isAbsolute(rootOptionValue)
+      ? rootOptionValue
+      : resolve(invocationCwd, rootOptionValue);
+}
+
 export class InspectionSession {
   /** Opaque identity of this process's one session. */
   public readonly sessionId: string;
@@ -1526,12 +1550,7 @@ export class InspectionSession {
     // relative. `node:path` operations only — no filesystem is touched, so
     // this makes no claim about whether the root exists, and it never probes
     // for a repository marker to find one.
-    this.selectedRepositoryRoot =
-      input.rootOptionValue === null
-        ? input.invocationCwd
-        : isAbsolute(input.rootOptionValue)
-          ? input.rootOptionValue
-          : resolve(input.invocationCwd, input.rootOptionValue);
+    this.selectedRepositoryRoot = selectRepositoryRoot(input.invocationCwd, input.rootOptionValue);
     this.boundary = createSourceBoundaryDto(
       this.selectedRepositoryRoot,
       input.rootOptionValue === null ? 'process-cwd' : 'root-option',

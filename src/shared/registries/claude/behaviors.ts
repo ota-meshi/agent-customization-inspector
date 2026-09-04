@@ -208,7 +208,7 @@ export const CLAUDE_USER_COMMANDS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/changelog',
           officialHost: 'code.claude.com',
           sections: ['1.0.51'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-09-04',
           establishes:
             'Release 1.0.51 fixed user-level commands in subdirectories, which is where the personal directory is confirmed to recurse and to namespace by subdirectory.',
         },
@@ -380,7 +380,7 @@ export const CLAUDE_REPO_COMMANDS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/changelog',
           officialHost: 'code.claude.com',
           sections: ['1.0.45'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-09-04',
           establishes:
             'Release 1.0.45 restored namespacing in command names based on subdirectories, with .claude/commands/frontend/component.md becoming /frontend:component — the documented reach inside one commands directory that makes its discovery recursive.',
         },
@@ -678,7 +678,7 @@ export const CLAUDE_REPO_SKILLS_BEHAVIOR = {
           url: 'https://code.claude.com/docs/en/changelog',
           officialHost: 'code.claude.com',
           sections: ['2.1.6'],
-          reviewedOn: '2026-08-06',
+          reviewedOn: '2026-09-04',
           establishes:
             'Release 2.1.6 introduces automatic discovery of skills from nested .claude/skills directories, the version gate for the on-demand descendant half of this behavior (QR-005).',
         },

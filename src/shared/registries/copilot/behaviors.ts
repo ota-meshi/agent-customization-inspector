@@ -72,7 +72,7 @@ export const COPILOT_VSCODE_INSTRUCTIONS_REPOSITORY_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a .github/copilot-instructions.md file'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-04',
           establishes:
             'VS Code automatically detects the one repository-wide instruction file at the workspace root and applies it to all chat requests within that workspace.',
         },
@@ -125,7 +125,7 @@ export const COPILOT_VSCODE_INSTRUCTIONS_PATH_BEHAVIOR = {
             'Instructions file locations',
             'Use a CLAUDE.md file',
           ],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-04',
           establishes:
             'File-based .instructions.md files apply when the applyTo pattern in their header matches what the agent works on, the default workspace location .github/instructions and the Claude-format .claude/rules folder are searched recursively, and a .claude/rules file declares its patterns with a paths property that defaults to every file when omitted.',
         },
@@ -174,8 +174,8 @@ export const COPILOT_VSCODE_INSTRUCTIONS_AGENTS_BEHAVIOR = {
           sourceId: 'vscode.copilot.instructions',
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
-          sections: ['Use an AGENTS.md file', 'Use multiple AGENTS.md files (experimental)'],
-          reviewedOn: '2026-08-19',
+          sections: ['Use an AGENTS.md file', 'Use multiple AGENTS.md files'],
+          reviewedOn: '2026-09-04',
           establishes:
             'VS Code automatically applies the workspace-root AGENTS.md to all chat requests when its setting is on, and nested files are an experimental, disabled-by-default setting under which VS Code searches every subfolder and leaves the choice of applicable instructions to the model.',
         },
@@ -232,7 +232,7 @@ export const COPILOT_VSCODE_INSTRUCTIONS_CLAUDE_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a CLAUDE.md file'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-04',
           establishes:
             'With the chat.useClaudeMdFile setting enabled, VS Code applies CLAUDE.md as always-on instructions from its documented locations: the workspace root, the .claude folder, the user home, and the local CLAUDE.local.md variant.',
         },
@@ -329,7 +329,7 @@ export const COPILOT_VSCODE_USER_INSTRUCTIONS_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Instructions file locations', 'Instruction priority'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-04',
           establishes:
             'User-level instruction files live in the documented user locations such as ~/.copilot/instructions and ~/.claude/rules, apply across workspaces, and personal instructions take the highest priority in the documented order while every applicable set is still provided.',
         },
@@ -374,7 +374,7 @@ export const COPILOT_VSCODE_USER_CLAUDE_BEHAVIOR = {
           url: 'https://code.visualstudio.com/docs/agent-customization/custom-instructions',
           officialHost: 'code.visualstudio.com',
           sections: ['Use a CLAUDE.md file'],
-          reviewedOn: '2026-08-19',
+          reviewedOn: '2026-09-04',
           establishes:
             'The CLAUDE.md location table names the user-home file as personal instructions across all projects.',
         },

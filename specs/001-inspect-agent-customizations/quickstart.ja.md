@@ -275,8 +275,9 @@ pnpm run test:e2e
 - Phase 3 checkpointのpackage testは、無関係なworking directoryから`dist/cli.mjs`をlaunchし、
   packaged shell、closed manifest field、printed-URL fallback、調査対象fixtureが変更されないこと、
   graceful shutdownを検証する。これはpackaged pathだけのisolationであり、現行gateはtarballをinstallせず、
-  installed package linkもinvokeしない。T917が、isolated fixtureへpack/installし、working treeまたは
-  runtime downloadへ依存せず`npx --no-install`でlaunchするfinal-release testを所有する。
+  installed package linkもinvokeしない。T917は同じnon-installing pathをcompleteなpacked-entry/default-browser/helper/environment
+  instrumentationまで拡張する。T1051の`certify-lower-bounds` matrixが、build jobの1つのtarballを新しい
+  directoryへinstallし、そのpackage linkを`npx --no-install`で解決して、install済みcopyをlaunchする責務を持つ。
   Production-graph testは承認済みのdirect dependency 11 件、すなわち
   `devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`を正確にassertし（resolved versionとintegrity hashは
   commit済み`pnpm-lock.yaml`が所有し続ける）、negative packaging fixtureは、
@@ -945,7 +946,13 @@ concernが0件になるまでcomplete-diff/tarball reviewを反復する。次�
 fileをeditせずexternal release/pull-request check logへcaptureする。その後repositoryをeditした場合は全outcome/approvalを無効にし、
 Constitution/final-gate sequence前にremediation、candidate/study/evidence digest再validation、applicable gate再実行、complete-diff reviewへ戻る。
 
-T917完了後、final-releaseの`pnpm run test:package` gateは新規pack済みtarballをisolated
-fixtureへinstallし、`npx --no-install agent-customization-inspector --no-open`をspawnし、valid
-loopback launch URLを観測してprocessを終了し、起動したCLIがbrowser-helper childをspawnしなかった
-ことをassertしなければならない。Tarball/mapping inspectionだけではlaunch testにならない。
+installしたtarballのlaunchはCIのものである。`.github/workflows/ci.yml`のlower-bound jobの
+`Launch the packed tarball` stepが、新規pack済みtarballを新しいdirectoryへinstallし、
+`npx --no-install agent-customization-inspector --help`でbinを解決したうえで、installした
+packageに対して`scripts/check-installed-launch.mjs`を実行する。このscriptはその`bin`が名指す
+fileを`--no-open --port 0`で起動し、1行のloopback launch lineを観測し、そこでpackaged shellを
+fetchし、processを終了する。`pnpm run test:package`は無関係なworking directoryから`dist/cli.mjs`
+を実行し、packed manifest、launch line、配信されるshell、fixtureが変更されないこと、graceful
+shutdownをassertする。tarballはinstallしない。installにはnetworkが要り、package gateは意図して
+それなしで行うからである（`tests/package/npx-launch.test.ts` § scope note）。Tarball/mapping
+inspectionだけでは、どちらの経路でもlaunch testにならない。

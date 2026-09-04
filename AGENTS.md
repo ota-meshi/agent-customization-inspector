@@ -713,8 +713,8 @@ documentation work with its own failure modes:
 - `pnpm run check:official-sources -- --network` performs every check a script can
   decide, over the whole registry: that each recorded URL still answers `200` directly on
   its own official host without redirecting, and that each cited section resolves — as
-  exactly one served `<h1>`–`<h4>`, or, on a client-rendered page that serves no such
-  element, as its table-of-contents anchor slug appearing exactly once. It reports and
+  exactly one served `<h1>`–`<h4>`, or, when no served heading carries it, as the one
+  fragment every table-of-contents link bearing its text points at. It reports and
   changes nothing, and it is outside every build, start, test, and CI chain: it is the one
   command here that makes an outbound request, so it runs when you ask it to. Do not
   re-do those checks by hand; a summarizer's inventory of a page's headings is not

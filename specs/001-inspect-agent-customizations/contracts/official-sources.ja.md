@@ -195,7 +195,7 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 
 | `sourceId` | `canonicalUrl` | `officialHost` | Exact `sectionAnchors` | `reviewedOn` |
 |---|---|---|---|---|
-| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files (experimental)`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-08-19` |
+| `vscode.copilot.instructions` | <https://code.visualstudio.com/docs/agent-customization/custom-instructions> | `code.visualstudio.com` | `Types of instruction files`; `Use a .github/copilot-instructions.md file`; `Use .instructions.md files`; `Instructions file locations`; `Instructions file format`; `Use an AGENTS.md file`; `Use multiple AGENTS.md files`; `Use a CLAUDE.md file`; `Instruction priority` | `2026-09-04` |
 | `vscode.copilot.customization` | <https://code.visualstudio.com/docs/agent-customization/overview> | `code.visualstudio.com` | `Use customizations in a monorepo` | `2026-08-19` |
 | `vscode.copilot.settings` | <https://code.visualstudio.com/docs/agents/reference/ai-settings> | `code.visualstudio.com` | `Chat settings`; `Custom instructions settings`; `Reusable prompt files settings`; `Custom agents settings`; `Agent skills settings`; `Agent plugins settings` | `2026-08-19` |
 | `vscode.copilot.prompts` | <https://code.visualstudio.com/docs/agent-customization/prompt-files> | `code.visualstudio.com` | `Prompt file locations`; `Prompt file format`; `Create a prompt file`; `Use a prompt file in chat` | `2026-08-22` |
@@ -226,8 +226,8 @@ conflictとして保持し、未登録のsource repositoryやissueを代替evide
 | `anthropic.claude-code.plugins.components-scopes` | <https://code.claude.com/docs/en/plugins-reference> | `code.claude.com` | `Plugin installation scopes`; `Skills-directory plugins`; `Hooks`; `Plugin manifest schema`; `File locations reference`; `Plugin caching and file resolution` | `2026-08-27` |
 | `anthropic.claude-code.marketplaces.catalog-sources` | <https://code.claude.com/docs/en/plugin-marketplaces> | `code.claude.com` | `Create the marketplace file`; `Plugin sources`; `Require marketplaces for your team` | `2026-08-25` |
 | `anthropic.claude-code.ide.shared-differences` | <https://code.claude.com/docs/en/ide-integrations> | `code.claude.com` | `Configure settings`; `VS Code extension vs. Claude Code CLI`; `Manage marketplaces` | `2026-07-25` |
-| `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`、`1.0.51` | `2026-08-22` |
-| `anthropic.claude-code.changelog.nested-skill-discovery` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.6`; `2.1.178` | `2026-08-06` |
+| `anthropic.claude-code.changelog.legacy-command-nesting` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `1.0.45`、`1.0.51` | `2026-09-04` |
+| `anthropic.claude-code.changelog.nested-skill-discovery` | <https://code.claude.com/docs/en/changelog> | `code.claude.com` | `2.1.6`; `2.1.178` | `2026-09-04` |
 
 ## OpenAI公式ソース
 
@@ -290,7 +290,7 @@ pnpm run check:official-sources -- --network
 報告する。追跡すれば記録済みURLはcitationが名指すaddressではなく起点になってしまい、移転はreviewerが
 行うcitationの変更である。Request、response、redirect、decodeの
 capacityはNode.jsと実行環境から継承し、recoverableなenvironment failureはfail closedする。HTTPS downgrade、
-cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。ただしclient-renderedなページだけは例外とし、その例外はheading checkにのみ適用する。そうしたページはtable of contentsだけを配信して`<h*>` elementを一切出さないため、headingは存在するのにそれを担うelementが存在しない。Commandは、引用されたheadingのanchor slugが配信されたtable of contents内にちょうど1回現れる場合にそのheadingを受理し、その方法で確認したheadingを報告する。この例外がないと、client-renderedなページ上の全citationに対してdriftを報告することになる。Maintainerが却下する以外にないhard failureは、gateが読まれなくなる原因そのものである。同一host上の
+cross-host redirect、誤ったcontent type、decode failure、headingの欠落または重複はhard failureとする。配信されたheadingのどれも担わないsectionは、heading checkに限り、ページ自身のtable of contentsから探す。Siteはその一覧を同じcontentから導出するので、引用したsectionを本文に持つfragment linkは、そのページが持つsectionを名指している — client-renderedなページがheadingを配信しなかったsectionも、Claude Code changelogが各releaseをlabel付きentryとして描くように、heading以外の形で描かれるsectionも同じである。Commandは、そうしたlinkがすべて1つのfragmentを指すときにそのsectionを受理し、その方法で確認したsectionを報告する。2つのfragmentを指すlinkは2つのsectionを引用しており、どちらも確認しない。このfallbackがないと、そうしたページ上の全citationに対してdriftを報告することになる。Maintainerが却下する以外にないhard failureは、gateが読まれなくなる原因そのものである。同一host上の
 Redirectを黙って追跡して新しい`canonicalUrl`にすることはない。
 
 Normalization version `1`は、列挙した各headingから同level以上の次heading直前までを選択し、document

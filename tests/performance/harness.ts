@@ -2,8 +2,7 @@
 // reference fixture, the versioned fixture-manifest and profile validators,
 // the rendered-page session the smoke passes measure on, and the RPC bridge
 // that reads back the opaque session identifiers a run record needs
-// (plan.md § Performance Goals; quickstart.md § SC-002 performance
-// measurement).
+// (plan.md § Performance Goals; quickstart.md § Performance smoke pass).
 //
 // The checked-in manifest freezes the fixture: `expectedSc002Entries` expands
 // the manifest's own declarative rules into the complete entry inventory, the
@@ -13,10 +12,11 @@
 // The canonical listing digest binds that expansion as one value the profile
 // can reference.
 //
-// This harness performs measurement plumbing only. The exact ten-run
-// nine-of-ten protocol on a frozen measurement profile belongs to T918; the
-// performance project's global setup runs one non-gating smoke pass over the
-// same rendered surfaces, and both suites assert against that single run.
+// This harness performs measurement plumbing only: the fixture, the profile
+// binding, one measured run, and that run's integrity checks. No threshold is
+// asserted over its figures (spec.md § Clarifications, Session 2026-09-01) —
+// the performance project's global setup runs one non-gating smoke pass over
+// the rendered surfaces, and both suites assert against that single run.
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
@@ -307,16 +307,12 @@ export async function validateSc002Fixture(root: string, manifest: Sc002Manifest
 
 /**
  * The checked-in SC-002 smoke-reference profile: it binds the fixture
- * manifest for the T183 non-gating pass and declares the environment class
- * that pass runs in. No measurement set is published under it: a measurement
- * set requires one checked-in versioned profile whose actual environment
- * values are published with each result (research.md § 11 item 6), and this
- * reference's hosted-runner fleet does not pin one processor model or image
- * revision per run, so the profile a measurement set runs under is minted
- * when T918's protocol freezes its measurement host.
+ * manifest for the one non-gating pass and declares the environment class
+ * that pass runs in. No measurement set or threshold is published under it
+ * (spec.md § Clarifications, Session 2026-09-01).
  */
 export interface Sc002Profile {
-  /** Stable profile identity; any field change mints a new one. */
+  /** Stable profile identity; any field change requires a new one. */
   readonly profileId: string;
   /** Profile schema version this harness interprets. */
   readonly profileVersion: number;
@@ -353,15 +349,14 @@ export interface Sc002Profile {
     readonly version: string;
   };
   /**
-   * Benchmark command, its standardized measurement configuration, and the
-   * profile's own scope note — which states that no measurement set is
-   * published under this smoke profile and that T918 mints the measurement
-   * profile from the frozen host's exact values.
+   * Benchmark command, its standardized observation configuration, and the
+   * profile's own scope note — which states that no measurement set or
+   * threshold is published under this smoke profile.
    */
   readonly benchmark: {
     /** The command that executes the pass. */
     readonly command: string;
-    /** The standardized measurement and interaction configuration prose. */
+    /** The standardized smoke-pass and interaction configuration prose. */
     readonly configuration: string;
     /** The profile's own scope statement; see the field's outer doc. */
     readonly notes: string;
@@ -404,12 +399,9 @@ function requireProfileField(
 
 /**
  * Reads and verifies the checked-in profile: the schema version, the presence
- * and type of every contracted environment field — a measurement profile must
- * identify its exact environment, and holding the smoke profile to the same
- * schema keeps it from drifting before T918 freezes those values — and the
- * binding to the manifest actually checked in, because a profile naming a
- * different manifest version or digest would publish results for a fixture
- * nobody can rebuild.
+ * and type of every declared environment field, and the binding to the
+ * manifest actually checked in. A profile naming a different manifest version
+ * or digest would report observations for a fixture nobody can rebuild.
  */
 export function loadSc002Profile(manifest: Sc002Manifest, manifestSha256: string): Sc002Profile {
   const raw = JSON.parse(readFileSync(SC002_PROFILE_PATH, 'utf8')) as Record<string, unknown>;
@@ -709,8 +701,8 @@ export interface Sc002RunRecord {
  * that same request-committed generation, the two standardized interactions;
  * and the fixture digests recomputed afterwards. Every resource the run
  * acquires is released in its own teardown, whatever failed — the tree
- * excepted, because the series reuses one unchanged fixture across every run
- * ({@link runSc002MeasurementSeries}).
+ * excepted, because the smoke pass that built it removes it after this run
+ * ({@link runSc002SmokePass}).
  *
  * All four timers run inside the page, from input dispatch to rendered
  * feedback observed per animation frame, and every wait carries its own
@@ -846,8 +838,8 @@ export async function runSc002MeasuredRun(
             lastRefresh = performance.now();
           }
         };
-        // The one-second stop: the first qualifying status correlated to this
-        // request, in one of three shapes the qualifying definition names
+        // The status observation: the first qualifying status correlated to
+        // this request, in one of three shapes the qualifying definition names
         // (spec.md § SC-002 Clarifications). Each shape pairs the "This scan"
         // row with the source status it must agree with, so a phase label
         // shown against the wrong status — a terminal label mid-scan, the
@@ -923,9 +915,10 @@ export async function runSc002MeasuredRun(
           check();
         });
         const statusMillis = performance.now() - start;
-        // The ten-second stop, in the two places the reworked surfaces put its
-        // two halves. The generation this request committed is rendered by the
-        // status panel, so it is waited for here, before the run leaves it;
+        // The inventory observation, in the two places the reworked surfaces
+        // put its two halves. The generation this request committed is
+        // rendered by the status panel, so it is waited for here, before the
+        // run leaves it;
         // the inventory it belongs to is then the one the list renders, because
         // the page holds one committed snapshot at a time.
         await new Promise<void>((resolve, reject) => {
@@ -1223,113 +1216,28 @@ export async function runSc002MeasuredRun(
   return record!;
 }
 
-/** How many fresh measured runs the release protocol executes (T918). */
-export const SC002_RUN_COUNT = 10;
-
 /**
- * How many of those runs must satisfy every threshold. Nine of ten, so one
- * run disturbed by something outside the product — a background process on
- * the measurement host — does not decide the release, while two do.
- */
-export const SC002_QUALIFYING_RUNS = 9;
-
-/** The SC-002 thresholds, in milliseconds (spec.md § SC-002). */
-export const SC002_THRESHOLDS = {
-  /** Dispatch to the first request-correlated visible status. */
-  status: 1_000,
-  /** Dispatch to the request-committed complete inventory. */
-  inventory: 10_000,
-  /** Each standardized interaction, dispatch to rendered feedback. */
-  interaction: 100,
-} as const;
-
-/**
- * The runs that satisfy every SC-002 threshold, which is the criterion the
- * contract states: one common subset of at least {@link SC002_QUALIFYING_RUNS}
- * runs must meet all four (quickstart.md § SC-002 performance measurement).
- * Counting each threshold's own passing runs separately would accept a series
- * where no single run met them together.
- */
-export function qualifyingSc002Runs(records: readonly Sc002RunRecord[]): readonly Sc002RunRecord[] {
-  return records.filter(
-    (record) =>
-      record.statusMillis <= SC002_THRESHOLDS.status &&
-      record.inventoryMillis <= SC002_THRESHOLDS.inventory &&
-      record.filterMillis <= SC002_THRESHOLDS.interaction &&
-      record.selectMillis <= SC002_THRESHOLDS.interaction,
-  );
-}
-
-/**
- * The profile's architecture vocabulary in the platform's own spelling. A
- * profile names the instruction set the way an operating system does
- * (`x86_64`, `aarch64`) and Node names it its own way (`x64`, `arm64`), so
- * comparing the two strings directly would never match and would leave the
- * threshold gate off on the very host it was minted from. Only the two this
- * project's certification matrix runs on are mapped; an architecture with no
- * entry has no agreed spelling here and never matches.
- */
-const NODE_ARCHITECTURE_BY_PROFILE_NAME: Readonly<Record<string, string>> = {
-  x86_64: 'x64',
-  aarch64: 'arm64',
-};
-
-/**
- * Whether the process is running on the environment the checked-in profile
- * declares, which is what decides whether the thresholds are asserted or
- * recorded.
+ * Executes the performance smoke pass: one run against the unchanged,
+ * manifest-bound fixture in a fresh packaged-CLI process (plan.md
+ * § Performance Goals; quickstart.md § Performance smoke pass).
  *
- * A measurement is a statement about one frozen host: the same figures on
- * another machine measure that machine instead, so gating them wherever the
- * suite happens to run would make the release depend on a runner's load
- * rather than on the product. The profile names the host it was minted from,
- * so the comparison is the profile's own — never a guess about what is fast
- * enough — and the gate turns itself on exactly where the profile applies.
+ * The fixture is built, validated immediately before the run, and revalidated
+ * by the run's own teardown, so a mutation is attributed to the run and the
+ * manifest digest is recomputed with it — a fixture that still matches a
+ * rewritten manifest matches nothing that was reviewed.
  *
- * Two fields decide it, because they are the two the platform answers in a
- * form a profile can state exactly: the instruction set (through the mapping
- * above) and the runtime version. The operating system is deliberately not
- * among them — the profile names a distribution and an image
- * (`Ubuntu 24.04 LTS`), while `os.release()` returns a kernel release
- * (`6.8.0-45-generic`) and Node exposes no distribution at all, so comparing
- * them would be comparing two different facts.
+ * One run rather than a series, because no threshold is asserted over the
+ * figures (spec.md § Clarifications, Session 2026-09-01): a series only earns
+ * its cost where a subset of runs decides something, and here nothing does.
  */
-export function isSc002MeasurementEnvironment(profile: Sc002Profile): boolean {
-  return (
-    NODE_ARCHITECTURE_BY_PROFILE_NAME[profile.processor.architecture] === process.arch &&
-    profile.runtime.name === 'node' &&
-    profile.runtime.version === process.versions.node
-  );
-}
-
-/**
- * Executes the release protocol: exactly {@link SC002_RUN_COUNT} measured runs
- * against one unchanged, manifest-bound fixture, each in a fresh packaged-CLI
- * process (T918).
- *
- * The fixture is built once and validated immediately before the first run;
- * every run revalidates it afterwards, so a mutation is attributed to the run
- * that caused it and no later run measures a tree that has drifted. The
- * manifest digest is recomputed with it, because a fixture that still matches
- * a rewritten manifest matches nothing that was reviewed.
- *
- * The runs are sequential. Two measured runs at once would contend for the
- * same processors and the same disk, and each would then be measuring the
- * other.
- */
-export async function runSc002MeasurementSeries(): Promise<readonly Sc002RunRecord[]> {
+export async function runSc002SmokePass(): Promise<Sc002RunRecord> {
   const { manifest, manifestSha256 } = loadSc002Manifest();
   const profile = loadSc002Profile(manifest, manifestSha256);
   const root = await buildSc002Fixture(manifest);
-  const records: Sc002RunRecord[] = [];
   try {
-    // Immediately before run 1; every run's own teardown revalidates after.
     await validateSc002Fixture(root, manifest);
-    for (let run = 0; run < SC002_RUN_COUNT; run += 1) {
-      records.push(await runSc002MeasuredRun(root, manifest, manifestSha256, profile));
-    }
+    return await runSc002MeasuredRun(root, manifest, manifestSha256, profile);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
-  return records;
 }

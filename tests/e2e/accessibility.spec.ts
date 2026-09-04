@@ -343,7 +343,7 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({
 
   // The editor state. Monaco is the one surface here that installs its own key
   // handling, so it is where a trap would actually be: focus must reach the
-  // editor and then leave it again by ordinary Tab.
+  // editor and then leave it again by sequential keyboard navigation.
   // A rule file's detail rather than whichever row sorts first: its subject
   // is the file itself, so it renders one source viewer with nothing hiding
   // it, where a skill's editors sit inside whichever of its two tabs is
@@ -358,7 +358,7 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({
   // presses lands: how many controls a detail renders is not fixed, so a walk
   // that happens to end outside the editor proves nothing about leaving it.
   // The editor is read-only (`monaco.ts` § readOnly, domReadOnly), so Tab is
-  // not taken for indentation and ordinary Tab is the way out.
+  // not taken for indentation.
   const inEditor = (): Promise<boolean> =>
     page.evaluate(() => document.activeElement?.closest('.monaco-editor') !== null);
   // Waited for rather than assumed: the editor mounts after the detail's own
@@ -372,23 +372,30 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({
     entered = await inEditor();
   }
   expect(entered, 'focus never entered the editor').toBe(true);
-  // Leaving it again is certified on the engines that can show it. Monaco keeps
-  // Tab inside its own `textarea.inputarea` on the pinned Firefox revision:
-  // focus enters the editor and does not come out, measured to sixty presses
-  // with `document.activeElement` that same textarea throughout, and with
-  // `accessibilitySupport: 'on'` and `tabFocusMode: true` each changing nothing
-  // about which element holds the key — the latter measured on 2026-09-03 by
-  // setting it on both read-only editors and lifting this exemption, which
-  // failed here at ten presses exactly as before. It governs whether Tab
-  // inserts a tab or moves focus, and a `readOnly` editor never inserts one. Chromium and WebKit release it within a few. The behaviour is the
-  // editor's rather than this repository's, and no setting it publishes moves
-  // it, so the exit is asserted where it is observable instead of a workaround
-  // being built around one engine's editor.
+  // Leaving it again is certified on every engine. Chromium and WebKit use a
+  // bounded forward-Tab walk; on the pinned Firefox revision focus enters
+  // Monaco's `textarea.inputarea` and Tab does not take it out, while Shift+Tab
+  // leaves on the first press, so Firefox explicitly asserts that backward exit.
+  // Measured on 2026-09-04 with a capture-phase `keydown` listener on
+  // `window`: every Tab reaches the page with `defaultPrevented` false, no
+  // `focusin` follows, and `document.activeElement` stays that textarea —
+  // Monaco is not consuming the key, so `tabFocusMode: true` and the Ctrl+M
+  // toggle, which govern whether it does, change nothing. Firefox's forward
+  // sequential focus navigation does not move from the textarea Monaco
+  // renders at 0×0 on that engine alone (`canUseZeroSizeTextarea = isFirefox`
+  // in its text-area edit context; 1px on the others). Chromium, whose input
+  // element is a `div.native-edit-context`, and WebKit release focus on the
+  // first press. The behaviour is the editor's on that engine rather than
+  // this repository's, so Firefox's forward-Tab limitation is recorded
+  // (validation.md § The automated half) rather than worked around here.
   //
   // The count is in the message because it is what tells a trap from a walk
   // that merely needed more presses: a bound raised and still exhausted is the
   // editor holding focus, not the editor being deep.
-  if (browserName !== 'firefox') {
+  if (browserName === 'firefox') {
+    await page.keyboard.press('Shift+Tab');
+    expect(await inEditor(), 'focus did not leave the editor after Shift+Tab').toBe(false);
+  } else {
     let leavePresses = 0;
     for (; leavePresses < 10 && (await inEditor()); leavePresses += 1) {
       await page.keyboard.press('Tab');

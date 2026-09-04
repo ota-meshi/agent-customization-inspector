@@ -124,7 +124,16 @@ const rows = computed(() => {
           </span>
           <!-- One announcement region per member, so a status that changed on
                "Refresh status" is heard as that member's rather than as a
-               re-reading of the whole list (WCAG 4.1.3). -->
+               re-reading of the whole list (WCAG 4.1.3). It never empties:
+               with no correlated progress to show it states the member and
+               the status word the row shows, so a rescan that completed is
+               heard as "Copilot home ready." rather than as silence. The
+               member is named because four rows offer the same control and a
+               bare status word says which of them changed to nobody; the root
+               is not read, because it did not change and is stated once in
+               the labelled field above (FR-002). The same rule as the
+               Repository region in `InventoryRail.vue`: the Source's name and
+               the status the screen shows, and nothing that stayed the same. -->
           <span aria-live="polite" aria-atomic="true">
             <span v-if="row.progress" class="aci-note">
               {{ SCAN_PROGRESS_PHASE_TEXT[row.progress.phase] }} —
@@ -132,6 +141,9 @@ const rows = computed(() => {
               {{ row.progress.candidateFiles === 1 ? 'candidate file' : 'candidate files' }},
               {{ row.progress.diagnosticCount }}
               {{ row.progress.diagnosticCount === 1 ? 'diagnostic' : 'diagnostics' }}
+            </span>
+            <span v-else class="aci-note">
+              {{ row.memberText }} {{ SOURCE_STATUS_TEXT[row.source.status].toLowerCase() }}.
             </span>
             <span v-if="row.diagnosticFileCount > 0" class="aci-note">
               {{ row.diagnosticFileCount }}

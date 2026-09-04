@@ -206,7 +206,7 @@ export const CLAUDE_REPO_COMMAND_RULE = {
           url: 'https://code.claude.com/docs/en/changelog',
           officialHost: 'code.claude.com',
           sections: ['1.0.45'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-09-04',
           establishes:
             'Release 1.0.45 restored namespacing in command names based on subdirectories, so a command file lives at any depth inside the commands directory — the recursion this rule admits with its one trailing recursive step.',
         },
@@ -1228,7 +1228,7 @@ export const CLAUDE_GLOBAL_COMMAND_RULE = {
           url: 'https://code.claude.com/docs/en/changelog',
           officialHost: 'code.claude.com',
           sections: ['1.0.51'],
-          reviewedOn: '2026-08-22',
+          reviewedOn: '2026-09-04',
           establishes:
             'User commands are Markdown files under the configuration directory at any depth, with subdirectories forming command namespaces.',
         },
