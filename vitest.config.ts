@@ -10,6 +10,22 @@
 // executed nothing.
 import { defineConfig } from 'vitest/config';
 
+/**
+ * The bound for a case that does real filesystem work: every case under
+ * `tests/integration/` builds a fixture tree on disk and scans it, some of them
+ * twice. Both projects that run those files carry it, so one file's bound does
+ * not depend on which project ran it.
+ *
+ * Vitest's own default is 5 s, and the Windows runners are where it runs out.
+ * `repository-scan.test.ts`'s 118 cases measure 2.2 s and 2.6 s on Ubuntu,
+ * 3.9 s and 4.3 s on macOS, and 9.3 s on one Windows runner — while the other
+ * Windows runner took 36.8 s over the same commit, and the one case there that
+ * crossed 5 s failed. A runner four times slower than its sibling is what the
+ * certification matrix has to survive, so the bound is set where that fits
+ * rather than where the fast machines land.
+ */
+const FILESYSTEM_SUITE_TIMEOUT_MS = 20_000;
+
 export default defineConfig({
   test: {
     coverage: {
@@ -40,6 +56,7 @@ export default defineConfig({
           name: 'integration',
           environment: 'node',
           include: ['tests/integration/**/*.test.ts'],
+          testTimeout: FILESYSTEM_SUITE_TIMEOUT_MS,
         },
       },
       {
@@ -97,6 +114,7 @@ export default defineConfig({
             'tests/contract/**/*.test.ts',
             'tests/integration/**/*.test.ts',
           ],
+          testTimeout: FILESYSTEM_SUITE_TIMEOUT_MS,
         },
       },
     ],
