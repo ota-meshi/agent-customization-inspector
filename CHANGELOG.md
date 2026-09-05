@@ -1,5 +1,11 @@
 # agent-customization-inspector
 
+## 0.1.1
+
+### Patch Changes
+
+- [#3](https://github.com/ota-meshi/agent-customization-inspector/pull/3) [`7496f35`](https://github.com/ota-meshi/agent-customization-inspector/commit/7496f35ac855186453a0eab7bffcb69464490c6e) Thanks [@ota-meshi](https://github.com/ota-meshi)! - Read-only source diffs for skills, instructions, prompts and commands, custom agents, and plugins now render through one shared component. Comparison behavior is unchanged.
+
 ## 0.1.0
 
 ### Minor Changes
