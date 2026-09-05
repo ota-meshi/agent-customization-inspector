@@ -273,6 +273,31 @@ const OTHER_TAB_ENABLING =
   'Personal inspection is already being enabled — possibly from another tab. Use “Refresh status” to follow it.';
 
 /**
+ * Whether the rows below the summary are older than what the summary says.
+ *
+ * The rows are the adopted snapshot's and nothing here updates by itself,
+ * which is what keeps WCAG 2.2.2 not applicable — so whenever a read exists
+ * that this page has not taken in, the summary and the rows describe two
+ * moments and one sentence has to say which is which. Three facts reach that
+ * state and the note is owed in each: a batch the snapshot itself carries, an
+ * operation the server holds that this page has not adopted — another tab's,
+ * or this one's across a reload — and this page's own confirmation before its
+ * refetch lands, which covers the confirmation being out, its answer being
+ * fetched, and its outcome never arriving. Deriving it from the running batch
+ * alone showed the note in the first of the three and hid it in the two the
+ * reader is most likely to be looking at.
+ *
+ * All three are false again exactly when the refetch adopts, which is when
+ * the rows became the summary's own moment.
+ */
+const statusesAreStale = computed(
+  () =>
+    runningBatch.value !== null ||
+    enableInProgress.value !== null ||
+    sessionViewState.globalEnableState.value !== 'idle',
+);
+
+/**
  * Whether the scan-status panel is on screen: this page holds a confirmation,
  * or the snapshot carries controls a batch published or rejected.
  */
@@ -599,8 +624,9 @@ watch(
              returned. The rows are dated rather than re-fetched — nothing
              here updates by itself, which is what keeps WCAG 2.2.2 not
              applicable — so for as long as a read this page has not yet taken
-             in is running, one sentence says whose moment the rows are. -->
-        <p v-if="runningBatch" class="aci-note">Statuses below are from the last refresh.</p>
+             in exists, one sentence says whose moment the rows are
+             ({@link statusesAreStale}). -->
+        <p v-if="statusesAreStale" class="aci-note">Statuses below are from the last refresh.</p>
         <ul class="aci-global-consent-page__outcomes">
           <li v-for="control in controls" :key="control.member">
             {{ GLOBAL_MEMBER_TEXT[control.member] }} — {{ GLOBAL_TOOL_STATE_TEXT[control.state] }}

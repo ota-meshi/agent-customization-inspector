@@ -201,9 +201,9 @@ FR-013 through FR-018 and FR-045, Codex may read only these rules — the rows b
 consented `CODEX_HOME` boundary, and the rows below the consented shared agent home that
 FR-045 names:
 
-| Rule ID | Boundary base | Selector program and selection | Expansion | Class | Behavior refs | Policy refs | Evidence |
-|---|---|---|---|---|---|---|---|
-| `codex.global.instructions` | Exact consented captured `CODEX_HOME`; only when absent, `node:path.join` of the session-start imported `node:os.homedir()` capture and `.codex` | `['AGENTS.override.md']`, then `['AGENTS.md']` | `exact`; first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | `openai.codex.agents-md` |
+| Rule ID | Boundary base | Selector program and selection | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
+|---|---|---|---|---|---|---|---|---|
+| `codex.global.instructions` | Exact consented captured `CODEX_HOME`; only when absent, `node:path.join` of the session-start imported `node:os.homedir()` capture and `.codex` | `['AGENTS.override.md']`, then `['AGENTS.md']` | `exact`; first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013, FR-014, FR-017, FR-018, QR-005 | — | `openai.codex.agents-md` |
 | `codex.global.config` | The same exact consented `CODEX_HOME` boundary | `['config.toml']` | `exact` at the boundary | `static-candidate` | `codex.behavior.user.config` | FR-013, FR-014, FR-017, FR-018, QR-005 | The user config carrier's `MCP` recognition; three rules admit the one file and the walk merges them into one candidate read once, exactly as the Repository trio does | `openai.codex.config-basic`, `openai.codex.mcp` |
 | `codex.global.settings` | The same exact consented `CODEX_HOME` boundary | `['config.toml']` | `exact`, over the selector `codex.global.config` authors | `static-candidate` | `codex.behavior.user.config` | FR-013, FR-014, FR-017, FR-018, QR-005 | The same carrier's `settings/config` recognition | `openai.codex.config-basic` |
 | `codex.global.hooks.inline` | The same exact consented `CODEX_HOME` boundary | `['config.toml']` | `exact`, over the selector `codex.global.config` authors; the carrier's inline `[hooks]` table is a `hook` recognition of that one file | `static-candidate` | `codex.behavior.user.config`, `codex.behavior.user.hooks` | FR-013, FR-014, FR-017, FR-018, QR-005 | Same-layer standalone and inline hook occurrences remain distinct provenances | `openai.codex.hooks` |

@@ -293,14 +293,14 @@ produced there. The counts are what each run reported.
 | Format | `pnpm run format:check` | silent, exit 0 |
 | Lint | `pnpm run lint` | silent, exit 0 |
 | Types | `pnpm run typecheck` | silent, exit 0 |
-| Unit | `pnpm run test:unit` | 54 files, 1,250 tests passed |
+| Unit | `pnpm run test:unit` | 54 files, 1,251 tests passed |
 | Contract | `pnpm run test:contract` | 12 files, 405 tests passed |
 | Integration | `pnpm run test:integration` | 11 files, 271 tests passed |
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 4 tests passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 577 passed |
-| Coverage | `pnpm run test:coverage` | 77 files, 1,926 tests passed; statements 86.07% (6,023/6,997), branches 71.87% (3,557/4,949), functions 87.46% (1,200/1,372), lines 86.37% (5,900/6,831) |
+| Coverage | `pnpm run test:coverage` | 77 files, 1,927 tests passed; statements 86.07% (6,023/6,997), branches 71.86% (3,558/4,951), functions 87.46% (1,200/1,372), lines 86.37% (5,900/6,831) |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
 
 **A search typed from a detail page reaches the field.** The shell's search navigates to the
@@ -399,7 +399,7 @@ a local run stands in for none of it. The disposition is unchanged from the tree
 started on — what changed is which commit the certifying run is of.
 
 **The coverage percentages are a run's, not a constant.** This tree's run reported the 77
-files, 1,926 passing tests, and percentages recorded in the row above. No threshold is asserted
+files, 1,927 passing tests, and percentages recorded in the row above. No threshold is asserted
 on them anywhere.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
@@ -580,6 +580,44 @@ this record already states that two packs of one source differ in the build id N
 the bundle. What the six jobs establish is that one tarball built from this commit installs and
 runs on every lower-bound environment, which is what the comment and the task now say. The claim
 that one pack's identical bytes reach all six jobs is unchanged, because that is what happens.
+
+**A confirmation that never arrived does not say a read finished.** The consent command moved to
+`answered` on every answer, and `answered` is the state whose sentence says the reading is over.
+For a delivery failure it is over in neither direction: no job was created, and the same failure
+can be an acceptance whose response was lost. The failure path now enters the state that says
+exactly what is known — the confirmation went, its outcome did not come back, the host may
+already be reading — which the page already had a sentence for, so nothing new is worded. The
+unit case drives an `enableGlobal` rejection and reads the state during the refetch; it was run
+against the old transition first, where it read `answered`.
+
+**The note that dates the status rows appears in every state that dates them.** The rows are the
+adopted snapshot's and nothing on the page updates by itself, so whenever a read exists that this
+page has not taken in, the summary and the rows are two moments and one sentence has to say
+which is which. It was derived from the batch the snapshot carries alone, which is one of three
+ways to reach that state: the other two — an operation the server holds that this page has not
+adopted, and this page's own confirmation before its refetch lands — are the ones a reader is
+most likely to be looking at, and the note was hidden in both. All three now derive it, and all
+three go false exactly when the refetch adopts.
+
+**Two tables were not the shape they declared.** The dependency baseline's Node.js row carried an
+unescaped `||` inside a code span, which GFM reads as a cell separator: the row rendered as five
+cells against a three-column header, so the engine range and the reason it holds landed in the
+wrong columns — the evidence destination T001 names, unreadable in the rendered page. Both
+languages escape it now. Sweeping every table in `specs/` for the same shape found one more, and
+it is a shipped vendor contract: the Codex Global rule table declares eight columns while its
+rows carry nine, so GFM dropped the last cell of each — the Evidence column, whose entries are
+what QR-004 puts in the vendor contracts, rendered the Status note instead and the evidence IDs
+did not render at all. The header names the ninth column now, as both sibling contracts already
+do, and the one row that carried no status carries an explicit empty one. The frozen presentation
+allowlist is a different table in the same file and its digests are untouched.
+
+**A kind owns its model, and a primitive with one meaning is shared.** The comparison
+clarification said no module at all is shared across kinds. Seven comparison pages share the side
+picker and three share the recognition table, each with its own stated reason: one drawing
+rendered per kind is one rule kept in several places. The clause now draws the boundary it
+meant — route, page, composable, and the components that render a kind's own model are the
+kind's; a presentation primitive whose inputs and meaning are identical is shared — and the
+picker's own comment no longer counts six pages where there are seven.
 
 
 ## Outcome-manifest criteria

@@ -1332,9 +1332,18 @@ export class SessionViewState {
     this.globalEnableResult.value = null;
     const capturedEpoch = this.#clientData.epoch();
     const outcome = await this.#client.enableGlobal(preview.previewId, preview.allowlistVersion);
-    // Answered: the reading the confirmation started is over, and what
-    // follows is this command's own refetch of the committed state.
-    this.globalEnableState.value = 'answered';
+    // What the answer establishes, which is not the same for every kind of
+    // answer. An acceptance means the reading is over — the host answers once
+    // every admitted member's scan is terminal (contracts/http-api.md
+    // § enable-global) — so `answered` spans this command's own refetch of the
+    // committed state. A delivery failure establishes the opposite of a
+    // finished read and no more: it created no job, and it can equally be an
+    // acceptance whose response was lost, so the one thing this side must not
+    // say is that a read finished. `unfetched` is the state whose sentence
+    // says what is actually known — the confirmation went, its outcome did
+    // not come back, the host may already be reading — and the refetch below
+    // either replaces it by adopting or leaves it standing.
+    this.globalEnableState.value = outcome.kind === 'failed' ? 'unfetched' : 'answered';
     if (this.#clientData.epoch() !== capturedEpoch) {
       // The same fatal exception the preview guard makes: the unsupported
       // path's own purge moved the epoch, and 'ended' must still land.
@@ -1424,7 +1433,9 @@ export class SessionViewState {
    * Called by {@link confirmGlobalConsent} after each of its refetches, and
    * writes only from `answered`: an adoption releases the hold to `idle` and a
    * later confirmation takes the slot to `submitting`, so finding anything
-   * else there means this command no longer owns it.
+   * else there means this command no longer owns it. A delivery failure is
+   * already in this state before its refetch runs, because what it knows does
+   * not change with the refetch's outcome; the call is a no-op for it.
    */
   #markOutcomeUnfetched(): void {
     if (this.globalEnableState.value === 'answered') {

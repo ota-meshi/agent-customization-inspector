@@ -249,14 +249,14 @@ artifactに依存するgateはそこで生成したbuildを用いた。件数は
 | Format | `pnpm run format:check` | 無出力、exit 0 |
 | Lint | `pnpm run lint` | 無出力、exit 0 |
 | Types | `pnpm run typecheck` | 無出力、exit 0 |
-| Unit | `pnpm run test:unit` | 54 file、1,250 test passed |
+| Unit | `pnpm run test:unit` | 54 file、1,251 test passed |
 | Contract | `pnpm run test:contract` | 12 file、405 test passed |
 | Integration | `pnpm run test:integration` | 11 file、271 test passed |
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、4 test passed |
 | Browser | `pnpm exec playwright test --project=chromium` | 577 passed |
-| Coverage | `pnpm run test:coverage` | 77 file、1,926 test passed。statement 86.07%（6,023/6,997）、branch 71.87%（3,557/4,949）、function 87.46%（1,200/1,372）、line 86.37%（5,900/6,831） |
+| Coverage | `pnpm run test:coverage` | 77 file、1,927 test passed。statement 86.07%（6,023/6,997）、branch 71.86%（3,558/4,951）、function 87.46%（1,200/1,372）、line 86.37%（5,900/6,831） |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
 
 **detail pageから打つ検索が、fieldへ届く。** shellの検索はinventoryへ遷移し、inventoryは読み手が
@@ -344,7 +344,7 @@ revisionにわたるものであり、ここでは再現していない。上表
 いない。変わったのは、認証runがどのcommitに対するものかである。
 
 **Coverageの百分率はあるrunの値であり、定数ではない。** このtreeのrunは、上の行に記録した
-77 file・1,926 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
+77 file・1,927 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
@@ -481,6 +481,37 @@ Pack stepの脇のcommentは、6 sampleが「公開されるもの」につい�
 2回のpackはNuxtがbundleへ書くbuild idで異なると述べている。6 jobが立証するのは、このcommitから作った
 1つのtarballがすべてのlower-bound環境でinstallされ動くことであり、commentとtaskは今それを述べる。
 1回のpackの同一byteが6 jobすべてへ届くという記述は変えていない。実際にそうだからである。
+
+**届かなかったconfirmationは、読み取りが終わったとは述べない。** Consent commandはどの答えでも`answered`へ
+移っていたが、`answered`は「読み取りが終わった」と述べる文を持つ状態である。Delivery failureでは、どちらの
+向きにも終わっていない。Jobは作られておらず、同じfailureがresponseを失ったacceptanceでもあり得る。Failure
+経路は今、分かっていることをそのまま述べる状態へ入る — confirmationは送られ、その結果は返らず、hostは既に
+読んでいるかもしれない。Pageは既にその文を持っていたので、新しい文言は作っていない。単体caseは
+`enableGlobal`のrejectionを走らせ、refetch中の状態を読む。旧遷移に対して先に実行し、`answered`と読むことを
+確認している。
+
+**Status行を日付づける注記が、日付づけられる全状態で出る。** 行はadopt済みsnapshotのものであり、page上で
+自動更新されるものは無い。よってこのpageが取り込んでいない読み取りが存在する限り、summaryと行は2つの
+瞬間であり、どちらがどちらかを述べる文が要る。導出はsnapshotが持つbatchだけからだったが、それはその状態へ
+至る3経路のうち1つである。残り2つ — このpageがadoptしていないserver側のoperationと、refetchが着く前の
+このpage自身のconfirmation — は読み手が最も見ている場面であり、そこで注記が隠れていた。今は3つすべてが
+導出し、3つともrefetchがadoptした時点で偽になる。
+
+**2つの表が、宣言した形になっていなかった。** Dependency baselineのNode.js行はcode span内に未escapeの
+`||`を持ち、GFMはこれをcell separatorとして読む。3列headerに対して5 cellとして描画され、engine rangeと
+その理由が誤った列に落ちていた — T001が名指すevidenceの行き先が、描画されたpageで読めない状態だった。
+両言語でescapeした。同じ形を`specs/`の全表で掃いたところもう1件見つかり、それは出荷済みのvendor contract
+だった。CodexのGlobal rule表はheaderが8列でrowが9 cellを持ち、GFMは各rowの最後のcellを落とす。QR-004が
+vendor contractへ置くEvidence列がStatusの注記を描き、evidence IDは描画されていなかった。今はheaderが9列目を
+名指す。姉妹の2 contractは既にそうしている。Statusを持たなかった1 rowには明示的な空欄を与えた。凍結済みの
+presentation allowlistは同じfileの別の表であり、そのdigestは触れていない。
+
+**Kindは自身のmodelを所有し、意味が1つのprimitiveは共有する。** Comparisonのclarificationは、kind間で
+moduleを一切共有しないと述べていた。7つのcomparison pageがside pickerを、3つがrecognition tableを共有して
+おり、いずれも理由が書かれている。Kindごとに描き直せば、1つの規則を複数箇所で保つことになる。この条項は
+意図していた境界を引くようにした — route、page、composable、そしてkind自身のmodelを描くcomponentはその
+kindのもの。入力と意味が同一のpresentation primitiveは共有する — そしてpicker自身のcommentも、7つある
+pageを6つと数えないようにした。
 
 
 ## Outcome manifestによる基準

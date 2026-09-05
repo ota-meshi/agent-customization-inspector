@@ -674,6 +674,53 @@ describe('session view state — session loss', () => {
     state.dispose();
   });
 
+  it('never says the read finished when the confirmation itself did not arrive', async () => {
+    // A delivery failure creates no job and starts no read, and it can also
+    // hide an acceptance the host made — so the one thing this page cannot say
+    // is that a read finished. `answered` is the state whose sentence says
+    // exactly that, so the failure path never passes through it.
+    let fetches = 0;
+    const refetchGate = Promise.withResolvers<null>();
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.getGlobalConsentPreview) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            data: {
+              previewId: 'p-undelivered',
+              allowlistVersion: 'v-a',
+              traversalPlanVersion: 'v-t',
+              entries: [],
+              excludedRuleIds: [],
+            },
+          });
+        }
+        if (method === SESSION_RPC_FUNCTIONS.enableGlobal) {
+          return Promise.reject(new Error('the confirmation was not delivered'));
+        }
+        fetches += 1;
+        if (fetches === 1) {
+          return Promise.resolve(sessionResult(bootstrapSnapshot()));
+        }
+        return refetchGate.promise.then(() => Promise.reject(new Error('refetch failed')));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.loadConsentPreview();
+    const confirmed = state.confirmGlobalConsent();
+    await Promise.resolve();
+    await Promise.resolve();
+    const observedDuringRefetch = state.globalEnableState.value;
+    refetchGate.resolve(null);
+    await confirmed;
+
+    expect(observedDuringRefetch).not.toBe('answered');
+    expect(observedDuringRefetch).toBe('unfetched');
+    expect(state.globalEnableState.value).toBe('unfetched');
+    state.dispose();
+  });
+
   it('tells a refetch still running from one that never brought the state', async () => {
     // The consent page says different things of the two, and one of them would
     // be false of the other: its summary is a live region, so announcing

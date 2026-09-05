@@ -177,9 +177,9 @@ rowのいずれも得ず、そのmanifestへ到達したofferingのrowで、plug
 Global inspectionはsession開始時に無効である。FR-013からFR-018およびFR-045の正確なconsent flow後、Codexは次のruleだけを
 readできる — consent済み`CODEX_HOME` boundary配下のrowと、FR-045が名指すconsent済み共有agent home配下のrowである。
 
-| Rule ID | Boundary base | Selector programとselection | Expansion | Class | Behavior refs | Policy refs | Evidence |
-|---|---|---|---|---|---|---|---|
-| `codex.global.instructions` | 正確なconsent済みcapture済み`CODEX_HOME`。Absent時だけsession-startのimport済み`node:os.homedir()` captureと`.codex`を`node:path.join`した値 | `['AGENTS.override.md']`、次に`['AGENTS.md']` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | `openai.codex.agents-md` |
+| Rule ID | Boundary base | Selector programとselection | Expansion | Class | Behavior refs | Policy refs | Status | Evidence |
+|---|---|---|---|---|---|---|---|---|
+| `codex.global.instructions` | 正確なconsent済みcapture済み`CODEX_HOME`。Absent時だけsession-startのimport済み`node:os.homedir()` captureと`.codex`を`node:path.join`した値 | `['AGENTS.override.md']`、次に`['AGENTS.md']` | `exact`、first-non-empty selection | `static-candidate` | `codex.behavior.user.instructions` | FR-013、FR-014、FR-017、FR-018、QR-005 | — | `openai.codex.agents-md` |
 | `codex.global.config` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['config.toml']` | boundaryにおける`exact` | `static-candidate` | `codex.behavior.user.config` | FR-013、FR-014、FR-017、FR-018、QR-005 | User config carrierの`MCP` recognition。3つのruleが1つのfileをadmitし、walkは1回readする1つのcandidateへmergeする — Repositoryの3つ組とまったく同じである | `openai.codex.config-basic`、`openai.codex.mcp` |
 | `codex.global.settings` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['config.toml']` | `exact`。`codex.global.config`がauthorするselectorの上にある | `static-candidate` | `codex.behavior.user.config` | FR-013、FR-014、FR-017、FR-018、QR-005 | 同じcarrierの`settings/config` recognition | `openai.codex.config-basic` |
 | `codex.global.hooks.inline` | 同じ正確なconsent済み`CODEX_HOME` boundary | `['config.toml']` | `exact`。`codex.global.config`がauthorするselectorの上にあり、carrierのinline `[hooks]` tableはその1 fileの`hook` recognitionである | `static-candidate` | `codex.behavior.user.config`、`codex.behavior.user.hooks` | FR-013、FR-014、FR-017、FR-018、QR-005 | 同一layerのstandaloneとinlineのhook occurrenceは別provenanceのまま | `openai.codex.hooks` |

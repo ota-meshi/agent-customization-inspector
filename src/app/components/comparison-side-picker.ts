@@ -3,7 +3,7 @@
 //
 // A `<select>` carries one string and an identity is two values, so each
 // offered side is keyed by its position and the page maps a pick back through
-// the same list it rendered. One implementation, because six pages render the
+// the same list it rendered. One implementation, because every comparison page renders the
 // same picker: the option list, the pick resolution, and the current-value
 // lookup must not drift into per-page variants.
 import { sourceRootOf } from './source-name';

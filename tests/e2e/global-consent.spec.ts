@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type WebSocketRoute } from '@playwright/test';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 
@@ -56,8 +56,38 @@ test.afterEach(async () => {
 });
 
 test('carries one consent from preview through enable, refresh, and disable', async ({ page }) => {
+  // Hold selected host answers at the transport boundary so the two client
+  // states before adoption are observable independently of how quickly this
+  // small fixture scans. Page-to-host messages keep flowing throughout.
+  let holdServerMessages = false;
+  let pageSocket: WebSocketRoute | null = null;
+  const heldServerMessages: Array<string | Buffer> = [];
+  await page.routeWebSocket(/.*/u, (socket) => {
+    pageSocket = socket;
+    const serverSocket = socket.connectToServer();
+    serverSocket.onMessage((message) => {
+      if (holdServerMessages) {
+        heldServerMessages.push(message);
+      } else {
+        socket.send(message);
+      }
+    });
+  });
+  const releaseHeldServerMessages = (): void => {
+    const socket = pageSocket;
+    if (socket === null) {
+      throw new Error('the page did not open its RPC WebSocket');
+    }
+    for (const message of heldServerMessages.splice(0)) {
+      socket.send(message);
+    }
+  };
+
   await page.goto(new URL('/global-consent', host.origin).href);
   const main = page.locator('main');
+  const scanStatus = main.locator('section', {
+    has: page.getByRole('heading', { name: 'Scan status' }),
+  });
   // A fresh session holds no preview, so the page offers to work one out —
   // arriving reads nothing, and the offer says so. The one all-members
   // action appears only once the captured preview is on screen and behind
@@ -79,7 +109,28 @@ test('carries one consent from preview through enable, refresh, and disable', as
   await page
     .getByLabel('I have read what would be inspected and I want the inspector to read these files')
     .check();
+  holdServerMessages = true;
   await page.getByRole('button', { name: 'Inspect these directories' }).click();
+  // The confirmation is out but its answer is held: the summary is this
+  // page's current command while the rows still belong to the last adopted
+  // snapshot, so the rows must be dated even though that snapshot carries no
+  // running batch yet.
+  const staleStatuses = 'Statuses below are from the last refresh.';
+  await expect(scanStatus.getByText(staleStatuses, { exact: true })).toBeVisible();
+  await expect.poll(() => heldServerMessages.length).toBeGreaterThan(0);
+
+  // Let the enable answer land while holding the refetch it starts. The read
+  // is finished, but the committed result is still loading and the same stale
+  // rows remain on screen until that snapshot is adopted.
+  releaseHeldServerMessages();
+  await expect(
+    scanStatus.getByText('Reading finished. The result is loading.', { exact: true }),
+  ).toBeVisible();
+  await expect(scanStatus.getByText(staleStatuses, { exact: true })).toBeVisible();
+  await expect.poll(() => heldServerMessages.length).toBeGreaterThan(0);
+  holdServerMessages = false;
+  releaseHeldServerMessages();
+
   // The confirmation button unmounts with its branch on success, so focus
   // lands on the page heading rather than falling to the body.
   await expect(page.getByRole('heading', { name: 'Inspect your personal setup' })).toBeFocused();
@@ -95,9 +146,6 @@ test('carries one consent from preview through enable, refresh, and disable', as
   // 1×1 box rather than by `display` or `visibility`, so a visibility filter
   // matches it too. What must stay single is what a reader is shown, which is
   // the panel's copy.
-  const scanStatus = main.locator('section', {
-    has: page.getByRole('heading', { name: 'Scan status' }),
-  });
   const settled = /of these directories (was|were) read/u;
   await expect(scanStatus.getByText(settled)).toHaveCount(1, { timeout: 30_000 });
   // Scoped to the routed content, because the shell keeps its own status
@@ -108,7 +156,7 @@ test('carries one consent from preview through enable, refresh, and disable', as
   await expect(main).toContainText('Claude home — Inspected');
   // Once the read is taken in, the rows are current and no longer dated: the
   // sentence that dates them while a read is still running is gone.
-  await expect(main).not.toContainText('Statuses below are from the last refresh.');
+  await expect(main).not.toContainText(staleStatuses);
 
   // The results are on the inventory, under their own family, and the rail
   // states that the personal setup was read (FR-030).
