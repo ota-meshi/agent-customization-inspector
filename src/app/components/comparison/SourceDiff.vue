@@ -1,13 +1,28 @@
 <script setup lang="ts">
-// The read-only authored-source comparison surface (T197; research.md § 7,
-// FR-011, FR-027).
+// The read-only authored-source comparison surface shared across comparison
+// kinds (T197; research.md § 7, FR-011, FR-027). Its inputs and its meaning
+// are one across those kinds, which is what a shared presentation primitive is
+// (spec.md § Clarifications Session 2026-08-14); what differs between them —
+// the pair, the registry the models are dropped through, and the copy each
+// comparison words its own absence and its own failure in — arrives as props.
 //
 // The component owns one Monaco diff instance's whole lifetime: it mounts on
 // its pair of sources and disposes editor and models together on unmount or
 // replacement. Nothing about either text is transformed on the way in — each
-// side is the exact `sourceText` the host committed, handed to the editor as
-// a string. There is no `v-html`, no link, and no image load anywhere here,
-// and no control edits, merges, or reverts either side (FR-012).
+// side is the exact string the caller committed, handed to the editor as a
+// string. There is no `v-html`, no link, and no image load anywhere here, and
+// no control edits, merges, or reverts either side (FR-012).
+//
+// A side is either a file's own committed `sourceText` or a section the
+// comparison built out of it — the declared metadata serialized to a canonical
+// document, the instructions taken out of the format that held them — and
+// `contentLabel` is what says which, so a serialized slice is never announced
+// as the whole file (FR-025).
+//
+// A name a compared file mentions — an agent, a skill, another command, a hook
+// script, an `mcp_servers` entry — is text on both sides like every other
+// line: highlighting is tokenizing rather than rendering, so nothing is
+// resolved, opened, imported, connected to, or run (FR-019, FR-033).
 //
 // The mount is asynchronous because the editor is loaded lazily, so the pair
 // can change while it is still arriving. The generation counter below is what
@@ -26,7 +41,6 @@ import {
   SOURCE_VIEWER_LANGUAGE_GRAMMAR,
   type SourceViewerLanguage,
 } from '../inspection/source-viewer-language';
-import { useSessionViewState } from '../../composables/session-view-state';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
 
 const props = defineProps<{
@@ -47,6 +61,16 @@ const props = defineProps<{
   /** Whether the second side is that absence; see {@link originalAbsent}. */
   readonly modifiedAbsent?: boolean;
   /**
+   * What this comparison calls a side that ships no corresponding file, shown
+   * in the fallback caption beside that side's path and spliced into its
+   * accessible name: without it the caption would name a file the copy does
+   * not ship over a blank box that reads as authored-empty (FR-025). Passed by
+   * every caller that can pass {@link originalAbsent} or
+   * {@link modifiedAbsent}; a comparison whose sides are always two files
+   * passes neither and needs none.
+   */
+  readonly absenceNote?: string;
+  /**
    * What of each file the sides show, spliced into each side's accessible
    * name (`SourceComparisonInput.contentLabel`) — `frontmatter of` on the
    * serialized-frontmatter diff — so a serialized slice is never announced
@@ -59,6 +83,24 @@ const props = defineProps<{
    * rather than the format of the file it came from (`monaco.ts` § showSource).
    */
   readonly contentLanguage?: SourceViewerLanguage;
+  /**
+   * The copy this comparison words a mount failure in, bound to the visible
+   * error and to the stable live region that announces it (WCAG 4.1.3). What
+   * it promises has to hold of the fallback below it, which is what a second
+   * sentence points the reader at: that rendering stacks on a narrow viewport,
+   * and a one-sided comparison's is one complete source beside a stated
+   * absence, so wording that fixed a layout or a count would be wrong there.
+   */
+  readonly mountErrorMessage: string;
+  /**
+   * The content-owner registry this diff joins — the comparison that owns the
+   * open pair rather than the session, because a pick or a URL edit replaces
+   * that pair without a purge and without a newer generation, and the contract
+   * orders dispose before replace (data-model.md § BrowserState). Each kind
+   * holds its own, so there is no registry this component could reach for on
+   * its own.
+   */
+  readonly registerContentOwner: (dispose: () => void) => () => void;
 }>();
 
 /** The element Monaco takes over; empty until the editor is mounted. */
@@ -73,17 +115,6 @@ const viewer = shallowRef<SourceDiffHandle | null>(null);
  * rendering: the fallback is the failure path, not a reader preference.
  */
 const mountError = shallowRef<boolean>(false);
-
-/**
- * The failure copy, bound to the visible error and to the stable live region
- * that announces it (WCAG 4.1.3). The fallback stays on screen below it,
- * which is what the second sentence points the reader at — neutrally about
- * layout, because the fallback stacks on a narrow viewport, and about
- * count, because a one-sided comparison's fallback is one complete source
- * beside a stated absence.
- */
-const MOUNT_ERROR_MESSAGE =
-  'The comparison viewer could not be loaded. Each side is shown below in full.';
 
 /** The fallback's two sides, so the purge can empty them synchronously. */
 const fallbackElements = ref<HTMLPreElement[]>([]);
@@ -109,11 +140,10 @@ let unmounted = false;
 // it is an owner the comparison state must clear synchronously — on the
 // central purge (FR-027) and before a greater generation is adopted
 // (data-model.md § BrowserState).
-// The registration is unconditional — the shell always provides the
-// session (`useSessionViewState`) — because a mount that skipped it
-// would hold authored content the central purge cannot clear.
-const sessionViewState = useSessionViewState();
-const unregisterContentOwner = sessionViewState.skillComparison.registerOpenContentOwner(() => {
+// The registration is unconditional — the caller always passes its pair's
+// registry — because a mount that skipped it would hold authored content
+// the central purge cannot clear.
+const unregisterContentOwner = props.registerContentOwner(() => {
   // Supersede any mount still in flight before disposing: a mount resolving
   // after the disposal would otherwise attach and write the dropped sources
   // into fresh models during the one flush before this component unmounts.
@@ -237,10 +267,10 @@ onBeforeUnmount(() => {
   <!-- Stable rather than inserted with the failure it reports, because a
        region that appears together with its message is not reliably read. -->
   <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
-    {{ mountError ? MOUNT_ERROR_MESSAGE : '' }}
+    {{ mountError ? mountErrorMessage : '' }}
   </p>
   <p v-if="mountError" class="aci-error">
-    {{ MOUNT_ERROR_MESSAGE }}
+    {{ mountErrorMessage }}
     <button type="button" @click="retryMount">Try again</button>
   </p>
   <!-- The complete side-by-side fallback: both sources as inert text nodes —
@@ -279,7 +309,7 @@ onBeforeUnmount(() => {
       <h4
         class="aci-source-diff__fallback-caption"
         :aria-label="`${side.caption} ${contentLabel === undefined || side.absent ? '' : `${contentLabel} `}${inlinePresentationLabel(side.path)}${
-          side.absent ? ' (no file in this skill directory)' : ''
+          side.absent && absenceNote !== undefined ? ` (${absenceNote})` : ''
         }`"
       >
         {{ side.caption }}
@@ -287,7 +317,9 @@ onBeforeUnmount(() => {
         <!-- An absent side is the stated absence, not an empty file: without
              the note, this caption would name a file the copy does not ship
              over a blank box that reads as authored-empty (FR-025). -->
-        <span v-if="side.absent" class="aci-muted">(no file in this skill directory)</span>
+        <span v-if="side.absent && absenceNote !== undefined" class="aci-muted"
+          >({{ absenceNote }})</span
+        >
       </h4>
       <pre
         v-if="!side.absent"

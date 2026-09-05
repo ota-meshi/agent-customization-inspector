@@ -35,7 +35,7 @@ import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import RecognitionComparison from '../../../components/plugin-comparison/RecognitionComparison.vue';
-import SourceDiff from '../../../components/plugin-comparison/SourceDiff.vue';
+import SourceDiff from '../../../components/comparison/SourceDiff.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
 import { nextTabForKey } from '../../../components/tab-navigation';
 import type { PluginComparisonSide } from '../../../components/plugin-comparison/recognition-comparison';
@@ -121,6 +121,13 @@ const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
  */
 const registerFileContentOwner = (disposer: () => void): (() => void) =>
   comparison.registerOpenFileContentOwner(disposer);
+
+/** What both diffs below say when the editor cannot be constructed. */
+const MOUNT_ERROR_MESSAGE =
+  'The comparison viewer could not be loaded. Each side is shown below in full.';
+
+/** What both diffs below call a side that ships no corresponding file. */
+const ABSENCE_NOTE = 'no file in this plugin';
 
 /**
  * The page heading, focused on entry so a keyboard user starts at the top and
@@ -2030,6 +2037,8 @@ onBeforeUnmount(() => {
               <SourceDiff
                 v-else-if="manifestPair !== null"
                 v-bind="manifestPair"
+                :absence-note="ABSENCE_NOTE"
+                :mount-error-message="MOUNT_ERROR_MESSAGE"
                 :register-content-owner="registerComparisonContentOwner"
               />
               <p v-else-if="comparison.manifestStatus.value === 'loading'" class="aci-empty">
@@ -2114,6 +2123,8 @@ onBeforeUnmount(() => {
             <SourceDiff
               v-else-if="openFilePair !== null"
               v-bind="openFilePair"
+              :absence-note="ABSENCE_NOTE"
+              :mount-error-message="MOUNT_ERROR_MESSAGE"
               :register-content-owner="registerFileContentOwner"
             />
             <p v-else-if="comparison.fileStatus.value === 'loading'" class="aci-empty">

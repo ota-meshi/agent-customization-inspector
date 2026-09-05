@@ -146,7 +146,7 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
   // Two diffs — the declarations and the instructions — and no diff of the
   // files' bytes beside them, because two formats have none to assert. Each
   // file whole is on the page all the same, as its own viewer (FR-027).
-  await expect(page.locator('.aci-custom-agent-source-diff')).toHaveCount(2);
+  await expect(page.locator('.aci-source-diff')).toHaveCount(2);
   // The third block is headed but is not a third diff: `Source comparison`
   // introduces one viewer per file, which is what the section below counts.
   await expect(page.getByRole('heading', { name: 'Source comparison' })).toHaveCount(1);
@@ -159,7 +159,7 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
   // Every declared value stays the characters the file wrote — the
   // credentials and the environment reference exactly as authored, unmasked
   // and unresolved (FR-027, FR-025).
-  const declarations = page.locator('.aci-custom-agent-source-diff').first();
+  const declarations = page.locator('.aci-source-diff').first();
   await expect(declarations).toContainText(CODEX_SECRET);
   await expect(declarations).toContainText(CLAUDE_SECRET);
   await expect(declarations).toContainText(ENVIRONMENT_REFERENCE);
@@ -261,8 +261,8 @@ test('renders the per-tool agent names and the serialized declarations', async (
   // YAML on both sides whichever format the file was written in, the shared
   // key shows both values, and a side-only key stands on its side alone
   // (FR-011).
-  const metadataDiff = metadata.locator('.aci-custom-agent-source-diff').first();
-  await expect(metadata.locator('.aci-custom-agent-source-diff')).toHaveCount(2);
+  const metadataDiff = metadata.locator('.aci-source-diff').first();
+  await expect(metadata.locator('.aci-source-diff')).toHaveCount(2);
   await expect(metadataDiff).toContainText('description: Reviews code like an owner.');
   await expect(metadataDiff).toContainText('description: Reviews code from the editor');
   await expect(metadataDiff).toContainText('sandbox_mode: read-only');
@@ -275,7 +275,7 @@ test('renders the per-tool agent names and the serialized declarations', async (
   // instructions half below, which diffs the two files' prose without the
   // quoting and fences their formats wrap it in.
   expect(await metadataDiff.innerText()).not.toContain('developer_instructions');
-  const instructionsDiff = metadata.locator('.aci-custom-agent-source-diff').nth(1);
+  const instructionsDiff = metadata.locator('.aci-source-diff').nth(1);
   await expect(instructionsDiff).toContainText('Review the change.');
   await expect(instructionsDiff).toContainText('Review the change from the editor.');
   // Neither side's delimiters reach it: those stay on each file's own detail.

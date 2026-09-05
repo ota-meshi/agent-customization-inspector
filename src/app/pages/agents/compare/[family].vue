@@ -218,7 +218,8 @@ const sources = sessionSources.sources;
  * open pair without either — and the contract orders dispose before replace
  * (data-model.md § BrowserState), so the previous pair's authored source must
  * go synchronously rather than on Vue's unmount one flush later. The diffs
- * beside them join it through their own component.
+ * beside them join the same registry through the recognition comparison that
+ * renders them.
  */
 const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
   comparison.registerOpenContentOwner(disposer);

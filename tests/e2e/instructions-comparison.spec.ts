@@ -129,7 +129,7 @@ test('opens from an instruction row and shows the complete literal diff', async 
   // and the environment reference exactly as authored, unmasked and
   // unresolved (FR-027, FR-025). `.first()`, because the declared-metadata
   // section below mounts its own diff of the serialized frontmatter.
-  const diff = page.locator('.aci-instruction-compare__source .aci-instruction-source-diff');
+  const diff = page.locator('.aci-instruction-compare__source .aci-source-diff');
   await expect(diff).toContainText(AGENTS_SECRET);
   await expect(diff).toContainText(CLAUDE_SECRET);
   await expect(diff).toContainText(ENVIRONMENT_REFERENCE);
@@ -190,12 +190,12 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
   // (frontmatter-yaml.ts): the shared key shows both resolved values, the
   // authored `7`/`007` spellings resolve to the one value both sides spell,
   // and a side-only key stands on its side alone (FR-011).
-  const metadataDiff = metadata.locator('.aci-instruction-source-diff').first();
+  const metadataDiff = metadata.locator('.aci-source-diff').first();
   // Two diffs in the sections: the declarations and the body, each the file's
   // own half of one parse. Scoped to `section`, because the page's complete
   // source comparison passes through this component's slot and sits beside
   // them rather than inside one.
-  await expect(metadata.locator('section .aci-instruction-source-diff')).toHaveCount(2);
+  await expect(metadata.locator('section .aci-source-diff')).toHaveCount(2);
   await expect(metadataDiff).toContainText('scope: project');
   await expect(metadataDiff).toContainText('scope: workspace');
   await expect(metadataDiff).toContainText('retries: 7');
