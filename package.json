@@ -1,6 +1,6 @@
 {
   "name": "agent-customization-inspector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Browse and inspect instructions, skills, MCP settings, and other customization files for AI coding agents.",
   "homepage": "https://github.com/ota-meshi/agent-customization-inspector#readme",
   "bugs": {
