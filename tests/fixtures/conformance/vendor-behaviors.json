@@ -1,0 +1,2827 @@
+[
+  {
+    "behaviorId": "claude.behavior.repo.agent-memory.local",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".claude/agent-memory-local/<agent-name>/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Enable persistent memory"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A subagent whose frontmatter declares memory: local keeps its persistent directory at .claude/agent-memory-local/<name-of-agent>/, the project-specific scope documented as the one not checked into version control."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.agent-memory.project",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".claude/agent-memory/<agent-name>/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Enable persistent memory"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A subagent whose frontmatter declares memory: project keeps its persistent directory at .claude/agent-memory/<name-of-agent>/, whose MEMORY.md prefix is injected into that subagent’s system prompt when auto memory is enabled."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.agents",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "Markdown files recursively under .claude/agents/",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose the subagent scope"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Project subagents are Markdown files discovered recursively under .claude/agents/ on each layer walked up from the working directory to the repository root, and directories added with --add-dir contribute their agents too; two same-name files under one directory tree load by filesystem read order rather than a documented precedence."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.commands",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/commands/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Where skills live",
+          "Discovery from parent and nested directories",
+          "How a skill gets its command name"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Custom commands are merged into skills: a .claude/commands/deploy.md and a .claude/skills/deploy/SKILL.md both create /deploy, existing .claude/commands/ files keep working, and a skill outranks a command of the same name. A command file supports the same frontmatter as a skill except name and paths, which Claude Code ignores in one, and is invoked by its file name without the extension. The page says command files work the way skills do but writes its nested-directory sentence about .claude/skills/ alone, so no skill-equivalent ancestor or lazy-descendant command traversal is stated independently."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["1.0.45"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "Release 1.0.45 restored namespacing in command names based on subdirectories, with .claude/commands/frontend/component.md becoming /frontend:component — the documented reach inside one commands directory that makes its discovery recursive."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.hooks-contained",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "active-config-layer",
+      "relativeSelector": "hooks in .claude/settings.json; .claude/settings.local.json; SKILL.md frontmatter; .claude/agents frontmatter; plugin.json; marketplace.json entries",
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.hooks.locations-resolution",
+        "url": "https://code.claude.com/docs/en/hooks",
+        "officialHost": "code.claude.com",
+        "sections": ["Hook locations", "Hooks in skills and agents", "The /hooks menu"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "Where a hook is defined decides its scope, and the listed locations are the user and project settings files, managed policy settings, a plugin’s hooks/hooks.json, skill frontmatter, and subagent frontmatter; frontmatter hooks use the same configuration format as settings-based hooks, a subagent’s are registered only while it runs, and a skill’s from its invocation onward. Hook entries merge across settings levels rather than replacing each other."
+      },
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Plugin manifest schema", "File locations reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A plugin declares hooks either as config paths or as inline config in its manifest, and a marketplace entry may carry any manifest field, so a plugin can carry hook configuration in either place — content of the plugin the manifest or the entry declares."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.instructions.ancestor",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "traversal": "ancestor-chain-to-filesystem-root"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["How CLAUDE.md files load"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Claude Code walks up the directory tree from the working directory, checking each directory for CLAUDE.md and CLAUDE.local.md; the walk names no repository root as its stop, and it names no .claude/CLAUDE.md variant on an ancestor directory."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "CLAUDE.md files in directories above cwd are loaded at session start, and CLAUDE.local.md in every parent directory with them; the table names the .claude directory form for the project root row alone."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.instructions.descendant",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "CLAUDE.md; CLAUDE.local.md",
+      "traversal": "lazy-descendant"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Claude Code also discovers CLAUDE.md and CLAUDE.local.md files in subdirectories under the working directory and includes them when it reads files in those subdirectories, and it names no .claude/CLAUDE.md variant for that descendant case."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "CLAUDE.md files in subdirectories of cwd are loaded on demand when the agent reads a file in that subtree."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.instructions.launch",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to put CLAUDE.md files", "How CLAUDE.md files load"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Project instructions live at ./CLAUDE.md or ./.claude/CLAUDE.md and local instructions at ./CLAUDE.local.md, and CLAUDE.md and CLAUDE.local.md files at and above the working directory are loaded in full at launch."
+      },
+      {
+        "sourceId": "anthropic.claude-code.sdk.setting-sources",
+        "url": "https://code.claude.com/docs/en/agent-sdk/claude-code-features",
+        "officialHost": "code.claude.com",
+        "sections": ["CLAUDE.md load locations"],
+        "reviewedOn": "2026-08-18",
+        "establishes": "The load-location table names <cwd>/CLAUDE.md or <cwd>/.claude/CLAUDE.md as the project root location and <cwd>/CLAUDE.local.md as the local one, both read from the working directory itself."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.marketplace",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": ".claude-plugin/marketplace.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.marketplaces.catalog-sources",
+        "url": "https://code.claude.com/docs/en/plugin-marketplaces",
+        "officialHost": "code.claude.com",
+        "sections": ["Create the marketplace file", "Plugin sources"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "A repository publishes its catalog as .claude-plugin/marketplace.json in its root, defining the marketplace name, owner, and a plugins list whose entries each need a name and a source. A source string starting with ./ names a plugin in the same repository, resolved against the marketplace root; a bare name with no / names one the same way once metadata.pluginRoot declares the directory such names resolve under. Every other source is an object naming where the plugin is fetched from through its own source key: github, url, git-subdir, npm, archive, or command. Users reach a catalog by adding it, so registration is separate from the catalog file."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.mcp",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".mcp.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.mcp.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/mcp",
+        "officialHost": "code.claude.com",
+        "sections": ["MCP installation scopes"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Project-scope MCP servers are declared in a .mcp.json file at the project root, checked into version control as the team-shared scope of the documented installation scopes, while the local and user scopes live in user-level state."
+      },
+      {
+        "sourceId": "anthropic.claude-code.ide.shared-differences",
+        "url": "https://code.claude.com/docs/en/ide-integrations",
+        "officialHost": "code.claude.com",
+        "sections": ["VS Code extension vs. Claude Code CLI"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "The CLI-versus-extension feature table records MCP server configuration as full on the CLI and partial on the VS Code extension, so which surface is running conditions what the declaration file can do there."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.output-style",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/output-styles/*.md",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.output-styles.locations",
+        "url": "https://code.claude.com/docs/en/output-styles",
+        "officialHost": "code.claude.com",
+        "sections": ["Create a custom output style", "How output styles work"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A custom output style is a Markdown file of frontmatter and instructions saved at the User, project, or managed-policy level; project styles load from every .claude/output-styles/ between the working directory and the repository root, the file name becomes the style name unless the frontmatter sets name, and the instructions are added to the end of the system prompt."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.plugin",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "plugin",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": ".claude-plugin/plugin.json plus component locations",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Plugin installation scopes",
+          "Plugin manifest schema",
+          "File locations reference"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A plugin is installed into a settings scope chosen at installation; its manifest is optional, with components — MCP declarations among them — auto-discovered at default locations under the plugin root or redirected by manifest-declared paths."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.rules",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/rules/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Organize rules with .claude/rules/"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Markdown files placed in a project's .claude/rules/ directory are all discovered recursively, so rules may be organized into subdirectories; a rule without paths frontmatter loads at launch with the same priority as .claude/CLAUDE.md, while a rule with paths applies only when Claude works with a file matching one of its glob patterns. The section states neither the trigger that loads a nested .claude/rules/ directory on demand nor the base an ancestor layer resolves its paths globs against."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.settings.local",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": "./.claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Compare the scope of each settings file",
+          "Where Claude Code keeps the local file in a git repository"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A project's personal settings are .claude/settings.local.json, which is that project's alone and which Claude Code keeps at the git repository root resolved through worktrees — staying in the starting directory outside a repository, when the repository root is the home directory, on Windows, and when the root or its .git or .claude entry is not owned by the user — while a permission rule in it keeps resolving from the directory Claude Code was started in."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.settings.shared",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "./.claude/settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": [
+          "Settings files and who they affect",
+          "Compare the scope of each settings file"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A project's shared settings are .claude/settings.json in the project folder, which a team checks into source control; a teammate's clone and a cloud session have the file only once it is committed, as that checkout's own copy rather than as this machine's file being read from elsewhere."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.skills",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".claude/skills/<skill-name>/SKILL.md",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live", "Discovery from parent and nested directories"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Claude Code discovers repository skills at .claude/skills/<skill-name>/SKILL.md, loading them from the start directory and every parent up to the repository root, while a nested descendant skill directory loads the first time Claude reads or edits a file inside it."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.nested-skill-discovery",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["2.1.6"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "Release 2.1.6 introduces automatic discovery of skills from nested .claude/skills directories, the version gate for the on-demand descendant half of this behavior (QR-005)."
+      },
+      {
+        "sourceId": "anthropic.claude-code.large-codebases.start-directory",
+        "url": "https://code.claude.com/docs/en/large-codebases",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to start Claude", "Add per-directory skills"],
+        "reviewedOn": "2026-07-25",
+        "establishes": "The launch directory decides which skill layers load at startup, and nested directories can carry their own .claude/skills directories that join the session as files under them are accessed."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.repo.skills-directory-plugin",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".claude/skills/<plugin-name>/.claude-plugin/plugin.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Skills-directory plugins", "File locations reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Any folder under a skills directory that contains a .claude-plugin/plugin.json manifest is loaded as a plugin named <folder>@skills-dir on the next session, with no marketplace and no install step, and is discovered in place rather than copied into the plugin cache; the project-scope skills directory is the launch working directory's own .claude/skills/, which this interpretation does not walk ancestors of, and it loads only after the workspace trust dialog is accepted."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.agent-memory",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "agent-memory/<agent-name>/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Enable persistent memory"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A subagent whose frontmatter declares memory: user keeps its persistent directory at ~/.claude/agent-memory/<name-of-agent>/, the scope documented for learnings that should apply across all projects."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.agents",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "Markdown files recursively under agents/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose the subagent scope"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User subagents live at ~/.claude/agents/, are available in every project, are scanned recursively so definitions can be organized into subfolders, and rank below the current project scope when two scopes declare one name."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.auto-memory",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "projects/<project-key>/memory/MEMORY.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Auto memory"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Auto memory keeps its files under the Claude configuration directory per project and loads a startup prefix with topic files fetched on demand."
+      },
+      {
+        "sourceId": "anthropic.claude-code.subagents.scope-context",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "officialHost": "code.claude.com",
+        "sections": ["What loads at startup", "Enable persistent memory"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The main conversation’s auto memory is not loaded into a non-fork subagent — a subagent’s own memory field is what gives it persistent memory instead — and turning auto memory off makes that field have no effect at all."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.commands",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "commands/",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live", "How a skill gets its command name"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The personal scope is the home configuration directory — the page places personal skills at ~/.claude/skills/<skill-name>/SKILL.md and says they apply to all your projects — and the same page says command files in .claude/commands/ work the way skills do and are invoked by their file name. That pairing is what makes <claude-config-dir>/commands/ the personal command directory; the page states no traversal for it, which the changelog entry beside this one supplies."
+      },
+      {
+        "sourceId": "anthropic.claude-code.changelog.legacy-command-nesting",
+        "url": "https://code.claude.com/docs/en/changelog",
+        "officialHost": "code.claude.com",
+        "sections": ["1.0.51"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "Release 1.0.51 fixed user-level commands in subdirectories, which is where the personal directory is confirmed to recurse and to namespace by subdirectory."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.instructions",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "CLAUDE.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Choose where to put CLAUDE.md files"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User instructions live at ~/.claude/CLAUDE.md and hold personal preferences for all projects, one of the scopes the documented broadest-to-most-specific load order spans."
+      },
+      {
+        "sourceId": "anthropic.claude-code.env-vars",
+        "url": "https://code.claude.com/docs/en/env-vars",
+        "officialHost": "code.claude.com",
+        "sections": ["Variables"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.keybindings",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "keybindings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.directory.file-reference",
+        "url": "https://code.claude.com/docs/en/claude-directory",
+        "officialHost": "code.claude.com",
+        "sections": ["File reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The directory reference lists keybindings.json at the global scope as custom keyboard shortcuts — a terminal-UI preference the reader edits, not guidance the agent loads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.mcp-state",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".claude.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.mcp.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/mcp",
+        "officialHost": "code.claude.com",
+        "sections": ["MCP installation scopes"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User-scope MCP servers — and the local scope private to one project — are stored in user-level state rather than in the project file, two scopes of the documented installation-scope order."
+      },
+      {
+        "sourceId": "anthropic.claude-code.directory.file-reference",
+        "url": "https://code.claude.com/docs/en/claude-directory",
+        "officialHost": "code.claude.com",
+        "sections": ["File reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The file reference table locates ~/.claude.json global-only at the home directory — beside the ~/.claude configuration directory rather than inside it — holding app state and personal MCP servers."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.output-style",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "output-styles/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.output-styles.locations",
+        "url": "https://code.claude.com/docs/en/output-styles",
+        "officialHost": "code.claude.com",
+        "sections": ["Create a custom output style"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A custom output style can be saved at the User level in ~/.claude/output-styles, beside the project and managed-policy levels."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.plugins",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "plugins/; plugin enablement in settings.json",
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.plugins.components-scopes",
+        "url": "https://code.claude.com/docs/en/plugins-reference",
+        "officialHost": "code.claude.com",
+        "sections": ["Plugin installation scopes", "Plugin caching and file resolution"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Plugin enablement is recorded per installation scope in settings files — the user scope in ~/.claude/settings.json — and marketplace plugins are copied into the local plugin cache at ~/.claude/plugins/cache, which is what makes plugin-provided servers user-side installation state rather than a repository fact."
+      },
+      {
+        "sourceId": "anthropic.claude-code.env-vars",
+        "url": "https://code.claude.com/docs/en/env-vars",
+        "officialHost": "code.claude.com",
+        "sections": ["Variables"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.rules",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "rules/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.memory.locations-load",
+        "url": "https://code.claude.com/docs/en/memory",
+        "officialHost": "code.claude.com",
+        "sections": ["Organize rules with .claude/rules/"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Personal rules in ~/.claude/rules/ apply to every project on the machine and are loaded before project rules, which gives project rules the higher priority."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.settings",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "./settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.settings.scopes-precedence",
+        "url": "https://code.claude.com/docs/en/settings",
+        "officialHost": "code.claude.com",
+        "sections": ["Compare the scope of each settings file"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User settings live at ~/.claude/settings.json and apply to every project on the machine, and to nothing on a teammate machine or in a cloud session."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.skills",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "skills/<skill-name>/SKILL.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.skills.locations-discovery",
+        "url": "https://code.claude.com/docs/en/skills",
+        "officialHost": "code.claude.com",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Claude Code additionally discovers user skills at ~/.claude/skills/<skill-name>/SKILL.md, one of the scopes its same-name selection resolves across."
+      },
+      {
+        "sourceId": "anthropic.claude-code.env-vars",
+        "url": "https://code.claude.com/docs/en/env-vars",
+        "officialHost": "code.claude.com",
+        "sections": ["Variables"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "CLAUDE_CONFIG_DIR overrides the configuration directory, ~/.claude by default, with settings, session history, and plugins stored under that path — the relocation the <claude-config-dir> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.themes",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "themes/*.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.directory.file-reference",
+        "url": "https://code.claude.com/docs/en/claude-directory",
+        "officialHost": "code.claude.com",
+        "sections": ["File reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The directory reference lists themes/*.json at the global scope as custom color themes — a terminal-UI preference the reader edits, not guidance the agent loads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "claude.behavior.user.workflows",
+    "tool": "claude",
+    "surfaces": ["claude-cli-and-ide-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "workflows/*.js",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "anthropic.claude-code.directory.file-reference",
+        "url": "https://code.claude.com/docs/en/claude-directory",
+        "officialHost": "code.claude.com",
+        "sections": ["File reference"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The directory reference lists workflows/*.js at both the project and global scopes, holding dynamic workflow scripts written by Claude and saved from the /workflows command, with each file becoming a /<name> command."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.plugin.manifest",
+    "tool": "codex",
+    "surfaces": ["codex-plugin-clients"],
+    "locator": {
+      "vendorScope": "plugin",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": ".codex-plugin/plugin.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": ["Plugin structure", "Manifest fields"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Every plugin has its required entry point at .codex-plugin/plugin.json, whose name, version, and description identify the plugin and whose skills, mcpServers, apps, and hooks fields point at bundled components relative to the plugin root; only plugin.json belongs in .codex-plugin/."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.agents",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".codex/agents/*.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.subagents",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Custom agents", "Custom agent file schema"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Project-scoped custom agents are standalone TOML files under .codex/agents/, each defining one agent that Codex loads as a configuration layer for spawned sessions, with name, description, and developer_instructions required and other supported config.toml keys permitted; the page names the project directory without stating which directories of a project are searched."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.config",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".codex/config.toml",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Local clients load every trusted project .codex/config.toml layer from the project root down to the runtime cwd, and the closest applicable value wins for the same key; marking a project untrusted skips its project-scoped layers entirely."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.hooks",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "active-config-layer",
+      "relativeSelector": ".codex/hooks.json; inline [hooks] in .codex/config.toml",
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.hooks",
+        "url": "https://learn.chatgpt.com/docs/hooks.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex looks for hooks", "Config shape"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Each active trusted project layer contributes hooks from its .codex/hooks.json and from an inline [hooks] table in its .codex/config.toml; all matching hooks are additive, and a file and inline table at one layer are both loaded with a warning."
+      },
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The active project config layers the hook lookup reads are the trusted .codex/config.toml files from the project root down to the runtime cwd."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.instructions",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "AGENTS.override.md; AGENTS.md; configured fallback basenames",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.agents-md",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["How Codex discovers guidance", "Customize fallback filenames"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Local Codex clients build the instruction chain once at session start, walking the project root down to the runtime cwd and stopping there — without a detectable project root only the current directory is checked — selecting at most one file per directory: AGENTS.override.md, then AGENTS.md, then the configured fallback basenames. Those basenames and the project-document byte budget are themselves configuration values, declared as project_doc_fallback_filenames and project_doc_max_bytes, so which names the walk accepts depends on configuration outside the instruction files themselves."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.marketplace",
+    "tool": "codex",
+    "surfaces": ["codex-plugin-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".agents/plugins/marketplace.json; .claude-plugin/marketplace.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": [
+          "How local marketplaces work",
+          "Marketplace metadata",
+          "Build your own curated plugin list",
+          "Add a marketplace from the CLI"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The ChatGPT desktop app reads a repo marketplace at $REPO_ROOT/.agents/plugins/marketplace.json and a legacy-compatible one at $REPO_ROOT/.claude-plugin/marketplace.json, each a JSON catalog whose plugins[] entries name the plugins it exposes, each entry writing its source as a local object with a path kept relative to the marketplace root and started with ./, as that path string alone, or as a url, git-subdir, or npm object, and shows each catalog as a selectable source in the Plugins Directory; the Codex CLI adds, lists, refreshes, and removes marketplace sources and prints the ones Codex is considering, including local defaults, while directing installation and testing back to the desktop app. The personal ~/.agents/plugins/marketplace.json named beside them is a different Source boundary this statement does not reach, and installation and per-plugin enablement are separate state."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.mcp",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "active-config-layer",
+      "relativeSelector": "[mcp_servers.*] inside .codex/config.toml",
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.mcp",
+        "url": "https://learn.chatgpt.com/docs/extend/mcp.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Connect Codex to an MCP server"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "MCP servers are declared as named [mcp_servers.*] tables in the Codex configuration file, one table per server."
+      },
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "MCP declarations follow the same config-layer resolution as every other configuration value, and project-scoped layers apply only when the project is trusted."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.rules",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "active-config-layer",
+      "relativeSelector": "rules/*.rules",
+      "traversal": "none"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.rules",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Rules", "Create a rules file"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The page's own preamble states the feature is experimental and may change. Codex scans rules/ under every active config layer at startup, a project layer's rules under <repo>/.codex/rules/ loading only when that .codex/ layer is trusted; the page names the layer's own rules/ directory and establishes no nested-subdirectory recursion."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.repo.skills",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".agents/skills/<name>/SKILL.md",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.skills",
+        "url": "https://learn.chatgpt.com/docs/build-skills.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex loads local skills"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Local Codex clients discover repository skills at .agents/skills/<name>/SKILL.md, scanning each directory on the chain from the runtime working directory to the repository root, and do not merge same-name skills."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.agents",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "agents/*.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.subagents",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Custom agents"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Personal custom agents are standalone TOML files under ~/.codex/agents/, and a custom agent whose name matches a built-in agent such as explorer takes precedence over it."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.config",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "config.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.config-basic",
+        "url": "https://learn.chatgpt.com/docs/config-file/config-basic.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Codex configuration file", "Configuration precedence"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User configuration lives at the Codex home directory's config.toml (~/.codex/config.toml by default), the CLI and IDE extension share those configuration layers, and its values resolve through the same precedence as the trusted project layers."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.hooks",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "hooks.json; inline [hooks] in config.toml",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.hooks",
+        "url": "https://learn.chatgpt.com/docs/hooks.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex looks for hooks"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The user layer contributes hooks from ~/.codex/hooks.json and from an inline [hooks] table in ~/.codex/config.toml, and keeps contributing them in an untrusted project where the project layer does not."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.instructions",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "AGENTS.override.md; AGENTS.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.agents-md",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["How Codex discovers guidance"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Local Codex clients read a global instruction fallback at <CODEX_HOME>/AGENTS.override.md, otherwise <CODEX_HOME>/AGENTS.md, and the first non-empty global candidate precedes the project chain."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.memories",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "memories/",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.memories",
+        "url": "https://learn.chatgpt.com/docs/customization/memories.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": [
+          "How local Codex memories work",
+          "Local memory storage",
+          "Configure local memories"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Codex stores memories under the Codex home directory, which defaults to ~/.codex and is relocated by CODEX_HOME; the main memory files live under ~/.codex/memories/ and hold summaries, durable entries, recent inputs, and supporting evidence from prior chats. They are generated state rather than a hand-edited control surface. The feature is off by default and is turned on either in the ChatGPT desktop app or by a [features] memories flag in config.toml."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.plugins",
+    "tool": "codex",
+    "surfaces": ["codex-plugin-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".agents/plugins/marketplace.json; installed copies under Codex state",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.plugins",
+        "url": "https://developers.openai.com/plugins/build/plugins.md",
+        "officialHost": "developers.openai.com",
+        "sections": ["How local marketplaces work", "Marketplace metadata"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A personal marketplace lives at ~/.agents/plugins/marketplace.json, which the ChatGPT desktop app reads beside the repository ones; ChatGPT installs plugins into ~/.codex/plugins/cache/$MARKETPLACE_NAME/$PLUGIN_NAME/$VERSION/ and loads the installed copy from that cache rather than from the marketplace entry, and stores each plugin's on or off state in ~/.codex/config.toml."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.prompts",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "prompts/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["deprecated"],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.custom-prompts",
+        "url": "https://learn.chatgpt.com/docs/custom-prompts.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Custom Prompts"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The page states in its own notice that custom prompts are deprecated in favor of skills. A prompt is a Markdown file in the local Codex home directory — the page creates ~/.codex/prompts and writes ~/.codex/prompts/draftpr.md — carrying description and argument-hint frontmatter, invoked as a slash command in the Codex CLI and the Codex IDE extension after a restart. It requires explicit invocation and is not shared through the repository."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.rules",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "rules/*.rules",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.rules",
+        "url": "https://learn.chatgpt.com/docs/agent-configuration/rules.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Rules", "Create a rules file"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The page's own preamble states the feature is experimental and may change. The user layer at ~/.codex/rules/ is one of the active config layers the startup scan reads, and the TUI allow-list flow writes to ~/.codex/rules/default.rules."
+      }
+    ]
+  },
+  {
+    "behaviorId": "codex.behavior.user.skills",
+    "tool": "codex",
+    "surfaces": ["codex-local-clients"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".agents/skills/<name>/SKILL.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "openai.codex.skills",
+        "url": "https://learn.chatgpt.com/docs/build-skills.md",
+        "officialHost": "learn.chatgpt.com",
+        "sections": ["Where Codex loads local skills"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Local Codex clients additionally discover user skills at $HOME/.agents/skills/<name>/SKILL.md, alongside repository, admin, and system scopes."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".github/agents/*.md; .claude/agents/*.md",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Custom agent locations"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Project-scoped agents are loaded by walking upward from the working directory to the Git root, taking each ancestor level’s .github/agents/ and .claude/agents/ directories; every such directory is loaded, the deepest takes highest priority, and .github/agents/ takes precedence over .claude/agents/ at the same level."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.commands",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "undocumented",
+      "relativeSelector": ".claude/commands/<command>.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Commands (alternative skill format)"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Copilot CLI documents .claude/commands/*.md as an alternative skill format that a same-name skill outranks, without establishing a complete project anchor or ancestor traversal."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.extensions",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/extensions/<name>/extension.mjs; extension.cjs; extension.js",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations", "Loading order and precedence"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The plugin reference separates a plugin's own components — agents, skills, hooks, MCP and LSP configuration — from the CLI's project extensions, and its loading order composes plugin components with project and personal configurations rather than treating an extension file as a plugin."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/hooks/*.json; inline hooks in .github/copilot/settings.json, .github/copilot/settings.local.json, .claude/settings.json, .claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations", "Hook configuration format"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Copilot CLI loads repository-level hook files from .github/hooks/*.json in the repository root and an inline hooks block from the top level of .github/copilot/settings.json or .github/copilot/settings.local.json, and it also reads the cross-tool .claude/settings.json and .claude/settings.local.json files in the repository. Hook configuration files are JSON with version 1, where a structural error rejects the whole file while a malformed item inside a directory-loaded file drops only that item, and a malformed item in an inline settings block rejects the whole hooks field."
+      },
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Repository settings (.github/copilot/settings.json)"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The repository configuration file supports a top-level hooks object holding the hook definitions scoped to that repository, merged with the user configuration so the repository entry overrides the user one for the same key."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.instructions.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "AGENTS.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "AGENTS.md is an agent-instruction file Copilot CLI discovers in its standard locations."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists agent instructions via AGENTS.md among the types the Copilot CLI surface reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.instructions.claude",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "CLAUDE.md is an agent-instruction file Copilot CLI discovers in its standard locations, and the CLI also uses .claude/CLAUDE.md."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists agent instructions via CLAUDE.md among the types the Copilot CLI surface reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.instructions.gemini",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": "GEMINI.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "GEMINI.md is an agent-instruction file Copilot CLI discovers in its standard locations."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists agent instructions via GEMINI.md among the types the Copilot CLI surface reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.instructions.path",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".github/instructions/<name>.instructions.md (subdirectories of .github/instructions included)",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": [
+          "Types of custom instructions",
+          "Creating path-specific custom instructions",
+          "How multiple instruction files interact"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Modular instruction files live below .github/instructions — discovered in the standard locations but not the intermediate directories — are created with an applyTo frontmatter pattern, optionally organized into subdirectories, and are included only when that pattern matches a file the session is working with."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists path-specific instructions among the types the Copilot CLI surface reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.instructions.repository",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".github/copilot-instructions.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": [
+          "Types of custom instructions",
+          "Creating repository-wide custom instructions"
+        ],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Copilot CLI discovers the repository-wide .github/copilot-instructions.md in its standard locations — the repository root, the current working directory, the directories between them, and directories on the path of a file it is working on — and the how-to creates the file at the repository root."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists repository-wide instructions among the types the Copilot CLI surface reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.lsp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/lsp.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.lsp",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers",
+        "officialHost": "docs.github.com",
+        "sections": ["How to add an LSP server", "How LSP servers are loaded"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The CLI loads LSP server configuration from the project .github/lsp.json first, then plugin-provided servers, then the user ~/.copilot/lsp-config.json, with a higher-priority source overriding a lower one of the same server name."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.mcp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".mcp.json; .github/mcp.json",
+      "traversal": "ancestor-chain-to-repository-root"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configuration"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Workspace MCP servers are .mcp.json and .github/mcp.json files loaded from the working directory upward to the Git root, require the folder to be trusted, and sit below session-additional and plugin-provided servers and above the user configuration in the documented loading priority."
+      },
+      {
+        "sourceId": "github.copilot.cli.mcp",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers",
+        "officialHost": "docs.github.com",
+        "sections": ["Adding per-repository MCP servers"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A project-level file declares its servers in either of two schemas — the top-level mcpServers object, or the bare top-level format where each key is an MCP server name — which is why the CLI carrier reading accepts both forms."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "plugin",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": ".plugin/plugin.json; plugin.json; .github/plugin/plugin.json; .claude-plugin/plugin.json, and the corresponding marketplace files, each checked in that order",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations", "marketplace.json", "Plugin source types", "CLI commands"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A plugin manifest is .plugin/plugin.json, plugin.json, .github/plugin/plugin.json, or .claude-plugin/plugin.json and a marketplace manifest is marketplace.json, .plugin/marketplace.json, .github/plugin/marketplace.json, or .claude-plugin/marketplace.json, each checked in that order; a plugin is installed by naming a marketplace plugin, a GitHub repository or subdirectory, a Git URL, or a local path, and installed copies live under ~/.copilot/installed-plugins. A catalog entry writes its own source as a relative path string — the page catalog example writes ./plugins/<name> — or as an object describing a GitHub repository or a Git URL through its source key, github or url, with optional ref, sha, and path; the owner/repo shorthand belongs to the marketplace add command rather than to an entry source."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/copilot/settings.json; .github/copilot/settings.local.json; .claude/settings.json; .claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Configuration file settings"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Settings apply in the order built-in defaults, MDM managed settings, user settings, repository .github/copilot/settings.json, local .github/copilot/settings.local.json, environment variables, then command-line flags; and the CLI also reads .claude/settings.json and .claude/settings.local.json for the shared cross-tool subset of repository settings such as companyAnnouncements, disableAllHooks, enabledPlugins, extraKnownMarketplaces, and hooks."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "runtime-cwd",
+      "relativeSelector": ".github/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md; parent-directory .github/skills/<name>/SKILL.md (inherited, monorepo support)",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Copilot CLI loads project skills from .github/skills, .agents/skills, and .claude/skills at the runtime project, inherits parent-directory .github/skills layers for monorepos, and resolves a duplicate name to the first found in its documented source order."
+      },
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating and adding a skill"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The create-a-skill how-to documents the authored shape — a named skill directory carrying its own SKILL.md — in the same three project directories, .github/skills, .claude/skills, and .agents/skills."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "agents/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Custom agent locations"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User agents live at ~/.copilot/agents/ and plugin agents rank lowest; this page states that user-level agents have lower priority than project-level ones, which is one side of the retained project-versus-User conflict."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.extensions",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/extensions/<name>/extension.mjs; extension.cjs; extension.js",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.extensions",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-extensions",
+        "officialHost": "docs.github.com",
+        "sections": ["How extensions are discovered", "Choosing where an extension lives"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The CLI looks for extensions in a repository .github/extensions directory and in ~/.copilot/extensions, each extension being a named subdirectory whose entry file is extension.mjs, extension.cjs, or extension.js that the CLI runs with Node.js."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "hooks/*.json; inline hooks in settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User-level hook files are the *.json files of the user hooks directory — ~/.copilot/hooks/ by default, or $COPILOT_HOME/hooks/ when that variable is set — and a user-level inline hooks block sits at the top level of ~/.copilot/settings.json."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.instructions.path",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "instructions/<name>.instructions.md",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions", "How multiple instruction files interact"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Modular user-level instructions live below the Copilot home instructions directory and are included only when their applyTo pattern matches a file the session is working with."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix records personal path-specific instructions among the Copilot CLI instruction sources."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.instructions.root",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "copilot-instructions.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Types of custom instructions", "How multiple instruction files interact"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "One copilot-instructions.md inside the Copilot home directory holds user-level instructions that apply across repositories, combined with the applicable repository files, with duplicate copies of identical files removed and no general precedence order defined."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Copilot CLI"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix records personal instructions at ~/.copilot as a Copilot CLI instruction source separate from the repository ones."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.lsp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "lsp-config.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.lsp",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/copilot-cli/lsp-servers",
+        "officialHost": "docs.github.com",
+        "sections": ["How LSP servers are loaded"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "The user configuration ~/.copilot/lsp-config.json is the lowest of the three documented LSP priorities, below the project file and plugin-provided servers."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.mcp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "mcp-config.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configuration", "Environment variables"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Persistent user servers are configured in ~/.copilot/mcp-config.json — the file the copilot mcp add subcommand writes — and that source is the lowest priority of the documented loading order; COPILOT_HOME overrides the configuration and state directory whose default is $HOME/.copilot, which is the relocation the <COPILOT_HOME> spelling names."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/installed-plugins/<marketplace>/<plugin>; .copilot/settings.json enabledPlugins and extraKnownMarketplaces",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.plugins",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["File locations"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Installed plugins live under ~/.copilot/installed-plugins, by marketplace and plugin name for a marketplace install and under a direct-source directory otherwise."
+      },
+      {
+        "sourceId": "github.copilot.plugins",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-plugins",
+        "officialHost": "docs.github.com",
+        "sections": ["Where can I get plugins?"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The CLI installs a plugin through its install command or slash command, or by naming it in the enabledPlugins field of a user-level ~/.copilot/settings.json or a repository-level .github/copilot/settings.json."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "tool-home",
+      "relativeSelector": "settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.configuration",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Configuration file settings"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "User settings live at ~/.copilot/settings.json — relocatable through COPILOT_HOME — and sit below the repository and local layers in the documented cascade."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cli.user.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cli"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Copilot CLI additionally discovers personal skills in user-home locations, placed below project and inherited skills and above later sources in the documented first-found order."
+      },
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["Adding a skill that someone else has created"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "A skill copied into a personal location is the same authored directory shape as a repository skill; only its scope differs."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/agents/*.agent.md; .github/agents/*.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["YAML frontmatter properties", "Example agent profile configurations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A repository agent profile is a Markdown file with YAML frontmatter whose description is the one required property and whose name is an optional display name; the configuration file’s own name, minus .md or .agent.md, is what deduplicates a profile between levels so the lowest level wins."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/hooks/*.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.hooks",
+        "url": "https://docs.github.com/en/copilot/reference/hooks-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Hooks locations", "Cloud agent execution environment"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Under the Copilot cloud agent, hook configuration is loaded from .github/hooks/*.json files in the cloned repository, hooks run in an ephemeral non-interactive Linux sandbox, a subset of events fires, and only bash or command entries are honored."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.instructions.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": "AGENTS.md",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "AGENTS.md files may be stored anywhere within the repository, and when Copilot is working, the nearest AGENTS.md file in the directory tree takes precedence."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["GitHub.com"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists agent instructions via AGENTS.md among the types the Copilot cloud agent reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.instructions.alternatives",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": "CLAUDE.md; GEMINI.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "A single CLAUDE.md or GEMINI.md file stored in the root of the repository is the documented alternative to AGENTS.md, without the anywhere-in-the-tree placement AGENTS.md is given."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["GitHub.com"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists agent instructions via CLAUDE.md and GEMINI.md among the types the Copilot cloud agent reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.instructions.path",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/instructions/<name>.instructions.md",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating custom instructions", "Creating path-specific custom instructions"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Path-specific instructions are specified in NAME.instructions.md files within or below the repository .github/instructions directory, apply when their applyTo pattern matches the files being worked on, and can exclude the cloud agent with their own excludeAgent declaration."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["GitHub.com"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists path-specific instructions among the types the Copilot cloud agent reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.instructions.repository",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/copilot-instructions.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": [
+          "Creating custom instructions",
+          "Creating repository-wide custom instructions"
+        ],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Repository-wide instructions apply to all requests made in the context of a repository and are specified in the one copilot-instructions.md in its .github directory."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["GitHub.com"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists repository-wide instructions among the types the Copilot cloud agent reads."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.mcp",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["MCP server configuration details", "MCP server configurations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "A custom agent profile declares MCP servers through its mcp-servers property - the YAML representation of the repository MCP configuration format - and the cloud agent processes out-of-the-box configurations first, then the custom agent configuration, then repository settings, each level able to override the previous."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.organization-agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["Example agent profile configurations"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "Agent profiles also exist at the organization and enterprise levels, and on a naming conflict the lowest level wins — a repository agent over an organization one, and an organization agent over an enterprise one."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.organization-instructions",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cloud.instructions",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions",
+        "officialHost": "docs.github.com",
+        "sections": ["Custom instructions in use"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Organization instructions apply to requests together with repository instructions and are prioritized after them, with all relevant sets still provided to Copilot; they are held by GitHub rather than in the repository."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["GitHub.com"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix records organization instructions as a layer of the GitHub.com surface distinct from the repository files."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.plugins",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-plugins",
+        "officialHost": "docs.github.com",
+        "sections": ["Where can I get plugins?", "How plugin marketplaces work"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The cloud agent turns plugins on declaratively through the enabledPlugins field of a repository .github/copilot/settings.json, with extraKnownMarketplaces naming a marketplace that is not registered by default, and a marketplace is a marketplace.json listing the plugins it makes available."
+      },
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure plugin marketplaces"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "The same registered-marketplace and enabled-plugin keys are the cross-tool spelling a repository carries, so what a hosted session runs is that state rather than the authored catalog itself."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.remote-skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "hosted-managed",
+      "lookupBase": "hosted-state",
+      "relativeSelector": null,
+      "traversal": "none"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.cli.reference",
+        "url": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference",
+        "officialHost": "docs.github.com",
+        "sections": ["Skill locations"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Organization- or enterprise-hosted skills are projected into a session via the AHP relay with content fetched on demand, from no repository or user filesystem location; the last-in-order placement and name-based priority it documents are the CLI surface’s, leaving Cloud collision behavior unestablished."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.cloud.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-cloud"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "repository-root",
+      "relativeSelector": ".github/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "github.copilot.skills",
+        "url": "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills",
+        "officialHost": "docs.github.com",
+        "sections": ["Creating and adding a skill", "How Copilot uses agent skills"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "Copilot cloud agent discovers repository skills in the three fixed root directories and loads a relevant skill progressively; how local personal skills project into the hosted surface is not established."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/agents/*.md; .claude/agents/*.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.custom-agents",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-agents",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom agent file locations"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "VS Code discovers custom agents as Markdown files in the workspace .github/agents and .claude/agents folders, and parent-folder discovery is an opt-in setting rather than part of the default lookup; cross-scope duplicate-name precedence is not established, which is the partially-documented remainder."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom agents settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Custom-agent discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup."
+      },
+      {
+        "sourceId": "github.copilot.custom-agents",
+        "url": "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+        "officialHost": "docs.github.com",
+        "sections": ["YAML frontmatter properties"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The shared profile format scopes a profile to vscode or github-copilot through its target property, and its mcp-servers field is documented as not used in VS Code and other IDE custom agents - which is why this behavior is no input of the local VS Code MCP selection."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/hooks/*.json; .claude/settings.json; .claude/settings.local.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["preview"],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.hooks",
+        "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Hook file locations", "Hook configuration format", "Agent-scoped hooks"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "VS Code loads workspace hooks from .github/hooks/*.json and, in the Claude format, from .claude/settings.json and .claude/settings.local.json; workspace hooks take precedence over user hooks for the same event type. A hook configuration file is JSON with a hooks object holding an array of hook commands per event, the same format Claude Code and Copilot CLI use. A custom agent may add a hooks field to its frontmatter, whose hooks run in addition to the workspace and user hooks for the same event."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.instructions.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": "AGENTS.md",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["experimental"],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use an AGENTS.md file", "Use multiple AGENTS.md files"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "VS Code automatically applies the workspace-root AGENTS.md to all chat requests when its setting is on, and nested files are an experimental, disabled-by-default setting under which VS Code searches every subfolder and leaves the choice of applicable instructions to the model."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Chat settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The chat.useAgentsMdFile setting defaults to on and the experimental chat.useNestedAgentsMdFiles setting defaults to off, which is what makes the root file read by default and the nested tier a disabled-by-default opt-in."
+      },
+      {
+        "sourceId": "github.copilot.instructions.support",
+        "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+        "officialHost": "docs.github.com",
+        "sections": ["Visual Studio Code"],
+        "reviewedOn": "2026-08-27",
+        "establishes": "The support matrix lists agent instructions via AGENTS.md among the instruction types the Visual Studio Code surface reads, separately from the repository-wide and path-specific types."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.instructions.claude",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": "CLAUDE.md; .claude/CLAUDE.md; CLAUDE.local.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use a CLAUDE.md file"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "With the chat.useClaudeMdFile setting enabled, VS Code applies CLAUDE.md as always-on instructions from its documented locations: the workspace root, the .claude folder, the user home, and the local CLAUDE.local.md variant."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.instructions.path",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/instructions/<name>.instructions.md; .claude/rules/<name>.md",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": [
+          "Use .instructions.md files",
+          "Instructions file locations",
+          "Use a CLAUDE.md file"
+        ],
+        "reviewedOn": "2026-09-04",
+        "establishes": "File-based .instructions.md files apply when the applyTo pattern in their header matches what the agent works on, the default workspace location .github/instructions and the Claude-format .claude/rules folder are searched recursively, and a .claude/rules file declares its patterns with a paths property that defaults to every file when omitted."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom instructions settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Which instruction locations participate is setting-controlled, so an additional configured location is a runtime input rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.instructions.repository",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/copilot-instructions.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use a .github/copilot-instructions.md file"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "VS Code automatically detects the one repository-wide instruction file at the workspace root and applies it to all chat requests within that workspace."
+      },
+      {
+        "sourceId": "vscode.copilot.customization",
+        "url": "https://code.visualstudio.com/docs/agent-customization/overview",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use customizations in a monorepo"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Parent-repository discovery is a disabled-by-default setting under which VS Code walks up from each workspace folder to the first .git directory and collects customizations from the folders between them, which is why the default lookup this record states stays the workspace root itself."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.mcp",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".vscode/mcp.json; .mcp.json",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "conflict",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.mcp",
+        "url": "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure the mcp.json file", "MCP server trust"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The guide names exactly two locations for the mcp.json file - the workspace .vscode/mcp.json and the user-profile configuration - documents the top-level servers map that declares each server by name, and gates starting a configured server behind an explicit trust decision."
+      },
+      {
+        "sourceId": "vscode.copilot.mcp.workspace-root-release",
+        "url": "https://code.visualstudio.com/updates/v1_118",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Workspace .mcp.json files and server deduplication"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "VS Code 1.118 adds workspace-level .mcp.json files that declare MCP servers, aligning with tools such as the Copilot CLI, and deduplicates same-name servers by enabling only the most-specific one - without defining the root file schema or a total order across the other MCP inputs, which is the conflict this statement retains."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "plugin",
+      "lookupBase": "registered-catalog",
+      "relativeSelector": "plugin.json; .claude-plugin/plugin.json; .plugin/plugin.json; and the corresponding marketplace files",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Plugin formats", "Configure plugin marketplaces", "Use local plugins"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "VS Code detects a plugin format from its root manifest — plugin.json for Agent Plugins 1.0 and Copilot, .claude-plugin/plugin.json for Claude, .plugin/plugin.json for legacy OpenPlugin — and a plugin reaches a session by installation, by a marketplace registered through chat.plugins.marketplaces, or by an absolute directory path registered in chat.pluginLocations, never by a file appearing at an arbitrary workspace path."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.prompts",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/prompts/<name>.prompt.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.prompts",
+        "url": "https://code.visualstudio.com/docs/agent-customization/prompt-files",
+        "officialHost": "code.visualstudio.com",
+        "sections": [
+          "Prompt file locations",
+          "Prompt file format",
+          "Create a prompt file",
+          "Use a prompt file in chat"
+        ],
+        "reviewedOn": "2026-08-22",
+        "establishes": "A workspace keeps its prompt files in the .github/prompts folder, they are Markdown files with the .prompt.md extension, their optional frontmatter name is the name a reader types after / in chat with the file name used when none is specified, and they are invoked manually rather than applied automatically. Additional workspace locations come from a setting, and what the default folder does with a nested directory is not stated."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Reusable prompt files settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The chat.promptFilesLocations setting searches the locations it lists and defaults to { \".github/prompts\": true }, which is both why the located default is what this statement records and why the configured extras are a runtime input it does not."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".vscode/settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.settings",
+        "url": "https://code.visualstudio.com/docs/configure/settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Workspace settings", "Settings precedence"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "Workspace settings are stored in the workspace .vscode/settings.json, and the scopes override each other in the documented order where a later scope wins, workspace settings sitting above user settings."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "repository",
+      "lookupBase": "workspace-root",
+      "relativeSelector": ".github/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.skills",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-skills",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Create a skill", "How Copilot uses skills"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The Create-a-skill location table documents project skills in .github/skills, .claude/skills, and .agents/skills in the repository, each read from its SKILL.md, and Copilot loads a relevant skill progressively after discovering its metadata."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Agent skills settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Skill discovery locations are setting-controlled, which keeps enablement and any additional configured location a runtime condition rather than part of the documented default lookup."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.agents",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": "~/.copilot/agents/*.md; profile agent files",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom agents settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "Custom-agent locations are setting-controlled, so the personal and profile locations a workspace session also loads are configuration rather than a fixed list; duplicate-name precedence against workspace, organization, and plugin agents is not established, which is the partially-documented remainder."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.claude",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".claude/CLAUDE.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Use a CLAUDE.md file"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "The CLAUDE.md location table names the user-home file as personal instructions across all projects."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.hooks",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/hooks/*.json; .claude/settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": ["preview"],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.hooks",
+        "url": "https://code.visualstudio.com/docs/agent-customization/hooks",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Hook file locations"],
+        "reviewedOn": "2026-08-26",
+        "establishes": "The user scope of the hook-locations table names ~/.copilot/hooks and ~/.claude/settings.json, and the default chat.hookFilesLocations value includes the user Claude settings document."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.instructions",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/instructions/<name>.instructions.md; .claude/rules/<name>.md; profile instruction files",
+      "traversal": "recursive-under-base"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.instructions",
+        "url": "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Instructions file locations", "Instruction priority"],
+        "reviewedOn": "2026-09-04",
+        "establishes": "User-level instruction files live in the documented user locations such as ~/.copilot/instructions and ~/.claude/rules, apply across workspaces, and personal instructions take the highest priority in the documented order while every applicable set is still provided."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Custom instructions settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "The same location setting enables or disables each instruction location, so participation is a runtime input rather than a fixed part of the lookup."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.mcp",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": "mcp.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.mcp",
+        "url": "https://code.visualstudio.com/docs/agent-customization/mcp-servers",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure the mcp.json file", "Synchronize MCP configuration across devices"],
+        "reviewedOn": "2026-08-20",
+        "establishes": "The user-profile mcp.json is the second documented location, opened through the MCP: Open User Configuration command, available across workspaces, per-profile, and synchronizable across devices; how a User declaration resolves against a same-name workspace declaration is not established."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.plugins",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/installed-plugins/<marketplace>/<plugin>, and the directories the editor plugin settings register",
+      "traversal": "explicit-registration"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.plugins",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-plugins",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Configure plugin marketplaces", "Use local plugins"],
+        "reviewedOn": "2026-08-25",
+        "establishes": "An editor session gets its plugins from marketplaces registered through the chat.plugins.marketplaces setting and from directories registered by absolute path in chat.pluginLocations, each carrying an enabled or disabled state of its own."
+      },
+      {
+        "sourceId": "github.copilot.plugins",
+        "url": "https://docs.github.com/en/copilot/concepts/agents/about-plugins",
+        "officialHost": "docs.github.com",
+        "sections": ["Where can I get plugins?"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "A plugin is installed from a marketplace, a repository, or a local path, and which plugins a client turns on is settings and installed state rather than a property of an authored catalog."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.prompts",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": "*.prompt.md",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.prompts",
+        "url": "https://code.visualstudio.com/docs/agent-customization/prompt-files",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Prompt file locations"],
+        "reviewedOn": "2026-08-22",
+        "establishes": "The user-profile scope keeps its prompt files in the profile data rather than in the workspace, which is a different Source boundary this release does not read."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.settings",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": "settings.json",
+      "traversal": "exact"
+    },
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.settings",
+        "url": "https://code.visualstudio.com/docs/configure/settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["User settings", "Profile settings", "Settings precedence"],
+        "reviewedOn": "2026-08-23",
+        "establishes": "User settings apply globally to every VS Code instance and are overridden by workspace settings, with profile, remote, and language-specific scopes participating in the same documented order."
+      }
+    ]
+  },
+  {
+    "behaviorId": "copilot.behavior.vscode.user.skills",
+    "tool": "copilot",
+    "surfaces": ["copilot-vscode"],
+    "locator": {
+      "vendorScope": "user",
+      "lookupBase": "profile-data",
+      "relativeSelector": ".copilot/skills/<name>/SKILL.md; .agents/skills/<name>/SKILL.md; .claude/skills/<name>/SKILL.md",
+      "traversal": "standard-location-chain"
+    },
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "vscode.copilot.skills",
+        "url": "https://code.visualstudio.com/docs/agent-customization/agent-skills",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Create a skill"],
+        "reviewedOn": "2026-07-15",
+        "establishes": "The Create-a-skill location table documents personal skills in the user profile at ~/.copilot/skills, ~/.claude/skills, and ~/.agents/skills; duplicate-name precedence against workspace skills is not documented."
+      },
+      {
+        "sourceId": "vscode.copilot.settings",
+        "url": "https://code.visualstudio.com/docs/agents/reference/ai-settings",
+        "officialHost": "code.visualstudio.com",
+        "sections": ["Agent skills settings"],
+        "reviewedOn": "2026-08-19",
+        "establishes": "User skill locations participate in the same setting-controlled discovery configuration as workspace locations."
+      }
+    ]
+  }
+]

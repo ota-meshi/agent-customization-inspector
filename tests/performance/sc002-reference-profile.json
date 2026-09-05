@@ -1,0 +1,31 @@
+{
+  "profileId": "sc002-smoke-reference-v2",
+  "profileVersion": 1,
+  "operatingSystem": {
+    "image": "GitHub Actions hosted-runner image ubuntu-24.04",
+    "version": "Ubuntu 24.04 LTS"
+  },
+  "processor": {
+    "architecture": "x86_64",
+    "model": "GitHub-hosted standard runner vCPU (fleet does not pin one model)",
+    "logicalProcessors": 4
+  },
+  "memoryGiB": 16,
+  "storage": {
+    "medium": "SSD-backed ephemeral runner disk",
+    "filesystem": "ext4"
+  },
+  "runtime": {
+    "name": "node",
+    "version": "24.18.0"
+  },
+  "benchmark": {
+    "command": "pnpm run test:performance",
+    "configuration": "One fresh packaged-CLI process runs the one non-gating smoke pass over the unchanged manifest-bound fixture, driven through a rendered browser page; the automatic initial Repository scan settles outside timing; exactly one explicit Repository rescan is dispatched by activating the 'Rescan' control and both timers start at that dispatch; the status observation records the time to the first visibly rendered, live-region-exposed status correlated to that request (the page renders per-request progress only under the admitted scanRequestId), and the inventory observation records the time to the complete 500-row inventory from that request's committed generation rendered with its filter controls operable. Then, in that same process on that same committed generation: the standardized filter interaction types the query 'perf-skill-250' into the 'Search names and paths' field, measured inside the page from input dispatch until the one matching row is visibly rendered; the standardized item-selection interaction activates the first skill row's detail link, measured inside the page from click dispatch until the detail route's own heading or loading state is visibly rendered as the selection feedback.",
+    "notes": "No SC-002 measurement set or timing threshold is published under this profile ID. This profile binds the fixture manifest and declares the reference environment the smoke pass is defined against; it is not an assertion about where a run happened. The pass is non-gating and runs wherever a contributor runs it, so each printed record names its own machine in `environment` and a reader compares that against the reference here. Any profile-field change requires a new, non-comparable profile ID."
+  },
+  "fixtureManifest": {
+    "manifestVersion": 1,
+    "canonicalSha256": "3884fc4a70ec4b474104c29635ed5db30ec5094433fe4d45e5aa3c404812a33d"
+  }
+}

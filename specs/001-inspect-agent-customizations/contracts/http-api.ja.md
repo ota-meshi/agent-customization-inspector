@@ -1,0 +1,1919 @@
+# Contract: Local Session Transport
+
+[English](http-api.md)
+
+**API version**: 1
+**Transport**: `localhost`（loopbackのみ）へbindし、authenticationをdisable（`auth: false`）した
+devframe 0.7.5 standalone host
+**RPC namespace**: 全session functionを`agent-customization-inspector:` name prefixで登録する
+
+このcontractは、eslint/config-inspectorと同じ基盤であるdevframe local-tool frameworkを
+通じて、static Nuxt SPAを同じprocessのNode inspection hostへ接続する。このfileはcross-reference安定の
+ため歴史的な`http-api` filenameを保持するが、定義する内容はlocal session transportの全体である。
+Public network APIではない。Session channelはopaque ID、commit済みSource-relative Path、closed command
+だけを受け付ける — Source-relative Pathはcommit済みsnapshotに対して解決される公開identityであって
+filesystem operandではない — 。rawまたはabsoluteな
+filesystem path、URL、command、source text、parser option、glob、executable contentを受け付ける
+functionはない。
+
+FR-022は、発行済みの`localhost` authorityにおけるexactな2つのclosed internal-loopback class
+だけを認可する。
+
+1. **Packaged UI serving** — packaged UI assetへのunauthenticatedな`GET`/`HEAD`。すなわち
+   devframeが`cli.distDir`（`dist/public`）から`/`でserveするbuilt Nuxt SPA outputで、SPA shell、
+   そのclient-route fallback、devframe自身のconnection-discovery metadataを含む。Serveされる
+   static contentはsession dataを含まない。
+2. **Local session RPC channel** — 以下に宣言するfunctionを運ぶdevframe RPC channel（同じ
+   loopback authorityでのWebSocket upgradeとdevframe自身のmessage frame）。Frame encodingは
+   devframeが所有する: このadapterは全messageをstructured-clone textとして運び、product側は
+   functionごとのwire formatを宣言しない。
+
+どちらもoutbound requestでもMCP connectionでもない。Non-loopbackまたはremote authority、
+customization-selected destination、別machineへの調査content送信は禁止対象のままとする。
+
+## Host要件
+
+1. Processはdevframeが選択したlocal portへ、固定のhost名`localhost`（platformのresolverがIPv4 `127.0.0.1`またはIPv6 `::1`として解決する）を通じてloopback interfaceだけでbindする。起動は`--port <number>`で希望portを述べてよく（FR-001）、devframeがそれを解決する: 空いているportはそのまま使い、塞がっていれば別portへ移り、0は空きportの自動選択を求める。したがってどのportをbindするかは、希望が述べられたかどうかに関わらずdevframeの決定のままである。Host overrideはなく、どの
+   configuration/flagも`0.0.0.0`、LAN address、Unix socketへbindしない。全inspected-source
+   filesystem operationはinspection module（`src/server/inspection/`）が発行する。他の
+   production moduleはNode.jsのfilesystem APIをimportせず、その前段に別のadmission serviceは
+   存在しない。Node.js互換性は
+   `engines.node`で1回だけ宣言してpackage managerがenforceし、package/asset integrityはpackage
+   testとrelease gateがenforceする。Hostは自身のpackaged artifactをruntimeで再検証しない
+   （Constitution Principle I）。
+2. Session hostはloopback bindingの内側でunauthenticatedに動作する。Productはper-session
+   token/capability、bearer header、独自のorigin/fetch-metadata classification、CORS出力を
+   追加せず、config-inspectorと
+   同じくdevframe authenticationをdisable（`auth: false`）する。Loopback bindingがhost-side
+   protectionの全てである（QR-003、Constitution § Quality and Safety Standards）。残余limitationを文書化する。すなわち
+   inspector実行中は、他のlocal processと、DNS rebindingを介したmalicious web pageがsessionへ
+   到達し得る。devframeはWebSocket upgradeへ自身のorigin gateを適用しており、それが
+   product所有のcheckを置かない理由である。ただしそのgateはloopback判定に一致する
+   hostnameをすべて許可するため、このlimitationを狭めない（research.md § 8）。Serveされるcontentはuser自身のsecretを含み得るため、hostを起動machineの外へ
+   決して公開しない。
+3. Static byte servingはdevframe-ownedである。ServeされるSPA shellとassetはNuxt buildがpackaged
+   `dist/public`へ出力したものそのままであり、productはstatic-assets manifest、per-asset
+   integrity再検証、hand-written routerを一切定義しない。その前段にあるproduct所有の要素は
+   closedなdetail-route rewrite — `/skills/**`、`/instructions/**`、`/mcp/**`、`/hooks/**`、
+   `/rules/**`、`/prompts-and-commands/**`、`/permissions/**`、`/agents/**`、
+   `/plugins/**`、`/output-styles/**`、`/settings-and-configuration/**`、shipped kind
+   detailごとに1 family — だけである: これらのroute familyに入るpathの`GET`/`HEAD`を`/`へ
+   書き換えてfall throughさせ、extension-guardedなSPA fallbackがfile missとして扱うdetail deep
+   linkにも、devframe自身のstatic handlerがpackaged shellをserveする。Rewriteはfilesystemに
+   触れず何もshadowしない — いずれのfamily配下にもpackaged assetは存在しない(§ 必須contract test
+   項目5)。Nuxtは
+   `app.baseURL: '/'`、CDN URLなしを使うため、shellは全client routeで変更なしに動作する。
+   Static servingはpackaged UI output directoryの外へ到達せず、inspected fileへfallbackしない。
+4. 起動時にhostは正確な`http://localhost:<port>/` URLを起動元terminalへ1回表示する。自動browser
+   openingはstartup openerを通じたproduct-ownedかつFR-001に基づくbest-effortであり、openerは
+   launch lineの後にだけ動き、devframeのbundled openerは無効化されてproductのopenerだけが動く。
+   macOSでは、起動中のChromium系browserが既に持つsession tabを、`open` packageのhelperが新しい
+   tabをspawnする前にfocusする（research.md § 3）。`--no-open`はopeningを何も出力
+   せずに抑止する。Unsupportedまたはfailedのopenerはstartupを妨げず、表示済みURLがfallbackとして
+   残る。Productはbrowser opening outcomeを報告しない: openingはbest-effortで表示済みURLが完全な
+   fallbackであるため、openerのfailureは表面化させず握りつぶす。spawnされるどのprocessもinspection由来のcontentもpathも受け取らない
+   （FR-022）。任意のclient routeのreload/direct navigationにtokenは不要である。Serveされる
+   shellはsession dataをembedせず、新しくloadしたSPAはRPC channelだけを通じてstateをadoptする。
+5. 固定help/version textと必須の起動元terminal向け1回限りlaunch lineのほかに、hostはtelemetryも
+   operational-event streamも定義しない。FR-022が既に起動
+   machine外への送信を禁止している。Terminal/UI outputを読むのはinspected fileを所有する同じ
+   userであるため、failureは通常どおり報告する。すなわち実際のerror messageを、product定義の
+   content filterなしで表示または返却する。
+6. 各functionは宣言済みparameterだけをreadし、各functionの節がそのparameterと、
+   不一致が生むrejectionを文書化する。宣言済みparameterの検証はresolutionであって、
+   その前に置くshape guardではない: detailのparameterはいずれもcommit済みgenerationに
+   対して解決されるpublished identityであってfilesystem operandではない —
+   `get-file-detail`、`get-mcp-carrier-detail`、`get-hook-carrier-detail`、
+   `get-permission-policy-detail`がそれぞれ取るSourceとpathの組、
+   その組にclosedなopen targetを加えて`open-file`が取るもの、
+   `get-plugin-carrier-detail`が取るSource・path・認識tool・plugin名の
+   組（その答えはinventory row 1件のものである）、そして
+   `get-plugin-file-detail`が取るcarrierのSourceとpathの組に認識tool、rowの
+   plugin名 — 名前なしrowはnull — と読むfile自身のSource-relative Pathを
+   加えたもの — であり、invokeされたfunctionが
+   そのresourceを保持しないあらゆる値は、別の型の値も含めて、どこにも解決されず
+   `stale-resource` rejectionになる。
+   Global functionのpreview、allowlist-version、consentの各parameterも同じ形で自身の
+   文書化済みcodeを持つ。汎用のmalformed-argument語彙は存在しない。Resolutionが既に
+   一致させ得ないshapeや、functionがreadしない余分なpositional argumentの拒否は、
+   保護すべきfailure modeを持たないruntime guardだからである。`Parameters: none`と
+   宣言したfunctionはinputを一切readしないため、boundaryで検証するものがない。宣言する
+   全resultとrejectionは1つのcompleteなJSON-serializable value — plain object、array、string、number、booleanのみで、`Map`、`Set`、`Date`、class instanceを含まない — とする。Transport容量は
+   製品定義のrequest-size上限ではなくNode.js、devframe、実行環境から継承する。
+
+## RPC function一覧
+
+| Function | Kind | Purpose |
+|---|---|---|
+| `agent-customization-inspector:get-session` | read | Full `SessionSnapshot` snapshot、またはfence中のcontrol-only `GlobalFenceRecoverySnapshot` |
+| `agent-customization-inspector:get-file-detail` | read | Active-generationの`FileDetail` 1件 |
+| `agent-customization-inspector:get-mcp-carrier-detail` | read | Active-generationの`McpCarrierDetail` 1件: MCPを宣言する1 fileの宣言とfileの事実。sourceは決して含まない |
+| `agent-customization-inspector:get-hook-carrier-detail` | read | One active-generation `HookCarrierDetail`: hookを宣言するfile 1件のlifecycle eventとfileの事実。sourceは決して含まない。documentedな2つのcarrier形式は1つのdiscriminated resultである |
+| `agent-customization-inspector:get-plugin-carrier-detail` | read | inventory row 1件についてのActive-generationの`PluginCarrierDetail` 1件: carrierがmanifestなら完全なsource、catalogなら要求されたentryの宣言。catalog自身のbyteは決して含まない |
+| `agent-customization-inspector:get-plugin-file-detail` | read | pluginが同梱するfile 1件をそのpluginのものとして読む: 記述された完全なsourceとそのfile自身のdiagnostic。要求元carrierのそのrow名のofferingが到達したpathに限る |
+| `agent-customization-inspector:get-permission-policy-detail` | read | Active-generationの`PermissionPolicyDetail` 1件: 宣言された1つのpermission policyを、document全体またはblockとして |
+| `agent-customization-inspector:rescan-repository` | command | 明示Repository scan command 1件の受理 |
+| `agent-customization-inspector:open-file` | command | Commit済みfile 1件をreader自身のmachine上のapplicationで開く |
+| `agent-customization-inspector:get-global-consent-preview` | read | Currentまたはfrozenの`GlobalConsentPreview` |
+| `agent-customization-inspector:create-global-consent-preview` | command | Retained startup captureからunconsented previewをcreateまたはatomicにreplace |
+| `agent-customization-inspector:enable-global` | command | Session-wide consentの確認。Initial enableとactive-consent retry |
+| `agent-customization-inspector:rescan-global` | command | Enabled Global Source 1件のscan command受理 |
+| `agent-customization-inspector:disable-global` | command | Priority Global-disable barrier |
+
+Comparison viewは通常のdetail functionから、sideが示すdocument 1件につき1 requestで
+client側に構築する。独立したcomparison functionは存在しない。File comparisonは最大2件の
+`get-file-detail` result — 存在する側ごとに1件で、片側comparisonの明示された不在の対応物は
+requestを要しない — 、MCP declaration comparisonは2件の`get-mcp-carrier-detail` result、
+plugin comparisonは2件の`get-plugin-carrier-detail` resultに加えて、panelが示す各documentの
+`get-plugin-file-detail` — 2つのpluginそれぞれのmanifestと、読み手が選んだfileのcopy — から
+構築する。requestはpanelごとではなくdocumentごとである: 2つのsideが同じdocumentへ解決する
+場合と、carrier自身のresponseが既に運んだdocumentは、pairのどちらの順序でも二度requestしない。
+したがってdocumentをどちらのsideが保持しているかは何も決めない。Viewはpanelが示しているものを保持する
+ため、panel間の移動は既に手元にあるものを示し、読み直さない。保持した各documentは他と同じ
+generationとpurgeの規則でviewとともに退場する。Catalogのどこにもmasking、redaction、reveal、environment-resolution
+functionは存在せず、hostはdevframeのoptional MCP routeをenableしない。
+
+同じchannelには、このcatalogではなくframeworkが無条件に登録するdevframe自身のbuilt-inも載る:
+`devframe:agent:list-tools` / `invoke-tool` / `list-resources` / `read-resource`（空 —
+productはagent toolもresourceも登録しない）、`devframe:rpc:server-state:subscribe` / `get` /
+`set` / `patch`（未使用 — productはserver stateを共有しない）、`devframe:streaming:*`（未使用 —
+productはstreaming channelを宣言しない）。Editor/finder helper（`devframe:open-in-editor`、
+`devframe:open-in-finder`）はこのproductがimportしないopt-in recipeであり、登録されない:
+どちらもcallerが送ったpathをそのまま開くのに対し、§ open-fileは先にpathをcommit済み
+generationへ解決するため、launchが受け取り得る絶対pathはこのsessionが公開したものだけになる
+（FR-022）。
+
+## 共通resultとerror
+
+成功したinspection-data result:
+
+```json
+{
+  "globalContentEpoch": 4,
+  "repositoryGeneration": 3,
+  "globalGeneration": 1,
+  "data": {}
+}
+```
+
+通常のinspection-data成功resultはすべて`globalContentEpoch`、`repositoryGeneration`、
+`globalGeneration`（Global sequenceが存在しない間はnull）を持つ。RepositoryとGlobalの
+inspectionはlifecycleが独立であるため、それぞれ独立したgeneration sequenceを保つ（FR-030）。
+すなわちRepository sequenceはbootstrap generation 0から始まり、Global sequenceはenable commitが
+generation 1として作成し、disableが何もcommitせずに破棄する。Full `SessionSnapshot`では
+result-levelの値が`data.repositoryGeneration`と`data.globalGeneration`に一致し、`FileDetail`では
+返却する全generation-owned IDがそのfileのowning sequenceのexactなcommitted generationに属する。
+Serverはepochと両generationをcaptureしてcomplete
+payloadを構築し、immutable success resultをbindする前にsession coordinator lock下でepochが不変
+かつ`globalDisableInProgress`がnullのままであることを再検証する。再検証失敗時はresultを破棄して
+`global-disable-pending` conflict rejectionを返す。Lock解放後に既にbind済みのresultをdeliverして
+よいが、あるgenerationを読んで別generationのdataを構築し、後からresultのlabelを付け替えては
+ならない。Disable受理前に完全にbind済みのresultはboundedなpre-fence-authorized responseとして
+残り得るが、browserはgreater epochまたはfenceを観測後にこれをrejectまたはpurgeする。
+
+通常のresult shapeは、後述するexactなcontrol-only `GlobalFenceRecoverySnapshot`には適用しない。
+これはgenerationもinspection graphも含まない。
+
+Inspection graphを返さないpreview/command successは`{ globalContentEpoch, data }`を
+使い、result-levelのgeneration fieldを省略する。文書化済みresult内部のgenerationは明示的なcommand
+outcomeとする。これによりcontrol resultをgeneration snapshotとして提示せずepoch-awareに保つ。
+
+APIはparameter、file、item件数、parser構造、snapshot、detail、resultについて製品固有の数値上限を
+定義しない。容量はNode.js、parser、OS、filesystem、browser、実行環境から継承する。Response
+serializationはdevframe channelが所有する。Handlerは宣言済みresult valueを返し、handlerがreturnした
+後のserialization/encodingまたはdelivery failureは、handlerがcommitしたstateをrollbackも
+duplicateもせずそのrequestの通常のerrorとして報告する。Successful resultを
+報告せず、部分的にdeliverされたmessageをpartial resultとして扱わず、clientはtransport failureと
+まったく同じように対応するreadを通じてcommit済みstateを再取得する。Domain layerはfailureのcauseを一切classifyしない。
+
+決定的rejection:
+
+```json
+{
+  "error": {
+    "code": "stale-resource"
+  }
+}
+```
+
+各functionのoutcomeは、宣言済みのclosed resultまたはrejection variantのいずれか1つ、または
+unexpected failureのordinary errorとする。HTTP status semanticsはそのvariantが担う。すなわちqueued command acceptanceは文書化済みacceptance result、各`4xx`
+conflict/validation failureは同じ`code`を持つ名前付き決定的rejection（例:
+`stale-resource`、`scan-in-progress`、`global-enable-in-progress`、
+`global-disable-pending`、`consent-preview-frozen`、`consent-preview-missing`、
+`consent-required`、`allowlist-version-mismatch`、`consent-preview-mismatch`、
+`no-retryable-global-tool`）である。これらの決定的variantは固定codeを持つ宣言済みfunctional
+outcomeであって、sanitizationではない。
+
+Unexpectedにthrow/rejectされたhandler failureをproduct envelopeで包まない。devframe channelを
+ordinaryなserialized RPC error（devframe/birpcの挙動）として横断し、clientは実際のerror message
+を表示する。Async job accept前のfailureはそのinvocationだけをrejectし、jobも`scanRequestId`も
+作らず、sessionに何もretainしない。Accepted jobのterminal failureは、invocationへthrowするので
+はなくdata modelが定義する場所にretainする。すなわち明示rescanのfailureはaffected Sourceの
+`staleFailures` entryに`{ kind: 'error', message }`として、accepted admitted-subset Global batchの
+failureはfailed `batchStatus`にretainされる。2つのaccepted jobは、invocationの解決の仕方が異なる。
+明示rescanはそのscanが終端状態に達したときに解決するので、acceptanceはそのscanが残したSourceを
+運ぶ。`enable-global`も同様に、admitした全memberのscanが終端に達してから解決し、batchがcommitした
+場合もfailした場合もqueued acceptanceで応答する。Two-stage
+Global-disable barrierだけが例外で、accept後failureはstill-pendingなdisable invocationを実際の
+errorでrejectし、同じmessageをfenced session用にfailed disable projectionの
+`globalDisableInProgress.message`（`state`が`failed`の間だけ存在する）としてもretainする
+（FR-042）。Failed requestはsessionをusableに保ち、processを終了させない。Prior committed
+snapshotは保持済みIDのままreadableに残る。Automatic startupのthrow/rejectionにはRPC ownerが
+なく、process top levelへ到達してprocessを終了させ得る。
+
+## RPC function
+
+### `agent-customization-inspector:get-session`
+
+Parameters: なし。
+
+Current session snapshotとscan progressを返す。clientは初回adoption時とSource state変化時に
+このfunctionをinvokeする。独立したliveness probeもpage-lifecycleでの再取得も存在しない
+（§ Concurrency and lifecycleを参照）。Productはinspection dataのtimer、
+filesystem watcher、server-initiated pushを定義しない。
+devframe channelは宣言済みfunctionのrequest/responseとしてだけ使う。
+
+Result data:
+
+```text
+SessionSnapshot
+├── fileOpenTargets[] — このhostがcommit済みfileを渡せるapplication。detail surfaceが
+│   提示する順で、通常のclickが使うものが先頭: このmachineでhostが解決したeditorが並び、
+│   続いてplatform自身のhandler launcherへのhand-offである`default-application`と
+│   `containing-folder`（§ open-fileを参照）
+├── sessionId, createdAt, repositoryGeneration, globalGeneration, snapshotState, globalContentEpoch,
+│   staleFailures[] { sourceId, failureRef, failedAt, baseGeneration },
+│   globalEnableInProgress null | { kind, operationId, previewId },
+│   globalDisableInProgress null | { operationId, state, message? },
+│   globalControl null | { state, previewId, confirmedTools[], pendingTools[], retryableTools[],
+│                         batchStatus null | { scanRequestId, tools[], phase, failureRef } },
+│   sessionDiagnosticIds, repositoryFailureDiagnosticId
+├── sources[]
+│   ├── sourceId, kind, member, enabled, status, generation, scanRequestId, diagnosticIds[]
+│   ├── boundary { displayRoot, origin }
+│   └── progress null | { scanRequestId, phase, visitedEntries, candidateFiles, readBytes,
+│                         diagnosticCount, queuedAt, startedAt }
+├── files[]
+│   └── sourceId, sourceRelativePath, diagnostic IDs, and encoding as the variant
+│       discriminator — readable text adds sizeBytes and hadLeadingBom;
+│       binary adds only sizeBytes; unknown adds nothing. A file publishes its own facts
+│       only; what it was recognized as belongs to a per-kind inventory below
+├── instructions[]
+│   └── sourceId, applicabilityRange string | null,
+│       files[] { sourceRelativePath, recognitions[] { tool, surfaces[] } } —
+│       Sourceと適用範囲の組につき1行 — Sourceはrowのもう半分のidentityである（FR-030）— その範囲が担当する各 file を、その file の
+│       recognition を closed tool order で、各 recognition の product surface を
+│       closed surface order で持つ。null の1行が一覧を閉じ、既知の範囲を
+│       持たない file を持つ
+├── skills[]
+│   └── name string,
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│                       parseStatus, diagnosticIds[], companionFiles[] } —
+│       各definitionはfileをSourceとSource相対Pathで名指す（FR-030）: member
+│       のskill ruleにより2つのSourceが同じ`skills/<name>/SKILL.md` pathを
+│       持ちうるため、pathだけではfileを名指せない。definitionは公開Source順、
+│       次にpath順、次に閉じたtool順で並び、definitionのcensus pathは自身の
+│       Sourceのpathである,
+│       sameNameResolutions[] { tool, resolution } — one per tool facing a collision
+├── mcp[]
+│   └── name string | null,
+│       declarations[] { sourceId, sourceRelativePath, tool, surfaces[], parseStatus,
+│       diagnosticIds[] } —
+│       宣言されたserver名1つにつき1行で、その名前を解決する各宣言を持つ —
+│       各宣言はcarrierをSourceとSource相対Pathで名指し（FR-030）、公開
+│       Source順、次にcarrier path順、次に閉じたtool順で並ぶ — 。各宣言は
+│       admissionが依拠するvendor
+│       surfaceをinstruction fileのrecognitionと同じ形で運ぶ。nullの1行が一覧を閉じ、
+│       named宣言を公開しない読み取りを持つ。読めなかった読み取りは、同じfileの
+│       他の読み取りが何を見つけたかに関わらずこの行に載る: そのserverはabsentでは
+│       なくunknownであり、1つのcarrierはproduct毎に1回読まれる — rootの`.mcp.json`は
+│       Copilotのeditor hostにはJSONCで、Claude Codeにはstrict JSONである。parseできて
+│       何も宣言しなかった読み取りは、そのfileのどの読み取りも名前を公開しない間だけ
+│       この行に載る。1つのcarrierに対する2 vendorのschemaの違い — 一方が受け入れる
+│       bare mapと他方が要求するwrapper — はそのfileについてのfindingではない
+├── agents[]
+│   └── name string | null,
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│                       parseStatus, diagnosticIds[] } —
+│       agent name 1つにつき1行、name順。各rowはそのagentを定義する
+│       すべてのfileを — 各fileはSourceとSource相対Pathで名指され（FR-030）—
+│       公開Source順、次にpath順、次にtool順で列挙する。
+│       nameはadmitしたproductがそのagentを識別する事実であり、どの事実かは
+│       productによって異なる: OpenAI CodexとClaude Codeは`name` fieldを
+│       agentのidentityとし、filenameを一致させることはconventionにすぎない
+│       と定めている（Claude Codeはagents directory内のsubfolderもidentityに
+│       影響しないと述べる）一方、GitHub Copilotは`name`をoptionalなdisplay
+│       nameとして文書化し、profileをconfiguration file自身の名から`.md`
+│       または`.agent.md`を除いたもので識別する。よって1つのnameに解決される
+│       2つのfileは1 rowの2 definitionであり、2つのproductが異なる名前に解決
+│       する1つのfileは2つのrowに定義を持つ。Rowはskillのrowと違い
+│       same-name resolutionを述べない: Claude Codeは1つのtree配下で同名の2
+│       fileのうち1つだけがloadされると述べどちらかを定めるruleを示さず、
+│       GitHubはlevel間のdeduplicationを述べて同一level内については述べないの
+│       で、答えるrowはどのpageも問うていない問いに答えることになる — definition
+│       は並べて示され、読者は両方を見る（FR-009）。1つだけのnull rowが末尾を
+│       締め、nameを公開しないfileを集める — 宣言された`name`で識別するproduct
+│       のもとで、宣言しないもの、scalar以外を宣言するもの、そして宣言をまったく
+│       読み取れずnameが不在ではなく不明なもの。file名で識別するproductの
+│       definitionはここに到達しない
+├── prompts[]
+│   └── name string,
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│       diagnosticIds[] } —
+│       読み手が起動する名前1つにつき1行を name 順で持ち、各行はその名前で
+│       起動される file を — 各definitionはfileをSourceとSource相対Pathで
+│       名指し（FR-030）— 公開Source順、次にpath順、次にtool順で列挙する。どの名前
+│       になるかは、その file を admit した rule のものである。command file
+│       の名前が著述されることはない: どちらの product も command file の
+│       `name` key を無視し、それぞれが command を path から導出する。両者が
+│       一致する root 直下の子は両方を名指す 1 row となり、nested な file は
+│       Claude 単独の row となる。VS Code prompt file の名前は、その file が
+│       宣言した `name` であり、宣言がなければ自身の file 名が代わりに立つ —
+│       command が解決する名前を宣言した prompt は、その command の row の
+│       definition となる
+├── rules[]
+│   └── sourceId, sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       認識された rule file 1つにつき1行。fileのidentityであるSourceと自身の
+│       path（FR-030）で名指し、公開Source順、次にpath順に並べ、その recognition
+│       を closed tool order で、各 recognition の product surface を closed
+│       surface order で持つ
+├── permissions[]
+│   └── sourceId, sourceRelativePath, recognitions[] { tool, surfaces[] },
+│       diagnosticIds[] —
+│       宣言された permission policy 1つにつき1行。宣言する file の Source と
+│       path（FR-030）で名指し、公開Source順、次にpath順に並ぶ。宣言しない
+│       carrier は残りを所有する kind として認識され、ここには row を持たない
+├── hooks[]
+│   └── event string | null,
+│       declarations[] { sourceId, sourceRelativePath, tool, carrier,
+│       surfaces[], parseStatus, diagnosticIds[] } —
+│       宣言されたlifecycle eventごとに1 rowで、それを宣言する各declarationを —
+│       各declarationはcarrierをSourceとSource相対Pathで名指し（FR-030）—
+│       公開Source順、次にcarrier path順、次にtool順に並べる。MCP rowが宣言をまとめるのと同じ形である。
+│       `carrier`はその宣言が書かれたdocumentedな形式である — 全体がhookのためのfileは
+│       `standalone`、他のcontentと共にadmitされたfile内のhook tableは`contained` — 。
+│       1つのconfig layerが両形式を持ちうえ、vendorはどちらかを選ばず両方をloadするため、
+│       1つのrowが1 layerの2 fileから同じeventの2宣言を並べることがある。唯一のnull rowが
+│       空であること自体がfindingであるcarrierでlistを閉じる: hook blockを読めずeventが
+│       不在ではなく不明であるものと、全体がhookのためのfileでありながら何も宣言しないもので
+│       あり、両者は各declaration自身の`parseStatus`で見分けられる。hook tableを含みうるだけの
+│       fileが含んでいない場合は、どのrowにも載らない
+├── plugins[]
+│   └── name string または null、
+│       carriers[] { sourceId, sourceRelativePath, tool, surfaces[], carrier,
+│       parseStatus,
+│       diagnosticIds[]、files[] } — plugin名ごとに1 row、名前順。各rowは、その名前を解決する
+│       全carrierを — 各carrierはSourceとSource相対Pathで名指され（FR-030）、
+│       その`files[]`は同じSourceのpathである — 公開Source順、次にpath順、
+│       次にtool順で列挙する。1つのnull名rowが、名前を
+│       1つも解決しないcarrierとともにlistを閉じる。carrierがどの名前を解決するかは
+│       admitしたruleに属する。commandと同じである: Codexはcatalogの提供を
+│       `plugin@marketplace`としてaddressするため、2つのcatalogが提供する同じ名前は
+│       2 rowになる。
+│       `carrier`は`manifest`か`catalog`である: 製品が配置だけでpluginを読み込む
+│       ときのmanifestか、それを提供するentryを持つcatalogかである。Catalogがrowになることは無い — catalogはplugin名を出どころのsourceへ解決
+│       するものであり、それはcarrierだからである。carrierの`files[]`は、そのcarrier自身に
+│       よるこのrow名の提供が届くfileでsort済みである: その提供が名指すplugin rootを
+│       丸ごと列挙したもので、pluginのmanifestもその1つであり、このrowのcarrier自身で
+│       あるmanifestも含む。それが置かれたfolderがそのpluginだからである。root配下で
+│       ruleがそれ自体をadmitしたfileもここに含まれ、かつ自身のrowを保つ。宣言と
+│       diagnosticはそちらにある。pluginのfile一覧全体はcarrierたちの一覧を合わせた
+│       もので、表示する場所で導出する: 1つの名前の2つのcarrierは2つのdirectoryを
+│       名指しうるため、rowはその2つ目の綴りを公開しない。Rowはinstallation、
+│       enablement、trust、cachedコピーのいずれも述べない
+├── outputStyles[]
+│   └── name string,
+│       definitions[] { sourceId, sourceRelativePath, tool, surfaces[],
+│       diagnosticIds[] } —
+│       読み手が選択するstyle名ごとに1 row、名前順。各rowは、認識toolがその名前で
+│       選択する全fileを — 各definitionはfileをSourceとSource相対Pathで名指し
+│       （FR-030）— 公開Source順、次にpath順、次にtool順で列挙する。どの名前かは
+│       fileをadmitしたruleに属する: Claude Codeはfrontmatterの`name`を取り、
+│       無ければ`.md`拡張子を除いたfile名へフォールバックする。authoredな空の名前も
+│       同じくフォールバックする。空にはならない。Rowはsame-name resolutionを
+│       述べない: 1つの名前を定義する2つのproject layerを、pageはこの製品が決して
+│       観測しないsession working directoryへの近さで解決するからである
+├── settings[]
+│   └── sourceId, sourceRelativePath, recognitions[] { tool, surfaces[] } —
+│       認識された settings または configuration file 1つにつき1行。この
+│       kind の単位は file 自身なので、SourceとPathというfileのidentityで
+│       名指す（FR-030）: 同意されたhomeの`settings.json`と他所の同path
+│       documentは2つのrowであり、rowは公開Source順、次にpath順に並ぶ。他の kind が
+│       所有する宣言も運ぶ file — Codexの `.codex/config.toml` — は、ここ
+│       にも、その kind の一覧にも row を持つ。diagnostic の一覧は持たない。
+│       `rules[]` と同じ理由で、document から何も読み出さないためである
+└── diagnostics[] { diagnosticId, code, sourceId string,
+    sourceRelativePath string | null — file scope以外はnull }
+    （active-generation recordとsession-owned lifecycle record）
+```
+
+一覧rowの単位はfileではなくkindが決める。Skillは1つのtoolが解決した1つのinvocation
+nameである（data-model.md § 一覧の単位）: そのtool自身の文書がこのfileを呼び出す名前で、
+admitしたruleが解決する。CodexとCopilotはauthoredなfrontmatter `name`を呼び出す —
+fileが宣言しないか空で宣言する場合、またはextractionが失敗した場合はskill directory名。
+directoryはpath自身の事実であり、失敗したparseから読み出した値ではない（FR-028）。一方
+Claude Codeのcommand名はfrontmatterの宣言に依らずskill directoryであり、nestedなskillには
+root相対のprefixを前置する。したがって`name: ship`を宣言する
+`apps/web/.claude/skills/deploy/SKILL.md`は、Claude Code rowでは`apps/web:deploy`、
+Copilot rowでは`ship`である。`name`がnullや空になることはない。
+1つのtoolが1つの名前で呼び出す複数の
+`SKILL.md`は、複数の定義を持つ1つのentryとして公開される — 名前を宣言せず同名のskill
+directoryに置かれた2つのfileもその一例である。定義は1つのtoolによる1つのfileのrecognition
+— ToolRecognitionの単位、`(file, tool)`につき
+1つで、`definitions[].tool`が名指す — であるため、2つのtoolが1つの名前で呼び出すfileはその
+entryの2つの定義であり、toolごとに異なる名前で呼び出されるfileは各名前のentryで定義される。
+定義は独自の名前を公開しない: 名前はrowのものであり、定義側の第2の複製は事実とそこから
+導出した値の二重公開になる。定義は自身のrecognitionの
+`parseStatus`とextraction失敗の`diagnosticIds`を運ぶ: extractionはkindごとに1回なので失敗の
+recordも1件であり（FR-028）、そのfileの失敗した各定義がそれを参照し、fileの`files[]` entryは
+それを1回だけ列挙する。Detailの見出しはrouteが指す定義のrow名である
+（data-model.md § Skillの表示）。名前はrecognition時にそれを解決する唯一のruleから来るため、vendor
+namingがserverとclientの間で乖離することはない。MCP rowは宣言されたserver名1つであり、その名前を解決するすべての`[mcp_servers.*]`型宣言 —
+`(carrier, tool)`ごとに1つ — を列挙する。したがってadmit済みの`.codex/config.toml` 1つは宣言した
+serverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の
+住処は明示的なcarrier — Codexのconfiguration layer、Claudeのroot `.mcp.json`、Copilot CLIの
+root `.mcp.json`と`.github/mcp.json`、VS Codeの`.vscode/mcp.json` — だけである:
+他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、
+settings fileのinline map — それはそのkindの通常のcontentであり、そのfile自身のdetailに
+見えるだけで、MCP rowには合流しない。各宣言は自身のfileを名指す。2つのproductが
+admitする1つの物理file — root `.mcp.json` — は、宣言する各名前の下でrecognizing toolごとに
+1宣言になる。nameが
+nullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrierを保持する — 宣言blockが
+読めなかったのか何も宣言していないのかは、各宣言自身の`parseStatus`が区別する（FR-028）。Instructions rowは1つの適用範囲 — 担当するfile自身のpathが導出するglobであり、Repository rootでは`**`、あるいはfileが自身のために宣言したもの — であり、担当する各fileを列挙する。したがってrootの`AGENTS.md`と`CLAUDE.md`は1 rowを共有し、`packages/api/CLAUDE.md`は自身のrowを持つ（data-model.md § 一覧の単位）。範囲がnullである1つのrowが一覧を閉じる: そのfileのvendorはこのfile名の適用可否を宣言だけから読み、宣言はrowをkeyできるものを何も供給していない — あるいはまったく読めなかった。その理由は各file自身のdiagnosticsが述べるため、rowは「宣言がない」ではなく「既知の範囲がない」と述べる（FR-028）。列挙されるfileはtoolではなくrecognitionを名指す。toolだけでは、productがそのfileをどこから読むのかを言えないためである: GitHub CopilotのeditorとCLIとcloudの各surfaceは、同じ名前のfileに対して異なるlookup baseをdocumentしている。したがってrootの`.github/copilot-instructions.md`は3つのsurfaceすべてが読み、同じ名前でもsubdirectoryにあるものはCLIのcontextだけである。各recognitionの`surfaces`は、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceであり、surfaceを名指すことはそのsurfaceがfileをloadしたという主張では決してない（FR-009）。Skillのdefinitionも同じ理由でこれを述べる: definitionは名前の下にある1つのrecognitionであり、FR-009はproductがいくつsurfaceを持つかによらず、すべてのrecognitionの隣にsurfaceを述べるよう定めている。Rules rowはrule file 1つ、permissions rowは宣言されたpermission policy 1つであり、宣言するfileのpathで名指す: どちらもrowのkeyにできる名前を宣言せず、groupingできる範囲も担当しないため、Source相対Pathがrowの同一性であり、2つのproductが認識するfileは2つのrecognitionを持つ1 rowになる。名指し方はinstruction fileのrecognitionと同じである（data-model.md § 一覧の単位）。2つのkindである理由は主題が違うことにある — permission policyはproductがどのcommandやtoolを実行してよいかを決め、ruleはproductが読む指針である — うえ、両vendorがたまたま自身のdirectoryを`rules`と呼ぶため、その共有された語でまとめると無関係な2つの主題が1つのlistに並ぶ。Permissions rowはpolicyが宣言されている場所にちょうど存在する: file全体がpolicyであるfileは1 row、より大きなdocumentの1 blockとしてpolicyを運ぶfileも1 row、そのblockを宣言しないcarrierはどちらでもない — そのdocumentの残りはそれを所有するrecognitionのものであり、rowにすれば作者が書いていないpolicyを述べることになる。Permissions rowは`diagnosticIds[]`を運ぶ唯一のkindのrowであり、その例外はこのkindが何を読むかに由来する: 宣言されたblockはparserが拒み得るdocumentから読み出されるため、extraction自身のrecord — blockは1度だけ読むので、fileごとに1件 — が、見えているrowが何も公開しない理由を読み手に伝えるものである。他のどのkindのrowもfileの事実を繰り返さない。述べるべき自身の事実を持たないからである。Rowはproductがそのfileをloadまたは強制しているという主張では決してない: ruleがcontextにあるか、permission ruleが有効かは、このtoolが観測しないruntimeに依存する（FR-009）。他のkindの単位は、その一覧を出荷するtaskが、そのkind自身の
+vendor contractから決める。したがって物理fileは
+`files[]`に自身の事実 — path、read結果、size、diagnostic — とともに1度だけ現れ、各kindの一覧は
+`sourceRelativePath`で参照してそれらを繰り返さない。定義が持つrecognition所有のparse事実だけが
+意図した唯一の例外である。定義がそのrecognitionだからである。
+
+`files[]`は、directory形式のcustomizationに付随するfileも運ぶ。Skillは全体として読むため、その
+directory内のscript、reference、assetは他のfileと同様に公開される
+（contracts/inspection-path-allowlist.md § Bounded companion census）。Census自体は何もadmitしない
+ため、censusだけが列挙するfileはどのkindの一覧にも属さない。ruleが独立にadmitするpath — 別のskillの
+directory内にnestedな`SKILL.md` — は、外側のcensusに列挙されていても自身のrecognitionとrowを持つ
+candidateである。付随fileを名指すのは所属するskillの
+`definitions[].companionFiles`であり、各pathがそのfileのidentityそのものなので、clientは
+`files[]`を通じて各fileの自身の事実へ到達し、そのcustomizationのdirectoryを提示する。
+
+`sameNameResolutions`は、entryの定義のうち2つ以上をproductが認識する名前について、そのproductが
+どう解決するかを述べる。これによりgroupingがInspectorの記録していない優劣を暗示することはない。記述を
+持つのはその衝突に直面するproductだけとする: 定義が1つのentryには解決すべきものが無く、複数のうち
+1つしか認識しないproductには選ぶ対象が無い。他の定義はそのproductのfileではなく、そこにruleを引いても
+問われていない問いに答えることになるからである。衝突は引用するruleが答えるものでもなければならず、
+Claude Codeのruleはskill directoryに由来するunqualifiedなcommandの衝突に答える: その記述は、
+Claude定義のskill directory名を同一generationの別のClaude認識skillと共有するすべてのentryに付く。
+extractionが失敗した定義は、authoredな名前を呼び出すtoolにとって衝突の証拠にならない: その名前は
+不明であり、rowへの所属はtoolが解決した名前ではなくこのproductの暫定的なgroupingだからである
+（FR-028）。Skill strategyが出荷レジストリに無いproductも持たない。
+そのproductはskillを認識しないため、どのentryもそこへ到達しない。記述はproductごとに異なり、
+どれも完全には文書化されていない。
+
+このfull DTOを返すのは`globalDisableInProgress`がnullの間だけとする。Non-no-op disable barrier
+受理後は、このfunctionが代わりに次のexact control DTOだけを返す。
+
+```text
+GlobalFenceRecoverySnapshot
+├── sessionId, globalContentEpoch
+└── globalControl, globalEnableInProgress, globalDisableInProgress（requiredかつnon-null）
+```
+
+失敗したtoolの理由は失敗したcontrol自身の`failureCode`に載るため、recoveryは専用のDiagnostic
+arrayを持たない。Retain済みfailed disable requestのerror messageは、non-null projectionの
+`globalDisableInProgress.message`としてだけ運ばれ、その`state`が`failed`の間だけexactに存在
+する。この
+DTOはgeneration、Source、Repository failure、stale failure、無関係なDiagnostic/error、file、path、
+authored value、relationship、resource fieldを一切持たない。Disable stateが`failed`でもfenceを
+維持し、terminal disable successまたはprocess restartの後だけfull DTOを再び許可する。
+Inventory/generation/Source/file/detail/Diagnostic/relationship/comparison dataを含むその他
+すべてのinspection-data functionは、fence中ずっと`global-disable-pending` conflict rejectionを
+返す。各fenced functionではparameter-shape validationの後、resource-ID existence、generation
+staleness、duplicate-work、その他inspection-state checkより前にfenceをcheckする。したがって
+retained graph stateをleakせずfence conflictが常に優先する。
+
+各Sourceは正確に1つのrootを持つ。Repository Sourceはmemberを持たず、sessionはGlobal Sourceを
+0〜4個、`member: codex`、`member: claude`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
+boundaryとして表現しない。
+`repositoryGeneration`と`globalGeneration`は2つのsequenceがそれぞれ独立してcommitした
+generationであり、`globalGeneration`はGlobal inspectionがdisabledでGlobal sequenceが存在しない間
+だけexactにnullとする。各Sourceの`generation`はowning sequenceの値である。すなわちRepository
+Sourceは`repositoryGeneration`を、各Global Sourceは`globalGeneration`を運ぶ。各`staleFailures`
+entryの`baseGeneration`も同様にaffected Sourceのowning sequenceのgenerationを参照する。一方の
+sequenceのcommitはそのsequenceのviewだけをinvalidateし、他方の
+sequenceのfile、detail、comparison viewには触れない（FR-030）。
+`boundary.displayRoot`はone-way escapedなroot presentation labelであり、`SourceRelativePath`、
+inventory-item locator、caller input、read authorityではない。同じ区別を
+admission前のconsent-preview `displayRoot`にも適用する。Owning Sourceが存在する前のabsoluteまたは
+invalidなlexical rootを表し得る。
+Bootstrap Repository rootは`--root`省略時に`origin: process-cwd`、指定時に`origin: root-option`を
+持つ。APIはretained raw rootもcanonical rootも公開しない。
+Top-levelの`snapshotState`は`current`または`stale-after-fatal-rescan`とする。Fatalな明示rescan
+だけがaffected Sourceの`staleFailures` entryとfailure referenceを追加または置換する。その
+`failureRef`は、決定的にreturnされたfailureでは`{ kind: 'diagnostic', diagnosticId }`、
+throw/rejectされたaccepted jobではfailed requestのerror messageを運ぶ
+`{ kind: 'error', message }`とする。別Sourceのentry/failure recordは共存する。
+Successfulなcompleteまたはpartial scanがclearするのはrefreshしたSourceのentryとそこから参照する
+Diagnosticだけであり、別Sourceのcommitは両方を保持し、Global disableは除去するSourceの両方をclearする。
+Arrayがnon-emptyの間だけ`snapshotState`はstaleである。自動初回Repository failureと初回
+Global-enable failureは`staleFailures` entryを作らない。決定的なreturned failureはclosed
+Diagnosticを使用でき、startupのthrow/rejectionはprocess top levelへ到達し、RPC所有のGlobal
+failureはそのrequestのordinary errorとして表面化する。初回Global-enable failureは既存entryと
+そこから派生するsnapshot stateをすべて保持する。
+各`sourceRelativePath`はowning Sourceのsingle rootを基準とし、APIはabsolute/canonical filesystem
+pathへ置き換えない。
+Public Source-relative Pathは、filesystem operationがinternalに使うのと同じ綴りで、そのfile自身の
+path segmentを`/`でjoinしてserializeする。Enumerated pathでは保存されたentry name、exact Global
+targetではselectorのimmutableなliteralである（FR-024）。Hard linkは通常のfileであり、physical-identity grouping、
+primary-path selection、alias path listは存在しない。
+Inventory summaryはsource textを含まない。Sort orderはsource kind、Global tool（存在する場合）、
+source-relative pathの決定的順序 — pathはSource内でuniqueなので、これで既にtotal orderである。
+Fileはrecognition summaryもparse rollupも持たない — recognition自身の`parseStatus`がparseの
+事実であり、file-levelのaggregateには読み手がいなかった。何として認識されたかはkindごとの一覧に属し、
+各rowはそのkindを識別するものだけを運ぶ。Aggregateなdocumentation/applicability status、parse result、
+winnerを発明することはない。製品が発見したfileを使うかどうかは、どのresponseも述べない: それは
+hostが決して観測しないruntimeに依存するため、それについては何もpublishしない（FR-009）。
+
+1 generation内で各`(file, tool, kind)`に対する`ToolRecognition`は正確に1つとする — これは
+inventoryとdetailの両方がprojectされるcommit済みgenerationの内部recordであり
+（data-model.md § ToolRecognition）、どのresponseも運ばない。Compatible
+provenanceはそのrecognitionへmergeする。Provenance間でparsed meaningがinconsistentなら、その1
+recognitionを`failed`とし、当該recognitionのmetadata、relationship、derivationを1件もpublish
+しない。Competing recognitionへ分割しない。
+
+SPAは単調増加する`clientDataEpoch`（中央full client-data purgeだけがincrementする）、sequence
+ごとのcurrent generation（`currentRepositoryGeneration`と`currentGlobalGeneration`）、
+state-bearing requestごとのopaque request tokenを所有する。どちらかのsequenceについてolderな値を
+運ぶsession resultは無視する。Equal-generationsのresultはtokenがlatest request tokenのままで、
+capture済みepochが`clientDataEpoch`と一致する場合だけadoptする。Valid resultがあるsequenceの
+newer generationを運ぶ場合、SPAはそのsequenceのoutstanding data requestをabortし、そのsequence
+のgeneration-owned editor/modelと、そのsequenceのfileを含むdetail/comparison stateだけを
+disposeし、そのsequenceのcurrent generationを設定してcomplete new snapshotをadoptする。他方の
+sequenceのcommit済みfile、detail、comparison view、editor modelはvalidのままで再取得しない。Old
+epochまたはsupersededなowning-sequence generationでcaptureしたresultはbyteが後から届いても
+stateを再作成できない。
+返す全diagnosticはactive generation/source/file graphまたは`sessionDiagnosticIds`から参照され、
+client起因request errorをここへ蓄積しない。
+Retainする全failed-request error messageはexact 1つの`staleFailures` entry、failed
+`batchStatus`、またはfailed disable projectionの`globalDisableInProgress.message`が所有し、
+Diagnostic
+listには一切入れない。
+`scope`はdiagnostic lifetimeと独立した必須attachment discriminatorである。Location fieldは
+常に2つとも存在し、そのscopeが使わないものはnullとする。Legalな組み合わせは2つだけで、`file`は
+`sourceId`と当該fileのSource-relative Pathが両方non-null、`source`は`sourceId`が
+non-nullでpathがnullとする。Path-lessなscopeは存在せず（すべてのdiagnosticはSourceに属する）、
+source scopeのrecordはpathを捏造しない。それ以外の組合せはserialization前に拒否する。
+Progressは`idle`、`failed`でnull、active workおよびdata modelで定義したfinal `ready`/`partial`
+counterではpresentとする。最初のlegal snapshotは、capture済み`process.cwd()`または単一の`--root`
+からlexicalに選択したexact 1つのidle Repository Sourceを持ち、file/diagnosticなしのbootstrap
+generation 0である。Escape済みroot labelはpresentation専用でread authorityを与えない。最初の
+scanがretained selected rootをreadし、rootが存在しないかdirectoryとしてreadできない場合は、
+sessionをusableに保ったままsource-scopedな`root-unreadable` Diagnosticでそのscanをfailさせる
+（FR-002）。Startup throw/rejectionはprocessを終了させ得るため、後続のreadable snapshotを保証
+しない。
+
+authored contentに何が含まれ得るかについての注意書きは、どのsurfaceも掲げない。APIもそのためのwarning
+fieldを送らない。閲覧者自身のfileをloopback束縛のsession上で表示するviewerには警告すべきものが無く、
+常設の注意書きは読み手自身のrepositoryについて読み手に説明するために画面を費やす。contentの前に立つものも
+無い。Acknowledgement stepもacknowledgement stateも存在しない（FR-027）。Loopback bindingがhost-side protectionの全てで
+あり（QR-003）、確認は何も守らない一方ですべてのfileを読むのに2回の操作を要求することになる。
+APIはacknowledgementを受け付けず、enforceするとも主張しない。
+Authored value（完全なsource text、declared authored metadata、authored relationship target、
+comparisonの両side）へは、`FileDetail`を1つずつrequestするかcomparisonを1つずつ構築することで
+のみ到達でき、inventoryやsessionのresponseはそれを運ばない。例外はrowが列挙される識別子で
+ある。自らが列挙するものを名指せない一覧はinventoryではないからである（FR-007、data-model.md
+§ 一覧の単位）。これを持つrowは2つある: skill entryの`name` — 認識した各toolが解決する名前、
+つまりauthoredな`name`で、nestedなClaude Code recognitionではroot相対のprefix付き — と、
+fileがpathから導出するのではなく自身のために宣言した場合のinstructions entryの
+`applicabilityRange`、すなわちCopilotの`applyTo`である。それぞれのauthoredな部分は、scan時の一度のparseが解決した値である（data-model.md § Fieldの読み取り）— skill nameの`007`は`7`として、rangeのquoteとescapeは解決済みで — この製品はmasking・escape・正規化のいずれも加えない。skill名のうちこの製品が供給する部分 — fileが宣言しないときのdirectory fallbackと、nestedなClaude Code recognitionが持つroot相対のprefix — は、responseが既に公開しているpathから、FR-007の命名ruleに従って構成される。
+どちらもrowのidentityを超えて広がらず、他の宣言値がそれに伴って運ばれることはないため、
+それ以外の宣言済みの値は明示的なdetail requestの背後にとどまる。中央full-session client-data purgeは
+clientが保持するものを破棄する。Route close、selection replacement、file/Source removal、
+どちらかのsequenceのgeneration replacementはその中央purgeではなくscope限定cleanupであり、
+generation replacementはそのsequenceのscoped modelだけをdisposeする。Global disableは中央purgeを
+使う。いずれもfilesystem authorityを付与せず、返すcontentも変更しない。
+
+`globalControl`はGlobal consent/control stateがinactiveな場合だけnullとなる。それ以外では`state`が
+`active`または`disabling`となり、`previewId`がfrozen active previewを識別する。`confirmedTools`は
+常にfixed closed `[copilot, claude, codex, agents]` all-members consent setとする。Initial enableとretryの
+validation/admissionはoperation-localのままとし、authority-freeな
+`globalEnableInProgress { kind, operationId, previewId }`だけを公開する。Initial enableでは
+`globalControl: null`を維持し、retryではresult-bound disposition 1件がatomic commitするまでexactな
+pre-operation control projectionを維持する。このprojectionがnon-nullの間のduplicate enableは
+`global-enable-in-progress` conflict rejectionを返し、disableは直ちに利用できる。
+
+Queued dispositionでは、`pendingTools`がadmitted non-empty batch subsetとexactに一致し、
+`batchStatus`はその同じsubset用のexactな`{ scanRequestId, tools, phase, failureRef }`とする。
+`tools`をnon-empty、unique、fixed tool orderとする。Active `phase`は
+`waiting | deriving | enumerating | reading | recognizing`で`failureRef`はnullとする。Batch
+successは全Sourceをatomicにpublishし、両fieldをclearしてGlobal generationをexactに1回commitする
+（initial enableではgeneration 1、retry batchではGlobal sequenceのN+1）。Terminal
+deterministic failureはempty `pendingTools`と`phase: failed`を維持し、
+`{ kind: 'tool-failures', failedTools }`を持つ。`failedTools`はこのbatchが失敗させたtoolの
+non-empty fixed-order setで、各toolは自身のcontrol上にnon-nullな`failureCode`を持つ。Terminalなthrow/rejectionは
+failed requestのerror messageを運ぶ`{ kind: 'error', message }`を使う。
+Failed batchはretry受理またはdisableまでrequest correlationを維持する。`active-no-job`
+dispositionはnull `batchStatus`を持ち、job/generationを作らず、決定的なrejected-tool controlだけを
+retainまたはreplaceする。
+
+`state: active`の間、`retryableTools`はunpublishedかつnon-pendingの各`admitted` controlと、
+`retryDisposition: same-preview`の各`rejected` controlだけとし、lexicalな`new-preview-required`
+controlを除外する。Operation-local retry validation中はpre-operation projectionを保つ。Retryを
+提示するのは`globalEnableInProgress`がnull、`pendingTools`がempty、matching frozen previewを
+取得・検証済みの場合だけとする。Non-failed active batch中のretryable toolは情報表示だけで、
+enableは`global-enable-in-progress` conflict rejectionを返す。
+
+Disable-barrier受理からterminal successまでは`state: disabling`、empty pending/retry array、null
+`batchStatus`とし、`globalDisableInProgress`は`draining`、`committing`、retained `failed`の全期間
+non-nullとする。Controlはsuccessful `remove-active-state` completion時だけnullとなる。
+`cleanup-only` barrierでは`globalControl`がnullでもよい。
+Controlの`failureCode`は、そのtoolが失敗したclosedな理由であり、そのtoolが失敗しpublished Source
+を持たない間だけnon-nullとする。Clientはそのcodeが名指す文を、あらゆるclosed unionと同じように
+描画する。これはDiagnosticではない: DiagnosticはSource内で何かを読んでいる最中に起きたことを
+述べるものであり、rootを一度もadmitされなかったtoolには、それが属するSourceが無い。そのcontrol
+failureのclearまたはdisable commitまで保持する。Failed `batchStatus`のerror messageは、active consent全体について
+1件のaccept済みadmitted-subset Global batch throw/rejectionを記録する唯一のretained recordで
+ある。Accept前retry failureは保持し、決定的な
+`active-no-job` retryまたはreplacement-batch acceptanceはclearし、replacementのterminal failureは
+supersedeし、Global disableはremoveする。1 toolを識別せず、`StaleSourceFailure`を作らない。
+
+Outcomes: fullまたはfenced DTO。
+
+### `agent-customization-inspector:get-file-detail`
+
+Parameters: fileのidentity全体を、functionの単一argumentであるobjectとして渡す。
+すなわちcommit済みSource-relative Pathと、それを保持するSourceである（FR-030）。
+Global commitが第2のSourceをpublishした後は、両者が1つのpathを保持しうるため、
+path単独ではどのfileも指さない。SourceはSource IDではなくselector — `repository`
+または`global-<member>` — で名指す。IDはそれをmintしたlaunchのものである一方、読み手が
+保存したlinkはそのlaunchより長く生きなければならないからである。Selectorの検証は
+他のdetail parameterと同じくresolutionであってfilesystem operandではないため、
+commit済みSourceのどれも名乗らないselectorはどこにも解決されず、未知のpathと同じ
+`stale-resource` rejectionになる。
+
+```json
+{ "sourceRelativePath": ".claude/skills/deploy/SKILL.md", "source": "repository" }
+```
+
+Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
+
+```text
+FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
+             'output style' | 'settings/config' | 'file'
+├── kind 'instructions' — fileは認識されたinstruction file:
+│   ├── file — encodingで判別されるCustomizationFile 1件:
+│   │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   │   ├── readable textはさらにhadLeadingBom, sourceText, sizeBytesを持つ
+│   │   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
+│   ├── presentation — scan時の1回のparse。extractionがall-or-nothingで
+│   │   失敗したときは正確にnull（FR-028）:
+│   │   ├── frontmatter[] { key, keyKind, value } — valueは
+│   │   │   { kind: 'scalar', scalarKind, text }、{ kind: 'absent' }、
+│   │   │   { kind: 'sequence', items[] }、
+│   │   │   { kind: 'mapping', entries[] { key, keyKind, value } }のいずれかで、再帰する
+│   │   └── bodyText
+│   └── diagnostics[]
+├── kind 'skill' — fileは認識されたskillのentry point:
+│   ├── file — 上と同じ
+│   ├── presentation — instructions variantと同じ: 同じscan時の1回のparseで、
+│   │   失敗時nullの規則も同じ（FR-028）
+│   └── diagnostics[]
+├── kind 'agent' — fileは認識されたcustom-agent定義:
+│   ├── file — 上と同じ
+│   ├── presentation — 1回のscan時parseを、このkindが示す2つの半分に
+│   │   分けたもの。extractionがall-or-nothingで失敗したときに限りnull
+│   │   （FR-028）:
+│   │   ├── metadata[] { key, keyKind, value } — instructions variantの
+│   │   │   frontmatterが運ぶのと同じdeclared-entry shape。instructionsを
+│   │   │   保持する宣言を除くすべての宣言を、fileが書いた順で運ぶ
+│   │   └── instructionsText — fileがagentに与えるinstructions
+│   └── diagnostics[]
+├── kind 'prompt/command' — fileは認識されたcommand file:
+│   ├── file — 上と同じ
+│   ├── presentation — instructions variantと同じ: 同じscan時の1回のparseで、
+│   │   失敗時nullの規則も同じ（FR-028）
+│   └── diagnostics[]
+├── kind 'rule' — fileは認識されたrule file:
+│   ├── file — 上と同じ
+│   └── diagnostics[]
+├── kind 'output style' — fileは認識されたoutput styleである:
+│   ├── file — 上と同じ
+│   ├── presentation — instructions variantと同じ: 同一のscan時parseであり、
+│   │   失敗時のnull規則も同じ（FR-028）。frontmatterはstyleが宣言するもの、
+│   │   bodyはvendorがsystem promptへ追加するinstructionsである
+│   └── diagnostics[]
+├── kind 'settings/config' — fileは認識されたsettingsまたはconfiguration file:
+│   ├── file — 上と同じ
+│   └── diagnostics[]
+└── kind 'file' — fileを所有するrecognitionが無い（censusだけが列挙したfile、
+    またはdiagnostic-onlyのcandidate）:
+    ├── file — 上と同じ
+    └── diagnostics[]
+```
+
+どのvariantも、このproductの外でfileを指すlocatorを持たない。Reader自身のmachine上の
+applicationで開くのは§ open-fileの役目であり、同じSource-relative Pathを同じcommit済み
+generationへ解決する: 絶対pathはhostのものであり、clientがSourceのrootとして受け取るのは
+一方向の`displayRoot` escapingだけである（data-model.md § SourceBoundary）。したがって
+detail responseは、pageが開けるものを何も渡さない。
+
+この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
+`prompt/command` variantが`presentation`を持つのは、prompt/command fileがskillと同じ
+frontmatter keyを取るためであり、そのdetailはfileが書いたdeclarationと、その後に続く
+promptから始まる。持たないのは、読み手が入力する名前である: これはdetailのfieldではなく
+ruleが答えるものであるため、inventoryの事実であり — 各`prompts[]` rowがgroup化される
+名前そのものであり — skillのinvocation nameが`skills[]`の事実であるのと同じで
+ある。名前を宣言したprompt fileも例外ではない: その宣言はfileが書いた他のkeyと同じく
+`presentation.frontmatter`にあり、ruleがそこから何を作ったかがrowの事実である。
+`agent` variantは独自のshapeの`presentation`を持つ。分割点が常にfrontmatter blockとは
+限らないためである: Codexのagentは、`developer_instructions`のstringがproseで、残りの
+top-level keyがconfigurationであるTOMLであり、Claudeのsubagentとcopilotのagent profileは
+frontmatter fenceで分割されるMarkdownで、blockがagentのconfigurationを、bodyがそのagentが
+動くinstructionsを与える。分割点がどこかはadmitしたruleのcontractであり、生成される
+shapeはどちらも1つなので、1つのdetail surfaceが両方をrenderする — metadataはYAML、
+instructionsはMarkdownとして。分割は、instructionsを保持する宣言がstringに解決される
+場合に限って行う: table、list、numberとして書かれたものは proseではなく宣言なので、
+metadata entryのまま残り`instructionsText`は空になる。このvariantが運ばないのはagentの
+nameである: file自身の`name`宣言は、fileが書いた他のkeyと同様に`presentation.metadata`に
+あり、各`agents[]` rowがgroupingされるnameはinventoryの事実である。この分離があるからこそ、
+1つのfileが2つのnameで現れても — `.claude/agents/*.md`の直下childは、宣言された`name`で
+名付けられるClaude Codeのsubagentであり、同時にfile自身の名で名付けられるCopilotのagent
+profileでもある — detailはどちらかを選ぶ必要がない。commandのinvocation
+nameと同じ扱いである。宣言された`mcp_servers` blockも1つのmetadata entryにすぎない:
+MCP宣言の帰属先はexplicitなcarrierだけなので、それを書いたagentはMCP rowに加わらず、
+読者がそれを見るのはこのresponseである（data-model.md § Inventory unit）。
+`rule` variantは`presentation`を持たない: これらのfileはauthorが書いた
+1つのdocumentとして公開され、そこから何も読み出さないためである。Claudeの`.claude/rules/**` fileは
+frontmatter blockを含めて丸ごとresponseへ届く — ruleをdeclarationとbodyへ割ると、1つの
+fileとして書かれたものを2つの半分として読者に見せることになる。何も読み出さない以上、読み出しに
+失敗することもない: このkindはextraction diagnosticを生じず、宣言された`paths` globは
+本productがfilesystem pathに対して評価することのないauthored textである。それでも独自の
+variantであるのは、recognitionがこのfileを所有しており、そのinventory rowがそう述べて
+いるからである。
+`settings/config` variantが`presentation`を持たないのも同じ理由であり、そのrowの単位は
+file自身であるため（data-model.md § 一覧の単位）、authorが書いたdocumentがそのまま答えに
+なる: Codexの`.codex/config.toml`は、comment、authoredな綴り、section順を保ったTOMLとして
+responseへ届く。自分のfileと突き合わせる読者に必要なのはそれである。その`[mcp_servers.*]`
+tableは別のrowの主題であり、`get-mcp-carrier-detail`が宣言を先頭にしてserveする。ここにも
+見えるのは、同じdocumentを自身のrowの下で見ているからであって、1つの事実を二重に公開して
+いるのではない。宣言されたagent、skill、model-instruction、compact-prompt、hookのpathは
+読まれず、解決されず、辿られない。environment referenceも置換されない（FR-019、FR-026）。
+
+Permission policyはこれらのvariantに含まれない。Permissions rowが名指すのはfileではなくpolicyで
+あり — あるvendorのpolicyはそれ自体が1つのdocumentであり、別のvendorのそれは、他のkeyが別の
+recognitionに属するsettings fileの1 blockである — したがってpolicyは
+`get-permission-policy-detail`のresultであって、対象ではないfileについて答えねばならなくなる
+ここでのshapeではない。
+他の認識kindが示すparseはfileの事実であって認識toolのものではなく、responseはそれを
+`presentation`として1回だけ公開する。Markdown kindについては、shippedな全vendorが同じ固定YAML
+semanticsを読むため、extractionは`(file, kind)`ごとに1回実行される。custom-agent kindはその例外で、
+しかもkindではなくadmitしたrule自身の読み取りである: Codexのagentは`developer_instructions`のstringが
+proseであるTOMLであり、Markdown productsのagentはfrontmatter fenceで分割されるため、ここでの
+extractionは`(file, tool)`ごとになる。どの読み取りも同じshapeを生むので`presentation`は1つのままであり、
+2つのproductが1つのfileを読む場合、その解決結果は一致するため、繰り返しは2つ目の事実ではなく
+1つのstringに対する作業にすぎない。Toolごとのrecognition一覧は存在しない:
+どのtoolがこのfileを認識するか、各toolがそれを何として解決するか、そのparse stateはinventoryの
+事実であり、kindごとのinventoryがそれを運ぶ。skillのそれは`skills[].definitions[]`、
+instruction fileの認識toolはそのinventory row（`instructions[]`）、custom agentのそれは
+`agents[].definitions[]`でfileの隣に列挙される。どのkindのdetail routeもpathのみとする:
+1つのfileを読む2つのproductは同じbyteを読むため、toolごとのaddressは1つのdocumentに2つのURLを
+与えることになり、productが異なる点 — skillを呼び出す名前 — は、そのfileを抱えるrowから
+pageがまとめて述べるためである。
+Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、commit済み
+generationの内部record（data-model.md § ToolRecognition）
+であり、session responseは運ばない — したがって設定済みfallback instruction fileの
+detailは、staticなものと形の上で区別できない。Edge recordの`relationships` arrayも存在しない:
+edgeを出せるのはrelationship-only ruleがcoverするoriginだけで、registryはそのruleを1つも
+出荷しないため（contracts/runtime-composition.md § Normative relationship-only registry）、
+どのrecognitionもedgeを生成せず、responseはそのarray自体を運ばない。Instruction fileも、
+どのproductが認識しても1つも生成しない。この製品はprose中から参照を読み取らない: 書かれた`@path`状のtokenがどこで
+終わるかを定めたvendor pageは無く、境界ruleはすべてこの製品自身の発明になり、誤ったruleは
+読者が書いていない参照を主張することになるからである。そのtokenはsource textのままであり、
+instruction originをcoverするrelationship-only ruleも存在しない。そうしたruleが将来coverし得るのは、
+formatが区切る宣言 — frontmatterの値、JSON/TOMLのfield、mapのkey — である。境界を決めるのは
+formatであって、この製品ではない。
+
+各frontmatter entryの`keyKind`はclosed union `string | number | boolean | null`であり、
+宣言keyのYAML 1.2 core schema下でのparse済みの型である。宣言のidentityは`(keyKind, key)`の
+組である — unquoteの`1`とquoteされた`"1"`は、どちらも`key` textとして`1`をrenderする2つの
+keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
+同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
+
+Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。このfunctionが答えるのは主題がfile自身であるrowであるため、宣言を主題とするrowしか持たないpathは`FileDetail`を一切持たない: standaloneのMCP declaration carrier — MCP kindがrecognizeし、file主題のkindがclaimしないfile — は`get-mcp-carrier-detail`を通じて宣言を公開し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。file主題のrowも持つpathは、そのrowの下で答える。rowの主題こそがそのdetailの対象だからである（FR-007）: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名すると、そのcarrierはinstruction fileでもあり、instruction fileは完全なsourceを示すため、1つのpathが`get-mcp-carrier-detail`では宣言だけを、ここではdocument全体をserveする。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
+
+Permission policyも同じ条件で、2つのformのいずれもここでは差し控える: permissions rowが名指すのは、それを宣言するfileではなくpolicyであるため（data-model.md § 一覧の単位）、どちらのformもこのfunctionが答える主題ではない — Policy blockを宣言するcarrierは、そのblockを公開するためにadmitされたfileであり、file全体の内容がpolicyであるfileは、このfunctionが自身として述べることを何も持たないfileではなくpolicyである。permissions rowを持ちfile主題のrowを持たないpathは`stale-resource` rejectionに解決し、policyをserveするのは`get-permission-policy-detail`である。
+
+Skillの`presentation`は、宣言している内容と指示している内容である。detail surfaceがそれを先頭に
+置くからである。`frontmatter[]`はfileが宣言するすべてのkeyを、fileが書いたkeyそのもの —
+vendor catalogのものではない — で、authored順に列挙する。`bodyText`は同じdocumentから
+frontmatter blockを取り除いたものであり、両者は重ならない。この分割はfrontmatter parser自身の
+ものとする: blockの終端を決め直すことは、formatについての2つ目の意見になる。各entryの`value`は、parserが解決した内容をfileが書いた形のまま写す: `scalar`は解決済みの
+text — quoteとescapeは解決され、`007`は`7`として読まれ、2回宣言されたkeyは後の宣言として
+読まれる — を持ち、`absent`はauthored null、`sequence`はitemを、`mapping`は自身のentryを
+再帰的に持つ。fileが含まない綴りへ平坦化することはない。自身を含む値はその形もJSON形式も
+持たないため、要約せずそのextractionをall-or-nothingで失敗させる（FR-028）。
+宣言済み名を宣言一覧の傍らに公開することはない。それは宣言の1つであり、pageの出自である
+rowが解決済みidentityを既に示していて、1つの事実を2か所へ置けば食い違い得る2つのstateに
+なるからである。いずれの値もmask、redact、短縮しない。
+JSON transport escapeはclient上で同じstringへround-tripしなければならない。
+Environment-variable referenceは書かれたままの文字とし、hostは参照されたprocess-environment
+valueをread、resolve、substituteしない。Inspectionが使うenvironment valueは、Global rootを
+consent flowで導出するための明示的に文書化されたtool-home variableだけとする。
+Registry定義の`targetOrigin: documented-default` relationshipは`authoredTarget: null`とし、SPAは
+検証済み`normalizedTarget`をdocumented defaultとlabelして、synthetic pathがsourceに出現したと
+示さない。
+
+Inventory、Detail、Comparison、Global control、Diagnostics、全API result、
+CLI output、documentationを通じて、productが行うのは構文だけのparsing、認識したkindが公開する宣言についてparserが解決した値の読み取り、
+frozen-catalog classification、文書化済みstructural
+scope/order/condition/selection/reference projectionだけである。Natural-languageのmeaningまたは
+intentをinterpret/rankせず、customizationのcorrectness、validity、compliance、effectiveness、
+qualityを判定せず、policy/remediation advice、validation、lint、synchronization、conversion、
+formatting、fixingを一切提供しない。Inspector所有のDTO、registry、internal invariantに対する
+strict validationは許可され、customization validationではない。決定的なavailability Diagnosticは
+content verdictを含まない。1 fileに限定されたfailureはFR-028に従ってそのfileのDiagnosticになり、
+それ以外のunexpectedなRPC所有failureはrequestのordinary errorとしてpropagateしてDiagnosticには
+ならない。
+
+File encoding stateは、完了した通常readのbyteから割り当てる。NUL byteが1つでもあれば`binary`とし、`sourceText`もBOM recordもなく、comparison不適格とする。admit済みcandidateではそれはdiagnostic-onlyであり、
+その他の条件を満たせばgenerationを`partial`にする。censusが列挙したcompanionのbinary bytesはassetの通常の
+事実である（FR-025）。それ以外のbyte sequenceはUTF-8 replacement semanticsで正確に1回decodeする。先頭BOM
+1つは`hadLeadingBom: true`として除去する。Replacementなしでdecodeできたtextは`utf-8`、`U+FFFD`が1つでも
+insertされた場合は`utf-8-replaced`とする。その文字化けしたexactで完全な`sourceText`をparsing、
+extraction、detail、comparisonへ渡し、それ自体を理由にgenerationをpartialにしない。Alternate
+decode、charset guessing、sampling、truncation、製品固有のbyte/line/item上限はない。
+
+定義の`parseStatus`はclosed enum `not-attempted | parsed | failed`とする
+（§ get-session `skills[]`）。
+Parse/extractionは`(file, kind)`ごとにall-or-nothingであり、detailの`presentation`は
+`failed`なextractionで正確にnullになる。failed result由来のmetadata、relationship、
+derivationは返さず、file-scopedな`recognition-parse-failed` Diagnostic — kindを認識する
+toolがいくつあっても1 record — がgenerationを`partial`にし、完全なreadable sourceの表示と
+comparison eligibilityは保たれる（FR-028）。1 fileに限定されないfailureは
+attemptをfailさせ、RPC所有の場合はrequestのordinary errorとして公開する。
+Declaration comparisonは、sideごとに1つのcanonical serialized documentをclient側でdiffする
+（research.md § 7）。frontmatter宣言はfileのMarkdown kindに対する1回のparseであって認識する
+全toolが共有するため、toolは宣言の座標ではなく、tool recognitionはdiffの横でtoolごとに比較する。
+各sideはYAMLへserializeし、各comparisonはそのkindについてvendorが文書化しているkeyを、それを
+公開するpageの順で先頭に置き、それ以外のkeyをsort順で並べる（declaration-order.ts）。Prompt-and-command
+comparisonはrecognitionごとにもう1つ事実を述べる。このkindの行はfileではなく名前であるためで、認識する
+各toolのcellが、そのtoolがそのsideのfileを起動する名前を運ぶ。MCP kindの宣言は各recognizing tool
+自身のreading（data-model.md § Field reading）であり、その比較surfaceは宣言済みserver名自身の
+もの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つの
+canonical JSON documentへserializeする — で、通常の`get-mcp-carrier-detail` result 2件を通じて
+loadされる。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、
+fileが書いたkey順のまま表示する（FR-007）。
+
+Declared valueは文字を丸ごと運ぶ。astral characterはUTF-16 code unit 2つ、combining markは
+code point 2つだからである。よってextractionとJSON transportを変化なく通過し、Unicode normalizationも
+適用しない。Responseはsource座標を持たない。Documentを指すものが存在せず、取得元の値の隣に置かれた
+rangeはその値が既に述べていること以上を主張しないからである。Parseできなかったdocumentは
+affected recognitionをall-or-nothingでfailさせる。一方でその完全な`sourceText`は利用可能なまま残る。
+値がもはや運ばない綴りをreaderが求める先はそこである。
+
+Resultはinert JSON stringを使う。SPAは`sourceText`とmetadataをVue text bindingでrenderし、
+`v-html`、Markdown rendering、clickable link、URI handler、image loadを使わない。Resultはmemory内
+だけに保持し、durableにcacheせず、logに残さない。SPAはfileを1つずつrequestし、その隣に
+注意書きを置かずに表示する。
+
+Detail request tokenは正確な`(clientDataEpoch, sourceRelativePath)`をcaptureする。Captureした
+epochがlive epochと一致し、pathがselected fileのままである場合だけSPAはresultをadoptし、
+request token replacementはそのcaptureをinvalidateする。Pathはfileの安定したidentityなので、
+hostはそれをcurrentなgenerationに対して解決し、purge前にcaptureされたresponseがstateを
+再populateしないことを守るのはepochである。Mismatch時はmodel、DOM text、metadata
+row、comparison inputを作らずresultをdisposeする。
+
+Documentation status、lifecycle qualifier、evidence assessmentはどのresponseも運ばない。これらは
+registry自身のmaintenance recordである（QR-005）。candidate provenanceが公開するのはどのruleが
+fileをadmitしたかであり、そのruleの文書化の程度ではない。
+
+Outcomes: `FileDetail` result。現在のcommitted generationがそのpathにこのfunctionのdetailを
+保持しない場合 — 一度もscanされていない、後のcommitで除去された、disabled sourceに属する、
+`get-mcp-carrier-detail`だけがdetailをserveする純粋なMCP carrierである、または
+`get-permission-policy-detail`だけがdetailをserveする宣言されたpermission policyである。別の型の値も
+同じ形で解決されるため、独立したmalformed-argument outcomeは存在しない — は`stale-resource`
+rejection。Disable fenceがnon-nullの間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:get-mcp-carrier-detail`
+
+Parameters: SourceとCommit済みSource-relative Pathを名指すobject 1件 — 宣言するfileの
+identity全体（FR-030）であり、`get-file-detail`が取るpairと同じである。Global memberも
+MCP carrierをpublishするためである（FR-015、FR-017）。
+
+```json
+{ "sourceRelativePath": ".codex/config.toml", "source": "repository" }
+```
+
+Active-generationのMCP carrier detailを1件返す: fileが行う宣言と、file自身の
+事実であり、`sourceText` fieldは意図的に一切存在しない。答えるのは明示的なcarrierだけである: 宣言を
+公開するためにadmitされた
+fileはその宣言を示し、自身のbyteは決して示さない（FR-007）。carrierのdetailが`FileDetail`の
+variantではなくこのfunction自身のresultであるのはそのためである — fieldはshapeから不在なの
+であって、surfaceが描画を拒むべき値ではない。他のkindのfileは、内容にどんなMCP風の
+configurationを綴っていてもここでは決して解決されない: そのconfigurationはそのfile自身の
+宣言contentであり、file自身のkindの下の`get-file-detail` presentationに見える。
+
+```text
+McpCarrierDetail
+├── file — carrierのcontent-free summary。encodingで判別される:
+│   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable textはさらにhadLeadingBomとsizeBytesを持つ — sourceTextは決して持たない
+│   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
+├── servers[] — 宣言。parserが解決した順にserverごとに1つで、carrierが何も宣言しなければ
+│   空 — またはextractionがall-or-nothingでfailedになった場合に限りnull（FR-028）。その
+│   Diagnosticは下にある:
+│   └── name, fields[] { key, keyKind, value } — 宣言されたserver名と、宣言が書く全field。
+│       carrierが書いたkeyのままで、`presentation.frontmatter`と同じentry shapeを使う
+└── diagnostics[]
+```
+
+このtreeがresponseのshapeである: clientは正確にこれらのfieldだけに依存できる。宣言は
+carrier自身のものであり — 各recognizing productのdocumented readingを1つのdecoded text上で
+実行し、宣言名で1つのresponseへ統合する（data-model.md § Field reading） —
+すべての値はcarrierのliteralである: environment referenceは書かれた文字のままで、process
+値がそれに代入されることはない（FR-026）。`get-file-detail`と同じinert-rendering、
+single-request、request-token ruleが適用され、`(clientDataEpoch, sourceRelativePath)`の
+captureも同じである。
+
+Outcomes: `McpCarrierDetail` result — parseされたが serverを宣言しないcarrierは空の
+`servers`を持つresultであってrejectionではない。現在のcommitted generationがそのpathにMCP
+recognitionを保持しない場合 — 一度もscanされていない、または後のcommitで除去された。
+別の型の値も同じ形で解決されるため、
+独立したmalformed-argument outcomeは存在しない — は`stale-resource` rejection。Disable
+fenceがnon-nullの間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:get-hook-carrier-detail`
+
+Parameters: SourceとCommit済みSource-relative Pathを名指すobject 1件。`get-mcp-carrier-detail`が
+取るのと同じ形で、宣言するfileのidentityである（FR-030）。
+
+```json
+{ "sourceRelativePath": ".codex/hooks.json", "source": "repository" }
+```
+
+Active-generationのhook carrier detailを1件返す: fileが宣言するlifecycle eventと、file自身の
+事実であり、`sourceText` fieldは意図的に一切存在しない — MCP carrierのdetailと同じruleで、
+理由も同じである（FR-007）。宣言を公開することは宣言を実行することではない: 宣言された
+command、handler、参照されたscriptは実行も開くことも解決もされず、environment referenceが
+代入されることもない（FR-020、FR-026）。他のkindのfileは、内容にどんなhook風のconfigurationを
+綴っていてもここでは決して解決されない。
+
+Resultは`carrier`で判別される2つのshapeのいずれかを取る。documentedな2つの形式は、carrier自身が
+何を宣言するかで異なるからである: 全体がhookのためのfile — Codexの`.codex/hooks.json` — は
+残りのtop-level keyをここで公開する。それらを公開する他のrowを持たないためである。一方、他の
+contentと共にhook tableを含むfile — `.codex/config.toml`内のinlineな`[hooks]`、Claudeのroot
+settings documentの`hooks` object — は隣接するkeyを、それらを所有する同じfileのrecognitionに委ねる。
+
+どのfileがそれに当たるかは各vendorのcontractであり、documentedなhook locationが自動的に該当する
+わけではない: 他のcustomizationが何であるかの一部である宣言 — Claudeのskillやsubagentのfrontmatter
+`hooks`、plugin manifestやcatalog entryのもの — は、どのpathでもここでは解決されない。そのcustomization
+自身のdetailが既にfileの書いたkeyを公開しており、二度目の公開は一度目と食い違いうるからである
+（contracts/vendors/claude-code.md § Normative initial-release presentation allowlist）。
+
+```text
+HookCarrierDetail
+├── carrier — 'standalone' | 'contained'。このcarrierのdocumentedな形式
+├── file — carrierのcontent-free summary。encodingで判別される:
+│   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+│   ├── readable textはさらにhadLeadingBomとsizeBytesを持つ — sourceTextは決して持たない
+│   └── binaryはさらにsizeBytesを持ち、unknownはこれ以上何も持たない
+├── events[] — 宣言。parserが解決した順に宣言されたeventごとに1つで、carrierが何も
+│   宣言しなければ空 — またはextractionがall-or-nothingでfailedになった場合に限り
+│   null（FR-028）。そのDiagnosticは下にある:
+│   └── event, groups[] — 宣言されたevent名と、それが宣言するmatcher group。各groupは
+│       そのitemが書いた値そのもので、detail surfaceが描画する共有のdeclared-value shapeを使う
+├── carrierFields[] — 'standalone'のみ: hook mapの傍らにあるtop-level entryすべて。
+│   `presentation.frontmatter`と同じentry shapeを使う
+└── diagnostics[]
+```
+
+このtreeがresponseのshapeである: clientは正確にこれらのfieldだけに依存できる。groupは
+malformedであっても著者が書いたまま公開される — tableでないitemは、落とすのではなく読み手に
+述べるべきgroupである — 一方、値がgroupのlistでないeventは何も宣言せず丸ごと省かれる。hook mapが
+不在の場合と同じ答えである。`get-file-detail`と同じinert-rendering、single-request、
+request-token ruleが適用され、`(clientDataEpoch, sourceRelativePath)`のcaptureも同じである。
+
+Outcomes: `HookCarrierDetail` result — parseされたがeventを宣言しないcarrierは空の`events`を
+持つresultであってrejectionではない。現在のcommitted generationがそのpathにhook recognitionを
+保持しない場合 — 一度もscanされていない、後のcommitで除去された、または宣言が名指すだけの
+pathである。別の型の値も同じ形で解決されるため、独立したmalformed-argument outcomeは存在
+しない — は`stale-resource` rejection。Disable fenceがnon-nullの間は`global-disable-pending`
+conflict rejection。
+
+### `agent-customization-inspector:get-plugin-carrier-detail`
+
+Parameter: 宣言するfileのSourceとcommit済みSource相対Path — fileのidentityである（FR-030） — 、
+読み出すinventory rowのplugin名（宣言がどの名前にも解決しないrowを閉じる場合はnull）、そして
+答えがどの製品の読み取りであるかを持つobject 1件。Catalogのlocal-directory enumerationは
+Repository catalogのものに留まる: 共有agent home配下でpluginのdirectoryはadmitされない
+（FR-018、FR-045）ため、personal marketplaceは宣言だけをpublishする。
+名前を1つも解決しない宣言でlistを閉じるrowでは`pluginName`はnullである。
+
+```json
+{
+  "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "source": "repository",
+  "pluginName": "secret-keeper@inspector-legacy",
+  "tool": "codex"
+}
+```
+
+名前はclientが返ってきた内容に適用するfilterではなくparameterである。答えがrow 1件のものだから
+である: そうでなければ、多数のpluginをofferするcatalogは他の全pluginの宣言を、そのうち1件に
+ついてのpageへ送ることになる。したがって1つのcatalogの2つのplugin間を移動することは、2つの
+file間を移動するのとまったく同じく、それ自体が1つのrequestである。
+
+toolがparameterであるのも同じ理由の一段先である: inventory rowは`(file, tool)`ごとに1つの
+carrierを並べ、entryのsourceがどのdirectoryを名指すかは各vendorのcontractであるため、全製品が
+admitする1つのcatalogには製品ごとの読み取りがある — 同じentryがある製品にはplugin rootを名指し、
+他の製品には何も名指さない。projectionが最初に到達したrecognitionで答えれば、ある製品のroot・
+source form・manifest形式を別の製品の名前の下に公開してしまう。製品を名指すrequestは、読み手が
+たどったcarrier行について答える。manifest形式はそのpathの全recognitionの合併のままである。
+rootのどのfileがpluginの自己宣言かは、同じdirectoryについて各vendorが答える問いだからである。
+
+Active-generationのplugin carrier detailを1件返す。判別はそのfileが宣言するpluginに対して
+何であるかによる。2つのcarrier種別は異なる答えを返す。これが`FileDetail`のvariantでは
+なくこのfunction自身のresultである理由である: manifestはそれ自体がcustomizationであり — file全体で
+1つのpluginを宣言する — したがってその完全なauthored sourceをserveし、そこから読み出したものは
+何も伴わない（FR-007、FR-025）。manifestはstrict JSONであり、parseしたkey listは同じdocumentの
+2度目の提示にしかならないからである。一方catalogは多数のplugin名をその出どころのsourceへ解決する
+ため、要求されたentryの宣言をserveし、`sourceText` fieldをそもそも持たない。Fieldはshapeから欠けているのであり、surfaceが描画を拒む値ではない。
+Catalogのbyteを、そのpluginの1つについてのpageで見せることは、そこに列挙された他の全pluginも
+その画面に載せることになる。MCP carrierのdetailが自身のbyteを控えるのと同じ理由である。
+
+```text
+PluginCarrierDetail — carrier: 'manifest' | 'catalog'
+├── carrier 'manifest' — fileは、それが置かれたfolderをpluginにするmanifestで
+│   あり、配置だけでpluginを読み込む製品が読むものである:
+│   ├── file — 完全なauthored sourceを持つCustomizationFile 1件。
+│   │   encodingによる判別は`get-file-detail`と同じ
+│   ├── pluginRoot — このmanifestが置かれていることでpluginになるSource相対
+│   │   directory。末尾のslashを含む。admitしたruleが解決しなかった場合のみ
+│   │   空になるが、shipされているruleにそれは起きない
+│   └── diagnostics[] — parseできなかったmanifestはここで述べられる。
+│       欠落しうるparsed key list自体が存在しないからである（FR-028）
+└── carrier 'catalog' — fileはpluginを列挙するcatalogである:
+    ├── file — carrierのcontent-free summary。encodingで判別される:
+    │   ├── sourceId, sourceRelativePath, encoding, diagnosticIds[]
+    │   ├── readable textはhadLeadingBomとsizeBytesを加える — sourceTextは決して含まない
+    │   └── binaryはsizeBytesを加える。unknownはそれ以上何も加えない
+    ├── catalogFields[] { key, keyKind, value } — catalogが自身について宣言する
+    │   もの。`plugins`配列は決して含まない。失敗したextractionでは空
+    ├── plugins[] — 要求されたrowの宣言。parserが解決した順。catalogがその名前を
+    │   どこでもofferしなければ空。失敗したextractionではnull
+    └── diagnostics[]
+```
+
+各catalog entryは`name` — それが解決するplugin名、宣言しなければnull — 、
+`fields[] { key, keyKind, value }`（そのpluginについてfileが書いた全key。
+`presentation.frontmatter`と同じentry shape）、そしてadmitした各ruleがそのentryの宣言済み
+sourceから答えるものである: `sourceForm`、`pluginRoot`、`manifestPaths[]`。
+
+`sourceForm`はそのpluginのfileがどの種類の場所から来るかであり、各製品が文書化する形式を
+写し取った閉じた集合である — `repository-directory`、`github-repository`、`git-repository`、
+`git-subdirectory`、`npm-package`、`zip-archive`、`command-output`、そしてadmitしたvendorが
+どの形式としても文書化していないsourceに対する`unrecognized`。vendor自身のtokenではなく種類で
+あるのは、1つの場所に複数の綴りがあるからであり、rootから導出せず並べて公開するのは、Sourceの外へ
+出る相対pathは「ruleが読めた形式」かつ「名指せないdirectory」であり、npm packageはそもそもここの
+どのdirectoryも名指さないからである。rootだけを持つsurfaceは両者を同じ不在として述べてしまう。
+manifest carrierの宣言は`repository-directory`である: pluginとはそのmanifestを置くdirectoryである。
+
+`pluginRoot`はそのpluginのfileが占めるSource相対directoryで、sourceがここのdirectoryをまったく
+名指さない場合 — repository directory以外のすべての形式、およびrootを出るrepository相対path —
+はnullになる。`manifestPaths[]`はそのroot内で、clientがpluginの自己宣言として読む
+fileであり、順序付きで重複は無く、そうしたsourceでは空になる。形式は1製品のものではなく認識する
+全製品のものである: rootのどのfileがpluginの自己宣言かは各vendorのcontractであり、3製品が読む
+1つのcatalogは1つのpluginを1つのrootへ解決しつつ、そこで探す形式のlistを3つ持つ。1製品分の
+listだけを渡されたsurfaceは、pluginのfileとしてそのmanifestを列挙しながら、このscanは
+そのpluginのmanifestを持たないと述べてしまう。いずれもdisk上を探らない: entryが宣言した内容を
+vendorのcontractに従って読んだものであり、このrepositoryが持たないrootも、manifestを同梱しない
+rootも、generationがfileを持たないpathを名指す。fileが実在するかは`files[]`が述べ、これらのpathを
+開くsurfaceはcommitが持つものだけを残す。これらが、surfaceにentryではなく
+pluginを見せることを可能にする: pluginがどのfileを同梱し、そのどれが自身のmanifestかは、
+どのclientもpathから導けない知識だからである。どちらの形のmanifestもそのようなparseを
+持たない。理由は同じで、responseが運ぶのはfile自体である。このtreeがresponse shapeであり、clientは
+これらのfieldだけに依存でき、それ以外は無い。各値はfileのliteralである: credentialは書かれた
+文字のまま、environment referenceは決して解決されず（FR-026）、manifestが指すcomponent —
+bundled skill、`.mcp.json`、`.app.json`、hook file、asset — はここでは宣言された値であり、
+決して開かれない（`codex.excluded.plugin-files`）。Responseはpluginがinstall済み、有効、
+trusted、loadedであるとは何も述べない: 4つとも本製品が決して読まないUser stateである（FR-009）。
+Inert rendering、single request、request tokenの規則は`get-file-detail`と同じであり、
+`(clientDataEpoch, sourceRelativePath)`のcaptureも同じである。
+
+Outcome: `PluginCarrierDetail` result — parse済みで要求された名前を何もofferしないcatalogは
+`plugins`が空のresultであってrejectionではない。現在のcommit済みgenerationがそのpathにplugin recognitionを
+持たない場合は`stale-resource` rejection — 一度もscanされていないか、後のcommitで削除されたか
+である。別の型の値も同じく解決されるため、malformed-argumentの独立したoutcomeは存在しない。
+Disable fenceがnon-nullの間は`global-disable-pending` conflict rejectionである。
+
+### `agent-customization-inspector:get-plugin-file-detail`
+
+Parameter: pluginを宣言するcarrier — そのSourceとSource相対Path — 、その読み取りでfileに到達した製品、読み出すrowのplugin名
+（listを閉じるrowではnull）、そして読むfileのSource相対Pathを持つobject 1件。
+
+```json
+{
+  "sourceRelativePath": ".agents/plugins/marketplace.json",
+  "source": "repository",
+  "tool": "codex",
+  "pluginName": "config-helper@inspector-examples",
+  "filePath": ".codex/rules/team.rules"
+}
+```
+
+`get-file-detail`の変種ではなく独自の関数である。subjectが「このpluginのfileとしての」fileだから
+である。`get-file-detail`はfileがsubjectであるrowについて答えるが、plugin root配下のfileには
+そのようなrowが無い: そこに列挙されたことでrule、recognition、kindのいずれも得ない
+（contracts/inspection-path-allowlist.ja.md § Bounded companion census）。ruleが独立にadmitする
+path — nestedな`SKILL.md`、宣言されたpermission policy、MCP carrier — は自身のkindのrowを保持し、
+そのrowはそれぞれの関数で答える。この関数はpluginのpageについて答える。そこでのsubjectはpluginで
+あり、fileはそれが同梱するfileの1つである。
+
+carrierと製品がparameterであるのは`get-plugin-carrier-detail`のそれらと同じ理由である: offeringが
+どのdirectoryを名指すかは各vendorのcontractなので、pluginがどのfileを同梱するかは1つの
+`(file, tool)` carrierによる1つのrow名の読み取りについての事実である。pathが読める条件はmembership
+である: fileはそのcarrierのそのrow名のofferingが到達したdirectory配下に無ければならない。したがって
+この関数でplugin名を通じて任意のfileを読むことはできない。
+
+戻り値はActive-generationのresult 1件で、commit済みfileの記述された完全なsource（FR-025）と、
+commitの決定的順序でのそのfile自身のdiagnostic（FR-028）を持つ。parseは伴わない: pluginのfileは
+そのfileとして公開され、それを認識するkindは自身のdetailでparseを公開する。
+
+Outcome: 通常のdata envelope。`stale-resource` rejectionは、その製品についてpathにplugin
+recognitionを持つcommit済みgenerationが無いとき、offeringがそのpathを含むdirectoryに到達していない
+とき、またはこのcommitがそこにfileを持たないとき。他の型の値も同じく解決しないので、malformed-argument
+outcomeは別に存在しない。disable fenceが非nullの間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:get-permission-policy-detail`
+
+Parameters: `get-file-detail`とまったく同じく、SourceとCommit済みSource相対Pathを名指す
+object 1件を取る — policyを宣言するfileのidentityであり、これがpermissions rowの同一性である
+（FR-030）。Consent済みmemberのsettingsやrules fileもpermission policyを宣言するためである
+（FR-016、FR-017）。
+
+```json
+{ "sourceRelativePath": ".codex/rules/deploy.rules", "source": "repository" }
+```
+
+Active-generationのpermission policyを1件、宣言するproductが綴る形で返す。Permissions rowが
+名指すのはfileではなくpolicyであるため、そのdetailはこのfunction自身のresultである: ある
+vendorはpolicyをそれ自体1つのdocumentとして書き、別のvendorは、残りのkeyが別のrecognitionの
+内容であるsettings fileの中で宣言する。file形のresult 1つでは、対象ではないfileについて
+答えねばならなくなる。
+
+```text
+PermissionPolicyDetail — form: 'whole-document' | 'declared-block'
+├── form 'whole-document' — 宣言するfile全体の内容がpolicyである:
+│   ├── file — encodingで判別する1つのCustomizationFile。`get-file-detail`が
+│   │   公開するものとまったく同じで、readable textはsourceTextを持つ
+│   └── diagnostics[]
+└── form 'declared-block' — policyはcarrierの1 blockであり、その他のkeyは別の
+    recognitionに属する:
+    ├── file — encodingで判別するcarrierのcontent-free summary。
+    │   `get-mcp-carrier-detail`が公開するものとまったく同じで、sourceTextは持たない
+    ├── declaredPolicy[] { key, keyKind, value } — 宣言されたblock自身のentryを
+    │   parserの解決順で。`presentation.frontmatter`が使うのと同じentry shapeで
+    │   あり、extractionがall-or-nothingで失敗したときにちょうどnull（FR-028）。
+    │   そのDiagnosticは下にある
+    └── diagnostics[]
+```
+
+この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
+
+`whole-document`のpolicyは、authorが書いた1つのdocumentとしてserveし、そこから何も読み出さない:
+Codexの`.rules` fileのvendor contractはStarlarkから`runtime-reference` relationshipだけを認め、
+commentと未収載の式をsource textのままに残す（contracts/vendors/openai-codex.md § Normative
+initial-release presentation allowlist）うえ、edgeを生成するshipped recognitionも存在しない。
+何も読み出さない以上、読み出しに失敗することもないため、このformはextraction diagnosticを
+生じない。
+
+`declared-block`のpolicyは同じ原則を反対側から見たものである。このfileは1つのblockを公開する
+ためにadmitされたcarrierなので、そのblockを公開し、自身のbytesは決して公開しない。MCP carrier
+とまったく同じである（FR-007） — Claude settings fileのその他のkeyは`settings/config`
+recognitionの内容であり、permissions responseには届かない。Blockは丸ごと公開する。authoredな
+objectが持つ全entryをparserの解決順で公開するのであり、一部のkeyだけをallowlistすると、どの
+authored policyを落としたか言えないまま落とすことになるからである（FR-028）。Rule文字列は
+authorが書いたtextのまま運ぶ: tool名と任意のspecifierであって、file・command・domainへ解決する
+ことはなく（contracts/vendors/claude-code.md § Normative initial-release presentation
+allowlist）、何かに対して評価することもない（FR-019）。inert rendering、single request、
+request tokenの規則は`get-file-detail`と同じで、`(clientDataEpoch, sourceRelativePath)`の
+captureも含む。
+
+Outcome: `PermissionPolicyDetail` result。現在のcommit済みgenerationがそのpathにpermissions
+recognitionを保持しないときは`stale-resource` rejection — 走査されたことがない、後続のcommitで
+削除された、あるいはgeneration間で宣言blockが取り下げられたcarrierである。別の型の値も同じ経路
+で解決するため、malformed-argumentの独立したoutcomeは存在しない。Disable fenceがnon-nullである
+間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:rescan-repository`
+
+Parameters: なし。
+
+Repositoryにrunning/queued commandがない場合だけ1 scan commandを受理する。Hostはadmission時に
+opaqueな`scanRequestId`を1つ生成して`ScanAdmission { scanRequestId, source }`を返す。Returned
+Source/progressの両方と、このcommandに対する後続のqueued、active、complete、partial、failed
+statusはすべて同じIDを保持する。Successfulなcommit済みgenerationはそのIDを記録し、以前のstatus
+またはinventoryはこのrequestを満たせない。Coordinatorがidleなら直ちに開始し、別transactionが
+activeならFIFOへqueueし、Repository summaryは`status: scanning`、`progress.phase: waiting`、
+non-null `queuedAt`、null `startedAt`を返す。Jobはrequest時ではなくdequeue時のRepository sequenceの
+committed generationから開始する。CompleteまたはpartialのreplacementをexactにRepository
+generation N+1としてatomic publishするまでcurrent Repository generationをreadableに保つ。
+PublicationはRepository fileを含む全detail/comparison viewをinvalidateする — file identityは
+Source-relative Pathであり安定なので、保持されたlinkは新しいgenerationに対して解決される。
+Global sequence、そのgeneration、Global-onlyのviewには触れないため、clientはRepository dataだけを
+再取得する。明示rescanが
+commit前にfailureとなった場合、provisional partial resultを含む全uncommitted resultをdiscard
+する。Last committed generationとそのIDをreadableなまま保ち、top-level snapshotは
+`stale-after-fatal-rescan`、Repository Sourceは`failed`となる。決定的にreturnされたfatal outcome
+はclosedなactionable lifecycle Diagnosticを使用し、unreadableなselected rootは`root-unreadable`を
+使用する。1 fileに限定されないthrow/rejectionは全domain layerを越えてpropagateし、accepted job
+は同じ`scanRequestId`についてfailed requestのerror messageをretainする。どちらの場合も
+`staleFailures` entryはexactにそのfailure representation、すなわち
+`{ kind: 'diagnostic', diagnosticId }`または`{ kind: 'error', message }`を運ぶ。後のsuccessが
+両方をclearし、別Sourceのcommitは両方を保持する。
+
+この呼び出しは、admissionの時点ではなく、admitしたscanが終端状態 — completeまたはpartialな
+generationのcommit、あるいはfailure — に達したときに解決する。したがって返す`source`はscanが
+残したままのSourceであり、応答の後に再取得するclientは追加の要求なしに結果を見る。Admission、
+request ID、duplicate conflict、disable fenceはこれによって変わらない。実行中または待機中に
+fenceに捕まったcommandは`global-disable-pending` conflictで応答する。
+
+Outcomes: Request IDと、scanが残したままのsource summary付きacceptance result。Duplicate
+running/queued Repository commandだけ`scan-in-progress` conflict rejection。Disable fenceが
+non-nullの間は`global-disable-pending` conflict rejection。
+
+### `agent-customization-inspector:open-file`
+
+Parameters: fileのidentity全体と、渡す先のapplicationを名指すobject 1つ。
+
+```json
+{
+  "sourceRelativePath": ".claude/skills/deploy/SKILL.md",
+  "source": "repository",
+  "target": "visual-studio-code"
+}
+```
+
+commit済みSource-relative Path、それを保持するSource（`get-file-detail`が名指すのと同じ
+`repository`または`global-<member>`）、そして閉じたtarget集合
+`visual-studio-code | sublime-text | terminal-editor | default-application | containing-folder`の1メンバー。
+
+名指されたfileを、hostが動いているmachine上の名指されたapplicationで開く。絶対pathはhostの
+ものであるためhostがlaunchを行う: clientがSourceのrootとして受け取るのは一方向の
+`displayRoot` escapingだけであり（data-model.md § SourceBoundary）、pageは他のrequestと同じ
+identityを送るだけで、自らpathを保持しない。Identityは何かをlaunchする前にcurrentのcommit済み
+generationへ解決されるため、launchが受け取り得る絶対pathはこのsessionが公開したものだけである
+（FR-022）。どのrootと結合するかを決めるのはSourceである。すなわちrepositoryの選択されたroot、
+またはそのtoolのconsent controlが保持している正確なadmitted rootである。Path単独では、session
+が先に列挙したSourceの方を開き、読み手が指していないrootのfileを渡すことになる（FR-030）。
+
+各targetが届く先:
+
+- `visual-studio-code`と`sublime-text`は、hostがportをbindする前にこのmachineで解決した
+  editorへ届ける — `PATH`上のeditor command、またはcommandが`PATH`に無いときは既知の
+  install場所にあるlauncher。Lookup前に、inspectedなroot — 選択したRepository rootと、session-startのpersonal-setup captureにある各`eligible` member — の内側にある候補directoryをすべて除く。Relativeまたはemptyな`PATH` entryはinvocation directoryからresolveし、残った各directory内のabsolute candidateだけをexecutable resolverへ渡す。既知のinstall directoryにも同じprefilterを適用する。Separatorを含む`EDITOR`/`VISUAL` spellingもresolveし、root内ならlookup前に拒否する。残ったcandidateは、物理的な位置でもう一度比較する。outside spellingがinspected contentへのsymbolic linkであることがあり、executable resolverはそのoutside spellingを保持するので、解決した位置を、startupが確定してspellingの隣へ渡すRepository rootの物理的な位置と、proposed personal-setup rootすべてのspellingに対して比較する。物理的な位置を確定できない失敗はlauncherを認可してはならず、2つの失敗は同じではない。path condition — そのpath自身の状態、すなわちそこに何も無い、途中の要素がdirectoryでない、拒否される、link cycleである — はそのcandidateを拒否する。どこにあるかがofferしてよいかを決めるので、答えられないcandidateは比較に通ったのではなく飛ばしたからである。それ以外のfilesystem失敗は、pathについての答えとして読まず、requestの通常のerrorとして伝播する。
+
+残余は2つあり、いずれも代替の代償の方が大きい。FR-013は読み手のactionより前にproposed personal-setup rootをresolveすることを禁じるので、linkで到達するmember homeはspellingだけで比較する — SC-004がlocal filesystemとlexicalに識別できないnetwork filesystemについて記録するのと同じ種類である。そしてRepository rootの物理的な位置はstartupで一度だけ確定するので、その時点で存在せず、後に修復または置換されて再scanに成功したrootも、spellingだけで比較する。そこへ到達するには存在しないrootでlaunchし、かつ読み手がそこに作ったものへ向く`PATH` entryが要る。これはFR-019が機構を建てないと決めているadversarial-workspaceの形である。
+
+Inspected contentの下にある実行fileはinspected contentから選んだ宛先であり、FR-022がそれを禁じる（FR-020）ので、repository自身の`node_modules/.bin`や`bin/`はeditor候補としてprobeさえしない。一方、machine上の他の場所にある同じdirectoryは読み手自身のtoolingであり、検索する。ただしmacOSでは、そのlauncherではなくapplicationの名前で
+  documentを渡す。editor自身のcommand-line scriptはeditorのuser data directoryを`HOME`から
+  解決するため、`HOME`が読み手自身のものでないhostでは、その配下に2つ目のinstanceを起動し、
+  fileはどこにも開かないからである。名前はLaunchServicesが登録済みの全bundleに対して解決される
+  ので、inspected repositoryが同名のbundleを持てばそちらが起動し得る。これはFR-019が受け入れる
+  残余であり、下の`osascript`の綴りと同じ条件による。workspaceは読み手が既に信頼しているもので
+  あり、これを塞ぐ機構こそFR-019が追加を禁じるものである。
+- `terminal-editor`は、`$EDITOR`または`$VISUAL`が指すeditorを実行するterminal windowを開く。
+  どちらもterminal editorを指していないとき — 未設定であるか、指されたeditorが自前のwindowを
+  持つとき — はPOSIXが既定とする`vi`を実行する。macOSのinstallはそれらの変数を設定しないためである。
+  これはhostがそのwindowを開ける場所 — macOSで、OSの`osascript` automation hostを通じて — にだけ現れ、
+  そこでeditorのcommandが解決できるときにだけ現れる。Terminalはcommand行を実行することでprogramを載せるため、
+  これはargumentがshellへ到達する唯一のlaunchである: pathは固定scriptへargumentとして渡し、
+  command行への挿入はautomation host自身のPOSIX shell用quotingが行うため、shellのmetacharacterを
+  含むauthoredな名前も1つのliteralなargumentのままである。macOSは最初のrequestを一度きりの同意dialogで
+  gateし、readerがそれに応じないこともあるため、そのhostへの待ちには上限がある。
+- `default-application`は、そのkindのfileに対してこのmachineが登録しているhandlerへfileを渡す。
+- `containing-folder`は、fileのdirectoryを同じ登録済みhandlerへ渡す。これが各platformで
+  folderを自身のfile managerで開く方法である。その中で何かが選択されることはない: readerが
+  求めたのはfolderだからである。
+
+`get-session` snapshotの`fileOpenTargets`は、このmachineでこのfunctionが受理する集合そのもので
+あり、surfaceが提示する順に並ぶ。Hostが解決しなかったeditorはそこに存在しない — hostはeditor自身の
+executableを検証するため、surfaceはhostが起動できないeditorを提示しない。2つのhandler targetは
+別である: それぞれはplatform自身のhandler launcherへのhand-offであり常に提示される。fileに対して
+handlerが登録済みかどうかはそのmachine自身の状態で、launchする以外のどのprobeも答えられない。
+launcherが欠けているかhandlerを持たないmachineでは、そのlaunchの通常のerrorとして報告される。Resultはpayloadを持たない: launchを
+要求したことだけを報告し、machineがそのfileをどう扱ったかについては何も述べない。それはその
+machineの領分である。
+
+Outcome: payloadがnullのcommand result。あるいは、currentのcommit済みgenerationがそのpathに
+fileを保持しないときの`stale-resource` rejection — scanされたことがない場合と、pageが描画された
+snapshotを置き換えたcommitで削除された場合は区別できず、同じように応答する。閉じた集合の外の
+targetは、このproductが出荷していないclientであり、宣言されたfunctional outcomeではなく通常の
+errorとして伝播する。
+
+### `agent-customization-inspector:get-global-consent-preview`
+
+Parameters: なし。
+
+既にcurrentなprocess-memory previewだけを返す。Environment valueをcaptureせず、previewを
+create、replace、invalidateしない。Active consentまたはregistered initial enableがある場合はその
+exact frozen previewを返す。Disable fenceがnon-nullの間は、control-only recovery viewがrevoke
+対象consentを表示できるよう、barrierのexact `frozenPreview`を返す。Current unconsented previewも
+frozen previewもなければ`consent-preview-missing` rejectionを返す。Read-onlyなcurrent-preview
+lookupのままでworkをscheduleしない。
+
+Outcomes: currentまたはfrozenの`GlobalConsentPreview`。`consent-preview-missing` rejection。
+
+### `agent-customization-inspector:create-global-consent-preview`
+
+Parameters: なし。
+
+候補Global pathへ触れる前に、immutableなstartup inputからunconsentedなlexical/session-scoped
+previewをatomicにcreateまたはreplaceする。
+
+```text
+GlobalConsentPreview
+├── previewId, allowlistVersion, traversalPlanVersion
+├── entries[] { member, origin, displayRoot, inputState }
+└── excludedRuleIds[]
+```
+
+Editor-launcher探索前のsession startupで、serverは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
+`CODEX_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
+empty stringはpresentとする。そのsessionでimport済み`node:os.homedir()`を
+正確に1回callし — 共有agent home memberは常にそこからderiveされる — 、対応するabsent entryについてactive-platformの`node:path.join`と固定suffix
+`.copilot`、`.claude`、`.codex`を、共有agent homeについて固定suffix `.agents`を使う。`member`はclosedな
+`copilot | claude | codex | agents`集合 — 3つのtool homeと共有agent home（FR-045） — の1つであり、
+`…Tools`と綴られるcontrol/batch fieldはすべてこのmember idを運ぶ。`HOME`、`USERPROFILE`その他home sourceを独自選択せず、
+lexical capture/joinはexistence checkを行わない。それらのvariableは候補Global rootの特定だけに
+使い、inspected content内のreferenceのsubstitutionには使わない。その1つのimmutable captureをsession全体で保持する。Eligible entryを選択済みRepository rootと合わせて完全なlauncher-exclusion setとし、許可されたcreate invocationはすべてprocess inputを再読込せず同じ4 stringを使う。Serializeしないfrozen internal
+preview recordは、各entryの`lexicalRoot`をexact raw stringとして追加保持する。Empty、relative、
+invalid、control-containing、backslash-containing valueは別の`inputState`とともにexact raw
+stringのまま保持する。
+`displayRoot`は`lexicalRoot`由来のone-way presentation escapeであり、pathへdecodeせずadmission
+inputにも使わない。候補Global root配下の`stat`、`realpath`、directory enumeration、file readを
+行わない。Node.jsと実行環境がvalueを保持・escapeできるかを決める。Startupのenvironment capture、
+`homedir()`、join、classification、retention、presentation encodingのthrowは、sessionもbrowserも存在しないownerless launchをfailさせる。その後のcomplete preview objectのconstruction failureはaccept前RPC boundaryへ到達し、invocationをordinary errorでrejectしてprior current previewを変更しない。DTO/transport serialization failureはcomplete previewをbindした後に起こり得るrequestのordinary errorであり、successful resultがdeliverされなくてもnew previewがcurrentとして残り得る。どちらのfailureもjob、`scanRequestId`、read authorityを作らず、normalization、canonicalization、
+root creation、readを行わない。
+それ以外では`displayRoot`がescape済みの正確なlexical valueを示し、invalidなempty/relative
+overrideはdefaultへ戻さずinvalidと表示する。Completeにconstructedされたpreviewは、resultのserialize前に
+prior unconsented previewをatomicにreplaceし、internalでserializeしない`previewEpoch`を1回incrementする。Active consentでは`consent-preview-frozen`
+conflict rejection、registered enableでは`global-enable-in-progress` conflict rejection、disable
+fenceでは`global-disable-pending` conflict rejectionを返し、process inputの再読込もstate change
+も行わない。Read functionがfresh-client recovery用のexact frozen previewを提供し、別previewには
+先にdisableが必要となる。Previewはserverが保持するopaque `previewId`で識別する唯一のrecordで
+あり、enableとretryはそのIDを指名する。Serverは自身のstored recordだけに基づいて動作し、
+server-retained stateのcryptographicな再検証は行わない。
+
+Previewは意図的にpatternごとの表示を持たない。Admitted root配下で何をreadするかは、保持済み
+`allowlistVersion`/`traversalPlanVersion` pairが特定するshipped static typed `TraversalPlan`で
+固定され、consent文言がその範囲を平易な言葉で説明する。Consent/root admission後、exact-file ruleは指定fileだけを
+readしてGlobal rootをenumerateせず、fixed-instruction-subtree ruleはそのwalkに必要なplan指定
+instruction subtreeだけをenumerateする。どのoperationもsibling setting、credential、state、
+plugin、その他neighbor pathをlist、stat、readしない。
+
+Codex planだけは`codex-global-first-non-empty`を使う。まず`AGENTS.override.md`をreadし、override
+がnon-emptyなら`AGENTS.md`へ一切operationせずshort-circuitし、absentまたは安全にreadしてemptyと
+確定した場合だけ次へ進む。`absent`はoverride fileが存在しないことを意味する。Unreadableまたは
+binaryなoverrideは、そのfile Diagnostic（`file-unreadable`または`file-content-binary`）で
+selectionを終了し、fallbackしない。Optionalな先頭UTF-8 BOMだけ、またはwhitespace-only contentは
+`decodedText.trim().length === 0`のもとでemptyとする。`utf-8-replaced`は通常textとして参加し、全
+`U+FFFD`はnon-whitespaceである。Non-emptyなCodex instruction fileを最大1件だけpublishする。
+
+Outcomes: 作成した`GlobalConsentPreview`。`consent-preview-frozen`、
+`global-enable-in-progress`、`global-disable-pending` conflict rejection。またはそのrequestのordinary error。Preview construction failureはaccept前でprior previewを保持し、DTO/transport serialization failureでは新しく作成したcomplete previewが保持され得る。
+
+### `agent-customization-inspector:enable-global`
+
+Parameters:
+
+```json
+{
+  "confirmed": true,
+  "allowlistVersion": "2026-08-27",
+  "previewId": "opaque-preview-id"
+}
+```
+
+Result data:
+
+```text
+GlobalEnableResult
+├── state: queued | active-no-job
+├── scanRequestId: opaque ID | null
+├── acceptedTools[]（member enumを0〜4個）
+└── rejectedTools[]（member enumを0〜4個）
+```
+
+UIはそのpreviewの4 memberすべての正確なGlobal path集合、lexical input state、exclusionを表示した
+後だけ送信できる。Hostはfalse confirmation、古いcontract version、superseded previewを
+拒否する。
+
+このproductのconfirmationはこれだけではない。launch commandの`--inspect-personal-setup`
+optionはhostが存在する前に同じ判断を述べ、CLIはそこで同じregistration、admission、
+settlement、batchを実行する。すなわちこのfunctionが行うsequenceであって、function自体では
+ない（FR-013）。CLIはbatchをawaitするため、その形のlaunchはGlobal generationがcommit済みの
+状態でoriginをprintし、sessionはactive consentを保持する。その後このfunctionへ送られた
+confirmationは、server導出の`retryableTools`が非空なら同一previewのretryを実行し、retryする残りが無いときに`no-retryable-global-tool` refusalになる。Stored internal raw `lexicalRoot`とstored typed
+traversal programだけを使い、environment inputを読み直さず、`displayRoot`をreverse-convertしない。
+Parameterは意図的にmember selectorを持たない。Initial
+enableは、すでにlexicalにinvalidなentryも含むfrozen preview entry 4件すべてからexact fixed
+`[copilot, claude, codex, agents]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
+すなわちunpublishedかつnon-pendingのadmitted controlとsame-preview rejected controlだけをexactに
+deriveする。Lexical `new-preview-required` controlにはdisableとnew previewが必要となる。Clientは
+toolを追加、omit、remove、reorderできない。
+
+Confirmation field検証後、coordinatorはexact 1つの`GlobalEnableOperation`をregisterし、1つの
+provisional transactionがderived set全体をevaluateする間は
+`globalEnableInProgress { kind, operationId, previewId }`だけを公開する。Duplicate enableは
+`global-enable-in-progress` conflict rejectionを返す。このprojectionはtool outcome、root、
+context、Source、job、authorityを一切publishしない。Empty、relative、invalidなentryは
+filesystem callなしの決定的rejectionとする。Eligibleなabsolute rootがmissingまたはreadable
+directoryでない場合は、他toolのcommitを妨げずにそのtoolをabsentまたはfailedとして記録する
+（FR-014）。1 toolのfileに限定されないunexpectedなthrow/rejectionはdomain classificationなしで
+RPC ownerへpropagateする。Initial enableではjob accept前に発生するため、invocationをordinary
+errorでrejectし（`scanRequestId`を作らない）、consent/control/jobをactivateせず、provisional
+subsetを一切commitしない。Retryでは既存consent/controlとprior snapshotを変更しない。どちらの
+accept前failureも`globalEnableInProgress`をunregisterし、terminal operation historyをretain
+しない。
+
+そのようなexceptionなしでvalidationが終了すると、`acceptedTools`と`rejectedTools`はdisjointかつ
+uniqueなfixed-member-order arrayとなり、そのunionがtransactionでevaluateした全memberと一致する。
+Coordinatorは4 memberすべてのcontrolを持つinitial consentをatomicにactivateする。Rootを1つも
+admitしなければ、`state: active-no-job`、null `scanRequestId`、Source/job/generationなしで返し、
+disable用controlに加え、`retryDisposition`が許可する場合だけsame-preview retry用controlを維持
+する。それ以外では`scanRequestId`を1つallocateし、全admitted rootを1つのprovisional batch scanへ
+transferし、`state: queued`を返し、そのbatch commit前にSourceを一切publishしない。同じatomic
+acceptanceで、promote済み`scanRequestId`、member set、`phase: waiting`、null `failureRef`を持つ
+`globalControl.pendingTools`と`batchStatus`をpublishし、fresh pollingによるlost acceptance
+recoveryを可能にする。Member rootごとにSource identityは分離するが、admitted subsetの全
+ready/partial Sourceはexact 1つのGlobal generationへ同時に現れる。すなわちenable commitがGlobal
+sequenceをgeneration 1として作成し、既存Global Sourceの隣で行うretry batchはそのsequenceの
+exactなN+1をcommitし、per-member commitはpollから観測できない。その1 commitはcarried Global
+Sourceのstable Source ID/semantic contentを維持し、
+old Globalのdetail/comparison/editor stateをinvalidateし、該当する決定的tool failureをclear
+する。Repository sequence、そのgeneration、Repositoryのviewには触れない。
+
+Operationは、各eligible memberのasync probe前後、complete admission後、同期的settlement開始時に、
+sessionのregistrationが自身の`operationId`を引き続き指していることをcheckする。Enable専用のepochや
+abort signalを運ばず、previewまたはactive control stateも複製しない。Registrationが存在する間はpreview
+creationを拒否し、retryはsettlementまでactive stateをmutationしないからである。Settlement入口の
+operation-ID check直後、coordinatorはinitial consent/controlを同期的かつatomicにactivateするかretry
+partitionを適用し、admitted subsetがnonemptyなら単一batchを作成する。Disable-first orderingはregistrationを
+clearしてdrainし、late mutationなしの`global-disable-pending` conflict rejectionを返す。Operation-firstのqueued acceptanceは後の
+barrierがbatchをcancelしてもaccepted dispositionのままとする。Queued acceptance後の
+throw/rejectionは同じnon-null `scanRequestId`のterminal failureとし、subset
+Source/generationをcommitせずprior snapshotを維持する。Initial/retry admitted-subset Global
+batchではDiagnosticも`StaleSourceFailure`も作らず、代わりにoperation-wideなfailed-request
+error messageを1件failed `batchStatus`にretainする。後のretryとdisableにはsession projectionで
+定義した正確なclear/supersede lifecycleを適用する。
+
+同じexact consentをretryできるのはserver-derived `retryableTools` projectionがnonemptyの場合だけ
+とする。そのexact eligible subsetは単なるSource absenceではなくserverがderiveし、clientはnarrow
+できない。別preview/rootまたはlexical `new-preview-required` controlには先にGlobal disableが必要
+で、empty projectionなら`no-retryable-global-tool` conflict rejectionとする。Non-retryableな
+missing toolが存在すること自体は別のactive-consent conflictを作らない。全entryがlexicalに
+invalidなpreviewもconfirmでき、決定的な`active-no-job` stateを返すため、別の
+`no-eligible-global-root` outcomeは存在しない。
+
+この呼び出しは、admitしたすべてのmemberのscanが終端状態 — batchのcommit、または`batchStatus`に
+retainされるそのfailure — に達したときに解決する。したがって`queued` dispositionはGlobal
+generationがcommit済みの状態で応答され、応答の後に再取得するclientは追加の要求なしにそれを見る。
+`active-no-job`は何もqueueしていないので直ちに解決する。Lost responseでもbatchは失われない。
+Batchは`batchStatus`にretainされ、fresh pollがそれを回復する。Disable fenceに捕まったbatchは
+`global-disable-pending` conflictで応答する。
+
+Outcomes: acceptance result。`consent-required`、`allowlist-version-mismatch`、
+`consent-preview-mismatch` rejection。`no-retryable-global-tool`、
+`global-enable-in-progress`、`global-disable-pending` conflict rejection。もしくはunexpectedな
+accept前throw/rejectionではそのrequestのordinary error。
+
+### `agent-customization-inspector:rescan-global`
+
+Parameters:
+
+```json
+{ "sourceId": "opaque-enabled-global-source-id" }
+```
+
+Global disableがpendingでない場合だけ、指定したenabledなmember Global Sourceのscan
+commandを1つ受理する。`sourceId`はopaque IDでありpathではない。Repository rescanと同じFIFO、
+dequeue時base generation、atomic publication、progress、invalidation、serialization ruleを
+Global sequence内で使う。すなわちsuccessful commitはそのsequenceのexactなN+1であり、Globalのviewだけを
+invalidateし、Repository sequence、そのgeneration、Repositoryのviewには
+触れないため、clientはGlobal dataだけを再取得する。
+そのSourceのrunning/queued scan commandは最大1つで、duplicateを暗黙coalesceしたり2回目のreadに
+したりしない。Admissionは`ScanAdmission { scanRequestId, source }`を返す。このopaque request IDは
+returned Source/progress、commandの全後続status、そのcommandがcommitするgenerationで同一とする。
+
+Failed Global rescanは何もcommitせず、そのfailed attemptからpartial resultを0件publishする。
+Top-level `snapshotState: stale-after-fatal-rescan`、Sourceのnull `progress`と`status: failed`を
+返し、`enabled: true`、正確なconsent、validated済みsingle-root record、last committed graph、その
+graphの全IDを保持する。そのSourceの`staleFailures` entryだけを作成または置換し、そのentryが
+retained snapshotのstaleを説明する。決定的にreturnされたfailureはactionableなlifecycle
+Diagnosticを参照し、1 fileに限定されないthrow/rejectionはdomainを越えてpropagateし、この
+`scanRequestId`についてfailed requestのerror messageとしてretainされる。後の同じSourceに対する
+successfulなcompleteまたは
+partial rescanがgraphをatomic replaceして両方をclearし、別Sourceのcommitは両方を保持する。
+
+この呼び出しはRepository commandとまったく同じく、admitしたscanが終端状態に達したときに解決する。
+返す`source`はscanが残したままのSourceであり、応答の後の1回の再取得が結果を示す。実行中または
+待機中にfenceに捕まったcommandは`global-disable-pending` conflictで応答する。
+
+Outcomes: Request IDと、scanが残したままのsource summary付きacceptance result。Unknown/removed
+Source IDは`stale-resource` rejection、Global disableがpending/activeなら`global-disable-pending`
+conflict rejection、そのSourceのrunning/queued scanとduplicateなら`scan-in-progress` conflict
+rejection。
+
+### `agent-customization-inspector:disable-global`
+
+Parameters: なし。
+
+Result data:
+
+```text
+GlobalDisableResult
+├── state: disabled | no-op
+├── operationId: opaque ID | null
+├── commitKind: cleanup-only | remove-active-state | null
+└── repositoryGeneration
+```
+
+これは単なるGlobal Source削除commandではなく、全inspection dataに対するpriority security
+barrierである。SPAは送信前に中央full purgeを実行する。True no-opを許可するのはactive/queued
+Global authorityもretained disable failureも一切ない場合だけとする。Ordinaryなaccept前
+result-binding gateを使い、null operation/commit kindとunchangedな`repositoryGeneration`を返し、
+`globalContentEpoch`をincrementせずRepository workへ干渉しない。どのdisable dispositionも
+どちらのsequenceにもgenerationをcommitしない。すなわち`repositoryGeneration`は常にunchangedな
+Repositoryの値であり、successful `remove-active-state`の後はGlobal sequenceが存在しないため、
+次のfull snapshotは`globalGeneration: null`を報告する（FR-042）。Validationまたはresult
+constructionがbarrier受理前に失敗した場合、invocationをordinary errorでrejectして何も
+mutateしない。Fresh sessionのfenceはnullなので、既にpurge済みのclientは直ちにfull snapshotを
+recoverできる。
+
+Non-no-opのfirst acceptanceは必ずbarrier operationをatomicにallocateし、command epochと
+`globalContentEpoch`をincrementし、publication authorityを取消不能にrevokeし、non-null
+`globalDisableInProgress`を公開する。既存`globalControl`を`disabling`へ変えて`pendingTools`、
+`retryableTools`、`batchStatus`をclearする。Registered `globalEnableInProgress` operationと
+Global scanをabortし、queued Global commandのdequeueと全generation-mutating commandをfenceする。
+Repository rescan requestは`global-disable-pending` conflict rejectionを返し、既にrunningの
+Repository workはrevokeしてterminal disable success後の1回のrequeue用にholdする。Global
+enable/rescanも同じconflictを返す。Session functionは`GlobalFenceRecoverySnapshot`だけを返し、
+その他すべてのinspection-data functionは同じconflictを返す。Livenessはgreater epochとnon-null
+projectionを返し続ける。
+
+First acceptance時に`commitKind`を固定する。Public Global consent/control/Source stateが存在する
+場合だけ`remove-active-state`、public stateをpublishしていないoperation-local initial enableを
+cancel/drainするだけの場合に限り`cleanup-only`を選ぶ。Barrierはrevoke済みcontinuationをすべて
+drainし、最後のqueued-Global-work cancellation sweepを実行する。中断したGlobal workをrequeue
+せず、expected cancellationはDiagnosticを作らずerrorもretainしない。
+
+Barrierが`draining`または`committing`の間に受けたrequestは同じ`operationId`とterminal resultへ
+joinし、いずれかのtransport disconnectでもcancelしない。Drainまたはfinal assembly
+failureを含むaccept後のunexpectedなthrow/rejectionは、still-pendingなその
+invocationを実際のerrorでrejectする。`globalDisableInProgress.state`は`failed`となって同じ
+messageをその`message` fieldとしてretainし、processはaliveのまま、prior
+generationはinternalに残り、全inspection-data fenceを閉じたままとする。Failed cleanupでcontentを
+再公開しない。
+
+`failed` stateでの後続disable invocationはnew operationでidempotent cleanupを開始または再開し、
+exactな`commitKind`、base generation、frozen preview、既にincrement済みの`globalContentEpoch`を
+inheritし、retryではcontent epochを再incrementしない。再failureはsole retained disable errorを
+supersedeし、terminal successだけがこれをclearしてfenceを除去する。Cleanupを確認できない場合の
+fallbackはprocess restartだが、request-owned failure自体はprocessをexitさせない。
+
+Terminal successはresult-boundかつatomicとする。`remove-active-state`ではGlobal generation
+sequence全体、すなわち全Global Source、consent、control、root、preview、stale failure、tool
+Diagnostic、retained failure messageを破棄し、どちらのsequenceにもgenerationをcommitせず、
+fenceをclearしてunchangedな`repositoryGeneration`を返す。Repositoryのgeneration-owned IDは
+すべてvalidのままであり、後のre-enableは既にincrement済みのgreater `globalContentEpoch`の
+もとでGlobal sequenceをgeneration 1から再開する（FR-042）。Hold済みRepository commandは1回だけ
+requeueされ、後でRepository sequenceのN+1をcommitできる。
+`cleanup-only`ではunpublished operation-local stateだけをremoveし、fenceをclearし、committed
+stateを一切変えない。すなわち両sequenceのgenerationとgeneration-owned IDは不変である。
+Concurrent joinerは同じterminal resultを受ける。
+
+Outcomes: no-op、joined success、retry success、first-attempt successではresult。Accept後
+failureではそのordinary error。Disable自体は`global-disable-pending`を返さない。
+
+## Concurrency/lifecycle
+
+- 1つのcoordinatorがcorrectness invariantとしてscan transactionをserializeする。1 Sourceあたり
+  runningまたはqueuedのscan commandを1つ受理し、duplicate scanはconflict、別のRepositoryまたは
+  member Global Source scanはFIFOへqueueしてwaiting phaseを示す。1 fileに限定された
+  failureはそのfileのDiagnosticになる（FR-028）。それ以外のscan/admission throw/rejectionは
+  domain state mutationなしでowning boundaryへpropagateする。Disableはpriority
+  barrierのjoin/no-op ruleに従う。全自動/明示scanは1つのopaque `scanRequestId`を受け、実際の
+  dequeue時にowning sequenceのcurrentなgenerationから開始する。
+- Workの停止はcancellation signalではなく、attemptのpublication authorityをrevokeすることで行う。
+  Revokeされたattemptのlate resultは破棄され、Source overlayはadmission前の状態へ正確に戻るため、
+  そのattemptが生成したものは何もcommitされない。実行中のreadはそのまま完了させる。中断しても、
+  破棄が既に与えているもの以上は得られないからである。Process shutdownはhostをcloseする前に全attemptを
+  revokeする。Global disableは上記priority barrierで、active uncommitted transactionをrevokeし、enable
+  validationをabort/drainして最後のqueued Global work cancellation sweep後にfixedなcleanup-only
+  またはremove-active-state dispositionを次にcompleteし、terminal success後だけ中断した
+  Repository commandを1回requeueする。Operationの完了はNode.jsと実行環境に従う。Disable、
+  shutdown、supersession、propagateされたfatal operation failureはpublication authorityを取消
+  不能にrevokeする。1 fileに限定されたoutcome（FR-028）だけでは、attemptのpublication authority
+  をrevokeしない。Revocation後は、late byte、graph record、Diagnostic、DTO resultをすべて
+  破棄する。取消不能なkernel operationを物理的にcancelできるとは保証しない。
+- Successfulなcompleteまたはpartial scanはowning sequence内で正確にN+1をcommitし、公開する
+  Source — scanned Sourceと、Global batch commitでは新たに公開する各member Source — について、
+  そのsequenceのgeneration所有graph IDを再生成する。carried Global Sourceはrecordと
+  IDを保ち、snapshot adoptionが置き換えるgenerationを通じてのみ無効化される。Process-lifetimeで
+  stableなSource IDと、他方のsequence全体、すなわち
+  そのgeneration、ID、viewは変更しない。
+  Scanned Sourceのstale-failure entryと参照先failureだけをclearし、別Sourceの両方をcarryする。
+  Fatalな明示rescanはpartial resultを含む全uncommitted resultをdiscardし、owning sequenceのNと
+  IDをactiveのままにし、retained session snapshotをstaleにmarkして、affected Sourceの
+  `staleFailures` entryを1件
+  作成または置換する。そのentryはactionableなlifecycle Diagnosticを参照するか、failed request
+  のerror messageを運び、同じ
+  Sourceの再failureでは両方を置換する。RepositoryのNはlegalなbootstrap generation 0でもよい。
+  Global enable commitはそのsequenceをgeneration 1として作成し、disableはgenerationをcommit
+  せずにそのsequenceを破棄する（FR-042）。Barrier
+  cancellationは何もemitしない。
+- Session retrievalはNode process lifetimeを延長せずdataを永続化せず、product固有のtime
+  thresholdを定義しない。Liveness probeは存在しない——productは2枚目のbrowser tabをmodelせず、
+  host喪失はloopback socketのcloseとしてtransportが問い合わせなしにpageへ報告するためである
+  。全responseは引き続きcheckされるので、matching sessionでepochが等しく
+  disable projectionがnullのresultはcurrent baselineをconfirmする。Greater epochまたはnon-null
+  projectionではcontrol-only recoveryへ入る前に中央purgeを実行し、network/runtime failure、
+  channel loss、session mismatchではended view表示前にpurgeする。Page-lifecycle eventはpurge triggerではない: FR-027はdocument-liveness failureまたは同等のterminal reset後にpurgeするものであり、tab切り替えもページからの離脱もそのどちらでもない。破棄されたdocumentは自分のmemoryを解放し、bfcacheに入ったdocumentが保持するのは同じユーザーが自分のマシンで自分のファイルを見た状態であって、trusted-workspace modelはこれをexposureとして扱わない。clientはvisibility/unload listenerを設置しない。
+  Purgeはclient epochをincrementしてlate in-flight resultによるDTO/editor stateの復活を防ぎ、
+  Monaco model/editor/worker/subscriptionをdisposeし、DOM/store contentをclearして
+  pending requestをabortする。Node process終了時はserver側session
+  state、complete source content、source root、generation、diagnosticを破棄する。
+- Session-channel invocationはMCP serverを起動せず、importを追わず、inspected URLを開かず、
+  customization commandをinvokeせず、inspected sourceへwriteしない。Hostはdevframeのoptional
+  MCP routeをenableしない。
+- Enabled inspection sourceは`node:fs/promises`上に構築したinspection moduleだけで
+  enumerate/readする。API request、relationship、source fileが与えた任意absolute pathは受け付け
+  ず、validated source IDとsource-relative enumeration recordだけを受け付ける。利用可能な
+  capacityはNode.js、OS、filesystem、実行環境から継承する。全openはread-only、non-create、
+  non-truncate flagだけを使う。Serviceはinspected sourceに対してwrite、append、create、
+  truncate、rename、delete、link、chmod/chown、timestamp、extended-attribute、ACL、または同等の
+  mutation-capable primitiveを一切callしない。Traversalは固定inspection-path allowlistの通常の
+  recursive walkである。Symbolic linkは透過的にfollowする。Inspectorは同じpathをreadするagentが
+  見るものを表示するからである。Targetがmissingまたはunreadableなlinkはそのfileの
+  `file-unreadable` Diagnosticになり、recursiveなtraversalはreal pathで訪問済みdirectoryを追跡
+  してlink cycleがscanの終了を妨げないようにする（FR-024）。Hard linkはphysical-identity
+  groupingを持たない通常のfileである。Readに失敗したfileは`file-unreadable`、admit済みcandidateのNULを含むcontentは
+  `file-content-binary`となる — censusが列挙したcompanionのbinary bytesは何も生まない。これらの
+  Diagnosticを伴うoutcomeはfileに閉じ、影響を受けない全fileをcompleteに
+  保ち、その他の条件を満たせばpublish可能なgenerationを`partial`とする（FR-028）。Selected
+  rootが存在しないかdirectoryとしてreadできない場合は、Source attemptを`root-unreadable`で
+  failさせ、そのattemptのgenerationをpublishしない（FR-002）。Operation間の反復identity再検証、
+  race-detection taxonomy、ticket、receipt、resource-registry machineryは存在しない（FR-019）。
+- Mutation verificationはproductのfilesystem callをinstrumentし、inspection前後のfixture
+  content、length、identity/link state、mode、modification/change time、観測可能なextended
+  attributeまたはACLを比較する。OS readだけによるaccess-time移動は別に記録する。
+  No-product-mutation claimをfailさせず、そのproofにも数えず、productはaccess-time updateを
+  requestしない。1 fileのread failureは`partial` generation内のそのfileの`file-unreadable`
+  Diagnosticになる。1 fileに限定されないfailureはincomplete attemptを破棄して
+  item/result/generationをcommitせず、RPC所有の場合はrequestのordinary errorとして表面化する。
+  どちらのoutcomeもvalid、invalid、correct、incorrect、lint-failingのいずれともlabelしない。
+- Productはuserが既にtrustしているworkspace内で動作する。Inspected customization fileを
+  adversaryとしてmodelせず、scan中に変化または消滅したfileはrace-detection machineryではなく
+  上記のper-file diagnosticまたは次の明示rescanで扱う。保持するobligationは、inspected content
+  を実行しないこと、session hostがloopbackだけにbindして起動machineの外へ公開されないこと、
+  表示contentをinertにrenderすることである。
+
+## 必須contract test
+
+1. Startup fixtureは、standalone hostのlistening socketが全supported OSでloopback address（platformの`localhost`解決に応じてIPv4 `127.0.0.1`またはIPv6 `::1`）へbindされ、
+   どのconfiguration/flagも`0.0.0.0`、LAN address、Unix socketへbindしないこと、表示済みlaunch
+   lineが`localhost` authorityを持つことをassertする。Channel fixtureは、productがsession channelへtoken、
+   session capability、bearer header、origin classificationを追加しないこと — そこにある
+   WebSocket origin gateはdevframe自身のものである — と、shipped
+   documentationが残余unauthenticated-loopback limitation（他local process、DNS rebinding）を
+   記載することを証明する。Presentation-output testはhelp/version text、1件の
+   launch-URL line、固定startup warningをcoverし、unexpectedなstartup failureはそのordinary
+   errorを表示する。
+2. SuccessfulなRepository/Global rescan後は、detail requestのpathをcommitしたsequenceの新しい
+   generationに対して解決する — そのgenerationがpathに保持するfileを提供するか、保持しない場合は
+   `stale-resource` rejectionを返す — 一方、他方のsequenceのdetail/comparison viewはvalidのまま
+   である。`remove-active-state` Global disableは全Global pathを失敗させつつ、Repositoryの全file
+   を維持する。`cleanup-only`はcommitted stateを変えず、両sequenceのgenerationを維持する。
+   Fatalな明示rescanは
+   failed-attempt partialを0件publishし、last committed snapshotを保持し、
+   staleにmarkして、exact 1つのfailure representation、すなわち決定的なreturned failureでは
+   actionable Diagnosticへの参照、throw/rejectionではfailed requestのerror messageを運ぶ。
+   Stale-failure fixtureはそのretained messageがstale snapshotとともに返ることをassertする。
+   Bootstrap generation 0はcapture済み
+   `process.cwd()`/`--root`から選択したexact 1つのnon-authorizing Repository Sourceを持つ。
+   Multi-Source sequenceではA/Bのentry-failure pairが共存し、B successがAをclearせず、Aの
+   partial successだけがAのpairをclearし、Aの再failureがAのpairだけを置換し、Global disableが
+   除去Global Sourceのpairだけをclearすることを証明する。Diagnostic DTO fixtureは正確に2つの
+   scope shape、すなわちmatching `sourceId`/`sourceRelativePath`を持つfileと、`sourceId`
+   だけを持つsourceだけをacceptする。Pathlessなshapeは存在しない。この製品が生成するdiagnosticは
+   すべて何かを読んでいる最中に生じたものであり、それを読んだSourceは解決可能にする最小の文脈だから
+   である。Source/file/pathの欠落、余分、mismatch、捏造の全組合せをserialization前に拒否する。Failure fixtureは、accept前
+   throw/rejectionがそのinvocationだけをrejectして何もretainしないこと、accepted scan-job
+   failureがその`scanRequestId`とともにfailed requestのerror messageとしてexact 1つの
+   lifecycle ownerにretainされること、accepted disable-barrier failureがfailed
+   `globalDisableInProgress` projectionの`message`だけにretainされることを証明する。Failed requestはsessionをusableに保つ。すなわち同じ
+   channelが直後にretained prior snapshotをserveする。Request-owned rejectionはprocessをexit
+   せず実際のerrorでrejectする。自動startup read rejectionはprocess top levelへ到達し、productは
+   process livenessを保証しない。
+3. Readable file detailはcompleteなauthored sourceと、fileが書いた各keyについてparserが解決した
+   値を、credentialとenvironment-reference textを含めてmask/reveal controlなしで返す。値はkeyごとに
+   1件であり、2回宣言されたkeyは後の宣言へ解決される。File summaryはparse rollupを一切公開せず、各inventory定義が自身の
+   `not-attempted | parsed | failed` stateとそのkindのextraction失敗reference — 認識tool数に
+   よらず1 record — を公開する。Parseが何をしたかを読み手が知るのはそこである。
+   Compatible provenanceは内部のrecognition record内で1回mergeし、inconsistent meaningは
+   そのextractionをall-or-nothingでfailさせる。Comparison keyは
+   `(kind, 宣言key)`とし、tool recognitionはtoolごとに宣言の横で比較する。Astral character、combining sequence、通常BMP textにより、
+   declared valueがextractionとJSON transportを丸ごと通過することを証明する。返却する全relationship tuple
+   `(tool, kind, relationship kind)`は、維持管理するpresentation allowlistに含まれ、かつexactな
+   authored occurrenceがrecognitionのactualなadmission済みsource form用extractorでsupportされ
+   なければならない。Tuple membershipによってsource form間でeligibilityをtransferしない。
+   Authored keyとその公開の間にallowlistは立たない。Skillの宣言はfileが書いたkeyであり、authored key
+   の集合は閉じていないからである。Allowlistが記載していないreferenceは完全な`sourceText`からだけ
+   利用可能とし、推論したrelationshipを作らない。Evidence
+   fixtureは`documented | partially-documented | unknown | conflict`だけをacceptし、unique
+   fixed-orderの`preview | experimental | deprecated` qualifierを別に維持し、empty qualifier
+   arrayをlifecycle claimなしとして扱う。これらはregistry recordであり、どのresponseも
+   serializeしない。Encoding fixtureは、admit済みcandidateのNULがbinary/diagnostic-only/`partial`であり、companionのNULは
+   単なるbinaryの事実であること、
+   valid textが`utf-8`、invalid non-NUL inputがreadableな`utf-8-replaced`で
+   あり、全`U+FFFD`をparsing、detail、comparisonまで保持し、それ自体を理由にgenerationを
+   partialにしないことを証明する。Alternate decoderを一切invokeしない。固定Codex default-hook
+   fixtureは`targetOrigin: documented-default`、null `authoredTarget`、明示的な
+   documented-default labelを返し、explicit manifest hookは`targetOrigin: authored`とexact
+   occurrenceを返す。Sentinel process valueによりenvironment referenceをresolve/substitute
+   しないことを証明する。testはdetail surfaceにauthored contentについての注意書きが
+   現れないこと、`FileDetail` requestやcomparisonの前に確認stepが立たないこと、inventoryや
+   sessionのresponseがauthored contentを運ばないこと、Reveal functionがRPC catalogに存在しない
+   ことをassertする。直接のRPC testはacknowledgementのparameterもfunctionも存在せず、
+   server-side presentation gateという主張ではなくloopback bindingが
+   host-side protectionの全てであることを証明する。Cross-surface negative fixtureは
+   Inventory、Detail、Comparison、Global control、Diagnostics、API
+   DTO、CLI output、documentationが文書化済みstructural projectionだけを公開することを証明
+   する。Natural-language meaning/intentのinterpret/rank、
+   correctness/validity/compliance/effectiveness/quality verdict、policy/remediation advice、
+   validation、lint、synchronization、conversion、formatting、fixingのfieldまたはbehaviorを
+   一切admitしない。
+4. 宣言済みparameterはresolutionで検証される: invokeされたfunctionがそのresourceを保持しない
+   `get-file-detail`、`get-mcp-carrier-detail`、`get-hook-carrier-detail`、
+   `get-permission-policy-detail`のargument —
+   別の型の値や、他のfunctionのresourceも含む — は`stale-resource` rejectionであり、余分なpositional argumentは
+   readされず何も変えず、unknown function nameは登録されずinvokeできない。Contract testは
+   request、file、collection、parser、snapshot、detail、result DTOのいずれも、製品定義の数値
+   capacity上限を公開またはenforceしないことを証明する。注入した1 fileに限定されないNode.js、
+   parser、filesystem、serializationのfailureはdomain classificationをbypassし、owning RPC
+   boundaryで実際のmessageを運ぶordinary errorとしてrejectする。Partial result、incomplete
+   generation、validity/correctness/compliance/lint verdictを返さず、その後もsessionはusable
+   でprior snapshotはreadableのままとする。Escape/key-order fixtureは1つの
+   completeなJSON-serializable result valueがchannelを変更なしに通過し、clientで
+   round-tripすることを証明する。
+5. Static traversal/encoded traversal attemptがpackaged `dist/public` outputの外へ出ない。Serve
+   される全byteがそのpackaged Nuxt outputに由来し、inspected fileを一切serveせず、root、
+   `/global-consent`、各kindのcomparison route（`/skills/compare/<family>`、
+   `/instructions/compare/<family>`、`/mcp/compare/<family>`、
+   `/prompts-and-commands/compare/<family>`、`/agents/compare/<family>`、
+   `/hooks/compare/<family>`、`/plugins/compare/<family>`）、
+   各kindのdetail route（`skills`、`instructions`、`mcp`、`hooks`、`rules`、
+   `prompts-and-commands`、`permissions`、`agents`、`plugins`、`output-styles`、
+   `settings-and-configuration`の各`<kind>`に対する`/<kind>/detail/<source>/<Source相対パス>`）の
+   client routeがすべて同じpackaged SPA shellをbootし、
+   そのshellはsession dataをembedしない。detail pathがSourceに続けてpathを運ぶのは、fileの
+   identityがそのSourceとSource相対Pathであるためである（FR-030）。あらゆるcomparisonは
+   そのkind自身の`compare` segmentの下に、Source familyを後ろに従えて住む。pairが2つの
+   familyを跨ぐことはなく — repositoryとconsent済みhomeは別の種類の場所であり、rowの各
+   family blockが自身のcomparison entryを持つ — 一方で1つのfamilyはconsentされた2つの
+   homeのfileを持ちうる（FR-015からFR-017、FR-045）ため、各sideはなお自身のSourceを
+   queryで名乗る。`compare` segmentが先頭に来るのは、detailの2番目のsegmentがSource
+   selectorであり、`compare`は決してselectorになり得ないからである: どのSource相対path
+   も — `compare`と綴られたCodexのfallback filenameを含め — comparison routeと衝突
+   できない。
+6. Repositoryと各member Global rescanのqueue order、duplicate rejection、abort、partial
+   outcome、fatal failure、pollingがwhole generationだけを公開する。別のSourceの後でqueueした
+   scanはowning sequenceのその時点のcurrent generationから開始し、一方のsequenceのcommitは
+   他方のsequenceのcommitted stateを観測可能なまま変更しない。`remove-active-state` barrierは
+   generationをcommitせずにGlobal sequenceを破棄し、held Repository commandがN+1をcommitし得る
+   前にRepository sequenceをunchanged Nのままにする。後のre-enableは既にincrement済みの
+   greater `globalContentEpoch`のもとでGlobal sequenceをgeneration 1から再開するため、破棄
+   されたera由来のGlobal resultはadoptされ得ない。`cleanup-only` barrierはcommitted stateを
+   変えず、true no-opは両sequenceとRepository workを変更しない。どのbarrierもaborted
+   transactionを公開せず、受理
+   済みRepository commandをterminal success後だけ1回requeueする。`draining`/`committing`中の
+   concurrent disableは1 operation/resultへjoinし、`failed`後のrequestはinherited cleanupを再開
+   する。Pauseしたvalidation/admission operationを最後のcancellation sweep前にabort/drainし、
+   その後late continuationを解放してもmutation、diagnostic、context、ID、jobを作らない。注入
+   したunexpectedなadmission rejectionはouter boundaryへpropagateし、domain stateを変更せず
+   製品定義のslot数に依存しない。Deterministicなbarrier-ordering fixtureではoperationを(a)
+   validation await中、(b) admission後かつcontrol/context/diagnostic mutation前、(c) job
+   enqueue/final result disposition直前でpauseする。各pauseでbarrierが先なら
+   `global-disable-pending` conflict rejectionとなり、late side effectを許さず、operationを
+   unregisterして後のenableを許可する。Operationのfinal dispositionが先なら、disable受理後に
+   resultをdeliveryしても確定済みqueued acceptanceを維持する。Fence fixtureはfirst non-no-op
+   acceptanceが`globalContentEpoch`をincrementし、session functionを即control-onlyにしてその他
+   全inspection-data functionがretained `failed`中も含め`global-disable-pending` conflict
+   rejectionを返すことを証明する。Accept後のdrain rejectionを
+   注入し、failed requestのerror messageが`state: 'failed'`の間
+   `globalDisableInProgress.message`だけにretainされること、process
+   survival、content非再公開、
+   idempotent retryを検証する。別のdeterministic delivery pauseではscan commit/disable
+   acceptanceの前後にdata resultを保持する。Result epoch/generationとpayloadが混在せず、fence
+   linearize時に未bind resultはconflict rejectionとなり、既にbind済みresultは文書化した
+   bounded pre-fence responseとしてだけ扱ってclientがgreater epoch/fence観測時にpurgeすることを
+   証明する。Old resultを無視し、あるsequenceのnewer generation採用時はそのsequenceのstateだけを
+   abort/disposeして他方のsequenceのdetail/comparison viewはcommit後も残存し、detailは
+   capture済みepochとpathが一致する場合だけ
+   adoptする。Disable、shutdown、supersession、注入したassembly/serialization rejectionのtestは
+   filesystem promiseをpendingのままにし、publication authorityをrevokeして全late resultを破棄
+   することを証明する。正しいouter boundaryだけがfailure、すなわちordinaryなRPC errorまたは
+   startup top-level
+   propagationを表面化させる。別の1 fileに限定されたcase、すなわちunreadable file、binary content、
+   parse failureは、attempt全体のauthorityをrevokeせずに、影響fileのDiagnosticと影響を受けない
+   全complete fileを持つ`partial`をpublishすることを証明する。Unreadable rootは代わりに
+   `root-unreadable`とgenerationなしのfailed Source attemptを証明する。Underlying
+   Node.js/kernel operationのhard cancellationや製品定義のcompletion deadlineはassertしない。
+7. 全client routeのreloadはsession dataを一切開示しない。Serveされるshellはsnapshotをembed
+   せず、新しくloadしたSPAはloopback RPC channelだけを通じてstateをadoptする。Session response/recovery testは
+   ordinaryなrequest rejectionがrequest-localに留まること、channel loss、異なる`sessionId`でのport再利用、older/equal/greater epoch、
+   null/draining/committing/failed projection、client epoch変更後のlate in-flight resultを扱い、
+   pre-purge inventory/detail/comparison/editor/authored-content DTO/DOM stateが
+   残留・復活しないことを証明する。Active consentがあるgreater epoch、non-null fence、または
+   明示Resume後のrecoveryではloopback channel経由で再接続し、purge済みIDを保持・比較せず返された`sessionId`を
+   採用してclosed recovery projectionだけを構築する。Active control/enable stateからdisableを
+   直ちに利用でき、draining/committingではjoin/wait、failedではretry-disableを提示し、同じ
+   frozen previewを取得・検証した後はeligible retry controlだけを再構築する。Fenceがnon-nullの
+   間は明示Resume inspection actionを表示しない。Null fenceではpageがmatching full sessionを再取得
+   してdefault stateのfresh inventory summaryを構築するが、pre-purge authored content、
+   selection、filter、detail、comparison、editor stateを復元しない。後の
+   detail/comparison requestはfresh sessionから改めて取得する。Accept前disable failureとtrue
+   no-opはいずれもfresh-session fenceをnullのままにするため、purged clientは直ちにresume
+   できる。
+8. Global consent previewは候補pathに触れず、confirmationはserverが保持する唯一のpreviewを
+   `previewId`で指名して、そのpreviewが保持するexact raw internal `lexicalRoot`とtyped
+   traversal-plan version/programをbindする。Changed/superseded previewは
+   readを許可できない。Session startupが3件すべてのenvironment inputと常にderiveする共有agent
+   homeをlauncher探索前に正確に1回captureし、process environmentが変化しても同じimmutable captureをlauncher exclusionと後続の全previewに使う。Create functionだけがunconsented previewをatomicにcreate/replaceする。Read functionは、disable
+   fence中も含めcurrent/frozen previewだけを返す。Missing-current、active-consent、
+   in-progress-enable、disable-fence caseはaccidental replacementなしで文書化したclosed
+   outcomeを返す。Escape-collision、control-character、backslash fixtureは、enableがstored raw
+   valueだけを使ってprocess inputを再読込せず`displayRoot`を
+   reverse-convertしないことを証明する。Parameterはmember selectorを持たず、initial enableは凍結
+   済みentry 4件すべてを必ずevaluateする。Missing/unreadableなconsented rootと決定的なlexical
+   outcomeがrejected memberとadmitted memberをpartitionし、unexpectedなthrow/rejectionは
+   invocationをordinary errorでrejectし、initial control/jobをactivateせずprovisional subsetを
+   一切commitしない。Provisional enable workはSourceをpublishしない。正常なcompleteまたはpartial
+   batch commit 1件は1〜4個の別々にidentifiedされたGlobal Sourceをexact 1つのGlobal generation
+   に同時に作り、memberごとに最大1個、Sourceごとに正確に1 rootとし、cross-member mergeも
+   observableなper-member commitも行わない。1 fileに限定されないaccepted batch throw/rejectionはその1つの
+   `scanRequestId`についてfailed requestのerror messageをfailed `batchStatus`にretainし、
+   Source/generationもDiagnosticも作らない。
+   Prior-currentとprior-staleの両caseをtestする。全rootを決定的にrejectするinitial activation
+   は、all-lexically-invalid previewも含め、決定的な`active-no-job` acceptance、job/Source 0件、
+   active `globalControl`を返す。`retryableTools`はexactなsame-preview subsetだけを含み、
+   all-lexically-invalid previewではemptyとなってdisable/new previewを要求する。All-rejected
+   retryもnew job/Sourceを0件とし、generationをcommitせず既存Sourceのsemantic contentとstable
+   な`sourceId`を保持する。Partial acceptanceはevaluateした全toolをpartitionする。初回または
+   retryのbatch publication成功はGlobal sequenceを正確に1回進め（initial enable commitが
+   generation 1として作成する）、old Globalのdetail/comparison/editor stateだけを無効化する。
+   Repositoryのviewは変更されずに残存する。Source publish成功は
+   own control diagnosticをclearし、無関係なoutcomeは保持し、disableはGlobal Source未公開でも
+   全control diagnostic/contextを削除する。Initial/retry validation/admission中にnewly visible
+   なのは`globalEnableInProgress`だけとする。Initial enableは`globalControl`をnullのまま、
+   retryはexact pre-operation control projectionを維持する。Result-boundなqueued acceptance時
+   だけaccepted-batch toolを`pendingTools`へ表示し、`batchStatus`がexact promoted request ID、
+   tool、active phaseを公開する。Terminal deterministic failureとthrow/rejectionはexact closed
+   `failureRef` variantを使い、lost-acceptance recoveryはstatusをretainし、success、retry
+   acceptance、disableはcontract済みclear/replace lifecycleを適用する。Active controlの
+   `unvalidated` toolをretryableにしない。Mixed activation中は既にrejectedまたはnon-pending
+   admittedとなったtoolを`retryableTools`へ表示してよいが、`pendingTools`がemptyになるまで
+   retryをdisabledとし`global-enable-in-progress` conflict rejectionを返す。Disableは全期間
+   利用できる。注入したunexpectedなadmission rejectionはconsent/control/Source stateを変更
+   せず、invocationのordinary errorだけを表面化させ、全terminal outcomeで不要なoperation
+   historyがretainされないことを証明する。Fatal初回scan後のretryでretained rootが変更済みまたはread不能になった場合、old
+   operation-local contextと未公開IDを破棄して、後の再admission前にauthorityなしのrejected
+   controlを残す。Exact-active-consent retryはserverのexact `retryableTools` subsetをderive
+   し、lexical `new-preview-required` controlとchanged consentには先にdisable/new previewを
+   要求する。Traversal fixtureはpublic patternがtyped plan由来で、exact Global targetはGlobal
+   rootをenumerateせずにreadされ、fixed instruction-subtree walkはそのsubtreeだけをenumerate
+   し、neighboring setting、credential、state、plugin pathへI/Oしないことを証明する。
+9. Inspection moduleは、全supported OSでallowlisted inspection pathだけを
+   readする。Symlinkされたcustomization fileは透過的にreadされ、他のfileと同様にlink先content
+   を表示する。Targetがmissingまたはunreadableなlinkは`partial` generation内のfile-scopedな
+   `file-unreadable` Diagnosticになる。Directory link cycle fixtureは、recursiveなtraversalが
+   real pathで訪問済みdirectoryを追跡して終了することを証明する。Hard linkされたentryは
+   grouping、alias、read-once behaviorを持たない通常の独立fileである。Unreadable fileは影響を
+   受けない全fileをcompleteに保ったまま`partial` generation内の`file-unreadable`となり、
+   unreadable rootは`root-unreadable`とgenerationなしのfailed Source attemptとなる。
+   Instrumentationは全mutation-capable open flag、およびwrite、append、create、truncate、
+   rename、delete、link、chmod/chown、timestamp、extended-attribute、ACL、同等のcallを拒否
+   する。Before/after fixtureはcontent、length、identity/link state、mode、
+   modification/change time、観測可能なextended attribute/ACLが不変であることを証明する。
+   OS-only access-time movementは別に記録し、failureともproofともせず、product callはそれを
+   requestしない。Operationのlifecycleは製品定義のconcurrency上限なしで管理する。
+10. Packaged CLIはauthenticationをdisableしたdevframe standalone adapterをbootする。Fixtureは
+    `auth: false`、packaged `dist/public` UI directory、`agent-customization-inspector:`
+    function namespaceをassertし、`--no-open`がbrowserを開かないこと、自動openingが
+    disabled/unsupported/failedでもinspectionをusableに保つこと（FR-001、FR-022）を証明する。
+    Package integrity、dependency-closure、packed-fileのassertionはpackage testとrelease gate
+    が所有する。Runtimeはmanifestやsibling-artifactの再検証を行わず（Constitution Principle
+    I）、どのpackaging fixtureもcustomization-file contentを分類しない。
+11. 全自動/明示scanはuniqueなopaque `scanRequestId`を受ける。Repository/Global rescan
+    admission result、Source summary、waiting/active/final progress、fatal status、successful
+    generation recordは同じIDを保持し、stale/prior request stateはnewer requestを満たせない
+    （FR-030）。

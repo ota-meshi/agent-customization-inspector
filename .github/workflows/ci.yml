@@ -1,0 +1,349 @@
+# Continuous integration. Every gate is an independent job.
+#
+# Byte hygiene has no CI job: line endings are owned by .gitattributes and
+# editor conventions by .editorconfig. Code formatting is Prettier's — the
+# format job gates it — and code style beyond formatting is the lint job.
+#
+# The six lower-bound certification jobs sample Node.js 24.11.0 and 26.0.0
+# on the three OS targets. They certify the two declared
+# lower bounds of the runtime compatibility contract `^24.11.0 || ^26.0.0`
+# (exactly `>=24.11.0 <25.0.0 || >=26.0.0 <27.0.0`); the declared Node.js
+# 24/26 engine ranges remain the compatibility contract, and these finite
+# samples do not narrow support to the sampled versions. The active LTS
+# Node.js on ubuntu-latest is the development/build baseline: both name what
+# the runner currently ships rather than a pin this repository would have to
+# advance by hand.
+name: CI
+
+on:
+  # Pull-request heads are validated by pull_request; push validates the
+  # resulting main-branch state without running the same commit twice.
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: Format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format:check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run lint
+
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run typecheck
+
+  unit:
+    # Includes the inspection traversal suite
+    # (tests/unit/inspection/**) through the unit project glob (T039).
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:unit
+
+  contract:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:contract
+
+  integration:
+    # Includes the traversal publication-boundary suite
+    # (tests/integration/boundaries/**) through the integration project
+    # glob (T039).
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:integration
+
+  security:
+    # The Global zero-activation suite (tests/security/**) through the
+    # security project glob (T996).
+    name: Security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:security
+
+  package:
+    # Includes the Node.js-only package-policy suite
+    # (tests/package/node-only-policy.test.ts) through the package project
+    # glob (T039).
+    name: Package tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run verify:package
+      - run: pnpm run test:package
+
+  documentation:
+    # The bilingual cross-artifact gate (tests/documentation/, T1041): runnable
+    # commands, the ordered CI job list this file declares, the trace matrix,
+    # and English/Japanese task parity. It reads the repository's own files, so
+    # it needs no build and no browser.
+    name: Documentation tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:docs
+
+  performance:
+    # The T183 SC-002 smoke pass: harness integrity is gated, the recorded
+    # timings are not. The suite drives the packaged CLI through a rendered
+    # Chromium page, so the build and the browser install are prerequisites
+    # of this job.
+    name: Performance smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run build
+      - run: pnpm run test:performance
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:coverage
+
+  browser:
+    # One job per Playwright project rather than all three browsers in a
+    # single job: installing chromium, firefox, and webkit with their apt
+    # dependencies together, then running the full suite three times over,
+    # fills the runner's disk before the matrix run finishes (ENOSPC). Each
+    # browser gets its own runner and its own disk budget, matching this
+    # file's "every gate is an independent job" design.
+    name: Browser certification suite (${{ matrix.browser }})
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      # The browser suite drives the packaged CLI (dist/cli.mjs serving
+      # dist/public), so the build is a prerequisite of this job.
+      - run: pnpm run build
+      - name: Run primary-workflow and accessibility suite
+        run: |
+          set +e +o pipefail
+          # No core from a browser this suite crashes. WebKit's
+          # ThreadedCompositor and SkiaGPUWorker threads segfault a handful of
+          # times per run, and `kernel.core_pattern` hands every crash to
+          # systemd-coredump under a size limit of 2^63: cores of 6.2 GB and
+          # 2.7 GB were open at once against the runner's 12 GB of free space,
+          # which is the ENOSPC this job had been failing with. The crashes cost the
+          # suite nothing on their own, since it passes every test through
+          # them, so what has to stop is the dumping.
+          #
+          # `ulimit -c 0` does not stop it: the kernel ignores RLIMIT_CORE for
+          # a core it pipes to a program, and this pattern is a pipe, so the
+          # dumps kept arriving from a step that had set the limit to zero.
+          # Pointing that pipe at a program which exits without reading does
+          # stop it, and depends on no process's limit — the kernel's write
+          # has nowhere to go, and a pipe is memory, so nothing reaches the
+          # disk. It is restored with the runner.
+          echo '|/bin/false' | sudo tee /proc/sys/kernel/core_pattern > /dev/null
+          # No `--` before the flag: Playwright's CLI treats a literal `--`
+          # token as the start of its own positional test-file filters, so
+          # `pnpm run test:e2e -- --project=x` silently drops the project
+          # filter and runs every project's tests instead of just `x`.
+          pnpm run test:e2e --project=${{ matrix.browser }}
+  build:
+    name: Development/build baseline (Node.js LTS, ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      # Packaged-artifact verification is a CI/release gate, not part of
+      # every local build (Implementation simplicity policy).
+      - run: pnpm run verify:package
+      # One candidate tarball, packed once here from this commit, is what the
+      # six certification jobs receive. Packing per sample would certify six
+      # sets of bytes and prove nothing about any one of them (T1047). It is
+      # not the tarball a release publishes: Release.yml packs its own from the
+      # same source, and two packs of one source differ in the build id Nuxt
+      # writes into the bundle. What the six jobs certify is that one tarball
+      # built from this commit installs and runs on every lower-bound
+      # environment.
+      - name: Pack the tarball the certification samples receive
+        run: pnpm pack --pack-destination "${{ runner.temp }}/tarball"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: certification-tarball
+          path: ${{ runner.temp }}/tarball/*.tgz
+          if-no-files-found: error
+
+  certify-lower-bounds:
+    name: Certify Node.js ${{ matrix.node }} on ${{ matrix.os }}
+    # Six jobs: the two declared engine lower bounds crossed with the three
+    # OS targets (ubuntu-latest, macos-latest, windows-latest). See the
+    # header note: the declared Node.js 24/26 ranges remain the compatibility
+    # contract, not these samples.
+    #
+    # Each receives the identical tarball the build job packed, installs it
+    # from those bytes into an empty directory, and launches it. What this
+    # certifies is the artifact a user would download, not a source tree that
+    # happens to sit beside it (T1047).
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['24.11.0', '26.0.0']
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: certification-tarball
+          path: tarball
+      # The record this sample contributes: which runner image ran it and
+      # which Node.js the range actually resolved to, beside the digest of the
+      # bytes every sample received.
+      - name: Record the sample environment and the tarball digest
+        shell: bash
+        run: |
+          echo "runner image: ${{ runner.os }} ${{ matrix.os }} (${ImageOS:-unrecorded})"
+          echo "node: $(node --version)"
+          echo "pnpm: $(pnpm --version)"
+          node -e "const {createHash}=require('node:crypto');const {readdirSync,readFileSync}=require('node:fs');const [f]=readdirSync('tarball');console.log('tarball:',f,createHash('sha256').update(readFileSync('tarball/'+f)).digest('hex'))"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run dev:prepare
+      - run: pnpm run test:unit
+      # The two suites whose behaviour is the operating system's rather than
+      # this repository's: directory traversal, per-file diagnostics, the
+      # one-read rule, and byte decoding. A lower bound that ran only the unit
+      # suite would certify the Node floor without certifying the filesystem
+      # semantics the three runners actually differ on (T1051).
+      - name: Certify filesystem traversal and read semantics on this runner
+        run: >-
+          pnpm exec vitest run --project integration
+          tests/integration/boundaries/traversal.test.ts
+          tests/integration/repository-scan.test.ts
+      # The packed bytes, installed and launched as a user would get them.
+      - name: Launch the packed tarball
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p "${RUNNER_TEMP}/install"
+          cd "${RUNNER_TEMP}/install"
+          npm init -y > /dev/null
+          npm install "${GITHUB_WORKSPACE}"/tarball/*.tgz
+          npx --no-install agent-customization-inspector --help
+          # The installed bin has to do what the help promises: print one
+          # loopback origin and serve the packaged shell there, then stop when
+          # told. `--help` alone proves the bin resolves, not that it launches.
+          node "${GITHUB_WORKSPACE}/scripts/check-installed-launch.mjs" \
+            node_modules/agent-customization-inspector

@@ -1,0 +1,49 @@
+# Generated output and caches.
+.nuxt/
+.output/
+dist/
+coverage/
+playwright-report/
+test-results/
+.pnpm-store/
+.tmp/
+
+# Agent worktrees are other sessions' working copies of this repository, each
+# with its own checkout of everything above and below — formatting through
+# them would rewrite files mid-edit under another session and reformat the
+# vendored skills its checkout carries.
+.claude/worktrees/
+
+# Spec-kit's scaffolding and the speckit-* skills it installs are taken from
+# upstream whole.
+.specify/
+.agents/skills/speckit-*/
+.claude/skills/speckit-*/
+
+# Vendored third-party skills are kept byte-identical to their upstream
+# (AGENTS.md § Vendored agent customizations); formatting them would make the
+# fixtures something no user of those skills has. Each one is ignored by name —
+# never by its whole parent directory, so a skill authored in this repository is
+# formatted like any other source. Taking a new vendored skill includes adding
+# its line here.
+.agents/skills/plugin-creator/
+.agents/skills/skill-creator/
+.claude/skills/skill-creator/
+
+# Markdown is authored prose in two languages with deliberate wrapping, and
+# the vendor contracts contain tables frozen by recorded SHA-256 digests
+# (contracts/official-sources.md); a formatter rewriting either would change
+# meaning-bearing bytes.
+*.md
+
+# The SC-001/SC-006 study-input bundle: every member's exact bytes are frozen by a
+# recorded SHA-256 in its manifest (contracts/usability-study-evidence.md § Closed
+# study-input bundle), so a formatter rewriting one would break the manifest without
+# anyone deciding to change it. The root is a closed 16-member directory, so the
+# directory is the unit.
+tests/usability/sc001-sc006-study-inputs/
+
+# Files their owning tools generate and rewrite.
+pnpm-lock.yaml
+skills-lock.json
+.claude/settings.local.json

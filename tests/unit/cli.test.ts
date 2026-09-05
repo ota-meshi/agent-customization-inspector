@@ -1,0 +1,548 @@
+// T043: the Gunshi root command surface (FR-001, contracts/http-api.md
+// § Host requirements #4/#5). Covers the positive default-true `open` flag
+// and its generated `--no-open`, optional `--root <path>` with last-wins
+// repetition, the optional `--port <number>` preference forwarded to the
+// host, the one captured `process.cwd()`, purely lexical absolute and
+// relative resolution, zero selection I/O and no `process.chdir()`, fixed
+// actionable rejection of an empty option value and of operands, strict
+// unknown-option rejection, non-binding help/version, the single loopback
+// launch line, and the `--inspect-personal-setup` confirmation — absent by
+// default, and awaited before that launch line when it is given.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { chmodSync, mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+
+// The invocation directory is captured once when the CLI module loads, so
+// the spy is installed before the dynamic import below and its value is the
+// captured one for every test in this file.
+const CAPTURED_CWD = resolve('/captured/invocation');
+const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(CAPTURED_CWD);
+
+const { fileOpenerProbeMock } = vi.hoisted(() => ({ fileOpenerProbeMock: vi.fn() }));
+
+vi.mock('../../src/server/host/devframe-app', () => ({
+  startInspectorHost: vi.fn(),
+  executeRepositoryScan: vi.fn(),
+  runGlobalEnable: vi.fn(),
+}));
+
+// The machine this suite runs on is not consulted for the applications a
+// session would offer. The real probe asks it whether each editor's command
+// resolves, and that lookup reads `process.cwd()` on Windows — which the
+// working-directory claim below would then see as the command re-reading it,
+// though selection never does. What the probe publishes is proven in
+// tests/unit/host/file-opener.test.ts.
+vi.mock('../../src/server/host/file-opener', () => ({
+  DetectedFileOpener: {
+    // The two targets every machine satisfies through its own handlers, and
+    // no editor: nothing here asks the session what it would open a file in.
+    probe: fileOpenerProbeMock,
+  },
+}));
+
+const { executeRepositoryScan, runGlobalEnable, startInspectorHost } =
+  await import('../../src/server/host/devframe-app');
+const { runInspectorCli } = await import('../../src/server/cli');
+
+/** The exact source-value-free CLI rejection for an empty `--root`. */
+const ROOT_VALUE_REQUIRED = '--root requires a non-empty path value.';
+/** The exact source-value-free CLI rejection for an extra operand. */
+const NO_OPERANDS_ACCEPTED =
+  'This command accepts options only. Pass the inspected repository root with --root <path>.';
+
+/** The mocked host start, typed for its captured options. */
+const startHost = vi.mocked(startInspectorHost);
+
+/** The retained selected root of the session the run created. */
+function selectedRoot(): string {
+  const options = startHost.mock.calls[0]?.[0];
+  if (options === undefined) {
+    throw new Error('the host was never started');
+  }
+  return options.context.session.selectedRepositoryRoot;
+}
+
+let chdirSpy: ReturnType<typeof vi.spyOn>;
+let logSpy: ReturnType<typeof vi.spyOn>;
+let errorSpy: ReturnType<typeof vi.spyOn>;
+let closeHost: ReturnType<typeof vi.fn>;
+// A real run installs its shutdown handlers once; this file runs the command
+// many times in one process, so each run's handlers are removed afterwards
+// rather than accumulating on the shared process object.
+let priorSignalListeners: Record<'SIGINT' | 'SIGTERM', unknown[]>;
+
+beforeEach(() => {
+  priorSignalListeners = {
+    SIGINT: [...process.listeners('SIGINT')],
+    SIGTERM: [...process.listeners('SIGTERM')],
+  };
+  vi.mocked(executeRepositoryScan).mockReset();
+  vi.mocked(executeRepositoryScan).mockResolvedValue(undefined);
+  vi.mocked(runGlobalEnable).mockReset();
+  vi.mocked(runGlobalEnable).mockResolvedValue({
+    state: 'queued',
+    scanRequestId: 'scan-1',
+    acceptedTools: ['codex'],
+    rejectedTools: [],
+  });
+  fileOpenerProbeMock.mockReset();
+  fileOpenerProbeMock.mockResolvedValue({
+    targets: ['default-application', 'containing-folder'],
+    openFile: vi.fn(),
+  });
+  startHost.mockReset();
+  closeHost = vi.fn().mockResolvedValue(undefined);
+  startHost.mockImplementation(async (options) => {
+    await options.onReady?.({
+      origin: 'http://localhost:9999',
+      port: 9999,
+      app: {} as never,
+    });
+    return {
+      origin: 'http://localhost:9999',
+      close: closeHost,
+    } as never;
+  });
+  cwdSpy.mockClear();
+  chdirSpy = vi.spyOn(process, 'chdir').mockImplementation(() => {});
+  logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  process.exitCode = undefined;
+});
+
+afterEach(() => {
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    for (const listener of process.listeners(signal)) {
+      if (!priorSignalListeners[signal].includes(listener)) {
+        process.removeListener(signal, listener);
+      }
+    }
+  }
+  chdirSpy.mockRestore();
+  logSpy.mockRestore();
+  errorSpy.mockRestore();
+  process.exitCode = undefined;
+});
+
+describe('root selection', () => {
+  it('propagates a process.cwd() failure before creating a session or browser', async () => {
+    const failure = new Error('invocation directory unavailable');
+    cwdSpy.mockImplementationOnce(() => {
+      throw failure;
+    });
+    // Re-evaluate the entry module so its one module-load capture observes
+    // the injected ownerless failure. The already imported command remains
+    // available to the other tests in this file.
+    vi.resetModules();
+    await expect(import('../../src/server/cli')).rejects.toBe(failure);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(executeRepositoryScan).not.toHaveBeenCalled();
+  });
+
+  it('uses the exact captured invocation directory when --root is omitted', async () => {
+    await runInspectorCli([]);
+    expect(selectedRoot()).toBe(CAPTURED_CWD);
+    expect(startHost.mock.calls[0]?.[0].context.session.rootOptionValue).toBeNull();
+  });
+
+  it('keeps an absolute --root exactly as given', async () => {
+    const absolute = resolve('/elsewhere/repo');
+    await runInspectorCli(['--root', absolute]);
+    expect(selectedRoot()).toBe(absolute);
+  });
+
+  it('resolves a relative --root against the captured invocation directory', async () => {
+    await runInspectorCli(['--root', 'nested/repo']);
+    expect(selectedRoot()).toBe(resolve(CAPTURED_CWD, 'nested/repo'));
+  });
+
+  it('resolves a repeated --root to the parser last value', async () => {
+    await runInspectorCli(['--root', 'first', '--root', 'second']);
+    expect(selectedRoot()).toBe(resolve(CAPTURED_CWD, 'second'));
+  });
+
+  it('never re-reads or changes the process working directory', async () => {
+    await runInspectorCli(['--root', 'nested/repo']);
+    // The one capture happened at module load; selection reads it again from
+    // the retained string, never from the process.
+    expect(cwdSpy).not.toHaveBeenCalled();
+    expect(chdirSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('browser opening', () => {
+  it('defaults the positive open flag to true', async () => {
+    await runInspectorCli([]);
+    expect(startHost.mock.calls[0]?.[0].openBrowser).toBe(true);
+  });
+
+  it('disables opening through the generated --no-open', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(startHost.mock.calls[0]?.[0].openBrowser).toBe(false);
+  });
+
+  it('prints the loopback URL exactly once as the manual fallback', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(logSpy.mock.calls).toEqual([['http://localhost:9999/']]);
+  });
+});
+
+describe('port preference', () => {
+  it('states no preference when --port is omitted', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(startHost.mock.calls[0]?.[0].preferredPort).toBeUndefined();
+  });
+
+  it.each([
+    ['a named port', '9998', 9998],
+    // 0 is devframe's request for an automatically selected free port, so it
+    // has to reach the host as the number rather than as an absent
+    // preference — the two mean different ports.
+    ['automatic selection', '0', 0],
+  ])('forwards --port %s to the host unresolved', async (_label, argument, expected) => {
+    await runInspectorCli(['--no-open', '--port', argument]);
+    expect(startHost.mock.calls[0]?.[0].preferredPort).toBe(expected);
+  });
+});
+
+describe('rejections before any session or browser exists', () => {
+  it.each([
+    ['a separate empty value', ['--root', '']],
+    ['an inline empty value', ['--root=']],
+  ])('rejects %s with the fixed source-value-free message', async (_label, argv) => {
+    await runInspectorCli(argv);
+    expect(errorSpy).toHaveBeenCalledWith(ROOT_VALUE_REQUIRED);
+    expect(process.exitCode).toBe(1);
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing --root value through the parser type validation', async () => {
+    // The parser owns "the option needs a value"; the product does not
+    // re-implement that check (Implementation simplicity policy).
+    await expect(runInspectorCli(['--root'])).rejects.toThrow();
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a positional operand', async () => {
+    await runInspectorCli(['extra']);
+    expect(errorSpy).toHaveBeenCalledWith(NO_OPERANDS_ACCEPTED);
+    expect(process.exitCode).toBe(1);
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a rest argument after --', async () => {
+    await runInspectorCli(['--', 'rest']);
+    expect(errorSpy).toHaveBeenCalledWith(NO_OPERANDS_ACCEPTED);
+    expect(process.exitCode).toBe(1);
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('rejects an undeclared option strictly', async () => {
+    // Gunshi renders the validation errors and throws, so the entry's
+    // top-level await exits nonzero without starting a host.
+    await expect(runInspectorCli(['--unknown'])).rejects.toThrow();
+    expect(startHost).not.toHaveBeenCalled();
+  });
+
+  it('never echoes a rejected option value back to the terminal', async () => {
+    await runInspectorCli(['--root', '']);
+    for (const call of errorSpy.mock.calls) {
+      expect(String(call[0])).toBe(ROOT_VALUE_REQUIRED);
+    }
+  });
+});
+
+describe('non-binding help and version', () => {
+  it('renders help without creating a session or opening a browser', async () => {
+    await runInspectorCli(['--help']);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(executeRepositoryScan).not.toHaveBeenCalled();
+  });
+
+  it('renders the version without creating a session or opening a browser', async () => {
+    await runInspectorCli(['--version']);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(executeRepositoryScan).not.toHaveBeenCalled();
+  });
+});
+
+describe('automatic first scan', () => {
+  it('starts exactly one Repository scan before host startup', async () => {
+    await runInspectorCli(['--no-open']);
+    expect(startHost).toHaveBeenCalledTimes(1);
+    expect(executeRepositoryScan).toHaveBeenCalledTimes(1);
+    const [, , sourceId, owner] = vi.mocked(executeRepositoryScan).mock.calls[0] ?? [];
+    expect(typeof sourceId).toBe('string');
+    expect(owner).toBe('repository');
+  });
+
+  it('commits the automatic scan before publishing or opening the launch URL', async () => {
+    const order: string[] = [];
+    vi.mocked(executeRepositoryScan).mockImplementationOnce(async () => {
+      order.push('scan-committed');
+    });
+    logSpy.mockImplementation(() => {
+      order.push('launch-line');
+    });
+    startHost.mockImplementationOnce(async (options) => {
+      order.push('host-listening');
+      await options.onReady?.({
+        origin: 'http://localhost:9999',
+        port: 9999,
+        app: {} as never,
+      });
+      // The host spawns its `open` browser helper only after onReady resolves.
+      order.push('browser-open');
+      return {
+        origin: 'http://localhost:9999',
+        close: closeHost,
+      } as never;
+    });
+
+    await runInspectorCli([]);
+
+    expect(order).toEqual(['scan-committed', 'host-listening', 'launch-line', 'browser-open']);
+  });
+
+  it('propagates an automatic-scan rejection before URL publication or browser opening', async () => {
+    const failure = new Error('automatic scan collapsed');
+    const order: string[] = [];
+    vi.mocked(executeRepositoryScan).mockImplementationOnce(async () => {
+      order.push('scan-started');
+      throw failure;
+    });
+    await expect(runInspectorCli([])).rejects.toBe(failure);
+
+    expect(order).toEqual(['scan-started']);
+    expect(startHost).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(closeHost).not.toHaveBeenCalled();
+  });
+});
+
+describe('personal-setup consent', () => {
+  it('confirms nothing and captures no preview without the flag', async () => {
+    await runInspectorCli(['--no-open']);
+    // The default is a session that has read nothing outside the repository
+    // (FR-013): no confirmation was made, and the consent page the host serves
+    // offers to work the directories out rather than showing a preview nobody
+    // asked for.
+    expect(runGlobalEnable).not.toHaveBeenCalled();
+    expect(startHost.mock.calls[0]?.[0].consent?.current() ?? null).toBeNull();
+  });
+
+  it('confirms the captured preview and waits for its batch before the launch line', async () => {
+    const order: string[] = [];
+    vi.mocked(runGlobalEnable).mockImplementationOnce(async () => {
+      // Settled on a later task, not a later microtask: an async function runs
+      // synchronously to its first await, so a mock that pushed immediately
+      // would record the same order whether the CLI awaited the confirmation
+      // or dropped it — the assertion below would hold for a run that printed
+      // the launch line with no Global generation committed.
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+      order.push('global-committed');
+      return {
+        state: 'queued',
+        scanRequestId: 'scan-1',
+        acceptedTools: ['codex'],
+        rejectedTools: [],
+      };
+    });
+    logSpy.mockImplementation(() => {
+      order.push('launch-line');
+    });
+
+    await runInspectorCli(['--no-open', '--inspect-personal-setup']);
+
+    // The flag is the confirmation, and it is awaited for the reason the
+    // Repository scan is: the launch line prints with both generations
+    // committed, so the SPA's one initial fetch already carries the Global
+    // Source.
+    expect(order).toEqual(['global-committed', 'launch-line']);
+    expect(runGlobalEnable).toHaveBeenCalledTimes(1);
+    const [, preview] = vi.mocked(runGlobalEnable).mock.calls[0]!;
+    // What was confirmed is what the host now serves: the same preview, on the
+    // same consent domain, so the consent page states the active consent
+    // instead of offering a second capture.
+    expect(startHost.mock.calls[0]?.[0].consent?.current()).toBe(preview);
+  });
+
+  it('excludes the place a symbolically linked Repository root physically is', async () => {
+    // The scan reads through the link (FR-024), so an executable at the
+    // link's target is inspected content: excluding only the spelling the
+    // reader typed would offer it and then start it (FR-020, FR-022). The
+    // extreme of this is a root linked to `/`, where every executable on the
+    // machine is inside the tree being inspected.
+    const base = mkdtempSync(join(tmpdir(), 'aci-linked-root-'));
+    try {
+      const target = join(base, 'target');
+      const link = join(base, 'link');
+      mkdirSync(target);
+      // A junction does not require Windows Developer Mode or elevation; the
+      // type is ignored elsewhere, where this is the same directory link.
+      symlinkSync(target, link, 'junction');
+
+      await runInspectorCli(['--no-open', '--root', link]);
+
+      const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
+      expect(excludedRoots).toContain(link);
+      // The physical location as `resolvePhysicalLocation` finds it: from the
+      // root startup was handed — the link — and through the platform's own
+      // resolver, which is what `node:fs/promises`' `realpath` calls. The two
+      // `realpath`s Node ships are not one function: `fs.realpathSync` walks
+      // the path in JavaScript, and on Windows it keeps the short 8.3 name the
+      // runner hands its temporary directory out under, where the platform
+      // resolver answers the expanded one. Either half spelled the other way
+      // names a directory the probe was never given. The two entries stay
+      // distinct because a link and its target have different names.
+      expect(excludedRoots).toContain(realpathSync.native(link));
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('launches a Repository root whose physical location the platform cannot answer for', async () => {
+    // A root under a directory this process may not search: `realpath`
+    // answers `EACCES`, and so does the scan's own `readdir`, which is
+    // FR-002's `root-unreadable` Diagnostic — a Source with a reason the
+    // reader can read on the page. Failing the launch here would trade that
+    // Diagnostic for a message with no host and no page behind it, and the
+    // closed root conditions are exactly the ones the first scan reports
+    // (traversal.ts § PATH_CONDITION_FAILURE_CODES).
+    const base = mkdtempSync(join(tmpdir(), 'aci-denied-root-'));
+    try {
+      const outer = join(base, 'outer');
+      const root = join(outer, 'inner');
+      mkdirSync(root, { recursive: true });
+      chmodSync(outer, 0o000);
+      let protectionBinds = false;
+      try {
+        realpathSync.native(root);
+      } catch {
+        protectionBinds = true;
+      }
+      if (!protectionBinds) {
+        // Windows ignores the mode, so the condition this asserts about
+        // cannot be staged there; the same shape the traversal suite's
+        // unreadable-root case uses.
+        return;
+      }
+
+      await runInspectorCli(['--no-open', '--root', root]);
+
+      const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
+      // The spelling alone: there is no second entry to add, because the
+      // place the root physically is has no answer.
+      expect(excludedRoots).toContain(root);
+    } finally {
+      try {
+        chmodSync(join(base, 'outer'), 0o755);
+      } catch {
+        // Best effort; the directory may already be gone.
+      }
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('uses the same eligible startup roots for launcher exclusion and later consent', async () => {
+    const original = {
+      COPILOT_HOME: process.env['COPILOT_HOME'],
+      CLAUDE_CONFIG_DIR: process.env['CLAUDE_CONFIG_DIR'],
+      CODEX_HOME: process.env['CODEX_HOME'],
+    };
+    const startupCopilot = resolve('/session/copilot');
+    const changedCopilot = resolve('/changed/copilot');
+    const startupCodex = resolve('/session/codex');
+    process.env['COPILOT_HOME'] = startupCopilot;
+    process.env['CLAUDE_CONFIG_DIR'] = 'relative/claude';
+    process.env['CODEX_HOME'] = startupCodex;
+    vi.mocked(executeRepositoryScan).mockImplementationOnce(async () => {
+      // A later process mutation cannot make the consent preview name a root
+      // different from the one excluded before launcher discovery.
+      process.env['COPILOT_HOME'] = changedCopilot;
+    });
+
+    try {
+      await runInspectorCli(['--no-open', '--inspect-personal-setup']);
+
+      const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
+      expect(excludedRoots).toEqual(
+        expect.arrayContaining([CAPTURED_CWD, startupCopilot, startupCodex]),
+      );
+      expect(excludedRoots).not.toContain('relative/claude');
+      expect(excludedRoots).not.toContain(changedCopilot);
+      const [, preview] = vi.mocked(runGlobalEnable).mock.calls[0]!;
+      expect(preview.entries.find((entry) => entry.member === 'copilot')?.lexicalRoot).toBe(
+        startupCopilot,
+      );
+    } finally {
+      for (const [name, value] of Object.entries(original)) {
+        if (value === undefined) {
+          Reflect.deleteProperty(process.env, name);
+        } else {
+          process.env[name] = value;
+        }
+      }
+    }
+  });
+});
+
+describe('graceful shutdown', () => {
+  it.each(['SIGINT', 'SIGTERM'] as const)('closes the host once on %s', async (signal) => {
+    await runInspectorCli(['--no-open']);
+    const addedListeners = process
+      .listeners(signal)
+      .filter((listener) => !priorSignalListeners[signal].includes(listener));
+    expect(addedListeners).toHaveLength(1);
+    addedListeners[0]?.(signal);
+    expect(closeHost).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes after an interrupt between URL publication and host-handle return', async () => {
+    startHost.mockImplementationOnce(async (options) => {
+      await options.onReady?.({
+        origin: 'http://localhost:9999',
+        port: 9999,
+        app: {} as never,
+      });
+      const addedListeners = process
+        .listeners('SIGINT')
+        .filter((listener) => !priorSignalListeners.SIGINT.includes(listener));
+      expect(addedListeners).toHaveLength(1);
+      addedListeners[0]?.('SIGINT');
+      expect(closeHost).not.toHaveBeenCalled();
+      return {
+        origin: 'http://localhost:9999',
+        close: closeHost,
+      } as never;
+    });
+
+    await runInspectorCli(['--no-open']);
+
+    expect(closeHost).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a rejected close and fails the launch instead of dropping it', async () => {
+    // Shutdown after the handle exists is started from a signal handler with
+    // no caller left to await it. An unreported rejection would exit zero,
+    // telling the user the inspector shut down cleanly when it did not.
+    const failure = new Error('close failed');
+    closeHost.mockRejectedValueOnce(failure);
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await runInspectorCli(['--no-open']);
+    const addedListeners = process
+      .listeners('SIGINT')
+      .filter((listener) => !priorSignalListeners.SIGINT.includes(listener));
+    addedListeners[0]?.('SIGINT');
+    // The handler cannot be awaited, so the rejection settles a turn later.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(reported).toHaveBeenCalledWith(failure);
+    expect(process.exitCode).toBe(1);
+    reported.mockRestore();
+  });
+});

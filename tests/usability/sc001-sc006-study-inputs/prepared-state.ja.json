@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "stateLocale": "ja",
+  "designatedFile": {
+    "sourceRelativePath": "AGENTS.md",
+    "openView": "source"
+  },
+  "launchRoot": "repository",
+  "studyBrowserProfile": {
+    "profileId": "playwright-1.61.1-chromium-1228",
+    "playwrightVersion": "1.61.1",
+    "browserEngine": "chromium",
+    "browserRevision": "1228",
+    "browserVersion": "149.0.7827.55",
+    "browserDistribution": "chrome-for-testing",
+    "headed": false,
+    "contextPersistence": "fresh-nonpersistent",
+    "extensionSet": []
+  },
+  "preparationNote": "SC-006 の定型文を提示する前に、指定ファイルを開いておく。SC-001 の結果にかかわらず、全 session がこの状態から始める。"
+}

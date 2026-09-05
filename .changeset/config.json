@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "ota-meshi/agent-customization-inspector" }
+  ],
+  "access": "public"
+}

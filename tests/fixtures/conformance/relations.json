@@ -1,0 +1,687 @@
+{
+  "strategies": {
+    "claude.agent-context.composition": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.agent-memory.local",
+        "claude.behavior.repo.agent-memory.project",
+        "claude.behavior.repo.agents",
+        "claude.behavior.repo.instructions.ancestor",
+        "claude.behavior.repo.instructions.descendant",
+        "claude.behavior.repo.instructions.launch",
+        "claude.behavior.repo.rules",
+        "claude.behavior.repo.skills",
+        "claude.behavior.user.agent-memory",
+        "claude.behavior.user.agents",
+        "claude.behavior.user.auto-memory"
+      ]
+    },
+    "claude.agents.selection": {
+      "consumesBehaviors": ["claude.behavior.repo.agents", "claude.behavior.user.agents"]
+    },
+    "claude.commands.selection": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.commands",
+        "claude.behavior.repo.skills",
+        "claude.behavior.user.commands",
+        "claude.behavior.user.skills"
+      ]
+    },
+    "claude.hooks.additive": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.agents",
+        "claude.behavior.repo.hooks-contained",
+        "claude.behavior.repo.plugin",
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared",
+        "claude.behavior.repo.skills",
+        "claude.behavior.user.plugins",
+        "claude.behavior.user.settings"
+      ]
+    },
+    "claude.instructions.layering": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.instructions.ancestor",
+        "claude.behavior.repo.instructions.descendant",
+        "claude.behavior.repo.instructions.launch",
+        "claude.behavior.user.instructions"
+      ]
+    },
+    "claude.mcp.selection": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.agents",
+        "claude.behavior.repo.mcp",
+        "claude.behavior.repo.plugin",
+        "claude.behavior.user.mcp-state",
+        "claude.behavior.user.plugins"
+      ]
+    },
+    "claude.output-style.selection": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.output-style",
+        "claude.behavior.repo.plugin",
+        "claude.behavior.user.output-style",
+        "claude.behavior.user.plugins"
+      ]
+    },
+    "claude.plugins.activation": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.marketplace",
+        "claude.behavior.repo.plugin",
+        "claude.behavior.repo.skills-directory-plugin",
+        "claude.behavior.user.plugins"
+      ]
+    },
+    "claude.rules.layering": {
+      "consumesBehaviors": ["claude.behavior.repo.rules", "claude.behavior.user.rules"]
+    },
+    "claude.settings.precedence": {
+      "consumesBehaviors": [
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared",
+        "claude.behavior.user.settings"
+      ]
+    },
+    "claude.skills.selection": {
+      "consumesBehaviors": ["claude.behavior.repo.skills", "claude.behavior.user.skills"]
+    },
+    "codex.agents.inheritance": {
+      "consumesBehaviors": ["codex.behavior.repo.agents", "codex.behavior.user.agents"]
+    },
+    "codex.config.precedence": {
+      "consumesBehaviors": ["codex.behavior.repo.config", "codex.behavior.user.config"]
+    },
+    "codex.hooks.additive": {
+      "consumesBehaviors": [
+        "codex.behavior.plugin.manifest",
+        "codex.behavior.repo.hooks",
+        "codex.behavior.user.hooks"
+      ]
+    },
+    "codex.instructions.layering": {
+      "consumesBehaviors": ["codex.behavior.repo.instructions", "codex.behavior.user.instructions"]
+    },
+    "codex.mcp.configuration": {
+      "consumesBehaviors": ["codex.behavior.repo.mcp", "codex.behavior.user.config"]
+    },
+    "codex.plugins.activation": {
+      "consumesBehaviors": [
+        "codex.behavior.plugin.manifest",
+        "codex.behavior.repo.marketplace",
+        "codex.behavior.user.plugins"
+      ]
+    },
+    "codex.rules.resolution": {
+      "consumesBehaviors": ["codex.behavior.repo.rules", "codex.behavior.user.rules"]
+    },
+    "codex.skills.discovery": {
+      "consumesBehaviors": ["codex.behavior.repo.skills", "codex.behavior.user.skills"]
+    },
+    "copilot.cli.agents.selection": {
+      "consumesBehaviors": ["copilot.behavior.cli.agents", "copilot.behavior.cli.user.agents"]
+    },
+    "copilot.cli.hooks.composition": {
+      "consumesBehaviors": [
+        "copilot.behavior.cli.hooks",
+        "copilot.behavior.cli.plugins",
+        "copilot.behavior.cli.user.hooks"
+      ]
+    },
+    "copilot.cli.instructions.layering": {
+      "consumesBehaviors": [
+        "copilot.behavior.cli.instructions.agents",
+        "copilot.behavior.cli.instructions.claude",
+        "copilot.behavior.cli.instructions.gemini",
+        "copilot.behavior.cli.instructions.path",
+        "copilot.behavior.cli.instructions.repository",
+        "copilot.behavior.cli.user.instructions.path",
+        "copilot.behavior.cli.user.instructions.root"
+      ]
+    },
+    "copilot.cli.mcp.selection": {
+      "consumesBehaviors": ["copilot.behavior.cli.mcp", "copilot.behavior.cli.user.mcp"]
+    },
+    "copilot.cli.plugins.activation": {
+      "consumesBehaviors": ["copilot.behavior.cli.plugins", "copilot.behavior.cli.user.plugins"]
+    },
+    "copilot.cli.settings.precedence": {
+      "consumesBehaviors": ["copilot.behavior.cli.settings", "copilot.behavior.cli.user.settings"]
+    },
+    "copilot.cli.skills.selection": {
+      "consumesBehaviors": [
+        "copilot.behavior.cli.commands",
+        "copilot.behavior.cli.skills",
+        "copilot.behavior.cli.user.skills"
+      ]
+    },
+    "copilot.cloud.agents.selection": {
+      "consumesBehaviors": [
+        "copilot.behavior.cloud.agents",
+        "copilot.behavior.cloud.organization-agents"
+      ]
+    },
+    "copilot.cloud.hooks.composition": {
+      "consumesBehaviors": ["copilot.behavior.cloud.hooks"]
+    },
+    "copilot.cloud.instructions.layering": {
+      "consumesBehaviors": [
+        "copilot.behavior.cloud.instructions.agents",
+        "copilot.behavior.cloud.instructions.alternatives",
+        "copilot.behavior.cloud.instructions.path",
+        "copilot.behavior.cloud.instructions.repository",
+        "copilot.behavior.cloud.organization-instructions"
+      ]
+    },
+    "copilot.cloud.mcp.selection": {
+      "consumesBehaviors": ["copilot.behavior.cloud.mcp"]
+    },
+    "copilot.cloud.plugins.activation": {
+      "consumesBehaviors": ["copilot.behavior.cloud.plugins"]
+    },
+    "copilot.cloud.skills.selection": {
+      "consumesBehaviors": ["copilot.behavior.cloud.remote-skills", "copilot.behavior.cloud.skills"]
+    },
+    "copilot.vscode.agents.selection": {
+      "consumesBehaviors": ["copilot.behavior.vscode.agents", "copilot.behavior.vscode.user.agents"]
+    },
+    "copilot.vscode.hooks.composition": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.agents",
+        "copilot.behavior.vscode.hooks",
+        "copilot.behavior.vscode.plugins",
+        "copilot.behavior.vscode.user.hooks"
+      ]
+    },
+    "copilot.vscode.instructions.layering": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.instructions.agents",
+        "copilot.behavior.vscode.instructions.claude",
+        "copilot.behavior.vscode.instructions.path",
+        "copilot.behavior.vscode.instructions.repository",
+        "copilot.behavior.vscode.user.claude",
+        "copilot.behavior.vscode.user.instructions"
+      ]
+    },
+    "copilot.vscode.mcp.selection": {
+      "consumesBehaviors": ["copilot.behavior.vscode.mcp", "copilot.behavior.vscode.user.mcp"]
+    },
+    "copilot.vscode.plugins.activation": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.plugins",
+        "copilot.behavior.vscode.user.plugins"
+      ]
+    },
+    "copilot.vscode.settings.precedence": {
+      "consumesBehaviors": [
+        "copilot.behavior.vscode.settings",
+        "copilot.behavior.vscode.user.settings"
+      ]
+    },
+    "copilot.vscode.skills.selection": {
+      "consumesBehaviors": ["copilot.behavior.vscode.skills", "copilot.behavior.vscode.user.skills"]
+    }
+  },
+  "rules": {
+    "claude.excluded.plugin-files": {
+      "basedOnBehaviors": ["claude.behavior.repo.marketplace", "claude.behavior.repo.plugin"],
+      "explainedByStrategies": ["claude.plugins.activation"]
+    },
+    "claude.excluded.user-runtime": {
+      "basedOnBehaviors": [
+        "claude.behavior.user.agent-memory",
+        "claude.behavior.user.auto-memory",
+        "claude.behavior.user.keybindings",
+        "claude.behavior.user.mcp-state",
+        "claude.behavior.user.plugins",
+        "claude.behavior.user.themes",
+        "claude.behavior.user.workflows"
+      ],
+      "explainedByStrategies": []
+    },
+    "claude.global.agent": {
+      "basedOnBehaviors": ["claude.behavior.user.agents"],
+      "explainedByStrategies": ["claude.agent-context.composition", "claude.agents.selection"]
+    },
+    "claude.global.command": {
+      "basedOnBehaviors": ["claude.behavior.user.commands"],
+      "explainedByStrategies": ["claude.commands.selection"]
+    },
+    "claude.global.hooks.settings": {
+      "basedOnBehaviors": ["claude.behavior.user.settings"],
+      "explainedByStrategies": ["claude.hooks.additive"]
+    },
+    "claude.global.instructions": {
+      "basedOnBehaviors": ["claude.behavior.user.instructions"],
+      "explainedByStrategies": ["claude.instructions.layering"]
+    },
+    "claude.global.output-style": {
+      "basedOnBehaviors": ["claude.behavior.user.output-style"],
+      "explainedByStrategies": ["claude.output-style.selection"]
+    },
+    "claude.global.permissions": {
+      "basedOnBehaviors": ["claude.behavior.user.settings"],
+      "explainedByStrategies": ["claude.settings.precedence"]
+    },
+    "claude.global.rules": {
+      "basedOnBehaviors": ["claude.behavior.user.rules"],
+      "explainedByStrategies": ["claude.rules.layering"]
+    },
+    "claude.global.settings": {
+      "basedOnBehaviors": ["claude.behavior.user.settings"],
+      "explainedByStrategies": ["claude.settings.precedence"]
+    },
+    "claude.global.skill": {
+      "basedOnBehaviors": ["claude.behavior.user.skills"],
+      "explainedByStrategies": ["claude.skills.selection"]
+    },
+    "claude.repo.agent": {
+      "basedOnBehaviors": ["claude.behavior.repo.agents"],
+      "explainedByStrategies": ["claude.agent-context.composition", "claude.agents.selection"]
+    },
+    "claude.repo.command": {
+      "basedOnBehaviors": ["claude.behavior.repo.commands"],
+      "explainedByStrategies": ["claude.commands.selection"]
+    },
+    "claude.repo.hooks.settings": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.hooks-contained",
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared"
+      ],
+      "explainedByStrategies": ["claude.hooks.additive"]
+    },
+    "claude.repo.instructions": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.instructions.ancestor",
+        "claude.behavior.repo.instructions.descendant",
+        "claude.behavior.repo.instructions.launch"
+      ],
+      "explainedByStrategies": ["claude.instructions.layering"]
+    },
+    "claude.repo.marketplace": {
+      "basedOnBehaviors": ["claude.behavior.repo.marketplace", "claude.behavior.repo.plugin"],
+      "explainedByStrategies": ["claude.plugins.activation"]
+    },
+    "claude.repo.mcp": {
+      "basedOnBehaviors": ["claude.behavior.repo.mcp"],
+      "explainedByStrategies": ["claude.mcp.selection"]
+    },
+    "claude.repo.output-style": {
+      "basedOnBehaviors": ["claude.behavior.repo.output-style"],
+      "explainedByStrategies": ["claude.output-style.selection"]
+    },
+    "claude.repo.permissions": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared"
+      ],
+      "explainedByStrategies": ["claude.settings.precedence"]
+    },
+    "claude.repo.rules": {
+      "basedOnBehaviors": ["claude.behavior.repo.rules"],
+      "explainedByStrategies": ["claude.rules.layering"]
+    },
+    "claude.repo.settings": {
+      "basedOnBehaviors": [
+        "claude.behavior.repo.settings.local",
+        "claude.behavior.repo.settings.shared"
+      ],
+      "explainedByStrategies": ["claude.settings.precedence"]
+    },
+    "claude.repo.skill": {
+      "basedOnBehaviors": ["claude.behavior.repo.skills"],
+      "explainedByStrategies": ["claude.skills.selection"]
+    },
+    "claude.repo.skills-directory-plugin": {
+      "basedOnBehaviors": ["claude.behavior.repo.skills-directory-plugin"],
+      "explainedByStrategies": ["claude.plugins.activation"]
+    },
+    "codex.derived.fallback-basename": {
+      "basedOnBehaviors": ["codex.behavior.repo.config", "codex.behavior.repo.instructions"],
+      "explainedByStrategies": ["codex.config.precedence", "codex.instructions.layering"]
+    },
+    "codex.excluded.plugin-files": {
+      "basedOnBehaviors": [
+        "codex.behavior.plugin.manifest",
+        "codex.behavior.repo.marketplace",
+        "codex.behavior.user.plugins"
+      ],
+      "explainedByStrategies": ["codex.plugins.activation"]
+    },
+    "codex.excluded.user-runtime": {
+      "basedOnBehaviors": ["codex.behavior.user.memories", "codex.behavior.user.plugins"],
+      "explainedByStrategies": []
+    },
+    "codex.global.agent": {
+      "basedOnBehaviors": ["codex.behavior.user.agents"],
+      "explainedByStrategies": ["codex.agents.inheritance"]
+    },
+    "codex.global.agents-home.marketplace": {
+      "basedOnBehaviors": ["codex.behavior.user.plugins"],
+      "explainedByStrategies": ["codex.plugins.activation"]
+    },
+    "codex.global.agents-home.skill": {
+      "basedOnBehaviors": ["codex.behavior.user.skills"],
+      "explainedByStrategies": ["codex.skills.discovery"]
+    },
+    "codex.global.config": {
+      "basedOnBehaviors": ["codex.behavior.user.config"],
+      "explainedByStrategies": ["codex.config.precedence", "codex.mcp.configuration"]
+    },
+    "codex.global.hooks": {
+      "basedOnBehaviors": ["codex.behavior.user.hooks"],
+      "explainedByStrategies": ["codex.hooks.additive"]
+    },
+    "codex.global.hooks.inline": {
+      "basedOnBehaviors": ["codex.behavior.user.config", "codex.behavior.user.hooks"],
+      "explainedByStrategies": ["codex.config.precedence", "codex.hooks.additive"]
+    },
+    "codex.global.instructions": {
+      "basedOnBehaviors": ["codex.behavior.user.instructions"],
+      "explainedByStrategies": ["codex.instructions.layering"]
+    },
+    "codex.global.prompts": {
+      "basedOnBehaviors": ["codex.behavior.user.prompts"],
+      "explainedByStrategies": []
+    },
+    "codex.global.rules": {
+      "basedOnBehaviors": ["codex.behavior.user.rules"],
+      "explainedByStrategies": ["codex.rules.resolution"]
+    },
+    "codex.global.settings": {
+      "basedOnBehaviors": ["codex.behavior.user.config"],
+      "explainedByStrategies": ["codex.config.precedence"]
+    },
+    "codex.repo.agent": {
+      "basedOnBehaviors": ["codex.behavior.repo.agents"],
+      "explainedByStrategies": ["codex.agents.inheritance"]
+    },
+    "codex.repo.config": {
+      "basedOnBehaviors": [
+        "codex.behavior.repo.config",
+        "codex.behavior.repo.hooks",
+        "codex.behavior.repo.mcp"
+      ],
+      "explainedByStrategies": ["codex.config.precedence", "codex.mcp.configuration"]
+    },
+    "codex.repo.hooks": {
+      "basedOnBehaviors": ["codex.behavior.repo.hooks"],
+      "explainedByStrategies": ["codex.hooks.additive"]
+    },
+    "codex.repo.hooks.inline": {
+      "basedOnBehaviors": ["codex.behavior.repo.config", "codex.behavior.repo.hooks"],
+      "explainedByStrategies": ["codex.config.precedence", "codex.hooks.additive"]
+    },
+    "codex.repo.instructions": {
+      "basedOnBehaviors": ["codex.behavior.repo.instructions"],
+      "explainedByStrategies": ["codex.instructions.layering"]
+    },
+    "codex.repo.marketplace": {
+      "basedOnBehaviors": ["codex.behavior.repo.marketplace"],
+      "explainedByStrategies": ["codex.plugins.activation"]
+    },
+    "codex.repo.rules": {
+      "basedOnBehaviors": ["codex.behavior.repo.rules"],
+      "explainedByStrategies": ["codex.rules.resolution"]
+    },
+    "codex.repo.settings": {
+      "basedOnBehaviors": ["codex.behavior.repo.config"],
+      "explainedByStrategies": ["codex.config.precedence"]
+    },
+    "codex.repo.skill": {
+      "basedOnBehaviors": ["codex.behavior.repo.skills"],
+      "explainedByStrategies": ["codex.skills.discovery"]
+    },
+    "copilot.excluded.additional-standard-locations": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.claude",
+        "copilot.behavior.cli.instructions.gemini",
+        "copilot.behavior.vscode.instructions.claude",
+        "copilot.behavior.vscode.instructions.path"
+      ],
+      "explainedByStrategies": []
+    },
+    "copilot.excluded.cli-extensions": {
+      "basedOnBehaviors": ["copilot.behavior.cli.extensions"],
+      "explainedByStrategies": ["copilot.cli.plugins.activation"]
+    },
+    "copilot.excluded.cli-lsp": {
+      "basedOnBehaviors": ["copilot.behavior.cli.lsp"],
+      "explainedByStrategies": []
+    },
+    "copilot.excluded.extra-directories": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.agents",
+        "copilot.behavior.cli.instructions.path",
+        "copilot.behavior.cli.skills",
+        "copilot.behavior.vscode.instructions.path",
+        "copilot.behavior.vscode.skills"
+      ],
+      "explainedByStrategies": []
+    },
+    "copilot.excluded.user-runtime": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.user.extensions",
+        "copilot.behavior.cli.user.lsp",
+        "copilot.behavior.cli.user.plugins",
+        "copilot.behavior.vscode.user.agents",
+        "copilot.behavior.vscode.user.claude",
+        "copilot.behavior.vscode.user.hooks",
+        "copilot.behavior.vscode.user.mcp",
+        "copilot.behavior.vscode.user.plugins",
+        "copilot.behavior.vscode.user.prompts",
+        "copilot.behavior.vscode.user.settings",
+        "copilot.behavior.vscode.user.skills"
+      ],
+      "explainedByStrategies": []
+    },
+    "copilot.excluded.vscode-settings": {
+      "basedOnBehaviors": ["copilot.behavior.vscode.settings"],
+      "explainedByStrategies": ["copilot.vscode.settings.precedence"]
+    },
+    "copilot.global.agent": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.user.agents",
+        "copilot.behavior.vscode.user.agents"
+      ],
+      "explainedByStrategies": ["copilot.cli.agents.selection", "copilot.vscode.agents.selection"]
+    },
+    "copilot.global.agents-home.skill": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.user.skills",
+        "copilot.behavior.vscode.user.skills"
+      ],
+      "explainedByStrategies": ["copilot.cli.skills.selection", "copilot.vscode.skills.selection"]
+    },
+    "copilot.global.hooks": {
+      "basedOnBehaviors": ["copilot.behavior.cli.user.hooks", "copilot.behavior.vscode.user.hooks"],
+      "explainedByStrategies": ["copilot.cli.hooks.composition", "copilot.vscode.hooks.composition"]
+    },
+    "copilot.global.hooks.inline": {
+      "basedOnBehaviors": ["copilot.behavior.cli.user.hooks"],
+      "explainedByStrategies": ["copilot.cli.hooks.composition"]
+    },
+    "copilot.global.instructions.path": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.user.instructions.path",
+        "copilot.behavior.vscode.user.instructions"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.global.instructions.root": {
+      "basedOnBehaviors": ["copilot.behavior.cli.user.instructions.root"],
+      "explainedByStrategies": ["copilot.cli.instructions.layering"]
+    },
+    "copilot.global.mcp": {
+      "basedOnBehaviors": ["copilot.behavior.cli.user.mcp"],
+      "explainedByStrategies": ["copilot.cli.mcp.selection"]
+    },
+    "copilot.global.settings": {
+      "basedOnBehaviors": ["copilot.behavior.cli.user.settings"],
+      "explainedByStrategies": ["copilot.cli.settings.precedence"]
+    },
+    "copilot.global.skill": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.user.skills",
+        "copilot.behavior.vscode.user.skills"
+      ],
+      "explainedByStrategies": ["copilot.cli.skills.selection", "copilot.vscode.skills.selection"]
+    },
+    "copilot.repo.agent": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.agents",
+        "copilot.behavior.cloud.agents",
+        "copilot.behavior.vscode.agents"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.agents.selection",
+        "copilot.cloud.agents.selection",
+        "copilot.vscode.agents.selection"
+      ]
+    },
+    "copilot.repo.agent.claude": {
+      "basedOnBehaviors": ["copilot.behavior.cli.agents", "copilot.behavior.vscode.agents"],
+      "explainedByStrategies": ["copilot.cli.agents.selection", "copilot.vscode.agents.selection"]
+    },
+    "copilot.repo.command": {
+      "basedOnBehaviors": ["copilot.behavior.cli.commands"],
+      "explainedByStrategies": ["copilot.cli.skills.selection"]
+    },
+    "copilot.repo.hooks": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.hooks",
+        "copilot.behavior.cloud.hooks",
+        "copilot.behavior.vscode.hooks"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.hooks.composition",
+        "copilot.cloud.hooks.composition",
+        "copilot.vscode.hooks.composition"
+      ]
+    },
+    "copilot.repo.hooks.settings": {
+      "basedOnBehaviors": ["copilot.behavior.cli.hooks"],
+      "explainedByStrategies": ["copilot.cli.hooks.composition"]
+    },
+    "copilot.repo.hooks.settings.claude": {
+      "basedOnBehaviors": ["copilot.behavior.cli.hooks", "copilot.behavior.vscode.hooks"],
+      "explainedByStrategies": ["copilot.cli.hooks.composition", "copilot.vscode.hooks.composition"]
+    },
+    "copilot.repo.instructions.agents": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.agents",
+        "copilot.behavior.cloud.instructions.agents",
+        "copilot.behavior.vscode.instructions.agents"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.claude-root": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.claude",
+        "copilot.behavior.cloud.instructions.alternatives",
+        "copilot.behavior.vscode.instructions.claude"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.gemini-root": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.instructions.gemini",
+        "copilot.behavior.cloud.instructions.alternatives"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.instructions.layering",
+        "copilot.cloud.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.path": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cloud.instructions.path",
+        "copilot.behavior.vscode.instructions.path"
+      ],
+      "explainedByStrategies": [
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.path-cli-context": {
+      "basedOnBehaviors": ["copilot.behavior.cli.instructions.path"],
+      "explainedByStrategies": ["copilot.cli.instructions.layering"]
+    },
+    "copilot.repo.instructions.repository": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cloud.instructions.repository",
+        "copilot.behavior.vscode.instructions.repository"
+      ],
+      "explainedByStrategies": [
+        "copilot.cloud.instructions.layering",
+        "copilot.vscode.instructions.layering"
+      ]
+    },
+    "copilot.repo.instructions.repository-cli-context": {
+      "basedOnBehaviors": ["copilot.behavior.cli.instructions.repository"],
+      "explainedByStrategies": ["copilot.cli.instructions.layering"]
+    },
+    "copilot.repo.marketplace": {
+      "basedOnBehaviors": ["copilot.behavior.cli.plugins", "copilot.behavior.vscode.plugins"],
+      "explainedByStrategies": [
+        "copilot.cli.plugins.activation",
+        "copilot.vscode.plugins.activation"
+      ]
+    },
+    "copilot.repo.mcp": {
+      "basedOnBehaviors": ["copilot.behavior.cli.mcp"],
+      "explainedByStrategies": ["copilot.cli.mcp.selection"]
+    },
+    "copilot.repo.mcp.vscode": {
+      "basedOnBehaviors": ["copilot.behavior.vscode.mcp"],
+      "explainedByStrategies": ["copilot.vscode.mcp.selection"]
+    },
+    "copilot.repo.mcp.vscode-root": {
+      "basedOnBehaviors": ["copilot.behavior.vscode.mcp"],
+      "explainedByStrategies": ["copilot.vscode.mcp.selection"]
+    },
+    "copilot.repo.prompt": {
+      "basedOnBehaviors": ["copilot.behavior.vscode.prompts"],
+      "explainedByStrategies": []
+    },
+    "copilot.repo.settings": {
+      "basedOnBehaviors": ["copilot.behavior.cli.settings"],
+      "explainedByStrategies": ["copilot.cli.settings.precedence"]
+    },
+    "copilot.repo.skill": {
+      "basedOnBehaviors": [
+        "copilot.behavior.cli.skills",
+        "copilot.behavior.cloud.skills",
+        "copilot.behavior.vscode.skills"
+      ],
+      "explainedByStrategies": [
+        "copilot.cli.skills.selection",
+        "copilot.cloud.skills.selection",
+        "copilot.vscode.skills.selection"
+      ]
+    },
+    "shared.excluded.managed-remote-state": {
+      "basedOnBehaviors": [
+        "claude.behavior.user.mcp-state",
+        "claude.behavior.user.plugins",
+        "codex.behavior.user.plugins",
+        "copilot.behavior.cloud.mcp",
+        "copilot.behavior.cloud.organization-agents",
+        "copilot.behavior.cloud.organization-instructions",
+        "copilot.behavior.cloud.plugins",
+        "copilot.behavior.cloud.remote-skills"
+      ],
+      "explainedByStrategies": []
+    }
+  }
+}

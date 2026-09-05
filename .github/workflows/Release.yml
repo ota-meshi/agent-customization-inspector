@@ -1,0 +1,179 @@
+# Release. Changesets owns the version bump and the changelog: a push to main
+# either opens or updates the release pull request, or — when that pull request
+# has just been merged — publishes what it versioned.
+#
+# Publishing is npm trusted publishing, so this repository holds no npm token.
+# npm trusts this file by name, which makes renaming it a change to the trusted
+# publisher on npmjs.com as well.
+#
+# Four jobs rather than one `changesets/action`, because the credential decides
+# the shape: `id-token: write` is what npm exchanges for a publish token, and
+# the sub-actions exist so it can sit on the one job that publishes and on no
+# other — which is what that action's own readme recommends for trusted
+# publishing, and what the combined action cannot do, since its one job holds
+# every permission at once. The job that runs this repository's build holds no
+# publishing credential, and the job that publishes uploads a tarball that job
+# already packed and gated.
+#
+# Two decisions every job below repeats. No job passes `cache: pnpm`, which
+# ci.yml does: omitting it is what leaves the cache off, and a store other runs
+# wrote must not reach the tarball this one packs or the job that uploads it.
+# Every checkout passes `persist-credentials: false`, because Changesets pushes
+# commits and tags through the GitHub API rather than the git CLI, so
+# credentials left on disk would only widen what a compromised step reaches.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Nothing is granted by default; each job states what it needs.
+permissions: {}
+
+# Only the newest push releases: a run a later push has superseded is cancelled
+# rather than continued beside the run that push starts, so two runs never
+# reach `npm publish` at once.
+#
+# `cancel-in-progress: true` is deliberate, and the alternative was weighed.
+# Letting a superseded run finish — queued behind the run that replaced it —
+# lets a run whose commit main has already moved past reach `npm publish`, and
+# the same content then sits on npm under two versions, which nothing can take
+# back. Cancelling costs at most the tail of one release: a run stopped between
+# the publish and the tag push leaves a published version whose tag and release
+# are missing, and those a person can still create at the version commit. A
+# duplicate publish is permanent, a missing tag is not, so the cancellation
+# stays (AGENTS.md § Release policy).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # What this push is: changesets to turn into a version bump, a versioned
+  # package to publish, or neither.
+  select-mode:
+    # prevents this action from running on forks
+    if: github.repository == 'ota-meshi/agent-customization-inspector'
+    name: Select mode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # to check out the repository (actions/checkout)
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Select mode
+        id: select-mode
+        # Pinned to an exact tag rather than a major: these actions carry the
+        # release to npm.
+        uses: changesets/action/select-mode@v2.1.1
+
+  # The release pull request. It writes to the repository and publishes
+  # nothing, so it holds no `id-token`.
+  version:
+    if: needs.select-mode.outputs.mode == 'version'
+    name: Version
+    needs: select-mode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to commit version changes (changesets/action/version)
+      pull-requests: write # to create the pull request (changesets/action/version)
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+        with:
+          # @changesets/changelog-github attributes each entry to the commit
+          # that added its changeset file, which it finds by walking history.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create Release Pull Request
+        uses: changesets/action/version@v2.1.1
+        env:
+          # @changesets/changelog-github reads this to resolve commits to the
+          # pull requests it links; the action's own token input does not reach
+          # it.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The build, the packaged-tree gate, and the tarball — everything that runs
+  # this repository's own toolchain. It is granted nothing but the checkout, so
+  # what a compromised step here reaches is an artifact rather than a
+  # credential.
+  pack:
+    if: needs.select-mode.outputs.mode == 'publish'
+    name: Pack
+    needs: select-mode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # to check out the repository (actions/checkout)
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm run build
+      # ci.yml gates the packaged tree as well, and nothing makes this workflow
+      # wait for that run: what publishes is what users install.
+      - name: Verify the packaged files
+        run: pnpm run verify:package
+      - name: Pack
+        id: pack
+        uses: changesets/action/pack@v2.1.1
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  # The one job npm trusts. It publishes the tarball `pack` produced and
+  # creates the tag and GitHub Release naming it, and runs no build of this
+  # repository.
+  publish:
+    if: needs.select-mode.outputs.mode == 'publish'
+    name: Publish
+    needs: [select-mode, pack]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to create the tag and GitHub Release (changesets/action/publish)
+      id-token: write # the OIDC credential npm exchanges for a publish token
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      # `@changesets/cli` is what the publish action runs; the package it
+      # publishes comes from the packed artifact rather than from this tree.
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Publish to npm
+        uses: changesets/action/publish@v2.1.1
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}

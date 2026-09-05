@@ -1,0 +1,10393 @@
+# Tasks: Inspect Agent Customizations
+
+[日本語](tasks.ja.md)
+
+**Input**: Design documents from `/specs/001-inspect-agent-customizations/`
+
+**Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`
+
+**Tests**: Every behavioral change requires risk-appropriate automated tests before implementation. Tests cover unit, contract, integration, package, security, performance, browser, boundary, accessibility, and regression behavior.
+
+**Organization**: Tasks follow the original visible family-vertical delivery increments rather than completing one whole user story horizontally. After the bootable shell, each family completes Inventory/List, complete inert Detail, shared integration where applicable, and Comparison before the next family begins. The exact order is SKILL (whose Skill Metadata list/detail phases are settled decision records — see Phases 6 and 7 — and whose comparison phase verifies the generic path over census companions — see Phase 14) → Instructions → MCP → Rules → Commands → Copilot Prompts → Custom Agents → Configuration/Settings → Output Styles → Plugins → Hooks. Story labels retain canonical traceability: `[US1]` discovery, `[US2]` complete inert detail, `[US3]` comparison, and `[US4]` Global inspection. Only explicit MCP configuration joins the MCP surfaces — a file of another kind that spells MCP configuration shows it as that kind's own detail content once its own inventory phase ships it; every phase still has one independently testable milestone. Phases 105–110 rework the interface those completed surfaces are read through and therefore follow the release evidence, which they reopen: a change to what a reader sees is a change to the tree that evidence was frozen over, and the Convergence phases bring that evidence and the user documentation back onto the tree they produced.
+
+## Format: `[ID] [P?] [Story?] Description`
+
+- **[P]**: Can run in parallel after stated prerequisites because it uses different files and has no dependency on another incomplete task.
+- **[Story]**: Required for Phases 3–101 and 105–110; omitted only in Setup, Minimal Secure Foundation, Phases 102–104, and every Convergence phase.
+- Every checklist item has one primary outcome and at least one exact repository-relative owned file path. A root-level owned file uses an explicit `./` prefix. An unprefixed basename may remain as a manifest member, API value, selector, or other content literal, but it is ignored when deriving owned paths and cannot satisfy task ownership.
+
+## Normative Requirement Traceability
+
+This matrix is the authoritative coverage index, not a mechanism for changing checklist
+semantics. It names the primary implementation, verification, and evidence owners for every
+FR, QR, and SC. A range is inclusive only when every task in it directly contributes to that
+requirement; a task never inherits an obligation absent from its checklist text and the
+referenced specification. Every task is covered by at least one specification row or the
+explicit Constitution/project-governance row. A requirement or task change must update this
+matrix and its Japanese counterpart in the same change. A task ID whose phase decision
+emptied its scope (Phases 6 and 7) stays listed where a row or range names it: the ID now
+resolves to that recorded decision, which is the requirement's disposition for the surface
+the task would have built.
+
+| Requirement | Owning implementation, verification, and evidence tasks |
+|---|---|
+| FR-001 | T040, T043, T046–T047, T917, T1029, T1041, T1048, T1056, T1061–T1062, T1098, T1099, T1125, T1138 |
+| FR-002 | T017, T026, T028–T030, T037, T042, T044, T049, T055, T057, T067–T069, T913–T919, T1029, T1041, T1061–T1062, T1150, T1153 |
+| FR-003 | T052, T061, T063, T065, T067, T110–T111, T113, T132, T135, T137, T160, T162, T164, T211, T213, T1084–T1090, T232, T234–T235, T251, T253–T258, T286, T288–T289, T309, T311–T312, T339, T341–T342, T359, T361–T362, T407, T409, T424, T426–T427, T445, T447, T462, T464–T465, T491, T493, T512, T514, T532, T534–T535, T551, T553–T554, T607, T609–T610, T628, T630–T631, T663, T665, T684, T686–T687, T704, T706–T707, T724, T726–T727, T757, T759, T761, T780, T782, T784, T803, T805–T807, T839, T841, T883, T885–T886, T913, T1029, T1041–T1042, T1053, T1069–T1072, T1097, T1126–T1131, T1133–T1135 |
+| FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
+| FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
+| FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185 |
+| FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
+| FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
+| FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
+| FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
+| FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
+| FR-015 | T977–T990, T1137 |
+| FR-016 | T963–T976, T1138 |
+| FR-017 | T944–T962, T1139 |
+| FR-018 | T930, T947–T949, T952–T956, T964–T966, T969–T973, T978–T980, T983–T987, T991–T992, T996, T999, T1029, T1041–T1042, T1054, T1061–T1062, T1137–T1140 |
+| FR-019 | T015–T023, T027–T032, T040, T046, T055–T056, T067, T075–T076, T081–T089, T095–T100, T183, T915–T927, T995–T997, T1029, T1041, T1054–T1055, T1061–T1062 |
+| FR-020 | T056, T925, T1054 |
+| FR-021 | T280–T401, T925, T1054 |
+| FR-022 | T040, T043, T045–T047, T056, T294, T925, T996, T1054, T1098, T1123 |
+| FR-023 | T018, T020–T021, T031, T056, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061 |
+| FR-024 | T018–T022, T029–T032, T055, T057, T067, T069, T916, T924, T934, T940, T944–T945, T947, T959, T1008, T1014, T1029, T1041, T1051, T1054, T1058, T1061–T1062, T1069–T1072 |
+| FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169 |
+| FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
+| FR-027 | T084, T100, T102, T927, T1045 |
+| FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163 |
+| FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
+| FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
+| FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
+| FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061 |
+| FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929 |
+| FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042 |
+| FR-035 | T205–T225, T944–T962, T1084–T1090 |
+| FR-036 | T226–T244, T963–T976 |
+| FR-037 | T245–T267 |
+| FR-038 | T001–T003, T005–T014, T024–T036, T1043–T1044, T1047–T1051 |
+| FR-042 | T041–T042, T044, T048–T049, T057, T1017–T1029, T1041, T1045–T1046, T1058, T1061–T1062 |
+| FR-043 | T1041–T1042, T1080 |
+| FR-044 | T1123, T1136, T1143, T1144 |
+| FR-045 | T977–T990, T991–T1005, T1137–T1140 |
+| QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
+| QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
+| QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
+| QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
+| QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
+| SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203 |
+| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203 |
+| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203 |
+| SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
+| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203 |
+| SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
+| Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200, T1205 |
+
+---
+
+## Phase 1: Setup
+
+**Purpose**: Establish the reproducible Node.js-only package and development entry points.
+
+**Independent Test**: Run `pnpm run format:check` and observe it gate the tree; run `pnpm run format` and confirm it rewrites only non-excluded files. Then install the frozen dependency graph and confirm that every configured local command and CI entry point resolves without requiring Rust, a native compiler, or an install-time build, and that any platform-specific prebuilt component or pinned certification-browser download appears only in separately pinned third-party development tooling that never enters the published package payload.
+
+**Visible Checkpoint**: Contributors can install the project, run the tested formatting gate, and run the empty build/test toolchain.
+
+- [X] T001 Before changing package or configuration files, revalidate the plan-approved dependency
+  baseline and confirm its initial no-migration-impact facts—no prior published package or public
+  contract, persisted profile or user data, affected consumer, or migration workflow—by verifying
+  and, if needed, updating the `**Migration impact**` section in
+  `specs/001-inspect-agent-customizations/research.md`, the `**移行影響**` section in
+  `specs/001-inspect-agent-customizations/research.ja.md`, the
+  `**Dependency and breaking-change migration gate**` section in
+  `specs/001-inspect-agent-customizations/plan.md`, and the `**Dependencyおよび破壊的変更の移行gate**` section
+  in `specs/001-inspect-agent-customizations/plan.ja.md`. Those exact paired sections are the
+  successful-confirmation evidence destination; T001 remains incomplete and T002 MUST NOT begin
+  while they are missing, stale, inconsistent, or unsupported. If confirmation fails, the approved
+  dependency baseline changes, or a breaking public-contract change is proposed, stop; document its
+  rationale, affected consumers/contracts/data/workflows, migration steps and support window,
+  rollback/support path, or an explicit reasoned no-impact determination; synchronize the affected
+  `specs/001-inspect-agent-customizations/research.md`/`specs/001-inspect-agent-customizations/research.ja.md`,
+  `specs/001-inspect-agent-customizations/plan.md`/`specs/001-inspect-agent-customizations/plan.ja.md`,
+  `specs/001-inspect-agent-customizations/quickstart.md`/`specs/001-inspect-agent-customizations/quickstart.ja.md`,
+  and
+  `specs/001-inspect-agent-customizations/tasks.md`/`specs/001-inspect-agent-customizations/tasks.ja.md`
+  pairs; mark the current task set superseded; and rerun `/speckit-plan` and `/speckit-tasks`.
+  Otherwise pin Node.js `^24.11.0 || ^26.0.0`, `pnpm@11.13.0`, the exact runtime leaf set `gunshi`
+  0.37.0, `yaml`, `strip-json-comments`, and `smol-toml`, the approved exact development versions,
+  and the frozen graph in `./package.json` and `./pnpm-lock.yaml` *(amended 2026-08-20: the approved
+  set reads JSONC with `strip-json-comments` — the reading blanks the comment syntax and resolves
+  through the same `JSON.parse` as strict JSON, because a lenient parser building its own objects
+  cannot hold an authored `__proto__` key (research.md § 3).)*
+- [X] T002 Define `bin` as only `agent-customization-inspector: dist/cli.mjs`, `files` as only
+  `dist`, `docs/images`, `README.md`, `README.ja.md`, and `LICENSE`, omit `main`/`module`/`exports`,
+  and prohibit
+  lifecycle build/download hooks in `./package.json`
+- [X] T003 Own byte hygiene declaratively: normalize line endings through `./.gitattributes`
+  (`* text=auto eol=lf`) and declare charset/final-newline/trailing-whitespace editor conventions in
+  `./.editorconfig` *(amended 2026-07-29: code formatting is separately owned by Prettier —
+  `pnpm run format` rewrites, `pnpm run format:check` gates locally and in the CI `format` job
+  (constitution v5.0.0). Byte hygiene stays declarative; only formatting gained a gate.)*. Scaffold
+  a runnable inert Node ESM entry in `src/server/cli.ts` plus no-op placeholders at
+  `scripts/clean-build-output.mjs` and `scripts/verify-package-files.mjs`; add build, linting,
+  type-checking, unit, contract, integration, package, coverage, and browser commands in
+  `./package.json`. A suite whose tests a later task writes has no command here: T996 brings the
+  security one, T183 the performance one, and T1041 the documentation one, each with its own project
+  and CI job, because a suite that does not exist yet cannot be declared: an empty project fails the
+  run outright, and the allowance that would let it pass instead would report success for a
+  verification nobody wrote
+- [X] T004 Verify only—do not author or semantically edit—the frozen Presentation Allowlist in
+  `specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.md`,
+  `specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.ja.md`,
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.md`,
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.ja.md`,
+  `specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.md`, and
+  `specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.ja.md` against the six
+  recorded lowercase SHA-256 values in
+  `specs/001-inspect-agent-customizations/contracts/official-sources.md` and
+  `specs/001-inspect-agent-customizations/contracts/official-sources.ja.md`. For each UTF-8,
+  BOM-free, LF-only file, require exactly one level-2 heading whose case-folded text ends with
+  `presentation allowlist`, skip following non-table lines, hash only the first contiguous run whose
+  lines begin byte-for-byte with `|`, preserve every row byte, append one LF after every row
+  including the last, and exclude heading/prose/blank/following lines; reject
+  missing/duplicate/empty/malformed headings or tables and compare equal-length digest bytes in
+  constant time. Separately verify exact row IDs and English/Japanese semantic parity—including
+  membership, source forms, extractors, fields, relationships, contained-owner and eligibility
+  gates—because a digest match alone is insufficient. Any mismatch, missing recorded value, or
+  desired semantic change leaves T004 incomplete, stops T005 and all dependents, marks this task set
+  superseded, requires synchronized bilingual spec/research/plan/quickstart/contracts/tasks, and
+  requires `/speckit-plan` then `/speckit-tasks` before regenerated work resumes *(amended
+  2026-08-18: the three `instructions` rows carry an empty eligible set — no product extracts a
+  reference from an instruction file's prose — and the six recorded digests are the ones those files
+  hash to, so this task's verification stands against them. The supersession clause does not apply:
+  an empty eligible set grants authority to no shipped or planned extractor, and the tasks that
+  would build one are corrected in their own phases.)*
+- [X] T005 [P] Configure the Nuxt SPA, static Nitro preset, root-absolute assets, disabled CDN, and
+  explicit imports and components in `./nuxt.config.ts`
+- [X] T006 [P] Configure strict application, shared, source, script, and test type checking in
+  `./tsconfig.json`
+- [X] T007 [P] Configure TypeScript, Vue, Node.js, and test linting while excluding generated output
+  in `./eslint.config.js`
+- [X] T008 [P] Configure distinct unit, contract, integration, package, and coverage projects in
+  `./vitest.config.ts`, and leave `tests/integration/security/` owned by the integration project
+  like every other directory under it. A project whose tests a later task writes is absent rather
+  than present and empty — T996 adds the security project, T183 the performance one, T1041 the
+  documentation one — and `passWithNoTests` is not set, so a project that stops matching its own
+  files fails instead of reporting a green run that executed nothing
+- [X] T009 [P] Configure deterministic Chromium, Firefox, and WebKit primary-workflow and
+  accessibility certification projects using the exact browser revisions installed by Playwright
+  1.61.1, while documenting that these pinned revisions are the reproducible automated baseline
+  rather than an exhaustive user-browser list, in `./playwright.config.ts`
+- [X] T010 [P] Configure the single named Node ESM `cli` entry with fixed `.mjs` output, bundled
+  project modules, external declared dependencies, disabled maps/declarations, and direct `dist/`
+  output with `clean: false` (the pipeline's own clean step owns `dist/` removal) in
+  `./tsdown.config.ts`
+- [X] T011 [P] Point `package.json.bin` directly at the packaged `dist/cli.mjs` with no separate
+  bootstrap wrapper: the `src/server/cli.ts` entry begins with the exact `#!/usr/bin/env node`
+  shebang that tsdown preserves in the bundle, and the package manager makes the linked bin
+  executable at install time. Node.js compatibility is declared only through the packed
+  `engines.node` range `^24.11.0 || ^26.0.0` and enforced by the package manager's engines
+  mechanism; the CLI re-checks neither the declared string nor the running version, and the packed
+  exact string is asserted by the package tests
+- [X] T012 [P] Ignore only dependency and generated Nuxt, server, distribution, coverage,
+  Playwright, and Node.js build outputs in `./.gitignore`
+- [X] T013 Add independent linting, type-checking, unit, contract, integration, package, coverage,
+  and browser jobs in `.github/workflows/ci.yml`; byte hygiene has no CI job because
+  `.gitattributes` and `.editorconfig` own it, and a suite whose tests a later task writes has no
+  job until then — T996 adds the security job, T183 the performance one, T1041 the documentation one
+  — because a suite that does not exist yet cannot be declared: an empty project fails the run
+  outright, and the allowance that would let it pass instead would report success for a verification
+  nobody wrote
+- [X] T014 Add the exact six lower-bound certification jobs—Node.js `24.11.0` and `26.0.0` crossed
+  with `ubuntu-latest`, `macos-latest`, and `windows-latest`—plus one active-LTS `ubuntu-latest`
+  development/build job, and label the declared Node.js 24/26 engine ranges as the runtime
+  compatibility contract rather than narrowing support to those samples in
+  `.github/workflows/ci.yml` *(amended 2026-08-26: the runner labels and the development/build
+  Node.js name what the platform currently ships rather than pins this repository advances by hand)*
+
+---
+
+## Phase 2: Minimal Secure Foundation
+
+**Purpose**: Implement only the contracts and security boundaries that must exist before any browser session or Repository read.
+
+**Independent Test**: Verify closed DTOs and source-value-free diagnostics, exact package manifests, the approved production-dependency set gate, the single inspection-module filesystem boundary, and generation-zero state without launching a product workflow.
+
+**Visible Checkpoint**: Security and package foundations pass independently, while no vendor matcher or inspected-source read exists outside the single inspection module.
+
+### Tests and fixtures
+
+- [X] T015 [P] No work remains: errors are reported ordinarily and no sanitizer or envelope module
+  exists, so the layered failure-contract suite this task described has nothing to assert.
+  File-confined failure isolation is covered by the FR-028 tests and the Closed Scan Publication
+  Outcomes tasks
+- [X] T016 [P] Add failing tests for the closed Diagnostic registry, deterministic aggregation, and
+  successful complete atomic publication in `tests/unit/shared/diagnostics.test.ts`. This task
+  asserts no error entity and no operational event: errors are reported ordinarily and no sanitizer
+  or envelope module exists, so such suites would have nothing to assert
+- [X] T017 [P] Add failing tests for public entity shapes—including readable
+  `utf-8 | utf-8-replaced` files with complete decoded text and preserved `U+FFFD`, textless
+  NUL-containing `binary`, one-root Source invariants, exact non-authorizing
+  `SourceBoundary { displayRoot, origin }` with
+  `process-cwd | root-option | default-home | environment`, and generation-0 origin selection. Add
+  the closed `DocumentationStatus = documented | partially-documented | unknown | conflict` and the
+  fixed `LifecycleQualifier = preview | experimental | deprecated` ordering with duplicate rejection
+  and no inferred `stable`, carried as scalar fields on each behavior, rule, and strategy, with no
+  use of `documentation-conflict` as a documentation status. Also cover closed descriptors, ordinary
+  Diagnostic scopes, opaque IDs, and internal state kept out of DTOs by construction, in
+  `tests/unit/shared/entities.test.ts` and `tests/unit/shared/api-types.test.ts` *(amended
+  2026-07-29: restated for the published-path decision in spec.md § Clarifications,
+  Session 2026-07-29.)* *(amended 2026-08-04: the scalar status and qualifier fields are the whole
+  shape — nothing projects a source condition (T091), so no entity records one.)*
+- [X] T018 Create deterministic cross-platform fixtures for symbolic links to files and directories
+  (including broken links), link cycles, non-regular entries, deep trees, VCS internals, unreadable
+  files and directories, NUL-containing binary files, invalid-UTF-8 and BOM files, files that
+  disappear between discovery and read, and Codex override/fallback content cases; instrument
+  product filesystem requests to prove zero mutation-capable APIs/flags and record before/after
+  content/length/identity/link/mode/mtime/ctime state — plus xattr/ACL state only where the platform
+  offers a stable API (contracts/inspection-path-allowlist.md § Symlink and read invariants; Node.js
+  offers none, so the ctime observation is the documented indirect signal) — with OS-only atime
+  recorded separately in `tests/fixtures/filesystem/build-filesystem-fixtures.ts`
+- [X] T019 Add failing traversal tests for the ordinary recursive walk of the compiled inspection
+  allowlist over `fs/promises`: directories are enumerated with ordinary reads; symbolic links are
+  followed transparently so a symlinked candidate is read through its target like any other file, a
+  link whose target is missing or unreadable yields that file's `file-unreadable` Diagnostic, and
+  visited directories are tracked by real path so a link cycle cannot prevent scan termination; hard
+  links are ordinary files; VCS internals are excluded; raw entry names remain filesystem operands
+  and, joined with `/`, the public Source-relative Paths; a missing or unreadable root yields the
+  source-scoped `root-unreadable` Diagnostic and fails the Source attempt; and no identity
+  re-verification between operations or detected-change taxonomy exists (FR-019, FR-024) in
+  `tests/unit/inspection/traversal.test.ts` *(amended 2026-07-29: a published path is now the raw
+  entry names joined with `/`; spec.md Clarifications § Session 2026-07-29.)*
+- [X] T020 Add failing file-read tests: each discovered file is read once per scan attempt with an
+  ordinary read-only `fs/promises` read and no mutation-capable flag; a file that disappears or
+  fails to read yields that file's `file-unreadable` Diagnostic without affecting other files; hard
+  links are ordinary files with no physical-identity grouping; the Codex override-empty ordered
+  fallback (FR-035) is the one content-dependent selection; and Sources, scan attempts, and
+  generations remain independent in `tests/unit/inspection/traversal.test.ts`
+- [X] T021 Add failing integration tests for the FR-024/FR-028 publication matrix: a
+  `file-unreadable` or an admitted candidate's `file-content-binary` outcome retains a
+  diagnostic-only record and makes an otherwise publishable generation partial; a
+  `recognition-parse-failed` outcome keeps the readable source displayed and comparison-eligible
+  while omitting only the affected recognition's derived data; an unreadable root fails the Source
+  attempt with the source-scoped `root-unreadable` Diagnostic and no partial generation; a failure
+  outside any single file aborts the attempt with nothing committed; external mutation of fixtures
+  during a scan is not a product mutation; and late results after disable, shutdown, or supersession
+  are discarded without hard-cancellation claims in `tests/integration/boundaries/traversal.test.ts`
+- [X] T022 Enforce the architectural boundary that rejects every static and literal-dynamic
+  `node:fs` import outside the `src/server/inspection/` directory, so inspected-source filesystem
+  I/O stays in the single inspection module, as `no-restricted-imports` (static) plus
+  `no-restricted-syntax` (string-literal dynamic `import()`) rules scoped to production sources in
+  `./eslint.config.js`. A no-substitution template-literal specifier is covered by the standard
+  `@stylistic/quotes` rule (`allowTemplateLiterals: 'never'`), which forces it to a plain string the
+  fs selector then catches; only a substitution-bearing or computed dynamic specifier is an
+  implementation bug owned by review, not a lint guarantee *(amended 2026-07-23: the lint layer owns
+  import policy — a static linter is the guarantee this boundary can make, and the existing lint CI
+  job already executes it, so no dedicated contract suite exists.)*
+- [X] T023 [P] Keep loopback-only binding as the session's whole protection, asserted by the startup
+  contracts in `tests/contract/host-startup.test.ts` (T040), with the residual
+  unauthenticated-loopback exposure documented under T1029 *(amended 2026-07-22: the devframe host
+  decision narrowed this task to the binding — devframe owns the session surface, so the guards this
+  task had specified had no surface of their own to defend.)*
+- [X] T024 [P] Add failing build and package tests for cleanup confined to the generated roots by
+  `scripts/clean-build-output.mjs`, the exact two required package entry
+  points—`dist/public/index.html` and `dist/cli.mjs`—verified as regular files by
+  `scripts/verify-package-files.mjs`, and safe failure when the execution environment cannot
+  completely read or verify an artifact in `tests/package/build-cleanup.test.ts` and
+  `tests/package/verify-package-files.test.ts`
+- [X] T025 Add failing dist-closure and package-policy tests for the dist-root `.mjs` server bundle
+  set with the required CLI entry, the approved direct production dependency set—`devframe`,
+  `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`,
+  `which`, and `yaml` *(amended 2026-08-08: `h3` joined with the host's `/skills/**` shell fallback
+  — research.md § 3)* *(amended 2026-08-16: `open` joined the approved set as the product-owned
+  startup browser helper — research.md § 3)*—asserted from `package.json` and the `pnpm-lock.yaml`
+  closure, and root-API-only CLI imports with no `gunshi/agent`/lazy/custom-plugin path in
+  `tests/package/verify-package-files.test.ts`, `tests/package/production-graph.test.ts`, and
+  `tests/package/node-only-policy.test.ts` *(amended 2026-07-23: the scope narrowed to the dist
+  closure, the approved dependency set, and the CLI's imports — the committed lockfile already pins
+  every resolved version with its integrity hash, and install-time enforcement belongs to the
+  package manager, so what this task had also specified would have restated one or the other; see
+  plan.md § Source Code (repository root).)* *(amended 2026-08-20: the approved set reads JSONC with
+  `strip-json-comments` — the reading blanks the comment syntax and resolves through the same
+  `JSON.parse` as strict JSON, because a lenient parser building its own objects cannot hold an
+  authored `__proto__` key (research.md § 3).)* *(amended 2026-08-30: `which` is an approved direct
+  dependency — the editor hand-off resolves commands on an explicit search path with it (research.md
+  § 3).)*
+- [X] T026 [P] Add failing generation and session tests proving bootstrap generation 0 synchronously
+  contains exactly one enabled idle Repository Source selected lexically from the captured
+  invocation working directory and optional `--root`, with stable opaque `sourceId`, escaped
+  non-authorizing `SourceBoundary`, empty files/Diagnostics, null `scanRequestId`, and zero
+  filesystem I/O; automatic first scan starts from that Source. Cover one opaque request ID across
+  every admitted automatic/explicit Source/progress/attempt/final status and successful generation;
+  deterministic graph IDs; coordinator-locked serialization; atomic N+1 replacement; as-constructed
+  record publication; last-commit retention; explicit-rescan stale state; late-result discard; the
+  ordinary request-owned failure lifecycle (a pre-acceptance rejection fails with the request's real
+  error and creates no job, while an accepted-job fatal rejection retains the last commit as stale
+  with the failed request's error message); and an ownerless automatic-startup rejection that is not
+  caught or converted and reaches the process top level in
+  `tests/unit/session/scan-generation.test.ts` and `tests/unit/session/session.test.ts` *(amended
+  2026-08-08: the ID-rekeying coverage became as-constructed publication coverage with T1082 — a
+  file's identity is its Source-relative Path.)*
+
+### Implementation
+
+- [X] T027 No work remains: errors are reported ordinarily, and the product has no sanitizer,
+  envelope, operational-event, or request-owned error-boundary module. File-confined failures become
+  per-file Diagnostics under FR-028 (`src/shared/diagnostics.ts`), and a failed explicit rescan
+  retains the stale prior snapshot with the failed request's error under FR-030
+  (`src/server/session/stale-failures.ts`)
+- [X] T028 Implement public DTOs for readable `utf-8 | utf-8-replaced`, textless `binary`, one-root
+  Sources, generation 0, exact `SourceBoundary`, descriptors, Diagnostics. Implement
+  `DocumentationStatus` and fixed-order duplicate-free `LifecycleQualifier[]` as the types of the
+  scalar fields `documentationStatus` and `lifecycleQualifiers`, and put them only on each behavior,
+  rule, or strategy. Reject internal authority, acknowledgement, validation, scalar
+  aggregate-status, or fabricated `stable` fields in `src/shared/entities.ts` and
+  `src/shared/api-types.ts` *(amended 2026-07-29: restated for the published-path decision in
+  spec.md § Clarifications, Session 2026-07-29.)* *(amended 2026-08-04: the scalar status
+  and qualifier fields are the whole shape — nothing projects a source condition (T091), so no
+  entity records one.)* *(amended 2026-08-21: the two fields are the expansion of the
+  runtime-composition contract's canonical evidence-assessment index, so
+  `tests/contract/runtime-composition.test.ts` gates every shipped strategy record against that
+  index in both languages — a record carrying a non-default assessment the index does not list reads
+  as `documented` in the one artifact normative for it, and nothing else compared the two.)*
+- [X] T029 Implement ordinary recursive traversal of the compiled inspection allowlist with
+  `fs/promises` in `src/server/inspection/traversal.ts`: enumerate directories with ordinary reads,
+  follow symbolic links transparently while tracking visited directories by real path so a link
+  cycle terminates, treat hard links as ordinary files, exclude VCS internals, keep raw entry names
+  as the filesystem operands and, joined with `/`, the public Source-relative Paths, record a
+  missing or unreadable root as the source-scoped `root-unreadable` Diagnostic that fails the Source
+  attempt (FR-002), and record a file that disappears or cannot be read—including a broken link—as
+  that file's `file-unreadable` Diagnostic without affecting other files; add no identity
+  re-verification between operations, no detected-change taxonomy, and no resource registry (FR-019,
+  FR-024) *(amended 2026-07-29: restated for the published-path decision in spec.md
+  § Clarifications, Session 2026-07-29.)*
+- [X] T030 Define the closed immutable versioned `TraversalPlan` and segment-program types from
+  `data-model.md § TraversalPlan` beside the registry in `src/server/inspection/rules/registry.ts`,
+  and make `src/server/inspection/traversal.ts` interpret only those compiled plans: typed
+  literal/regex/non-adjacent-recursive segment programs based at the selected root, VCS exclusion,
+  raw operands whose `/`-joined spelling is the public path, and the Codex ordered fallback as the
+  one content-dependent branch. CLI root selection stays lexical in `src/server/cli.ts`—`--root`
+  with a repeated option resolving to the parser's last value, an absolute value kept as given, a
+  relative value resolved against the one captured `process.cwd()`—and the scan simply reads the
+  retained selected root; no shared root-grammar parser module or separate admission layer exists
+  (FR-001, FR-019) *(amended 2026-07-29: restated for the published-path decision in spec.md
+  § Clarifications, Session 2026-07-29.)*
+- [X] T031 Implement per-file reading in `src/server/inspection/traversal.ts`: read each discovered
+  file exactly once per scan attempt with an ordinary read-only `fs/promises` read and no
+  mutation-capable flag, reading a symlinked candidate transparently through its target, convert a
+  read failure—including a broken link—into that file's `file-unreadable` Diagnostic while other
+  files continue, treat hard links as ordinary files without physical-identity grouping, implement
+  the Codex override-empty ordered fallback (FR-035) as the one content-dependent selection, and
+  discard late results after authority revocation without claiming hard cancellation
+- [X] T032 Implement the closed file-confined publication matrix in `src/server/inspection/scan.ts`:
+  a `file-unreadable` or an admitted candidate's `file-content-binary` outcome retains a
+  diagnostic-only item at file scope with its coherent `sourceId`/`sourceRelativePath` pair and
+  makes an otherwise publishable generation partial; a `recognition-parse-failed` outcome keeps the
+  complete readable source displayed and comparison-eligible while omitting only the affected
+  recognition's derived metadata or relationships (FR-028); `root-unreadable` is source-scoped with
+  `sourceId` only and fails the Source attempt without a partial generation; and a failure not
+  confined to one file is never converted into a Diagnostic — it propagates ordinarily, aborts the
+  attempt without a commit, and is reported as the failed request's real error (FR-030 retains the
+  last committed snapshot)
+- [X] T033 Document the trusted-workspace boundary in the `src/server/inspection/traversal.ts`
+  module header: inspected customization files are not modeled as an adversary (FR-019, constitution
+  Quality and Safety Standards), symbolic links are read transparently because agents resolve them
+  when loading customization files (FR-024), reads are ordinary and read-only, and external
+  modification during a scan surfaces as per-file diagnostics or an ordinary failed attempt rather
+  than a detected-change taxonomy
+- [X] T034 Adopt devframe (caret range in `package.json`, resolved version pinned by the lockfile)
+  as the local host framework dependency in `./package.json` and gate the production dependency set
+  to exactly the eleven approved direct dependencies—`devframe`, `env-editor`, `gunshi`, `h3`,
+  `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`—through
+  `APPROVED_PRODUCTION_DEPENDENCIES` in `tests/package/production-graph.test.ts`, per the 2026-07-22
+  devframe host decision *(amended 2026-08-08: the `/skills/**` shell fallback made `h3` an approved
+  direct dependency, declared as a caret range like the rest and resolved by the lockfile to
+  devframe's own h3 so both resolve one module instance (research.md § 3).)* *(amended 2026-08-16:
+  the product-owned startup browser helper made `open` an approved direct dependency, with
+  devframe's bundled opener disabled so the helper package is declared and reviewed directly
+  (research.md § 3).)* *(amended 2026-08-20: the approved set reads JSONC with `strip-json-comments`
+  — the reading blanks the comment syntax and resolves through the same `JSON.parse` as strict JSON,
+  because a lenient parser building its own objects cannot hold an authored `__proto__` key
+  (research.md § 3).)* *(amended 2026-08-30: `which` is an approved direct dependency — the editor
+  hand-off resolves commands on an explicit search path with it (research.md § 3).)*
+- [X] T035 Replace only the cleanup/package placeholders: confine cleanup to the generated roots in
+  `scripts/clean-build-output.mjs`, and verify the two package entry points the package contract
+  depends on—`dist/public/index.html` served by the devframe host plus the `dist/cli.mjs` Node
+  bundle—in `scripts/verify-package-files.mjs`; the build pipeline is clean → nuxt build → tsdown,
+  no build-time asset manifest exists (superseded by the devframe host, 2026-07-22), and each script
+  fails safely when the execution environment cannot complete its check
+- [X] T036 Replace only the server/package placeholders: assert the approved set of exactly eleven
+  direct production dependencies—`devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`,
+  `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`—from `package.json` and the
+  `pnpm-lock.yaml` closure in `tests/package/production-graph.test.ts` (no separate production-graph
+  script or evidence file exists), retaining the fixed Node ESM CLI entry scaffolded by T003
+  *(superseded 2026-07-23: the committed lockfile pins every resolved version with its integrity
+  hash, so a test restating either duplicates the lockfile)* *(amended
+  2026-08-08: the `/skills/**` shell fallback made `h3` an approved direct dependency, declared as a
+  caret range like the rest and resolved by the lockfile to devframe's own h3 so both resolve one
+  module instance (research.md § 3).)* *(amended 2026-08-16: the product-owned startup browser
+  helper made `open` an approved direct dependency (research.md § 3).)* *(amended 2026-08-20: the
+  approved set reads JSONC with `strip-json-comments` — the reading blanks the comment syntax and
+  resolves through the same `JSON.parse` as strict JSON, because a lenient parser building its own
+  objects cannot hold an authored `__proto__` key (research.md § 3).)* *(amended 2026-08-30: `which`
+  is an approved direct dependency — the editor hand-off resolves commands on an explicit search
+  path with it (research.md § 3).)*
+- [X] T037 Implement deterministic generation construction for the two independent sequences the
+  2026-07-22 split decision requires: the Repository sequence (`RepositoryScanGeneration`, kinds
+  `bootstrap` | `repository-scan`) starts at `createBootstrapGeneration`'s synchronous generation 0
+  containing the exact enabled idle non-authorizing Repository Source selected from captured
+  invocation `cwd`/`--root`, with stable source ID, empty files/Diagnostics, null request ID, and no
+  I/O—reject any other generation-0 shape—and advances through `prepareNextRepositoryGeneration`;
+  the Global sequence (`GlobalScanGeneration`, kinds `global-enable` | `global-scan`) exists only
+  from the `createGlobalEnableGeneration` commit that creates it at generation 1 until disable
+  discards it, advances through `prepareNextGlobalGeneration`, and has no disable commit kind. Each
+  commit publishes its own sequence's records as constructed and never touches the other sequence;
+  the session keeps `committedRepositoryGeneration` plus a nullable `committedGlobalGeneration` and
+  exposes `repositoryGeneration`/`globalGeneration` in the snapshot. Preserve one request ID across
+  admitted status and successful generation, coordinator-locked serialization, atomic per-sequence
+  N+1 replacement, explicit-rescan stale retention, accepted-job failure retention as the Source's
+  stale overlay carrying the failed request's error message (`failScan(scanRequestId, message)`),
+  startup rejection propagation to the process top level, and cleanup-only late-result discard after
+  authority revocation in `src/server/session/scan-generation.ts`,
+  `src/server/session/stale-failures.ts`, and `src/server/session/session.ts` *(superseded
+  2026-07-22: the defensive-check cleanup left no runtime overflow guard for a clause to
+  require.)* *(amended 2026-08-08: a file's
+  identity is its Source-relative Path, stable across commits, so no clause rekeys one (T1082).)*
+- [X] T038 Wire the devframe application definition and host in `src/server/host/devframe-app.ts`:
+  `defineDevframe` with the product `id`/`name` and `cli: { distDir: 'dist/public', auth: false }`
+  so devframe serves the built SPA shell and runs unauthenticated behind the loopback binding,
+  session RPC function registration under the `agent-customization-inspector:` prefix in `setup` per
+  the session API contract (contracts/http-api.md), and `createDevServer` (from
+  `devframe/adapters/dev`) startup invoked by the CLI with devframe owning port and host while the
+  host spawns the `open` package's browser helper after the launch line with devframe's bundled
+  opener disabled; let a thrown/rejected RPC handler error be serialized as-is by devframe so the
+  failed request reports its real error with no created job/ID, result body, or generation before
+  acceptance, or expose the retained accepted-job error through the session snapshot's stale overlay
+  after acceptance; never convert a delivery failure into partial, and preserve an already committed
+  snapshot
+- [X] T039 Add CI execution of the inspection traversal and Node.js-only package-policy suites in
+  `.github/workflows/ci.yml`
+
+---
+
+## Phase 3: Bootable Authorized Empty Screen
+
+**Purpose**: Deliver the first user-visible product increment without reading the Repository.
+
+**Independent Test**: Before the host starts or a browser opens, verify that generation 0 is constructed synchronously with exactly one enabled idle Repository Source selected lexically from the captured invocation `cwd`/`--root`, a stable opaque `sourceId`, an escaped non-authorizing boundary, empty files/Diagnostics, a null `scanRequestId`, and zero filesystem I/O. Then launch `dist/cli.mjs` from a fixture invocation `cwd` with and without optional `--root`, and open the printed loopback URL after the automatic startup scan; verify that the browser displays the committed Ready Repository Source with its escaped non-authorizing boundary and empty files/Diagnostics. *(amended 2026-09-04: this phase's package test uses the built entry from an unrelated working directory; T1051 owns installed-tarball launch in the lower-bound CI matrix.)*
+
+**Visible Checkpoint**: The browser screen starts and displays almost no product content.
+
+### Tests first
+
+- [X] T040 [P] [US1] Add failing host startup contracts for the devframe dev server: it serves the
+  built SPA shell from `cli.distDir` (`dist/public`) with devframe-owned static handling and
+  `auth: false`, binds loopback only, performs zero startup documentation/network access, and never
+  classifies customization content; the exact declared `engines.node` and `bin: dist/cli.mjs`
+  package fields hold; prove any ownerless automatic-startup throw/rejection reaches the process top
+  level ordinarily without a product liveness guarantee, fabricated Diagnostic, or scan result in
+  `tests/contract/host-startup.test.ts`
+- [X] T041 [P] [US1] Add failing client tests for `get-session` invocation through the devframe RPC
+  channel and its exact request-token/`clientDataEpoch`/per-sequence-generation/`globalContentEpoch`
+  guards. Require every inspection-data success to carry its captured epoch and be rejected unless
+  the final response gate sees that epoch unchanged with a null `globalDisableInProgress`; require a
+  greater epoch or non-null fence on any response to perform the shared full client-data purge
+  before rendering. *(there is no session-liveness probe. The product does not model a second
+  browser tab, so the one thing a probe uniquely did — observing another tab's Global disable
+  proactively — has no requirement behind it; a lost host closes the loopback socket and devframe
+  reports that to the page unasked, and every response is still checked against the adopted epoch
+  and fence. `get-liveness`, `LivenessProjection`, the focus/blur listeners, page-lifecycle
+  purge/refetch, and the former `src/app/session/liveness.ts` are gone. File-ID guards arrive with
+  the file-detail client in T096/T102.)* Also reject late resolved and rejected settlements, cover
+  older/equal/newer generation behavior, persist nothing, and call nothing outside the Phase 3
+  session API catalog in `tests/unit/app/api-client.test.ts`
+- [X] T042 [P] [US1] Add browser-state tests that adopt the generation-0 snapshot, install no
+  page-lifecycle listener, and issue no request from elapsed time or an idle page. *(a
+  page-lifecycle event is not a purge trigger. FR-027 purges after a document-liveness failure or an
+  equivalent terminal reset, and neither switching tabs nor navigating away is either — a discarded
+  document frees its own memory, and a bfcached one holds the same user's view of their own files on
+  their own machine. The visibility/unload listeners, return-to-visible refetch, liveness DTO/check,
+  and their tests were removed.)* Require a transport-reported channel loss or unsupported protocol
+  on the current RPC to perform the shared purge and enter the ended view, and reject a settlement
+  captured before that purge. *(amended 2026-08-06: a current RPC rejection is not a purge trigger —
+  an ordinary handler, serialization, or delivery failure stays that request's error while the
+  committed snapshot stays readable; only a transport-reported channel loss or unsupported protocol,
+  or a session mismatch, purges and ends the session (contracts/http-api.md § Concurrency and
+  lifecycle).)* Prove the shared purge calls every registered disposer synchronously, advances
+  `clientDataEpoch` after clearing, stops calling an unregistered disposer, defines no polling
+  interval/request timeout/retry timer/memory lease, and gives a continuously idle page no
+  product-defined wall-clock process-loss check in `tests/unit/app/session-view-state.test.ts` and
+  `tests/unit/app/client-data.test.ts`
+- [X] T043 [P] [US1] Add Gunshi CLI and packaged-launch tests for the root `define`/`cli` API,
+  positive default-true `open`/generated `--no-open`, and optional `--root <path>`, with a repeated
+  option resolving to the parser's last value: capture `process.cwd()` exactly once and retain that
+  exact invocation string when omitted; keep an absolute option as given and resolve a relative
+  option against the captured invocation directory with lexical `node:path` operations only. Require
+  selection itself to perform zero filesystem/network I/O and never call `process.chdir()`, reject
+  an explicit empty value with fixed actionable source-value-free output, and reject a missing value
+  through Gunshi's typed argument validation before session creation or browser opening. Inject a
+  `process.cwd()` throw and require ordinary ownerless process-top-level propagation with no session
+  or browser. Also cover non-binding help/version, strict unknown/positional/rest rejection, awaited
+  host startup, exact package fields, the closed loopback URL and printed-URL fallback, serving the
+  built shell from an unrelated working directory, an unmodified inspected fixture, and graceful
+  shutdown in `tests/unit/cli.test.ts` and `tests/package/npx-launch.test.ts`. This Phase 3 package
+  test's “isolation” is only the unrelated working directory. T917 owns complete
+  packed-entry/default-browser/helper/environment instrumentation, including proof that no
+  inspection-derived value reaches browser opening; T1051 owns installing and launching the one
+  packed tarball in the lower-bound CI matrix. *(amended 2026-09-04: the package gate intentionally
+  runs without the network a tarball installation needs, while cross-platform certification owns
+  the installed-package path.)*
+- [X] T044 [US1] Add browser acceptance for the packaged boot shell showing exactly one enabled
+  Repository Source with its escaped non-authorizing selected-root label, empty files and
+  Diagnostics, keyboard focus at the top, and no Repository picker or ancestor discovery, plus a
+  transport-reported host loss that purges the rendered Source and ends the session without
+  interaction in `tests/e2e/boot.spec.ts`. *(bootstrap generation 0 is not observable in a page —
+  the automatic first Repository scan starts at the same launch (FR-002), so its synchronous
+  idle/null-`scanRequestId` shape remains owned by `tests/unit/session/session.test.ts` and
+  `tests/contract/host-startup.test.ts`. Fresh-session recovery after a different host answers is
+  likewise unreachable because the devframe RPC socket does not reconnect after host loss; the
+  browser suite therefore covers only the reachable session-ended path, while the session-identity
+  mismatch branch is driven in `tests/unit/app/api-client.test.ts`.)*
+
+### Implementation
+
+- [X] T045 [US1] Superseded by the devframe host (2026-07-22): static asset serving, SPA fallback,
+  and media types for the built shell are owned by devframe through `cli.distDir` (`dist/public`)
+  configured in `src/server/host/devframe-app.ts` (T038); no hand-written static-file module or
+  build-time asset manifest exists
+- [X] T046 [US1] Implement the loopback host startup boundary of the directly executed CLI (Node.js
+  compatibility stays declared through the packed `engines.node` range and enforced by the package
+  manager, with no runtime re-check): let every ownerless startup throw/rejection, including
+  automatic inspected-source work, reach the process top level ordinarily without a fabricated
+  Diagnostic or a liveness guarantee; start the loopback-bound devframe dev server
+  (`createDevServer`), expose the session snapshot with its epoch, fence, Diagnostics, and any
+  retained stale-failure error through the session RPC channel, and perform zero startup
+  documentation/network access in `src/server/host/devframe-app.ts`
+- [X] T047 [US1] Implement the Gunshi root `define`/`cli` entry with positive default-true `open`,
+  generated `--no-open`, and optional `--root <path>`, a repeated option resolving to the parser's
+  last value: capture `process.cwd()` once before validation and use its exact string when omitted;
+  keep an absolute option as given and resolve a relative option against the captured invocation
+  directory with lexical `node:path` operations only. After the verified package bootstrap, make
+  selection itself perform zero filesystem/network I/O, never call `process.chdir()`, reject an
+  explicit empty input before session/browser creation with fixed actionable output and nonzero
+  exit, and leave a missing value to Gunshi's typed validation at that same boundary. Let a
+  `process.cwd()` throw propagate ordinarily to the process top level without a session or browser.
+  Retain strict unknown/positional/rest rejection, awaited completion, non-binding help/version,
+  root-only imports, the closed loopback URL, fixed OS browser helper, the
+  inherited-launch-environment policy with zero inspection-derived environment values and
+  inspection-derived-input exclusions, usable printed-URL fallback, and graceful shutdown in
+  `src/server/cli.ts` *(the host spawns the `open` package's fixed OS browser helper best-effort
+  after the launch line with devframe's bundled opener disabled (contracts/http-api.md § Host
+  requirements #4), so cross-platform helper resolution stays the maintained package's policy. A
+  missing `--root` value is likewise the parser's own typed validation error; the command rejects
+  only the empty value Gunshi accepts, detected through `ctx.explicit`.)* *(amended 2026-08-15: the
+  helper inherits the launch environment unchanged through the maintained `open` package — no
+  ambient allowlist exists to copy, and the product writes no inspection-derived environment value
+  (spec.md § Clarifications).)*
+- [X] T048 [US1] Implement the Phase 3 `get-session` API client over the devframe RPC channel with
+  exact request tokens, abortable-request bookkeeping, and
+  `clientDataEpoch`/per-sequence-generation/`globalContentEpoch`/session-identity/fence adoption
+  guards. Before rendering an inspection-data success, require its captured epoch to remain current
+  and `globalDisableInProgress` to be null. On a greater epoch or non-null fence, invoke the shared
+  full client-data purge before rendering, and reject every stale resolved or rejected settlement in
+  `src/app/session/api-client.ts`. *(it lives in `src/app/session/`, not under `composables/`: it is
+  not a Vue composable — it exports one plain factory over closure-local request state with no
+  reactivity — and its name says which side of the API it implements. Control-only fence recovery
+  remains deferred to T1027, and file-detail ID guards remain deferred to T096/T102.)*
+- [X] T049 [US1] Implement the Phase 3 shared synchronous full client-data purge for channel
+  failure, session-identity loss, a greater `globalContentEpoch`, or a non-null fence. Install no
+  listener: use no polling interval, request timeout, retry timer, memory lease, liveness probe, or
+  page-lifecycle purge. Abort outstanding requests before clearing the currently implemented
+  browser-owned session snapshot, inventory/Source/file/Diagnostic graph, and retained error; then
+  increment `clientDataEpoch` so a stale settlement cannot restore them. Adopt a transport-reported
+  channel loss directly as the ended view, and render the initial full snapshot only after the API
+  client's request-token, epoch, generation, identity, and fence guards pass. Implement that state,
+  the one-language boot/ended copy, and the shared navigation scroll/focus rule in
+  `src/app/session/client-data.ts`, `src/app/session/view-state.ts`, `src/app/App.vue`,
+  `src/app/router.options.ts`, and `src/app/styles/main.css`. *(the reactive browser view state
+  lives in `src/app/session/view-state.ts` behind the `SessionViewState` class: it is neither a Vue
+  composable nor a page frame, and the name states what it holds. The shared purge split into the
+  import-free `src/app/session/client-data.ts` dependency leaf. Pre-send Global-disable purge,
+  control-only `GlobalFenceRecoverySnapshot`, Resume, and the comparison, editor, and filter owners
+  remain deferred to T1027 and their owning phases. The detail owner registers here — the
+  skill-detail route's own state is purged with the rest — and there is no acknowledgement or
+  warning owner to defer, because FR-027 has neither.)* *(amended 2026-08-15:
+  `src/app/router.options.ts` joins the owned files — scroll and the shell heading focus decide "did
+  the page change" through one shared page-identity rule, so a same-page parameter change moves
+  neither and a page change starts at the top where the focused heading is.)* *(amended 2026-08-22:
+  a return to the inventory instead restores the row the reader followed out of the list, focused
+  and put back in the place it sat, so the viewport and the focused element still arrive together;
+  T1122 owns that rule and the point it restores.)*
+
+---
+
+## Phase 4: Codex Skill List
+
+**Purpose**: Deliver the first safe Repository inventory slice for Codex skills.
+
+**Independent Test**: Launch from a fixture containing root and nested `.agents/skills/*/SKILL.md`, near misses, links, malformed names, and unrelated files; verify only allowlisted Codex skill rows appear with path, source, kind, and tool.
+
+**Visible Checkpoint**: Users can see a Codex SKILL list, but cannot open file detail yet.
+
+### Fixtures and tests first
+
+- [X] T050 [US1] Create Codex SKILL fixtures for positive, nested, near-miss, malformed-name,
+  linked, empty, secret-bearing, and performance cases in
+  `tests/fixtures/repositories/build-fixtures.ts`. A thrown or rejected operation is not a tree and
+  gets no fixture: the suites that need one replace the operation itself through the `fs-io` module
+  mock, at the exact call the case is about, which a materialized directory cannot express
+- [X] T051 [US1] Materialize Codex skill behavior, rule, strategy, and evidence conformance rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T052 [P] [US1] Add failing registry/compiler contracts for stable reciprocal IDs, closed
+  matcher/traversal/derivation kinds, literal/regex/non-adjacent-recursive token grammar authored as
+  typed programs (no selector-text parsing), immutable versioned `TraversalPlan` output, evidence
+  grammar and its resolution against the normative official-sources rows, in
+  `tests/contract/vendor-behaviors.test.ts` and `tests/contract/inspection-rules.test.ts`.
+  Production exclusion is not provable there: a citation lives on the record that carries it, so no
+  import graph separates them and only the built artifact can show the values are gone —
+  `tests/package/verify-package-files.test.ts` owns that assertion. No fingerprint exists: the
+  registry keeps no digest of page text or paraphrases, and whether a section still establishes a
+  paraphrase is the reviewer's reading (contracts/official-sources.md)
+- [X] T053 [P] [US1] Add failing Codex SKILL tests proving
+  `['.agents', 'skills', ANY_NAME, 'SKILL.md']` — anchored at the selected root, with no leading
+  `ANY_DIRECTORIES`, because Codex scans upward from its working directory to the repository root
+  and never descends (FR-001) — compiles once to the typed plan, the safe filesystem executes only
+  that plan, vendor code only classifies matches, descendant/near-miss/VCS behavior is exact, and
+  runtime-chain facts remain conditional in `tests/unit/inspection/rules.test.ts`
+- [X] T054 [P] [US1] Add failing Codex recognition tests for tool, `skill` kind, path provenance,
+  and absence of unrelated recognitions in `tests/unit/inspection/recognizers.test.ts`
+- [X] T055 [P] [US1] Add failing Repository scan tests beginning with the generation-0 Source
+  already selected lexically from captured `cwd`/`--root`: its stable `sourceId`, escaped boundary,
+  enabled idle state, empty files/Diagnostics, and null request ID exist synchronously with zero
+  filesystem I/O, and the scan reads the retained raw selected root. Verify raw path segments remain
+  filesystem operands and their `/`-joined spelling is the public identity — two raw spellings that
+  would render alike publish as two ordinary files; hard links are ordinary files; a symlinked
+  candidate is read through its target while a broken link yields its `file-unreadable` Diagnostic;
+  a file that disappears or cannot be read yields its `file-unreadable` Diagnostic while unaffected
+  files publish in a partial generation; an unreadable root fails the attempt with the source-scoped
+  `root-unreadable` Diagnostic and no partial inventory; and a failure outside any single file
+  aborts the attempt with no result/generation and is reported ordinarily as the failed request's
+  error or through ownerless-startup top-level propagation. Also cover atomic recognition,
+  last-commit retention, revocation, no verdict, and no relationship-target reads in
+  `tests/integration/repository-scan.test.ts` *(amended 2026-07-29: a published path is now the raw
+  entry names joined with `/`; spec.md Clarifications § Session 2026-07-29.)*
+- [X] T056 [P] [US1] Add zero-activation/mutation tests under `--no-open` or instrumentation begun
+  after the isolated startup helper. Use and record local fixture roots; instrument product
+  socket/HTTP(S)/DNS/SMB/MCP/URI/image surfaces, separately classify and validate the two exact
+  FR-022 authorized internal loopback classes at the issued `localhost` authority—static/SPA
+  `GET`/`HEAD` for the packaged UI assets and the local session API channel—and prove Codex SKILL
+  discovery causes no child process, dynamic evaluation/import, MCP connection, prohibited direct
+  product-issued outbound request, URI load, mutation-capable open, or filesystem mutation across
+  every other surface. Compare content/length/identity/link/mode/mtime/ctime and (where the platform
+  exposes a stable API — Node.js does not, so ctime is the indirect signal) xattr/ACL state and
+  record OS-only atime separately in `tests/integration/security/zero-activation.test.ts`
+- [X] T057 [P] [US1] Add failing contracts for generation 0's exact Repository Source and
+  `process-cwd`/`root-option` boundary origins, the session snapshot invocation of the session API
+  contract (contracts/http-api.md), and Repository rescan admission. Every normal inspection-data
+  success carries `globalContentEpoch` and both sequence generations. The fence is out of scope here
+  and stays null through this phase: no Global disable exists to raise one, so a recovery-only
+  session response and the `global-disable-pending` conflict have nothing to be proven against.
+  T1018 ships them together with the disable function that makes them reachable. Retain the exact
+  pre-/post-acceptance ordinary-error behavior (a pre-acceptance rejection fails with the request's
+  real error and no job; an accepted-job failure marks the retained snapshot stale with that error),
+  startup ownership, request correlation, deterministic first-scan versus explicit stale behavior,
+  and stale IDs in `tests/contract/http-api-session.test.ts`
+- [X] T058 [P] [US1] Add failing inventory tests for Codex rows; an escaped, inert Repository root
+  label rendered from `SourceBoundary.displayRoot` and `origin` distinctly from every
+  Source-relative item path and never reused as a navigation/read locator; source/path/kind labels;
+  progress; empty state; rescan; retry; diagnostics; and zero source-text exposure in session
+  summaries in `tests/unit/app/inventory.test.ts` *(amended 2026-07-29: the summary does carry one
+  declared value — the skill's declared name, which FR-007/T1064 define as presentation identity;
+  every other authored value stays behind the detail route.)* *(these assertions drive the filter
+  composable and the session view state rather than mounting the components. The unit project has no
+  single-file-component compiler, and adding one changes the approved dependency baseline that T001
+  gates. The two claims that genuinely require a rendered page — that the escaped root label is
+  presented distinctly from every Source-relative item path, and that it is never offered as a
+  navigation or read locator — are asserted against the real page in
+  `tests/e2e/codex-skills-list.spec.ts` (T059).)*
+- [X] T059 [US1] Add failing browser acceptance for launching a Codex-only fixture and seeing the
+  exact SKILL list without source content in `tests/e2e/codex-skills-list.spec.ts`
+- [X] T060 [US1] Add failing Codex skill registry-graph coverage for reciprocal behavior and rule
+  references and for each record's citations resolving to their normative official-sources rows, in
+  `tests/contract/vendor-behaviors.test.ts` and `tests/contract/inspection-rules.test.ts` *(amended
+  2026-08-04: nothing projects (T091), so there is no consumer to assemble for and no assembler
+  ships.)*
+
+### Implementation
+
+- [X] T061 [US1] Implement registry records and compile closed matcher/traversal/derivation grammar
+  into the already-defined T030 `TraversalPlan` and segment-program types without widening them;
+  enforce the closed typed segment grammar (including non-adjacent recursion), reciprocal
+  validation, one-edge derivation acyclicity, production loading that excludes official-source
+  evidence, and an allowlisted structure-only projection vocabulary that cannot represent
+  natural-language interpretation/ranking, customization
+  correctness/validity/compliance/effectiveness/quality verdicts, validation/lint, or
+  remediation/fix behavior. Keep the shared plan types with the registry in
+  `src/server/inspection/rules/registry.ts` *(amended 2026-08-04: nothing projects (T091), so there
+  is no consumer to assemble for and no assembler ships.)*
+- [X] T062 [US1] Add the non-authorizing `codex.behavior.repo.skills`/`codex.behavior.user.skills`
+  statements together with their complete base skill-discovery strategy, so the production registry
+  stays closed at this milestone. The registries are laid out one directory per vendor:
+  `src/shared/registries/<tool>/` holds `behaviors.ts`, `strategies.ts`, `rules.ts`, and
+  `relations.ts`, while the record shapes and the aggregates that publish them stay at `registries/`
+  level. Cross-registry references are not fields on a record — they live in `relations.ts` under
+  named edges (`basedOnBehaviors`, `explainedByStrategies`, `consumesBehaviors`), and an edge holds
+  the referenced record rather than its identifier, so reading a relation leads straight to the
+  thing it names. A behavior has no outgoing edge, so the graph is the DAG behavior ← strategy ←
+  rule; being acyclic is what lets an edge hold a record at all, since `const` references across a
+  cycle fail at module evaluation. `InspectionRule.policyRefs` stays on the record because it names
+  spec.md clauses rather than another registry. Identifiers are closed unions in
+  `identifier-types.ts`, so every aggregate is provably complete and every reference is
+  compile-checked. Citations are not edges either: each record states its own in an `evidence`
+  array, and `tsdown.config.ts` compiles them out of the packaged CLI through
+  `__ACI_SHIP_MAINTENANCE_DATA__` together with `locator: VendorLocator | null` — no DTO field
+  carries either, and the package suite asserts the built artifact contains neither, because that
+  substitution fails silently. data-model.md/.ja.md § RegistryRelations, plan.md/.ja.md § Project
+  Structure, and `tests/fixtures/conformance/relations.json` are part of this task.
+- [X] T063 [US1] Add the read-authorizing `codex.repo.skill` record in
+  `src/shared/registries/inspection-rules.ts` *(the matcher is anchored at the Repository root —
+  `['.agents', 'skills', ANY_NAME, 'SKILL.md']` — instead of carrying a leading
+  `recursive-directories` step. Codex's skill scan runs *upward* from its runtime working directory
+  to the repository root and never descends, and the selected root is that repository root, so a
+  leading recursive step inventoried nested `.agents/skills` directories the agent never loads.
+  FR-001 now states the equation explicitly and the option is spelled `--root` rather than `--cwd`,
+  because what it names is the repository root and not a working directory. This narrows the
+  admitted set: a nested `packages/api/.agents/skills/deploy/SKILL.md` moved from a positive fixture
+  case to a near miss, and the performance fixture's bulk skills moved to siblings inside the one
+  admitted skills directory. spec.md/.ja.md FR-001, inspection-path-allowlist.md/.ja.md § Structured
+  Inspector matcher notation, § Repository selector requirements and § Common conformance
+  requirements, data-model.md/.ja.md § StructuredInspectorMatcher and invariant 13, and the
+  `codex.repo.skill` rows of the bilingual Codex vendor contract were updated in the same change; no
+  Global scope or read authority changed, so the consent-bound contract version is untouched.)*
+- [X] T064 [US1] Add Codex skill evidence records as `evidence` citations on the behavior, rule, and
+  strategy records themselves in `src/shared/registries/codex/`. Evidence has no registry module of
+  its own: every maintained record states its reviewed URL, headings, review date, and paraphrase in
+  an `evidence` array, so the basis sits beside the claim instead of two hops away, and the
+  normative single row per page stays in contracts/official-sources.md. `tsdown.config.ts` compiles
+  those citations out of the packaged CLI through the `__ACI_SHIP_MAINTENANCE_DATA__` define,
+  together with `locator: VendorLocator | null` — no DTO field carries either,. The package suite
+  asserts the built artifact carries none of them, because that substitution fails silently. Adding
+  a vendor's evidence means adding citations to that vendor's records; data-model.md/.ja.md §
+  EvidenceCitation is the governing section.
+- [X] T065 [US1] Implement Codex skill classification over the registry-compiled `codex.repo.skill`
+  plan without a vendor-owned walker or selector reinterpretation in
+  `src/server/inspection/rules/codex.ts`
+- [X] T066 [US1] Implement path-derived Codex skill recognition without parsing or source exposure
+  in `src/server/inspection/recognizers/candidate.ts`
+- [X] T067 [US1] Implement Repository scan orchestration from the retained raw selected root, never
+  the generation-0 display boundary, by submitting compiled T030 `TraversalPlan` work to the
+  traversal module and consuming its typed per-file results in `src/server/inspection/scan.ts`.
+  Preserve raw operands as the `/`-joined public paths, but leave directory enumeration and file
+  reading in `src/server/inspection/traversal.ts` under T029/T031. Orchestrate the file-confined
+  Diagnostic matrix and deterministic partial outcomes, source-scoped `root-unreadable` failure,
+  unchanged propagation of any failure not confined to one file, authority revocation, late discard,
+  and no verdict in `src/server/inspection/scan.ts` *(amended 2026-07-29: restated for the
+  published-path decision in spec.md § Clarifications, Session 2026-07-29.)*
+- [X] T068 [US1] Implement automatic first scan from the already-present generation-0 Repository
+  Source and FIFO explicit rescan with one opaque request ID through
+  Source/progress/attempt/successful generation; admit only the retained raw selected root, never
+  the escaped boundary; serialize coordinator work, select generation at dequeue, reject duplicates,
+  atomically publish complete or partial exactly per the Closed Scan Publication Outcomes, retain
+  the same Source with failed scan status on first-scan failure, and let an ownerless
+  automatic-startup throw/rejection escape to the process top level with no liveness guarantee. When
+  an accepted explicit rescan job rejects fatally, preserve the last commit and create or replace
+  the Source's stale overlay referencing only that failed request's error message via
+  `failScan(scanRequestId, message)`; a pre-acceptance rejection preserves the prior snapshot
+  without creating a stale overlay. Clear an existing overlay only on successful replacement,
+  invalidate generation IDs, and discard late work in `src/server/session/session.ts`,
+  `src/server/session/stale-failures.ts`, and `src/server/session/scan-generation.ts`
+- [X] T069 [US1] Implement deterministic Repository summaries/admissions and the ordinary
+  request-owned failure lifecycle in `src/server/host/devframe-app.ts`: the generation-0 Source has
+  the exact escaped non-authorizing boundary and null request ID; successful admissions correlate
+  Source/progress/status/generation; a pre-acceptance throw/rejection fails with the request's real
+  error and no job/retention; an accepted-job rejection retains the failed request's error under its
+  non-null request ID with no fabricated Diagnostic/result/generation. Every accepted
+  explicit-rescan job that terminates fatally MUST create or replace its Source stale
+  overlay—referencing only the failed request's error message
+  (`StaleFailureRef { kind: 'error', message }`) for a thrown or rejected operation or the
+  source-scoped `root-unreadable` Diagnostic (`{ kind: 'diagnostic', diagnosticId }`) when the root
+  could not be read—while pre-acceptance failures, initial scans, and initial/retry Global batches
+  MUST create no stale overlay. Preserve conflicts, stale IDs and snapshots, and Source-relative
+  paths only in session DTOs
+- [X] T070 [US1] Implement generation-aware source/tool/kind/Source-relative-path filters,
+  per-Source stale markers, retry state, and cleanup only after a successful replacement in
+  `src/app/composables/filters.ts` and `src/app/session/view-state.ts`
+- [X] T071 [US1] Implement the accessible Repository header with an escaped, inert
+  `SourceBoundary.displayRoot`/`origin` root label visually and semantically distinct from
+  Source-relative item paths and never used as a navigation/read locator; current/stale snapshot
+  status; request-correlated progress/rescan controls that display only the active `scanRequestId`
+  state and cannot let older status/inventory satisfy a newer command; Source-relative-path filters;
+  Codex SKILL list; and item summaries in `src/app/pages/index.vue`,
+  `src/app/components/inventory/ScanProgress.vue`,
+  `src/app/components/inventory/InventoryFilters.vue`,
+  `src/app/components/inventory/InventoryList.vue`, and that kind's row component under
+  `src/app/components/inventory/rows/`. Automatically updating status must expose keyboard-operable
+  pause/resume plus on-demand refresh without stopping the underlying scan *(no pause/resume control
+  exists, because no status on this page updates automatically. The product defines no timer,
+  filesystem watcher, or server-initiated push of inspection data (contracts/http-api.md §
+  get-session), and T042 forbids issuing a request from elapsed time, so status advances only
+  through the keyboard-operable on-demand refresh this task also requires. WCAG 2.2.2 applies to
+  automatically updating content; there is none to pause, and building a control for content that
+  never moves would be the speculative mechanism AGENTS.md forbids. The underlying scan is
+  unaffected either way — the browser never stops it.)*
+- [X] T072 [US1] Implement actionable diagnostics and a Codex-scope empty state in
+  `src/app/components/inventory/rows/RowDiagnostics.vue` and
+  `src/app/components/inventory/InventoryList.vue`
+- [X] T073 [US1] Add English Codex inventory, progress, empty-state, retry, and boundary messages in
+  the Vue components that render them
+
+---
+
+## Phase 5: Codex Skill Detail
+
+**Purpose**: Make Codex `SKILL.md` files inspectable as complete inert authored source and closed allowlisted typed metadata, while the sibling `agents/openai.yaml` stays published as the skill's census companion *(amended 2026-08-01: the Phase 6 decision settled that no admission of that file ships)*.
+
+**Independent Test**: Open malformed, literal-credential-bearing, changing, and metadata-bearing Codex `SKILL.md` files; verify exact complete source and metadata literals, no credential masking or reveal control, no environment-reference resolution, no activation, no relationship expansion, and cleanup on close or rescan.
+
+**Visible Checkpoint**: Selecting a Codex SKILL opens a complete inert detail screen.
+
+### Fixtures and tests first
+
+- [X] T074 [US2] Extend generated malformed and maintained-secret fixtures for Codex SKILL
+  frontmatter, references, scripts, commands, embedded markup, and credentials in
+  `tests/fixtures/content/build-fixtures.ts` and `tests/fixtures/secrets/build-fixtures.ts`
+- [X] T075 [P] [US2] Add failing byte-decode tests proving an admitted candidate's NUL byte yields
+  diagnostic-only `binary` with its `file-content-binary` Diagnostic, no source, resolved values, or
+  comparison, and an otherwise publishable partial generation; every non-NUL file is decoded exactly
+  once with UTF-8 replacement semantics as readable `utf-8` or `utf-8-replaced`, one leading BOM is
+  recorded/removed, inserted `U+FFFD` remains in complete `sourceText` and ordinary
+  parsing/extraction/display without making the scan partial — proved end to end through the
+  extractor and the detail route in `tests/integration/repository-scan.test.ts`; comparison arrives
+  with US3 — and no alternate charset, retry, sampling, or truncation occurs. Cover inert
+  Markdown/frontmatter, safe YAML, the resolved scalar a parse yields, a throw when the document
+  cannot be parsed at all, in-process parsing on the scan path, and whole-attempt abort with no
+  domain conversion for a failure not confined to one file in
+  `tests/unit/inspection/parsers.test.ts` *(amended 2026-07-29: a field carries no source
+  coordinates (`data-model.md` § Field reading) and an entry holds the one value its parser
+  resolved, so the parser suite proves the parse rather than a slice measured against the text it
+  came from. The recognition-atomic `recognition-parse-failed` Diagnostic that throw becomes — which
+  keeps the readable source displayed and comparison-eligible — is proved where a scan builds one,
+  in `tests/integration/boundaries/traversal.test.ts`.)*
+- [X] T076 [P] [US2] Add failing in-process parser-invocation tests for environment-owned
+  memory/time capacity with no Inspector numeric cap; prove a parse or extraction failure confined
+  to one file — including an ordinary caught parser exception — becomes that file's
+  `recognition-parse-failed` Diagnostic under a `partial` commit while other files continue, whereas
+  a failure not confined to one file aborts the attempt with no recovered result or generation and
+  is reported ordinarily as the failed request's error at the trigger-owning outer boundary or
+  through startup top-level propagation; cover authority revocation plus late-result discard in
+  `tests/unit/inspection/seed-parsers.test.ts`
+- [X] T077 [P] [US2] Add failing exact-display tests for literal credentials, duplicate fields,
+  quoting/escapes/punctuation, environment-reference text, astral and combining sequences surviving
+  extraction and JSON transport whole, no process-environment lookup, and zero masking/reveal
+  artifacts in `tests/unit/inspection/declared-values.test.ts` *(amended 2026-07-29: an entry
+  carries the value its parser resolved and no coordinates, so the cases assert that value and that
+  whole characters survive it; see T090 for why a field carries none,
+  `tests/unit/inspection/parsers.test.ts` for duplicate-key resolution, and `codex-metadata.test.ts`
+  for the published entry shape. The suite is named for what it covers — declared values.)*
+- [X] T078 [P] [US2] Add failing Codex metadata tests for inert frontmatter, one resolved value per
+  declared key, provenance, conditional discovery, skill resources, environment-reference
+  non-resolution, and evidence in `tests/unit/inspection/codex-metadata.test.ts` *(amended
+  2026-07-29: the cases assert the value the frontmatter parser resolved — an authored `name: 007`
+  is the string `7`, and a quoted value is the string inside the quotes — because that is the value
+  a product loading the file has. No range, no duplicate-occurrence ordering, and no second typed
+  spelling; see T090 for why a field carries no coordinates.)* *(amended 2026-08-02: the suite
+  covers the declared-name reading.)* *(amended 2026-08-05: the recognizer publishes every authored
+  frontmatter key and the body as `details.frontmatter`/`bodyText` (T090's last amendment); the
+  declared name remains the one value with a reader of its own, the inventory's grouping key.)*
+- [X] T079 [P] [US2] Add failing applicability tests for authored, available, selected, omitted,
+  shadowed, disabled, conditional, and unknown projections without an inferred effective aggregate
+  in `tests/unit/inspection/applicability.test.ts` *(amended 2026-08-02: no response states whether
+  a product would use a discovered file, so there is no projection to test and no suite; FR-009 and
+  QR-005 govern.)*
+- [X] T080 [P] [US2] Add failing Codex skill-composition tests for runtime-chain conditions,
+  same-name handling, and unknown selection facts in
+  `tests/unit/inspection/codex-composition.test.ts` *(amended 2026-08-02: nothing projects, so no
+  suite tests a projection; what a shipped strategy has to satisfy is covered by the registry
+  contract gate.)*
+- [X] T081 [P] [US2] Add failing file-detail contracts for complete inert authored source, exact
+  ordered declared `value`s, strict/stale IDs, source-value-free Diagnostics, and minimum metadata;
+  prove a thrown/rejected request-owned operation fails that request with its real error and no
+  job/result/generation or success payload, while a post-commit delivery rejection leaves the
+  committed snapshot unchanged, emits no successful payload, and is never partial in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-07-28: the detail result carries no
+  `relationships` array. A Relationship is emitted only from an authored declaration an allowlist
+  row names, and the Codex `skill` row names exactly `codex.skill.name` and
+  `codex.skill.description` — neither carries a target — so no shipped recognition can produce one
+  and the array would be empty in every response this release can return. A skill's resources are
+  published as the owning inventory definition's `companionFiles`
+  (`skills[].definitions[].companionFiles`), which the census enumerates and never admits.)*
+  *(amended 2026-08-02: the detail result carries no `declaredMetadata` array — see T090.)*
+  *(amended 2026-08-05: the recognizer publishes every authored frontmatter key and the body as
+  `details.frontmatter`/`bodyText` (T090's last amendment); the declared name remains the one value
+  with a reader of its own, the inventory's grouping key.)*
+- [X] T082 [P] [US2] Add failing absence contracts proving the session API registers no reveal,
+  masking, redaction, or environment-resolution function and that invoking any such unregistered
+  operation fails without retaining client or server state in
+  `tests/contract/http-api-routes.test.ts`
+- [X] T083 [P] [US2] Add failing direct-detail tests for same-origin Monaco, complete
+  authored-source read-only models, exact read-only options, inert rendering, accessibility,
+  request-token adoption, and disposal in `tests/package/monaco-assets.test.ts` and
+  `tests/unit/app/source-viewer.test.ts` *(amended 2026-07-28: the unit assertions run against
+  `src/app/composables/monaco.ts` rather than a mounted component, for the reason T058 gives — the
+  unit project has no single-file-component compiler, and adding one changes the approved dependency
+  baseline T001 gates. The claims that need a rendered page are asserted against the real app in
+  `tests/e2e/codex-skills-detail.spec.ts`.)*
+- [X] T084 [P] [US2] Add failing FR-027 tests for how the browser holds authored content, in
+  `tests/unit/app/authored-content.test.ts`, asserted against the view state rather than a mounted
+  component (the unit project compiles no single-file components, as T083 records): content is
+  published exactly as written with no masking or reveal claim/control and no confirmation step
+  before a detail request, is reached only by an explicit request for one file, and is held in
+  memory only — dropped on purge, on route change, and on the commit that replaces the generation.
+  `tests/e2e/codex-skills-detail.spec.ts` asserts against the real page that no gate or notice
+  appears and that a literal credential renders exactly as authored. *(amended 2026-07-28: FR-027
+  now requires direct presentation — a control before a loopback-only session showing the viewer's
+  own files guarded nothing — and the suite became the authored-content handling tests.)*
+- [X] T085 [US2] Extend zero-activation tests across parsing, metadata extraction, relationships,
+  and detail loading, including zero referenced process-environment reads or substitutions from
+  authored content, in `tests/integration/security/zero-activation.test.ts` *(amended 2026-07-28:
+  the case that asserted a companion file is never opened now asserts the read set instead — exactly
+  the skill's own directory, one read each, and nothing beyond it. A directory-shaped customization
+  is read whole at the maintainer's direction, and the specification was corrected in the same
+  change: FR-003, contracts/inspection-path-allowlist.md § Bounded companion census, data-model.md §
+  ToolRecognition, and contracts/http-api.md § get-session all state it. The census still admits
+  nothing — a companion acquires no rule, recognition, kind, or inventory row.)*
+- [X] T086 [US2] Add failing browser acceptance for direct presentation — nothing stands between the
+  reader and the content, and no notice stands beside it — exact literal credentials and
+  environment-reference text, complete Codex source, metadata, diagnostics, absence of
+  masking/reveal controls, keyboard use, route cleanup, client-data purge, and rescan cleanup in
+  `tests/e2e/codex-skills-detail.spec.ts` *(amended 2026-07-29: presentation is direct because
+  FR-027 admits nothing in front of the content. See T084.)*
+
+### Implementation
+
+- [X] T087 [P] [US2] Implement inert Markdown/frontmatter extraction reading one resolved value per
+  allowlisted frontmatter field, with recognition-atomic failure in
+  `src/server/inspection/parsers/markdown.ts` *(amended 2026-07-28: the module decides nothing about
+  the format. `vfile-matter` decides whether a frontmatter block exists and how far it extends, and
+  the block goes to the YAML parser whole, fences included, because `---` is YAML's own
+  directives-end marker. Narrowing the block to its body here meant measuring which line terminator
+  follows an opening fence and whether a closing fence carries one — a hand-copy of a grammar two
+  packages already implement, and one nothing could check: the body is sliced with those offsets and
+  then parsed, so a body read one unit late parses `name:` as the key `ame` and every literal taken
+  from it is an exact slice of what was parsed. There are no spans or ranges either; see T090.)*
+  *(amended 2026-07-28: the module chooses the YAML semantics a frontmatter block is read under and
+  returns what `vfile-matter` parsed, and does nothing else. It does not locate the block's body by
+  measuring fence and line-terminator forms and then re-parse that body — a hand-copy of a grammar
+  the package already implements, and one nothing could check, since the body would be sliced with
+  those offsets and then parsed. Nor does it set `logLevel: 'silent'`: that would discard parse
+  *errors* as well as warnings, so a document nothing can read would come back as a best-effort
+  value instead of failing the recognition.)*
+- [X] T088 [P] [US2] Implement atomic YAML 1.2 core-schema reading that resolves one value per root
+  field and fails the recognition as a whole when the document cannot be parsed *(amended
+  2026-07-29: no `src/server/inspection/parsers/yaml.ts`, and no alias rejection. Once a declared
+  value is the one a parser resolved, `vfile-matter` already produces it — YAML 1.2, core schema —
+  and a second parse of the same block had nothing left to add. An alias is part of how a value is
+  written, so the parser resolves it like any other syntax; the module that would have rejected it
+  existed to read node ranges for exact authored slices, which no entry carries. Anyone who needs
+  the spelling reads the complete `sourceText` the detail surface serves.)*
+- [X] T089 [US2] Implement in-process parser invocation on the scan path with environment-owned
+  memory/time capacity and no Inspector numeric cap; catch a parser failure confined to one file as
+  an ordinary exception that discards that recognition's whole extraction behind the file's
+  `recognition-parse-failed` Diagnostic under a `partial` commit, let every failure not confined to
+  one file propagate unchanged without scan-domain catch, cause classification, retry, Diagnostic,
+  recovered result, or partial publication, and implement publication-authority revocation with
+  late-result discard, leaving ordinary request-owned failure reporting or startup top-level
+  propagation exclusively to the trigger-owning outer boundary in `src/server/inspection/parsers/`
+  *(amended 2026-07-28: the runner carries no internal occurrence list. An extractor returns the
+  publishable entries, and a recognizer reads its declared name from those, so one parse feeds
+  both.)*
+- [X] T090 [US2] Publish one entry per authored frontmatter key holding the value its parser
+  resolved, with no source coordinates, no per-occurrence entry, and no second typed spelling of
+  that value, and without credential detection or environment resolution *(amended 2026-07-28: the
+  value a product loading the file has is what the entry carries, so the field needs no span to
+  validate and no typed union over a whole schema. A measurement taken against the same text it
+  slices round-trips a wrong reading as readily as a right one — a frontmatter body read one unit
+  late parses `name:` as the key `ame` — and the one decoded value with a reader is the declared
+  name a row groups by, which is a string. See T087 for what `markdown.ts` does.)* *(amended
+  2026-08-02: recognition publishes one name value — since 2026-08-23 the invocation name its
+  admitting rule resolved (`details.invocationName`) — and no catalog of captioned metadata fields
+  exists. The detail surface serves the complete `sourceText`, frontmatter included, so a captioned
+  copy of a value already on the same screen would be a second spelling of one fact.)* *(amended
+  2026-08-02: a skill is additionally published as its own presentation — the authored `frontmatter`
+  keys in order and the `bodyText` the frontmatter block is removed from — because the detail
+  surface leads with the skill rather than with the file that carries it (data-model.md § Skill
+  presentation). The keys are the file's own, not a maintained catalog's, which is what keeps it a
+  reader's frontmatter rather than a maintained field-ID list.)*
+- [X] T091 [US2] Implement the closed condition registry, evidence-linked `SourceConditionFact` and
+  `ApplicabilityAssessment` records, and deterministic precedence projection in
+  `src/server/inspection/applicability/conditions.ts`,
+  `src/server/inspection/applicability/context.ts`, and
+  `src/server/inspection/applicability/precedence.ts` *(amended 2026-08-02: the detail surface
+  discloses no account of why a file is inspected, what its use depends on, or how well the vendor
+  documents it, and no registry record carries a condition key. No response carries one either:
+  nothing projects one. What a vendor documents about its own runtime conditions stays in that
+  vendor's maintained contract, which is not a product surface.)*
+- [X] T092 [US2] Extend the inventory-owned Codex skill strategy with detail-time selection,
+  same-name, runtime-chain, and condition projections without adding a new strategy ID in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-07-28: no record changes.
+  `codex.skills.discovery` already publishes what detail-time projection needs — `operations`, which
+  `skill-resolution.ts` reads for the same-name statement. Adding a detail-specific field would be a
+  second copy of what the record already states.)* *(amended 2026-08-04: nothing projects an
+  applicability (T091), so the record's `operations` are all detail time reads — for the same-name
+  statement, and only when a tool faces that collision.)*
+- [X] T093 [US2] Implement relationship-only skill-resource policy without promoting referenced
+  scripts, assets, or arbitrary paths in `src/server/inspection/rules/codex.ts` *(amended
+  2026-07-28: the policy is what the shipped registry does not contain. No rule admits a skill's
+  resources, and the compiler refuses by name any record without a matcher, so a referenced script
+  or asset cannot become a candidate. A `codex.relationship.component` record and the
+  discovery-class filter that would skip it state the same policy a second time and change no
+  behavior; both arrive with the phase that emits a Relationship. See T081 for why none is emitted
+  this release.)*
+- [X] T094 [US2] Extend Codex recognition with one resolved `value` per declared key,
+  provenance-scoped authored/default relationships, environment-reference non-resolution, and exact
+  evidence in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-07-28: the provenance
+  DTO gains `discoveryClass` only. `sourceRefs` is absent because a citation is maintenance data a
+  packaged CLI does not carry, so the field would be populated in a maintained build and empty in
+  the shipped product, and `provenanceId`, `order`, and the derived-seed fields are absent because
+  no shipped rule is a `bounded-derived-candidate`, no shipped strategy documents an order, and no
+  relationship references an admission.)* *(amended 2026-08-04: nothing projects (T091), so the
+  provenance and applicability fields need no rationale of their own.)* *(amended 2026-08-02: the
+  vendor recognizer modules folded into the shared engine — a vendor contributes its tool literal.)*
+  *(amended 2026-08-05: the recognizer publishes every authored frontmatter key and the body as
+  `details.frontmatter`/`bodyText` (T090's last amendment); the declared name remains the one value
+  with a reader of its own, the inventory's grouping key.)*
+- [X] T095 [US2] Integrate byte classification and exactly-once UTF-8 replacement decoding in
+  `src/server/inspection/scan.ts`: an admitted candidate's NUL-containing input becomes
+  diagnostic-only `binary` and partial, while every non-NUL input becomes readable `utf-8` or
+  `utf-8-replaced`, records/removes one leading BOM, preserves inserted `U+FFFD` in complete
+  authored source, and continues through resolved-value extraction, atomic per-recognition parsing,
+  display/comparison, and one-edge derivation without partial status by itself; perform no alternate
+  decoding, sampling, or truncation, and convert a parser or extractor failure into the affected
+  recognition's `recognition-parse-failed` Diagnostic while a failure not confined to one file
+  propagates ordinarily and aborts the attempt without a commit *(amended 2026-07-29: extraction
+  publishes the parser-resolved value — data-model.md § Field reading.)*
+- [X] T096 [US2] Implement generation-owned complete authored source and parser-resolved metadata,
+  request-token adoption invariants, and cleanup on file, generation, route, client-data purge, or
+  source removal in `src/server/session/session.ts` and `src/app/session/view-state.ts` *(amended
+  2026-07-29: extraction publishes the parser-resolved value — data-model.md § Field reading.)*
+- [X] T097 [US2] Implement the file-detail function of the session API contract
+  (contracts/http-api.md) with strict opaque IDs, complete authored-source DTOs, exact ordered
+  parser-resolved metadata, production encoding, Diagnostics, and stale responses; let a
+  thrown/rejected encoding or serialization operation fail that request with its real error
+  (serialized as-is by devframe) and no retained job/result/generation or success bytes, while a
+  post-commit delivery rejection leaves the commit unchanged, emits no successful payload, and is
+  never represented as partial in `src/server/host/devframe-app.ts` *(amended 2026-07-29: extraction
+  publishes the parser-resolved value — data-model.md § Field reading.)*
+- [X] T098 [US2] Keep reveal, masking, redaction, and environment-resolution operations absent from
+  the registered session RPC functions so any such invocation fails with the strict
+  unknown-operation rejection in `src/server/host/devframe-app.ts`
+- [X] T099 [P] [US2] Implement lazy same-origin Monaco, opaque read-only models, exact accessibility
+  options, and complete editor/model/subscription disposal in `src/app/composables/monaco.ts` and
+  `src/app/components/inspection/SourceViewer.vue` *(amended 2026-07-28: every Monaco basic language
+  is registered, not the two the entry points use. Which languages a reader meets is decided by
+  whatever a customization's own directory contains, so a hand-picked list stays correct for no
+  repository; each contribution registers a lazy loader whose grammar chunk is fetched only when a
+  file of that language is opened, and none of them starts a worker. The language *services* stay
+  out — each brings a worker and validates what it is given, and marking an inspected customization
+  invalid is a verdict this product does not make. JSON has no basic-language grammar and borrows
+  the nearest pure tokenizer instead. The language is resolved from Monaco's own registry rather
+  than a hand-written extension table. research.md/.ja.md § 7 and plan.md/.ja.md were corrected in
+  the same change.)* *(amended 2026-08-23: `.toml` is coloured by a TOML grammar rather than by the
+  nearest tokenizer. The pinned `monaco-editor` ships none, so the `toml` id is registered from
+  `@ota-meshi/site-kit-monarch-syntaxes`, whose Monarch grammar and language configuration load
+  through the same lazy factory every basic language uses and bring no service with them; that
+  package ships no license file of its own, so its upstream text joins `licenses/` for the notice
+  document. research.md/.ja.md § 7 and plan.md/.ja.md were corrected in the same change.)*
+- [X] T100 [US2] FR-027 admits no sensitive-content notice and no acknowledgement gate: the
+  skill-detail route renders the source and no statement about it, so this task implements no
+  component and no state (see T084), and `src/app/App.vue` is unchanged — the shell shows no file
+  contents, and a gate there would have stood in front of the inventory too. *(amended 2026-07-28:
+  FR-027 now requires direct presentation, so this task's implementation scope became empty.)*
+- [X] T101 [P] [US2] Implement typed recognition, relationship, and diagnostic presentation in
+  `src/app/pages/skills/detail/[source]/[...path].vue` and
+  `src/app/components/inspection/RelationshipList.vue` *(amended 2026-07-28: `RelationshipList.vue`
+  does not exist, because no shipped recognition can produce a Relationship — see T081. It arrives
+  with the first phase whose allowlist row has a reference-bearing field: Claude's
+  `claude.skill.paths` or Copilot's `copilot.skill.context`.)* *(amended 2026-07-28: the detail
+  surface ships `DirectoryFileTree.vue` beside it — the directory of a directory-shaped
+  customization. It is built from paths the snapshot already publishes (the definition's own path
+  and its `companionFiles`), each dropped unless committed, so it needs no wire shape of its own and
+  can offer no file the scan did not read.)* *(amended 2026-07-28: no rendered value is a contract
+  identifier. A rule ID, a behavior or strategy ID, a matcher lookup base, and a closed status value
+  each resolve a registry record or a wire vocabulary and answer nothing a reader of their own file
+  asked, so each renders through the table beside its union: `CUSTOMIZATION_KIND_TEXT`,
+  `SUPPORTED_TOOL_TEXT`, `FILE_ENCODING_TEXT`, `SOURCE_BOUNDARY_ORIGIN_TEXT`,
+  `SOURCE_STATUS_STANDALONE_TEXT`, and `SAME_NAME_SKILL_RESOLUTION_TEXT` in
+  `src/shared/entities.ts`, `SCAN_PROGRESS_PHASE_TEXT` in
+  `src/shared/api-text.ts`, and diagnostic text in `DIAGNOSTIC_REGISTRY`. `api-text.ts` is a
+  `*-text.ts` companion because `api-types.ts` ships zero runtime code. An ID a DTO carries is typed
+  as its closed union rather than as `string`, which is what keeps the tables complete (FR-007).)*
+  *(amended 2026-08-02: no maintained per-field caption renders — the detail lists the frontmatter
+  by the keys the file wrote, and a caption naming a catalog field beside a value already on screen
+  would be a second spelling of one fact (see T090). The summary shows the recognizing product and
+  the extraction Diagnostic; the declared name stays the detail heading.)* *(amended 2026-08-04:
+  nothing projects an applicability (T091), so no surface presents one.)* *(amended 2026-08-05: no
+  provenance renders — an admission is a read-authorization record, and no surface reads one out
+  (T1068).)* *(amended 2026-08-08: the detail publishes the parse once and the page derives its
+  definition line from the inventory (T1083), so no component summarizes the recognition on its
+  own.)* *(amended 2026-08-25: the route names the skill — the `SKILL.md`'s own path — and the file
+  being read is a `file` query beside it, so the subject the page describes is what the address says
+  and a companion has no page of its own to resolve back to a skill. The links the tree builds are
+  router locations, so the query is the router's to encode and join.)*
+- [X] T102 [US2] Implement the generation-, epoch-, and request-token-aware skill-detail route at
+  `/skills/detail/<source>/<source-relative path>` in
+  `src/app/pages/skills/detail/[source]/[...path].vue`. The skill is the subject: its own directory
+  as the heading, the name each recognizing product invokes it by, and the keys its file wrote — all
+  the entry point's — with the directory's files on a Files tab beside the skill's own, one file's
+  source showing there, so selecting a companion changes only the source. The path parameter names a
+  file because a skill has no identity of its own to name; the owning skill is resolved from it
+  against the committed inventory, so a link to any file of a skill opens the skill with that file
+  showing. The route scrolls as a page — moves focus to the heading on entry and on a skill change
+  only, renders no relationship section (T081), and shows the file with no notice or confirmation
+  beside it (FR-027). The shell forwards an RPC call's parameters and connects with an explicit
+  origin base, because devframe's default `'./'` resolves against the document path and a page
+  loaded directly at `/skills/detail/<source>/<source-relative path>` could not connect. See T085
+  for the read boundary the directory layout rests on. *(amended 2026-07-28: reshaped into this
+  skill-subject layout as FR-027 moved to direct presentation.)* *(amended 2026-07-31: no automated
+  test asserts that a detail request's failure reaches this route's own visible paragraph and its
+  polite live region while staying out of the shell's assertive alert. Which state each failure
+  lands in is asserted in `tests/unit/app/session-view-state.test.ts`; that those two elements
+  render it is not, because the unit project compiles no single-file component and provoking the
+  failure from a browser means intercepting devframe's own WebSocket frames. The residual risk is
+  that removing either binding fails no suite. The assertion arrives with the layout it would be
+  written against, which this route is expected to change substantially.)* *(amended 2026-08-04: the
+  route shows no account of whether a product would use the skill, and no disclosure holds one —
+  nothing projects one (T091). It leads with the skill's declarations by the keys its file wrote.)*
+  *(amended 2026-08-02: the route does not fit its viewport. With the skill's own sections — name,
+  description, declarations, instructions — before the directory, fitting would leave the tree a few
+  pixels or push it below the fold; the page scrolls instead and each region takes a height it is
+  usable at. `tests/e2e/codex-skills-detail.spec.ts` asserts the tree is in the viewport, because
+  asserting its text alone passes while it is off-screen.)* *(amended 2026-08-02: the route presents
+  its two subjects as tabs — the skill itself and its files — rather than stacking them, and the
+  skill tab lists every declared key led by `name` and `description`. key mapping lives in
+  `src/app/components/tab-navigation.ts`, so both strips share one WAI-ARIA mapping.)* *(amended
+  2026-08-02: one shared ARIA container holds the live regions, and each mount drops the wrappers
+  before its own — Monaco builds a fresh one per create when it is given a parent, so they would
+  otherwise pile up one per mount. Comparison rows match on the key the file wrote, since no field
+  catalog remains to key them by. Authored content is bounded by how it is reached — an explicit
+  request for one file — rather than by how many a surface holds, so a skill detail shows its
+  instructions beside the file it has open. Every editor announces through one shared ARIA
+  container, because Monaco keeps a single module-level one and a per-viewer container would leave a
+  still-open viewer speaking into a detached node. A mapping draws as a description list and a
+  sequence as an ordered list, and a directory's files are a list inside that directory's own item,
+  so containment is markup rather than indentation. A component's classes are BEM blocked on the
+  component's own name, so no class is declared by both the global sheet and a component. A file
+  that is a skill's own entry point resolves to that skill before any census that lists it, so a
+  skill nested in another skill's directory opens as itself. A key column that cannot shrink leaves
+  no room for the values it labels, so it is capped and its keys wrap, and tree indentation is
+  bounded for the same reason. Declarations are published in the order the file wrote its keys — a
+  plain object lists integer-like keys first, so the parser answers with a `Map`; a key that is not
+  a scalar fails the recognition rather than being titled with an invented spelling. Every
+  frontmatter block draws in the two columns the root declares, through a CSS subgrid, so a value
+  four levels down starts where a top-level value starts; a key opens its block on the row beneath
+  it, and a list item's marker is drawn on the block's own first line. The file tree draws real
+  directory rows with full-width targets rather than a path prefix repeated on every file.)*
+  *(amended 2026-08-08: spellings updated for T1082 — a file's identity is its Source-relative Path,
+  the detail route is `/skills/detail/<source>/<source-relative path>` in
+  `src/app/pages/skills/detail/[source]/[...path].vue`, and a commit publishes records as
+  constructed instead of rekeying IDs.)* *(amended 2026-08-21: the detail presents the frontmatter
+  as one YAML document in the read-only viewer (frontmatter-yaml.ts), the block's own language, so a
+  reader compares it against their file without translating.)* *(amended 2026-08-25: the route names
+  the skill — the `SKILL.md`'s own path — and the file being read is a `file` query beside it, so
+  the subject the page describes is what the address says and a companion has no page of its own to
+  resolve back to a skill. The links the tree builds are router locations, so the query is the
+  router's to encode and join.)*
+- [X] T103 [US2] Add English Codex detail, literal-display, parser, environment-reference, and
+  uncertainty messages in the Vue components that render them *(amended 2026-07-28: no
+  complete-content notice is among them; FR-027 forbids a standing statement about what authored
+  content may contain, and the source viewer shows the file without describing it. See T084.)*
+
+---
+
+## Phase 6: Codex Skill Metadata List
+
+**Purpose**: Settle how a skill's sibling `agents/openai.yaml` reaches the reader. It is not admitted as a candidate of its own: the owning skill's bounded companion census already reads and publishes it as one of the files the skill's directory ships, and the skill's detail page already lists and opens it. This phase therefore ships no derived rule, no `skill metadata` recognition, and no new surface: a separate admission, kind tab, or inventory row for the file would duplicate a file the inventory already carries. *(amended 2026-08-01: no bounded-derived candidate ships.)*
+
+**Independent Test**: Scan a skill with a sibling `agents/openai.yaml`; verify the file is published as that skill's census companion and its complete source opens from the skill's detail tree — behavior the Phase 4 and Phase 5 suites already prove.
+
+**Visible Checkpoint**: Users confirm a skill's metadata file on that skill's detail page, whose directory tree lists and opens it.
+
+### Fixtures and tests first
+
+- [X] T104 [US1] No fixtures to add: the sibling `agents/openai.yaml` is an ordinary census
+  companion, and census publication is already fixtured in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-01: scope emptied by the phase
+  decision above)*
+- [X] T105 [US1] No conformance rows to materialize: no `codex.derived.skill-metadata` record ships,
+  so `tests/fixtures/conformance/inspection-rules.json` is unchanged *(amended 2026-08-01: scope
+  emptied by the phase decision above)*
+- [X] T106 [P] [US1] No registry tests to add: there is no bounded-derived record to gate, and
+  `tests/contract/inspection-rules.test.ts` is unchanged *(amended 2026-08-01: scope emptied by the
+  phase decision above)*
+- [X] T107 [US1] No bounded-derivation tests to add: no derivation runs, and companion publication
+  is already covered in `tests/integration/repository-scan.test.ts` *(amended 2026-08-01: scope
+  emptied by the phase decision above)*
+- [X] T108 [P] [US1] No recognition or inventory tests to add: the file gains no recognition and
+  joins no inventory of its own, and `tests/unit/inspection/recognizers.test.ts` and
+  `tests/unit/app/inventory.test.ts` are unchanged *(amended 2026-08-01: scope emptied by the phase
+  decision above)*
+- [X] T109 [US1] No new browser acceptance: `tests/e2e/codex-skills-detail.spec.ts` already proves a
+  census file opens from the skill's detail tree *(amended 2026-08-01: scope emptied by the phase
+  decision above)*
+
+### Implementation
+
+- [X] T110 [US1] No registry record to add: `src/shared/registries/inspection-rules.ts` is unchanged
+  *(amended 2026-08-01: scope emptied by the phase decision above)*
+- [X] T111 [US1] No derivation to implement: `src/server/inspection/rules/codex.ts` is unchanged
+  *(amended 2026-08-01: scope emptied by the phase decision above)*
+- [X] T112 [US1] No recognition to implement: `src/server/inspection/recognizers/candidate.ts` is
+  unchanged *(amended 2026-08-01: scope emptied by the phase decision above)*
+- [X] T113 [US1] No scan integration to add: `src/server/inspection/scan.ts` is unchanged *(amended
+  2026-08-01: scope emptied by the phase decision above)*
+- [X] T114 [US1] No inventory or component change:
+  `src/app/components/inventory/InventoryFilters.vue` and
+  `src/app/components/inventory/rows/SkillRow.vue` are unchanged *(amended 2026-08-01: scope emptied
+  by the phase decision above)*
+- [X] T115 [US1] No messages to add: `src/app/components/inventory/InventoryList.vue` is unchanged
+  *(amended 2026-08-01: scope emptied by the phase decision above)*
+
+---
+
+## Phase 7: Codex Skill Metadata Detail
+
+**Purpose**: Settle how `agents/openai.yaml` is read in detail. Its complete literal source is already served by the detail route as the owning skill's census companion — opened from the skill's detail tree, unmasked, with no reveal step — and no typed allowlisted extraction ships: the Phase 6 decision removed the separately admitted candidate this phase's typed detail would attach to, and the source view is the confirmation the reader needs. The vendor contract's `skill metadata` Presentation Allowlist row stays as frozen, digest-recorded design input with no consumer; consuming it again is a `/speckit-plan` + `/speckit-tasks` revision. *(amended 2026-08-01: scope emptied following the Phase 6 decision.)*
+
+**Independent Test**: Open a skill whose directory ships an `agents/openai.yaml`; verify its complete literal source — credentials and environment references exactly as written, with no masking, reveal control, or substitution — opens from the skill's detail tree, which the Phase 5 detail suite already proves for census companions.
+
+**Visible Checkpoint**: Selecting `agents/openai.yaml` in a skill's detail tree shows its complete literal source.
+
+### Tests first
+
+- [X] T116 [P] [US2] No metadata extraction tests to add: no metadata extraction ships for this
+  kind, and `tests/unit/inspection/codex-metadata.test.ts` keeps its Phase 5 SKILL coverage
+  unchanged *(amended 2026-08-01: scope emptied by the phase decision above)*
+- [X] T117 [P] [US2] No new file-detail contracts to add: a census companion's detail — complete
+  literal source, stale IDs, zero client retention — is already contracted and tested in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-01: scope emptied by the phase decision
+  above)*
+- [X] T118 [P] [US2] No zero-activation tests to add: no metadata fields are parsed, so no command,
+  asset, resource, script, URI, or path is ever extracted to activate, and
+  `tests/integration/security/zero-activation.test.ts` is unchanged *(amended 2026-08-01: scope
+  emptied by the phase decision above)*
+- [X] T119 [US2] No new browser acceptance: `tests/e2e/codex-skills-detail.spec.ts` already proves
+  unmasked literal display with no reveal control for a skill's census files *(amended 2026-08-01:
+  scope emptied by the phase decision above)*
+
+### Implementation
+
+- [X] T120 [US2] No recognition extension: `src/server/inspection/recognizers/candidate.ts` is
+  unchanged *(amended 2026-08-01: scope emptied by the phase decision above)*
+- [X] T121 [US2] No extraction integration: `src/server/inspection/scan.ts` and
+  `src/server/session/session.ts` are unchanged *(amended 2026-08-01: scope emptied by the phase
+  decision above)*
+- [X] T122 [US2] No detail-presentation extension:
+  `src/app/pages/skills/detail/[source]/[...path].vue` is unchanged *(amended 2026-08-01: scope
+  emptied by the phase decision above)*
+- [X] T123 [US2] No messages to add: `src/app/components/inspection/RecognitionSummary.vue` is
+  unchanged *(amended 2026-08-01: scope emptied by the phase decision above)*
+
+---
+
+## Phase 8: Claude Skill List
+
+**Purpose**: Add Claude skills without regressing the completed Codex list and detail.
+
+**Independent Test**: Launch a fixture containing `.claude/skills/*/SKILL.md`, near misses, links, duplicate names, and Codex skills; verify the expected Claude rows, unchanged Codex behavior, and transparent read-through of symlinked candidates.
+
+**Visible Checkpoint**: Claude and Codex SKILL lists coexist in the same inventory.
+
+### Fixtures and tests first
+
+- [X] T124 [US1] Extend Repository fixtures with root/nested Claude skills, near misses, duplicate
+  names, Codex-preservation cases, and symlinked candidates that are read through their targets plus
+  a broken link that yields its `file-unreadable` outcome in
+  `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T125 [US1] Materialize base `claude.behavior.repo.skills` and `claude.behavior.user.skills`,
+  their rule, strategy, evidence, and relation rows, without adding the later skills-directory fact,
+  in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`,
+  `tests/fixtures/conformance/runtime-composition.json`, and
+  `tests/fixtures/conformance/relations.json`
+- [X] T126 [P] [US1] Add failing contracts and matcher tests for `claude.repo.skill`, one direct
+  skill-name child, descendant inventory, ancestor/lazy uncertainty, and transparent inspection of a
+  symlinked candidate through its resolved target with cycle-safe traversal in
+  `tests/contract/inspection-rules.test.ts` and `tests/unit/inspection/rules.test.ts`
+- [X] T127 [P] [US1] Add failing Claude recognition tests for tool, kind, path provenance, and no
+  filename-only recognition outside the rule in `tests/unit/inspection/recognizers.test.ts`
+- [X] T128 [P] [US1] Add failing scan tests proving Claude skills are added without changing
+  existing Codex results or weakening the safe-filesystem boundary in
+  `tests/integration/repository-scan.test.ts`
+- [X] T129 [US1] Add failing browser acceptance for an incremental session containing Codex and
+  Claude SKILL lists in `tests/e2e/claude-skills-list.spec.ts`
+- [X] T130 [US1] Add failing Claude skill registry-graph coverage for reciprocal behavior, rule,
+  evidence, and affected-contract references in `tests/contract/vendor-behaviors.test.ts` and
+  `tests/contract/inspection-rules.test.ts`
+
+### Implementation
+
+- [X] T131 [US1] Add non-authorizing `claude.behavior.repo.skills`/`claude.behavior.user.skills`
+  statements and their complete base lookup strategy together so the production registry remains
+  closed at this milestone in `src/shared/registries/vendor-behaviors.ts` and
+  `src/shared/registries/runtime-composition.ts`
+- [X] T132 [US1] Add the read-authorizing `claude.repo.skill` record in
+  `src/shared/registries/inspection-rules.ts`
+- [X] T133 [US1] Verify that the Claude skill additions register exactly the one read-authorizing
+  `claude.repo.skill` record and leave the non-read exclusion set empty—no symlink exclusion rule
+  exists because symlinked candidates are read through their targets (FR-024)—so the registry stays
+  within the documented 47-ID catalog whose complete gate T913 owns, in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-01: 47 because Phase 6 ships no
+  skill-metadata derivation; the phase-local check verifies this phase's additions, not the eventual
+  total)*
+- [X] T134 [US1] Add Claude skill evidence records and reciprocal affected-contract references in
+  the owning registry record's `evidence` citations
+- [X] T135 [US1] Implement `claude.repo.skill` matching in `src/server/inspection/rules/claude.ts`
+- [X] T136 [US1] Implement path-derived Claude skill recognition in
+  `src/server/inspection/recognizers/candidate.ts`
+- [X] T137 [US1] Integrate Claude skill classification while preserving deterministic Codex results
+  in `src/server/inspection/scan.ts`
+- [X] T138 [US1] Reuse the generic tool filters, badges, and strategy-derived English same-name
+  message for Claude without a vendor-specific app branch; verify the existing surfaces in
+  `src/app/composables/filters.ts` and `src/app/components/inventory/rows/`, and cover the new
+  strategy result in `tests/unit/inspection/codex-composition.test.ts` *(amended 2026-08-02: nothing
+  projects, so no suite tests a projection; what a shipped strategy has to satisfy is covered by the
+  registry contract gate.)*
+
+---
+
+## Phase 9: Claude Skill Detail
+
+**Purpose**: Add complete inert Claude skill detail using the generic detail foundation.
+
+**Independent Test**: Open Claude skills with metadata, contained declarations, references, supported-vendor symlinks, malformed frontmatter, and secrets; verify complete literal detail, symlinked skills displayed through their resolved targets, no manifest read authority, no relationship-target expansion, and unchanged Codex detail.
+
+**Visible Checkpoint**: Claude SKILL detail is complete and consistent with Codex detail.
+
+### Tests first
+
+- [X] T139 [US2] Materialize `claude.behavior.repo.skills-directory-plugin` as an exact-launch
+  non-authorizing applicability/activation fact with its strategy and evidence conformance rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-02: no conformance row
+  ships, because no such statement exists; see T145. All three fixtures are unchanged.)*
+- [X] T140 [P] [US2] Add failing Claude skill-presentation tests for parser-resolved frontmatter
+  values in authored key order, duplicate-key resolution, contained declarations as ordinary
+  frontmatter, environment-reference non-resolution, malformed all-or-nothing extraction, and the
+  minimal admitting rule/path provenance in `tests/unit/inspection/claude-metadata.test.ts`
+  *(amended 2026-08-02: the suite covers file-originated skill presentation only; no
+  skills-directory-plugin fact or runtime applicability/evidence projection exists — see T091 and
+  T145.)*
+- [X] T141 [P] [US2] Add failing relationship tests for `targetOrigin`, exact authored target
+  slices, null-authored documented defaults, internal semantic normalization, provenance-relative
+  targets, boundary status, direct non-recursive relationships, complete deterministic retention
+  subject to environment capacity, nested/transitive rejection before target access, and zero
+  relationship read authority; prove a thrown/rejected relationship/provenance operation propagates
+  unchanged through domain layers with no cause classification, retry, recovered
+  relationship/provenance/recognition/derived output, Diagnostic, or generation, leaving lifecycle
+  handling only to the trigger-owning outer boundary in
+  `tests/unit/inspection/relationships.test.ts` *(amended 2026-08-02: no shipped recognition can
+  produce a Relationship — a relationship-only record's origin coverage is required, and each such
+  record is based on behavior statements and official sources that arrive with their own inventory
+  phases, so shipping one now would break the reciprocal-evidence invariant (data-model.md §
+  Cross-entity invariants). The suite proves the observable half: no relationship-only class in the
+  shipped registry, no promotion of reference-looking authored values, no target access during
+  recognition, and the FR-028/FR-029 failure doctrine. The per-edge fields — `targetOrigin`,
+  authored targets, documented defaults, normalization, boundary status — arrive with the first
+  phase that ships a relationship-only record.)*
+- [X] T142 [P] [US2] Add failing regression tests proving a vendor-supported symlinked Claude skill
+  is inspected through its target—the resolved file's content is displayed exactly as Claude Code
+  would read it—while a broken link yields that file's `file-unreadable` diagnostic and a partial
+  generation in `tests/integration/inspection-safety.test.ts`
+- [X] T143 [P] [US2] Add failing runtime-composition tests for Claude skill selection, exact-launch
+  skills-directory-plugin applicability, workspace-trust conditions, and condition reasons without
+  claiming manifest loading or unknown runtime selection in
+  `tests/unit/inspection/claude-composition.test.ts` *(amended 2026-08-02: no such suite ships.
+  Nothing evaluates applicability, so there is no conditional projection, no condition reason, no
+  skills-directory-plugin fact, and no workspace-trust condition to test — see T091 and T145. What a
+  shipped strategy has to satisfy is covered by the registry contract gate.)*
+- [X] T144 [US2] Add failing browser acceptance for exact literal credential/environment-reference
+  display, no process-environment sentinel substitution, no masking/reveal controls, complete
+  literal Claude detail, uncertainty, relationships, diagnostics, detail-state cleanup, and
+  continued Codex behavior in `tests/e2e/claude-skills-detail.spec.ts` *(amended 2026-08-02: the
+  relationship claim is the negative guarantee the phase's independent test names — no
+  relationship-target expansion — because no shipped recognition emits an edge (T141). The detail
+  stays consistent with Codex detail, which has no relationship section either.)*
+
+### Implementation
+
+- [X] T145 [US2] Add `claude.behavior.repo.skills-directory-plugin` as a non-authorizing behavior
+  fact attached only to accepted exact-launch SKILL candidates in
+  `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-02: the product surface is the skill
+  inventory, detail, and comparison; a statement that only restates documented vendor behavior
+  serves none of them, so no behavior record, identifier, caption, or recognizer attachment ships. A
+  `.claude-plugin/plugin.json` a census lists remains an ordinary companion file of its skill, shown
+  like any other.)*
+- [X] T146 [US2] Extend the inventory-owned Claude skill strategy with detail-time
+  selection/condition mappings, exact-launch skills-directory-plugin applicability, and
+  workspace-trust facts without adding a strategy ID or manifest read authority in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-02: no record changes, for T092's
+  reason — `claude.skills.selection` already publishes what detail-time projection reads,
+  `operations` for the same-name statement. No skills-directory-plugin fact ships (T145).)*
+  *(amended 2026-08-05: nothing projects applicability (T091), so the record publishes `operations`
+  alone and the statement is quoted only for a collision its rule answers.)*
+- [X] T147 [US2] Add reciprocal backlinks for the skills-directory behavior and strategy to existing
+  Claude official-source records without creating a new source ID in the owning registry record's
+  `evidence` citations *(amended 2026-08-02: no backlink ships — no such statement exists (T145),
+  and `claude.repo.skill` cites `anthropic.claude-code.plugins.components-scopes` from the list
+  phase onward, so no record changes.)*
+- [X] T148 [US2] Extend Claude recognition with exact metadata, relationships, and evidence without
+  creating a manifest candidate in `src/server/inspection/recognizers/candidate.ts` *(amended
+  2026-08-02: the recognizer reads a skill out as the file wrote it (data-model.md § Skill
+  presentation): every declared key in authored order, plus the instructions the frontmatter block
+  is removed from. The declared name is only the value the inventory groups by and the detail page
+  is headed with. No captioned copy, field-ID catalog, or `declaredMetadata` array ships, because a
+  key means what the vendor documents rather than what this product would say about it; one shared
+  engine reads either tool's skill the same way rather than a recognizer per vendor. No relationship
+  is emitted (T141), and no skills-directory-plugin fact or manifest candidate exists (T145).)*
+- [X] T149 [US2] Integrate atomic Claude extraction and emit only direct one-hop provenance-scoped
+  relationships in `src/server/inspection/scan.ts`; never recurse, expand, read a target, or confer
+  authority, and retain complete deterministic relationships subject only to environment capacity.
+  Let every extraction/relationship throw/rejection propagate unchanged without domain catch, cause
+  classification, retry, item/recognition/relationship/derived result/body/generation, retain only
+  the prior commit, and leave failure reporting to the trigger-owning outer boundary *(amended
+  2026-08-02: `scan.ts` is unchanged. Claude extraction was already atomic on the scan path through
+  the shared engine, no relationship is emitted (T141), and the propagation contract is proven in
+  `relationships.test.ts` and the existing boundary suites.)*
+- [X] T150 [US2] Extend typed detail presentation for Claude-specific fields without vendor-specific
+  source rendering in `src/app/pages/skills/detail/[source]/[...path].vue` *(amended 2026-08-04: the
+  component is unchanged and takes no Claude-specific extension. A skill's declarations are
+  published by the keys the file wrote, so one detail surface renders both vendors' identically and
+  a per-vendor field caption would have nothing to caption.)*
+- [X] T151 [US2] Add English Claude detail, uncertainty, relationship, and parity messages in the
+  Vue components that render them *(amended 2026-08-02: no relationship section exists to message
+  (T141).)* *(amended 2026-08-05: none of those messages exists — no field caption,
+  skills-directory-plugin statement, or condition sentence is written anywhere (T090/T091/T145).
+  What this task ships is covered by the shared closed-union tables and the diagnostic registry; the
+  detail renders declarations by the keys the file wrote.)*
+
+---
+
+## Phase 10: Copilot Skill List
+
+**Purpose**: Add every supported Copilot Repository skill path and establish one-read multi-tool recognition.
+
+**Independent Test**: Exercise the root context of all three exact selectors and their negative matrix, nested contexts included as near misses; verify `.github` is Copilot-only, `.agents` is Codex+Copilot-only, `.claude` is Claude+Copilot-only, a nested `.claude` skill stays Claude's alone, and every admitted physical file is one item with one read.
+
+**Visible Checkpoint**: Copilot skill rows show the exact three recognition combinations, while nested contexts, extra depth, configured roots, and extra tool recognitions remain absent.
+
+### Fixtures and tests first
+
+- [X] T152 [US1] Add root positive fixtures and negative fixtures — nested contexts,
+  one-direct-child depth, configured-root exclusions — for all three Copilot selectors, and exact
+  Copilot-only/Codex+Copilot/Claude+Copilot combinations in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-08: root-anchored — no Copilot
+  surface documents a downward skill lookup from a root context, so a nested skills directory
+  belongs to a runtime context this product does not select and is a near miss (FR-003); the
+  `copilot.repo.skill` contract row was corrected in the same change.)*
+- [X] T153 [US1] Materialize Copilot VS Code/CLI/Cloud skill behavior, including the exact
+  origin-file-less `copilot.behavior.cloud.remote-skills` fact, plus Inspector rule, strategy, and
+  evidence rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T154 [P] [US1] Add failing matcher tests for the three exact root-anchored selectors,
+  direct-child depth, near misses, nested-context and configured-root rejection, and no selector
+  broadening in `tests/contract/inspection-rules.test.ts` and `tests/unit/inspection/rules.test.ts`
+  *(amended 2026-08-08: root-anchored — no Copilot surface documents a downward skill lookup from a
+  root context, so a nested skills directory belongs to a runtime context this product does not
+  select and is a near miss (FR-003); the `copilot.repo.skill` contract row was corrected in the
+  same change.)*
+- [X] T155 [P] [US1] Add failing recognition-matrix tests for Copilot-only `.github`,
+  Codex+Copilot-only `.agents`, Claude+Copilot-only `.claude`, and zero extra recognitions in
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T156 [P] [US1] Add failing scan tests for one physical item and one read per matrix row,
+  deterministic provenance, nested-context rejection, extra-depth rejection, and configured-root
+  rejection in `tests/integration/repository-scan.test.ts` *(amended 2026-08-08: root-anchored — no
+  Copilot surface documents a downward skill lookup from a root context, so a nested skills
+  directory belongs to a runtime context this product does not select and is a near miss (FR-003);
+  the `copilot.repo.skill` contract row was corrected in the same change.)*
+- [X] T157 [US1] Add browser acceptance for the exact root recognition matrix, each admitted
+  `(file, tool)` recognition appearing exactly once as a definition, and absence of
+  nested-context/extra-depth/configured-root/extra-recognition rows in
+  `tests/e2e/copilot-skills-list.spec.ts` *(amended 2026-08-08: reworded to the inventory's
+  contracted row unit — a skill row is one declared name and may group two files (data-model.md §
+  Inventory unit), so what the acceptance holds exact is each file's single appearance, not a
+  one-file-one-row shape.)* *(amended 2026-08-08: root-anchored — no Copilot surface documents a
+  downward skill lookup from a root context, so a nested skills directory belongs to a runtime
+  context this product does not select and is a near miss (FR-003); the `copilot.repo.skill`
+  contract row was corrected in the same change.)* *(amended 2026-08-10: the definition unit is one
+  `(file, tool)` recognition and a row's name is the one each tool resolves (data-model.md §
+  Inventory unit), so the acceptance holds each recognition's single appearance as a definition — a
+  file two tools admit appears once per recognizing tool.)*
+- [X] T158 [US1] Add failing Copilot skill registry-graph coverage for reciprocal behavior, rule,
+  evidence, affected-contract references, and exact non-authorizing ownership of
+  `copilot.behavior.cloud.remote-skills` in `tests/contract/vendor-behaviors.test.ts` and
+  `tests/contract/inspection-rules.test.ts`
+
+### Implementation
+
+- [X] T159 [US1] Create the Copilot vendor registry directory and add surface-specific Copilot skill
+  statements, non-authorizing User/Cloud facts, and every referenced base
+  lookup/selection/managed-remote strategy together so the production registry remains closed at
+  this milestone, in `src/shared/registries/copilot/behaviors.ts`, `copilot/strategies.ts`, and
+  `copilot/relations.ts`, published through the `src/shared/registries/vendor-behaviors.ts` and
+  `runtime-composition.ts` aggregates *(amended 2026-08-05: retargeted to the per-vendor registry
+  layout T062 settled — a vendor's records live in its own
+  `src/shared/registries/copilot/{behaviors,strategies,rules,relations}.ts`, cross-registry edges
+  live in `relations.ts` as record-holding edges, the aggregates only publish, and
+  `tests/fixtures/conformance/relations.json` is regenerated in the same change.)* *(amended
+  2026-08-08: shipping the three per-surface selection strategies also settled what their pipelines
+  mean for the derived same-name statement — a `select-first` pipeline that also records
+  `unknown-order` establishes selection without a duplicate-name winner, so Copilot's grouped-row
+  statement derives as `surface-dependent` in `skill-resolution.ts` and the CLI's documented
+  first-found winner is never stated product-wide (FR-007).)*
+- [X] T160 [US1] Add the read-authorizing `copilot.repo.skill` record for the three fixed
+  directories in `src/shared/registries/copilot/rules.ts`, its edges in `copilot/relations.ts`, and
+  its IDs in `identifier-types.ts`, published through the
+  `src/shared/registries/inspection-rules.ts` aggregate *(amended 2026-08-05: retargeted to the
+  per-vendor registry layout T062 settled — a vendor's records live in its own
+  `src/shared/registries/copilot/{behaviors,strategies,rules,relations}.ts`, cross-registry edges
+  live in `relations.ts` as record-holding edges, the aggregates only publish, and
+  `tests/fixtures/conformance/relations.json` is regenerated in the same change.)*
+- [X] T161 [US1] Add Copilot skill evidence records and reciprocal affected-contract references,
+  including existing-source backlinks for `copilot.behavior.cloud.remote-skills`, in the owning
+  registry record's `evidence` citations
+- [X] T162 [US1] Implement root-anchored matching for the exact `.github`, `.agents`, and `.claude`
+  skill selectors with direct-child depth, nested-context rejection, and configured-root rejection
+  in `src/server/inspection/rules/copilot.ts` *(amended 2026-08-08: root-anchored — no Copilot
+  surface documents a downward skill lookup from a root context, so a nested skills directory
+  belongs to a runtime context this product does not select and is a near miss (FR-003); the
+  `copilot.repo.skill` contract row was corrected in the same change.)*
+- [X] T163 [US1] Implement the exact Copilot-only/Codex+Copilot/Claude+Copilot recognition matrix
+  without extra recognitions in `src/server/inspection/recognizers/candidate.ts`
+- [X] T164 [US1] Assemble each admitted matrix file as one physical item with one read and
+  deterministic multi-tool provenance in `src/server/inspection/scan.ts`
+- [X] T165 [US1] Verify the tool filter and per-definition recognition badges cover Copilot without
+  a vendor-specific app branch: `src/app/composables/filters.ts` derives the offered tools from the
+  committed definitions and that kind's row component under `src/app/components/inventory/rows/`
+  renders badges from the closed tool table, with the Copilot matrix covered by the T155–T157 suites
+  *(amended 2026-08-08: reduced to verification — both surfaces were already tool-generic, so a
+  Copilot-specific branch would have duplicated the closed-table mechanism (AGENTS.md Implementation
+  simplicity policy).)*
+- [X] T166 [US1] Verify the multi-recognition summaries
+  `src/app/components/inventory/InventoryList.vue` renders through its skill rows stay accessible
+  for Copilot's shared candidates — each definition's badge list is a list the T157 browser
+  acceptance reads per definition *(amended 2026-08-08: reduced to verification — the per-definition
+  badge list already renders every recognizing product accessibly, so nothing new ships.)*
+- [X] T167 [US1] Verify the English Copilot list texts ship through the closed-union tables beside
+  their unions — `SUPPORTED_TOOL_TEXT` and `SAME_NAME_SKILL_RESOLUTION_TEXT` in
+  `src/shared/entities.ts` — rendered by the Vue components that read them *(amended 2026-08-06: an
+  admission stays a read-authorization record, and what a vendor documents stays in its maintained
+  contract, so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-08: reduced to verification —
+  the closed-union tables already carry the GitHub Copilot label and the surface-dependent sentence,
+  and the user-visible copy policy places such text beside its union rather than in a component.)*
+
+---
+
+## Phase 11: Copilot Skill Detail
+
+**Purpose**: Add complete inert Copilot skill detail while preserving incompatible surface facts.
+
+**Independent Test**: Open Copilot skills from all three directories and shared physical files; verify the declarations the files wrote, no winner claims, complete literal source, and unchanged Codex/Claude details.
+
+**Visible Checkpoint**: Copilot SKILL detail is complete and consistent with the Codex and Claude details, and a shared physical file opens as each product's own definition. *(amended 2026-08-10: no surface projects a vendor's runtime (FR-009, T091), so the incompatible surface facts stay distinct maintained records and what a reader sees is the addressed definition.)*
+
+### Tests first
+
+- [X] T168 [P] [US2] Add failing Copilot metadata tests for resolved frontmatter values, the
+  complete parse published at once on the closed recognition record, independent same-name
+  recognitions, the recognizer's silence for a candidate Copilot's own rule did not admit,
+  environment-reference non-resolution, and exact provenance evidence in
+  `tests/unit/inspection/copilot-metadata.test.ts` *(amended 2026-08-10: matcher-level rejection of
+  configured skills roots is T154's, proven against the real traversal in `rules.test.ts`, and
+  progressive loading and duplicate-name uncertainty are vendor runtime facts owned by the
+  maintained records and the derived registry statement (FR-009, `skill-resolution.ts`) — this suite
+  owns the published recognition record.)*
+- [X] T169 [P] [US2] Ship no `tests/unit/inspection/copilot-composition.test.ts`: what the three
+  per-surface selection strategies must satisfy is already gated —
+  `tests/contract/inspection-rules.test.ts` holds the three strategy edges and the derived
+  surface-dependent statement, the conformance fixtures pin each pipeline's exact operations, and
+  `tests/unit/shared/skill-resolution.test.ts` proves no winner is read out of unresolved-order
+  selection *(amended 2026-08-10: nothing makes the detail-time projection such a suite would
+  exercise (T091 — T080's and T143's reason), and a third copy of registry facts would be a gate
+  that only detects two states disagreeing.)*
+- [X] T170 [P] [US2] Add failing typed-detail tests proving a shared file's per-tool recognitions
+  remain separate — one definition per recognizing tool, each with its own invocation name and its
+  own detail route, narrowed to exactly the addressed tool, and no same-name collision read out of
+  one file — in `tests/unit/app/recognition-details.test.ts` *(amended 2026-08-05: nothing publishes
+  a condition fact (T091), so nothing tests one.)* *(amended 2026-08-10: a recognition is one
+  `(file, tool)` record, and VS Code, CLI, and Cloud stay maintained records no recognition carries
+  (FR-009).)*
+- [X] T171 [US2] Add failing browser acceptance for exact literal credential/environment-reference
+  display, no process-environment sentinel substitution, no masking/reveal controls, Copilot-only
+  and shared-recognition detail while retaining Codex and Claude behavior in
+  `tests/e2e/copilot-skills-detail.spec.ts`
+
+### Implementation
+
+- [X] T172 [US2] Verify the inventory-owned Copilot skill strategies publish the documented
+  selection operations the grouped row's same-name derivation reads, with no record or strategy-ID
+  change, in `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: a strategy record
+  publishes its documented operations, and nothing projects a condition or an applicability onto a
+  recognition, provenance, or detail (T091).)* *(amended 2026-08-10: reduced to verification, for
+  T092's reason — the three per-surface strategies shipped with T159, and their `operations` feed
+  the inventory row's derived same-name statement (`skill-resolution.ts`), published only for a
+  collision its rule answers; the detail renders no surface fact (FR-009).)*
+- [X] T173 [US2] Verify Copilot recognition publishes exact metadata and exact evidence through the
+  shared engine in `src/server/inspection/recognizers/candidate.ts`, with selection uncertainty
+  stated only by the derived registry statement and no relationship emitted *(amended 2026-08-10:
+  reduced to verification — the shared engine reads a Copilot skill exactly as the other vendors'
+  (T148, T163), `copilot-metadata.test.ts` proves it, and no relationship is emitted (T141).)*
+- [X] T174 [US2] Keep Copilot's separate surfaces and its documented conflicts as distinct
+  maintained records rather than one merged statement, in
+  `src/shared/registries/copilot/behaviors.ts`; nothing projects whether a surface applies, because
+  that depends on a runtime the Inspector never observes (FR-009) *(amended 2026-08-10: already
+  satisfied as shipped — T159's catalog keeps the per-surface statements distinct with their own
+  evidence, and the registry contract gate holds the reciprocal edges.)*
+- [X] T175 [US2] Verify atomic Copilot extraction and the one-read, one-parse shared-file assembly
+  in `src/server/inspection/scan.ts` *(amended 2026-08-10: reduced to verification — extraction was
+  already atomic through the shared engine, and a shared physical file is one candidate whose one
+  parse every recognizing tool republishes (T164); `copilot-metadata.test.ts` proves the parse is
+  one object, and the T171 acceptance shows its one failure record with the open file.)*
+- [X] T176 [US2] Verify the skill detail route renders a Copilot definition with no vendor-specific
+  extension in that kind's own detail route under `src/app/pages/` *(amended 2026-08-10: reduced to
+  verification, for T150's reason — one surface renders every vendor's skill identically through the
+  closed-union tables; the separate surface facts stay in maintained records no surface renders
+  (FR-009), and the T171 acceptance proves the rendered per-tool captions.)*
+- [X] T177 [US2] Verify the English Copilot detail texts ship through the closed-union tables beside
+  their unions — `SUPPORTED_TOOL_TEXT` and `CUSTOMIZATION_KIND_TEXT` in `src/shared/entities.ts`,
+  with diagnostic text in `DIAGNOSTIC_REGISTRY` — rendered by the Vue components that read them
+  *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a vendor documents
+  stays in its maintained contract, so no surface projects trust, precedence, order, or uncertainty
+  (FR-009, T091).)* *(amended 2026-08-10: reduced to verification — the captions already ship, and
+  the user-visible copy policy keeps such text beside its union rather than in a component (T167).)*
+
+---
+
+## Phase 12: Unified Skill Inventory
+
+**Purpose**: Turn the three vendor demonstrations into one coherent skill inventory.
+
+**Independent Test**: Use an all-tool fixture with unique skills, duplicate names, shared physical files, deterministic item failures, secrets, and injected failures; verify deterministic rows, multi-recognition, filters, partial continuity only for file-confined outcomes, whole-attempt abort for any other failure and no item, recognition, derivation, result body, or generation while only the prior committed snapshot remains, rescan replacement, and responsive interaction performance.
+
+**Visible Checkpoint**: Users can filter and understand the complete skill-first inventory.
+
+### Fixtures and tests first
+
+- [X] T178 [US1] Create the all-tool SKILL fixture with every supported selector, shared files,
+  duplicate names, near misses, deterministic failures, secrets, and injected
+  thrown/rejected-operation failure cases in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T179 [P] [US1] Add failing conformance tests for every SKILL selector and multi-tool
+  recognition combination in `tests/contract/inspection-rules.test.ts`
+- [X] T180 [P] [US1] Add failing integration tests for deterministic physical-file and recognition
+  order, one-read merging, exact raw-path aggregation, atomic continuity, progress, and partial
+  publication only after complete traversal with file-confined failures; prove an injected
+  file-confined failure yields only that file's diagnostic in a partial generation while any other
+  injected failure aborts the attempt without domain catch, extra read, recovered result, or new
+  generation, retaining only the prior committed snapshot and leaving lifecycle handling to the
+  trigger-owning boundary in `tests/integration/repository-scan.test.ts`
+- [X] T181 [P] [US1] Add failing client tests for source, tool, kind, and path filters over unified
+  SKILL rows while proving inventory state contains no source text, metadata literals, or sensitive
+  fixture values — no detail having been requested, which is the only way authored content reaches
+  the client — in `tests/unit/app/inventory.test.ts`
+- [X] T182 [P] [US1] Add failing rescan tests for whole-generation replacement, stale
+  detail/request-token/selection cleanup, filter retention, and zero profile/cache/repository
+  persistence in `tests/unit/session/session.test.ts` and
+  `tests/unit/app/session-view-state.test.ts`
+- [X] T183 [P] [US1] Add the reusable SC-002 harness and versioned profile validator; build the
+  unchanged 100,000-entry/500-file reference fixture; bind the profile to a versioned canonical
+  entry/content-digest inventory in `tests/performance/sc002-fixture-manifest.json` and its SHA-256
+  in `tests/performance/sc002-fixture-manifest.sha256`; recompute the canonical and
+  referenced-content digests before the smoke run and afterward; for each fresh process wait for the
+  automatic Repository scan to reach terminal state outside timing, dispatch exactly one explicit
+  Repository rescan, start both timers at browser dispatch, capture its admission `scanRequestId`,
+  accept only same-ID visible/assistive status and the complete inventory from that request's
+  committed generation, reject generic/loading/unchanged/prior/automatic state, time the two
+  standardized interactions, record profile/manifest version/digest plus request ID/generation, and
+  run one non-gating smoke pass in `tests/performance/sc002-reference-profile.json`,
+  `tests/performance/repository-scan.test.ts`, and
+  `tests/performance/inventory-interactions.test.ts`; T918 owns the pass's protocol.
+  Restore this suite's own gate in the same change: the `performance` project in
+  `./vitest.config.ts`, the `test:performance` script in `./package.json`, the CI job in
+  `./.github/workflows/ci.yml`, and its gate line, its expected-result bullet, and any command
+  naming its directory in
+  `specs/001-inspect-agent-customizations/quickstart.md`/`specs/001-inspect-agent-customizations/quickstart.ja.md`
+  — all removed while the suite was empty, because a suite that does not exist yet cannot be
+  declared: an empty project fails the run outright, and the allowance that would let it pass
+  instead would report success for a verification nobody wrote. The restored bullet states this
+  task's own non-gating smoke pass, which T918 keeps as the whole of the performance gate
+  *(amended 2026-09-04: T918 withdrew its measurement protocol, so the pass this task
+  restores is the gate)*.
+- [X] T184 [US1] Add browser regression for unified filters, multi-recognition, keyboard use, and no
+  source exposure from inventory in `tests/e2e/skills-inventory.spec.ts` *(amended 2026-08-08: an
+  admission stays a read-authorization record no surface reads out, so nothing displays provenance
+  (T1068).)*
+
+### Implementation
+
+- [X] T185 [US1] Complete deterministic physical-file, recognition, and provenance aggregation for
+  skills in `src/server/inspection/scan.ts`
+- [X] T186 [US1] Complete generation-aware skill filtering, selection, rescan replacement, and stale
+  cleanup in `src/app/composables/filters.ts` and `src/app/session/view-state.ts`
+- [X] T187 [US1] Complete the accessible source/tool/path filter controls in
+  `src/app/components/inventory/InventoryFilters.vue` and the kind tab strip in
+  `src/app/components/inventory/InventoryKindTabs.vue` and `src/app/pages/index.vue` *(amended
+  2026-08-13: kind is navigation rather than a filter — exactly one kind is ever in view — so the
+  task's surfaces split along that decision; keyboard operation of the tab strip is proven by the
+  T059 suite (`tests/e2e/codex-skills-list.spec.ts`), and the T184 suite drives the filter controls
+  and the selected-tab state.)* *(amended 2026-08-17: the selected kind is URL state — the inventory
+  page seeds the tab from `?kind=` and writes each selection back with a history replace, and the
+  detail and comparison back links name `/?kind=skill`. The query holds that selection and never
+  `activeKind`: the kind in view falls back when the inventory stops offering a chosen kind, and
+  writing the fallback into the query would put a derived value where the selection lives — so
+  browser Back and the back links return to the tab the user left instead of the kind order's
+  default; proven by the kind-tab suite in `tests/e2e/codex-instructions-inventory.spec.ts`.)*
+  *(amended 2026-08-22: the Source, tool, and path selections join the kind in the URL as
+  `?source=`, `?tool=`, and `?path=`, under the same selection-not-fallback rule and the same
+  history replace, so a reload, a pasted link, and the browser's Back all render the list the reader
+  was reading. A detail page's own back link keeps naming its kind's tab rather than the reader's
+  last narrowing, so the link says where it goes; the row that was followed is restored inside the
+  list it lands on (T1122).)*
+- [X] T188 [US1] Complete unified skill rows, recognition badges, empty states, and progress
+  controls in `src/app/components/inventory/InventoryList.vue`, that kind's row component under
+  `src/app/components/inventory/rows/`, and `src/app/pages/index.vue` *(amended 2026-08-08: an
+  admission stays a read-authorization record no surface reads out, so nothing displays provenance
+  (T1068).)*
+- [X] T189 [US1] Preserve source-value-free diagnostics without exposing source during inventory
+  loading, empty, retry, or replacement states in
+  `src/app/components/inventory/rows/RowDiagnostics.vue`
+- [X] T190 [US1] Add English unified-inventory and multi-recognition messages in the Vue components
+  that render them
+
+---
+
+## Phase 13: Skill Comparison
+
+**Purpose**: Deliver the skill comparison: one name's copies compared file by corresponding file, as the skill kind's own surface. A comparison surface is kind-specific — an MCP comparison compares declarations inside carriers, not same-named file copies — so each later family designs its own in its comparison phase (spec.md § Clarifications Session 2026-08-14). *(amended 2026-08-14: scoped from a shared comparison path to the skill kind's own.)*
+
+**Independent Test**: Open one skill name’s copies by their entry identities, step the compared-file coordinate, and verify a complete authored-source diff including literal credential differences, exact typed-recognition rows, zero environment-reference resolution, environment-determined rendering-failure fallback, stale/epoch cleanup, same-origin Worker use, and keyboard/screen-reader access.
+
+**Visible Checkpoint**: One skill name’s copies can be compared file by corresponding file without activation or mutation.
+
+### Tests first
+
+- [X] T191 [P] [US3] Add failing tests for distinct file selection by Source-relative Path with
+  same-path rejection and the existing FileDetail loads a pair needs — two for a two-file pair, one
+  for a one-sided pair beside its stated absence —
+  readable/current-generation/client-epoch/request-token guards, stale rejection, and cleanup after
+  replacement or removal in `tests/unit/app/skill-comparison.test.ts` *(amended 2026-08-15: the
+  operands are two readable files, or one readable file beside its stated absent counterpart — the
+  one-sided comparison FR-011 records.)* *(amended 2026-08-08: reworded to the path identity T1082
+  settled — no per-generation file ID exists to select by.)* *(amended 2026-08-14: skill-scoped
+  route and modules — a comparison surface is kind-specific; see spec.md § Clarifications Session
+  2026-08-14.)*
+- [X] T192 [P] [US3] Add failing tests for the canonical serialized declaration documents, without
+  ranking or winner claims, in `tests/unit/app/recognition-comparison.test.ts` *(amended 2026-08-19:
+  declared metadata is the file's one parse per kind, compared once per pair with tool recognition
+  compared per tool beside it — a tool is not a coordinate of a declaration (research.md § 7).)*
+  *(amended 2026-08-15: declaration comparison is the whole scope — no shipped recognition publishes
+  a relationship edge for the wire to carry (api-types.ts § FileDetailDto), so relationship
+  comparison arrives with the phases that add reference-bearing kinds.)* *(amended 2026-08-06: an
+  admission stays a read-authorization record, and what a vendor documents stays in its maintained
+  contract, so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)*
+- [X] T193 [P] [US3] Add failing direct-comparison-route tests for the pair’s complete literal
+  models — an absent side entering as an empty model labeled as the stated absence, never as an
+  authored empty file —, `readOnly`, `domReadOnly`, `originalEditable: false`, `links: false`,
+  `renderMarginRevertIcon: false`, same-origin Worker use, environment-determined rendering-failure
+  fallback, and disposal in `tests/unit/app/source-diff.test.ts` and
+  `tests/package/monaco-assets.test.ts` *(amended 2026-08-15: the operands are two readable files,
+  or one readable file beside its stated absent counterpart — the one-sided comparison FR-011
+  records.)*
+- [X] T194 [US3] Add failing browser acceptance for the complete authored skill diff, exact literal
+  credential differences, unchanged environment-reference text, typed recognition differences,
+  responsive layout, keyboard access, fallback diagnostics, and cleanup in
+  `tests/e2e/skills-comparison.spec.ts` *(amended 2026-08-14: the side-by-side fallback is the
+  editor-failure path only, covered at the composable level, and no page control drives it.)*
+
+### Implementation
+
+- [X] T195 [US3] Implement distinct file selection by Source-relative Path — generation-scoped, with
+  same-path rejection and epoch/token guards — the existing detail loads a pair needs without a
+  compare API (two for a two-file pair, one for a one-sided open beside its stated absence), and
+  teardown after replacement, purge, or removal in `src/app/composables/skill-comparison.ts`
+  *(amended 2026-08-15: the operands are two readable files, or one readable file beside its stated
+  absent counterpart — the one-sided comparison FR-011 records.)* *(amended 2026-08-08: reworded to
+  the path identity T1082 settled — no per-generation file ID exists to select by.)* *(amended
+  2026-08-14: skill-scoped route and modules — a comparison surface is kind-specific; see spec.md §
+  Clarifications Session 2026-08-14.)*
+- [X] T196 [US3] Implement deterministic creation and disposal of the comparison’s complete literal
+  Monaco models, opaque URIs, the same-origin Worker, and subscriptions in
+  `src/app/composables/monaco.ts` *(amended 2026-08-15: the operands are two readable files, or one
+  readable file beside its stated absent counterpart — the one-sided comparison FR-011 records.)*
+- [X] T197 [US3] Implement exact labelled read-only/no-link/no-revert diff options, verbose
+  accessibility, and complete side-by-side fallback in
+  `src/app/components/skill-comparison/SourceDiff.vue` *(amended 2026-08-14: skill-scoped route and
+  modules — a comparison surface is kind-specific; see spec.md § Clarifications Session
+  2026-08-14.)*
+- [X] T198 [US3] Implement the declared-metadata comparison — each side serialized to one canonical
+  YAML document diffed in Monaco — without inferred winners in
+  `src/app/components/skill-comparison/RecognitionComparison.vue` *(amended 2026-08-19: declared
+  metadata is the file's one parse per kind, compared once per pair with tool recognition compared
+  per tool beside it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended
+  2026-08-15: declaration comparison is the whole scope — no shipped recognition publishes a
+  relationship edge for the wire to carry (api-types.ts § FileDetailDto), so relationship comparison
+  arrives with the phases that add reference-bearing kinds.)* *(amended 2026-08-14: skill-scoped
+  route and modules — a comparison surface is kind-specific; see spec.md § Clarifications Session
+  2026-08-14.)* *(amended 2026-08-06: an admission stays a read-authorization record, and what a
+  vendor documents stays in its maintained contract, so no surface projects a condition,
+  applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)* *(amended 2026-08-21: the declared metadata compares as one canonical YAML
+  document per side, `name` and `description` leading for skills and every key sorted, diffed in
+  Monaco (frontmatter-yaml.ts), with tool recognition beside it as typed rows.)*
+- [X] T199 [US3] Add an accessible generation-scoped comparison entry — one row-level link, offered
+  when the name has two or more readable entry files, opening their comparison with no selection
+  control and no edit, merge, lint, validation, or fix action — in that kind's row component under
+  `src/app/components/inventory/rows/` *(amended 2026-08-15: the link's condition is the name's
+  readable entry files — the comparison's own switchers, not the link, are what reach census
+  companions.)* *(amended 2026-08-14: reshaped from two-file selection controls to a same-name entry
+  link — the entry links and switchers compose pairs within one skill name, and a standing selection
+  cannot step through three or more files pair by pair; the URL names the pair by the copies’ entry
+  identities plus the compared file (FR-011).)*
+- [X] T200 [US3] Implement direct-route loading, stale recovery, the same-name switchers — a
+  corresponding-file switcher that steps both sides to the same file of the owning name's copies,
+  and per-side copy switchers for a name with more than two copies — responsive layout, accessible
+  navigation, and English messages in `src/app/pages/skills/compare/[family].vue`, the URL naming
+  the pair by the model’s coordinates — `name` as the owning row's invocation name, `left`/`right`
+  as the copies’ entry-file identities, and `file` as the copy-relative compared file — so a pair
+  the model does not express is reported, never compared *(amended 2026-08-16: coordinate URL — free
+  file-path parameters could spell pairs the same-name model cannot express, and every such pair
+  needed bespoke handling.)* *(amended 2026-08-23: the row rides as its own `name` coordinate,
+  because two files can sit together on more than one row and a derived row would be whichever the
+  generation published first.)* *(amended 2026-08-14: the switchers arrive with the same-name
+  entry-link decision — switching happens on the comparison itself, and only between corresponding
+  files of the name's copies — a file only one copy ships is offered and shown one-sided, its
+  complete content against its stated absence; the surface is skill-scoped at `/skills/compare`
+  (spec.md § Clarifications Session 2026-08-14).)*
+
+---
+
+## Phase 14: Skill Metadata Comparison
+
+**Purpose**: Prove the skill comparison's complete literal path (Phase 13, FR-011) covers the census-published `agents/openai.yaml` companions. No `skill metadata` recognition exists, so there are no typed field rows, seed provenances, or kind-specific messages to add: what this phase verifies is that these ordinary readable companions compare like any other corresponding pair. *(amended 2026-08-01: Phase 6 admits no `skill metadata` candidate, so this phase's scope is the ordinary companion comparison stated above.)*
+
+**Independent Test**: Step one skill name’s comparison to its corresponding `agents/openai.yaml` census companions and verify the complete authored-source diff, unchanged environment-reference text, no masking or reveal controls, fallback behavior, stale/epoch invalidation, and complete model/subscription cleanup.
+
+**Visible Checkpoint**: Users can compare two census-published `agents/openai.yaml` files through the comparison’s corresponding-file switcher, with authored sensitive values shown unchanged and no typed metadata rows fabricated.
+
+### Tests first
+
+- [X] T201 [P] [US3] Add failing comparison regressions proving census-companion files enter the
+  corresponding-file selection like any readable companions, and that their comparison publishes no
+  recognition rows — the files carry none — in `tests/unit/app/skill-comparison.test.ts` and
+  `tests/unit/app/recognition-comparison.test.ts` *(amended 2026-08-01: plain-file scope per the
+  phase decision above)* *(amended 2026-08-14: skill-scoped route and modules — a comparison surface
+  is kind-specific; see spec.md § Clarifications Session 2026-08-14.)*
+- [X] T202 [US3] Add browser acceptance for the complete literal diff of two `agents/openai.yaml`
+  companions reached through the comparison surface's file switchers, unchanged
+  environment-reference text, no masking or reveal controls, accessibility, fallback, and cleanup in
+  `tests/e2e/skill-metadata-comparison.spec.ts` *(amended 2026-08-01: plain-file scope per the phase
+  decision above)* *(amended 2026-08-14: the companions are reached through the same-name file
+  switchers rather than selected from the detail trees.)* *(amended 2026-08-14: the side-by-side
+  fallback is the editor-failure path only, covered at the composable level, and no page control
+  drives it.)*
+
+### Implementation
+
+- [X] T203 [US3] Offer a skill's census-listed files as comparison inputs through the compare
+  route's corresponding-file switcher, whose options are the copy-relative files the owning name's
+  copies ship readably — a file only one copy ships offered one-sided against its stated absence —,
+  reached from the comparison entry links on the inventory row and the skill detail page
+  (`src/app/pages/skills/detail/[source]/[...path].vue`), reusing the Phase 13 view composable with
+  no new API surface and no typed metadata rows;
+  `src/app/components/inspection/DirectoryFileTree.vue` is unchanged, and a compared companion that
+  no recognition owns shows its literal source alone — an independently admitted companion, a nested
+  `SKILL.md` above all, keeps its own recognitions’ rows even one-sided, the absence standing as its
+  own side state in `src/app/components/skill-comparison/RecognitionComparison.vue` (FR-007, FR-011)
+  *(amended 2026-08-16: scoped to unrecognized companions, and the recognition surface renders the
+  one-sided rows — the census also lists files that carry their own recognitions.)* *(amended
+  2026-08-01: the phase decision above fixes this task's scope — a census-listed companion compares
+  as the ordinary file it is, through no typed comparison row)* *(amended 2026-08-14: reshaped from
+  detail-tree selection controls to the corresponding-file switcher — the entry links and switchers
+  compose pairs within one skill name, between corresponding files of its copies, and a standing
+  selection cannot step through three or more files pair by pair; the URL names the pair by the
+  copies’ entry identities plus the compared file (FR-011).)*
+- [X] T204 [US3] No kind-specific messages to add: `src/app/pages/skills/compare/[family].vue` is
+  unchanged *(amended 2026-08-01: scope emptied by the phase decision above)* *(amended 2026-08-14:
+  skill-scoped route and modules — a comparison surface is kind-specific; see spec.md §
+  Clarifications Session 2026-08-14.)*
+
+---
+
+## Phase 15: Codex Instructions Inventory
+
+**Purpose**: Add static Codex instruction files, define the pure configured-fallback declaration/derivation interface, and then — in the same phase — read `.codex/config.toml` as the configuration input of the fallback derivation — plain configuration-read logic beside the Codex rules takes the declared values and builds the scan's extra plan — and activate the configured fallback instruction rows. The carrier itself is never published or raw-displayed (2026-08-17): it has no candidate, row, or detail here, and its first candidacy arrives with the phase that owns it. *(amended 2026-08-17: the fallback activation moved into this phase; Phase 23 stays the Codex MCP phase.)*
+
+**Independent Test**: Inventory `AGENTS.override.md` and `AGENTS.md`, then exercise `codex.derived.fallback-basename` against an in-memory accepted-carrier fixture; verify complete retention of all configured declarations subject only to vendor/runtime and execution-environment capacity, each declared value taken as one entry name the walk matches at the Repository root — so a value no entry bears simply matches nothing — deterministic provenance, and zero `.codex/config.toml` reads or configured fallback rows before the in-phase activation (T1089/T1090) reads the carrier as configuration.
+
+**Visible Checkpoint**: Users can filter static Codex instructions together with every instruction file the repository's own `.codex/config.toml` configures, while the configuration file itself appears nowhere.
+
+### Fixtures and tests first
+
+- [X] T205 [US1] Create Codex instruction fixtures for overrides, regular files, configured
+  fallbacks, empty files, numerous fallback names, declared names no entry bears, imports, secrets,
+  malformed content, and near misses *(amended 2026-08-17: a declared value is an entry name the
+  walk matches, so the fixture case for one is a name nothing bears rather than an
+  ancestry-comparability or injected-iterable case.)* in
+  `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T206 [US1] Materialize Codex instruction behavior, the non-authorizing
+  `codex.behavior.repo.config` and `codex.behavior.user.config` carrier facts, static matcher, pure
+  fallback declaration/derivation fixture contract, composition, relationship, path-negative
+  boundary, and reciprocal evidence rows without a `codex.derived.fallback-basename` registry row in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T207 [P] [US1] Add failing matcher and recognition tests for `codex.repo.instructions`,
+  override/regular selectors, empty-file behavior, path-negative higher scopes, deterministic
+  provenance, and the absence of both a config candidate and `codex.derived.fallback-basename`
+  registry record before the in-phase activation (T1089) in `tests/unit/inspection/rules.test.ts`
+  and `tests/unit/inspection/recognizers.test.ts`
+- [X] T208 [US1] Add failing scan tests for static Codex instructions and pure-function tests
+  reading in-memory fallback declarations out of carrier text, proving complete success retention
+  subject only to vendor/runtime/environment capacity with no Inspector numeric declaration cap;
+  prove any thrown/rejected derivation operation propagates unchanged without domain catch, cause
+  classification, retry, partial declaration/plan/candidate/derived output, Diagnostic,
+  item/result/body/generation, while the prior snapshot remains and only the trigger-owning boundary
+  handles lifecycle. Also cover a declared name no entry bears matching nothing while the names
+  beside it still admit, and zero carrier/target access before rule registration, in
+  `tests/integration/repository-scan.test.ts` *(amended 2026-08-17: a declared value is an entry
+  name the walk matches at the Repository root, so no path is constructed for one to escape from and
+  nothing asserts ancestry comparability or escape rejection.)*
+- [X] T209 [US1] Add browser acceptance for static Codex instruction rows, filters, diagnostics,
+  exclusions, and an explicit configured-fallback-pending state with zero config rows in
+  `tests/e2e/codex-instructions-inventory.spec.ts` *(amended 2026-08-17: T1088 activates the
+  configured fallbacks in this same phase, so the suite asserts the activated fallback rows and the
+  carrier's complete absence.)* *(amended 2026-08-08: a detail shows the declarations the file
+  wrote, and what a vendor documents stays in its maintained contract, so no surface projects trust,
+  precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T210 [US1] Add Codex Repository/User instruction statements together with the complete base
+  instruction-layering strategy record so the production registry remains closed without authorizing
+  a config read in `src/shared/registries/vendor-behaviors.ts` and
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-17: the non-authorizing
+  config-carrier statements and `codex.config.precedence` arrive with the T1089 carrier admission
+  whose rule relations need them, not here.)*
+- [X] T211 [US1] Add only the Codex static instruction records; leave
+  `codex.derived.fallback-basename` unregistered until T1089 registers it, register no
+  `codex.repo.config` rule at all, and add no adjacent exclusion IDs in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-17: the carrier is a configuration
+  input in this phase and gains no rule here; its first candidacy belongs to the phase that admits
+  it.)*
+- [X] T212 [US1] Add Codex instruction evidence in the owning registry record's `evidence` citations
+  *(amended 2026-08-17: the config carrier facts and their backlinks moved to the T1089 admission
+  with the records themselves.)*
+- [X] T213 [US1] Implement static Codex instruction matching plus a pure fallback declaration reader
+  and one-edge derivation helper that cannot emit a scan candidate until T1089 registers the derived
+  rule in `src/server/inspection/rules/codex.ts` and
+  `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-17: the pure validator and
+  one-edge derivation live beside the compiled rules in `src/server/inspection/rules/codex.ts`; the
+  shared recognizer already recognizes every registered kind, so `recognizers/candidate.ts` records
+  the instructions kind's no-identity decision in its `RecognitionDetails` doc rather than gaining
+  code.)* *(amended 2026-08-17: the declaration validation and seed extraction live beside the Codex
+  rules in `src/server/inspection/rules/codex.ts`; there is no record-driven derivation program, and
+  ordinary code builds the plan from the configured values.)* *(amended 2026-08-17: no declaration
+  validator ships — a declared fallback value is a name the walk compares to the entries it
+  enumerated, never a path it builds, so a character grammar could reject a name a repository may
+  legitimately hold and take the ordinary names beside it down, while preventing no escape.)*
+- [X] T214 [US1] Extend inventory filters and rows for Codex instructions in
+  `src/app/components/inventory/InventoryFilters.vue` and that kind's row component under
+  `src/app/components/inventory/rows/` *(amended 2026-08-08: an admission stays a read-authorization
+  record no surface reads out, so nothing displays provenance (T1068).)* *(amended 2026-08-17: the
+  tool/kind widening lives in the deriving composable `src/app/composables/filters.ts` —
+  `InventoryFilters.vue` renders whatever tools the view derives and needed no edit — and the rows
+  render in the instructions tab panel (`InventoryList.vue`) through the new
+  `rows/InstructionRow.vue`. T1088 activates the configured fallbacks in the same phase, so no row
+  carries a pending state.)*
+- [X] T215 [US1] Add English Codex instruction inventory, fallback, and exclusion messages in the
+  Vue components that render them
+
+### Configured fallback activation *(amended 2026-08-17: moved into this phase)*
+
+- [X] T1084 [US1] Extend the Codex instruction fixtures with carrier cases — declared fallback
+  names, duplicates, malformed tables, secrets, still-unrecognized `[mcp_servers.*]` tables,
+  nested-carrier near misses — and materialize `codex.derived.fallback-basename` as identity only,
+  the Repository/User config-carrier statements with `codex.config.precedence`, their relationships,
+  and reciprocal evidence rows, without a carrier candidate, MCP behavior row, or exclusion ID, in
+  `tests/fixtures/repositories/build-fixtures.ts` and the three conformance fixtures *(amended
+  2026-08-17: the carrier is a configuration input, never a candidate.)*
+- [X] T1085 [P] [US1] Add failing matcher and registry tests for the
+  `codex.derived.fallback-basename` identity registration, complete configured derivation subject to
+  environment-owned capacity with no Inspector numeric declaration cap, unchanged propagation of
+  every thrown/rejected registry/derivation operation, no carrier candidate or MCP recognition, and
+  no promotion of plugin/User/managed or arbitrary config paths in
+  `tests/unit/inspection/rules.test.ts` and `tests/contract/inspection-rules.test.ts` *(amended
+  2026-08-17: no `codex.repo.config` registration — the carrier is a configuration input, never a
+  candidate.)*
+- [X] T1086 [P] [US1] Add failing seed-parser and recognition tests proving
+  `project_doc_fallback_filenames` extraction reads resolved values from carrier text and feeds the
+  T213 reader, and each activated fallback instruction recognition carries deterministic derived
+  provenance in `tests/unit/inspection/seed-parsers.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-17: the carrier gains no recognition
+  — it is never published.)*
+- [X] T1087 [US1] Add failing scan tests proving the configuration-read stage opens the carrier
+  before any candidate scan, the scan stage reads every published file once — the carrier is read
+  exactly once, as configuration, and never published — committed instruction rows,
+  absent-declared-name and near-miss negatives, a malformed carrier configuring nothing and staying
+  unpublished, and unchanged propagation of non-file-confined failures in
+  `tests/integration/repository-scan.test.ts` *(amended 2026-08-17: restated for the two-stage model
+  — the configuration read precedes the scan.)*
+- [X] T1088 [US1] Extend browser acceptance with the activated configured fallback instruction rows,
+  the removed pending note, the carrier appearing nowhere — no row, tab, or mention — filters, and
+  diagnostics in `tests/e2e/codex-instructions-inventory.spec.ts` *(amended 2026-08-17:
+  `.codex/config.toml` is never raw-displayed.)*
+- [X] T1089 [US1] Author the compiled bounded-derived unit and add the
+  `codex.derived.fallback-basename` rule as the derived candidates' identity, the Repository/User
+  config-carrier statements, `codex.config.precedence`, their relations, and evidence — no carrier
+  candidate — in `src/shared/registries/rule-types.ts`, `src/server/inspection/rules/registry.ts`,
+  `src/shared/registries/identifier-types.ts`, `src/shared/registries/codex/*.ts`, and
+  `src/shared/registries/inspection-rules.ts`
+- [X] T1090 [US1] Implement the generic TOML parsing seam in `src/server/inspection/parsers/toml.ts`
+  and the Codex carrier extraction feeding the T213 reader in
+  `src/server/inspection/rules/codex.ts`, the configuration-read logic that runs before the scan and
+  expands the declared basenames into one more plan of the same walk in
+  `src/server/inspection/scan.ts` and `src/server/inspection/rules/registry.ts`, the derived
+  instruction recognition in `src/server/inspection/recognizers/candidate.ts` and
+  `src/server/session/session.ts`, and the activated fallback rows and messages replacing the
+  pending note in `src/app/composables/filters.ts` and the inventory components — the carrier itself
+  stays unpublished *(amended 2026-08-17: restated for the two-stage model — a configuration-read
+  stage precedes the scan, and the walk itself reads the configured targets.)* *(amended 2026-08-17:
+  seed extraction and Codex's configuration reader both live in
+  `src/server/inspection/rules/codex.ts` beside the rule they serve; `scan.ts` composes each
+  vendor's reader exactly as it composes the rule catalogs, and knows no vendor.)*
+
+---
+
+## Phase 16: Codex Instructions Detail
+
+**Purpose**: Add complete literal Codex instruction source and typed layering, the configured fallbacks from Phase 15 included. *(amended 2026-08-17: the carrier and fallback activation moved into Phase 15, so this detail phase covers them rather than deferring them.)*
+
+**Independent Test**: Open static Codex instruction fixtures and verify that no reference is emitted — no official Codex page this repository cites establishes an import or reference syntax for `AGENTS.md`, so an authored `@path`-looking token is source text like any other (T217) — together with stale-ID behavior, diagnostics, and detail-state cleanup; separately verify the detail of a configured fallback instruction file that Phase 15's configuration read activated. What the vendor documents about selection order and instruction capacity stays in its maintained contract — nothing projects it onto a recognition or detail (T091).
+
+**Visible Checkpoint**: Selecting a Codex instruction opens complete inert detail — the file led by what it declares, its instructions, and its diagnostics — whether it is one of the exact static files or a name the repository's configuration adds.
+
+### Tests first
+
+- [X] T216 [P] [US2] Add failing Codex tests for all configured fallback basenames in
+  `tests/unit/inspection/seed-parsers.test.ts` *(amended 2026-08-06: no composition suite and no
+  order or capacity projection exists (T091; see T143) — what a shipped strategy must satisfy is the
+  registry contract gate's, and the fallback basenames are the one behavior this phase tests.)*
+- [X] T217 [P] [US2] Add failing tests proving a Codex instruction file emits no relationship at all
+  — an `@path`-looking token, a Markdown link, and a bare path stay source text, and no target is
+  accessed — and that environment references resolve nowhere, environment-reference non-resolution,
+  and zero target authority; prove every thrown/rejected relationship/provenance operation
+  propagates unchanged with no domain catch, cause classification, retry, recovered
+  relationship/provenance/recognition/derived output, Diagnostic, or generation, and only the
+  trigger-owning outer boundary handles lifecycle in `tests/unit/inspection/relationships.test.ts`
+  and `tests/integration/inspection-safety.test.ts` *(amended 2026-08-17: no official Codex page
+  this repository cites establishes an import or reference syntax for AGENTS.md — the AGENTS.md page
+  documents discovery and fallback filenames only — so a Codex instruction file yields no
+  `runtime-reference` until a cited page establishes one; the presentation allowlist's row permits
+  the kind, it does not require an extractor to invent occurrences.)*
+- [X] T218 [P] [US2] Add failing detail/API tests for complete Codex instruction source, the
+  declarations the file wrote in authored order, fallbacks, an empty relationship set (T217),
+  diagnostics, environment-reference non-resolution, and stale IDs in
+  `tests/contract/http-api-files.test.ts` and `tests/unit/app/recognition-details.test.ts` *(amended
+  2026-08-06: a vendor's documented selection stays in its maintained contract, and no surface
+  states what a product would do, so nothing projects an order, a capacity, a condition, or an
+  applicability (FR-009, T091).)*
+- [X] T219 [US2] Add failing Codex instruction runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`. Restore the
+  `pnpm exec vitest run --project contract tests/contract/runtime-composition` line in the §
+  Contract-registry validation block of `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` in the same change: it was removed while
+  the file did not exist, because a documented command that matches no test fails: Vitest prints
+  `No test files found` and exits 1, so a reader following the quickstart hits a broken step rather
+  than a check.
+- [X] T220 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal static
+  Codex instruction detail, configured fallback detail, no relationship section (T217), diagnostics,
+  and detail-state cleanup in `tests/e2e/codex-instructions-detail.spec.ts` *(amended 2026-08-06: a
+  vendor's documented selection stays in its maintained contract, and no surface states what a
+  product would do, so nothing projects an order, a capacity, a condition, or an applicability
+  (FR-009, T091).)*
+
+### Implementation
+
+- [X] T221 [US2] No strategy work to add: `src/shared/registries/runtime-composition.ts` is
+  unchanged *(amended 2026-08-17: scope emptied — Phase 15 shipped `codex.instructions.layering`
+  with its complete documented operations (`select-first`, `concatenate`, `filter`) and
+  `codex.config.precedence` beside it, so the fallback operations this task would record already
+  exist and adding a strategy ID is forbidden.)* *(amended 2026-08-06: a vendor's documented
+  selection stays in its maintained contract, and no surface states what a product would do, so
+  nothing projects an order, a capacity, a condition, or an applicability (FR-009, T091).)*
+- [X] T222 [US2] Implement the instruction file's own presentation — the keys it declares in
+  authored order and the instructions that follow them, through the one frontmatter parse a skill
+  already uses — in `src/server/inspection/parsers/markdown.ts` and
+  `src/server/inspection/recognizers/candidate.ts`, which is what the detail leads with and what the
+  kind has had no payload for until now. No reference is emitted for a Codex instruction file: the
+  relationship extractor arrives with the vendor whose documentation establishes a syntax (Phase
+  18's Claude imports), and targets confer zero read authority wherever it does *(amended
+  2026-08-17: no reference is extracted from a Codex instruction file, because no cited page
+  documents a reference syntax for `AGENTS.md` (T217).)* *(amended 2026-08-21: the detail presents
+  the frontmatter as one YAML document in the read-only viewer (frontmatter-yaml.ts), the block's
+  own language, so a reader compares it against their file without translating.)*
+- [X] T223 [US2] Integrate Codex instruction exact resolved-value preservation, atomic parsing,
+  parser scratch/transient-semantic disposal while retaining complete authored source for
+  deterministic returned outcomes, and fallback provenance from the configuration read; let every
+  parser/relationship/assembly throw/rejection propagate unchanged without domain catch, cause
+  classification, retry, item/recognition/relationship/derived result/body/generation, retaining
+  only the prior commit in `src/server/inspection/scan.ts`; never recurse, expand, or read a
+  relationship target
+- [X] T224 [US2] Extend typed detail presentation for Codex instructions in that kind's own detail
+  route under `src/app/pages/`, and make the inventory reach it:
+  `src/app/components/inventory/rows/InstructionRow.vue` links each recognizing product to that
+  route, replacing the plain text it renders while no route exists.
+  `src/app/components/inspection/RelationshipList.vue` is not this phase's — it arrives with the
+  vendor whose references are founded (T217, T222) *(amended 2026-08-17: the row link was named here
+  after a review found the checkpoint's "selecting an instruction opens its detail" reachable only
+  by typing a URL.)* *(amended 2026-08-06: a vendor's documented selection stays in its maintained
+  contract, and no surface states what a product would do, so nothing projects an order, a capacity,
+  a condition, or an applicability (FR-009, T091).)*
+- [X] T225 [US2] Add English Codex instruction detail and fallback messages in the Vue components
+  that render them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
+  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
+  order, or uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 17: Claude Instructions Inventory
+
+**Purpose**: Add root and nested Claude instruction files without recognizing `AGENTS.md` by filename.
+
+**Independent Test**: Inventory supported `CLAUDE.md`, `CLAUDE.local.md`, and every nested `.claude/CLAUDE.md` matched by `claude.repo.instructions`; verify deterministic provenance records and unchanged Codex instructions.
+
+**Visible Checkpoint**: Users can filter Claude instruction files.
+
+### Fixtures and tests first
+
+- [X] T226 [US1] Create Claude instruction fixtures for root and nested `CLAUDE.md` and
+  `.claude/CLAUDE.md` candidates, filename-only `AGENTS.md`, imports, secrets, malformed content,
+  and near misses in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-08:
+  launch/ancestor/descendant name a file's relation to the vendor's runtime working directory, which
+  the Inspector does not observe — the rule matches `CLAUDE.md` at every depth, and no per-file
+  classification renders (FR-009, T091).)*
+- [X] T227 [US1] Materialize Claude instruction behavior, candidate matchers, composition,
+  path-negative cases, relationships, and evidence rows without defining exclusion IDs in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T228 [P] [US1] Add failing matcher and recognition tests proving nested `.claude/CLAUDE.md`
+  files are `claude.repo.instructions` candidates, filename-only `AGENTS.md` is not
+  Claude-recognized, and provenance is deterministic in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T229 [US1] Add failing scan tests for Claude instruction discovery, one read, deterministic
+  order, isolated failures, and zero import-target reads in
+  `tests/integration/repository-scan.test.ts`
+- [X] T230 [US1] Add browser acceptance for Claude instruction rows, filters, exclusions,
+  diagnostics, and retained Codex instructions in `tests/e2e/claude-instructions-inventory.spec.ts`
+  *(amended 2026-08-08: an admission stays a read-authorization record no surface reads out, so
+  nothing displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T231 [US1] Add Claude Repository/User instruction statements together with the complete base
+  layering/import strategy records so the production registry remains closed at this milestone in
+  `src/shared/registries/vendor-behaviors.ts` and `src/shared/registries/runtime-composition.ts`
+- [X] T232 [US1] Add only the Claude instruction candidate records and keep unsupported locations
+  path-negative without defining exclusion IDs in `src/shared/registries/inspection-rules.ts`
+  *(amended 2026-08-18: the rule ships two selector programs, because the any-depth `CLAUDE.md`
+  program already admits `./.claude/CLAUDE.md` at the Repository root and at every depth; the vendor
+  contract was corrected in the same change (AGENTS.md § Implementation simplicity policy).)*
+- [X] T233 [US1] Add Claude instruction evidence records and reciprocal affected-contract references
+  in the owning registry record's `evidence` citations
+- [X] T234 [US1] Implement Claude instruction matching and recognition in
+  `src/server/inspection/rules/claude.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-08: launch/ancestor/descendant name a file's relation to the vendor's runtime
+  working directory, which the Inspector does not observe — the rule matches `CLAUDE.md` at every
+  depth, and no per-file classification renders (FR-009, T091).)* *(amended 2026-08-18:
+  `src/server/inspection/recognizers/candidate.ts` needed no edit — it dispatches on the compiled
+  rule's product and kind, and the `instructions` kind's payload is the one Markdown parse both
+  kinds share, so a Claude admission recognizes through the same engine as a Codex one.)*
+- [X] T235 [US1] Integrate Claude instruction classification without reading imports or changing
+  Codex results in `src/server/inspection/scan.ts` *(amended 2026-08-18: scope emptied —
+  `src/server/inspection/scan.ts` composes each vendor's compiled catalog, so a rule added to that
+  catalog reaches the walk with no edit here, and this phase reads no import.)*
+- [X] T236 [US1] Extend inventory rows and English Claude instruction and exclusion messages in that
+  kind's row component under `src/app/components/inventory/rows/` *(amended 2026-08-08:
+  launch/ancestor/descendant name a file's relation to the vendor's runtime working directory, which
+  the Inspector does not observe — the rule matches `CLAUDE.md` at every depth, and no per-file
+  classification renders (FR-009, T091).)* *(amended 2026-08-18: no exclusion message ships — the
+  phase defines no exclusion ID (T232), so an unsupported location is a path no selector reaches and
+  there is nothing for a row to state; the row instead states the file-confined diagnostic of the
+  file it names, which this kind's rows had no place for.)*
+
+---
+
+## Phase 17b: Instruction Applicability Grouping
+
+**Purpose**: Group the instructions inventory by what its files govern, so the root `AGENTS.md` and `CLAUDE.md` are one row and a nested `CLAUDE.md` is its own.
+
+**Independent Test**: Scan a repository holding root `AGENTS.md`, `CLAUDE.md`, `CLAUDE.local.md`, and `.claude/CLAUDE.md` beside a nested `packages/api/CLAUDE.md`, and verify two rows — `**` and `packages/api/**` — with every root file under the first, each still naming only the products that recognize it.
+
+**Visible Checkpoint**: Instruction files that govern the same range stand together, ready for the comparison surface that Phase 22 gives the kind.
+
+### Specification
+
+- [X] T1091 [US1] Record the instructions inventory unit, the path-derived applicability range, and
+  the exact-text grouping in `specs/001-inspect-agent-customizations/spec.md` § Clarifications,
+  `data-model.md` § Inventory unit, and `contracts/http-api.md`, in both languages
+
+### Implementation
+
+- [X] T1092 [US1] Declare the applicability range on an instruction-only compiled unit in
+  `src/server/inspection/rules/registry.ts`, compile an `instructions` record into its product's
+  instruction unit in each `src/server/inspection/rules/<tool>.ts`, and answer it per product — the
+  Repository root for the root-anchored Codex and derived rules, the path-derived range for Claude,
+  with a trailing `.claude` dropped for a `CLAUDE.md` and kept for every other admitted filename —
+  so a directory a product keeps a file in is never mistaken for the path that file governs, and a
+  rule of a kind that governs nothing answers nothing *(amended 2026-08-18: an applicability range
+  is a fact about an instruction file, so it belongs to the unit an instruction record compiles into
+  rather than to the unit every kind shares — a field on the shipped record, and later a member on
+  the shared compiled rule, both made skill rules answer a question they have none of (AGENTS.md §
+  Class and interface policy).)*
+- [X] T1093 [US1] Derive an instruction recognition's applicability range from its Source-relative
+  Path and its admissions' container directories, and publish it on the `instructions` payload, in
+  `src/server/inspection/recognizers/candidate.ts`; the range survives a failed extraction, because
+  what a file governs comes from where it sits
+- [X] T1094 [US1] Reshape `InstructionInventoryEntryDto` into one row per range with the files it
+  governs, and group the projection by exact range text — no glob is parsed, normalized, or tested
+  for overlap — in `src/shared/api-types.ts` and `src/server/session/session.ts`
+- [X] T1095 [US1] Group the rendered rows and compose the filters over the files inside each range
+  in `src/app/composables/filters.ts`, `src/app/components/inventory/InventoryList.vue`, that kind's
+  row component under `src/app/components/inventory/rows/`, and that kind's detail route under
+  `src/app/pages/` *(amended 2026-08-27: the list's item is the range across every Source that
+  governs it — `src/app/components/inventory/rows/InstructionRow.vue` states the range and
+  `src/app/components/inventory/SourceFamilyBlocks.vue` holds one block per Source family, listing
+  every file of that family together with the directory each was in. A comparison is a pair of one
+  block's files, so it may pair two consented homes and never spans two families; its address is
+  `/instructions/compare/<family>` with each side carrying its own Source. The published row unit is
+  unchanged, one range of one Source; what the grouping changes is where a reader finds it. The
+  counts beside the list count items, so they count ranges.)*
+- [X] T1096 [US1] Extend the recognition, scan, and browser suites for the grouped rows in
+  `tests/unit/inspection/recognizers.test.ts`, `tests/unit/inspection/relationships.test.ts`,
+  `tests/unit/app/recognition-details.test.ts`, `tests/integration/repository-scan.test.ts`,
+  `tests/e2e/claude-instructions-inventory.spec.ts`,
+  `tests/e2e/codex-instructions-inventory.spec.ts`, and
+  `tests/e2e/codex-instructions-detail.spec.ts`
+
+- [X] T1097 [US1] Never enter a directory named `node_modules`, at the Repository root and at any
+  depth — by entry name alone, unlike the VCS internals the resolved real path also excludes, so a
+  symbolic link at an authored location is inventoried on that location's terms (FR-024) — in
+  `src/server/inspection/traversal.ts` and `src/server/inspection/companion-census.ts`, with the
+  fixture near misses and the exclusion cases in `tests/fixtures/repositories/build-fixtures.ts`,
+  `tests/unit/inspection/traversal.test.ts`, and `tests/unit/inspection/rules.test.ts`. No ignore
+  file is read to decide it
+
+**Declared ranges**: the declared-range branch — Copilot's `applyTo`, a Claude rule's `paths` — keys a file by what it declares instead of by its path, and the recognizer that extracts the declaration owns it (T265). A Copilot path-instruction file's `applyTo` keys its row; a file declaring nothing a row can be keyed by has no range and lists under the null-range row. *(amended 2026-08-18: restated as the shipped behavior once Phase 20 recognized the declaration.)*
+
+---
+
+## Phase 18: Claude Instructions Detail
+
+**Purpose**: Add complete literal Claude instruction detail. *(amended 2026-08-18: this product handles no import reference at all — a standing decision, not a deferral. It does not read references out of prose: Claude Code documents an `@path` import syntax, but where such a token ends is fixed by no official page, so every boundary rule would be this product's own invention and a wrong one would assert a reference the reader never wrote. The token stays source text, exactly as a Codex one does, and the relationship-only registry carries no import record (T217).)*
+
+**Independent Test**: Open a Claude instruction file at the repository root and in a subdirectory, and a malformed one, and verify exact resolved-value preservation, the complete authored source, diagnostics, and detail-state cleanup.
+
+**Visible Checkpoint**: Selecting a Claude instruction shows complete inert detail without opening the files it names.
+
+### Tests first
+
+- [X] T237 [P] [US2] Add failing Claude tests for root and nested `CLAUDE.md` matching in
+  `tests/unit/inspection/rules.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-08: launch/ancestor/descendant name a
+  file's relation to the vendor's runtime working directory, which the Inspector does not observe —
+  the rule matches `CLAUDE.md` at every depth, and no per-file classification renders (FR-009,
+  T091).)* *(amended 2026-08-18: scope emptied — T228 shipped exactly this coverage, proving root,
+  `.claude/`, and nested `CLAUDE.md` admission with deterministic provenance and no near miss, so a
+  second matching suite would restate it.)*
+- [X] T238 [P] [US2] Add failing Claude import tests for exact authored target slices, internal
+  normalization, cycles, boundary status, direct non-recursive relationships, deterministic
+  retention subject to environment capacity, nested/transitive rejection before target access,
+  environment-reference non-resolution, and zero target authority; prove every thrown/rejected
+  relationship/provenance operation propagates unchanged with no domain catch, classification,
+  retry, recovered relationship/provenance/recognition/derived output, Diagnostic, or generation,
+  leaving lifecycle representation only to the trigger-owning outer boundary in
+  `tests/unit/inspection/relationships.test.ts` *(amended 2026-08-18: no import reference is handled
+  at all, so the authored-slice, normalization, boundary-status, and retention halves have nothing
+  to assert. What ships is the decision itself: a Claude instruction file emits no relationship even
+  though its vendor documents `@path`, the token is never opened, and an environment reference
+  resolves nowhere — beside the Codex case (T217) and the unchanged failure doctrine.)*
+- [X] T239 [US2] Add failing Claude instruction runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T240 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Claude
+  instruction detail, imports, diagnostics, and detail-state cleanup in
+  `tests/e2e/claude-instructions-detail.spec.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-18: no import reference is handled at all,
+  so the browser acceptance carries no import section: it proves that the authored token reaches the
+  reader through the instructions and the complete source with no relationship vocabulary
+  anywhere.)*
+
+### Implementation
+
+- [X] T241 [US2] Extend the inventory-owned Claude instruction strategies with the authored
+  import-relationship coverage this phase ships, without adding strategy IDs, in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-18: scope emptied — the contract row fixes
+  `claude.instructions.layering` at `append`, which the shipped record already carries, and this
+  task may add no strategy ID. This product handles no import reference, so there is no import
+  coverage to record either. T239 gates the record against that row in both languages.)*
+- [X] T242 [US2] Extend Claude instruction recognition with exact metadata, complete direct one-hop
+  non-recursive relationships, source-value-free environment-failure diagnostics, and evidence in
+  `src/server/inspection/recognizers/candidate.ts`; relationship targets confer zero read authority
+  and nested/transitive projection is omitted before access *(amended 2026-08-06: an admission stays
+  a read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-18: scope emptied — the `instructions`
+  payload the detail shows is the one Markdown parse T222 shipped and T1093's range, which T234
+  already recorded needs no Claude-specific edit; this product handles no import reference, so there
+  is no relationship, environment-failure Diagnostic, or evidence to add.)*
+- [X] T243 [US2] Integrate Claude instruction parsing, exact resolved-value extraction, complete
+  deterministic direct relationship-only imports subject only to environment capacity, and parser
+  scratch/transient-semantic disposal while retaining complete authored source for deterministic
+  returned outcomes; let every parser/relationship/assembly throw/rejection propagate unchanged
+  without domain catch, cause classification, retry, item/recognition/relationship/derived
+  result/body/generation, retaining only the prior commit in `src/server/inspection/scan.ts`; never
+  recurse, expand, or read a relationship target *(amended 2026-08-18: scope emptied — Phase 15/16
+  shipped the parse, the exact resolved-value preservation, the scratch disposal, and the unchanged
+  throw/rejection propagation, and T235 already recorded that a rule added to a vendor catalog
+  reaches the walk with no edit here; this product handles no import reference, so there is none to
+  integrate.)*
+- [X] T244 [US2] Extend typed detail and English Claude instruction relationship messages in that
+  kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the
+  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
+  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-18:
+  scope emptied — the detail route is this kind's own (T224) and the inventory row already links
+  every recognizing product to it (T236), which T240 exercises for a root and a nested Claude file;
+  this product handles no import reference, so there is no relationship message to write.)*
+
+---
+
+## Phase 19: Copilot Instructions Inventory
+
+**Purpose**: Add the seven exact Copilot instruction candidates: `copilot.repo.instructions.repository`, `copilot.repo.instructions.repository-cli-context`, `copilot.repo.instructions.path`, `copilot.repo.instructions.path-cli-context`, `copilot.repo.instructions.agents`, `copilot.repo.instructions.claude-root`, and `copilot.repo.instructions.gemini-root`.
+
+**Independent Test**: Inventory all seven exact IDs with their distinct root/CLI and surface provenance; verify root and CLI repository forms, root and CLI path forms, `AGENTS.md`, root `CLAUDE.md`, and root `GEMINI.md`, while exact `copilot.excluded.additional-standard-locations` and `copilot.excluded.extra-directories` reject additional standard locations and configured roots without admitting hosted inputs or near misses.
+
+**Visible Checkpoint**: Users can filter Copilot instruction candidates and see, beside each product, the surfaces its admitting rules rest on. *(amended 2026-08-19: an excluded location renders nowhere — it is a path no shipped selector reaches, so it is absent from the inventory rather than a row saying it was left out, and the two exclusion records are maintenance data no surface renders (T251, T259).)*
+
+### Fixtures and tests first
+
+- [X] T245 [US1] Create Copilot instruction fixtures for the seven exact candidate IDs, root/CLI
+  repository and path forms, `applyTo`, `AGENTS.md`, root `CLAUDE.md`/`GEMINI.md`, shared files,
+  additional-standard locations, extra directories, hosted inputs, secrets, malformed content, and
+  near misses in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T246 [US1] Materialize all seven exact Copilot instruction candidate rows; the exact
+  origin-file-less `copilot.behavior.cloud.organization-instructions` fact;
+  `copilot.excluded.additional-standard-locations` with only
+  `copilot.behavior.vscode.instructions.path`, `copilot.behavior.vscode.instructions.claude`,
+  `copilot.behavior.cli.instructions.claude`, and `copilot.behavior.cli.instructions.gemini`; and
+  `copilot.excluded.extra-directories` with only `copilot.behavior.vscode.instructions.path`,
+  `copilot.behavior.vscode.skills`, `copilot.behavior.cli.instructions.agents`,
+  `copilot.behavior.cli.instructions.path`, and `copilot.behavior.cli.skills`, plus their
+  composition, relationship, and evidence rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-19: the extra-directories
+  edge set gained the CLI agents behavior, because `COPILOT_CUSTOM_INSTRUCTIONS_DIRS` supplies
+  additional `AGENTS.md` files as well as `*.instructions.md` ones; the vendor contract row was
+  corrected in the same change.)*
+- [X] T247 [P] [US1] Add failing matcher/recognition tests for all seven exact candidate IDs,
+  root-versus-CLI provenance, root alternatives, exact additional-standard-location and
+  extra-directory exclusions, and no hosted candidate in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T248 [US1] Add failing scan tests for deterministic Copilot instruction candidates, one read,
+  isolated failures, and zero rejected-target access in `tests/integration/repository-scan.test.ts`
+- [X] T249 [US1] Add browser acceptance for Copilot instruction rows, surface badges, filters,
+  exclusions, diagnostics, and retained Codex/Claude rows in
+  `tests/e2e/copilot-instructions-inventory.spec.ts`
+
+### Implementation
+
+- [X] T250 [US1] Add surface-qualified Copilot instruction/User/Cloud statements together with every
+  referenced base local/Cloud layering and managed-remote strategy so the production registry
+  remains closed without settings-file authority in `src/shared/registries/vendor-behaviors.ts` and
+  `src/shared/registries/runtime-composition.ts`
+- [X] T251 [US1] Add the seven exact Copilot instruction candidate records and own only
+  `copilot.excluded.additional-standard-locations` plus `copilot.excluded.extra-directories` in
+  `src/shared/registries/inspection-rules.ts`
+- [X] T252 [US1] Add Copilot instruction evidence records and reciprocal affected-contract
+  references, including existing-source backlinks for
+  `copilot.behavior.cloud.organization-instructions`, in the owning registry record's `evidence`
+  citations
+- [X] T253 [US1] Implement `copilot.repo.instructions.repository` and
+  `copilot.repo.instructions.repository-cli-context` matching in
+  `src/server/inspection/rules/copilot.ts`
+- [X] T254 [US1] Implement `copilot.repo.instructions.path` and
+  `copilot.repo.instructions.path-cli-context` matching in `src/server/inspection/rules/copilot.ts`
+- [X] T255 [US1] Implement `copilot.repo.instructions.agents` matching and exact
+  additional-standard-location/extra-directory rejection in `src/server/inspection/rules/copilot.ts`
+- [X] T256 [US1] Implement `copilot.repo.instructions.claude-root` and
+  `copilot.repo.instructions.gemini-root` matching in `src/server/inspection/rules/copilot.ts`
+- [X] T257 [US1] Implement surface-qualified recognition for all seven exact Copilot instruction IDs
+  without hosted or excluded-location promotion in `src/server/inspection/recognizers/candidate.ts`,
+  and carry that closed surface identity through the session projection and the instruction
+  inventory DTO in `src/server/session/session.ts` and `src/shared/api-types.ts` — a row grouped by
+  tool alone cannot state which surface recognized the file, and the badges T249 and T259 require
+  read that value rather than infer it *(amended 2026-08-17: the wire and projection were named here
+  after a review found the surface owned by the recognizer and by the row, but by nothing in
+  between.)* *(amended 2026-08-18: a recognition's surfaces are derived from the behaviors its
+  admitting rules rest on rather than stored, so `src/server/inspection/rules/registry.ts` declares
+  the edges on the class every candidate compiles to and `src/server/inspection/rules/codex.ts`
+  gives its derivation the vendor subclass that resolves them — without which a configured-fallback
+  row alone could name no surface. The closed surface order and its labels live in
+  `src/shared/registries/behavior-text.ts`, beside the union they belong to (AGENTS.md §
+  User-visible copy policy).)*
+- [X] T258 [US1] Integrate Copilot instruction classification without configured-root or hosted I/O
+  in `src/server/inspection/scan.ts`
+- [X] T259 [US1] Extend inventory rows and English Copilot instruction and surface messages in that
+  kind's row component under `src/app/components/inventory/rows/` *(amended 2026-08-18: no exclusion
+  message ships, for the reason T236 already recorded — an excluded location is a path no shipped
+  selector reaches, so the row has nothing to state about it, and the two exclusion records are
+  maintenance data no surface renders. What the row gained is the surfaces beside each product.)*
+
+---
+
+## Phase 20: Copilot Instructions Detail
+
+**Purpose**: Add complete literal Copilot instruction detail while preserving incompatible VS Code, CLI, and Cloud composition facts. Settings-dependent enablement is not projected at all: no surface states an enablement value, pending or otherwise, and no settings file is read. *(amended 2026-08-19: worded to the shipped final state — no surface projects a condition, and an explicit pending or unknown enablement display would be exactly that vocabulary (T091).)*
+
+**Independent Test**: Open supported Copilot instructions and verify `applyTo` as an authored declaration and as the declared row identity, zero settings-file I/O and no enablement claim, no invented general winner, exact resolved values, no relationship section, diagnostics, and detail-state cleanup. *(amended 2026-08-19: reworded to the shipped final state — enablement, parent discovery, and Cloud exclusions are registry facts no detail projects, and this kind emits no relationship (T261).)*
+
+**Visible Checkpoint**: Selecting a Copilot instruction shows separate surface interpretations.
+
+### Tests first
+
+- [X] T260 [P] [US2] Add failing Copilot tests for `applyTo` extraction, parent discovery, and no
+  invented general winner in `tests/unit/inspection/copilot-composition.test.ts` *(amended
+  2026-08-05: nothing projects an applicability, a surface condition, or a condition reason (T091),
+  so no test, registry extension, recognizer output, or UI surface plans one.)*
+- [X] T261 [P] [US2] Add failing metadata and relationship tests for closed Copilot field IDs,
+  ordered resolved values, `applyTo` and reference targets, instruction scopes, disablement,
+  alternatives, hosted/organization facts, environment-reference non-resolution, and zero target
+  reads in `tests/unit/inspection/copilot-metadata.test.ts` and
+  `tests/unit/inspection/relationships.test.ts` *(amended 2026-08-18: an instruction file has no
+  closed field catalog — what it declares is the author's, and FR-007 forbids a row enumerating
+  declared fields — so the metadata half asserts the keys the file wrote, in its order, with values
+  resolved exactly. The relationship half asserts the absence itself: no Copilot relationship-only
+  rule originates at an instruction file, so no edge, target, or boundary status exists to project
+  (T217, T238).)*
+- [X] T262 [US2] Add failing Copilot instruction runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T263 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Copilot
+  instruction detail, no relationship section, diagnostics, and detail-state cleanup in
+  `tests/e2e/copilot-instructions-detail.spec.ts` *(amended 2026-08-05: nothing projects an
+  applicability, a surface condition, or a condition reason (T091), so no test, registry extension,
+  recognizer output, or UI surface plans one.)*
+
+### Implementation
+
+- [X] T264 [US2] Extend the inventory-owned Copilot instruction strategies with the
+  authored-relationship coverage this phase ships, without adding strategy IDs or a settings
+  behavior reference, in `src/shared/registries/runtime-composition.ts` *(amended 2026-08-05:
+  nothing projects an applicability, a surface condition, or a condition reason (T091), so no test,
+  registry extension, recognizer output, or UI surface plans one.)* *(amended 2026-08-18: scope
+  emptied — T250 shipped the three surface layerings with the complete behavior sets their contract
+  rows fix, this phase ships no authored relationship for an instruction file to carry, and the task
+  may add no strategy ID. T262 gates each shipped record against its normative row in both
+  languages.)*
+- [X] T265 [US2] Extend Copilot recognition with the declared keys its files write, relationships,
+  diagnostics, and evidence in `src/server/inspection/recognizers/candidate.ts` *(amended
+  2026-08-05: nothing projects an applicability, a surface condition, or a condition reason (T091),
+  so no test, registry extension, recognizer output, or UI surface plans one.)* *(amended
+  2026-08-18: what this task ships is the declared-range branch Phase 17b left to it — a Copilot
+  path-instruction file's `applyTo` keys its inventory row instead of its path (spec.md §
+  Clarifications). The declarations reach the answer through the compiled instruction unit, which is
+  where a product's own rule for what its files govern already lives, so
+  `src/server/inspection/rules/copilot.ts` and the shared question in
+  `src/server/inspection/rules/registry.ts` carry it. The published keys themselves needed no
+  change: the one Markdown parse already publishes every declaration by the key the file wrote
+  (T222) A path-instruction file that declares nothing a row can be keyed by has no range — VS Code
+  documents an undeclared file as not applied automatically — so it lists under the null-range row
+  rather than under a range read off its path.)*
+- [X] T266 [US2] Integrate Copilot instruction parsing, exact resolved-value extraction, inert
+  relationships, parser scratch/transient-semantic disposal while retaining complete authored
+  source, and zero settings-file I/O in `src/server/inspection/scan.ts` *(amended 2026-08-18: scope
+  emptied — Phase 15/16 shipped the parse, the exact resolved-value preservation, the scratch
+  disposal, and the unchanged throw/rejection propagation, and a rule added to a vendor catalog
+  reaches the walk with no edit here (T235). This phase emits no relationship, and no settings rule
+  ships for a scan to read a settings file through.)*
+- [X] T267 [US2] Extend typed detail and the English Copilot instruction surface in that kind's own
+  detail route under `src/app/pages/` *(amended 2026-08-05: nothing projects an applicability, a
+  surface condition, or a condition reason (T091), so no test, registry extension, recognizer
+  output, or UI surface plans one.)* *(amended 2026-08-18: the detail route is this kind's own
+  (T224) and already renders every recognizing product with the surfaces its admitting rules rest
+  on, which T257 added to the shared projection — a Copilot detail is separate surface
+  interpretations for that reason rather than through a route of its own. No relationship message
+  ships (T261), and the `applyTo` declaration renders as the authored declaration it is.)*
+
+---
+
+## Phase 21: Unified Instructions Inventory
+
+**Purpose**: Consolidate the priority-wave instruction baseline with the explicit shared-file matrix: `AGENTS.md` is Codex+Copilot, root `CLAUDE.md` is Claude+Copilot, nested `CLAUDE.md` is Claude-only — a configured Codex fallback is an entry name matched at the Repository root, so no nested file becomes one — and `CLAUDE.local.md` is Claude-only. *(amended 2026-08-17: Phase 15 activates the configured fallbacks, so this phase's matrix includes them and nothing here waits for a carrier.)*
+
+**Independent Test**: Use an all-vendor instruction fixture and verify the exact shared-file matrix, one physical item/read per admitted file, separate recognitions/provenances, no filename-based Codex promotion of nested `CLAUDE.md`, the configured fallback recognitions, deterministic order, filters, partial continuity for file-confined failures, and rescan cleanup.
+
+**Visible Checkpoint**: Users can understand the complete static instruction inventory, every shared-file interpretation, and the configured fallback integration Phase 15 activated.
+
+### Tests first
+
+- [X] T268 [US1] Finalize the all-vendor instruction fixture with `AGENTS.md` Codex+Copilot, root
+  `CLAUDE.md` Claude+Copilot, nested `CLAUDE.md` Claude-only plus a configured-fallback variant,
+  Claude-only `CLAUDE.local.md`, every other selector, deterministic failures, secrets, exclusions,
+  and injected thrown/rejected-operation failure cases in
+  `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T269 [P] [US1] Add complete conformance tests for every registered static instruction selector
+  and exclusion, the derived fallback rule as identity only, and the exact `AGENTS.md`/root
+  `CLAUDE.md`/nested `CLAUDE.md`/`CLAUDE.local.md` recognition matrix in
+  `tests/contract/inspection-rules.test.ts`
+- [X] T270 [P] [US1] Add failing integration tests for one-read shared-file assembly, the exact
+  recognition matrix, zero Codex recognition on a nested `CLAUDE.md` no configuration names,
+  deterministic provenance and raw-path order, atomic continuity, and partial publication only after
+  complete traversal with file-confined failures; prove an injected file-confined failure yields
+  only that file's diagnostic in a partial generation while any other injected failure aborts the
+  attempt without domain catch, new item/derived result/body/generation, config or rejected-target
+  access, retaining only the prior commit in `tests/integration/repository-scan.test.ts`
+- [X] T271 [P] [US1] Add failing client tests for source/tool/kind/path filters, shared recognition
+  badges, configured fallback rows, and rescan cleanup in `tests/unit/app/inventory.test.ts`
+- [X] T272 [US1] Add browser acceptance for the unified instruction inventory, filters, shared
+  recognitions, configured fallback rows, exclusions, diagnostics, and keyboard use in
+  `tests/e2e/instructions-inventory.spec.ts` *(amended 2026-08-08: a detail shows the declarations
+  the file wrote, and what a vendor documents stays in its maintained contract, so no surface
+  projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T273 [US1] Complete deterministic physical-file assembly for the exact shared-file matrix and
+  accept independent configured-fallback Codex provenance only through the Phase 15 validated
+  derivation, never by filename inference, in `src/server/inspection/scan.ts` *(amended 2026-08-19:
+  satisfied without an edit — the Phase 15 two-stage composition already runs every vendor's catalog
+  and the configured derivation in one walk, which the T270 matrix suite proves against the module
+  as shipped.)*
+- [X] T274 [US1] Complete inventory filters and rows for instruction kinds, shared recognitions, and
+  configured fallback rows in `src/app/components/inventory/InventoryFilters.vue` and that kind's
+  row component under `src/app/components/inventory/rows/` *(amended 2026-08-19: satisfied without
+  an edit, and restated for the activated fallbacks — Phase 15 activates them (2026-08-17), so a
+  fallback row is an ordinary instruction row and no waiting state exists for a surface to show; the
+  shipped filters and `InstructionRow.vue` already render the kind, the shared recognitions, and
+  those rows, which T271/T272 prove.)* *(amended 2026-08-08: an admission stays a read-authorization
+  record no surface reads out, so nothing displays provenance (T1068).)*
+- [X] T275 [US1] Add English unified instruction inventory, shared-recognition, fallback, and
+  exclusion messages in the Vue components that render them *(amended 2026-08-19: satisfied without
+  an edit — the shipped components already carry every message the unified inventory renders, and no
+  exclusion message exists to add: as T236 settled, an unsupported location is a path no selector
+  reaches, so there is nothing for a row to state.)*
+
+---
+
+## Phase 22: Instructions Comparison
+
+**Purpose**: Design the instruction kind’s own comparison surface, following the skill comparison precedent, with literal and typed instruction differences.
+
+**Independent Test**: Compare exactly two readable current-generation instruction files and verify complete authored source plus the two sides' canonical serialized frontmatter documents and relationship differences without correctness claims or environment-reference resolution.
+
+**Visible Checkpoint**: Users can compare two instruction files and understand their structure-level differences.
+
+### Tests first
+
+- [X] T276 [US3] Add failing instruction comparison regressions for exactly two FileDetail inputs,
+  the canonical serialized frontmatter documents, and the absence of fabricated relationship rows,
+  without semantic correctness claims, in `tests/unit/app/instruction-comparison.test.ts` *(amended
+  2026-08-19: declared metadata is the file's one parse per kind, compared once per pair with tool
+  recognition compared per tool beside it — a tool is not a coordinate of a declaration (research.md
+  § 7).)* *(amended 2026-08-19: restated for the founded relationship model — an instruction file
+  never publishes an edge (T217/T238, api-types.ts § FileDetailDto), so what the suite proves about
+  relationships is that the comparison invents none.)* *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-21: the declared metadata compares as one
+  canonical YAML document per side, `name` and `description` leading for skills and every key
+  sorted, diffed in Monaco (frontmatter-yaml.ts), with tool recognition beside it as typed rows.)*
+- [X] T277 [US3] Add browser acceptance for the complete literal instruction diff including
+  credential/environment-reference differences, the canonical serialized declaration documents, no
+  masking/reveal or environment substitution, and typed layering/fallback differences in
+  `tests/e2e/instructions-comparison.spec.ts` *(amended 2026-08-21: the acceptance verifies the two
+  sides' canonical serialized documents diffed in Monaco, the form every kind's declared-metadata
+  comparison takes (research.md § 7).)*
+
+### Implementation
+
+- [X] T278 [US3] Extend instruction comparison to serialize each side's declared metadata into one
+  canonical document diffed in Monaco while keeping typed layering/fallback state separate in
+  `src/app/components/instruction-comparison/RecognitionComparison.vue`, part of the kind’s own
+  comparison surface this task designs and creates following the skill precedent
+  (`src/app/pages/skills/compare/[family].vue`, `src/app/composables/skill-comparison.ts`,
+  `src/app/components/skill-comparison/`), including the entry links that reach it from that kind's
+  inventory row component under `src/app/components/inventory/rows/` and from that kind's detail
+  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: the surface this
+  task created is `src/app/pages/instructions/compare/[family].vue`,
+  `src/app/composables/instruction-comparison.ts`, and `src/app/components/instruction-comparison/`
+  (`RecognitionComparison.vue`, `SourceDiff.vue`, `recognition-comparison.ts`) — named here so each
+  file resolves to its owning task.)* *(amended 2026-08-19: declared metadata is the file's one
+  parse per kind, compared once per pair with tool recognition compared per tool beside it — a tool
+  is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-27: the pair's owner
+  is the block a range holds for one Source family, so the two sides may be files of two consented
+  homes and never of two families; the address leads with the family and each side names its own
+  Source.)* *(amended 2026-08-19: the pair is one applicability-range row's — a free cross-range
+  pairing contradicted the row-owned model the skill precedent establishes, so the URL validation
+  reports a pair no single row holds and the pickers move the sides among the owning row's files
+  alone.)* *(amended 2026-08-15: owned by the kind’s own comparison surface — comparison is
+  kind-specific with no shared module, and this task designs and creates that surface following the
+  skill precedent (spec.md § Clarifications Session 2026-08-14).)* *(amended 2026-08-21: the
+  declared metadata compares as one canonical YAML document per side, `name` and `description`
+  leading for skills and every key sorted, diffed in Monaco (frontmatter-yaml.ts), with tool
+  recognition beside it as typed rows.)*
+- [X] T279 [US3] Add English instruction comparison messages in the Vue components that render them
+
+---
+
+## Phase 23: Codex MCP Contained Declarations
+
+**Purpose**: Attach Codex contained MCP recognition by first admitting the `.codex/config.toml` carrier (`codex.repo.config`) — its first and only candidacy, honoring the decision that this carrier's own source text reaches no surface, so an MCP row's detail publishes the declaration by the keys the file wrote rather than the file's bytes (FR-007) — and publish the contained-declaration inventory, each row naming the carrier it was declared in, without yet shipping the full MCP detail — the link to that detail arrives with the route and response Phase 24 owns (T301/T302). *(amended 2026-08-17: the fallback activation moved to Phase 15, where the carrier is read as configuration and never admitted; the carrier's first candidacy is this phase's.)*
+
+**Independent Test**: Inspect carriers with named servers, duplicates, absent fields, malformed tables, malformed commands, secrets, and standalone MCP near misses; verify the carrier admits exactly once with MCP recognition attached, one row per `[mcp_servers.*]` declaration, owner-file identity, no synthetic MCP file, no standalone MCP candidate, no raw source display, unchanged instructions/fallback rows, and zero connection.
+
+**Visible Checkpoint**: Users can filter Codex contained MCP declarations on their minimum carrier; instructions and configured fallbacks from Phase 15 remain unchanged, `.codex/config.toml` itself stays never-raw-displayed, and full MCP detail arrives in Phase 24.
+
+### Fixtures and tests first
+
+- [X] T280 [US1] Extend the Codex carrier fixtures with named MCP servers, duplicates, malformed
+  tables, malformed commands, secrets, agent inheritance references, standalone near misses, and
+  plugin relationships in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T281 [US1] Materialize `codex.behavior.repo.mcp`, the contained MCP recognition, selection,
+  relationships, and reciprocal evidence rows plus path-negative standalone/plugin/User/managed
+  cases, materializing `codex.repo.config` beside them without `codex.excluded.plugin-files` or an
+  MCP exclusion ID, in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T282 [P] [US1] Add failing registry and matcher regressions proving this phase's
+  `codex.repo.config` registration is the carrier's first and only candidacy,
+  `codex.derived.fallback-basename` stays Phase 15's, and no duplicate candidate or read appears,
+  and no standalone Codex MCP candidate or plugin/User/managed promotion exists in
+  `tests/unit/inspection/rules.test.ts` and `tests/contract/inspection-rules.test.ts`
+- [X] T283 [P] [US1] Add failing recognition tests proving Codex MCP attaches to the already
+  admitted carrier — one recognition per `(file, tool, kind)` with one row per declaration,
+  deterministic provenance — while instruction and fallback recognitions stay unchanged and
+  absent/malformed declarations are omitted atomically in
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T284 [US1] Add browser acceptance for Codex contained MCP rows, owner-carrier identity on each
+  row — the link to the carrier's detail arrives with Phase 24 (T301/T302) —, unchanged
+  instruction/fallback rows, filters, path-negative standalone/plugin cases, diagnostics, and no
+  connection controls in `tests/e2e/codex-mcp-inventory.spec.ts`
+
+### Implementation
+
+- [X] T285 [US1] Add the Codex MCP/config-contained Hook behavior statements together with complete
+  base MCP lookup/owner strategy records and their reciprocal evidence citations, reusing the Phase
+  15 carrier facts while granting no Hook candidate, standalone MCP, or connection authority, in
+  `src/shared/registries/vendor-behaviors.ts` and `src/shared/registries/runtime-composition.ts`
+- [X] T286 [US1] Atomically add `codex.repo.config`, reuse the Phase 15 derivation, and keep
+  standalone/plugin/User/managed paths negative without prematurely owning
+  `codex.excluded.plugin-files`, and add only relationship records for contained declarations in
+  `src/shared/registries/codex/relations.ts` and `src/shared/registries/inspection-rules.ts`
+- [X] T287 [US1] Add Codex MCP and non-authorizing contained-Hook fact evidence with reciprocal
+  affected-contract references in the owning registry record's `evidence` citations
+- [X] T288 [US1] Implement standalone MCP rejection and contained-declaration classification in
+  `src/server/inspection/rules/codex.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T289 [US1] Extend the Phase 15 TOML extraction with `[mcp_servers.*]` resolved values and
+  internal semantic normalization, attach MCP recognition to the one verified config file with
+  deterministic provenance, and create no synthetic candidates in
+  `src/server/inspection/parsers/toml.ts` and `src/server/inspection/scan.ts`
+- [X] T290 [US1] Publish the MCP inventory end to end — the per-declaration row DTO and its session
+  projection in `src/shared/api-types.ts` and `src/server/session/session.ts`, its derivation and
+  counts in `src/app/composables/filters.ts`, its tab-panel branch in
+  `src/app/components/inventory/InventoryList.vue` and total in `src/app/pages/index.vue` — and
+  extend MCP inventory filters and contained-owner summaries in
+  `src/app/components/inventory/InventoryFilters.vue` and that kind's row component under
+  `src/app/components/inventory/rows/` *(amended 2026-08-17: the central kind-dispatch path was
+  named here after a review found each new kind's rows owned only at the row component, which no
+  snapshot reaches on its own.)* *(amended 2026-08-19: the row unit is the declared server name —
+  every declaration resolving one name, across carriers and tools, lists inside that name's row,
+  with the null-named row holding the carriers publishing no named declaration.)*
+- [X] T291 [US1] Add English Codex contained-MCP, owner, schema, and exclusion messages in the Vue
+  components that render them
+
+---
+
+## Phase 24: Codex MCP Detail
+
+**Purpose**: Extend the minimum Codex carrier with complete literal MCP detail and zero-connection behavior while leaving general configuration presentation to Phase 58.
+
+**Independent Test**: Open contained Codex declarations and verify duplicate names, parent/agent inheritance relationships, exact resolved-value preservation, diagnostics, no prohibited or customization-selected DNS/socket/HTTP/MCP/auth/probing request, and no command, expansion, or referenced read; classify the two exact FR-022 authorized internal loopback HTTP classes separately.
+
+**Visible Checkpoint**: Selecting a Codex MCP recognition shows exact configuration semantics while every server remains inactive.
+
+### Tests first
+
+- [X] T292 [P] [US2] Add failing MCP schema tests for named, inline, ancestor, plugin, and
+  runtime-only references plus a pure dormant agent-inheritance adapter that has no unresolved
+  behavior backlink, connection, or target promotion before Phase 50 in
+  `tests/unit/inspection/relationships.test.ts`
+- [X] T293 [P] [US2] Add failing Codex carrier/MCP tests for active project-config precedence,
+  duplicate names, activated fallback provenance, and absence of general config presentation in
+  `tests/unit/inspection/codex-metadata.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T294 [P] [US2] Add zero-connection tests that separately classify the two exact FR-022
+  authorized internal loopback HTTP classes and prove Codex MCP inspection causes no prohibited or
+  customization-selected DNS/socket/HTTP/MCP/authentication/probing request, command execution,
+  expansion, plugin load, or referenced-file read in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T295 [P] [US2] Add failing Codex MCP-detail API tests for the resolved commands, URLs,
+  headers, and environment fields/references by the keys the carrier wrote, in the parser's resolved
+  order — and for the carrier's source text reaching no response, which is what a detail carrying
+  declarations rather than a file's bytes has to prove (FR-007) —, owner provenance, diagnostics, no
+  process-environment substitution, and stale IDs in `tests/contract/http-api-files.test.ts`
+  *(amended 2026-08-06: no allowlist row orders declarations and no condition projects — a
+  declaration set is the carrier's own, and the allowlist gates relationship kinds (FR-007, T091).)*
+  *(amended 2026-08-19: the carrier detail is its own `get-mcp-carrier-detail` function and
+  `McpCarrierDetail` DTO rather than a `FileDetail` variant — the source-serving function carries no
+  variant that must withhold source, and a carrier path there is the ordinary `stale-resource`.)*
+  *(amended 2026-08-20: declarations publish in the parser's resolved order: a plain parsed object
+  enumerates integer-like keys in the platform's numeric order, a JavaScript property accepted
+  rather than worked around with a second syntax-tree parse; contracts/http-api.md §
+  get-mcp-carrier-detail already spells the order as the parser's.)*
+- [X] T296 [US2] Add failing Codex carrier, instruction-fallback, and MCP runtime-composition graph
+  coverage with reciprocal contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T297 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Codex
+  MCP detail with no raw source display (FR-007), diagnostics, owner navigation, and zero connection
+  behavior in `tests/e2e/codex-mcp-detail.spec.ts` *(amended 2026-08-08: a detail shows the
+  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
+  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T298 [US2] Extend the inventory-owned Codex MCP strategies and a closed dormant
+  agent-inheritance adapter, without adding a strategy ID or premature agent behavior reference, in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: no MCP relationship extractor exists in
+  this release for any vendor (T349's decision), so no relationship record, target, or projection
+  ships or is asserted.)*
+- [X] T299 [US2] Implement Codex active-config MCP precedence, trust, duplicate, and provenance
+  metadata in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-20: only explicit
+  MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration
+  shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T300 [US2] Extend TOML extraction publishing each declaration's fields by the keys the file
+  wrote, each value the parser's resolution (`DeclaredEntryDto`) — no closed field-ID catalog,
+  because an authored key set is not closed (FR-007) — with recognition-atomic failure and
+  source-value-free diagnostics in `src/server/inspection/parsers/toml.ts` *(amended 2026-08-20: no
+  closed MCP field-ID catalog exists: an authored key set is not closed (FR-007), and declarations
+  publish as `DeclaredEntryDto` entries by the keys the file wrote, each value the parser's
+  resolution.)*
+- [X] T301 [US2] Integrate Codex MCP exact resolved-value extraction and diagnostics in
+  `src/server/inspection/scan.ts`, and publish the carrier's own detail — `get-mcp-carrier-detail`'s
+  `McpCarrierDetail` result: its declarations by the keys the file wrote, its file facts, and no
+  `sourceText` field at all (FR-007; contracts/http-api.md § get-mcp-carrier-detail) — in
+  `src/shared/api-types.ts` and `src/server/session/session.ts` *(amended 2026-08-20: body aligned
+  to the dedicated-carrier-detail decision the 2026-08-19 note records.)* *(amended 2026-08-20: the
+  scope states no selection projection — nothing projects one, as the 2026-08-06 note records
+  (T091).)* *(amended 2026-08-17: the detail variant and its projection were named here after a
+  review found the carrier's no-source rule owned by a test task and by no implementation.)*
+  *(amended 2026-08-06: an admission stays a read-authorization record, and what a vendor documents
+  stays in its maintained contract, so no surface projects a condition, applicability, order,
+  runtime state, provenance, or documentation status (FR-009; T091/T1068/T1042).)* *(amended
+  2026-08-19: the carrier detail is its own `get-mcp-carrier-detail` function and `McpCarrierDetail`
+  DTO rather than a `FileDetail` variant — the source-serving function carries no variant that must
+  withhold source, and a carrier path there is the ordinary `stale-resource`.)* *(amended
+  2026-08-20: no MCP relationship extractor exists in this release for any vendor (T349's decision),
+  so no relationship record, target, or projection ships or is asserted.)*
+- [X] T302 [US2] Extend typed Codex MCP detail for servers, transports, and owner scope in that
+  kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the
+  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
+  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-21:
+  each declaration serializes to JSON, the value a JSON carrier's entry holds under the server's
+  name; the detail renders each declaration as the same document in authored order.)*
+- [X] T303 [US2] Add English Codex MCP carrier and schema messages in the Vue components that render
+  them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a vendor
+  documents stays in its maintained contract, so no surface projects trust, precedence, order, or
+  uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 25: Claude MCP Files Inventory
+
+**Purpose**: Add the exact root Claude `.mcp.json` standalone physical candidate.
+
+**Independent Test**: Inventory only root `.mcp.json`, reject descendants as Claude candidates, User state, connectors, managed configuration, links, near misses, and contained declarations as standalone files while preserving future Copilot sharing.
+
+**Visible Checkpoint**: Users can filter the Claude project MCP file.
+
+### Fixtures and tests first
+
+- [X] T304 [US1] Create Claude MCP-file fixtures for root, descendants, malformed JSON, malformed
+  commands, secrets, links, User/plugin/connector/managed state, contained declarations, and near
+  misses in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T305 [US1] Materialize Claude MCP-file behavior, the non-authorizing
+  `claude.behavior.user.mcp-state`, `claude.behavior.repo.agents`, `claude.behavior.repo.plugin`,
+  and `claude.behavior.user.plugins` facts, exact candidate, selection, relationships, path-negative
+  plugin/User/connector/managed cases without `claude.excluded.plugin-files`, and reciprocal
+  evidence rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T306 [P] [US1] Add failing matcher/recognition tests for exact root `claude.repo.mcp`,
+  descendant/User/plugin/connector/managed rejection, and standalone schema provenance in
+  `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts`
+- [X] T307 [US1] Add browser acceptance for Claude MCP file rows, filters, exclusions, diagnostics,
+  and no connection controls in `tests/e2e/claude-mcp-files-inventory.spec.ts` *(amended 2026-08-08:
+  an admission stays a read-authorization record no surface reads out, so nothing displays
+  provenance (T1068).)*
+
+### Implementation
+
+- [X] T308 [US1] Add Claude MCP-file/User/owner behavior statements together with complete base
+  replacement and owner-strategy records so the production registry remains closed without candidate
+  or connection authority for unadmitted owners in `src/shared/registries/vendor-behaviors.ts` and
+  `src/shared/registries/runtime-composition.ts`
+- [X] T309 [US1] Add the exact Claude MCP candidate and keep plugin/User/connector/managed locations
+  path-negative without prematurely owning `claude.excluded.plugin-files` or defining new MCP
+  exclusion IDs in `src/shared/registries/inspection-rules.ts`
+- [X] T310 [US1] Add Claude MCP-file evidence plus reciprocal backlinks for all four non-authorizing
+  MCP-dependent behavior facts owned in this phase in the owning registry record's `evidence`
+  citations
+- [X] T311 [US1] Implement Claude root-exact `.mcp.json` matching and path-derived recognition in
+  `src/server/inspection/rules/claude.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T312 [US1] Integrate Claude MCP-file classification and preserve physical identity for later
+  shared recognition in `src/server/inspection/scan.ts`
+- [X] T313 [US1] Extend MCP inventory rows and English Claude file, schema, and exclusion messages
+  in that kind's row component under `src/app/components/inventory/rows/`
+
+---
+
+## Phase 26: Claude MCP File Detail
+
+**Purpose**: Add complete literal detail for standalone Claude `.mcp.json`.
+
+**Independent Test**: Open malformed root files and verify exact resolved-value preservation, diagnostics, and zero connection.
+
+**Visible Checkpoint**: Selecting Claude `.mcp.json` shows exact file semantics and inactive server declarations.
+
+### Tests first
+
+- [X] T314 [P] [US2] Add failing Claude MCP tests for local→project→User→plugin→connector
+  whole-entry replacement, and for relative command/argument values published as the authored
+  literal with no resolution base joined — no cited page establishes one — in
+  `tests/unit/inspection/claude-metadata.test.ts` *(amended 2026-08-20: current official pages
+  establish no resolution base for relative command/args values — the vendor contract records the
+  gap — so the coverage asserts the authored literal is published with no base joined (FR-009).)*
+- [X] T315 [P] [US2] Add zero-connection tests for Claude file servers, commands, URLs, headers,
+  environment, DNS, sockets, auth, expansion, connector state, and referenced files in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T316 [P] [US2] Add failing Claude MCP-file detail API tests for the resolved declarations by
+  the keys the file wrote, in the parser's resolved order, the carrier's source text reaching no
+  response (FR-007), no environment-reference substitution, diagnostics, and stale IDs in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-06: no allowlist row orders or
+  enumerates declarations — a declaration set is the carrier's own, published by the keys it wrote,
+  and the allowlist gates relationship kinds (FR-007); nothing projects a condition or an
+  applicability (T091).)* *(amended 2026-08-20: declarations publish in the parser's resolved order:
+  a plain parsed object enumerates integer-like keys in the platform's numeric order, a JavaScript
+  property accepted rather than worked around with a second syntax-tree parse; contracts/http-api.md
+  § get-mcp-carrier-detail already spells the order as the parser's.)* *(amended 2026-08-20: no MCP
+  relationship extractor exists in this release for any vendor (T349's decision), so no relationship
+  record, target, or projection ships or is asserted.)*
+- [X] T317 [US2] Add failing Claude MCP-file runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T318 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Claude
+  MCP-file detail with no raw source display (FR-007), diagnostics, and zero connection behavior in
+  `tests/e2e/claude-mcp-files-detail.spec.ts` *(amended 2026-08-08: a detail shows the declarations
+  the file wrote, and what a vendor documents stays in its maintained contract, so no surface
+  projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T319 [US2] Extend the inventory-owned Claude MCP strategies, without adding strategy IDs, in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: no MCP relationship extractor exists in
+  this release for any vendor (T349's decision), so no relationship record, target, or projection
+  ships or is asserted.)*
+- [X] T320 [US2] Implement Claude MCP-file metadata with whole-entry replacement, publishing
+  relative command/argument values as the authored literal with no resolution base joined, in
+  `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-20: current official pages
+  establish no resolution base for relative command/args values — the vendor contract records the
+  gap — so the coverage asserts the authored literal is published with no base joined (FR-009).)*
+- [X] T321 [US2] Implement inert strict-JSON extraction publishing each declaration's fields by the
+  keys the file wrote, each value the parser's resolution (`DeclaredEntryDto`) — no closed field-ID
+  catalog, because an authored key set is not closed (FR-007) — with environment-owned parser
+  capacity and no Inspector numeric cap; a file-confined parse throw is confined by the extraction
+  boundary to that recognition's `failed` state with its `recognition-parse-failed` Diagnostic in a
+  partial generation (FR-028), recognition-atomic and source-value-free, while any throw outside
+  that file-confined path propagates unchanged with no catch, cause classification, retry, recovered
+  result, Diagnostic, or generation, in `src/server/inspection/parsers/json.ts` *(amended
+  2026-08-20: no closed MCP field-ID catalog exists: an authored key set is not closed (FR-007), and
+  declarations publish as `DeclaredEntryDto` entries by the keys the file wrote, each value the
+  parser's resolution.)* *(amended 2026-08-20: aligned to the shipped failure doctrine — a
+  file-confined parse throw is confined by the extraction boundary to that recognition's `failed`
+  state with its `recognition-parse-failed` Diagnostic in a partial generation (FR-028); only a
+  throw outside that file-confined path propagates unchanged with no catch, Diagnostic, or
+  generation.)*
+- [X] T322 [US2] Integrate Claude MCP-file exact resolved-value preservation and diagnostics in
+  `src/server/inspection/scan.ts` *(amended 2026-08-20: the scope states no selection projection —
+  nothing projects one, as the 2026-08-06 note records (T091).)* *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: no MCP relationship
+  extractor exists in this release for any vendor (T349's decision), so no relationship record,
+  target, or projection ships or is asserted.)*
+- [X] T323 [US2] Extend typed detail and English Claude MCP messages in that kind's own detail route
+  under `src/app/pages/` *(amended 2026-08-08: a detail shows the declarations the file wrote, and
+  what a vendor documents stays in its maintained contract, so no surface projects trust,
+  precedence, order, or uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 27: Claude Explicit-Carrier MCP Boundary
+
+**Purpose**: Prove the explicit-carrier boundary for the Claude root carrier: no owner-adapter machinery exists, and a skill frontmatter spelling `mcpServers` gains no MCP recognition, because Claude documents no such skill field. *(amended 2026-08-20: Claude documents no `mcpServers` skill-frontmatter field (the skills page's frontmatter reference and the changelog place inline `mcpServers` on agents; a skill folder carries MCP only through the plugin mechanism), so the shipped adapter set has no skill owner: a skill spelling the key gains no MCP recognition, and its frontmatter is served as ordinary skill content under its own kind.)*
+
+**Independent Test**: Verify a skill spelling `mcpServers` stays exactly a skill — its frontmatter its own detail content — that no owner machinery, candidate, or recognition exists for MCP-spelling files of other kinds, and that plugin targets are never read. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: A skill whose frontmatter spells `mcpServers` shows that frontmatter on its own skill detail and contributes nothing to the MCP inventory — the permanent rule for every kind, not a waiting state. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-20: Claude documents no `mcpServers` skill-frontmatter field (the skills page's frontmatter reference and the changelog place inline `mcpServers` on agents; a skill folder carries MCP only through the plugin mechanism), so the shipped adapter set has no skill owner: a skill spelling the key gains no MCP recognition, and its frontmatter is served as ordinary skill content under its own kind.)*
+
+### Tests first
+
+- [X] T324 [P] [US2] Add Claude MCP-reading tests — the pure declared-entry reader over named/inline
+  servers and malformed fields — plus the skill negative: a `mcpServers`-spelling skill keeps its
+  skill recognition alone, its values literal, in `tests/unit/inspection/claude-metadata.test.ts`
+  *(amended 2026-08-20: Claude documents no `mcpServers` skill-frontmatter field (the skills page's
+  frontmatter reference and the changelog place inline `mcpServers` on agents; a skill folder
+  carries MCP only through the plugin mechanism), so the shipped adapter set has no skill owner: a
+  skill spelling the key gains no MCP recognition, and its frontmatter is served as ordinary skill
+  content under its own kind.)*
+- [X] T325 [P] [US2] Add recognition tests proving MCP recognitions come from explicit carriers
+  alone: a skill spelling `mcpServers` gains no MCP recognition for any tool, an unadmitted
+  MCP-spelling file of any kind produces nothing, and plugin targets are not read in
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-20: Claude documents no `mcpServers`
+  skill-frontmatter field (the skills page's frontmatter reference and the changelog place inline
+  `mcpServers` on agents; a skill folder carries MCP only through the plugin mechanism), so the
+  shipped adapter set has no skill owner: a skill spelling the key gains no MCP recognition, and its
+  frontmatter is served as ordinary skill content under its own kind.)* *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T326 [P] [US2] Add zero-connection tests for the Claude carrier and the `mcpServers`-spelling
+  skill — connector, command, URL, header, environment, and referenced path — in
+  `tests/integration/security/zero-activation.test.ts` *(amended 2026-08-20: Claude documents no
+  `mcpServers` skill-frontmatter field (the skills page's frontmatter reference and the changelog
+  place inline `mcpServers` on agents; a skill folder carries MCP only through the plugin
+  mechanism), so the shipped adapter set has no skill owner: a skill spelling the key gains no MCP
+  recognition, and its frontmatter is served as ordinary skill content under its own kind.)*
+- [X] T327 [US2] Add composition-graph coverage proving an MCP-spelling file of another kind gets no
+  registry surface of its own — the skill rule's edges stay the skill's — with no unresolved
+  registry references or read authority, in `tests/contract/runtime-composition.test.ts` *(amended
+  2026-08-20: Claude documents no `mcpServers` skill-frontmatter field (the skills page's
+  frontmatter reference and the changelog place inline `mcpServers` on agents; a skill folder
+  carries MCP only through the plugin mechanism), so the shipped adapter set has no skill owner: a
+  skill spelling the key gains no MCP recognition, and its frontmatter is served as ordinary skill
+  content under its own kind.)* *(amended 2026-08-20: only explicit MCP configuration joins the MCP
+  surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail
+  content, an agent's `mcp-servers` included.)*
+- [X] T328 [US2] Add browser acceptance proving a `mcpServers`-spelling skill contributes nothing to
+  the MCP inventory while its frontmatter — credential included — is served literally under its own
+  skill detail, with no rows for unadmitted owner families and zero connection behavior, in
+  `tests/e2e/claude-skill-mcp-frontmatter.spec.ts` *(amended 2026-08-20: Claude documents no
+  `mcpServers` skill-frontmatter field (the skills page's frontmatter reference and the changelog
+  place inline `mcpServers` on agents; a skill folder carries MCP only through the plugin
+  mechanism), so the shipped adapter set has no skill owner: a skill spelling the key gains no MCP
+  recognition, and its frontmatter is served as ordinary skill content under its own kind.)*
+
+### Implementation
+
+- [X] T329 [US2] Extend Claude MCP strategies for the explicit carrier in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: only explicit MCP configuration joins
+  the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own
+  detail content, an agent's `mcp-servers` included.)*
+- [X] T330 [US2] Scope emptied: no contained-MCP adapter dispatch exists — explicit carriers are the
+  MCP kind's only recognitions in `src/server/inspection/recognizers/candidate.ts` *(amended
+  2026-08-20: Claude documents no `mcpServers` skill-frontmatter field (the skills page's
+  frontmatter reference and the changelog place inline `mcpServers` on agents; a skill folder
+  carries MCP only through the plugin mechanism), so the shipped adapter set has no skill owner: a
+  skill spelling the key gains no MCP recognition, and its frontmatter is served as ordinary skill
+  content under its own kind.)* *(amended 2026-08-20: only explicit MCP configuration joins the MCP
+  surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail
+  content, an agent's `mcp-servers` included.)*
+- [X] T331 [US2] Keep the frontmatter extraction's resolved values as the shared declared-entry
+  shape every detail renders — an MCP-spelling key included, as ordinary declared content — in
+  `src/server/inspection/parsers/json.ts` and `src/server/inspection/parsers/markdown.ts` *(amended
+  2026-08-20: Claude documents no `mcpServers` skill-frontmatter field (the skills page's
+  frontmatter reference and the changelog place inline `mcpServers` on agents; a skill folder
+  carries MCP only through the plugin mechanism), so the shipped adapter set has no skill owner: a
+  skill spelling the key gains no MCP recognition, and its frontmatter is served as ordinary skill
+  content under its own kind.)* *(amended 2026-08-20: only explicit MCP configuration joins the MCP
+  surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail
+  content, an agent's `mcp-servers` included.)* *(amended 2026-08-21: a scalar publishes its parsed
+  kind beside its rendered text (`DeclaredScalarKind`): the raw resolved value cannot ride the JSON
+  wire (`NaN`, infinities, TOML 64-bit integers), and the kind-plus-text pair is its exact JSON-safe
+  encoding, so the serializers spell by the kind rather than by guessing from the rendering, which
+  cannot tell an authored `'7'` string from the number `7`.)*
+- [X] T332 [US2] Integrate one-read recognition for the explicit carrier, exact resolved-value
+  extraction, and diagnostics in `src/server/inspection/scan.ts` *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T333 [US2] Keep the MCP detail route free of owner navigation permanently — no owner family
+  ever joins the MCP surfaces — in that kind's own detail route under `src/app/pages/` *(amended
+  2026-08-20: Claude documents no `mcpServers` skill-frontmatter field (the skills page's
+  frontmatter reference and the changelog place inline `mcpServers` on agents; a skill folder
+  carries MCP only through the plugin mechanism), so the shipped adapter set has no skill owner: a
+  skill spelling the key gains no MCP recognition, and its frontmatter is served as ordinary skill
+  content under its own kind.)* *(amended 2026-08-08: a detail shows the declarations the file
+  wrote, and what a vendor documents stays in its maintained contract, so no surface projects trust,
+  precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+---
+
+## Phase 28: Copilot CLI MCP Files Inventory
+
+**Purpose**: Add the Copilot CLI's root-exact `.mcp.json` and `.github/mcp.json` candidates. *(amended 2026-08-20: root-exact — the CLI's documented upward walk has one terminal every session shares, the Git root, so a subdirectory carrier is a runtime-chain member this product does not select and is a near miss; the `copilot.repo.mcp` contract row was corrected in the same change.)*
+
+**Independent Test**: Inventory the two root-level CLI-context files, reject subdirectory carriers, extra schemas, User config, session additions, plugin targets, hosted state, links, and near misses, and preserve exact runtime-chain/trust uncertainty. *(amended 2026-08-20: root-exact — the CLI's documented upward walk has one terminal every session shares, the Git root, so a subdirectory carrier is a runtime-chain member this product does not select and is a near miss; the `copilot.repo.mcp` contract row was corrected in the same change.)*
+
+**Visible Checkpoint**: Users can filter Copilot CLI MCP files.
+
+### Fixtures and tests first
+
+- [X] T334 [US1] Create Copilot CLI MCP fixtures for root `.mcp.json` and `.github/mcp.json`,
+  duplicates, malformed JSON, malformed commands, secrets, links, User/session/plugin/hosted state,
+  and near misses — subdirectory carriers among them — in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20: root-exact — the CLI's
+  documented upward walk has one terminal every session shares, the Git root, so a subdirectory
+  carrier is a runtime-chain member this product does not select and is a near miss; the
+  `copilot.repo.mcp` contract row was corrected in the same change.)*
+- [X] T335 [US1] Materialize Copilot CLI MCP behavior, `copilot.repo.mcp`, selection, path-negative
+  User/session/hosted/configured cases without an exclusion ID, relationship-only plugin paths, and
+  evidence rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T336 [P] [US1] Add failing matcher/recognition tests for both root-exact CLI selectors,
+  subdirectory rejection, and no User/session/plugin/hosted candidate in
+  `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts` *(amended
+  2026-08-06: an admission stays a read-authorization record, and what a vendor documents stays in
+  its maintained contract, so no surface projects a condition, applicability, order, runtime state,
+  provenance, or documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: root-exact
+  — the CLI's documented upward walk has one terminal every session shares, the Git root, so a
+  subdirectory carrier is a runtime-chain member this product does not select and is a near miss;
+  the `copilot.repo.mcp` contract row was corrected in the same change.)*
+- [X] T337 [US1] Add browser acceptance for Copilot CLI MCP rows, context/schema badges, filters,
+  exclusions, diagnostics, and no connection controls in
+  `tests/e2e/copilot-cli-mcp-inventory.spec.ts`
+
+### Implementation
+
+- [X] T338 [US1] Add Copilot CLI MCP/User statements together with complete base lookup/selection
+  strategy records so the production registry remains closed at this milestone in
+  `src/shared/registries/vendor-behaviors.ts` and `src/shared/registries/runtime-composition.ts`
+- [X] T339 [US1] Add only the two selectors of `copilot.repo.mcp`, keep
+  User/session/hosted/configured locations path-negative without an exclusion ID, and retain plugin
+  paths as relationships in `src/shared/registries/inspection-rules.ts`
+- [X] T340 [US1] Add Copilot CLI MCP evidence records and reciprocal affected-contract references in
+  the owning registry record's `evidence` citations
+- [X] T341 [US1] Implement the Copilot CLI's root-exact MCP matching and schema-qualified
+  recognition in `src/server/inspection/rules/copilot.ts` and
+  `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-20: the CLI reading accepts
+  both documented project-level schemas — the top-level `mcpServers` object and the bare top-level
+  map keyed by server name (github.copilot.cli.mcp § Adding per-repository MCP servers) — and each
+  tool's recognition publishes its own vendor's reading of a shared carrier, because Claude reads
+  only the wrapper form.)* *(amended 2026-08-20: root-exact — the CLI's documented upward walk has
+  one terminal every session shares, the Git root, so a subdirectory carrier is a runtime-chain
+  member this product does not select and is a near miss; the `copilot.repo.mcp` contract row was
+  corrected in the same change.)*
+- [X] T342 [US1] Integrate Copilot CLI MCP classification and preserve shared root physical identity
+  in `src/server/inspection/scan.ts`
+- [X] T343 [US1] Extend MCP inventory rows and English Copilot CLI context, schema, and exclusion
+  messages in that kind's row component under `src/app/components/inventory/rows/`
+
+---
+
+## Phase 29: Copilot CLI MCP Detail
+
+**Purpose**: Add complete literal Copilot CLI MCP detail with zero connection.
+
+**Independent Test**: Open malformed CLI files and verify exact resolved values, diagnostics, and zero connection or target promotion.
+
+**Visible Checkpoint**: Selecting a Copilot CLI MCP file shows its complete inert detail.
+
+### Tests first
+
+- [X] T344 [P] [US2] Add Copilot CLI MCP tests for both documented carrier schemas, literal
+  whole-entry field reading, and the maintained session-additional→plugin→workspace→User selection
+  statement in `tests/unit/inspection/copilot-metadata.test.ts` *(amended 2026-08-20: the workspace
+  files' own duplicate order is documented — closer-to-`cwd` wins, `.mcp.json` over
+  `.github/mcp.json` in one directory (github.copilot.cli.mcp) — so no unknown-duplicate case
+  remains, and source order is asserted as the registry statement rather than a projection
+  (FR-009).)* *(amended 2026-08-06: an admission stays a read-authorization record, and what a
+  vendor documents stays in its maintained contract, so no surface projects a condition,
+  applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)*
+- [X] T345 [P] [US2] Add zero-connection tests for Copilot CLI servers, commands, URLs, headers,
+  environment, DNS, sockets, auth, expansion, session/plugin state, and referenced files in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T346 [P] [US2] Add failing Copilot CLI MCP-detail API tests for the resolved declarations by
+  the keys the file wrote, in the parser's resolved order, the carrier's source text reaching no
+  response (FR-007), no environment-reference substitution, diagnostics, and stale IDs in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-06: no allowlist row orders or
+  enumerates declarations — a declaration set is the carrier's own, published by the keys it wrote,
+  and the allowlist gates relationship kinds (FR-007); nothing projects a condition or an
+  applicability (T091).)* *(amended 2026-08-20: declarations publish in the parser's resolved order:
+  a plain parsed object enumerates integer-like keys in the platform's numeric order, a JavaScript
+  property accepted rather than worked around with a second syntax-tree parse; contracts/http-api.md
+  § get-mcp-carrier-detail already spells the order as the parser's.)* *(amended 2026-08-20: no MCP
+  relationship extractor exists in this release for any vendor (T349's decision), so no relationship
+  record, target, or projection ships or is asserted.)*
+- [X] T347 [US2] Add failing Copilot CLI MCP runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T348 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Copilot
+  CLI MCP detail with no raw source display (FR-007), diagnostics, and zero connection behavior in
+  `tests/e2e/copilot-cli-mcp-detail.spec.ts` *(amended 2026-08-08: a detail shows the declarations
+  the file wrote, and what a vendor documents stays in its maintained contract, so no surface
+  projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T349 [US2] Extend the inventory-owned Copilot CLI MCP strategies with the
+  authored-relationship coverage this phase ships, without adding strategy IDs, in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: scope emptied — no MCP relationship
+  extractor exists in this release for any vendor, so this phase ships no authored-relationship
+  record, exactly like the Codex and Claude MCP phases; the strategy itself was completed the same
+  day by the documented workspace-order correction, and T347 gates it reciprocally against the
+  bilingual contract.)*
+- [X] T350 [US2] Verify the Copilot CLI MCP recognition path end to end — both documented schemas
+  read by the shipped extractor, per-tool readings on a shared carrier, and deterministic provenance
+  — extending `src/server/inspection/recognizers/candidate.ts` only where a gap is demonstrated
+  *(amended 2026-08-20: nothing projects ordering, duplication, or trust (T091), and the schema
+  reading ships with T341, so this task's scope is verification rather than new metadata.)*
+  *(amended 2026-08-20: verified with no gap — both documented schemas, the per-tool readings of a
+  shared carrier, and deterministic provenance are pinned by
+  tests/unit/inspection/recognizers.test.ts (T341), tests/unit/inspection/copilot-metadata.test.ts
+  (T344), and tests/integration/repository-scan.test.ts (T342); no candidate.ts change was needed.)*
+- [X] T351 [US2] Verify the JSON extraction for the Copilot CLI carriers — declarations by the keys
+  the file wrote, each value the parser's resolution (`DeclaredEntryDto`), recognition-atomic
+  failure, source-value-free diagnostics — extending `src/server/inspection/parsers/json.ts` only
+  where a gap is demonstrated *(amended 2026-08-20: no closed MCP field-ID catalog exists: an
+  authored key set is not closed (FR-007), and declarations publish as `DeclaredEntryDto` entries by
+  the keys the file wrote, each value the parser's resolution.)* *(amended 2026-08-20: verified with
+  no gap — the declaration shape, recognition-atomic failure, and source-value-free diagnostics are
+  pinned by tests/unit/inspection/parsers.test.ts, copilot-metadata.test.ts (T344), and the T346
+  contract suite; no json.ts change was needed.)*
+- [X] T352 [US2] Integrate Copilot CLI MCP exact resolved-value preservation and diagnostics in
+  `src/server/inspection/scan.ts` *(amended 2026-08-20: the scope states no selection projection —
+  nothing projects one, as the 2026-08-06 note records (T091).)* *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: scope satisfied — the
+  scan integration shipped whole with T342's one-read shared-carrier assembly; this phase adds the
+  proving suites (T345 zero-connection, T346 literal preservation and diagnostics), and no scan.ts
+  change was needed.)* *(amended 2026-08-20: no MCP relationship extractor exists in this release
+  for any vendor (T349's decision), so no relationship record, target, or projection ships or is
+  asserted.)*
+- [X] T353 [US2] Extend typed detail and English Copilot CLI MCP messages in that kind's own detail
+  route under `src/app/pages/` *(amended 2026-08-08: a detail shows the declarations the file wrote,
+  and what a vendor documents stays in its maintained contract, so no surface projects trust,
+  precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-20: scope satisfied — the
+  MCP detail route is kind-generic and its closed label tables (SUPPORTED_TOOL_TEXT,
+  VENDOR_SURFACE_TEXT) already render the Copilot CLI caption; T348 pins 'GitHub Copilot (CLI) ·
+  MCP' on both views, and no page change was needed.)*
+
+---
+
+## Phase 30: Copilot VS Code MCP File Inventory
+
+**Purpose**: Add exact `.vscode/mcp.json` with its documented VS Code `servers` schema and exact VS Code 1.118+ root `.mcp.json` as path/surface-only conflict provenance merged with the existing CLI candidate.
+
+**Independent Test**: Inventory both exact workspace-root forms, keep nested `.mcp.json` a near miss for every product, merge root `.mcp.json` CLI/VS Code provenances into one file/read/recognition, expose the release-note/current-guide conflict, authorize no VS Code-owned root-schema fields or inferred winner, and reject general `.vscode/settings.json`, User/profile MCP, links, and near misses.
+
+**Visible Checkpoint**: Users can distinguish the documented `.vscode/mcp.json` `servers` schema from the VS Code 1.118+ root-path recognition whose schema and total same-name order remain unknown.
+
+### Fixtures and tests first
+
+- [X] T354 [US1] Create Copilot VS Code MCP fixtures for exact `.vscode/mcp.json`, exact 1.118+ root
+  `.mcp.json`, root CLI/VS Code overlap, nested near misses, malformed `servers`, malformed
+  commands, secrets, links, general settings, User/profile state, and unsupported VS Code
+  root-schema inference in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20:
+  nested `.mcp.json` is a near miss for every product — the CLI's documented per-repository location
+  is the workspace root alone.)*
+- [X] T355 [US1] Materialize the conflicting Copilot VS Code MCP behavior, non-authorizing
+  `copilot.behavior.vscode.user.mcp` and `copilot.behavior.vscode.agents` facts, exact
+  `copilot.repo.mcp.vscode` and `copilot.repo.mcp.vscode-root` candidates, path-only root
+  provenance, selection unknowns, path-negative general-settings/descendant/User/profile cases
+  without `copilot.excluded.vscode-settings`, relationships, and reciprocal
+  current-guide/1.118-release evidence rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T356 [P] [US1] Add failing matcher/recognition tests for exact `copilot.repo.mcp.vscode`,
+  exact `copilot.repo.mcp.vscode-root`, dedicated `.vscode` `servers` extraction, root path-only
+  provenance with no VS Code-owned fields, one merged root file/read/Copilot-MCP recognition
+  alongside `copilot.repo.mcp`, nested/general-settings/User/profile rejection, and no
+  cross-provenance schema collapse in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T357 [US1] Add browser acceptance for both Copilot VS Code MCP paths, the `.vscode` schema
+  badge, root evidence-conflict/unknown-schema state, filters, exclusions, diagnostics, and no
+  connection controls in `tests/e2e/copilot-vscode-mcp-inventory.spec.ts` *(amended 2026-08-08: an
+  admission stays a read-authorization record no surface reads out, so nothing displays provenance
+  (T1068).)*
+
+### Implementation
+
+- [X] T358 [US1] Add Copilot VS Code MCP/User/agent facts together with the 1.118/current-guide
+  conflict, path-specific schema availability, total-order unknowns, and complete base
+  lookup/selection so the production registry remains closed without admitting Custom Agent files in
+  `src/shared/registries/vendor-behaviors.ts` and `src/shared/registries/runtime-composition.ts`
+  *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another
+  kind that spells MCP configuration shows it as that kind's own detail content, an agent's
+  `mcp-servers` included.)*
+- [X] T359 [US1] Add the two exact VS Code MCP rules `copilot.repo.mcp.vscode` and
+  `copilot.repo.mcp.vscode-root`; keep nested root-form files near misses for every product and
+  general settings, User, and profile locations path-negative without prematurely owning
+  `copilot.excluded.vscode-settings` or defining new MCP exclusion IDs in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-20: nested `.mcp.json` is a near
+  miss for every product — the CLI's documented per-repository location is the workspace root
+  alone.)*
+- [X] T360 [US1] Add current-guide and `vscode.copilot.mcp.workspace-root-release` records plus
+  reciprocal backlinks for the conflicting VS Code MCP behavior/rules/strategy and both
+  non-authorizing VS Code MCP/agent facts owned in this phase in the owning registry record's
+  `evidence` citations
+- [X] T361 [US1] Implement exact `.vscode/mcp.json` matching with its dedicated schema and exact
+  root `.mcp.json` matching as VS Code path/surface-only provenance with no VS Code-owned extractor
+  in `src/server/inspection/rules/copilot.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T362 [US1] Integrate Copilot VS Code MCP classification so root `.mcp.json` merges compatible
+  CLI/VS Code provenances into one physical file/read and one Copilot/MCP recognition while nested
+  `.mcp.json` files stay unadmitted in `src/server/inspection/scan.ts` *(amended 2026-08-20: nested
+  `.mcp.json` is a near miss for every product — the CLI's documented per-repository location is the
+  workspace root alone.)*
+- [X] T363 [US1] Extend MCP inventory rows and English messages for the `.vscode` schema, root
+  evidence conflict/unknown schema and order, and exclusions in that kind's row component under
+  `src/app/components/inventory/rows/` *(amended 2026-08-08: an admission stays a read-authorization
+  record no surface reads out, so nothing displays provenance (T1068).)*
+
+---
+
+## Phase 31: Copilot VS Code MCP Detail
+
+**Purpose**: Add complete literal `.vscode/mcp.json` detail plus exact path detail for 1.118+ root `.mcp.json`, preserving the unknown root schema.
+
+**Independent Test**: Open malformed `.vscode/mcp.json` and root `.mcp.json`; verify dedicated fields only for `.vscode`, CLI-only extraction plus VS Code path-only provenance for the shared root file, exact resolved values, diagnostics, and zero connection.
+
+**Visible Checkpoint**: Selecting either VS Code MCP path shows complete inert detail while clearly separating documented `.vscode` schema from unresolved root semantics.
+
+### Tests first
+
+- [X] T364 [P] [US2] Add failing Copilot VS Code MCP tests for `.vscode` `servers` schema, 1.118+
+  root path-only provenance with no VS Code-owned fields, merged CLI provenance, workspace scope,
+  unknown root/`.vscode`/User/agent/plugin duplicates, trust, conflict assessments, and exact
+  evidence in `tests/unit/inspection/copilot-metadata.test.ts`
+- [X] T365 [P] [US2] Add zero-connection tests for VS Code MCP commands, URLs, headers, environment,
+  DNS, sockets, authentication, trust prompts, and User/profile state in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T366 [P] [US2] Add failing VS Code MCP-detail API tests for the `.vscode` declarations by the
+  keys the file wrote, in the parser's resolved order, the carrier's source text reaching no
+  response (FR-007), root path-only conflict provenance and zero VS Code-owned root fields, no
+  environment-reference substitution, diagnostics, and stale IDs in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-06: no allowlist row orders or
+  enumerates declarations — a declaration set is the carrier's own, published by the keys it wrote,
+  and the allowlist gates relationship kinds (FR-007); nothing projects a condition or an
+  applicability (T091).)* *(amended 2026-08-20: declarations publish in the parser's resolved order:
+  a plain parsed object enumerates integer-like keys in the platform's numeric order, a JavaScript
+  property accepted rather than worked around with a second syntax-tree parse; contracts/http-api.md
+  § get-mcp-carrier-detail already spells the order as the parser's.)* *(amended 2026-08-20: no MCP
+  relationship extractor exists in this release for any vendor (T349's decision), so no relationship
+  record, target, or projection ships or is asserted.)*
+- [X] T367 [US2] Add failing VS Code MCP runtime-composition graph coverage for the
+  current-guide/1.118 conflict, unknown root schema and total same-name order, and reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T368 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal VS Code
+  MCP detail for both paths with no raw source display (FR-007), `.vscode` schema versus root
+  unknown-schema conflict, diagnostics, and zero connection behavior in
+  `tests/e2e/copilot-vscode-mcp-detail.spec.ts` *(amended 2026-08-08: a detail shows the
+  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
+  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T369 [US2] Extend the inventory-owned Copilot VS Code MCP strategy with the
+  current-guide/1.118 conflict, path-specific schema availability, unknown
+  root/`.vscode`/User/agent/plugin winner, and trust without adding strategy IDs in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-20: no MCP relationship extractor
+  exists in this release for any vendor (T349's decision), so no relationship record, target, or
+  projection ships or is asserted.)*
+- [X] T370 [US2] Implement `.vscode/mcp.json` VS Code schema metadata and root `.mcp.json` path-only
+  conflict provenance with zero VS Code-owned extractor fields, plus duplicate uncertainty and trust
+  metadata, in `src/server/inspection/recognizers/candidate.ts`
+- [X] T371 [US2] Add the inert JSONC mode the documented readers take — comments and a trailing
+  comma blanked, the remainder resolved by the same strict `JSON.parse` a strict reading uses —
+  publishing each declaration by the keys the file wrote with one resolved value per field and
+  environment-owned parser capacity with no Inspector numeric cap. Which JSON format a document is
+  read as belongs to the `(tool, path)` pair and lives in the parsing seam's own tables, so one
+  physical carrier is JSONC to the product whose reader accepts comments and strict to the product
+  whose reader does not, and neither reading is the other's. A parse failure is file-confined: the
+  recognition fails all-or-nothing with its diagnostic while the carrier stays an admitted candidate
+  (FR-028), and only failures outside one file propagate unchanged with no catch, cause
+  classification, retry, or recovered result, in `src/server/inspection/parsers/json.ts` *(amended
+  2026-08-20: the JSON parsing seam itself already lives in `src/server/inspection/parsers/json.ts`;
+  the task keeps the extractor there.)* *(amended 2026-08-20: no closed field-ID catalog exists —
+  declarations publish by the keys the file wrote (FR-007), and the throw-propagation wording now
+  states the file-confined split FR-028 fixes.)* *(amended 2026-08-27: the mode is no one carrier's.
+  The vendor contracts document comment-accepting readers for the root `.mcp.json`, the settings
+  pairs, and the Copilot hook files, so the `(tool, path)` tables decide it and one file can hold a
+  JSONC reading beside a strict one.)*
+- [X] T372 [US2] Integrate `.vscode/mcp.json` exact resolved-value preservation and diagnostics plus
+  root `.mcp.json` path-only conflict provenance and independent CLI-owned extraction, with zero VS
+  Code-owned root fields or cross-provenance schema promotion, in `src/server/inspection/scan.ts`
+  *(amended 2026-08-06: an admission stays a read-authorization record, and what a vendor documents
+  stays in its maintained contract, so no surface projects a condition, applicability, order,
+  runtime state, provenance, or documentation status (FR-009; T091/T1068/T1042).)* *(amended
+  2026-08-20: no MCP relationship extractor exists in this release for any vendor (T349's decision),
+  so no relationship record, target, or projection ships or is asserted.)*
+- [X] T373 [US2] Extend typed detail and English messages that distinguish the `.vscode/mcp.json`
+  schema from root `.mcp.json`, with zero VS Code-owned root fields, in that kind's own detail route
+  under `src/app/pages/` *(amended 2026-08-08: an admission stays a read-authorization record, and
+  what a vendor documents stays in its maintained contract, so no surface displays a provenance or
+  projects trust, safety, or total-order uncertainty (T091/T1068, FR-009).)*
+
+---
+
+## Phase 32: Copilot Cloud MCP Facts and the Explicit-Carrier Boundary
+
+**Purpose**: Record the Copilot cloud agent's hosted MCP sources — out-of-box, custom-agent, and repository-settings, later sources overriding — as origin-file-less registry maintenance facts, and settle the explicit-carrier boundary: only explicit MCP configuration joins the MCP surfaces, an agent profile's `mcp-servers` is the agent's own frontmatter declaration for its future agents inventory, plugin paths and settings own no MCP recognition, and no contained-owner machinery exists. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Independent Test**: Pin the origin-file-less `copilot.behavior.cloud.mcp` fact and the `copilot.cloud.mcp.selection` later-wins record; verify agent, plugin, and settings files spelling MCP configuration are unread, unrecognized, and connectionless; and verify the MCP inventory lists explicit carriers alone with no synthetic file and no hosted rendering.
+
+**Visible Checkpoint**: The MCP tab lists only explicit carriers even when agent, plugin, or settings files spell MCP configuration, and hosted Cloud MCP facts appear on no session surface. *(amended 2026-08-20: hosted inputs are not represented (spec.md § Clarifications, Session 2026-08-02), so what a user can see is the absence.)*
+
+### Tests first
+
+- [X] T374 [P] [US2] Add unit tests pinning the origin-file-less Cloud MCP facts — the
+  `hosted-state` locator with its null selector, the partially-documented status, and the `replace`
+  later-wins strategy record — in `tests/unit/inspection/copilot-metadata.test.ts` *(amended
+  2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that
+  spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers`
+  included.)* *(amended 2026-08-21: the cited page establishes the processing order and later-level
+  override but neither the override unit nor a cross-level merge rule, so the record is `replace`
+  alone and partially documented (QR-005).)*
+- [X] T375 [P] [US2] Add recognition tests proving MCP recognitions come from explicit carriers
+  alone: an unadmitted agent, plugin, or settings file spelling MCP configuration produces no
+  recognition and no synthetic file, and the Cloud facts have no file at all in
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-20: only explicit MCP configuration
+  joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that
+  kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T376 [P] [US2] Add zero-connection/network tests proving a scan over agent and plugin files
+  spelling MCP configuration reads none of them, publishes no MCP recognition, and issues no DNS,
+  socket, HTTP, auth, or referenced-target request in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T377 [US2] Materialize the exact non-authorizing `copilot.behavior.cloud.mcp` fact with its
+  existing-source evidence backlinks in `tests/fixtures/conformance/vendor-behaviors.json` *(amended
+  2026-08-06: an admission stays a read-authorization record, and what a vendor documents stays in
+  its maintained contract, so no surface projects a condition, applicability, order, runtime state,
+  provenance, or documentation status (FR-009; T091/T1068/T1042).)*
+- [X] T378 [US2] Add exact ownership and reciprocal-backlink coverage for
+  `copilot.behavior.cloud.mcp` before `shared.excluded.managed-remote-state` references it in
+  `tests/contract/vendor-behaviors.test.ts`
+- [X] T379 [US2] Add Copilot Cloud runtime MCP graph coverage — the strategy consuming exactly the
+  hosted behavior, with no candidate rule of the agent kind and no unresolved Custom Agent behavior
+  reference — in `tests/contract/runtime-composition.test.ts` *(amended 2026-08-20: only explicit
+  MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration
+  shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T380 [US2] Add browser acceptance proving the boundary by absence: only explicit carrier rows
+  on the MCP tab beside agent/plugin files spelling MCP configuration, no synthetic or hosted row,
+  no unavailable-state rendering, and no connection control in
+  `tests/e2e/copilot-contained-cloud-mcp.spec.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Implementation
+
+- [X] T381 [US2] Add the exact non-authorizing `copilot.behavior.cloud.mcp` origin-file-less
+  runtime/source fact before managed/remote exclusion references it in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T382 [US2] Add reciprocal backlinks for `copilot.behavior.cloud.mcp` to existing
+  official-source records without creating source IDs in the owning registry record's `evidence`
+  citations
+- [X] T383 [US2] Add the exact Copilot Cloud out-of-box→custom-agent→Repository-settings order as
+  the `copilot.cloud.mcp.selection` record consuming the one hosted behavior in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: only explicit MCP configuration joins
+  the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own
+  detail content, an agent's `mcp-servers` included.)*
+- [X] T384 [US2] Scope emptied: no contained-MCP dispatch exists to implement — the owner-adapter
+  machinery was removed from `src/server/inspection/recognizers/candidate.ts` rather than extended,
+  and explicit carriers are the MCP kind's only recognitions *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T385 [US2] Scope emptied: the Markdown extraction already publishes every declared key as
+  authored, which is exactly how an agent's `mcp-servers` will appear in its own detail — no
+  field-ID catalog exists to add in `src/server/inspection/parsers/markdown.ts` *(amended
+  2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that
+  spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers`
+  included.)*
+- [X] T386 [US2] Scope emptied: no plugin-path relationship ships (no MCP relationship extractor
+  exists in this release, T349) and no owner-ID gate exists in `src/server/inspection/scan.ts`
+  *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another
+  kind that spells MCP configuration shows it as that kind's own detail content, an agent's
+  `mcp-servers` included.)*
+- [X] T387 [US2] Scope emptied: no session surface displays hosted Cloud facts or contained-owner
+  states, so no detail copy exists to add under `src/app/pages/` *(amended 2026-08-08: a detail
+  shows the declarations the file wrote, and what a vendor documents stays in its maintained
+  contract, so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+  *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another
+  kind that spells MCP configuration shows it as that kind's own detail content, an agent's
+  `mcp-servers` included.)*
+
+---
+
+## Phase 33: Priority MCP Inventory
+
+**Purpose**: Consolidate every MCP surface available in the first priority wave — the Codex config carrier, the Claude root carrier, and the Copilot CLI/VS Code files — into one cross-vendor inventory, with the hosted Cloud sources staying registry facts and the explicit-carrier boundary holding throughout. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Independent Test**: Verify one physical item/read with separate Claude/Copilot recognitions for root `.mcp.json`, the VS Code files, nested carriers as near misses for every product, the Codex carrier, no skill owner, origin-file-less Cloud facts, no owner row or hosted synthetic file of any kind, deterministic schema/provenance order, filters, path negatives, injected failures with per-file diagnostics when confined to one file and whole-attempt abort otherwise, and rescan cleanup.
+
+**Visible Checkpoint**: Users can use the one MCP inventory across all four carriers — a name every vendor declares grouped into one row — and see nothing but explicit carriers, whatever other files spell. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Tests first
+
+- [X] T388 [US1] Finalize priority MCP fixtures for root/shared CLI files, nested near misses, VS
+  Code file, the Codex carrier, plugin-path and settings negatives, origin-file-less Cloud facts,
+  malformed fields, secrets, path negatives, and injected thrown/rejected-operation failure cases in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20: nested `.mcp.json` files are
+  near misses for every product — the CLI's documented per-repository location is the workspace root
+  alone — and Claude documents no `mcpServers` skill field, so no skill owner exists and skill
+  frontmatter carries no contained MCP (Phase 27).)* *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T389 [US1] Finalize priority MCP behavior, file matchers, currently admitted carrier/runtime
+  selection, relationships, path-negative cases, and evidence rows while proving no not-yet-owned
+  plugin/settings exclusion ID and zero contained/runtime candidate rules in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T390 [P] [US1] Add complete matcher tests for Claude root, Copilot CLI/VS Code files, no Codex
+  standalone, path-negative User/hosted/configured inputs, relationship-only plugin paths, and zero
+  candidate rules from contained/runtime MCP facts in `tests/unit/inspection/rules.test.ts`
+- [X] T391 [P] [US1] Add priority recognition-matrix tests for the three-admission shared root's
+  Claude/Copilot recognitions, the VS Code files, nested near misses, the Codex carrier, no
+  synthetic files, schema distinctions, and deterministic provenance in
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-20: nested `.mcp.json` files are
+  near misses for every product — the CLI's documented per-repository location is the workspace root
+  alone — and Claude documents no `mcpServers` skill field, so no skill owner exists and skill
+  frontmatter carries no contained MCP (Phase 27).)*
+- [X] T392 [P] [US1] Add failing integration tests for one-read shared MCP, deterministic
+  recognition/provenance order, the explicit-carrier boundary, and partial continuity only for
+  file-confined outcomes; prove an injected file-confined failure yields only that file's diagnostic
+  in a partial generation while any other injected failure aborts the attempt without domain catch,
+  item/recognition/derived result/body/generation, retains only the prior commit, and initiates zero
+  connection/target reads in `tests/integration/repository-scan.test.ts` *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T393 [US1] Add browser acceptance for the priority MCP inventory, shared attribution, the
+  explicit-carrier boundary, absence of any origin-file-less or owner row, path negatives, schema
+  labels, diagnostics, and keyboard use in `tests/e2e/mcp-inventory.spec.ts` *(amended 2026-08-20:
+  only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Implementation
+
+- [X] T394 [US1] Complete priority one-read MCP file assembly, deterministic
+  recognition/provenance/schema order, no synthetic files, and source-value-free diagnostics in
+  `src/server/inspection/scan.ts` *(amended 2026-08-20: only explicit MCP configuration joins the
+  MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own
+  detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-20: already satisfied by
+  the shipped machinery — the T392 integration coverage and T393 acceptance gate it, and no code
+  change was needed.)*
+- [X] T395 [US1] Complete MCP filters, shared recognitions, and schema summaries with no owner or
+  runtime-fact rendering in `src/app/components/inventory/InventoryFilters.vue` and that kind's row
+  component under `src/app/components/inventory/rows/` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-20:
+  already satisfied by the shipped machinery — the T392 integration coverage and T393 acceptance
+  gate it, and no code change was needed.)*
+- [X] T396 [US1] Keep the English MCP inventory copy complete for the cross-vendor rows — name rows,
+  per-carrier attribution, the no-name and failed-carrier notes — with no owner, runtime-fact, or
+  exclusion message, which the explicit-carrier boundary leaves nothing to say for *(amended
+  2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that
+  spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers`
+  included.)* *(amended 2026-08-20: already satisfied by the shipped machinery — the T392
+  integration coverage and T393 acceptance gate it, and no code change was needed.)*
+
+---
+
+## Phase 34: MCP Comparison
+
+**Purpose**: Design the MCP kind’s own comparison surface on the kind’s own row unit: one declared server name’s declarations compared across the carriers of its row, each side serialized to one canonical JSON document and diffed in Monaco (research.md § 7), with selection only within the named row; only explicit carriers join the surface, and no carrier shows its source (FR-007).
+
+**Independent Test**: Open the comparison from a name row declared by both a Codex carrier and the root `.mcp.json`; verify the two serialized declarations diffed in Monaco with credential and environment-reference values literal, no carrier source display, and the carriers’ other names off the page, and reject every selection outside the named row. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-20: the comparison unit is the declared server name, not a carrier-file pair: MCP’s inventory unit is the name, so the comparison compares one name’s declarations across its row’s carriers, serialized and diffed in Monaco.)*
+
+**Visible Checkpoint**: Users can compare MCP declarations without connecting to them.
+
+### Tests first
+
+- [X] T397 [US3] Add failing view and serialization regressions — the comparison route naming the
+  owning row and both carriers, the pair loaded as two ordinary carrier-detail reads with no compare
+  API, the stale/failure states with a non-carrier path rejected as stale — no same-path or
+  unreadable state exists, because the route rejects a same-file link before opening and a named
+  row's carriers are always parsed and readable — registered content owners disposed on close, and
+  the canonical JSON serialization aligning both sides — the common declaration keys first in one
+  fixed reading order, every other key and every nested-mapping key sorted, scalar texts bare
+  exactly when the bare spelling is JSON reading back to them, every value literal (FR-025, FR-026),
+  and `JSON.stringify`’s own escaping applied symmetrically — beside the authored-order detail
+  serialization (FR-007) — in `tests/unit/app/mcp-comparison.test.ts` *(amended 2026-08-19: declared
+  metadata is the file's one parse per kind, compared once per pair with tool recognition compared
+  per tool beside it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended
+  2026-08-08: an admission stays a read-authorization record, and what a vendor documents stays in
+  its maintained contract, so no surface displays a provenance or projects trust or selection
+  (T091/T1068, FR-009).)* *(amended 2026-08-20: only explicit MCP configuration joins the MCP
+  surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail
+  content, an agent's `mcp-servers` included.)* *(amended 2026-08-20: the comparison unit is the
+  declared server name, and the sides are serialized for Monaco to diff, so what this task asserts
+  is the serialization rather than a field table.)* *(amended 2026-08-21: the serialization orders
+  keys canonically for line-by-line alignment (the common MCP declaration keys first in a fixed
+  reading order, the rest sorted), serializes multiline strings as block literals, and spells
+  number- and boolean-reading scalars bare.)* *(amended 2026-08-21: each declaration serializes to
+  JSON, the value a JSON carrier's entry holds under the server's name; the detail renders each
+  declaration as the same document in authored order.)* *(amended 2026-08-21: a scalar publishes its
+  parsed kind beside its rendered text (`DeclaredScalarKind`): the raw resolved value cannot ride
+  the JSON wire (`NaN`, infinities, TOML 64-bit integers), and the kind-plus-text pair is its exact
+  JSON-safe encoding, so the serializers spell by the kind rather than by guessing from the
+  rendering, which cannot tell an authored `'7'` string from the number `7`.)* *(amended 2026-08-21:
+  the view states are exactly those a production caller reaches — the route's own pair fault rejects
+  a same-file link before opening, and a named row's carriers are always parsed (api-types.ts §
+  McpDeclarationDto.parseStatus).)*
+- [X] T398 [US3] Add browser acceptance for one declared name’s declarations diffed across a Codex
+  carrier and a `.mcp.json` — entered from the name’s inventory row and from the carrier and
+  declaration details, the two serializations diffed in Monaco with credential/environment-reference
+  values literal and unmasked, no environment substitution, no carrier source anywhere (FR-007), the
+  carriers’ other names off the page, and every selection outside the named row rejected — in
+  `tests/e2e/mcp-comparison.spec.ts` *(amended 2026-08-06: an admission stays a read-authorization
+  record, and what a vendor documents stays in its maintained contract, so no surface projects a
+  condition, applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)* *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces;
+  a file of another kind that spells MCP configuration shows it as that kind's own detail content,
+  an agent's `mcp-servers` included.)* *(amended 2026-08-20: the comparison unit is the declared
+  server name; the acceptance follows the row-owned, Monaco-diffed model.)*
+
+### Implementation
+
+- [X] T399 [US3] Enforce the row-owned MCP comparison selection —
+  `/mcp/compare/<family>?name=<declared name>&leftSource=<selector>&left=<path>&rightSource=<selector>&right=<path>`,
+  resolved against the named row of the current generation, loaded as two ordinary carrier-detail
+  reads, with the content-owner registry the serialized-declaration models dispose through — in
+  `src/app/composables/mcp-comparison.ts`, designed and created by this task with the kind’s
+  comparison surface *(amended 2026-08-15: owned by the kind’s own comparison surface — comparison
+  is kind-specific with no shared module, and this task designs and creates that surface following
+  the skill precedent (spec.md § Clarifications Session 2026-08-14).)* *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+  *(amended 2026-08-20: the selection is the declared server name’s row, not a free carrier pair, so
+  the route carries the name and the composable registers the Monaco models the serializations
+  mount.)*
+- [X] T400 [US3] Build the declaration comparison surface — the JSON serialization in
+  `src/app/components/declared-entries-json.ts`, the Monaco diff in
+  `src/app/components/mcp-comparison/DeclarationDiff.vue`, and the row-owned compare route
+  `src/app/pages/mcp/compare/[family].vue` — part of the kind’s own comparison surface this task
+  designs and creates following the skill precedent (`src/app/pages/skills/compare/[family].vue`,
+  `src/app/composables/skill-comparison.ts`, `src/app/components/skill-comparison/`), including the
+  entry links that reach it from that kind's inventory row component under
+  `src/app/components/inventory/rows/` and from that kind's detail route under `src/app/pages/`, as
+  T203 owns them for skills *(amended 2026-08-19: declared metadata is the file's one parse per
+  kind, compared once per pair with tool recognition compared per tool beside it — a tool is not a
+  coordinate of a declaration (research.md § 7).)* *(amended 2026-08-15: owned by the kind’s own
+  comparison surface — comparison is kind-specific with no shared module, and this task designs and
+  creates that surface following the skill precedent (spec.md § Clarifications Session
+  2026-08-14).)* *(amended 2026-08-20: one name’s declarations are serialized and diffed in Monaco,
+  replacing the per-field table component; the serializer and diff component are this task’s
+  deliverables.)* *(amended 2026-08-21: each declaration serializes to JSON, the value a JSON
+  carrier's entry holds under the server's name; the detail renders each declaration as the same
+  document in authored order.)*
+- [X] T401 [US3] Add English MCP comparison messages in the Vue components that render them
+  *(amended 2026-08-20: the messages shipped inside the surface T399/T400 created — the state
+  statements, side sentences, and serialization note of `src/app/pages/mcp/compare/[family].vue` and
+  `src/app/components/mcp-comparison/` — with the copy identical to the sibling comparison surfaces
+  wherever the semantics are identical.)*
+
+---
+
+## Phase 35: Codex Rules Inventory
+
+**Purpose**: Add direct-child Codex permission-policy files at the Repository root's own configuration layer. *(amended 2026-08-21: recognized as `permissions`, not `rule` — the file decides which commands may run outside the sandbox, which is a different subject from the modular instructions Claude keeps under its own `rules/`, and grouping by the vendors' shared word would put two unrelated subjects in one list.)* *(amended 2026-08-17: root-anchored, matching the vendor contract's rule row — a nested `.codex` layer belongs to a runtime working directory this tool never selects, the same reason nested `AGENTS.md` is a permanent near miss.)*
+
+**Independent Test**: Inventory `['.codex', 'rules', /\.rules$/u]`, read a symbolic link through its target and diagnose a dangling one (FR-024), and reject nested rule directories, a `.codex/rules` below the root, near misses, untrusted/runtime-inactive certainty claims, User/managed rules, and unrelated Copilot/Claude files. *(amended 2026-08-21: the rejection list named links, which contradicts the transparent symlink read every other kind performs.)*
+
+**Visible Checkpoint**: Users can filter Codex rules by source and path.
+
+### Fixtures and tests first
+
+- [X] T402 [US1] Create Codex rule fixtures for the root layer, a descendant `.codex/rules` that
+  stays a near miss, direct children, nested exclusions, malformed metadata, secrets, references,
+  links, trust states, and near misses in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T403 [US1] Materialize Codex rule behavior, candidate, composition, path-negative cases, and
+  evidence rows without defining exclusion IDs in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T404 [US1] Add failing matcher/recognition tests for direct-child Codex rules, nested
+  exclusions, and no other-tool recognition in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T405 [US1] Add browser acceptance for Codex permission policy inventory, filters, and
+  diagnostics in `tests/e2e/codex-permissions-inventory.spec.ts` *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-22: the Codex file is
+  recognized as `permissions`, so this task's artifacts are the permission policy's — the
+  `codex-permissions-*` browser suites, the `/permissions/**` shell fallback and route, and
+  `PermissionPolicyDetail` as `get-permission-policy-detail`'s own result rather than a `FileDetail`
+  variant.)*
+
+### Implementation
+
+- [X] T406 [US1] Add Codex rule lookup statements plus non-authorizing `codex.behavior.user.rules`
+  before rule resolution references it in `src/shared/registries/vendor-behaviors.ts` *(amended
+  2026-08-21: the `codex.rules.resolution` strategy record ships here with the two statements it
+  composes, following the MCP precedent (T285/T286) — a shipped candidate rule states which
+  documented composition explains it, and `codex.behavior.user.rules` is reachable from nothing
+  until the strategy that consumes it exists.)*
+- [X] T407 [US1] Add only the `codex.repo.rules` candidate record and keep adjacent or nested
+  non-matches path-negative without defining exclusion IDs in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-21: the rule's graph edges ship with
+  the record in `src/shared/registries/codex/relations.ts`, as T286 did for the carrier — a compiled
+  rule resolves its edges from its own vendor catalog and fails to construct without them.)*
+- [X] T408 [US1] Add Codex rule evidence records and affected-contract references in the owning
+  registry record's `evidence` citations *(amended 2026-08-21: the affected contracts are
+  `contracts/official-sources.md`, whose `openai.codex.rules` row gains the second reviewed section
+  the resolution strategy rests on, and `data-model.md` § Inventory unit and `contracts/http-api.md`
+  § get-session, which settle the kind's row unit as the file itself — both languages in the same
+  change.)*
+- [X] T409 [US1] Implement Codex direct-child rule matching and path-derived recognition in
+  `src/server/inspection/rules/codex.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-21: the recognizer needed no change — a `rule` admission already reaches
+  `ToolRecognition.recognizeOther`, whose path-derived record is exactly what this kind publishes;
+  the vendor module compiles the record through the unit that answers no per-kind question.)*
+- [X] T410 [US1] Extend inventory rows and English Codex rule labels in that kind's row component
+  under `src/app/components/inventory/rows/` *(amended 2026-08-21: the central kind-dispatch path is
+  named here for the same reason T290 names it — a row component no snapshot reaches lists nothing —
+  so this task also publishes the row DTO and its session projection in `src/shared/api-types.ts`
+  and `src/server/session/session.ts`, its derivation and counts in
+  `src/app/composables/filters.ts`, its tab-panel branch in
+  `src/app/components/inventory/InventoryList.vue`, and its total in `src/app/pages/index.vue`.)*
+
+---
+
+## Phase 36: Codex Rules Detail
+
+**Purpose**: Add the complete inert Codex permission-policy source as its own detail surface. *(amended 2026-08-21: recognized as `permissions`, not `rule` — the file decides which commands may run outside the sandbox, which is a different subject from the modular instructions Claude keeps under its own `rules/`, and grouping by the vendors' shared word would put two unrelated subjects in one list.)* *(amended 2026-08-21: a Codex `.rules` file is Starlark, from which the vendor contract admits only `runtime-reference` relationships, and no shipped recognition produces an edge — so nothing this phase could extract or diagnose exists, and the complete authored source is the whole detail.)*
+
+**Independent Test**: Open a malformed Codex rule and one carrying a credential and an environment reference; verify the complete authored source reaching the page unchanged, inert commands and paths, and detail-state cleanup. *(amended 2026-08-21: a Codex `.rules` file is Starlark, from which the vendor contract admits only `runtime-reference` relationships, and no shipped recognition produces an edge — so nothing this phase could extract or diagnose exists, and the complete authored source is the whole detail.)*
+
+**Visible Checkpoint**: Selecting a Codex rule opens complete inert detail without executing or enforcing it.
+
+### Tests first
+
+- [X] T411 [P] [US2] Add failing Codex rule tests proving the recognition publishes the kind alone
+  at `not-attempted`, lifts no declared value out of the file, and treats malformed Starlark exactly
+  like well-formed, in `tests/unit/inspection/codex-metadata.test.ts` *(amended 2026-08-21: a Codex
+  `.rules` file is Starlark, from which the vendor contract admits only `runtime-reference`
+  relationships, and no shipped recognition produces an edge, so nothing of the kind is extracted,
+  related, or diagnosed in this release.)*
+- [X] T412 [P] [US2] Add failing tests proving Codex rule text, links, commands, and restrictive
+  results remain inert and never authorize target reads in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T413 [US2] Add failing Codex rule runtime-composition graph coverage with reciprocal contract
+  references in `tests/contract/runtime-composition.test.ts`
+- [X] T414 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, the complete literal
+  Codex policy source, inert commands and paths, and a path this scan holds no policy at, in
+  `tests/e2e/codex-permissions-detail.spec.ts` *(amended 2026-08-21: a Codex `.rules` file is
+  Starlark, from which the vendor contract admits only `runtime-reference` relationships, and no
+  shipped recognition produces an edge, so nothing of the kind is extracted, related, or diagnosed
+  in this release.)* *(amended 2026-08-22: the Codex file is recognized as `permissions`, so this
+  task's artifacts are the permission policy's — the `codex-permissions-*` browser suites, the
+  `/permissions/**` shell fallback and route, and `PermissionPolicyDetail` as
+  `get-permission-policy-detail`'s own result rather than a `FileDetail` variant.)*
+
+### Implementation
+
+- [X] T415 [US2] Keep the Codex rule composition records this phase rests on unchanged in
+  `src/shared/registries/runtime-composition.ts`, adding no strategy ID and no relationship record
+  *(amended 2026-08-21: a Codex `.rules` file is Starlark, from which the vendor contract admits
+  only `runtime-reference` relationships, and no shipped recognition produces an edge, so nothing of
+  the kind is extracted, related, or diagnosed in this release.)*
+- [X] T416 [US2] Serve the recognized policy's complete authored source through its own detail,
+  adding no extractor and no scan change, and add the `/permissions/**` shell fallback in
+  `src/server/host/devframe-app.ts` so a detail URL ending in a dotted segment survives a fresh load
+  *(amended 2026-08-21: a Codex `.rules` file is Starlark, from which the vendor contract admits
+  only `runtime-reference` relationships, and no shipped recognition produces an edge, so nothing of
+  the kind is extracted, related, or diagnosed in this release.)* *(amended 2026-08-22: the Codex
+  file is recognized as `permissions`, so this task's artifacts are the permission policy's — the
+  `codex-permissions-*` browser suites, the `/permissions/**` shell fallback and route, and
+  `PermissionPolicyDetail` as `get-permission-policy-detail`'s own result rather than a `FileDetail`
+  variant.)*
+- [X] T417 [US2] Create that kind's own detail route under `src/app/pages/`, publishing the
+  recognized policy and the products that recognized it *(amended 2026-08-21: this is the kind's
+  first detail surface, so the route is created rather than extended, together with the kind's own
+  detail result, its projection, its caption, and the row's entry link.)* *(amended 2026-08-22: the
+  Codex file is recognized as `permissions`, so this task's artifacts are the permission policy's —
+  the `codex-permissions-*` browser suites, the `/permissions/**` shell fallback and route, and
+  `PermissionPolicyDetail` as `get-permission-policy-detail`'s own result rather than a `FileDetail`
+  variant.)*
+- [X] T418 [US2] Add the English Codex rule detail messages this phase ships in the Vue components
+  that render them *(amended 2026-08-06: an admission stays a read-authorization record, and what a
+  vendor documents stays in its maintained contract, so no surface projects a condition,
+  applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)*
+
+---
+
+## Phase 37: Claude Rules Inventory
+
+**Purpose**: Add recursive Claude rule files while regressing the already-owned `copilot.excluded.additional-standard-locations` behavior for `.claude/rules`.
+
+**Independent Test**: Inventory `[ANY_DIRECTORIES, '.claude', 'rules', ANY_DIRECTORIES, /\.md$/u]` — the descendant reach being the documented on-demand loading of nested rules directories — read a symbolic link through its target and diagnose a dangling one (FR-024), reject unrelated paths, and prove that no Copilot rule reaches these files for being rules. *(amended 2026-08-22: the rejection list named links, which contradicts the transparent symlink read every other kind performs; and the Copilot claim was absolute where the shipped selectors are not — `copilot.repo.instructions.agents` admits an `AGENTS.md` at every depth, so one written inside `.claude/rules/` carries both products' recognitions, which is what its inventory rows state.)* *(amended 2026-08-20: the descendant reach of `claude.repo.rules` is the documented on-demand loading of nested `.claude/rules/` directories, not an inventory of possible layer roots; the contract row was corrected in the same change.)*
+
+**Visible Checkpoint**: Users can filter Claude rules with no unsupported Copilot badge.
+
+### Fixtures and tests first
+
+- [X] T419 [US1] Create Claude rule fixtures for recursive paths, nested rules directories, `paths`
+  frontmatter, malformed metadata, secrets, references, links, Copilot-compatible cases, and near
+  misses in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20: the descendant
+  reach of `claude.repo.rules` is the documented on-demand loading of nested `.claude/rules/`
+  directories, not an inventory of possible layer roots; the contract row was corrected in the same
+  change.)*
+- [X] T420 [US1] Materialize Claude rule behavior, candidate, composition, evidence, and regression
+  references to existing `copilot.excluded.additional-standard-locations` rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T421 [P] [US1] Add failing matcher/recognition tests for recursive Claude rules, direct and
+  nested files, and zero Copilot recognition through the existing
+  `copilot.excluded.additional-standard-locations` rule in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-20: the descendant reach of
+  `claude.repo.rules` is the documented on-demand loading of nested `.claude/rules/` directories,
+  not an inventory of possible layer roots; the contract row was corrected in the same change.)*
+  *(amended 2026-08-21: nothing is read out of a rule file — a rule is published as the one document
+  its author wrote, a Claude rule whole with its frontmatter block — so the kind ships no
+  extraction, no relationship, and no extraction diagnostic.)*
+- [X] T422 [US1] Add browser acceptance for Claude rule inventory, filters, zero Copilot recognition
+  at the excluded locations, diagnostics, and retained Codex permission policies in
+  `tests/e2e/claude-rules-inventory.spec.ts` *(amended 2026-08-08: no surface displays a provenance
+  (T1068), and documented evidence is maintenance data no surface shows (T1042) — the Copilot
+  exclusion is proved by zero recognition.)*
+
+### Implementation
+
+- [X] T423 [US1] Add Claude rule lookup statements, non-authorizing `claude.behavior.user.rules`,
+  and Copilot-compatibility evidence before rule layering references them in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T424 [US1] Add only the `claude.repo.rules` candidate while preserving and referencing the
+  existing `copilot.excluded.additional-standard-locations` record without defining another
+  exclusion in `src/shared/registries/inspection-rules.ts`
+- [X] T425 [US1] Add Claude rule evidence records and reciprocal affected-contract references in the
+  owning registry record's `evidence` citations
+- [X] T426 [US1] Implement Claude recursive rule matching and recognition without Copilot promotion
+  in `src/server/inspection/rules/claude.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-21: nothing is read out of a rule file — a rule is published as the one document
+  its author wrote, a Claude rule whole with its frontmatter block — so the kind ships no
+  extraction, no relationship, and no extraction diagnostic.)*
+- [X] T427 [US1] Confirm the scan needs no change for Claude rule classification and that the Codex
+  rule results are preserved, in `src/server/inspection/scan.ts` *(amended 2026-08-21: the scan is
+  kind-neutral — it groups recognitions by kind and attaches each kind's own extraction failure — so
+  a second vendor's rule files reach it with no edit; the integration coverage is what proves the
+  Codex results stand.)*
+- [X] T428 [US1] Confirm that kind's row component under `src/app/components/inventory/rows/` needs
+  no change for Claude rules, and that no Copilot-exclusion message is rendered *(amended
+  2026-08-21: the row is vendor-neutral — one file, its recognizing products and their surfaces — so
+  a second vendor's rows need no edit, and an excluded location is a path no shipped selector
+  reaches, which the inventory shows by absence rather than by a sentence saying it was left out
+  (T1068).)*
+
+---
+
+## Phase 38: Claude Rules Detail
+
+**Purpose**: Add the complete inert Claude rule document as its own detail surface. *(amended 2026-08-21: a rule is shown as the one document its author wrote, frontmatter block included, so nothing is read out of it — no declared `paths` surface, no relationship, and no extraction diagnostic exist for the kind.)*
+
+**Independent Test**: Open a malformed Claude rule and one carrying a credential and an environment reference; verify the complete authored document reaching the page unchanged with its frontmatter block, inert links and globs, and detail-state cleanup. *(amended 2026-08-21: a rule is shown as the one document its author wrote, frontmatter block included, so nothing is read out of it — no declared `paths` surface, no relationship, and no extraction diagnostic exist for the kind.)*
+
+**Visible Checkpoint**: Selecting a Claude rule shows its complete inert detail without evaluating a glob against arbitrary filesystem paths.
+
+### Tests first
+
+- [X] T429 [P] [US2] Add failing Claude rule tests proving the recognition reads nothing out of the
+  file, `paths` frontmatter included, and treats a malformed block exactly like a well-formed one,
+  in `tests/unit/inspection/claude-metadata.test.ts` *(amended 2026-08-21: a rule is shown as the
+  one document its author wrote, frontmatter block included, so nothing is read out of it — no
+  declared `paths` surface, no relationship, and no extraction diagnostic exist for the kind.)*
+- [X] T430 [P] [US2] Add failing tests proving Claude rule text, links, commands, globs, and
+  restrictive results remain inert and never authorize target reads in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T431 [US2] Add failing Claude rule runtime-composition graph coverage with reciprocal contract
+  references in `tests/contract/runtime-composition.test.ts`
+- [X] T432 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, the complete authored
+  Claude rule document with its frontmatter block, and inert declared globs, in
+  `tests/e2e/claude-rules-detail.spec.ts` *(amended 2026-08-21: a rule is shown as the one document
+  its author wrote, frontmatter block included, so nothing is read out of it — no declared `paths`
+  surface, no relationship, and no extraction diagnostic exist for the kind.)*
+
+### Implementation
+
+- [X] T433 [US2] Keep the Claude rule composition records this phase rests on unchanged in
+  `src/shared/registries/runtime-composition.ts`, adding no strategy ID and no relationship record
+  *(amended 2026-08-21: `claude.rules.layering` shipped with the two statements it composes in the
+  inventory phase (T423), which is where the MCP and Codex precedents put a strategy ID; no
+  relationship extractor ships for any vendor.)*
+- [X] T434 [US2] Serve the recognized Claude rule file's complete authored document through the
+  detail, adding no extractor and no scan change *(amended 2026-08-21: a rule is shown as the one
+  document its author wrote, frontmatter block included, so nothing is read out of it — no declared
+  `paths` surface, no relationship, and no extraction diagnostic exist for the kind.)*
+- [X] T435 [US2] Serve Claude rule files through that kind's own detail route under
+  `src/app/pages/`, which the Codex rule phase created *(amended 2026-08-21: the route is
+  vendor-neutral — the file's path, its recognizing products, and the complete document — so a
+  second vendor's rule files need no typed field of their own; what the route gained is Markdown
+  colouring, which the path already resolves.)*
+
+---
+
+## Phase 38A: Permission Policy Shapes
+
+**Purpose**: Give the permissions kind the row and detail shapes a policy needs, before a vendor declares one inside a carrier. *(inserted 2026-08-22: numbered 38A so every later phase keeps its own number, the same reason the withdrawn Phase 39 keeps its.)*
+
+**Independent Test**: Open a Codex permission policy and a Claude rule and see each served by its own function and page — the policy through `get-permission-policy-detail`, which `get-file-detail` withholds the path from — with the inventories unchanged.
+
+**Visible Checkpoint**: Both surfaces behave exactly as before, and nothing in the code says a permissions row is a file.
+
+**Shape**: a permissions row names a policy, not a file, so it carries neither the rules inventory's row type nor a `FileDetail` variant *(2026-08-22: a row and a detail shaped as a file are wrong for a policy that one vendor declares as one block of a settings document, and sharing the rules row type says two different subjects are one).* The policy's detail is its own RPC result, exactly as an MCP carrier's declarations are (contracts/http-api.md § get-permission-policy-detail). The two rows and the two filters are written out per kind rather than shared behind a generic: what they have in common today is a grouping loop, and the first fact one gains that the other cannot answer would break the sharing.
+
+### Tests first
+
+- [X] T1100 [P] [US1] Extend the registered-catalog and view-state-surface assertions with the
+  policy function and its own detail slot in `tests/contract/http-api-routes.test.ts`,
+  `tests/contract/host-startup.test.ts`, and `tests/unit/app/authored-content.test.ts`
+- [X] T1101 [P] [US2] Assert the Codex policy through its own function and prove `get-file-detail`
+  withholds the path in `tests/integration/security/zero-activation.test.ts`
+
+### Implementation
+
+- [X] T1102 [US1] Give the rules and permissions inventories their own row types, projections,
+  filters, and row components in `src/shared/api-types.ts`, `src/server/session/session.ts`,
+  `src/app/composables/filters.ts`, `src/app/components/inventory/InventoryList.vue`, and
+  `src/app/components/inventory/rows/`
+- [X] T1103 [US2] Publish the permission policy as `get-permission-policy-detail`'s own result
+  rather than a `FileDetail` variant, withheld from `get-file-detail` as an MCP carrier is, in
+  `src/shared/api-types.ts`, `src/shared/api-text.ts`, `src/server/session/session.ts`,
+  `src/server/host/devframe-app.ts`, `src/app/session/api-client.ts`,
+  `src/app/session/view-state.ts`, and `src/app/composables/page-ownership.ts`
+- [X] T1104 [US2] Give the permissions route its own page reading that result and return the rules
+  route to its own page, removing the shared file-detail frame, under `src/app/pages/` and
+  `src/app/components/`
+
+---
+
+## Phase 38B: Review Corrections
+
+**Purpose**: Fix what a review of the shipped phases found: a detail route that dead-ends on a file two kinds recognize, a recognition published without its surfaces, a route encoder that throws on an authored name, and statements the artifacts make that their own evidence does not. *(inserted 2026-08-22: numbered 38B so every later phase keeps its own number.)*
+
+**Independent Test**: Open `/rules/.claude/rules/CLAUDE.md` for a file the rules and instructions inventories both list and see the document; read a skill row and a skill detail and see each definition's surfaces beside its product; round-trip a path segment holding a lone surrogate through a detail route.
+
+**Visible Checkpoint**: Every inventory row opens, and every recognition on screen states the surfaces its admissions rest on.
+
+### Implementation
+
+- [X] T1117 [US2] Serve the detail of a file two kinds recognize from either kind's route, and
+  record that one file can hold two of these kinds, in
+  `src/app/pages/rules/detail/[source]/[...path].vue`, `src/server/session/session.ts`, and
+  `tests/e2e/claude-rules-detail.spec.ts`
+- [X] T1118 [US1] Publish each skill definition's surfaces and render them on the skill row and the
+  skill detail (FR-009), in `src/shared/api-types.ts`, `src/server/session/session.ts`,
+  `src/app/components/inventory/rows/SkillRow.vue`,
+  `src/app/pages/skills/detail/[source]/[...path].vue`, and both languages of
+  `contracts/http-api.md` and `data-model.md`
+- [X] T1119 [US1] Spell every detail-route path segment as well-formed text before percent-encoding
+  it, and undo the escape where each catch-all route decodes, in
+  `src/app/components/detail-route.ts`, `src/app/components/mcp-detail-route.ts`, the five catch-all
+  pages under `src/app/pages/`, and `tests/unit/app/mcp-detail-route.test.ts`
+- [X] T1120 [US1] Correct the statements their own evidence does not support — the absolute
+  Copilot-reach claim about `.claude/rules/`, the Claude user-rules recursion, the `paths` value a
+  rule detail no longer publishes, the completed rules phases' renamed artifacts, the withdrawn rule
+  comparison, and the release gate's task and phase counts — in
+  `src/shared/registries/claude/rules.ts`, `src/shared/registries/claude/behaviors.ts`,
+  `src/shared/registries/codex/behaviors.ts`, `tests/fixtures/conformance/vendor-behaviors.json`,
+  and both languages of `spec.md`, `data-model.md`, `tasks.md`, and
+  `contracts/vendors/claude-code.md`
+- [X] T1121 [US2] Offer a way to open the file each detail shows outside this product, beside the
+  read outcome, in `src/server/session/session.ts`, `src/shared/api-types.ts`, the five detail pages
+  under `src/app/pages/`, and both languages of `spec.md` and `contracts/http-api.md`; drop the
+  inventory tagline's claim that nothing is executed, which opening makes untrue *(amended
+  2026-08-22: the host performs the open into an application the reader chooses rather than
+  publishing a locator the page follows, so the surface and its files are T1123's.)*
+
+---
+
+## Phase 39: Rules Comparison (withdrawn)
+
+**Withdrawn 2026-08-21**: a comparison in this product pairs two copies of one identity — a skill name, a declared server name, the files of one applicability range — and a rule kind has none: its inventory unit is the file itself, so two rule files are two rules rather than two copies of one, and a pair the model does not express is reported rather than compared (FR-011, spec.md § Clarifications Session 2026-08-14). Nothing is read out of a rule file either, so there is no declared metadata for the serialized-document comparison the other kinds share. The phase number is kept so every later phase keeps its own.
+
+---
+
+## Phase 39A: Claude Permissions Carrier
+
+**Purpose**: Add the Claude permission policy declared inside a settings carrier. *(inserted 2026-08-22: numbered 39A so every later phase keeps its own number, the same reason the withdrawn Phase 39 keeps its.)*
+
+**Independent Test**: Recognize a declared `permissions` block in root `.claude/settings.json` and `.claude/settings.local.json`, prove that a settings file declaring none reaches no permissions row, open the declared block with none of the settings keys around it, and keep the Codex whole-document policy unchanged.
+
+**Visible Checkpoint**: The permissions list holds both vendors' policies, and opening a Claude one shows the block that carrier declares rather than the file that carries it.
+
+**Shape**: the policy detail gains its `form` discriminant here, with the member that makes it meaningful: `whole-document` for the file that is the policy, `declared-block` for the carrier, which publishes the block and never the bytes around it (contracts/http-api.md § get-permission-policy-detail).
+
+### Fixtures and tests first
+
+- [X] T1105 [US1] Create Claude settings fixtures for a declared `permissions` block, a settings
+  file declaring none, `.claude/settings.local.json`, a carrier strict JSON rejects, a block
+  carrying credentials and environment references, and non-root near misses in
+  `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T1106 [US1] Materialize the Claude settings behaviors, the `claude.repo.permissions`
+  candidate, the `claude.settings.precedence` composition, and their evidence rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T1107 [P] [US1] Add failing matcher/recognition tests proving that a carrier declaring the
+  block gains the `permissions` recognition, that one declaring none gains none, and that no other
+  tool recognizes either, in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T1108 [P] [US1] Add failing extraction tests for the declared block — every entry the authored
+  object holds in the parser's resolved order, nested values recursively, and the all-or-nothing
+  failure on a carrier strict JSON rejects — in `tests/unit/inspection/claude-metadata.test.ts`
+- [X] T1109 [P] [US2] Add failing tests proving a declared rule string stays the characters that
+  were written, with no tool, command, path, or domain resolved and nothing evaluated or enforced,
+  in `tests/integration/security/zero-activation.test.ts`
+- [X] T1110 [US2] Add failing Claude permissions runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T1111 [US1] Add browser acceptance for both vendors' policies in one permissions inventory,
+  the declared block shown without the settings keys around it, exact literal credential and
+  environment-reference display, and a settings file declaring no block reaching no permissions row,
+  in `tests/e2e/claude-permissions.spec.ts`
+
+### Implementation
+
+- [X] T1112 [US1] Add `claude.behavior.repo.settings`, `claude.behavior.user.settings`, and the
+  `claude.settings.precedence` strategy that composes them in
+  `src/shared/registries/claude/behaviors.ts` and `src/shared/registries/claude/strategies.ts`
+  *(amended 2026-08-22: the two project files are two statements — the shared file stays in the
+  project folder, and Claude Code keeps the personal one at the git repository root with four
+  documented exceptions — so they ship as `claude.behavior.repo.settings.shared` and
+  `claude.behavior.repo.settings.local`.)*
+- [X] T1113 [US1] Add the `claude.repo.permissions` candidate beside the settings carrier's own
+  paths, with its relations catalog entry, its identifier declarations, and its evidence citations,
+  in `src/shared/registries/claude/rules.ts`, `src/shared/registries/claude/relations.ts`, and
+  `src/shared/registries/identifier-types.ts`
+- [X] T1114 [US1] Read the declared `permissions` block out of the strict-JSON carrier and publish
+  it as the recognition's extraction in `src/server/inspection/rules/claude.ts` and
+  `src/server/inspection/recognizers/candidate.ts`, producing no permissions recognition for a
+  carrier that declares none
+- [X] T1115 [US2] Add the policy detail's `form` discriminant and its `declared-block` member — the
+  carrier's content-free file facts and the declared block, never its source text — and render it on
+  the permissions page, in `src/shared/api-types.ts`, `src/server/session/session.ts`, and
+  `src/app/pages/permissions/detail/[source]/[...path].vue`
+- [X] T1116 [US1] Generalize the inventory's no-kind copy so an admitted, readable file that no
+  kind's inventory lists is not reported as bytes the scan could not use, in
+  `src/app/pages/index.vue`
+
+---
+
+## Phase 40: Claude Commands Inventory
+
+**Purpose**: Add the root's Claude legacy-command files and their recursive namespaces. *(amended 2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant anchor, and no skill-equivalent ancestor or lazy-descendant command traversal is documented, so `claude.repo.command` is root-anchored and a subdirectory `.claude/commands` is a near miss; the contract row was corrected in the same change.)*
+
+**Independent Test**: Inventory `['.claude', 'commands', ANY_DIRECTORIES, /\.md$/u]`, recursive namespace paths, duplicate names, links, near misses — a subdirectory `.claude/commands` among them — and unsupported standalone `.claude/prompts`. *(amended 2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant anchor, and no skill-equivalent ancestor or lazy-descendant command traversal is documented, so `claude.repo.command` is root-anchored and a subdirectory `.claude/commands` is a near miss; the contract row was corrected in the same change.)*
+
+**Visible Checkpoint**: Users can filter Claude commands with recursive namespaces.
+
+### Fixtures and tests first
+
+- [X] T440 [US1] Create Claude command fixtures for recursive namespaces, duplicate names, malformed
+  metadata, secrets, references, links, unsupported `.claude/prompts`, and near misses — a
+  subdirectory `.claude/commands` among them — in `tests/fixtures/repositories/build-fixtures.ts`
+  *(amended 2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant
+  anchor, and no skill-equivalent ancestor or lazy-descendant command traversal is documented, so
+  `claude.repo.command` is root-anchored and a subdirectory `.claude/commands` is a near miss; the
+  contract row was corrected in the same change.)*
+- [X] T441 [US1] Materialize Claude command behavior, candidates, composition, relationships,
+  path-negative cases, and evidence rows without defining exclusion IDs in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-22: the new rule and
+  strategy edges are materialized too, so `tests/fixtures/conformance/relations.json` is part of the
+  same regeneration.)*
+- [X] T442 [US1] Add failing matcher/recognition tests for recursive Claude commands, namespace
+  construction, subdirectory `.claude/commands` rejection, and excluded standalone `.claude/prompts`
+  in `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts` *(amended
+  2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant anchor, and
+  no skill-equivalent ancestor or lazy-descendant command traversal is documented, so
+  `claude.repo.command` is root-anchored and a subdirectory `.claude/commands` is a near miss; the
+  contract row was corrected in the same change.)*
+- [X] T443 [US1] Add browser acceptance for Claude command inventory, namespaces, filters,
+  exclusions, and diagnostics in `tests/e2e/claude-commands-inventory.spec.ts`
+
+### Implementation
+
+- [X] T444 [US1] Add Claude command lookup statements plus non-authorizing
+  `claude.behavior.user.commands` before command selection references it in
+  `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-22: the aggregate in
+  `src/shared/registries/vendor-behaviors.ts` is assembled from one module per vendor, so the two
+  statements are authored in `src/shared/registries/claude/behaviors.ts` and reach the aggregate
+  from there.)*
+- [X] T445 [US1] Add only the root-anchored `claude.repo.command` candidate and keep prompt, User,
+  and configured-location paths negative without defining exclusion IDs in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-20: a leading `ANY_DIRECTORIES`
+  requires a documented worked-file/descendant anchor, and no skill-equivalent ancestor or
+  lazy-descendant command traversal is documented, so `claude.repo.command` is root-anchored and a
+  subdirectory `.claude/commands` is a near miss; the contract row was corrected in the same
+  change.)* *(amended 2026-08-22: the aggregate in `src/shared/registries/inspection-rules.ts` is
+  assembled from one module per vendor, so the candidate is authored in
+  `src/shared/registries/claude/rules.ts` and reaches the aggregate from there.)*
+- [X] T446 [US1] Add Claude command evidence records and affected-contract references in the owning
+  registry record's `evidence` citations *(amended 2026-08-22: the citations rest on
+  `https://code.claude.com/docs/en/skills` and the `1.0.45`/`1.0.51` changelog entries, whose rows
+  in `specs/001-inspect-agent-customizations/contracts/official-sources.md` and
+  `official-sources.ja.md` gained the reviewed heading and the advanced review date in the same
+  change.)*
+- [X] T447 [US1] Implement the root-anchored Claude command matching and namespace recognition in
+  `src/server/inspection/rules/claude.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant
+  anchor, and no skill-equivalent ancestor or lazy-descendant command traversal is documented, so
+  `claude.repo.command` is root-anchored and a subdirectory `.claude/commands` is a near miss; the
+  contract row was corrected in the same change.)* *(amended 2026-08-22: matching is the compiled
+  plan's alone, so `src/server/inspection/rules/claude.ts` owns no walker; what it gains is the unit
+  that answers this kind's own question — the name a reader invokes, derived from the matched path,
+  because Claude Code ignores a `name` key in a command file.
+  `src/server/inspection/recognizers/candidate.ts` gains the kind's factory, which asks the
+  admitting rule for that name and reads the shared Markdown parse for the declarations.)*
+- [X] T448 [US1] Extend command inventory rows and English Claude namespace messages in that kind's
+  row component under `src/app/components/inventory/rows/` *(amended 2026-08-22: the row is grouped
+  by the name a reader invokes, the way a skill row is, so
+  `src/app/components/inventory/rows/PromptRow.vue` heads each row with that name and lists one
+  definition per `(file, tool)` beneath it, each stating its file's Source-relative Path and the
+  recognizing product. The namespace is part of the name rather than a message of its own.)*
+
+---
+
+## Phase 41: Claude Commands Detail
+
+**Purpose**: Add complete literal Claude command source, namespace, invocation, and inert relationship detail.
+
+**Independent Test**: Open malformed Claude commands and verify recursive namespaces, exact resolved values, inert agent/skill references, diagnostics, and detail-state cleanup.
+
+**Visible Checkpoint**: Selecting a Claude command opens complete inert detail without executing, importing, or reading referenced targets.
+
+### Tests first
+
+- [X] T449 [P] [US2] Add failing Claude command metadata tests for the declarations the file wrote
+  and its agent/skill references in `tests/unit/inspection/claude-metadata.test.ts` *(amended
+  2026-08-06: an admission stays a read-authorization record, and what a vendor documents stays in
+  its maintained contract, so no surface projects a condition, applicability, order, runtime state,
+  provenance, or documentation status (FR-009; T091/T1068/T1042).)*
+- [X] T450 [P] [US2] Add failing tests proving Claude command bodies and references do not execute,
+  navigate, import, or read targets in `tests/integration/security/zero-activation.test.ts`
+- [X] T451 [US2] Add failing Claude command runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T452 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Claude
+  command detail, namespaces, references, and diagnostics in
+  `tests/e2e/claude-commands-detail.spec.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+
+### Implementation
+
+- [X] T453 [US2] Add Claude command selection, namespace, skill precedence, and relationship
+  strategies in `src/shared/registries/runtime-composition.ts` *(amended 2026-08-22: the aggregate
+  in `src/shared/registries/runtime-composition.ts` is assembled from one module per vendor, so
+  `claude.commands.selection` is authored in `src/shared/registries/claude/strategies.ts` with its
+  edges in `src/shared/registries/claude/relations.ts`. It records the one documented outcome — a
+  same-name skill outranks a command — as `select-first`; a namespace and a relationship are not
+  composition steps, and no relationship-only record ships.)*
+- [X] T454 [US2] Extend Markdown extraction and scan integration for Claude command metadata,
+  references, and exact resolved-value preservation in `src/server/inspection/parsers/markdown.ts`
+  and `src/server/inspection/scan.ts` *(amended 2026-08-06: an admission stays a read-authorization
+  record, and what a vendor documents stays in its maintained contract, so no surface projects a
+  condition, applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)* *(amended 2026-08-22: neither `src/server/inspection/parsers/markdown.ts` nor
+  `src/server/inspection/scan.ts` needs a change: the one Markdown extraction the other two
+  frontmatter-led kinds already share resolves exactly what a command file declares, and the scan
+  already groups recognitions by kind. What the phase adds is the kind's own factory in
+  `src/server/inspection/recognizers/candidate.ts`, and no reference is read out of a prompt.)*
+- [X] T455 [US2] Extend typed Claude command detail fields in that kind's own detail route under
+  `src/app/pages/`
+- [X] T456 [US2] Add English Claude command detail and reference messages in the Vue components that
+  render them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
+  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
+  order, or uncertainty (FR-009, T091).)* *(amended 2026-08-22: the copy is written where it
+  renders, in `src/app/pages/prompts-and-commands/detail/[source]/[...path].vue`; no reference
+  message ships, because no shipped recognition produces an edge and a name the prompt mentions
+  stays text.)*
+
+---
+
+## Phase 42: Copilot Commands Inventory
+
+**Purpose**: Add conservative Copilot CLI command recognition for root direct-child `.claude/commands/*.md` only.
+
+**Independent Test**: Inventory root direct-child commands, reject nested commands and unsupported User/configured locations, preserve same physical Claude files, and avoid inventing a broader Copilot command traversal.
+
+**Visible Checkpoint**: Users can identify the Copilot CLI interpretation of supported root command files.
+
+### Fixtures and tests first
+
+- [X] T457 [US1] Create Copilot command fixtures for root direct children, nested exclusions,
+  duplicate names, shared Claude files, malformed metadata, secrets, references, User/configured
+  paths, and near misses in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T458 [US1] Materialize Copilot CLI command behavior, conservative candidate, path-negative
+  configured/User cases, composition, and evidence rows without attaching an unrelated exclusion ID
+  in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-22: the new rule edges are
+  materialized too, so `tests/fixtures/conformance/relations.json` is part of the same
+  regeneration.)*
+- [X] T459 [P] [US1] Add failing matcher/recognition tests for root direct-child Copilot commands,
+  nested rejection, shared Claude files, and no invented ancestor/User matcher in
+  `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts`
+- [X] T460 [US1] Add browser acceptance for Copilot command rows, nested exclusions, diagnostics,
+  and retained Claude commands in `tests/e2e/copilot-commands-inventory.spec.ts` *(amended
+  2026-08-08: an admission stays a read-authorization record no surface reads out, so nothing
+  displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T461 [US1] Add Copilot CLI command lookup statements without read authority in
+  `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-22: `copilot.behavior.cli.commands`
+  already shipped with the skill phase, because `copilot.cli.skills.selection` composes it — the
+  documented outcome is that a same-name skill outranks a legacy command, which cannot be stated
+  without the command surface it outranks. The aggregate in
+  `src/shared/registries/vendor-behaviors.ts` therefore gains nothing here, and the statement it
+  already carries is what the new rule rests on.)*
+- [X] T462 [US1] Add only the conservative `copilot.repo.command` candidate and keep configured/User
+  locations path-negative without defining or referencing an unrelated exclusion ID in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-22: the aggregate in
+  `src/shared/registries/inspection-rules.ts` is assembled from one module per vendor, so the
+  candidate is authored in `src/shared/registries/copilot/rules.ts` and reaches the aggregate from
+  there.)*
+- [X] T463 [US1] Add Copilot command evidence records and affected-contract references in the owning
+  registry record's `evidence` citations
+- [X] T464 [US1] Implement Copilot root direct-child command matching and recognition in
+  `src/server/inspection/rules/copilot.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-22: matching is the compiled plan's alone, so what
+  `src/server/inspection/rules/copilot.ts` gains is the unit that answers this kind's own question —
+  the command name, which the CLI reference derives from the filename and gives no namespace.
+  `src/server/inspection/recognizers/candidate.ts` needs no Copilot-specific change: the recognizer
+  is vendor-neutral and already asks each admitting rule for its own product's answer.)*
+- [X] T465 [US1] Integrate Copilot command classification and one-read shared-file assembly in
+  `src/server/inspection/scan.ts` *(amended 2026-08-22: `src/server/inspection/scan.ts` needs no
+  change: it already reads each discovered file once and dispatches every tool's admissions of it in
+  one recognition call, which is what makes a root command one read and two recognitions.)*
+- [X] T466 [US1] Extend inventory rows and English Copilot CLI command messages in that kind's row
+  component under `src/app/components/inventory/rows/` *(amended 2026-08-22: no Copilot-specific
+  message ships: `src/app/components/inventory/rows/PromptRow.vue` states each definition's own
+  product and surfaces, so a file both products recognize reads as two definitions of one row
+  without a sentence about either product.)*
+
+---
+
+## Phase 43: Copilot Commands Detail
+
+**Purpose**: Add complete literal Copilot CLI command detail.
+
+**Independent Test**: Open malformed root command files and verify invocation, inert references, exact resolved values, diagnostics, and detail-state cleanup without importing Claude runtime assumptions.
+
+**Visible Checkpoint**: Selecting a Copilot command shows complete inert CLI-qualified detail.
+
+### Tests first
+
+- [X] T467 [P] [US2] Add failing Copilot command metadata tests for invocation, same-name skill
+  priority, direct-child provenance, unknown ancestry, references, and exact evidence in
+  `tests/unit/inspection/copilot-metadata.test.ts`
+- [X] T468 [P] [US2] Add failing zero-activation tests for Copilot command bodies, references,
+  navigation, imports, and target reads in `tests/integration/security/zero-activation.test.ts`
+- [X] T469 [US2] Add failing Copilot command runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T470 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Copilot
+  command detail, invocation, references, and diagnostics in
+  `tests/e2e/copilot-commands-detail.spec.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+
+### Implementation
+
+- [X] T471 [US2] Add the Copilot command skill-precedence and relationship strategies this phase
+  records in `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays
+  a read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-22: no strategy is added to
+  `src/shared/registries/runtime-composition.ts`: the documented outcome — a same-name skill
+  outranks a command — belongs to `copilot.cli.skills.selection`, which already consumes the command
+  behavior, and a second record would state an edge no page establishes.)*
+- [X] T472 [US2] Extend Copilot command recognition with exact metadata, relationships, diagnostics,
+  and evidence in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-06: an
+  admission stays a read-authorization record, and what a vendor documents stays in its maintained
+  contract, so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-22:
+  `src/server/inspection/recognizers/candidate.ts` needs no Copilot-specific change: the command
+  factory already publishes the declarations the one shared parse resolved and the name the
+  admitting rule answered, and no shipped recognition produces a relationship edge.)*
+- [X] T473 [US2] Integrate Copilot command parsing, exact resolved-value preservation, inert
+  references, and parser scratch/transient-semantic disposal while retaining complete authored
+  source in `src/server/inspection/scan.ts` *(amended 2026-08-22: `src/server/inspection/scan.ts`
+  needs no change for the same reason T465 records: the read, the decode, and the one parse per
+  `(file, kind)` are already vendor-neutral, and the complete authored source is what the detail
+  route serves.)*
+- [X] T474 [US2] Extend typed detail and English Copilot command reference messages in that kind's
+  own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the declarations the
+  file wrote, and what a vendor documents stays in its maintained contract, so no surface projects
+  trust, precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-22:
+  `src/app/pages/prompts-and-commands/detail/[source]/[...path].vue` already serves both products:
+  the detail is addressed by the path alone because no per-tool fact distinguishes what it would
+  show, so it gathers the definitions of the file across the name rows and states every recognizing
+  product beside the names those rows are grouped under. No reference message ships, because no
+  shipped recognition produces an edge.)*
+
+---
+
+## Phase 44: Unified Commands Inventory
+
+**Purpose**: Consolidate Claude and Copilot command candidates with correct root-shared and nested-Claude-only recognition.
+
+**Independent Test**: Verify one physical item/read and two recognitions for root direct-child `.claude/commands/*.md`, Claude-only recognition for nested commands, deterministic namespaces/provenance, filters, exclusions, injected failures with per-file diagnostics when confined to one file and whole-attempt abort otherwise, and rescan cleanup.
+
+**Visible Checkpoint**: Users can distinguish shared root commands from nested Claude-only commands.
+
+### Tests first
+
+- [X] T475 [US1] Finalize command fixtures for recursive Claude namespaces, root Copilot-compatible
+  commands, nested Claude-only files, duplicate names, secrets, references, injected
+  thrown/rejected-operation failure cases, and near misses in
+  `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T476 [US1] Finalize command conformance rows for both vendors, shared recognition,
+  path-negative configured/User cases without an exclusion ID, composition, relationships, and
+  evidence in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-22: the rule edges are
+  materialized too, so `tests/fixtures/conformance/relations.json` is part of the same
+  regeneration.)*
+- [X] T477 [US1] Add complete matcher/recognition-matrix tests for root shared direct children,
+  nested Claude-only commands, namespace construction, and excluded `.claude/prompts` in
+  `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts`
+- [X] T478 [P] [US1] Add failing integration tests for one-read root commands, deterministic
+  recognition/provenance order, and partial continuity only for file-confined outcomes; prove an
+  injected file-confined failure yields only that file's diagnostic in a partial generation while
+  any other injected failure aborts the attempt without domain catch, item/recognition/derived
+  result/body/generation, retains only the prior commit, and performs no referenced-target read in
+  `tests/integration/repository-scan.test.ts`
+- [X] T479 [US1] Add browser acceptance for unified command inventory, namespaces, shared
+  recognitions, nested Claude-only rows, filters, and diagnostics in
+  `tests/e2e/commands-inventory.spec.ts`
+
+### Implementation
+
+- [X] T480 [US1] Complete one-read root command assembly, nested Claude-only recognition,
+  deterministic provenance, and exclusions in `src/server/inspection/scan.ts` *(amended 2026-08-22:
+  `src/server/inspection/scan.ts` needs no change: one read per discovered file and one recognition
+  call carrying every tool's admissions of it are already what the scan does, and the deterministic
+  order is the projection's — `src/server/session/session.ts` sorts each name's definitions by
+  Source-relative Path then by the contracted tool order.)*
+- [X] T481 [US1] Extend command inventory rows and English namespace, shared-tool, and exclusion
+  messages in that kind's row component under `src/app/components/inventory/rows/` *(amended
+  2026-08-22: no shared-tool or exclusion message ships in
+  `src/app/components/inventory/rows/PromptRow.vue`: a shared file reads as two definitions of one
+  row because that is what it is, an excluded location is a path no selector reaches and therefore
+  simply absent, and the namespace is part of the name the row is headed by rather than a message of
+  its own.)*
+
+---
+
+## Phase 45: Commands Comparison (withdrawn)
+
+**Withdrawn 2026-08-22**: a comparison surface is kind-specific (spec.md § Clarifications Session 2026-08-14), and a Copilot prompt is not a kind of its own — `prompt/command` is one kind covering both an accepted VS Code prompt and a root direct-child CLI command (contracts/vendors/github-copilot.md § Normative initial-release presentation allowlist). One kind is one surface, and a comparison surface belongs after every location of its kind is inventoried and detailed, the way each other family's comparison follows its own: the Copilot prompt locations arrive in Phases 46 and 47, so Phase 48 designs the one surface for the whole kind. The phase number is kept so every later phase keeps its own, and T482–T485 are vacant.
+
+---
+
+## Phase 46: Copilot Prompts Inventory
+
+**Purpose**: Add supported Copilot prompt files to the inventory.
+
+**Independent Test**: Inventory direct `.github/prompts/*.prompt.md` files while excluding nested and configured-location candidates.
+
+**Visible Checkpoint**: Users can filter supported Copilot prompts.
+
+### Fixtures and tests first
+
+- [X] T486 [US1] Create Copilot prompt fixtures for direct children, nested near misses, malformed
+  metadata, secrets, links, `#file` references, images, and URIs in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-22: the prompt files join
+  `buildCommandFixture` rather than a builder of their own, because a VS Code prompt is the same
+  `prompt/command` kind as a command file and one tree is what shows a prompt and a command
+  resolving to one name.)*
+- [X] T487 [US1] Materialize prompt rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T488 [US1] Add failing matcher/recognition tests for exact default prompt location, nested
+  exclusions, and configured-location uncertainty in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T489 [US1] Add browser acceptance for Copilot prompt inventory and exclusions in
+  `tests/e2e/prompts-inventory.spec.ts` *(amended 2026-08-22: a Copilot prompt is the
+  `prompt/command` kind, whose inventory, row component, and detail route Phases 40–44 already
+  shipped — `src/app/components/inventory/rows/PromptRow.vue` and
+  `src/app/pages/prompts-and-commands/detail/[source]/[...path].vue`. This task adds the rule's own
+  reach to that surface rather than a second one, and a prompt whose derived name matches a
+  command's joins that name's existing row.)*
+
+### Implementation
+
+- [X] T490 [US1] Add Copilot prompt lookup statements plus non-authorizing
+  `copilot.behavior.vscode.user.prompts` before prompt detail and the later User-runtime exclusion
+  reference it in `src/shared/registries/vendor-behaviors.ts`
+- [X] T491 [US1] Add only the `copilot.repo.prompt` candidate and keep configured/User/non-default
+  locations path-negative without defining or referencing an unrelated exclusion ID in
+  `src/shared/registries/inspection-rules.ts`
+- [X] T492 [US1] Add prompt evidence records and affected-contract references in the owning registry
+  record's `evidence` citations
+- [X] T493 [US1] Implement Copilot prompt matching and recognition in
+  `src/server/inspection/rules/copilot.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T494 [US1] Extend prompt inventory rows and semantically equivalent location/exclusion
+  messages in that kind's row component under `src/app/components/inventory/rows/` *(amended
+  2026-08-22: a Copilot prompt is the `prompt/command` kind, whose inventory, row component, and
+  detail route Phases 40–44 already shipped — `src/app/components/inventory/rows/PromptRow.vue` and
+  `src/app/pages/prompts-and-commands/detail/[source]/[...path].vue`. This task adds the rule's own
+  reach to that surface rather than a second one, and a prompt whose derived name matches a
+  command's joins that name's existing row.)*
+
+---
+
+## Phase 47: Copilot Prompts Detail
+
+**Purpose**: Add complete literal prompt source, invocation, and inert-reference detail.
+
+**Independent Test**: Open malformed prompts and verify exact resolved-value preservation, explicit invocation, references, no URI/image/navigation behavior, diagnostics, and detail-state cleanup.
+
+**Visible Checkpoint**: Selecting a Copilot prompt opens complete inert detail without navigating to or reading referenced targets.
+
+### Tests first
+
+- [X] T495 [P] [US2] Add failing prompt metadata tests for the declarations the file wrote, its
+  references, and evidence in `tests/unit/inspection/copilot-metadata.test.ts` *(amended 2026-08-06:
+  an admission stays a read-authorization record, and what a vendor documents stays in its
+  maintained contract, so no surface projects a condition, applicability, order, runtime state,
+  provenance, or documentation status (FR-009; T091/T1068/T1042).)*
+- [X] T496 [P] [US2] Add failing tests proving prompt links, images, URIs, and `#file` targets
+  neither navigate nor authorize reads in `tests/integration/security/zero-activation.test.ts`
+- [X] T497 [US2] Add failing prompt runtime-composition graph coverage with reciprocal contract
+  references in `tests/contract/runtime-composition.test.ts`
+- [X] T498 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal prompt
+  detail and inert references in `tests/e2e/prompts-detail.spec.ts`
+
+### Implementation
+
+- [X] T499 [US2] Add the prompt relationship strategies this phase records in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-22: the rule records no strategy. A reader
+  invokes a prompt by hand, so the behavior documents no combination for a strategy to describe, and
+  inventing one would put a claim in the graph that no page makes;
+  `tests/contract/runtime-composition.test.ts` asserts the empty list instead.)*
+- [X] T500 [US2] Extend Markdown extraction and scan integration for prompt metadata, inert
+  references, and exact resolved-value preservation in `src/server/inspection/parsers/markdown.ts`
+  and `src/server/inspection/scan.ts` *(amended 2026-08-06: an admission stays a read-authorization
+  record, and what a vendor documents stays in its maintained contract, so no surface projects a
+  condition, applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)* *(amended 2026-08-22: neither module changes. A prompt file is Markdown with
+  a frontmatter block, which the one shared extraction already reads and the scan already routes by
+  kind, so a prompt-specific path would be a second reader of the same bytes.)*
+- [X] T501 [US2] Extend typed prompt detail fields in that kind's own detail route under
+  `src/app/pages/` *(amended 2026-08-22: a Copilot prompt is the `prompt/command` kind, whose
+  inventory, row component, and detail route Phases 40–44 already shipped —
+  `src/app/components/inventory/rows/PromptRow.vue` and
+  `src/app/pages/prompts-and-commands/detail/[source]/[...path].vue`. This task adds the rule's own
+  reach to that surface rather than a second one, and a prompt whose derived name matches a
+  command's joins that name's existing row.)*
+- [X] T502 [US2] Add English prompt detail, invocation, and reference messages in the Vue components
+  that render them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
+  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
+  order, or uncertainty (FR-009, T091).)* *(amended 2026-08-22: a Copilot prompt is the
+  `prompt/command` kind, whose inventory, row component, and detail route Phases 40–44 already
+  shipped — `src/app/components/inventory/rows/PromptRow.vue` and
+  `src/app/pages/prompts-and-commands/detail/[source]/[...path].vue`. This task adds the rule's own
+  reach to that surface rather than a second one, and a prompt whose derived name matches a
+  command's joins that name's existing row.)*
+
+---
+
+## Phase 48: Prompts and Commands Comparison
+
+**Purpose**: Design the `prompt/command` kind's own comparison surface with literal and typed differences, once every location of the kind is inventoried and detailed.
+
+**Independent Test**: Compare exactly two readable current-generation files of the kind and verify complete literal source plus aligned invocation names and references.
+
+**Visible Checkpoint**: Users can compare prompt and command files without executing them.
+
+### Tests first
+
+- [X] T503 [US3] Add failing comparison regressions for the canonical serialized declaration
+  documents, invocation names, tool recognition, and references in
+  `tests/unit/app/prompt-comparison.test.ts` *(amended 2026-08-19: declared metadata is the file's
+  one parse per kind, compared once per pair with tool recognition compared per tool beside it — a
+  tool is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-08: an admission
+  stays a read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+  *(amended 2026-08-21: the declared metadata compares as one canonical serialized document per side
+  diffed in Monaco, following the skill, instruction, and MCP comparison precedents (research.md §
+  7).)* *(amended 2026-08-22: one kind is one comparison surface, so this task covers every location
+  of `prompt/command`: the Claude and Copilot command files Phases 40–44 shipped and the Copilot
+  prompt files Phase 46 admits. Phase 45 is withdrawn into it.)*
+- [X] T504 [US3] Add browser acceptance for the complete literal diff including
+  credential/environment-reference differences, the canonical serialized declaration documents, no
+  masking/reveal or environment substitution, and typed differences in
+  `tests/e2e/prompts-and-commands-comparison.spec.ts` *(amended 2026-08-21: the acceptance verifies
+  the two sides' canonical serialized documents diffed in Monaco, the form every kind's
+  declared-metadata comparison takes (research.md § 7).)* *(amended 2026-08-22: one surface for the
+  kind, so the acceptance covers a prompt beside a command as well as two commands.)*
+
+### Implementation
+
+- [X] T505 [US3] Extend the comparison to serialize each side's declared metadata into one canonical
+  document diffed in Monaco while keeping typed invocation state separate in
+  `src/app/components/prompt-comparison/RecognitionComparison.vue`, part of the kind's own
+  comparison surface this task designs and creates following the skill precedent
+  (`src/app/pages/skills/compare/[family].vue`, `src/app/composables/skill-comparison.ts`,
+  `src/app/components/skill-comparison/`), including the entry links that reach it from that kind's
+  inventory row component under `src/app/components/inventory/rows/` and from that kind's detail
+  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: declared metadata
+  is the file's one parse per kind, compared once per pair with tool recognition compared per tool
+  beside it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-15:
+  owned by the kind's own comparison surface — comparison is kind-specific with no shared module,
+  and this task designs and creates that surface following the skill precedent (spec.md §
+  Clarifications Session 2026-08-14).)* *(amended 2026-08-21: the declared metadata compares as one
+  canonical serialized document per side diffed in Monaco, following the skill, instruction, and MCP
+  comparison precedents (research.md § 7).)* *(amended 2026-08-22: the surface is the kind's, so its
+  route is `/prompts-and-commands/compare` and its modules are named for the kind rather than for
+  the command half of it, matching the inventory and detail surfaces Phases 40–44 shipped.)*
+  *(amended 2026-08-22: a recognition cell holds that tool's definition or null rather than a
+  recognized flag beside the surfaces and the name, because the definition already carries both
+  facts and its absence is the whole of "this tool does not read this file"; the invocation names
+  are gathered across the inventory rather than out of the owning row, so a cell states what its own
+  tool invokes its own file by.)*
+- [X] T506 [US3] Add English comparison messages in the Vue components that render them
+
+---
+
+## Phase 49: Codex Custom Agents Inventory
+
+**Purpose**: Add supported Codex `.codex/agents/*.toml` custom-agent candidates.
+
+**Independent Test**: Inventory direct-child TOML agents in the root's `.codex/agents/`, duplicate names, near misses — subdirectory `.codex/agents` among them — links, arbitrary config-path references, hosted-state exclusions, and traversal uncertainty. *(amended 2026-08-20: the contract row is root-anchored: the page names the root's `.codex/agents/` and documents no nested search, so a subdirectory `.codex/agents` is a runtime-chain member this product does not select and is a near miss.)*
+
+**Visible Checkpoint**: Users can filter Codex custom-agent files.
+
+### Fixtures and tests first
+
+- [X] T507 [US1] Create Codex custom-agent fixtures for the root's direct children, subdirectory
+  `.codex/agents` near misses, nested near misses, duplicate names, malformed TOML, secrets,
+  config-path references, links, and hosted/User exclusions in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20: the contract row is
+  root-anchored: the page names the root's `.codex/agents/` and documents no nested search, so a
+  subdirectory `.codex/agents` is a runtime-chain member this product does not select and is a near
+  miss.)*
+- [X] T508 [US1] Materialize Codex custom-agent behavior, matcher, composition, relationships,
+  path-negative cases, and evidence rows without defining exclusion IDs in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T509 [US1] Add failing matcher and recognition tests for the root-anchored `codex.repo.agent`,
+  direct-child TOML, nested exclusions, and no arbitrary config-path promotion in
+  `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts` *(amended
+  2026-08-20: the contract row is root-anchored: the page names the root's `.codex/agents/` and
+  documents no nested search, so a subdirectory `.codex/agents` is a runtime-chain member this
+  product does not select and is a near miss.)*
+- [X] T510 [US1] Add browser acceptance for Codex custom-agent inventory, filters, exclusions,
+  diagnostics, and no agent-owned MCP recognition; the existing carrier inheritance remains a
+  detail-time relationship only in `tests/e2e/codex-custom-agents-inventory.spec.ts` *(amended
+  2026-08-08: an admission stays a read-authorization record no surface reads out, so nothing
+  displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T511 [US1] Add Codex custom-agent lookup statements plus non-authorizing
+  `codex.behavior.user.agents` before inheritance references it in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T512 [US1] Add only the Codex custom-agent candidate record and keep nested, configured, User,
+  and managed locations path-negative without defining exclusion IDs in
+  `src/shared/registries/inspection-rules.ts`
+- [X] T513 [US1] Add Codex custom-agent evidence records and reciprocal affected-contract references
+  in the owning registry record's `evidence` citations
+- [X] T514 [US1] Implement Codex agent matching and closed allowlisted recognition in
+  `src/server/inspection/rules/codex.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T515 [US1] Extend inventory rows for the Codex custom-agent kind in that kind's row component
+  under `src/app/components/inventory/rows/` *(amended 2026-08-08: an admission stays a
+  read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+- [X] T516 [US1] Add English Codex custom-agent inventory and exclusion messages in the Vue
+  components that render them
+
+---
+
+## Phase 50: Codex Custom Agents Detail
+
+**Purpose**: Add complete inert Codex custom-agent source and spawned-session configuration detail while keeping the completed Codex MCP carrier the owner of every MCP row. *(amended 2026-08-22: what a spawned session inherits from a carrier stays `codex.agents.inheritance`'s recorded composition and reaches no surface, so this phase's detail shows the file's own metadata and instruction content beside its complete authored source and displays no relationship; a declared `mcp_servers` table is one metadata entry of that file.)*
+
+**Independent Test**: Open malformed Codex agents and verify inert TOML parsing with environment-owned capacity, model/reasoning/sandbox/skills as declared metadata, a declared `mcp_servers` table as that file's own metadata entry with no agent-owned MCP recognition, configured paths as inert values, exact resolved values, diagnostics, detail-state cleanup, and zero connection. *(amended 2026-08-22: what a spawned session inherits from a carrier stays `codex.agents.inheritance`'s recorded composition and reaches no surface, so this phase's detail shows the file's own metadata and instruction content beside its complete authored source and displays no relationship; a declared `mcp_servers` table is one metadata entry of that file.)*
+
+**Visible Checkpoint**: Selecting a Codex custom agent shows its complete inert spawned-session detail — the declared metadata and the instruction content beside the complete authored source — without an agent-owned MCP recognition, connection, or configured-path read. *(amended 2026-08-22: what a spawned session inherits from a carrier stays `codex.agents.inheritance`'s recorded composition and reaches no surface, so this phase's detail shows the file's own metadata and instruction content beside its complete authored source and displays no relationship; a declared `mcp_servers` table is one metadata entry of that file.)*
+
+### Tests first
+
+- [X] T517 [P] [US2] Add failing inert TOML parsing tests for Codex agent fields, recognition-atomic
+  malformed extraction with its `recognition-parse-failed` diagnostic keeping the readable source
+  displayed, and environment-owned parser capacity with no Inspector numeric cap; prove a failure
+  not confined to one file aborts the attempt with no result or generation in
+  `tests/unit/inspection/parsers.test.ts` *(amended 2026-08-22: a failure not confined to one file
+  is a doctrine of the traversal and the coordinator rather than of a kind — it is proven once,
+  kind-independently, in `tests/unit/inspection/relationships.test.ts`, so this task adds the TOML
+  seam's own cases and the per-file `recognition-parse-failed` outcome in
+  `tests/integration/repository-scan.test.ts` instead of a per-kind copy of that doctrine.)*
+- [X] T518 [P] [US2] Add failing Codex agent tests for model, reasoning, sandbox, skills, closed MCP
+  carrier-origin relationships without an agent-owned MCP recognition, config-path relationships,
+  parent inheritance, and live sandbox/approval reapplication in
+  `tests/unit/inspection/codex-metadata.test.ts`
+- [X] T519 [P] [US2] Add failing zero-activation tests proving Codex agent declarations do not
+  execute tools, spawn processes, connect to MCP, or read referenced config paths in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T520 [US2] Add failing Codex custom-agent runtime-composition graph coverage for carrier
+  inheritance as a relationship only, no agent-owned MCP recognition, and reciprocal contract
+  references in `tests/contract/runtime-composition.test.ts`
+- [X] T521 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Codex
+  custom-agent detail, carrier-linked MCP inheritance relationships without an agent-owned MCP row,
+  diagnostics, and detail-state cleanup in `tests/e2e/codex-custom-agents-detail.spec.ts` *(amended
+  2026-08-22: no relationship is displayed, so the acceptance verifies the declared metadata and the
+  instruction content beside the complete authored source, and the absence of any MCP row or
+  connection for a declared `mcp_servers` table.)*
+
+### Implementation
+
+- [X] T522 [US2] Extend the existing inert TOML carrier parser with Codex agent normalization and
+  extraction in `src/server/inspection/parsers/toml.ts` *(amended 2026-08-22: the reading answers
+  the name, the metadata, and the instruction content, so it is
+  `CodexCompiledAgentRule.agentPresentationOf` in `src/server/inspection/rules/codex.ts`:
+  `parsers/toml.ts` owns the format's parse and its rendering of resolved values, while where an
+  agent file's configuration ends and its prose begins is the admitting vendor's own contract. The
+  shape is shared with the Markdown-writing products, whose rule splits at the frontmatter fence,
+  and the `name` is read out of the metadata once by the shared recognizer.)*
+- [X] T523 [US2] Extend the existing Codex config/MCP strategies with relationship-only agent
+  inheritance, spawned-session context, selection, sandbox/approval, and an explicit prohibition on
+  agent-owned MCP recognition in `src/shared/registries/runtime-composition.ts`
+- [X] T524 [US2] Integrate Codex agent metadata, exact literal carrier-linked MCP inheritance/origin
+  relationships, zero agent-owned MCP recognition, zero connection, and parser
+  scratch/transient-semantic disposal while retaining complete authored source in
+  `src/server/inspection/scan.ts` *(amended 2026-08-06: an admission stays a read-authorization
+  record, and what a vendor documents stays in its maintained contract, so no surface projects a
+  condition, applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)* *(amended 2026-08-22: the detail publishes the metadata and the instruction
+  content beside the complete authored source, in the shape both formats produce; the carrier-linked
+  MCP inheritance stays `codex.agents.inheritance`'s recorded composition, which no surface
+  projects, and a declared `mcp_servers` block is the agent file's own metadata entry.)*
+- [X] T525 [US2] Extend typed Codex custom-agent detail in that kind's own detail route under
+  `src/app/pages/` *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
+  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
+  order, or uncertainty (FR-009, T091).)* *(amended 2026-08-22: the detail follows the instruction
+  detail: a main tab showing the metadata as YAML and the instruction content as Markdown, and a
+  file tab showing the file as authored.)*
+- [X] T526 [US2] Add English Codex custom-agent detail messages in the Vue components that render
+  them *(amended 2026-08-23: rewritten to what the surfaces publish — the relationship-only registry
+  ships no record, so nothing reaches a page to display (FR-009).)* *(amended 2026-08-08: a detail
+  shows the declarations the file wrote, and what a vendor documents stays in its maintained
+  contract, so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+  *(amended 2026-08-22: no relationship message is added: what a vendor documents about inheritance
+  stays in its maintained contract and reaches no surface (FR-009).)*
+
+---
+
+## Phase 51: Claude Custom Agents Inventory
+
+**Purpose**: Add the root's recursive Claude subagent files without admitting agent-memory directories as candidates. *(amended 2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant anchor, and the subagent documentation states only an upward walk from the working directory to the Git repository root, whose one member every session shares is the selected root, so `claude.repo.agent` is root-anchored and a subdirectory `.claude/agents` is a near miss; the contract row was corrected in the same change.)*
+
+**Independent Test**: Inventory the root's `.claude/agents/**/*.md` files, duplicate names, nested subfolder paths, links, malformed content, `--add-dir` runtime facts, subdirectory `.claude/agents` near misses, and excluded agent-memory/User locations. *(amended 2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant anchor, and the subagent documentation states only an upward walk from the working directory to the Git repository root, whose one member every session shares is the selected root, so `claude.repo.agent` is root-anchored and a subdirectory `.claude/agents` is a near miss; the contract row was corrected in the same change.)*
+
+**Visible Checkpoint**: Users can filter Claude custom agents with duplicate-name uncertainty.
+
+### Fixtures and tests first
+
+- [X] T527 [US1] Create Claude subagent fixtures for recursive paths, duplicate names, malformed
+  metadata, secrets, references, memory declarations, links, `--add-dir` facts, subdirectory
+  `.claude/agents` near misses, and excluded memory/User locations in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20: a leading `ANY_DIRECTORIES`
+  requires a documented worked-file/descendant anchor, and the subagent documentation states only an
+  upward walk from the working directory to the Git repository root, whose one member every session
+  shares is the selected root, so `claude.repo.agent` is root-anchored and a subdirectory
+  `.claude/agents` is a near miss; the contract row was corrected in the same change.)*
+- [X] T528 [US1] Reuse the Phase 25-owned Claude Repository agent behavior and materialize the
+  remaining agent/User-memory behaviors, matchers, path-negative cases, composition, relationships,
+  and evidence rows without duplicate behavior or exclusion IDs in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T529 [P] [US1] Add failing matcher/recognition tests for the root's recursive agents
+  directory, subdirectory `.claude/agents` rejection, duplicate names, and no agent-memory or
+  arbitrary `--add-dir` candidate in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-20: a leading `ANY_DIRECTORIES`
+  requires a documented worked-file/descendant anchor, and the subagent documentation states only an
+  upward walk from the working directory to the Git repository root, whose one member every session
+  shares is the selected root, so `claude.repo.agent` is root-anchored and a subdirectory
+  `.claude/agents` is a near miss; the contract row was corrected in the same change.)*
+- [X] T530 [US1] Add browser acceptance for Claude custom-agent rows, filters, exclusions,
+  diagnostics, and retained Codex agents in `tests/e2e/claude-custom-agents-inventory.spec.ts`
+  *(amended 2026-08-20: a leading `ANY_DIRECTORIES` requires a documented worked-file/descendant
+  anchor, and the subagent documentation states only an upward walk from the working directory to
+  the Git repository root, whose one member every session shares is the selected root, so
+  `claude.repo.agent` is root-anchored and a subdirectory `.claude/agents` is a near miss; the
+  contract row was corrected in the same change.)*
+
+### Implementation
+
+- [X] T531 [US1] Reuse the Phase 25-owned `claude.behavior.repo.agents` and
+  `claude.behavior.user.mcp-state`, then add only `claude.behavior.user.agents`,
+  `claude.behavior.user.agent-memory`, and `claude.behavior.user.auto-memory` before agent context
+  and relationship strategies reference them in `src/shared/registries/vendor-behaviors.ts`
+  *(amended 2026-08-22: five statements ship rather than three: `claude.agent-context.composition`
+  also composes `claude.behavior.repo.agent-memory.local` and
+  `claude.behavior.repo.agent-memory.project`, and a strategy naming a statement no catalog holds is
+  the dangling edge the contract gate rejects. None of the five is `basedOnBehaviors` of any rule,
+  so the memory scopes stay composition-only and reach no read allowlist.)*
+- [X] T532 [US1] Add only the root-anchored `claude.repo.agent` candidate record and keep memory,
+  User, and additional-directory locations path-negative without defining exclusion IDs in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-20: a leading `ANY_DIRECTORIES`
+  requires a documented worked-file/descendant anchor, and the subagent documentation states only an
+  upward walk from the working directory to the Git repository root, whose one member every session
+  shares is the selected root, so `claude.repo.agent` is root-anchored and a subdirectory
+  `.claude/agents` is a near miss; the contract row was corrected in the same change.)*
+- [X] T533 [US1] Add Claude custom-agent evidence records and reciprocal affected-contract
+  references in the owning registry record's `evidence` citations
+- [X] T534 [US1] Implement the root-anchored Claude agent matching and closed allowlisted
+  recognition in `src/server/inspection/rules/claude.ts` and
+  `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-20: a leading `ANY_DIRECTORIES`
+  requires a documented worked-file/descendant anchor, and the subagent documentation states only an
+  upward walk from the working directory to the Git repository root, whose one member every session
+  shares is the selected root, so `claude.repo.agent` is root-anchored and a subdirectory
+  `.claude/agents` is a near miss; the contract row was corrected in the same change.)*
+- [X] T535 [US1] Integrate Claude agent classification without reading memory or arbitrary
+  additional directories in `src/server/inspection/scan.ts` *(amended 2026-08-22:
+  `src/server/inspection/scan.ts` needed no change: it composes each vendor's compiled catalog, so
+  the new rule joins the walk by being shipped, and keeping memory and additional directories out is
+  the matcher's — no selector reaches `agent-memory`, `agent-memory-local`, or a directory outside
+  the selected root. The negative is proven in `tests/unit/inspection/rules.test.ts` and
+  `tests/integration/repository-scan.test.ts` rather than by a guard the scan re-checks.)*
+- [X] T536 [US1] Extend inventory rows and English Claude agent and exclusion messages in that
+  kind's row component under `src/app/components/inventory/rows/` *(amended 2026-08-20: a leading
+  `ANY_DIRECTORIES` requires a documented worked-file/descendant anchor, and the subagent
+  documentation states only an upward walk from the working directory to the Git repository root,
+  whose one member every session shares is the selected root, so `claude.repo.agent` is
+  root-anchored and a subdirectory `.claude/agents` is a near miss; the contract row was corrected
+  in the same change.)* *(amended 2026-08-22: the row component Phase 49 shipped renders every
+  product's definitions already, so this task adds no per-product branch. The duplicate-name
+  uncertainty is shown by listing both definitions of the name with no winner stated — the
+  `prompt/command` precedent — rather than by a projected statement: deriving one from the
+  strategy's `operations` yields nothing for either product, and a row that ordered them would
+  answer a question the vendor leaves open (FR-009).)*
+
+---
+
+## Phase 52: Claude Custom Agents Detail
+
+**Purpose**: Add complete inert Claude subagent detail — its `mcpServers` as the agent's own declared content — and keep memory and Hook targets inert. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Independent Test**: Open malformed Claude agents and verify tools, skills, agent references, the `mcpServers` declarations as the agent’s own content, exact resolved-value preservation, zero activation/connection, diagnostics, and detail-state cleanup. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: Selecting a Claude custom agent shows its complete inert declarations and instructions without reading memory or connecting to MCP. *(amended 2026-08-23: rewritten to what the surfaces publish — the relationship-only registry ships no record, so nothing reaches a page to display (FR-009).)*
+
+### Tests first
+
+- [X] T537 [P] [US2] Add failing Claude agent tests for context mode, tools, skills, closed MCP/hook
+  origins, memory scopes, nested spawning, duplicate-name uncertainty, built-in omissions, and agent
+  references in `tests/unit/inspection/claude-metadata.test.ts`
+- [X] T538 [P] [US2] Add failing relationship tests for independently admitted skills/agents,
+  excluded memory roots, runtime-only inputs, and zero target promotion in
+  `tests/unit/inspection/relationships.test.ts`
+- [X] T539 [P] [US2] Add failing zero-activation tests for tools, skills, hooks, MCP, memory,
+  commands, links, and agent references in `tests/integration/security/zero-activation.test.ts`
+- [X] T540 [US2] Add failing Claude agent context-composition coverage with reciprocal contract
+  references in `tests/contract/runtime-composition.test.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T541 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Claude
+  custom-agent detail, context, tools, the `mcpServers` declarations as the agent's own content,
+  relationships, diagnostics, zero connection, and detail-state cleanup in
+  `tests/e2e/claude-custom-agents-detail.spec.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Implementation
+
+- [X] T542 [US2] Add Claude agent selection, fresh/fork context, tools, skill-preload, memory-fact,
+  nested-spawn, and relationship strategies in `src/shared/registries/runtime-composition.ts`
+  *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another
+  kind that spells MCP configuration shows it as that kind's own detail content, an agent's
+  `mcp-servers` included.)* *(amended 2026-08-22: two strategies ship rather than a list of separate
+  ones: the contract defines `claude.agents.selection` for the scope order and the unresolved
+  same-tree duplicate, and `claude.agent-context.composition` for the fresh-versus-fork context,
+  tools, skill preload, memory scope, and nested-spawn limit. Inventing a strategy per fact would
+  add IDs the runtime-composition contract does not define.)*
+- [X] T543 [US2] Extend Claude recognition with the agent declarations the file wrote — `mcpServers`
+  among them as ordinary declared content — inert Hook origins, relationships, diagnostics, and
+  evidence in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-22:
+  the split into metadata and instruction content lives in
+  `ClaudeCompiledAgentRule.agentPresentationOf` beside the rule that owns it, the way the Codex
+  phase settled it: the recognizer stays vendor-neutral and asks the admitting rule what names the
+  agent, because the products answer differently — Codex and Claude Code by the declared `name`, the
+  Copilot surfaces by the configuration file's own name (T553). A declared `hooks` block is one
+  metadata entry until the Hook phase ships the contained recognition that owns it.)*
+- [X] T544 [US2] Integrate Claude agent metadata, exact resolved-value preservation with no
+  synthetic file or connection, relationship-only memory/Hook targets, and parser
+  scratch/transient-semantic disposal while retaining complete authored source in
+  `src/server/inspection/scan.ts` *(amended 2026-08-20: only explicit MCP configuration joins the
+  MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own
+  detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-22:
+  `src/server/inspection/scan.ts` needed no change: the agent recognition and its detail are the
+  recognizer's and `InspectionSession.fileDetail`'s, both shipped by Phase 50, and the complete
+  authored source is what every readable candidate already publishes. Memory and hook targets stay
+  inert by being reached by no selector rather than by a disposal step.)*
+- [X] T545 [US2] Extend typed detail and English Claude agent messages in that kind's own detail
+  route under `src/app/pages/` *(amended 2026-08-23: rewritten to what the surfaces publish — the
+  relationship-only registry ships no record, so nothing reaches a page to display (FR-009).)*
+  *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a vendor documents
+  stays in its maintained contract, so no surface projects trust, precedence, order, or uncertainty
+  (FR-009, T091).)* *(amended 2026-08-22: the kind has one detail route,
+  `src/app/pages/agents/detail/[source]/[...path].vue`, shipped by Phase 50 and typed by the shared
+  `AgentPresentationDto`; a Claude subagent opens it unchanged. No relationship message is added,
+  because a detail shows the declarations the file wrote and projects no trust, precedence, order,
+  or uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 53: Copilot Custom Agents Inventory
+
+**Purpose**: Add supported Copilot `.github/agents/*.md` and `.claude/agents/*.md` candidates with separate VS Code, CLI, and Cloud provenance.
+
+**Independent Test**: Inventory direct-child agents in the two root directories, filename variants, duplicate names, shared Claude files, near misses — subdirectory agents directories among them — hosted organization agents as runtime-only facts, and configured/User locations as exclusions. *(amended 2026-08-23: GitHub documents a custom agent's `name` as an optional display name and deduplicates profiles by the configuration file's own name minus `.md` or `.agent.md`, so the name a custom-agent row is grouped under is the admitting rule's answer rather than one shared reading; the specification, data model, and HTTP contract were corrected in the same change.)* *(amended 2026-08-20: every Copilot surface documents a root-anchored agents location (VS Code the workspace root, Cloud the repository root, the CLI an upward walk whose shared member is the selected root), so `copilot.repo.agent` is root-anchored and a subdirectory agents directory is a near miss; the contract row was corrected in the same change.)*
+
+**Visible Checkpoint**: Users can filter Copilot custom agents.
+
+### Fixtures and tests first
+
+- [X] T546 [US1] Create Copilot agent fixtures for both directories, direct-child boundaries, Cloud
+  filename variants, duplicate names, shared Claude files, malformed metadata, secrets, handoffs,
+  configured/User paths, and hosted organization facts in
+  `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T547 [US1] Reuse the Phase 30-owned Copilot VS Code agent behavior and materialize the
+  remaining CLI/Cloud agent behaviors, including exact origin-file-less
+  `copilot.behavior.cloud.organization-agents`, matchers, path-negative configured/User/hosted
+  cases, composition, relationships, and evidence rows without duplicate behavior or unrelated
+  exclusion IDs in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T548 [P] [US1] Add failing matcher/recognition tests for both Copilot agent directories,
+  direct-child depth, surface provenance, hosted/runtime-only facts, configured-root rejection, and
+  shared Claude files in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T549 [US1] Add browser acceptance for Copilot custom-agent rows, surface badges, filters,
+  exclusions, diagnostics, and retained Codex/Claude agents in
+  `tests/e2e/copilot-custom-agents-inventory.spec.ts`
+
+### Implementation
+
+- [X] T550 [US1] Reuse the Phase 30-owned `copilot.behavior.vscode.agents`, then add the remaining
+  surface-qualified local-agent facts, `copilot.behavior.vscode.user.agents`,
+  `copilot.behavior.cli.user.agents`, and origin-file-less
+  `copilot.behavior.cloud.organization-agents` before local/Cloud selection and managed/remote
+  exclusion references them in `src/shared/registries/vendor-behaviors.ts`
+- [X] T551 [US1] Add only the root-anchored `copilot.repo.agent` candidate and keep
+  configured/User/hosted locations path-negative without defining or referencing an unrelated
+  exclusion ID in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-20: every Copilot
+  surface documents a root-anchored agents location (VS Code the workspace root, Cloud the
+  repository root, the CLI an upward walk whose shared member is the selected root), so
+  `copilot.repo.agent` is root-anchored and a subdirectory agents directory is a near miss; the
+  contract row was corrected in the same change.)*
+- [X] T552 [US1] Add Copilot custom-agent evidence records and reciprocal affected-contract
+  references, including existing-source backlinks for `copilot.behavior.cloud.organization-agents`,
+  in the owning registry record's `evidence` citations
+- [X] T553 [US1] Implement Copilot agent matching and surface-qualified recognition in
+  `src/server/inspection/rules/copilot.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-23: GitHub documents a custom agent's `name` as an optional display name and
+  deduplicates profiles by the configuration file's own name minus `.md` or `.agent.md`, so the name
+  a custom-agent row is grouped under is the admitting rule's answer rather than one shared reading;
+  the specification, data model, and HTTP contract were corrected in the same change.)*
+- [X] T554 [US1] Integrate Copilot agent classification and one-read shared physical-file assembly
+  in `src/server/inspection/scan.ts`
+- [X] T555 [US1] Extend inventory rows and English Copilot agent, surface, shared-file, and
+  exclusion messages in that kind's row component under `src/app/components/inventory/rows/`
+
+---
+
+## Phase 54: Copilot Custom Agents Detail
+
+**Purpose**: Add complete inert Copilot agent detail — its `mcp-servers` as the agent's own declared content — preserve VS Code/CLI/Cloud context differences, and defer only Hook-family semantics. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Independent Test**: Open malformed Copilot agents and verify body, tools, model, invocation, handoffs, instructions, skills, closed Hook origins, the `mcp-servers` declarations as the agent's own content, exact resolved-value preservation, zero activation/connection, diagnostics, and detail-state cleanup. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: Selecting a Copilot custom agent shows separate surface-aware context without executing handoffs, hooks, tools, or MCP.
+
+### Tests first
+
+- [X] T556 [P] [US2] Add failing Copilot agent tests for VS Code/CLI/Cloud bodies, tools, model,
+  handoffs, instructions, skills, closed Hook origins, `mcp-servers` as the agent's own declared
+  content, and surface selection in `tests/unit/inspection/copilot-metadata.test.ts` *(amended
+  2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that
+  spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers`
+  included.)*
+- [X] T557 [P] [US2] Add failing relationship tests for handoffs, links, skill preload,
+  instructions, runtime-only organization agents, and zero target promotion in
+  `tests/unit/inspection/relationships.test.ts`
+- [X] T558 [P] [US2] Add failing zero-activation tests proving Copilot agent declarations do not
+  invoke tools, handoffs, hooks, MCP, links, or referenced files in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T559 [US2] Add failing Copilot agent context-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts` *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T560 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Copilot
+  custom-agent detail, surface context, the `mcp-servers` declarations as the agent's own content,
+  relationships, diagnostics, zero connection, and detail-state cleanup in
+  `tests/e2e/copilot-custom-agents-detail.spec.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Implementation
+
+- [X] T561 [US2] Add separate Copilot VS Code, CLI, and Cloud agent selection, context, handoff,
+  tool, and relationship strategies in `src/shared/registries/runtime-composition.ts` *(amended
+  2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that
+  spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers`
+  included.)*
+- [X] T562 [US2] Extend Copilot recognition with the agent declarations the file wrote —
+  `mcp-servers` among them as ordinary declared content — inert Hook origins, relationships,
+  diagnostics, and evidence in `src/server/inspection/recognizers/candidate.ts` *(amended
+  2026-08-06: an admission stays a read-authorization record, and what a vendor documents stays in
+  its maintained contract, so no surface projects a condition, applicability, order, runtime state,
+  provenance, or documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T563 [US2] Integrate Copilot agent metadata, exact resolved-value preservation with no
+  synthetic file or connection, relationship-only Hook targets, and parser
+  scratch/transient-semantic disposal while retaining complete authored source in
+  `src/server/inspection/scan.ts` *(amended 2026-08-20: only explicit MCP configuration joins the
+  MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own
+  detail content, an agent's `mcp-servers` included.)*
+- [X] T564 [US2] Extend typed detail and English Copilot agent handoff and surface messages in that
+  kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the
+  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
+  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 55: Unified Custom Agents Inventory
+
+**Purpose**: Consolidate all custom-agent candidates, read shared Claude/Copilot files once — each agent's MCP-spelling declarations staying its own detail content — and preserve Codex carrier inheritance as a relationship only. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Independent Test**: Use an all-vendor agent fixture and verify one physical row/read for shared `.claude/agents/*.md`, separate Claude/Copilot agent and MCP recognitions on the same owner ID, Codex carrier inheritance relationships with no Codex agent-owned MCP recognition, deterministic provenance, no synthetic MCP file or connection, filters, duplicate-name uncertainty, exclusions, injected failures with per-file diagnostics when confined to one file and whole-attempt abort otherwise, and rescan cleanup.
+
+**Visible Checkpoint**: Users can understand the complete custom-agent inventory and its shared Claude/Copilot interpretations, without duplicate files and with no MCP row owned by any agent. *(amended 2026-08-23: rewritten to what the surfaces publish — the relationship-only registry ships no record, so nothing reaches a page to display (FR-009).)* *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Tests first
+
+- [X] T565 [US1] Finalize all-vendor custom-agent fixtures for every supported path, layer,
+  duplicate name, shared Claude/Copilot file, an agent spelling MCP configuration as its own
+  declared content, Codex carrier-inheritance relationship, malformed metadata, secret field,
+  reference, exclusion, and injected thrown/rejected-operation failure case in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T566 [US1] Finalize custom-agent behavior, matchers, Codex relationship-only carrier
+  inheritance, path-negative configured/User/hosted cases without an exclusion ID, and evidence
+  conformance rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T567 [US1] Add complete matcher/recognition-matrix tests for Codex TOML with no agent-owned
+  MCP recognition, Claude recursive Markdown, Copilot directories, shared Claude/Copilot files with
+  agent plus MCP recognitions on one owner ID, traversal uncertainty, and exclusions in
+  `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts`
+- [X] T568 [P] [US1] Add failing integration tests for one-read shared agents, deterministic
+  Claude/Copilot agent/MCP recognition and provenance order, Codex relationship-only inheritance,
+  and isolated file-confined outcomes; prove an injected file-confined failure yields only that
+  file's diagnostic in a partial generation while any other injected failure aborts the attempt
+  without domain catch, item/recognition/derived result/body/generation, retains only the prior
+  commit, and creates zero synthetic files/connections or relationship-target reads in
+  `tests/integration/repository-scan.test.ts`
+- [X] T569 [US1] Add browser acceptance for unified custom-agent inventory, filters, shared
+  Claude/Copilot recognitions with no agent-owned MCP row of any kind, Codex carrier-inheritance
+  relationships, duplicate uncertainty, exclusions, diagnostics, and keyboard use in
+  `tests/e2e/custom-agents-inventory.spec.ts` *(amended 2026-08-20: only explicit MCP configuration
+  joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that
+  kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Implementation
+
+- [X] T570 [US1] Complete deterministic physical-file assembly, Claude/Copilot agent/MCP
+  recognition, Codex relationship-only carrier inheritance, provenance, exclusions, and
+  no-synthetic-file behavior for custom agents in `src/server/inspection/scan.ts`
+- [X] T571 [US1] Extend inventory rows for all custom-agent kinds, shared recognitions, and
+  duplicate-name uncertainty in that kind's row component under `src/app/components/inventory/rows/`
+  *(amended 2026-08-08: an admission stays a read-authorization record no surface reads out, so
+  nothing displays provenance (T1068).)*
+- [X] T572 [US1] Add English unified custom-agent inventory and shared-recognition messages in the
+  Vue components that render them
+
+---
+
+## Phase 56: Custom Agents Comparison
+
+**Purpose**: Design the custom-agent kind’s own comparison surface with literal and typed custom-agent differences.
+
+**Independent Test**: Compare exactly two readable current-generation custom-agent files and verify complete literal source plus aligned context, tools, and declared-value differences — the MCP-spelling keys among them. *(amended 2026-08-23: rewritten to what the surfaces publish — the relationship-only registry ships no record, so nothing reaches a page to display (FR-009).)* *(amended 2026-08-23: this kind's locations are written in two formats, so a diff of two compared files' bytes aligns quoting and delimiters rather than what the files say; the comparison mounts no such diff and instead diffs the two halves each file's own rule splits out — the declared metadata and the instructions — with each file's complete authored source shown whole beside the other's in its own read-only viewer, which is what FR-027 asks of a comparison surface without asserting an alignment the formats do not have.)* *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: Users can compare custom-agent definitions without executing or ranking them.
+
+### Tests first
+
+- [X] T573 [US3] Add failing custom-agent comparison regressions for the canonical serialized
+  declaration documents — the `mcpServers`/`mcp-servers` declarations among them as ordinary
+  declared content — context, tools, and Codex carrier relationships in
+  `tests/unit/app/custom-agent-comparison.test.ts` *(amended 2026-08-19: declared metadata is the
+  file's one parse per kind, compared once per pair with tool recognition compared per tool beside
+  it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-06: an
+  admission stays a read-authorization record, and what a vendor documents stays in its maintained
+  contract, so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-21:
+  the declared metadata compares as one canonical serialized document per side diffed in Monaco,
+  following the skill, instruction, and MCP comparison precedents (research.md § 7).)*
+- [X] T574 [US3] Add browser acceptance for complete literal custom-agent diff including
+  credential/environment-reference differences, the canonical serialized declaration documents, no
+  masking/reveal or environment substitution, and no MCP ownership of any kind beside vendor-correct
+  typed relationships in `tests/e2e/custom-agents-comparison.spec.ts` *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+  *(amended 2026-08-21: the acceptance verifies the two sides' canonical serialized documents diffed
+  in Monaco, the form every kind's declared-metadata comparison takes (research.md § 7).)* *(amended
+  2026-08-23: this kind's locations are written in two formats, so a diff of two compared files'
+  bytes aligns quoting and delimiters rather than what the files say; the comparison mounts no such
+  diff and instead diffs the two halves each file's own rule splits out — the declared metadata and
+  the instructions — with each file's complete authored source shown whole beside the other's in its
+  own read-only viewer, which is what FR-027 asks of a comparison surface without asserting an
+  alignment the formats do not have.)*
+
+### Implementation
+
+- [X] T575 [US3] Extend custom-agent comparison to serialize each side's declared metadata into one
+  canonical document diffed in Monaco — the MCP-spelling keys as ordinary declared entries — keeping
+  Codex relationship-only inheritance distinct in
+  `src/app/components/custom-agent-comparison/RecognitionComparison.vue`, part of the kind’s own
+  comparison surface this task designs and creates following the skill precedent
+  (`src/app/pages/skills/compare/[family].vue`, `src/app/composables/skill-comparison.ts`,
+  `src/app/components/skill-comparison/`), including the entry links that reach it from that kind's
+  inventory row component under `src/app/components/inventory/rows/` and from that kind's detail
+  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: declared metadata
+  is the file's one parse per kind, compared once per pair with tool recognition compared per tool
+  beside it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-15:
+  owned by the kind’s own comparison surface — comparison is kind-specific with no shared module,
+  and this task designs and creates that surface following the skill precedent (spec.md §
+  Clarifications Session 2026-08-14).)* *(amended 2026-08-20: only explicit MCP configuration joins
+  the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own
+  detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-21: the declared metadata
+  compares as one canonical serialized document per side diffed in Monaco, following the skill,
+  instruction, and MCP comparison precedents (research.md § 7).)*
+- [X] T576 [US3] Add English custom-agent comparison messages in the Vue components that render them
+
+---
+
+## Phase 57: Codex Configuration Recognition
+
+**Purpose**: Introduce the file-unit `settings/config` recognition and inventory presentation for the `.codex/config.toml` carrier Phase 23 already admitted, adding no second candidate, behavior record, evidence record, or file read — a second rule over the one candidate is what produces the recognition. *(amended 2026-08-17: this phase creates that recognition — Phase 23 admits the carrier and publishes its contained MCP declarations, and the ordering rule below states it presents no settings/config item yet, so no earlier phase produces the file-unit recognition this phase's rows need.)*
+
+**Independent Test**: Reuse root and descendant carriers with direct and near-miss paths, links, and malformed filenames; verify the same physical file and its one read carry the new `settings/config` recognition beside the existing MCP and fallback identities, that configured instruction fallbacks remain unchanged, and that higher-scope paths and configured targets remain negative without new Repository exclusion IDs.
+
+**Visible Checkpoint**: Users can filter Codex project configuration on the same physical carrier already used for MCP and fallback derivation, while no configured path gains read authority.
+
+### Fixtures and tests first
+
+- [X] T577 [US1] Extend the existing Codex carrier fixtures with general configuration fields, layer
+  variants, near misses, links, malformed files, secrets, inline declarations, and path-negative
+  higher-scope cases in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T578 [US1] Materialize the extended `settings/config` recognition coverage while reusing the
+  already owned `codex.repo.config` candidate, config behaviors, and exact evidence records in
+  `tests/fixtures/conformance/vendor-behaviors.json`, and
+  `tests/fixtures/conformance/inspection-rules.json` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-23: the recognition is
+  `codex.repo.settings`'s — a second rule over one candidate and one read, the arrangement
+  `.claude/settings.json` already has — because a recognition is what a rule produces.)*
+- [X] T579 [P] [US1] Add failing registry and matcher regressions proving `codex.repo.config` and
+  `codex.repo.settings` are the only rules of any vendor that admit `['.codex', 'config.toml']` at
+  the Repository root, that the two share one authored matcher and merge into one candidate read
+  once, that a `.codex/config.toml` below the root stays path-negative, and that higher-scope
+  locations remain path-negative without invented exclusions in
+  `tests/contract/inspection-rules.test.ts` and `tests/unit/inspection/rules.test.ts` *(amended
+  2026-08-23: the recognition is `codex.repo.settings`'s — a second rule over one candidate and one
+  read, the arrangement `.claude/settings.json` already has — because a recognition is what a rule
+  produces.)*
+- [X] T580 [P] [US1] Add failing Codex configuration recognition tests for the extended
+  `settings/config` coverage — layer provenance, trust uncertainty, coexistence with existing MCP
+  recognition/fallback provenance, and absence of premature Hook recognition in
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T581 [US1] Add failing scan tests for deterministic recognition augmentation on the existing
+  Codex carrier, one read, preserved MCP/fallback identities, isolated failures, and zero
+  configured-target reads in `tests/integration/repository-scan.test.ts`
+- [X] T582 [US1] Add browser acceptance for Codex configuration rows, filters, existing MCP/fallback
+  badges, exclusions, diagnostics, and one physical carrier row in
+  `tests/e2e/codex-config-inventory.spec.ts` *(amended 2026-08-08: an admission stays a
+  read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T583 [US1] Reuse the Phase 15-owned Codex project/User configuration behavior statements and
+  add no duplicate behavior ID in `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-23:
+  the recognition is `codex.repo.settings`'s — a second rule over one candidate and one read, the
+  arrangement `.claude/settings.json` already has — because a recognition is what a rule produces.)*
+- [X] T584 [US1] Add `codex.repo.settings` over the matcher the Phase 23-owned `codex.repo.config`
+  candidate already authored — two rules over one candidate and one read — and keep
+  `codex.excluded.user-runtime` deferred to the consent-gated Global phase in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-23: the recognition is
+  `codex.repo.settings`'s — a second rule over one candidate and one read, the arrangement
+  `.claude/settings.json` already has — because a recognition is what a rule produces.)*
+- [X] T585 [US1] Reuse and extend reciprocal presentation coverage for the existing Codex
+  configuration evidence records without creating source IDs in the owning registry record's
+  `evidence` citations *(amended 2026-08-23: the recognition is `codex.repo.settings`'s — a second
+  rule over one candidate and one read, the arrangement `.claude/settings.json` already has —
+  because a recognition is what a rule produces.)*
+- [X] T586 [US1] Add the path-derived `settings/config` recognition for the carrier Phase 23
+  admitted and publish its file-unit row through the session projection and inventory DTO, without
+  parsing configured targets or altering MCP/fallback recognitions, in
+  `src/server/inspection/recognizers/candidate.ts`, `src/server/session/session.ts`, and
+  `src/shared/api-types.ts` *(amended 2026-08-23: the recognition is `codex.repo.settings`'s — a
+  second rule over one candidate and one read, the arrangement `.claude/settings.json` already has —
+  because a recognition is what a rule produces.)*
+- [X] T587 [US1] Integrate deterministic recognition augmentation on the one-read Codex carrier
+  while preserving prior skill, instruction, and MCP results in `src/server/inspection/scan.ts`
+  *(amended 2026-08-23: the recognition is `codex.repo.settings`'s — a second rule over one
+  candidate and one read, the arrangement `.claude/settings.json` already has — because a
+  recognition is what a rule produces.)*
+- [X] T588 [US1] Extend inventory filters, rows, and English Codex configuration messages in
+  `src/app/components/inventory/InventoryFilters.vue`, that kind's row component under
+  `src/app/components/inventory/rows/`, its derivation and counts in
+  `src/app/composables/filters.ts`, and its tab-panel branch and total in
+  `src/app/components/inventory/InventoryList.vue` and `src/app/pages/index.vue`
+
+---
+
+## Phase 58: Codex Configuration Detail
+
+**Purpose**: Give the `settings/config` recognition its own detail: the document its author wrote, served whole, because this kind's row unit is the file. Configured instruction fallbacks and MCP detail are already active and stay declaration-first.
+
+**Independent Test**: Open malformed and secret-bearing project config layers and verify the complete authored document reaches the page with its comments and authored spellings, that the MCP row of the same file still publishes declarations without those bytes, that a document no parser can read still shows its source while the MCP recognition alone carries the failure, and that diagnostics and detail-state cleanup hold without a second read or derivation.
+
+**Visible Checkpoint**: Selecting the `.codex/config.toml` row shows the complete document its author wrote — comments, authored spellings, and section order intact — without reading, resolving, or following any declared target.
+
+### Tests first
+
+- [X] T589 [US2] Add failing tests proving the settings recognition needs no parse of its own: a
+  document TOML cannot read still publishes its row and its complete source, while the MCP
+  recognition of the same file is the one that fails all-or-nothing with its
+  `recognition-parse-failed` diagnostic; require NUL-containing bytes to remain diagnostic-only
+  `binary`, every non-NUL input to decode once as readable `utf-8` or `utf-8-replaced` with retained
+  `U+FFFD` reaching display without partial status by itself, and every decoder/parser
+  throw/rejection to propagate unchanged with no domain catch, classification, retry, result,
+  Diagnostic, or generation in `tests/unit/inspection/recognizers.test.ts` and
+  `tests/integration/repository-scan.test.ts` *(amended 2026-08-23: the kind's row unit is the file,
+  so its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships,
+  and no comparison surface either — Phase 64 is withdrawn.)*
+- [X] T590 [P] [US2] Add failing Codex config tests proving the settings recognition is path-derived
+  and reads nothing, that it coexists with the MCP recognition and the configured fallback
+  instruction recognition of the same file with one provenance each, and that all configured literal
+  fallback basenames stay subject only to vendor/runtime/environment capacity; prove a failure not
+  confined to one file aborts the attempt with no result/generation, retaining only the prior commit
+  and leaving lifecycle handling to the trigger-owning boundary in
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-23: the kind's row unit is the file,
+  so its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T591 [P] [US2] Add failing relationship and safety tests proving fallback names, agent config
+  paths, model-instruction paths, compact-prompt paths, skill paths, hook fields, and MCP fields
+  authorize zero target reads or activation in `tests/unit/inspection/relationships.test.ts` and
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T592 [P] [US2] Add failing Codex configuration strategy and registry-graph coverage proving
+  the settings rule rests on the config-layer behavior alone and is explained by the already-shipped
+  precedence strategy, with no strategy added and Hook composition still deferred, in
+  `tests/contract/runtime-composition.test.ts` *(amended 2026-08-23: the kind's row unit is the
+  file, so its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T593 [P] [US2] Add failing file-detail and absent-reveal-function contracts for complete
+  literal TOML values, strict/stale IDs, diagnostics, and exact metadata in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-23: the kind's row unit is the file, so
+  its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T594 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, the complete authored
+  document with its comments and authored spellings, the MCP row of the same file still publishing
+  declarations without those bytes, diagnostics, and detail-state cleanup in
+  `tests/e2e/codex-config-detail.spec.ts` *(amended 2026-08-08: a detail shows the declarations the
+  file wrote, and what a vendor documents stays in its maintained contract, so no surface projects
+  trust, precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-23: the kind's row
+  unit is the file, so its detail is the document its author wrote and nothing is read out of it
+  (spec.md § Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its
+  own ships.)*
+
+### Implementation
+
+- [X] T595 [US2] Keep the one TOML parsing seam unchanged, because this kind reads nothing out of
+  the document it publishes, in `src/server/inspection/parsers/toml.ts` *(amended 2026-08-23: the
+  kind's row unit is the file, so its detail is the document its author wrote and nothing is read
+  out of it (spec.md § Clarifications 2026-08-23); no extraction, declaration DTO, or detail
+  function of its own ships.)*
+- [X] T596 [US2] Reuse the shipped `codex.config.precedence` strategy, whose documented operations
+  already cover the layer resolution a settings row rests on, and add no strategy in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-23: the kind's row unit is the
+  file, so its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T597 [US2] Add the path-derived Codex settings recognition, which reads nothing out of the
+  document and so carries no extraction, diagnostic, or declaration payload of its own, in
+  `src/server/inspection/rules/codex.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-06: an admission stays a read-authorization record, and what a vendor documents
+  stays in its maintained contract, so no surface projects a condition, applicability, order,
+  runtime state, provenance, or documentation status (FR-009; T091/T1068/T1042).)* *(amended
+  2026-08-23: the kind's row unit is the file, so its detail is the document its author wrote and
+  nothing is read out of it (spec.md § Clarifications 2026-08-23); no extraction, declaration DTO,
+  or detail function of its own ships.)*
+- [X] T598 [US2] Keep the scan unchanged, its per-kind extraction grouping already covering a kind
+  with no extraction, while the one read stays seeded and the derived fallback files and existing
+  MCP recognition are preserved without rederivation or a second read, in
+  `src/server/inspection/scan.ts` *(amended 2026-08-23: the kind's row unit is the file, so its
+  detail is the document its author wrote and nothing is read out of it (spec.md § Clarifications
+  2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T599 [US2] Add that kind's own detail route under `src/app/pages/`, serving the document its
+  author wrote through the shared source viewer, and register its route family with the host's shell
+  fallback in `src/server/host/devframe-app.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-23: the kind's row unit is the file, so its
+  detail is the document its author wrote and nothing is read out of it (spec.md § Clarifications
+  2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T600 [US2] Add English Codex configuration detail and fallback messages in the Vue components
+  that render them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
+  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
+  order, or uncertainty (FR-009, T091).)* *(amended 2026-08-23: the kind's row unit is the file, so
+  its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+
+---
+
+## Phase 59: Claude Settings Inventory
+
+**Purpose**: Add the two exact-launch Claude settings files without inheriting parent or descendant candidates.
+
+**Independent Test**: Inventory only root `.claude/settings.json` and `.claude/settings.local.json` — each its own row, because the row unit is the file — reject nested/parent-like near misses, standalone hook/workflow files, and the targets the documents themselves declare, and preserve the permission-policy rows of the same files and the Codex configuration results.
+
+**Visible Checkpoint**: Users can identify exact-launch Claude settings files and their project/local layers.
+
+### Fixtures and tests first
+
+- [X] T601 [US1] Create Claude settings fixtures for both exact files, parent/descendant near
+  misses, links, malformed JSONC, secrets, contained declarations, workflows, and path-negative
+  User/managed state in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T602 [US1] Materialize only the `claude.repo.settings` Repository candidate with its behavior,
+  evidence, and exact-launch rows in `tests/fixtures/conformance/vendor-behaviors.json`, and
+  `tests/fixtures/conformance/inspection-rules.json` *(amended 2026-08-23: the recognition is
+  `claude.repo.settings`'s — a second rule over the candidate `claude.repo.permissions` already
+  admits, one read and two recognitions — because a recognition is what a rule produces.)*
+- [X] T603 [P] [US1] Add failing matcher tests for exact root `.claude/settings.json` and
+  `.claude/settings.local.json`, no ancestor/descendant matching, and no standalone Claude hook,
+  prompt, workflow, or agent-memory candidate in `tests/unit/inspection/rules.test.ts` *(amended
+  2026-08-23: the recognition is `claude.repo.settings`'s — a second rule over the candidate
+  `claude.repo.permissions` already admits, one read and two recognitions — because a recognition is
+  what a rule produces.)*
+- [X] T604 [P] [US1] Add failing Claude settings recognition tests for tool, `settings/config` kind,
+  project/local layer, exact provenance, and no MCP recognition of any kind — a settings file's
+  inline map is its own declared content — with the recognition derived from the path and reading
+  nothing out of the document, and Hook recognition still absent, in
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-20: only explicit MCP configuration
+  joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that
+  kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-23: the
+  recognition is `claude.repo.settings`'s — a second rule over the candidate
+  `claude.repo.permissions` already admits, one read and two recognitions — because a recognition is
+  what a rule produces, and it reads nothing out of the document: the kind's row unit is the file,
+  so no phase adds a settings parse.)* *(amended 2026-08-26: the Hook recognition this task recorded
+  as absent arrived with Phase 86, over the same two settings files: `claude.repo.hooks.settings`
+  publishes the `hooks` object those documents contain, and the settings recognition still reads
+  nothing out of the document.)*
+- [X] T605 [US1] Add browser acceptance for Claude settings rows, exact layers, exclusions, filters,
+  diagnostics, and retained Codex configuration in `tests/e2e/claude-settings-inventory.spec.ts`
+
+### Implementation
+
+- [X] T606 [US1] Reuse the shipped `claude.behavior.repo.settings.shared`,
+  `claude.behavior.repo.settings.local`, and non-authorizing `claude.behavior.user.settings`
+  statements, adding no behavior ID, in `src/shared/registries/vendor-behaviors.ts` *(amended
+  2026-08-23: the recognition is `claude.repo.settings`'s — a second rule over the candidate
+  `claude.repo.permissions` already admits, one read and two recognitions — because a recognition is
+  what a rule produces.)*
+- [X] T607 [US1] Add `claude.repo.settings` over the matcher the `claude.repo.permissions` candidate
+  already authored — two rules over one candidate and one read — cover unsupported standalone files
+  with path-negative tests, and defer `claude.excluded.user-runtime` to the consent-gated Global
+  phase in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-23: the recognition is
+  `claude.repo.settings`'s — a second rule over the candidate `claude.repo.permissions` already
+  admits, one read and two recognitions — because a recognition is what a rule produces.)*
+- [X] T608 [US1] Add Claude settings evidence records and reciprocal affected-contract references in
+  the owning registry record's `evidence` citations *(amended 2026-08-23: the recognition is
+  `claude.repo.settings`'s — a second rule over the candidate `claude.repo.permissions` already
+  admits, one read and two recognitions — because a recognition is what a rule produces.)*
+- [X] T609 [US1] Compile the exact-launch settings record into the unit that answers no per-kind
+  question and add the path-derived recognition it produces, in
+  `src/server/inspection/rules/claude.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-23: the recognition is `claude.repo.settings`'s — a second rule over the
+  candidate `claude.repo.permissions` already admits, one read and two recognitions — because a
+  recognition is what a rule produces.)*
+- [X] T610 [US1] Integrate Claude settings classification without broadening the Repository boundary
+  or changing Codex results in `src/server/inspection/scan.ts` *(amended 2026-08-23: the recognition
+  is `claude.repo.settings`'s — a second rule over the candidate `claude.repo.permissions` already
+  admits, one read and two recognitions — because a recognition is what a rule produces.)*
+- [X] T611 [US1] Extend inventory rows and English Claude settings, layer, and exclusion messages in
+  that kind's row component under `src/app/components/inventory/rows/`
+
+---
+
+## Phase 60: Claude Settings Detail
+
+**Purpose**: Give the Claude `settings/config` recognition its own detail: the document its author wrote, served whole through the route Phase 58 added, because this kind's row unit is the file. Any inline MCP map stays the settings file's own declared content with no MCP recognition, and Hook-family semantics stay deferred. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Independent Test**: Open malformed and secret-bearing settings and verify the complete authored document reaches the page with its key order intact — any inline MCP map among the keys as the file's own content — that the permission-policy row of the same file still publishes the declared block without the keys around it, that a document strict JSON cannot read still shows its source while the permissions recognition alone carries the failure, and that zero connection, diagnostics, and detail-state cleanup hold. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: Selecting Claude settings shows the complete document its author wrote — any inline MCP map as the file's own declared content — without activating components, connecting to servers, or creating a standalone configuration row. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Tests first
+
+- [X] T612 [US2] Add failing tests proving the settings recognition needs no parse of its own: a
+  document strict JSON cannot read still publishes its row and its complete source, while the
+  permissions recognition of the same file is the one that fails all-or-nothing with its
+  `recognition-parse-failed` diagnostic; require NUL-containing bytes to remain diagnostic-only
+  `binary`, every non-NUL input to decode once as readable `utf-8` or `utf-8-replaced` with retained
+  `U+FFFD` reaching display without partial status by itself, and every decoder/parser
+  throw/rejection to propagate unchanged with no domain catch, classification, retry, result,
+  Diagnostic, or generation in `tests/unit/inspection/recognizers.test.ts` and
+  `tests/integration/repository-scan.test.ts` *(amended 2026-08-23: the kind's row unit is the file,
+  so its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T613 [P] [US2] Add failing Claude settings tests for exact launch-root scope, no
+  parent/descendant matching, both documented layers' recognizing surfaces, and the absence of any
+  projected scope, precedence, or layer, in `tests/unit/inspection/claude-metadata.test.ts`
+  *(amended 2026-08-23: the kind's row unit is the file, so its detail is the document its author
+  wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23); no extraction,
+  declaration DTO, or detail function of its own ships.)*
+- [X] T614 [P] [US2] Add failing zero-activation tests proving settings-selected agents, plugins,
+  hooks, MCP, commands, paths, workflows, and references remain inert and non-following in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T615 [US2] Add failing Claude settings runtime-composition graph coverage with reciprocal
+  contract references, no MCP composition edge of any kind, and only Hook semantics deferred in
+  `tests/contract/runtime-composition.test.ts` *(amended 2026-08-20: only explicit MCP configuration
+  joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that
+  kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-23: the kind's
+  row unit is the file, so its detail is the document its author wrote and nothing is read out of it
+  (spec.md § Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its
+  own ships.)* *(amended 2026-08-26: the Hook composition this task recorded as deferred arrived
+  with Phase 87 as `claude.hooks.additive`, whose edges the same suite now covers; the settings row
+  still has no MCP composition edge of any kind.)*
+- [X] T616 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Claude
+  settings detail — any inline MCP map as its own declared content — zero connection, diagnostics,
+  and detail-state cleanup in `tests/e2e/claude-settings-detail.spec.ts` *(amended 2026-08-08: a
+  detail shows the declarations the file wrote, and what a vendor documents stays in its maintained
+  contract, so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+  *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another
+  kind that spells MCP configuration shows it as that kind's own detail content, an agent's
+  `mcp-servers` included.)* *(amended 2026-08-23: the kind's row unit is the file, so its detail is
+  the document its author wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23);
+  no extraction, declaration DTO, or detail function of its own ships.)*
+
+### Implementation
+
+- [X] T617 [US2] Keep the one strict-JSON parsing seam unchanged, because this kind reads nothing
+  out of the document it publishes, in `src/server/inspection/parsers/json.ts` *(amended 2026-08-23:
+  the kind's row unit is the file, so its detail is the document its author wrote and nothing is
+  read out of it (spec.md § Clarifications 2026-08-23); no extraction, declaration DTO, or detail
+  function of its own ships.)*
+- [X] T618 [US2] Reuse the shipped `claude.settings.precedence` strategy, whose documented
+  operations already cover the scope resolution a settings row rests on, add no strategy, and leave
+  Hook composition deferred in `src/shared/registries/runtime-composition.ts` *(amended 2026-08-20:
+  only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+  *(amended 2026-08-23: the kind's row unit is the file, so its detail is the document its author
+  wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23); no extraction,
+  declaration DTO, or detail function of its own ships.)* *(amended 2026-08-26: Phase 87 added
+  `claude.hooks.additive` to the same registry, consumed by the contained-hook rule over these
+  files; the settings rule itself still adds none and still rests on `claude.settings.precedence`
+  alone.)*
+- [X] T619 [US2] Add the path-derived Claude settings recognition, which reads nothing out of the
+  document and so carries no extraction, diagnostic, or declaration payload of its own, and makes an
+  inline `mcpServers` map no MCP recognition of any kind, in `src/server/inspection/rules/claude.ts`
+  and `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-23: the kind's row unit is the file, so its
+  detail is the document its author wrote and nothing is read out of it (spec.md § Clarifications
+  2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T620 [US2] Keep the scan unchanged, its per-kind extraction grouping already covering a kind
+  with no extraction, while the one read per document stands and the permissions recognition beside
+  it is preserved, in `src/server/inspection/scan.ts` *(amended 2026-08-23: the kind's row unit is
+  the file, so its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or detail function of its own ships.)*
+- [X] T621 [US2] Serve the Claude settings documents through the detail route Phase 58 added under
+  `src/app/pages/`, whose copy already names the whole kind rather than one vendor's word for it
+  *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a vendor documents
+  stays in its maintained contract, so no surface projects trust, precedence, order, or uncertainty
+  (FR-009, T091).)* *(amended 2026-08-23: the kind's row unit is the file, so its detail is the
+  document its author wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23); no
+  extraction, declaration DTO, or detail function of its own ships.)*
+
+---
+
+## Phase 61: Copilot Settings Inventory
+
+**Purpose**: Add the supported Copilot settings files while preserving the explicit exclusion of general `.vscode/settings.json` and configured roots.
+
+**Independent Test**: Inventory root `.github/copilot/settings.json`, `.github/copilot/settings.local.json`, and the two Claude-format files the CLI reads for the documented shared subset — each its own row, and a shared file one row naming both products; reject general `.vscode/settings.json`, nested/configured paths, User state, CLI LSP, and unrelated files, while deferring CLI extension exclusion ownership to Phase 80.
+
+**Visible Checkpoint**: Users can identify supported Copilot settings candidates without seeing excluded VS Code or CLI state.
+
+### Fixtures and tests first
+
+- [X] T622 [US1] Create Copilot settings fixtures for supported GitHub and Claude-compatible files,
+  shared physical files, malformed JSONC, secrets, plugin recommendations, contained hooks,
+  configured-root attempts, `.vscode/settings.json`, `.github/lsp.json`, and path-negative User
+  state in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T623 [US1] Materialize `copilot.repo.settings`, non-authorizing
+  `copilot.behavior.vscode.settings` and `copilot.behavior.cli.lsp`,
+  `copilot.excluded.vscode-settings`, and `copilot.excluded.cli-lsp` with their exact
+  affected-behavior references, evidence, and surface rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`, and
+  `tests/fixtures/conformance/inspection-rules.json` *(amended 2026-08-23: the rule rests on the CLI
+  settings lookup alone — the documented lookup that locates the documents it publishes — because
+  the hook and plugin behaviors these files also participate in are the Hook and Plugin
+  recognitions' own basis and arrive with their phases.)*
+- [X] T624 [P] [US1] Add failing matcher and registry tests for exact supported Copilot settings
+  selectors, `copilot.excluded.vscode-settings` → `copilot.behavior.vscode.settings`,
+  `copilot.excluded.cli-lsp` → `copilot.behavior.cli.lsp`, path-negative nested/User/hosted
+  locations, and no CLI-extension policy before Phase 80 in `tests/unit/inspection/rules.test.ts`
+  and `tests/contract/inspection-rules.test.ts`
+- [X] T625 [P] [US1] Add failing recognition tests for Copilot `settings/config` kind, surface
+  provenance, shared Claude-compatible files, and no premature Hook/Plugin/MCP recognitions in
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T626 [US1] Add browser acceptance for Copilot settings rows, filters, shared-file badges,
+  exclusions, diagnostics, and retained Codex/Claude rows in
+  `tests/e2e/copilot-settings-inventory.spec.ts`
+
+### Implementation
+
+- [X] T627 [US1] Add the surface-qualified Copilot settings lookup `copilot.behavior.cli.settings`
+  plus non-authorizing `copilot.behavior.vscode.settings`, `copilot.behavior.cli.lsp`,
+  `copilot.behavior.vscode.user.settings`, `copilot.behavior.cli.user.settings`, and
+  `copilot.behavior.cli.user.lsp` so settings strategies and exact exclusion references resolve
+  without read authority in `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-23: the
+  rule rests on the CLI settings lookup alone — the documented lookup that locates the documents it
+  publishes — because the hook and plugin behaviors these files also participate in are the Hook and
+  Plugin recognitions' own basis and arrive with their phases.)*
+- [X] T628 [US1] Add `copilot.repo.settings` and own exactly `copilot.excluded.vscode-settings` plus
+  `copilot.excluded.cli-lsp`; keep settings configured roots path-negative, reuse the Phase 19-owned
+  instruction/skill `copilot.excluded.extra-directories` rule, defer CLI extensions to Phase 80, and
+  defer `copilot.excluded.user-runtime` to Phase 98 in `src/shared/registries/inspection-rules.ts`
+  *(amended 2026-08-23: the rule rests on the CLI settings lookup alone — the documented lookup that
+  locates the documents it publishes — because the hook and plugin behaviors these files also
+  participate in are the Hook and Plugin recognitions' own basis and arrive with their phases.)*
+- [X] T629 [US1] Add Copilot settings evidence records and reciprocal affected-contract references
+  in the owning registry record's `evidence` citations *(amended 2026-08-23: the rule rests on the
+  CLI settings lookup alone — the documented lookup that locates the documents it publishes —
+  because the hook and plugin behaviors these files also participate in are the Hook and Plugin
+  recognitions' own basis and arrive with their phases.)*
+- [X] T630 [US1] Implement Copilot settings matching and path-derived surface recognition in
+  `src/server/inspection/rules/copilot.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T631 [US1] Integrate Copilot settings classification and one-read physical-file assembly in
+  `src/server/inspection/scan.ts`
+- [X] T632 [US1] Extend inventory rows and English Copilot settings, surface, shared-file, and
+  exclusion messages in that kind's row component under `src/app/components/inventory/rows/`
+
+---
+
+## Phase 62: Copilot Settings Detail
+
+**Purpose**: Serve the Copilot `settings/config` recognitions through the detail route Phase 58 added: the document its author wrote, because this kind's row unit is the file.
+
+**Independent Test**: Open malformed and literal-credential-bearing settings and verify the complete authored document reaches the page with its key order intact, that a shared Claude-format document is one row naming both products, that no configured root or declared target is read, that no environment reference is resolved, and that detail-state cleanup holds.
+
+**Visible Checkpoint**: Selecting Copilot settings shows the complete document its author wrote, without enabling a plugin, composing a contained hook, or creating an MCP row.
+
+### Tests first
+
+- [X] T633 [P] [US2] Add failing Copilot settings tests for the admitted documents themselves, the
+  compatible Claude settings spellings among them, and no configured-root reads in
+  `tests/unit/inspection/copilot-metadata.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-23: the kind's row unit is the file, so its
+  detail is the document its author wrote and nothing is read out of it (spec.md § Clarifications
+  2026-08-23); no extraction, declaration DTO, or vendor-specific detail surface ships; the shared
+  settings detail route serves the complete document (T589, T642).)*
+- [X] T634 [P] [US2] Add failing exact-display and relationship tests for literal credentials,
+  unresolved environment-reference text, and zero relationship read authority in
+  `tests/unit/inspection/declared-values.test.ts` and `tests/unit/inspection/relationships.test.ts`
+  *(amended 2026-08-23: the kind's row unit is the file, so its detail is the document its author
+  wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23); no extraction,
+  declaration DTO, or vendor-specific detail surface ships; the shared settings detail route serves
+  the complete document (T589, T642).)*
+- [X] T635 [P] [US2] Add failing zero-activation tests proving settings content cannot enable a
+  plugin, invoke a hook, connect to MCP, load a URI, or expand a configured root in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T636 [US2] Add failing Copilot settings runtime-composition graph coverage for VS
+  Code/CLI/Cloud distinctions, Phase 20 instruction re-projection, deferred Plugin/Hook semantics,
+  and the permanent rule that settings are not MCP owners in
+  `tests/contract/runtime-composition.test.ts` *(amended 2026-08-23: the kind's row unit is the
+  file, so its detail is the document its author wrote and nothing is read out of it (spec.md §
+  Clarifications 2026-08-23); no extraction, declaration DTO, or vendor-specific detail surface
+  ships; the shared settings detail route serves the complete document (T589, T642).)*
+- [X] T637 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Copilot
+  settings detail, inert declarations, no settings-owned MCP row, diagnostics, and detail-state
+  cleanup in `tests/e2e/copilot-settings-detail.spec.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-23: the kind's row unit is the file, so its
+  detail is the document its author wrote and nothing is read out of it (spec.md § Clarifications
+  2026-08-23); no extraction, declaration DTO, or vendor-specific detail surface ships; the shared
+  settings detail route serves the complete document (T589, T642).)*
+
+### Implementation
+
+- [X] T638 [US2] Keep the one strict-JSON parsing seam unchanged, because this kind reads nothing
+  out of the documents it publishes, in `src/server/inspection/parsers/json.ts` *(amended
+  2026-08-23: the kind's row unit is the file, so its detail is the document its author wrote and
+  nothing is read out of it (spec.md § Clarifications 2026-08-23); no extraction, declaration DTO,
+  or vendor-specific detail surface ships; the shared settings detail route serves the complete
+  document (T589, T642).)*
+- [X] T639 [US2] Add the two surface-qualified Copilot settings precedence strategies this phase
+  records, and keep the later Plugin and Hook families out of the registry entirely, in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-23: the kind's row unit is the file, so its
+  detail is the document its author wrote and nothing is read out of it (spec.md § Clarifications
+  2026-08-23); no extraction, declaration DTO, or vendor-specific detail surface ships; the shared
+  settings detail route serves the complete document (T589, T642).)*
+- [X] T640 [US2] Add the path-derived Copilot settings recognition, which reads nothing out of the
+  document and so carries no extraction, diagnostic, or declaration payload of its own, and makes an
+  inline `mcpServers` map no MCP recognition of any kind, in
+  `src/server/inspection/rules/copilot.ts` and `src/server/inspection/recognizers/candidate.ts`
+  *(amended 2026-08-06: an admission stays a read-authorization record, and what a vendor documents
+  stays in its maintained contract, so no surface projects a condition, applicability, order,
+  runtime state, provenance, or documentation status (FR-009; T091/T1068/T1042).)* *(amended
+  2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that
+  spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers`
+  included.)* *(amended 2026-08-23: the kind's row unit is the file, so its detail is the document
+  its author wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23); no
+  extraction, declaration DTO, or vendor-specific detail surface ships; the shared settings detail
+  route serves the complete document (T589, T642).)*
+- [X] T641 [US2] Keep the scan unchanged, its per-kind extraction grouping already covering a kind
+  with no extraction, while one read serves a physical file however many products recognize it and
+  permanent MCP non-ownership holds, in `src/server/inspection/scan.ts` *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+  *(amended 2026-08-23: the kind's row unit is the file, so its detail is the document its author
+  wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23); no extraction,
+  declaration DTO, or vendor-specific detail surface ships; the shared settings detail route serves
+  the complete document (T589, T642).)*
+- [X] T642 [US2] Serve the Copilot settings documents through the detail route Phase 58 added under
+  `src/app/pages/`, whose copy already names the whole kind rather than one vendor's word for it
+  *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a vendor documents
+  stays in its maintained contract, so no surface projects trust, precedence, order, or uncertainty
+  (FR-009, T091).)* *(amended 2026-08-23: the kind's row unit is the file, so its detail is the
+  document its author wrote and nothing is read out of it (spec.md § Clarifications 2026-08-23); no
+  extraction, declaration DTO, or vendor-specific detail surface ships; the shared settings detail
+  route serves the complete document (T589, T642).)*
+
+---
+
+## Phase 63: Unified Settings and Configuration Inventory
+
+**Purpose**: Consolidate Codex configuration, Claude settings, and Copilot settings with one-read shared-file recognition; the Codex carrier stays the settings family's only MCP-row source, because only explicit MCP configuration joins the MCP surfaces. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Independent Test**: Use an all-vendor settings fixture and verify one physical row/read for shared `.claude/settings*.json`, separate Claude/Copilot settings recognitions, permanent MCP non-ownership for every settings file, preserved Codex carrier MCP/fallback, deterministic provenance, filters, exclusions, partial continuity for file-confined failures, and rescan cleanup. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: Users can filter the complete settings/configuration inventory and see that no settings document publishes an MCP row of its own, while the existing Codex configuration carrier keeps the MCP rows its own carrier rule reads. *(amended 2026-08-23: the checkpoint named a Claude settings-owned MCP row; an MCP declaration's home is an explicit carrier and nothing else, so `.claude/settings*.json` publishes none and Claude's carrier is `.mcp.json`.)*
+
+### Tests first
+
+- [X] T643 [US1] Finalize all-vendor settings/config fixtures for Codex project layers, Claude
+  exact-launch settings whose inline MCP map stays the file’s own declared content, Copilot variants
+  with MCP non-ownership, shared files, malformed structures, secrets, inert declarations, and
+  excluded configured roots in `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-20:
+  only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T644 [US1] Finalize settings/config behavior, three candidate matchers, existing
+  `copilot.excluded.vscode-settings`/`copilot.excluded.cli-lsp`, path-negative cases, composition,
+  relationships, and evidence rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-23: the rule rests on the
+  CLI settings lookup alone — the documented lookup that locates the documents it publishes —
+  because the hook and plugin behaviors these files also participate in are the Hook and Plugin
+  recognitions' own basis and arrive with their phases.)*
+- [X] T645 [US1] Add complete matcher and recognition-matrix tests for Codex layers with existing
+  MCP/fallback, exact Claude settings whose inline MCP map stays their own declared content,
+  supported Copilot settings with MCP non-ownership, shared files, and explicit exclusions in
+  `tests/unit/inspection/rules.test.ts` and `tests/unit/inspection/recognizers.test.ts` *(amended
+  2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that
+  spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers`
+  included.)*
+- [X] T646 [P] [US1] Add failing integration tests for one-read shared settings, deterministic
+  settings/MCP recognition and provenance order, and isolated file-confined outcomes; prove an
+  injected file-confined failure yields only that file's diagnostic in a partial generation while
+  any other injected failure aborts the attempt without domain catch, item/recognition/derived
+  result/body/generation, retains only the prior commit, and creates no synthetic MCP
+  file/connection or configured-target access in `tests/integration/repository-scan.test.ts`
+- [X] T647 [P] [US1] Add failing client tests for source/tool/kind/path filters, shared recognition
+  badges, and rescan cleanup across settings/configuration rows in
+  `tests/unit/app/inventory.test.ts`
+- [X] T648 [US1] Add browser acceptance for unified settings/config inventory, filters, shared-file
+  recognitions, no MCP badge of any kind, preserved Codex carrier facts, exclusions, diagnostics,
+  and keyboard use in `tests/e2e/settings-config-inventory.spec.ts` *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP
+  configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Implementation
+
+- [X] T649 [US1] Finalize settings/config lookup statements for all three tools without read
+  authority in `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-23: the rule rests on
+  the CLI settings lookup alone — the documented lookup that locates the documents it publishes —
+  because the hook and plugin behaviors these files also participate in are the Hook and Plugin
+  recognitions' own basis and arrive with their phases.)*
+- [X] T650 [US1] Finalize the three settings/config candidate records and existing
+  `copilot.excluded.vscode-settings`/`copilot.excluded.cli-lsp` references without configured-path
+  promotion or new exclusion IDs in `src/shared/registries/inspection-rules.ts` *(amended
+  2026-08-23: the rule rests on the CLI settings lookup alone — the documented lookup that locates
+  the documents it publishes — because the hook and plugin behaviors these files also participate in
+  are the Hook and Plugin recognitions' own basis and arrive with their phases.)*
+- [X] T651 [US1] Finalize settings/config evidence records and reciprocal affected-contract
+  references in the owning registry record's `evidence` citations *(amended 2026-08-23: the rule
+  rests on the CLI settings lookup alone — the documented lookup that locates the documents it
+  publishes — because the hook and plugin behaviors these files also participate in are the Hook and
+  Plugin recognitions' own basis and arrive with their phases.)*
+- [X] T652 [US1] Confirm one-read shared-file assembly, deterministic settings recognition order,
+  exact MCP ownership and non-ownership, and preserved Codex carrier facts through the unified scan
+  coverage, with no change required in `src/server/inspection/scan.ts`
+- [X] T653 [US1] Confirm the unified settings/config filters, rows, and shared recognitions through
+  that kind's row component under `src/app/components/inventory/rows/` and the derivation in
+  `src/app/composables/filters.ts`, which the shared-file case already covers without change
+
+---
+
+## Phase 64: Settings and Configuration Comparison (withdrawn)
+
+**Withdrawn 2026-08-23**: a comparison in this product pairs two copies of one identity — a skill name, a declared server name, the files of one applicability range — and the `settings/config` kind has none: its inventory unit is the file itself, so two settings files are two settings rather than two copies of one, and a pair the model does not express is reported rather than compared (FR-011, spec.md § Clarifications Session 2026-08-14). Nothing is read out of a settings file either, so there is no declared metadata for the serialized-document comparison the other kinds share. The same reasoning withdrew Phase 39 for the rule kind, which is a file-unit kind on both counts too. The phase number is kept so every later phase keeps its own, and T654–T657 are vacant.
+
+---
+
+## Phase 65: Claude Output Styles Inventory
+
+**Purpose**: Add supported Claude output-style files to the inventory.
+
+**Independent Test**: Inventory direct output-style children at documented layers while excluding nested near misses.
+
+**Visible Checkpoint**: Users can filter supported Claude output styles.
+
+### Fixtures and tests first
+
+- [X] T658 [US1] Create Claude output-style fixtures for direct children, nested near misses,
+  duplicate names, malformed metadata, secrets, and selection variants in
+  `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T659 [US1] Materialize output-style rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T660 [US1] Add failing matcher/recognition tests for direct-child output styles, nested
+  exclusions, and documented layer boundaries in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T661 [US1] Add browser acceptance for Claude output-style inventory and exclusions in
+  `tests/e2e/output-styles-inventory.spec.ts`
+
+### Implementation
+
+- [X] T662 [US1] Add Claude output-style lookup statements plus non-authorizing
+  `claude.behavior.user.output-style` before output-style selection references it in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T663 [US1] Add only the `claude.repo.output-style` candidate and keep nested/User/configured
+  locations path-negative without defining exclusion IDs in
+  `src/shared/registries/inspection-rules.ts`
+- [X] T664 [US1] Add output-style evidence records and affected-contract references in the owning
+  registry record's `evidence` citations
+- [X] T665 [US1] Implement Claude output-style matching and recognition in
+  `src/server/inspection/rules/claude.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T666 [US1] Extend output-style inventory rows and semantically equivalent layer/exclusion
+  messages in that kind's row component under `src/app/components/inventory/rows/`
+
+---
+
+## Phase 66: Claude Output Styles Detail
+
+**Purpose**: Add complete literal output-style source detail.
+
+**Independent Test**: Open malformed styles and verify exact resolved-value preservation, inert references, diagnostics, and detail-state cleanup.
+
+**Visible Checkpoint**: Selecting an output style opens complete inert detail without applying the style.
+
+### Tests first
+
+- [X] T667 [P] [US2] Add failing output-style metadata tests for the declarations the file wrote and
+  evidence in `tests/unit/inspection/claude-metadata.test.ts` *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)*
+- [X] T668 [P] [US2] Add failing tests proving output-style Markdown and references remain inert and
+  non-navigating in `tests/integration/security/zero-activation.test.ts`
+- [X] T669 [US2] Add failing output-style runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T670 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal
+  output-style detail in `tests/e2e/output-styles-detail.spec.ts` *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)*
+
+### Implementation
+
+- [X] T671 [US2] Add the output-style selection strategies this phase records in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T672 [US2] Extend Markdown extraction and scan integration for output-style metadata and exact
+  resolved-value preservation in `src/server/inspection/parsers/markdown.ts` and
+  `src/server/inspection/scan.ts` *(amended 2026-08-06: an admission stays a read-authorization
+  record, and what a vendor documents stays in its maintained contract, so no surface projects a
+  condition, applicability, order, runtime state, provenance, or documentation status (FR-009;
+  T091/T1068/T1042).)*
+- [X] T673 [US2] Extend typed output-style detail fields in that kind's own detail route under
+  `src/app/pages/`
+- [X] T674 [US2] Add English output-style detail and surface messages in the Vue components that
+  render them *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a
+  vendor documents stays in its maintained contract, so no surface projects trust, precedence,
+  order, or uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 67: Claude Output Styles Comparison (withdrawn)
+
+**Withdrawn 2026-08-24**: a comparison in this product pairs two copies of one identity inside one Source family (spec.md § Clarifications Session 2026-08-28), and no family can hold two copies of one style name. One tool recognizes the kind. In the Repository family one location is admitted — the selected root's own `.claude/output-styles/` (contracts/vendors/claude-code.md § `claude.repo.output-style`), with the nested project layers path-negative — and in the Global family the one member that publishes the kind is Claude's own home (`claude.global.output-style`): one Source, one directory. In either family the only two-file row is two styles inside one directory contending for one name — which the inventory row already shows side by side with both paths (FR-009), and which the detail opens one file at a time (FR-027). Every other kind's comparison exists because a vendor or a Source boundary forces a parallel copy inside one family; this kind has neither. The phase number is kept so every later phase keeps its own, and T675–T678 stay vacant. *(amended 2026-08-30: the reasoning is restated over the widened Global member — the User styles are read now, but as one Source of one family, which still yields no pair.)*
+
+---
+
+## Phase 68: Codex Marketplaces Inventory (withdrawn)
+
+**Withdrawn 2026-08-24**: a marketplace catalog is the table that resolves a plugin name to the source that plugin comes from, which makes it a carrier of the plugin kind rather than a subject of its own. With the plugin row unit being one declared plugin name (Phase 76), every catalog entry surfaces as its own plugin row naming the entry that resolves it — a `./` local path as much as a `github`, `npm`, `archive`, or `command` source — the way an MCP row names each `(carrier, tool)` declaration that resolves a server name while `.mcp.json` is never a row of its own. Only `name`, `owner`, and `metadata.pluginRoot` stay the catalog's own, and the carrier's own detail publishes those. The catalog is still read, because it seeds the bounded derivation that admits a local plugin manifest (Phase 76). The phase number is kept so every later phase keeps its own, and T679–T688 stay vacant.
+
+---
+
+## Phase 69: Codex Marketplaces Detail (withdrawn)
+
+**Withdrawn 2026-08-24**: a detail surface opens an inventory row, and Phase 68 withdrew the row. Every fact this phase would have shown — each entry's declared source in both the plain-string and object `source.path` forms, its resolved value, and the local relationship a `./` source names — is a fact about the plugin that entry resolves, so the plugin detail publishes it (Phase 77). The phase number is kept so every later phase keeps its own, and T689–T698 stay vacant.
+
+---
+
+## Phase 70: Claude Marketplaces Inventory (withdrawn)
+
+**Withdrawn 2026-08-24**: `.claude-plugin/marketplace.json` is a carrier of the plugin kind for the same reason Phase 68 gives for Codex — it resolves plugin names to their sources and holds nothing else a reader inspects — so its entries surface as Claude plugin rows (Phase 78) rather than as catalog rows. The catalog is still read as the seed of the bounded derivation that admits a local plugin manifest. The phase number is kept so every later phase keeps its own, and T699–T708 stay vacant.
+
+---
+
+## Phase 71: Claude Marketplaces Detail (withdrawn)
+
+**Withdrawn 2026-08-24**: Phase 70 withdrew the row this detail would open, and each entry's source, `ref`/`sha` pin, and local relationship belong to the plugin row that entry resolves (Phase 79). The phase number is kept so every later phase keeps its own, and T709–T718 stay vacant.
+
+---
+
+## Phase 72: Copilot Marketplaces Inventory (withdrawn)
+
+**Withdrawn 2026-08-24**: Copilot's catalog is a carrier of the plugin kind for the reason Phase 68 gives, so its entries surface as Copilot plugin rows (Phase 80) rather than as catalog rows. The phase number is kept so every later phase keeps its own, and T719–T728 stay vacant.
+
+---
+
+## Phase 73: Copilot Marketplaces Detail (withdrawn)
+
+**Withdrawn 2026-08-24**: Phase 72 withdrew the row this detail would open, and what it would have shown belongs to the plugin rows the catalog resolves (Phase 81). The phase number is kept so every later phase keeps its own, and T729–T738 stay vacant.
+
+---
+
+## Phase 74: Unified Marketplaces Inventory (withdrawn)
+
+**Withdrawn 2026-08-24**: a unified inventory joins three vendors' rows of one kind, and Phases 68, 70, and 72 withdrew all three. The join the catalogs needed is the unified plugin inventory (Phase 82), where one plugin name carries every catalog entry that resolves it. The phase number is kept so every later phase keeps its own, and T739–T746 stay vacant.
+
+---
+
+## Phase 75: Marketplaces Comparison (withdrawn)
+
+**Withdrawn 2026-08-24**: a comparison in this product pairs two copies of one identity, and with no marketplace row there is no catalog identity to pair. Two catalogs listing the same plugin name are compared where that name is one row — the plugin comparison (Phase 83). The phase number is kept so every later phase keeps its own, and T747–T750 stay vacant.
+
+---
+
+## Phase 76: Codex Plugins Inventory
+
+**Purpose**: Add the Codex plugin rows — one row per declared plugin name — from every entry of a validated local Codex marketplace catalog, with the plugin root below a `./` source enumerated as the files that row's plugin ships.
+
+**Independent Test**: Inventory one row per plugin name a catalog entry declares, each row listing every catalog that resolves it and the files below the root it named; verify a `git-subdir`/`npm`/absolute/`~`/root-escaping entry as a row that occupies nothing here, containment of the enumerated root, complete deterministic retention subject only to environment capacity, an absent root as no files rather than a failure, no candidate below any root, and one read per physical file. An injected file-confined failure yields its per-file diagnostic; any other injected failure aborts with no item/recognition/derived result/body/generation and retains only the prior commit.
+
+**Visible Checkpoint**: Users can filter authored Codex plugins, including the ones whose declared source is outside the Repository.
+
+### Fixtures and tests first
+
+- [X] T751 [US1] Create Codex plugin-manifest fixtures for the root manifest as a near miss, valid
+  `./` local catalog sources, exact `.codex-plugin/plugin.json` targets, missing and numerous
+  sources, remote/absolute/home/traversal sources, links, component declarations, near misses, and
+  injected thrown/rejected-operation failure case in `tests/fixtures/repositories/build-fixtures.ts`
+  *(amended 2026-08-24: no fixture stands for a manifest candidate. A repository's own
+  `.codex-plugin/plugin.json` is a plugin it publishes rather than one a client loads here, and the
+  same file below a catalog's `./` root is one of that plugin's files, so the fixtures vary what a
+  catalog entry declares — `./` roots present and absent, `git-subdir`, `npm`, absolute, `~`, and
+  root-escaping — and the files each present root ships.)*
+- [X] T752 [US1] Materialize Codex plugin-manifest behavior, static/bounded-derived candidates,
+  path-negative component cases, relationships, and evidence rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T753 [P] [US1] Add failing registry and matcher tests for `codex.repo.marketplace`, one edge,
+  `./` source admission, the plugin root it names, and no component-file candidate in
+  `tests/contract/inspection-rules.test.ts` and `tests/unit/inspection/rules.test.ts` *(amended
+  2026-08-24: no rule admits or derives a manifest. A plugin root is activated rather than
+  discovered, so a repository's own root manifest is a plugin it publishes rather than a
+  customization a client reads there; what a catalog's local entry names is enumerated by the rule
+  that admitted the catalog, and every file under it — the manifest included — is published as one
+  of that plugin's files with no row of its own.)*
+- [X] T754 [US1] Add failing scan tests for complete deterministic static/derived Codex manifest
+  retention subject only to environment capacity, missing-target/no-candidate handling, containment,
+  links, one-read assembly, and no component reads; prove an injected file-confined failure yields
+  only that file's diagnostic in a partial generation while any other injected failure aborts the
+  attempt without domain catch, manifest item/recognition/provenance/derived result/body/generation,
+  retaining only the prior commit in `tests/integration/repository-scan.test.ts` *(amended
+  2026-08-24: what the scan retains for a plugin is the files below the root a catalog entry named,
+  enumerated once per directory after recognition. A root this Source does not hold yields an
+  offering with no files — not a candidate, a diagnostic, or a failed attempt.)*
+- [X] T755 [US1] Add browser acceptance for one Codex row per plugin name, its carrier list, a row
+  whose only carrier is a non-local catalog entry, missing manifests, exclusions, and diagnostics in
+  `tests/e2e/codex-plugins-inventory.spec.ts` *(amended 2026-08-08: an admission stays a
+  read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T756 [US1] Add Codex plugin-manifest behavior and lookup statements without activation
+  authority in `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-25: the plugin
+  behaviors carry `codex-plugin-clients`, not the product's shared local-host surface. Re-reading
+  the plugins page against them establishes every marketplace read, install, cache load, and
+  enablement value as the ChatGPT desktop app's, and the Codex CLI beside it as marketplace
+  management that ends by directing installation back to the desktop app; the IDE extension is named
+  nowhere, so the wider surface claimed a client the page establishes nothing about.)*
+- [X] T757 [US1] Add only the Codex static and bounded-derived plugin-manifest records, leaving
+  component-path exclusion ownership to Phase 77, in `src/shared/registries/inspection-rules.ts`
+  *(amended 2026-08-24: `codex.repo.marketplace` is the only record this phase ships, because
+  nothing derives a manifest candidate.)*
+- [X] T758 [US1] Add Codex plugin-manifest evidence records and reciprocal affected-contract
+  references in the owning registry record's `evidence` citations *(amended 2026-08-25: the plugin
+  behaviors carry `codex-plugin-clients`, not the product's shared local-host surface. Re-reading
+  the plugins page against them establishes every marketplace read, install, cache load, and
+  enablement value as the ChatGPT desktop app's, and the Codex CLI beside it as marketplace
+  management that ends by directing installation back to the desktop app; the IDE extension is named
+  nowhere, so the wider surface claimed a client the page establishes nothing about.)*
+- [X] T759 [US1] Implement exact-root matching and direct one-edge Codex manifest derivation only
+  from validated `./` local marketplace sources to the exact `.codex-plugin/plugin.json` target in
+  `src/server/inspection/rules/codex.ts` *(amended 2026-08-24: the catalog unit answers where each
+  plugin it declares sits — a validated `./` local source is that plugin's root directory, and every
+  other source form names no directory this Source holds — and derives no candidate from it.)*
+  *(amended 2026-08-25: the catalog's reading answers the plugin's own manifest inside that root as
+  well, because which file a client reads as the plugin's declaration of itself is this vendor's
+  contract and no surface can derive it from a path.)*
+- [X] T760 [US1] Implement Codex plugin-manifest recognition with static/seed provenance and no
+  component promotion in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-24: the
+  catalog recognition publishes one declaration per entry, each carrying that entry's own fields and
+  the plugin root it names or nothing at all; no component and no manifest becomes a candidate.)*
+- [X] T761 [US1] Integrate deterministic one-edge Codex manifest admission, one read, and exact
+  raw-path aggregation — the seeds are this vendor's two pinned catalog locations, so the derivation
+  belongs to the configuration-read stage that already precedes the walk, and its targets are
+  ordinary targets of that one walk *(amended 2026-08-24: the ordinary walk admits the catalog, so
+  where each declared plugin sits is known once that candidate is recognized — the Codex catalog
+  unit answers it, and `scan.ts` enumerates the named directories after the walk with no
+  plugin-specific branch and no stage of its own.)*; convert a file-confined read or parse failure
+  into that file's diagnostic, and let any other failure abort the attempt without a manifest
+  item/recognition/provenance/derived result/body/generation, retaining only the prior commit and
+  leaving failure reporting to the trigger-owning outer boundary in `src/server/inspection/scan.ts`
+- [X] T762 [US1] Extend inventory rows — one per declared plugin name, listing every carrier that
+  resolves it — and English Codex plugin static/derived and exclusion messages in that kind's row
+  component under `src/app/components/inventory/rows/`
+
+---
+
+## Phase 77: Codex Plugins Detail
+
+**Purpose**: Add complete literal Codex plugin detail — every carrier that resolves the name, the catalog entry's declared source among them — with authored-state and relationship-only component declarations, and own the single exact non-read exclusion `codex.excluded.plugin-files`.
+
+**Independent Test**: Open malformed and literal-credential-bearing plugins and verify each carrier's own declared content, the catalog entry's source in both the plain-string and object `source.path` forms with its resolved value, a row whose only carrier is a non-local entry, installation/enablement/trust separation, Hook/MCP/app/skill/script/asset component relationships, exact `codex.excluded.plugin-files` handling, upgrade of the Phase 23/24 plugin path-negative context without adding an MCP candidate, exact resolved values, diagnostics, no component opened through its declaration — a file below the plugin root is read as one of the plugin's own files and never on the strength of a value the manifest wrote — and zero activation.
+
+**Visible Checkpoint**: Selecting a Codex plugin shows complete inert authored metadata from every carrier that resolves it, without loading any component.
+
+### Tests first
+
+- [X] T763 [US2] Materialize and add failing registry coverage for the single exact
+  `codex.excluded.plugin-files` record with final affected behaviors
+  `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace`, and the already-owned
+  `codex.behavior.user.plugins`; prove plugin component paths never become candidates and the
+  earlier MCP path-negative case can now cite this exclusion without changing its affected-behavior
+  set in `tests/fixtures/conformance/inspection-rules.json` and
+  `tests/contract/inspection-rules.test.ts`
+- [X] T764 [P] [US2] Add failing Codex plugin tests for authored metadata, local marketplace
+  entries, installation/enablement/trust separation, static/derived provenance, and
+  relationship-only components in `tests/unit/inspection/codex-metadata.test.ts`
+- [X] T765 [P] [US2] Add zero-activation tests proving no plugin component import, skill read, app
+  load, hook execution, MCP connection, script/asset read, install, cache inspection, or remote
+  fetch in `tests/integration/security/zero-activation.test.ts`
+- [X] T766 [US2] Add failing Codex plugin activation/relationship graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T767 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Codex
+  plugin detail, authored state, relationships, diagnostics, and detail-state cleanup in
+  `tests/e2e/codex-plugins-detail.spec.ts` *(amended 2026-08-08: an admission stays a
+  read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T768 [US2] Add the single non-read `codex.excluded.plugin-files` record with final affected
+  references to `codex.behavior.plugin.manifest`, `codex.behavior.repo.marketplace`, and
+  already-owned `codex.behavior.user.plugins`; let the Phase 24 MCP plugin-path diagnostic cite it
+  without an MCP candidate or extra affected behavior, and add no install, cache, or runtime-state
+  exclusion IDs in `src/shared/registries/inspection-rules.ts`
+- [X] T769 [US2] Extend atomic JSON extraction with closed Codex plugin-manifest field IDs, exact
+  component-source resolved values, recognition-atomic failure, and source-value-free diagnostics in
+  `src/server/inspection/parsers/json.ts` *(amended 2026-08-24: the parser stays the format's own
+  seam and gains nothing per vendor. A carrier is published by the keys the file wrote, which is
+  FR-007's rule for every kind and what a closed field catalog would contradict; a local source's
+  resolved value is the derived manifest the row already lists as that plugin's second carrier, so
+  publishing it again would be a fact and something derived from it; and recognition-atomic failure
+  and source-value-free diagnostics are `extraction.ts` and the diagnostic registry's, already.)*
+- [X] T770 [US2] Add Codex plugin authored, installed, enabled, trusted, local, activation, and
+  relationship strategies in `src/shared/registries/runtime-composition.ts`
+- [X] T771 [US2] Implement closed allowlisted Codex plugin-manifest metadata and relationship-only
+  components in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-24:
+  relationship-only means the component values are published as the declarations they are and
+  admitted by nothing — `codex.excluded.plugin-files` is what records that — because no surface in
+  this release publishes a `Relationship`.)*
+- [X] T772 [US2] Integrate atomic manifest parsing, exact resolved-value extraction,
+  relationship-only components, exact `codex.excluded.plugin-files` diagnostics, and parser
+  scratch/transient-semantic disposal while retaining complete authored source in
+  `src/server/inspection/scan.ts` *(amended 2026-08-24: the scan's plugin work is the
+  configuration-read derivation T761 owns; the exclusion produces no diagnostic of its own, because
+  a file it names is never a candidate and a diagnostic belongs to a file the scan read.)*
+- [X] T773 [US2] Extend typed detail and English Codex plugin authored-state and relationship
+  messages in that kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail
+  shows the declarations the file wrote, and what a vendor documents stays in its maintained
+  contract, so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+  *(amended 2026-08-24: the request names the plugin row as well as the carrier, so a catalog
+  answers for one offering and serves that offering's own declaration with its complete source; an
+  offering whose declared source this repository does not hold as a plugin root says so, with the
+  entry's own declared `source` beside it. A plugin is its root, so the row's files are the
+  generation's files below that root and the detail draws the same file tree a skill's does — the
+  route opens any file the plugin ships, which is the surface a reader sees the whole plugin on.)*
+  *(amended 2026-08-25: the detail is two tabs, the arrangement the skill detail uses — what the
+  plugin declares, and the files it ships — and the file being read is a `file` query beside the
+  row's own, so no file of a plugin is referenced through a page of its own. The first tab carries
+  the catalog entry and the plugin's own manifest, which the served declaration names
+  (`manifestPath`): the entry is one file's statement about the plugin, and the manifest is the
+  plugin's own, so the page opens on both exactly as a skill's opens on what its `SKILL.md`
+  declares.)*
+
+---
+
+## Phase 78: Claude Plugins Inventory
+
+**Purpose**: Add the Claude plugin rows — one row per declared plugin name — carried by the `claude.repo.skills-directory-plugin` manifest a placement-loaded plugin is made a plugin by, and by the entries of the repository's own `claude.repo.marketplace` catalog, with the files below either plugin root enumerated as that plugin's own.
+
+**Independent Test**: Inventory one row per plugin name — `<folder>@skills-dir` for a skills-directory plugin and `<plugin>@<marketplace>` for a catalog entry — each listing its carriers and the files below the root it names; verify a catalog entry whose source this repository does not carry as a row that ships nothing here, a plugin root's own optional manifest as one of its files rather than a carrier, no candidate below any root, and no component read through a declaration.
+
+**Visible Checkpoint**: Users can filter Claude plugins, including the ones a catalog names but the Repository does not carry.
+
+### Fixtures and tests first
+
+- [X] T774 [US1] Create Claude plugin-manifest fixtures for exact root, valid local catalog sources,
+  optional absence, numerous sources, ancestor near misses, links, components, forbidden sources,
+  and injected thrown/rejected-operation failure case in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-25: no rule admits a
+  repository's own root as a plugin root, and none derives a manifest from a catalog entry.
+  Re-reading the plugins reference establishes the one placement-based plugin Claude has — a folder
+  under `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as `<folder>@skills-dir` with
+  no marketplace and no install step — so `claude.repo.skills-directory-plugin` admits that manifest
+  as the carrier it is, `claude.repo.marketplace` admits the repository's own catalog, and the files
+  below either plugin root are enumerated as the plugin's own.)*
+- [X] T775 [US1] Reuse the Phase 25-owned Claude plugin behavior and materialize exact
+  static/derived candidates, path-negative component cases, relationships, and evidence rows without
+  a duplicate behavior ID in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T776 [P] [US1] Add failing registry/matcher tests for exact `claude.repo.plugin-manifest`,
+  `claude.derived.local-plugin-manifest`, optional absence, one edge, no ancestor scan, and no
+  component candidate in `tests/contract/inspection-rules.test.ts` and
+  `tests/unit/inspection/rules.test.ts` *(amended 2026-08-25: no rule admits a repository's own root
+  as a plugin root, and none derives a manifest from a catalog entry. Re-reading the plugins
+  reference establishes the one placement-based plugin Claude has — a folder under `.claude/skills/`
+  carrying `.claude-plugin/plugin.json` loads as `<folder>@skills-dir` with no marketplace and no
+  install step — so `claude.repo.skills-directory-plugin` admits that manifest as the carrier it is,
+  `claude.repo.marketplace` admits the repository's own catalog, and the files below either plugin
+  root are enumerated as the plugin's own.)*
+- [X] T777 [US1] Add failing scan tests for complete deterministic static/derived Claude manifest
+  retention subject only to environment capacity, containment, links, one-read assembly, and no
+  component reads; prove an injected file-confined failure yields only that file's diagnostic in a
+  partial generation while any other injected failure aborts the attempt without domain catch,
+  manifest item/recognition/provenance/derived result/body/generation, retaining only the prior
+  commit in `tests/integration/repository-scan.test.ts` *(amended 2026-08-25: no rule admits a
+  repository's own root as a plugin root, and none derives a manifest from a catalog entry.
+  Re-reading the plugins reference establishes the one placement-based plugin Claude has — a folder
+  under `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as `<folder>@skills-dir` with
+  no marketplace and no install step — so `claude.repo.skills-directory-plugin` admits that manifest
+  as the carrier it is, `claude.repo.marketplace` admits the repository's own catalog, and the files
+  below either plugin root are enumerated as the plugin's own.)*
+- [X] T778 [US1] Add browser acceptance for one Claude row per plugin name, its carrier list,
+  optional manifest absence, exclusions, and diagnostics in
+  `tests/e2e/claude-plugins-inventory.spec.ts` *(amended 2026-08-08: an admission stays a
+  read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+  *(amended 2026-08-08: registration and trust are runtime inputs the Inspector does not read, so no
+  per-file account of them renders (FR-009, T091).)*
+
+### Implementation
+
+- [X] T779 [US1] Reuse the Phase 25-owned `claude.behavior.repo.plugin` and
+  `claude.behavior.user.plugins` while adding no duplicate behavior ID for root and
+  local-marketplace plugin lookup in `src/shared/registries/vendor-behaviors.ts`
+- [X] T780 [US1] Add only `claude.repo.plugin-manifest` and `claude.derived.local-plugin-manifest`,
+  leaving component-path exclusion ownership to Phase 79, in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-25: no rule admits a repository's
+  own root as a plugin root, and none derives a manifest from a catalog entry. Re-reading the
+  plugins reference establishes the one placement-based plugin Claude has — a folder under
+  `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as `<folder>@skills-dir` with no
+  marketplace and no install step — so `claude.repo.skills-directory-plugin` admits that manifest as
+  the carrier it is, `claude.repo.marketplace` admits the repository's own catalog, and the files
+  below either plugin root are enumerated as the plugin's own.)*
+- [X] T781 [US1] Add Claude plugin-manifest evidence records and reciprocal affected-contract
+  references in the owning registry record's `evidence` citations
+- [X] T782 [US1] Implement exact-root and direct one-edge local-marketplace Claude manifest
+  derivation in `src/server/inspection/rules/claude.ts` *(amended 2026-08-25: no rule admits a
+  repository's own root as a plugin root, and none derives a manifest from a catalog entry.
+  Re-reading the plugins reference establishes the one placement-based plugin Claude has — a folder
+  under `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as `<folder>@skills-dir` with
+  no marketplace and no install step — so `claude.repo.skills-directory-plugin` admits that manifest
+  as the carrier it is, `claude.repo.marketplace` admits the repository's own catalog, and the files
+  below either plugin root are enumerated as the plugin's own.)*
+- [X] T783 [US1] Implement Claude plugin-manifest recognition with provenance, optional-manifest,
+  trust, and no component promotion in `src/server/inspection/recognizers/candidate.ts` *(amended
+  2026-08-25: no rule admits a repository's own root as a plugin root, and none derives a manifest
+  from a catalog entry. Re-reading the plugins reference establishes the one placement-based plugin
+  Claude has — a folder under `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as
+  `<folder>@skills-dir` with no marketplace and no install step — so
+  `claude.repo.skills-directory-plugin` admits that manifest as the carrier it is,
+  `claude.repo.marketplace` admits the repository's own catalog, and the files below either plugin
+  root are enumerated as the plugin's own.)*
+- [X] T784 [US1] Integrate deterministic Claude manifest admission, one read, exact raw paths, and
+  optional absence; convert a file-confined read or parse failure into that file's diagnostic, and
+  let any other failure abort the attempt without a manifest item/recognition/provenance/derived
+  result/body/generation, retaining only the prior commit and leaving failure reporting to the
+  trigger-owning outer boundary in `src/server/inspection/scan.ts` *(amended 2026-08-25: no rule
+  admits a repository's own root as a plugin root, and none derives a manifest from a catalog entry.
+  Re-reading the plugins reference establishes the one placement-based plugin Claude has — a folder
+  under `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as `<folder>@skills-dir` with
+  no marketplace and no install step — so `claude.repo.skills-directory-plugin` admits that manifest
+  as the carrier it is, `claude.repo.marketplace` admits the repository's own catalog, and the files
+  below either plugin root are enumerated as the plugin's own.)*
+- [X] T785 [US1] Extend inventory rows — one per declared plugin name, listing every carrier that
+  resolves it — and English Claude plugin optional-manifest and exclusion messages in that kind's
+  row component under `src/app/components/inventory/rows/` *(amended 2026-08-08: an admission stays
+  a read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+  *(amended 2026-08-08: registration and trust are runtime inputs the Inspector does not read, so no
+  per-file account of them renders (FR-009, T091).)*
+
+---
+
+## Phase 79: Claude Plugins Detail
+
+**Purpose**: Add complete literal Claude plugin detail across every carrier that resolves the name, with optional authored metadata and relationship-only components, and own the single exact non-read exclusion `claude.excluded.plugin-files`; a manifest carrier's inline MCP map is that carrier's own declared detail content, because only explicit MCP configuration joins the MCP surfaces.
+
+**Independent Test**: Open a skills-directory plugin and a catalog offering and verify each carrier's own content — the manifest served complete as the file it is, the catalog entry served as its declaration without the catalog's bytes — the files below each plugin root read as the plugin's own, a malformed manifest read as the ordinary file it is where it is one of a plugin's files, exact `claude.excluded.plugin-files` handling that upgrades the Phase 25/27 path-negative diagnostic without adding an MCP candidate or affected behavior, literal credentials and environment references exactly as written, zero connection, and no component opened through its declaration. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: Selecting a Claude plugin shows complete inert authored metadata and component relationships from every carrier, without activation.
+
+### Tests first
+
+- [X] T786 [US2] Materialize and add failing registry coverage for the single exact
+  `claude.excluded.plugin-files` record with only `claude.behavior.repo.plugin` and
+  `claude.behavior.repo.marketplace` affected references; prove it upgrades the Phase 25/27 MCP
+  plugin-path diagnostic without adding an MCP candidate or affected behavior, and plugin component
+  paths never become candidates, in `tests/fixtures/conformance/inspection-rules.json` and
+  `tests/contract/inspection-rules.test.ts`
+- [X] T787 [P] [US2] Add failing Claude plugin tests for authored metadata, optional manifest, no
+  MCP recognition of any kind, registration/activation uncertainty, and default/explicit components
+  in `tests/unit/inspection/claude-metadata.test.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T788 [P] [US2] Add zero-activation tests proving no Claude component import,
+  skill/command/agent/style read, hook execution, MCP connection, script/asset load, registration,
+  install, cache inspection, or remote fetch in `tests/integration/security/zero-activation.test.ts`
+- [X] T789 [US2] Add failing Claude plugin activation/relationship graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts` *(amended 2026-08-20: only
+  explicit MCP configuration joins the MCP surfaces, so no MCP owner-adapter binding exists for this
+  coverage to include.)*
+- [X] T790 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Claude
+  plugin detail, authored/optional state — its inline MCP map as the manifest's own declared content
+  — versus relationship-only component paths, zero connection, diagnostics, and detail-state cleanup
+  in `tests/e2e/claude-plugins-detail.spec.ts` *(amended 2026-08-20: only explicit MCP configuration
+  joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that
+  kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Implementation
+
+- [X] T791 [US2] Add the single non-read `claude.excluded.plugin-files` record with only
+  `claude.behavior.repo.plugin` and `claude.behavior.repo.marketplace` affected references, let the
+  Phase 25/27 MCP plugin-path diagnostic cite it without an MCP candidate or extra affected
+  behavior, and add no User, cache, install, or runtime-state exclusion IDs in
+  `src/shared/registries/inspection-rules.ts`
+- [X] T792 [US2] Extend atomic JSON extraction with closed Claude plugin-manifest field IDs, exact
+  default/explicit component-source resolved values, recognition-atomic failure, and
+  source-value-free diagnostics in `src/server/inspection/parsers/json.ts` *(amended 2026-08-25: no
+  rule admits a repository's own root as a plugin root, and none derives a manifest from a catalog
+  entry. Re-reading the plugins reference establishes the one placement-based plugin Claude has — a
+  folder under `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as
+  `<folder>@skills-dir` with no marketplace and no install step — so
+  `claude.repo.skills-directory-plugin` admits that manifest as the carrier it is,
+  `claude.repo.marketplace` admits the repository's own catalog, and the files below either plugin
+  root are enumerated as the plugin's own.)*
+- [X] T793 [US2] Add Claude plugin registration, activation, optional-manifest,
+  component-resolution, and relationship strategies in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T794 [US2] Implement closed allowlisted Claude plugin-manifest metadata, and relationship-only
+  components in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-20: only explicit
+  MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration
+  shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- [X] T795 [US2] Integrate Claude manifest parsing, exact resolved-value extraction with no
+  synthetic file or connection, relationship-only components, the upgraded plugin-path exclusion
+  diagnostic with unchanged MCP candidates, and parser scratch/transient-semantic disposal while
+  retaining complete authored source in `src/server/inspection/scan.ts` *(amended 2026-08-25: no
+  rule admits a repository's own root as a plugin root, and none derives a manifest from a catalog
+  entry. Re-reading the plugins reference establishes the one placement-based plugin Claude has — a
+  folder under `.claude/skills/` carrying `.claude-plugin/plugin.json` loads as
+  `<folder>@skills-dir` with no marketplace and no install step — so
+  `claude.repo.skills-directory-plugin` admits that manifest as the carrier it is,
+  `claude.repo.marketplace` admits the repository's own catalog, and the files below either plugin
+  root are enumerated as the plugin's own.)*
+- [X] T796 [US2] Extend typed detail and English Claude plugin optional-state and component messages
+  in that kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the
+  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
+  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 80: Copilot Plugins Inventory
+
+**Purpose**: Add the Copilot plugin rows — one row per declared plugin name — carried by the entries of the repository's own catalogs at the four documented marketplace locations, with the files below each named root enumerated as that plugin's own, while owning exactly `copilot.excluded.cli-extensions` so an executable project extension never becomes a plugin candidate.
+
+**Independent Test**: Inventory one row per plugin name each catalog entry declares, from `marketplace.json`, `.plugin/marketplace.json`, `.github/plugin/marketplace.json`, and `.claude-plugin/marketplace.json` alike; verify the files below a named root reaching that row with whichever of the four manifest forms the root uses among them, a source this repository does not carry as a row that ships nothing here, containment, exact `copilot.excluded.cli-extensions`, no candidate below any root, and no component opened through a declaration.
+
+**Visible Checkpoint**: Users can filter Copilot plugins, including the ones a catalog names but the Repository does not carry.
+
+### Fixtures and tests first
+
+- [X] T797 [US1] Create Copilot plugin-manifest fixtures for all four root/derived forms, order,
+  numerous sources, shared Claude manifests, missing forms, links, components, CLI extensions,
+  installed/hosted state, forbidden sources, and injected thrown/rejected-operation failure case in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-25: no rule admits a plugin
+  manifest and none derives one. A plugin root is established by installation, by a registered
+  catalog, or by an absolute path in an editor setting — never by a file appearing at a Repository
+  path — so `copilot.repo.marketplace` admits the four documented catalog locations, the files below
+  the root an entry names are enumerated as that plugin's own with whichever of the four manifest
+  forms that root uses among them, and `copilot.excluded.cli-extensions` states that an executable
+  project extension is no plugin manifest.)*
+- [X] T798 [US1] Materialize Copilot plugin behavior, non-authorizing
+  `copilot.behavior.cli.extensions`, static/derived candidates, exact
+  `copilot.excluded.cli-extensions` with its affected-behavior reference, path-negative
+  runtime/component cases, relationships, and evidence rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T799 [US1] Add failing plugin matcher/derivation and registry tests for four root forms,
+  `plugins/foo`/`./plugins/foo`, documented four-target order, direct one-edge derivation over all
+  validated targets subject only to environment capacity, forbidden source forms, shared
+  recognition, `copilot.excluded.cli-extensions` mapping, and no extension-as-plugin candidate;
+  prove every thrown/rejected matcher/derivation operation propagates unchanged with no domain
+  catch, cause classification, retry, program/plan/candidate/manifest/derived output, Diagnostic,
+  item/recognition/result/body/generation, retaining only the prior commit and leaving lifecycle
+  handling to the trigger-owning boundary in `tests/unit/inspection/rules.test.ts`,
+  `tests/integration/repository-scan.test.ts`, and `tests/contract/inspection-rules.test.ts`
+  *(amended 2026-08-25: no rule admits a plugin manifest and none derives one. A plugin root is
+  established by installation, by a registered catalog, or by an absolute path in an editor setting
+  — never by a file appearing at a Repository path — so `copilot.repo.marketplace` admits the four
+  documented catalog locations, the files below the root an entry names are enumerated as that
+  plugin's own with whichever of the four manifest forms that root uses among them, and
+  `copilot.excluded.cli-extensions` states that an executable project extension is no plugin
+  manifest.)* *(amended 2026-08-25: for this vendor a string entry source is a relative path whose
+  `./` is optional, resolved under a declared `metadata.pluginRoot`, because that is what its client
+  resolves; the `owner/repo` shorthand belongs to the marketplace-add command, where the source
+  names the catalog rather than a plugin inside one (T1126).)*
+- [X] T800 [P] [US1] Add failing Copilot recognition tests for manifest-form order, static/derived
+  provenance, surface facts, shared Claude manifest, and no installed/hosted/component candidate in
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-25: no rule admits a plugin manifest
+  and none derives one. A plugin root is established by installation, by a registered catalog, or by
+  an absolute path in an editor setting — never by a file appearing at a Repository path — so
+  `copilot.repo.marketplace` admits the four documented catalog locations, the files below the root
+  an entry names are enumerated as that plugin's own with whichever of the four manifest forms that
+  root uses among them, and `copilot.excluded.cli-extensions` states that an executable project
+  extension is no plugin manifest.)*
+- [X] T801 [US1] Add browser acceptance for one Copilot row per plugin name, its carrier list with
+  each carrier's manifest form, form order, surface badges, exclusions, and diagnostics in
+  `tests/e2e/copilot-plugins-inventory.spec.ts` *(amended 2026-08-08: an admission stays a
+  read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T802 [US1] Add surface-qualified Copilot plugin lookup statements plus non-authorizing
+  `copilot.behavior.cli.extensions` and `copilot.behavior.cli.user.extensions` so plugin strategies
+  and exact extension exclusions resolve without activation or read authority in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T803 [US1] Add the static `copilot.repo.plugin-manifest` and bounded-derived
+  `copilot.derived.local-plugin-manifest` records and own only the exact non-read
+  `copilot.excluded.cli-extensions`; keep installed, hosted, and component paths path-negative in
+  `src/shared/registries/inspection-rules.ts` *(amended 2026-08-25: no rule admits a plugin manifest
+  and none derives one. A plugin root is established by installation, by a registered catalog, or by
+  an absolute path in an editor setting — never by a file appearing at a Repository path — so
+  `copilot.repo.marketplace` admits the four documented catalog locations, the files below the root
+  an entry names are enumerated as that plugin's own with whichever of the four manifest forms that
+  root uses among them, and `copilot.excluded.cli-extensions` states that an executable project
+  extension is no plugin manifest.)*
+- [X] T804 [US1] Add Copilot plugin-manifest evidence records and reciprocal affected-contract
+  references in the owning registry record's `evidence` citations
+- [X] T805 [US1] Implement `copilot.derived.local-plugin-manifest` for documented local forms,
+  four-target order, direct one-edge derivation over all validated targets subject only to
+  environment capacity, containment, and forbidden-source rejection; let every thrown/rejected
+  derivation operation propagate unchanged with no domain catch, cause classification, retry,
+  program/plan/candidate/manifest/derived output, Diagnostic, or generation in
+  `src/server/inspection/rules/copilot.ts` *(amended 2026-08-25: no rule admits a plugin manifest
+  and none derives one. A plugin root is established by installation, by a registered catalog, or by
+  an absolute path in an editor setting — never by a file appearing at a Repository path — so
+  `copilot.repo.marketplace` admits the four documented catalog locations, the files below the root
+  an entry names are enumerated as that plugin's own with whichever of the four manifest forms that
+  root uses among them, and `copilot.excluded.cli-extensions` states that an executable project
+  extension is no plugin manifest.)*
+- [X] T806 [US1] Implement exact-root Copilot manifest matching and ordered static/derived
+  recognition in `src/server/inspection/rules/copilot.ts` and
+  `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-25: no rule admits a plugin
+  manifest and none derives one. A plugin root is established by installation, by a registered
+  catalog, or by an absolute path in an editor setting — never by a file appearing at a Repository
+  path — so `copilot.repo.marketplace` admits the four documented catalog locations, the files below
+  the root an entry names are enumerated as that plugin's own with whichever of the four manifest
+  forms that root uses among them, and `copilot.excluded.cli-extensions` states that an executable
+  project extension is no plugin manifest.)*
+- [X] T807 [US1] Integrate deterministic Copilot manifest admission, one read, exact raw paths, and
+  complete environment-supported success handling; convert a file-confined read or parse failure
+  into that file's diagnostic, and let any other failure abort the attempt without a manifest
+  item/recognition/provenance/derived result/body/generation, retaining only the prior commit and
+  leaving failure reporting to the trigger-owning outer boundary in `src/server/inspection/scan.ts`
+  *(amended 2026-08-25: no rule admits a plugin manifest and none derives one. A plugin root is
+  established by installation, by a registered catalog, or by an absolute path in an editor setting
+  — never by a file appearing at a Repository path — so `copilot.repo.marketplace` admits the four
+  documented catalog locations, the files below the root an entry names are enumerated as that
+  plugin's own with whichever of the four manifest forms that root uses among them, and
+  `copilot.excluded.cli-extensions` states that an executable project extension is no plugin
+  manifest.)*
+- [X] T808 [US1] Extend inventory rows — one per declared plugin name, listing every carrier with
+  its manifest form — and English Copilot plugin form, surface, and exclusion messages in that
+  kind's row component under `src/app/components/inventory/rows/` *(amended 2026-08-08: an admission
+  stays a read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+
+---
+
+## Phase 81: Copilot Plugins Detail
+
+**Purpose**: Add complete literal Copilot plugin detail led by what each carrier declares.
+
+**Independent Test**: Open a catalog offering and verify the entry the link named without the catalog's own bytes, the manifest form the named root actually uses opened as one of the plugin's files, VS Code/CLI/Cloud state separation, relationship-only agents/skills/hooks/MCP/LSP/scripts/assets, regression of `copilot.excluded.cli-extensions` with no extension candidate, literal credentials and environment references exactly as written, diagnostics, and zero component activation.
+
+**Visible Checkpoint**: Selecting a Copilot plugin shows its authored metadata from every carrier without loading components.
+
+### Tests first
+
+- [X] T809 [P] [US2] Add failing Copilot plugin tests for VS Code/CLI/Cloud registration,
+  recommendation, installation, enablement, trust, cross-tool metadata, relationship-only
+  components, and regression that `copilot.excluded.cli-extensions` never produces a plugin
+  candidate in `tests/unit/inspection/copilot-metadata.test.ts`
+- [X] T810 [P] [US2] Add zero-activation tests proving no script import, agent/skill/component read,
+  hook execution, MCP connection, LSP start, asset load, remote fetch, or installed/cache inspection
+  in `tests/integration/security/zero-activation.test.ts`
+- [X] T811 [US2] Add failing Copilot plugin activation/relationship graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T812 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Copilot
+  plugin detail, authored/runtime state, relationships, diagnostics, and detail-state cleanup in
+  `tests/e2e/copilot-plugins-detail.spec.ts`
+
+### Implementation
+
+- [X] T813 [US2] Extend atomic JSON extraction with closed Copilot plugin-manifest field IDs, exact
+  component-source resolved values, recognition-atomic failure, and source-value-free diagnostics in
+  `src/server/inspection/parsers/json.ts` *(amended 2026-08-25: no rule admits a plugin manifest and
+  none derives one. A plugin root is established by installation, by a registered catalog, or by an
+  absolute path in an editor setting — never by a file appearing at a Repository path — so
+  `copilot.repo.marketplace` admits the four documented catalog locations, the files below the root
+  an entry names are enumerated as that plugin's own with whichever of the four manifest forms that
+  root uses among them, and `copilot.excluded.cli-extensions` states that an executable project
+  extension is no plugin manifest.)*
+- [X] T814 [US2] Add separate Copilot VS Code/CLI/Cloud registration, recommendation, installation,
+  enablement, trust, and relationship strategies in `src/shared/registries/runtime-composition.ts`
+- [X] T815 [US2] Implement closed allowlisted Copilot plugin-manifest metadata and relationship-only
+  components in `src/server/inspection/recognizers/candidate.ts`
+- [X] T816 [US2] Integrate Copilot manifest parsing, exact resolved-value extraction,
+  relationship-only components, exclusions, and parser scratch/transient-semantic disposal while
+  retaining complete authored source in `src/server/inspection/scan.ts` *(amended 2026-08-25: no
+  rule admits a plugin manifest and none derives one. A plugin root is established by installation,
+  by a registered catalog, or by an absolute path in an editor setting — never by a file appearing
+  at a Repository path — so `copilot.repo.marketplace` admits the four documented catalog locations,
+  the files below the root an entry names are enumerated as that plugin's own with whichever of the
+  four manifest forms that root uses among them, and `copilot.excluded.cli-extensions` states that
+  an executable project extension is no plugin manifest.)*
+- [X] T817 [US2] Extend typed detail and English Copilot plugin state, component, and surface
+  messages in that kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail
+  shows the declarations the file wrote, and what a vendor documents stays in its maintained
+  contract, so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+---
+
+## Phase 82: Unified Plugins Inventory
+
+**Purpose**: Consolidate plugin rows across the three vendors so one plugin name is one row listing every `(carrier, tool)` that resolves it, and read the shared `.claude-plugin/marketplace.json` once with all three products' recognitions; an MCP-shaped value inside a plugin's own file stays that file's content and joins no MCP row. *(amended 2026-08-25: the shared file is the catalog, not a manifest. `.claude-plugin/marketplace.json` is Codex's legacy-compatible location, where Claude documents a repository's own catalog, and the fourth form Copilot checks, so one file carries three recognitions; no rule admits a plugin manifest, and each product's own catalog locations carry the rest.)*
+
+**Independent Test**: Verify one physical file read once with three plugin recognitions for the shared catalog, one row per declared name listing a carrier per recognizing tool, the files below a named plugin root reaching that row whichever product got there, a source this repository does not carry as a row that ships nothing here, an MCP-shaped value inside a plugin's file joining no MCP row and a bundled skill joining no skill row, the three exclusions, and the tool filter narrowing the consolidated rows. *(amended 2026-08-25: derivations, seed provenance, and synthetic MCP files describe a model no rule implements — see the Purpose amendment.)*
+
+**Visible Checkpoint**: Users can understand every authored plugin interpretation as one row per name, whichever products resolve it, and see every file a plugin ships on that plugin's own page rather than in another kind's inventory.
+
+### Tests first
+
+- [X] T818 [US1] Finalize plugin-manifest fixtures for every root/derived form, shared
+  Claude/Copilot file whose inline MCP map stays the file’s own declared content, missing optional
+  manifest, relationship-only components, exclusions, secrets, malformed content, and injected
+  thrown/rejected-operation failure cases in `tests/fixtures/repositories/build-fixtures.ts`
+  *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another
+  kind that spells MCP configuration shows it as that kind's own detail content, an agent's
+  `mcp-servers` included.)* *(amended 2026-08-25: the shared file is the catalog
+  `.claude-plugin/marketplace.json`, which all three products read, and no rule admits a plugin
+  manifest or derives one; what this task finalizes is the consolidated row — one declared name, a
+  carrier per recognizing tool — and the files below each named root reaching it.)*
+- [X] T819 [US1] Finalize plugin-manifest behavior, matchers, derivations, composition,
+  relationships, exact
+  `codex.excluded.plugin-files`/`claude.excluded.plugin-files`/`copilot.excluded.cli-extensions`,
+  path-negative runtime cases, and evidence conformance rows in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-25: the shared file is the
+  catalog `.claude-plugin/marketplace.json`, which all three products read, and no rule admits a
+  plugin manifest or derives one; what this task finalizes is the consolidated row — one declared
+  name, a carrier per recognizing tool — and the files below each named root reaching it.)*
+- [X] T820 [P] [US1] Add complete matcher/recognition-matrix tests for Codex, Claude, and Copilot
+  static/derived manifests, shared dual plugin recognition, relationship-only components,
+  deterministic form order, and exclusions in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-25: the shared file is the catalog
+  `.claude-plugin/marketplace.json`, which all three products read, and no rule admits a plugin
+  manifest or derives one; what this task finalizes is the consolidated row — one declared name, a
+  carrier per recognizing tool — and the files below each named root reaching it.)*
+- [X] T821 [P] [US1] Add local-manifest integration regressions for complete literal derived
+  metadata, catalog-relative provenance, deterministic target retention subject only to environment
+  capacity, one-read shared files, zero synthetic file/connection, and no component expansion; prove
+  an injected file-confined failure yields only that file's diagnostic in a partial generation while
+  any other injected failure aborts the attempt without domain catch, manifest
+  item/recognition/provenance/derived result/body/generation, retaining only the prior commit in
+  `tests/integration/repository-scan.test.ts` *(amended 2026-08-25: the shared file is the catalog
+  `.claude-plugin/marketplace.json`, which all three products read, and no rule admits a plugin
+  manifest or derives one; what this task finalizes is the consolidated row — one declared name, a
+  carrier per recognizing tool — and the files below each named root reaching it.)*
+- [X] T822 [US1] Add browser acceptance for unified plugin-manifest inventory, filters, plan-driven
+  derivation, shared recognition, the manifest's own inline MCP map versus component paths,
+  exclusions, deterministic Diagnostics versus the ordinary error reported for a throw/rejection,
+  and keyboard use in `tests/e2e/plugins-inventory.spec.ts` *(amended 2026-08-20: only explicit MCP
+  configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows
+  it as that kind's own detail content, an agent's `mcp-servers` included.)* *(amended 2026-08-25:
+  the shared file is the catalog `.claude-plugin/marketplace.json`, which all three products read,
+  and no rule admits a plugin manifest or derives one; what this task finalizes is the consolidated
+  row — one declared name, a carrier per recognizing tool — and the files below each named root
+  reaching it.)*
+
+### Implementation
+
+- [X] T823 [US1] Finalize plugin-manifest lookup statements for all three tools without read
+  authority in `src/shared/registries/vendor-behaviors.ts`
+- [X] T824 [US1] Finalize plugin-manifest static/bounded-derived candidates and only the existing
+  exact `codex.excluded.plugin-files`, `claude.excluded.plugin-files`, and
+  `copilot.excluded.cli-extensions` records in `src/shared/registries/inspection-rules.ts` *(amended
+  2026-08-25: the shared file is the catalog `.claude-plugin/marketplace.json`, which all three
+  products read, and no rule admits a plugin manifest or derives one; what this task finalizes is
+  the consolidated row — one declared name, a carrier per recognizing tool — and the files below
+  each named root reaching it.)*
+- [X] T825 [US1] Finalize plugin-manifest evidence records and reciprocal affected-contract
+  references in the owning registry record's `evidence` citations
+- [X] T826 [US1] Integrate direct one-edge local derivation, one read, deterministic cross-tool
+  assembly, exclusions, zero synthetic files/connections, and no component expansion in
+  `src/server/inspection/scan.ts` *(amended 2026-08-25: the shared file is the catalog
+  `.claude-plugin/marketplace.json`, which all three products read, and no rule admits a plugin
+  manifest or derives one; what this task finalizes is the consolidated row — one declared name, a
+  carrier per recognizing tool — and the files below each named root reaching it.)*
+- [X] T827 [US1] Extend inventory kind filters and summaries for plugins, counted one row per
+  declared name, in `src/app/components/inventory/InventoryFilters.vue` and that kind's row
+  component under `src/app/components/inventory/rows/`
+- [X] T828 [US1] Add English unified plugin-manifest, derivation, shared-recognition, and exclusion
+  messages in the Vue components that render them
+
+---
+
+## Phase 83: Plugins Comparison
+
+**Purpose**: Design the plugin kind’s own comparison surface, pairing two copies of one plugin name with literal and typed differences.
+
+**Independent Test**: Compare exactly two readable current-generation copies of one plugin name and verify complete literal source plus aligned authored metadata — the inline MCP map among the declared values — and component relationships without activation or connection.
+
+**Visible Checkpoint**: Users can compare two copies of one plugin name without loading or executing components.
+
+### Tests first
+
+- [X] T829 [US3] Add failing plugin-manifest comparison regressions for the canonical serialized
+  declaration documents, form, registration, installation, enablement, trust, relationships, and
+  uncertainty in `tests/unit/app/plugin-manifest-comparison.test.ts` *(amended 2026-08-19: declared
+  metadata is the file's one parse per kind, compared once per pair with tool recognition compared
+  per tool beside it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended
+  2026-08-08: an admission stays a read-authorization record no surface reads out, so nothing
+  displays provenance (T1068).)* *(amended 2026-08-21: the declared metadata compares as one
+  canonical serialized document per side diffed in Monaco, following the skill, instruction, and MCP
+  comparison precedents (research.md § 7).)*
+- [X] T830 [US3] Add browser acceptance for complete literal plugin-manifest diff including
+  credential/environment-reference differences, the canonical serialized declaration documents, no
+  masking/reveal or environment substitution, typed state/components/MCP, accessibility, fallback,
+  and cleanup in `tests/e2e/plugins-comparison.spec.ts` *(amended 2026-08-21: the acceptance
+  verifies the two sides' canonical serialized documents diffed in Monaco, the form every kind's
+  declared-metadata comparison takes (research.md § 7).)* *(amended 2026-08-25: the surface compares
+  the plugin's files as well as its declarations — two copies of one plugin are two directories, so
+  the files panel pairs them by the name they share inside each root and diffs the two copies, and a
+  name only one copy ships is the present side's complete content against the other's stated
+  absence, the existence difference being part of the comparison (FR-011).)*
+
+### Implementation
+
+- [X] T831 [US3] Extend plugin comparison to serialize each side's declared metadata into one
+  canonical document diffed in Monaco, keeping runtime state, and component relationships separate
+  in `src/app/components/plugin-comparison/RecognitionComparison.vue`, part of the kind’s own
+  comparison surface this task designs and creates following the skill precedent
+  (`src/app/pages/skills/compare/[family].vue`, `src/app/composables/skill-comparison.ts`,
+  `src/app/components/skill-comparison/`), including the entry links that reach it from that kind's
+  inventory row component under `src/app/components/inventory/rows/` and from that kind's detail
+  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: declared metadata
+  is the file's one parse per kind, compared once per pair with tool recognition compared per tool
+  beside it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-15:
+  owned by the kind’s own comparison surface — comparison is kind-specific with no shared module,
+  and this task designs and creates that surface following the skill precedent (spec.md §
+  Clarifications Session 2026-08-14).)* *(amended 2026-08-21: the declared metadata compares as one
+  canonical serialized document per side diffed in Monaco, following the skill, instruction, and MCP
+  comparison precedents (research.md § 7).)* *(amended 2026-08-25: the surface compares the plugin's
+  files as well as its declarations — two copies of one plugin are two directories, so the files
+  panel pairs them by the name they share inside each root and diffs the two copies, and a name only
+  one copy ships is the present side's complete content against the other's stated absence, the
+  existence difference being part of the comparison (FR-011).)*
+- [X] T832 [US3] Add English plugin-manifest comparison messages in the Vue components that render
+  them
+
+---
+
+## Phase 84: Codex Standalone Hook Files Inventory
+
+**Purpose**: Add only the standalone Codex `['.codex', 'hooks.json']` physical candidate at the Repository root. *(amended 2026-08-17: root-anchored, matching the vendor contract's rule row — a nested `.codex` layer belongs to a runtime working directory this tool never selects, the same reason nested `AGENTS.md` is a permanent near miss.)*
+
+**Independent Test**: Inventory the root `.codex/hooks.json`, reject a descendant one, near misses, links, nested alternate names, User/managed hooks, plugin component targets, and inline config declarations as separate files.
+
+**Visible Checkpoint**: Users can filter standalone Codex hook files without any command execution.
+
+### Fixtures and tests first
+
+- [X] T833 [US1] Create Codex standalone-hook fixtures for project layers, valid
+  `.codex/hooks.json`, near misses, links, inline config declarations, plugin targets, malformed
+  commands, secrets, and User/managed exclusions in `tests/fixtures/repositories/build-fixtures.ts`
+  *(amended 2026-08-25: a linked carrier is not expressible for this kind — a layer has exactly one
+  `.codex/hooks.json`, so a symbolic link at that path cannot stand beside the real file the tree
+  needs, and transparent link reading stays covered where a kind admits many files. The near misses
+  gained the plugin's own bundled `hooks/hooks.json` and the managed `requirements.toml` that can
+  declare hooks inline, which is what "plugin targets" and "managed exclusions" are here.)*
+- [X] T834 [US1] Materialize Codex standalone-hook behavior, matcher, existing
+  `codex.excluded.plugin-files` reference, path-negative User/managed cases, composition,
+  relationships, and evidence rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T835 [P] [US1] Add failing matcher tests for Codex `['.codex', 'hooks.json']` at the
+  Repository root, a descendant one staying path-negative, exact filename, near misses, and no
+  inline/plugin/User target candidate in `tests/unit/inspection/rules.test.ts`
+- [X] T836 [P] [US1] Add failing recognition tests for standalone Codex Hook kind, provenance, trust
+  uncertainty, and no contained-config duplication in `tests/unit/inspection/recognizers.test.ts`
+- [X] T837 [US1] Add browser acceptance for standalone Codex hook rows, filters, exclusions,
+  diagnostics, and no executable controls in `tests/e2e/codex-hooks-inventory.spec.ts` *(amended
+  2026-08-08: an admission stays a read-authorization record no surface reads out, so nothing
+  displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T838 [US1] Reuse the Phase 23-owned `codex.behavior.repo.hooks`, then add
+  `codex.behavior.user.hooks` before additive hook composition references it in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T839 [US1] Add only the descendant standalone-hook candidate `codex.repo.hooks`, reference
+  existing `codex.excluded.plugin-files`, and keep User/managed locations path-negative without
+  defining new exclusion IDs in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-25:
+  two rules, not one. The standalone carrier is `codex.repo.hooks`, and the inline `[hooks]` table
+  of the same layer's `config.toml` is `codex.repo.hooks.inline` over that carrier's own authored
+  matcher: the vendor contract gives the single admitted config carrier separate `MCP`,
+  `settings/config`, and contained `hook` recognitions, and a recognition is what a rule produces.
+  Both are root-anchored, and no exclusion ID was added.)*
+- [X] T840 [US1] Add Codex hook evidence records and reciprocal affected-contract references in the
+  owning registry record's `evidence` citations
+- [X] T841 [US1] Implement Codex root `.codex/hooks.json` matching and path-derived recognition,
+  leaving a descendant one path-negative, in `src/server/inspection/rules/codex.ts` and
+  `src/server/inspection/recognizers/candidate.ts`
+- [X] T842 [US1] Extend hook inventory filters and standalone Codex summaries in
+  `src/app/components/inventory/InventoryFilters.vue` and that kind's row component under
+  `src/app/components/inventory/rows/` *(amended 2026-08-25: `InventoryFilters.vue` needed no edit —
+  its three filters are kind-agnostic, and a kind reaches the tabs through `availableKinds` — so the
+  kind's arrival is the row component, the filter view's own row list, and the list that renders
+  it.)*
+- [X] T843 [US1] Add English Codex standalone-hook inventory and exclusion messages in the Vue
+  components that render them
+
+---
+
+## Phase 85: Codex Hook Detail
+
+**Purpose**: Add complete literal Codex hook detail, attach inline `[hooks]` recognition to existing `.codex/config.toml` files, and retain same-layer file plus inline declarations.
+
+**Independent Test**: Open standalone and inline Codex hooks and verify same-layer file-plus-inline retention, exact resolved-value preservation, diagnostics, and zero command, handler, process, URI, or referenced-target execution.
+
+**Visible Checkpoint**: Selecting a Codex Hook recognition shows its declarations without running them.
+
+### Tests first
+
+- [X] T844 [P] [US2] Add failing Codex hook tests for retaining same-layer file and inline
+  declarations together plus the required warning in `tests/unit/inspection/codex-metadata.test.ts`
+- [X] T845 [US1] Add failing recognition tests proving inline Codex hooks attach to the existing
+  `.codex/config.toml` physical file, create no synthetic file, and retain separate provenance from
+  standalone hooks in `tests/unit/inspection/recognizers.test.ts`
+- [X] T846 [P] [US2] Add zero-activation tests proving Codex hook inspection causes no command,
+  process, import, evaluation, mutation, URI load, referenced-hook read, or handler invocation in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T847 [P] [US2] Add failing Codex hook-detail API tests for complete literal commands, typed
+  events, additive composition, warnings, diagnostics, and stale IDs in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T848 [US2] Add failing Codex hook runtime-composition graph coverage with reciprocal contract
+  references in `tests/contract/runtime-composition.test.ts`
+- [X] T849 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, standalone and inline
+  Codex hook detail, diagnostics, shared config navigation, and zero executable rendering in
+  `tests/e2e/codex-hooks-detail.spec.ts` *(amended 2026-08-08: a detail shows the declarations the
+  file wrote, and what a vendor documents stays in its maintained contract, so no surface projects
+  trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T850 [US2] Add Codex additive matching and same-layer file-plus-inline warning strategies in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T851 [US2] Implement Codex inline recognition, same-layer file-plus-inline retention,
+  provenance, and warning metadata in `src/server/inspection/recognizers/candidate.ts`
+- [X] T852 [US2] Extend JSON extraction with closed standalone Codex Hook field IDs, exact resolved
+  values, recognition-atomic failure, and source-value-free diagnostics in
+  `src/server/inspection/parsers/json.ts` *(amended 2026-08-25: no closed field IDs and no parser
+  change. A declaration is published by the keys its file wrote, because an authored key set is not
+  closed (FR-007), and the JSON parsing seam already renders a document's entries; what the phase
+  adds is the vendor's own reading of which entries are events, in
+  `src/server/inspection/rules/hooks/`.)*
+- [X] T853 [US2] Extend TOML extraction with closed inline Codex Hook field IDs, exact resolved
+  values, recognition-atomic failure, and source-value-free diagnostics in
+  `src/server/inspection/parsers/toml.ts` *(amended 2026-08-25: no closed field IDs and no parser
+  change, for the reason T852 records; the inline reading is `ParsedTomlDocument`'s entries read by
+  the same shared projection.)*
+- [X] T854 [US2] Integrate Codex hook exact resolved-value preservation, additive composition,
+  warnings, and non-following references in `src/server/inspection/scan.ts` *(amended 2026-08-06: an
+  admission stays a read-authorization record, and what a vendor documents stays in its maintained
+  contract, so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-25: `scan.ts` needed no edit.
+  The reading is the admitting rule's, the recognizer's extraction boundary turns a parse failure
+  into the recognition's `failed` state, and the rows are the session projection's — the scan
+  composes them without knowing the kind.)*
+- [X] T855 [US2] Extend typed Codex hook detail for events, commands, and scopes in that kind's own
+  detail route under `src/app/pages/` *(amended 2026-08-08: an admission stays a read-authorization
+  record no surface reads out, so nothing displays provenance (T1068).)* *(amended 2026-08-08: a
+  detail shows the declarations the file wrote, and what a vendor documents stays in its maintained
+  contract, so no surface projects trust, precedence, order, or uncertainty (FR-009, T091).)*
+  *(amended 2026-08-25: the route publishes the events and the groups their author wrote, and no
+  scope: which layers are active, and whether a hook was reviewed or trusted, are runtime inputs
+  this product never observes (FR-009).)*
+- [X] T856 [US2] Add English Codex hook detail messages in the Vue components that render them
+  *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a vendor documents
+  stays in its maintained contract, so no surface projects trust, precedence, order, or uncertainty
+  (FR-009, T091).)*
+
+---
+
+## Phase 86: Claude Contained Hook Declarations
+
+**Purpose**: Attach Claude Hook recognitions only to already admitted settings, skill, agent, plugin-manifest, or marketplace physical files containing supported declarations.
+
+**Independent Test**: Inspect accepted settings, skill, agent, plugin-manifest, and marketplace owners with and without hook fields, plugin hook-path relationships, unreferenced `.claude/hooks/**` scripts, and fabricated `.claude/hooks.json`; verify no standalone Claude candidate or synthetic file, one-read attachment, exact owner provenance, and path-negative unsupported files.
+
+**Visible Checkpoint**: Users can filter Claude contained Hook recognitions on their owning files without seeing invented hook files.
+
+### Fixtures and tests first
+
+- [X] T857 [US1] Create Claude contained-hook fixtures in accepted settings, skills, agents, plugin
+  manifests, and marketplaces plus absent fields, unreferenced scripts, fabricated standalone files,
+  plugin hook paths, malformed declarations, secrets, and near misses in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-26: the fixture keeps every
+  documented owner's declarations — a skill's and a subagent's frontmatter, a plugin manifest's
+  inline configuration, a catalog entry's — as the negative half of the case: they are authored in
+  the tree and reach no hook row. A plugin's own bundled `hooks/hooks.json` is read as one of that
+  plugin's files rather than being a near miss, which is what the census does with a plugin root.)*
+- [X] T858 [US1] Materialize Claude contained-hook behavior, relationships, existing
+  `claude.excluded.plugin-files` references, path-negative standalone/script/User cases, evidence,
+  and no-standalone rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T859 [P] [US1] Add failing recognition tests for the contained Claude hook declarations of the
+  two root settings documents, declaration provenance, no synthetic files, and no `.claude/hooks/**`
+  or standalone inference in `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-26: of
+  the five documented owners only the root settings documents publish hook rows. A skill's, a
+  subagent's, a plugin manifest's, and a catalog entry's `hooks` are part of what that customization
+  is, and that customization's own row already publishes the keys its file wrote — so a hook row for
+  one would publish a single fact twice, on a page whose subject is not that customization.
+  `contracts/vendors/claude-code.md` and `data-model.md` were corrected in both languages in the
+  same change.)*
+- [X] T860 [P] [US1] Add failing scan tests for one-read owner files, deterministic Hook recognition
+  attachment, relationship-only plugin hook paths, isolated malformed declarations, and zero
+  referenced-hook reads in `tests/integration/repository-scan.test.ts`
+- [X] T861 [US1] Add browser acceptance for contained Claude Hook rows, owner-file navigation,
+  filters, exclusions, diagnostics, and no standalone rows in
+  `tests/e2e/claude-hooks-inventory.spec.ts`
+
+### Implementation
+
+- [X] T862 [US1] Add Claude contained-hook lookup statements without standalone read authority in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T863 [US1] Add relationship-only plugin hook-path records, reference existing
+  `claude.excluded.plugin-files`, and keep standalone/script/User locations path-negative without
+  defining new exclusion IDs in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-26:
+  one rule, `claude.repo.hooks.settings`, over the two root settings files' own authored matcher. A
+  recognition is what a rule produces, so a contained declaration needs a rule of its own; the
+  owners whose declarations belong to another customization get none.)*
+- [X] T864 [US1] Add Claude hook evidence records and reciprocal affected-contract references in the
+  owning registry record's `evidence` citations
+- [X] T865 [US1] Implement Claude standalone-hook rejection and contained-declaration classification
+  in `src/server/inspection/rules/claude.ts` *(amended 2026-08-26: rejecting a standalone
+  `.claude/hooks.json` needs no code — no rule names that location, so the walk never reaches it.
+  What `claude.ts` gained is the compilation of the one contained-hook record into the unit that
+  reads a settings document's `hooks` object.)*
+- [X] T866 [US1] Attach Claude Hook recognitions to the existing root settings documents without
+  creating candidates in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-26:
+  `scan.ts` needed no edit. Attachment is the walk's ordinary merge of two plans over one path, the
+  reading is the admitting rule's, and the rows are the session projection's.)*
+- [X] T867 [US1] Extend Hook inventory rows and English Claude contained/owner/exclusion messages in
+  that kind's row component under `src/app/components/inventory/rows/` *(amended 2026-08-26: the row
+  component needed no Claude-specific message: a contained declaration states its form through the
+  shared `HookCarrierForm` caption, which the Codex phase added, and the owner is named by its own
+  path.)*
+
+---
+
+## Phase 87: Claude Hook Detail
+
+**Purpose**: Add complete literal Claude Hook detail with complete additional context.
+
+**Independent Test**: Open malformed contained declarations across all owner kinds and verify event fields, retention of every additional context, exact resolved-value preservation, diagnostics, and zero execution or referenced reads.
+
+**Visible Checkpoint**: Selecting a Claude Hook recognition shows its declarations without running them.
+
+### Tests first
+
+- [X] T868 [P] [US2] Add failing Claude hook tests for the retention of every declared handler as
+  authored, the restrictive-decision statement, and the settings owner kind in
+  `tests/unit/inspection/claude-metadata.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T869 [P] [US2] Add zero-activation tests proving Claude hook inspection causes no command,
+  process, import, evaluation, mutation, URI load, plugin hook read, or handler invocation in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T870 [P] [US2] Add failing Claude hook-detail API tests for complete literal commands, events,
+  owner provenance, composition, diagnostics, and stale IDs in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T871 [US2] Add failing Claude hook runtime-composition graph coverage with reciprocal contract
+  references in `tests/contract/runtime-composition.test.ts`
+- [X] T872 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, complete literal Claude
+  Hook detail, diagnostics, and zero executable rendering in `tests/e2e/claude-hooks-detail.spec.ts`
+  *(amended 2026-08-08: an admission stays a read-authorization record no surface reads out, so
+  nothing displays provenance (T1068).)*
+
+### Implementation
+
+- [X] T873 [US2] Add the Claude hook composition strategy — active-source filtering, the additive
+  merge across settings levels, and the restrictive decision — with its event and activation
+  conditions in `src/shared/registries/runtime-composition.ts` *(amended 2026-08-26:
+  `claude.hooks.additive` records `filter`, `append`, and `select-first` alone. The pages establish
+  that hook entries merge across settings levels, that trust, a managed-hooks-only policy,
+  `disableAllHooks`, and plugin enablement decide which sources are active, and that an explicit
+  deny returned by a hook takes precedence; they establish no deduplication of identical commands
+  and no retention rule for additional context, so neither is recorded.
+  `contracts/runtime-composition.md` was corrected in both languages in the same change.)*
+- [X] T874 [US2] Implement Claude contained-hook metadata publishing every declared handler exactly
+  as the file wrote it in `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-26: no
+  deduplication, ordering, or owner provenance is computed. Two handlers naming one command are two
+  handlers the file wrote, an admission is a read-authorization record no surface reads out (T1068),
+  and what a client does with either is its own composition (FR-009).)*
+- [X] T875 [US2] Extend JSONC, YAML, and Markdown extraction with closed Claude Hook field IDs,
+  exact owner-source resolved values, recognition-atomic failure, and source-value-free diagnostics
+  in `src/server/inspection/parsers/json.ts`, `src/server/inspection/parsers/yaml.ts`, and
+  `src/server/inspection/parsers/markdown.ts` *(amended 2026-08-26: no closed field IDs and no
+  parser change. A declaration is published by the keys its file wrote, because an authored key set
+  is not closed (FR-007), and the settings owner is read through the JSON parsing seam; YAML and
+  Markdown extraction are untouched, because a frontmatter `hooks` block belongs to the skill or
+  subagent that wrote it.)*
+- [X] T876 [US2] Integrate Claude hook exact resolved-value preservation, composition, diagnostics,
+  and non-following references in `src/server/inspection/scan.ts` *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-26: `scan.ts` needed no edit,
+  for the reason T866 records.)*
+- [X] T877 [US2] Extend typed detail and English Claude hook owner messages in that kind's own
+  detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the declarations the file
+  wrote, and what a vendor documents stays in its maintained contract, so no surface projects trust,
+  precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-26: the detail route needed
+  no Claude-specific typing: a contained carrier's response is the shape the Codex phase shipped,
+  and the owner is named by its path.)*
+
+---
+
+## Phase 88: Copilot Standalone Hook Files Inventory
+
+**Purpose**: Add only root-direct-child Copilot `.github/hooks/*.json` physical candidates.
+
+**Independent Test**: Inventory root hook files, reject nested files, User hooks, settings/agent/plugin declarations as separate files, hosted state, links, executable scripts, and near misses.
+
+**Visible Checkpoint**: Users can filter standalone Copilot hook files.
+
+### Fixtures and tests first
+
+- [X] T878 [US1] Create Copilot standalone-hook fixtures for root direct children, nested near
+  misses, malformed JSON, malformed commands, secrets, links, User hooks, hosted state,
+  settings/agent/plugin declarations, and scripts in `tests/fixtures/repositories/build-fixtures.ts`
+- [X] T879 [US1] Materialize Copilot standalone-hook behavior, candidate, path-negative
+  User/hosted/script cases, relationship-only plugin paths, composition, and evidence rows without
+  defining Hook-specific exclusion IDs in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T880 [P] [US1] Add failing matcher/recognition tests for root `.github/hooks/*.json`,
+  direct-child depth, surface provenance, nested/User/hosted/script rejection, and no
+  contained-declaration duplication in `tests/unit/inspection/rules.test.ts` and
+  `tests/unit/inspection/recognizers.test.ts`
+- [X] T881 [US1] Add browser acceptance for standalone Copilot hook rows, surface badges, filters,
+  exclusions, diagnostics, and no executable controls in `tests/e2e/copilot-hooks-inventory.spec.ts`
+
+### Implementation
+
+- [X] T882 [US1] Add surface-qualified Copilot hook lookup statements plus non-authorizing
+  `copilot.behavior.vscode.user.hooks` and `copilot.behavior.cli.user.hooks` before hook composition
+  references them in `src/shared/registries/vendor-behaviors.ts`
+- [X] T883 [US1] Add only the root direct-child `copilot.repo.hooks` candidate, keep
+  User/hosted/script paths negative, and retain plugin component paths as relationships without
+  defining new exclusion IDs in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-26:
+  the two contained settings hook rules arrive here as well rather than with T895 — a contained
+  recognition is what a rule produces, so it needs a rule of its own, and each pair takes only the
+  surfaces its own documentation names.)*
+- [X] T884 [US1] Add Copilot hook evidence records and reciprocal affected-contract references in
+  the owning registry record's `evidence` citations
+- [X] T885 [US1] Implement Copilot root `.github/hooks/*.json` direct-child matching and recognition
+  in `src/server/inspection/rules/copilot.ts` and `src/server/inspection/recognizers/candidate.ts`
+- [X] T886 [US1] Integrate Copilot standalone-hook classification and preserve prior Hook results in
+  `src/server/inspection/scan.ts` *(amended 2026-08-26: the scan needs no change — its per-kind
+  extraction grouping already covers this kind, and the prior Hook results are preserved by that
+  same grouping rather than by a Copilot branch.)*
+- [X] T887 [US1] Extend Hook inventory rows and English Copilot standalone/surface/exclusion
+  messages in that kind's row component under `src/app/components/inventory/rows/` *(amended
+  2026-08-26: the row component needs no change — a hook row states the tool, the carrier form, and
+  the surfaces of every declaration whichever vendor made it, and the exclusions are the matchers’
+  own doing.)*
+
+---
+
+## Phase 89: Copilot Hook Detail
+
+**Purpose**: Add complete literal Copilot Hook detail and attach contained recognitions only to settings and custom-agent owners; plugin hook component paths remain relationships and never create recognition by path.
+
+**Independent Test**: Open standalone and settings/agent-contained Copilot hooks and verify plugin hook paths as relationships only, no plugin-path recognition, exact resolved values, diagnostics, and zero execution.
+
+**Visible Checkpoint**: Selecting a Copilot Hook recognition shows its declarations without running them.
+
+### Tests first
+
+- [X] T888 [P] [US2] Add failing Copilot hook tests for VS Code workspace same-event priority with
+  agent additions, CLI source append order, Cloud Repository-only behavior, settings owner
+  provenance, and relationship-only plugin hook paths in
+  `tests/unit/inspection/copilot-metadata.test.ts` *(amended 2026-08-26: agent-scoped hooks publish
+  no hook row, so the owner-provenance case covers the settings owners and the agent’s own row
+  instead.)*
+- [X] T889 [US1] Add failing recognition tests proving only settings hooks attach to existing
+  physical files, an agent's frontmatter hooks publish no hook recognition, plugin component paths
+  create no Hook recognition or synthetic candidate, and contained provenance remains separate from
+  standalone provenance in `tests/unit/inspection/recognizers.test.ts` *(amended 2026-08-26: only
+  settings hooks attach a hook recognition. A custom agent’s frontmatter `hooks` is part of what
+  that agent is, and the agent’s own row publishes every key its file wrote — the same rule this
+  product applies to a Claude skill’s and subagent’s declarations.)*
+- [X] T890 [P] [US2] Add zero-activation tests proving Copilot hook inspection causes no command,
+  process, import, mutation, URI load, referenced-hook read, plugin activation, or handler
+  invocation in `tests/integration/security/zero-activation.test.ts`
+- [X] T891 [P] [US2] Add failing Copilot hook-detail API tests for complete literal commands,
+  events, surfaces, owner provenance, composition, diagnostics, and stale IDs in
+  `tests/contract/http-api-files.test.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T892 [US2] Add failing Copilot hook runtime-composition graph coverage with reciprocal
+  contract references in `tests/contract/runtime-composition.test.ts`
+- [X] T893 [US2] Add browser acceptance for exact literal credential/environment-reference display,
+  no process-environment sentinel substitution, no masking/reveal controls, standalone/contained
+  Copilot Hook detail, owner navigation, diagnostics, and zero executable rendering in
+  `tests/e2e/copilot-hooks-detail.spec.ts` *(amended 2026-08-08: a detail shows the declarations the
+  file wrote, and what a vendor documents stays in its maintained contract, so no surface projects
+  trust, precedence, order, or uncertainty (FR-009, T091).)*
+
+### Implementation
+
+- [X] T894 [US2] Add separate Copilot VS Code settings/agent priority/additions, CLI append-order,
+  Cloud Repository-only, relationship-only plugin path, event, and activation strategies in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-26: three strategies, one per
+  surface, exactly as the runtime-composition contract rows state; the agent and plugin additions
+  are behaviors the editor’s composition consumes rather than strategies of their own.)*
+- [X] T895 [US2] Implement Copilot surface composition with contained recognition on the settings
+  owners alone, relationship-only plugin hook paths, and provenance in
+  `src/server/inspection/recognizers/candidate.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-26: the contained recognition attaches to
+  the settings owners alone — an agent’s frontmatter hooks are that agent’s own row — and the
+  recognizer needs no vendor branch: each rule compiles into the unit that reads its carrier, and
+  the shared dispatch does the rest.)*
+- [X] T896 [US2] Extend JSONC and Markdown extraction with closed Copilot Hook field IDs, exact
+  owner-source resolved values, recognition-atomic failure, and source-value-free diagnostics in
+  `src/server/inspection/parsers/json.ts` and `src/server/inspection/parsers/markdown.ts` *(amended
+  2026-08-26: no closed field IDs, and no Markdown change — a declaration is published by the keys
+  its file wrote (FR-007), and an agent’s frontmatter hooks publish no hook recognition.
+  `src/server/inspection/parsers/json.ts` gains `ParsedJsonDocument`, whose constructor resolves the
+  `(tool, path)` it is built for to the format that reading takes, because a format belongs to the
+  reader and the file together: Copilot's hook files and the cross-tool `.claude/` pair are read as
+  JSONC — the answer its editor gives, its CLI having been measured strict for both — while Claude
+  Code reads the same `.claude/` pair strictly, so one file has one answer per product (FR-004,
+  research.md § 6).)* *(amended 2026-08-27: Copilot's own repository settings pair is read strictly.
+  No surface of that product reads those two files leniently — the editor's settings lookup is
+  excluded and its hook-locations table names the Claude-format pair — so the lenient union has
+  nothing to union, and the CLI path that loads them, hook loading included, is measured strict.)*
+- [X] T897 [US2] Integrate Copilot hook exact resolved-value preservation, settings owner
+  composition, plugin-path relationship retention without recognition, diagnostics, and
+  non-following references in `src/server/inspection/scan.ts` *(amended 2026-08-06: an admission
+  stays a read-authorization record, and what a vendor documents stays in its maintained contract,
+  so no surface projects a condition, applicability, order, runtime state, provenance, or
+  documentation status (FR-009; T091/T1068/T1042).)* *(amended 2026-08-26: the scan needs no change
+  for the reason T886 records; a plugin’s own hook file stays a path no rule admits, which is the
+  matchers’ doing rather than a step here.)*
+- [X] T898 [US2] Extend typed detail and English Copilot hook surface and owner messages in that
+  kind's own detail route under `src/app/pages/` *(amended 2026-08-08: a detail shows the
+  declarations the file wrote, and what a vendor documents stays in its maintained contract, so no
+  surface projects trust, precedence, order, or uncertainty (FR-009, T091).)* *(amended 2026-08-26:
+  the detail route needs no change — it already states the carrier form, the tool, and the surfaces
+  of any vendor’s declaration, and publishes a standalone carrier’s remaining keys.)*
+
+---
+
+## Phase 90: Unified Hook Inventory
+
+**Purpose**: Consolidate standalone and contained Hook recognitions, including one-read shared `.claude/settings*.json` owners.
+
+**Independent Test**: Verify one physical read and separate Claude/Copilot Hook recognitions on shared settings, standalone Codex/Copilot files, contained owner provenance, deterministic order, no synthetic files, exclusions, filters, injected failures with per-file diagnostics when confined to one file and whole-attempt abort otherwise, Diagnostics, and rescan cleanup.
+
+**Visible Checkpoint**: Users can distinguish every supported standalone and contained Hook interpretation.
+
+### Tests first
+
+- [X] T899 [US1] Finalize Hook fixtures for the standalone Codex/Copilot files, the settings
+  documents that publish rows — Claude's pair, Copilot's own pair, and the cross-tool pair both
+  products read — the declaring owners that publish none (a skill, a subagent, a Copilot custom
+  agent, a plugin manifest, and a catalog entry), shared settings, relationship-only plugin paths,
+  unreferenced scripts, secrets, exclusions, and injected thrown/rejected-operation failure cases in
+  `tests/fixtures/repositories/build-fixtures.ts` *(amended 2026-08-26: the injected failure cases
+  are the integration suite's, which drives them through the fs seam rather than through a file the
+  tree could hold; the tree carries every documented carrier, the declaring owners that publish no
+  hook row, and one structurally broken carrier.)*
+- [X] T900 [US1] Finalize Hook behavior, standalone matchers, contained-owner composition,
+  relationships, existing exact plugin-file exclusions, path-negative cases, and evidence
+  conformance rows without adding Hook-specific exclusion IDs in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-26: the conformance rows
+  were already final — this phase adds no registry record, so regenerating them produced no
+  change.)*
+- [X] T901 [P] [US1] Add complete matcher tests for Codex/Copilot standalone files, no Claude
+  standalone candidate, and every script/User/hosted/component exclusion in
+  `tests/unit/inspection/rules.test.ts`
+- [X] T902 [P] [US1] Add complete recognition-matrix tests for standalone/contained origins, the
+  settings owners each product publishes rows for, the declaring owners that publish none, shared
+  settings read once per product, relationship-only plugin paths, no synthetic files, deterministic
+  provenance, and zero extra recognitions in `tests/unit/inspection/recognizers.test.ts`
+- [X] T903 [P] [US1] Add failing integration tests for one-read shared owners, deterministic Hook
+  recognition order, atomic continuity, and partial publication only after complete traversal with
+  file-confined outcomes; prove an injected file-confined failure yields only that file's diagnostic
+  in a partial generation while any other injected failure aborts the attempt without domain catch,
+  referenced-hook/later read, new Hook/recognition/item/body/generation/partial result, retaining
+  only the prior commit in `tests/integration/repository-scan.test.ts`
+- [X] T904 [US1] Add browser acceptance for unified Hook inventory, filters, shared recognitions,
+  standalone/contained attribution, exclusions, diagnostics, and keyboard use in
+  `tests/e2e/hooks-inventory.spec.ts`
+
+### Implementation
+
+- [X] T905 [US1] Complete one-read owner/file assembly, deterministic Hook recognition/provenance
+  order, and no synthetic files; convert a file-confined failure into its per-file diagnostic, and
+  let any other failure abort the attempt without a new
+  Hook/recognition/provenance/item/body/generation, retaining only the prior commit and leaving
+  failure reporting to the trigger-owning outer boundary in `src/server/inspection/scan.ts`
+  *(amended 2026-08-26: `scan.ts` needed no edit. One read per physical file is the walk's own merge
+  of the plans over one path, the recognition order is the catalog's, and both failure paths are the
+  seam's: a file-confined failure becomes that file's diagnostic in a partial generation, and any
+  other propagates unchanged to the trigger-owning boundary.)*
+- [X] T906 [US1] Complete Hook filters and standalone/contained/owner summaries in
+  `src/app/components/inventory/InventoryFilters.vue` and that kind's row component under
+  `src/app/components/inventory/rows/` *(amended 2026-08-26: the filters needed no hook-specific
+  control. Source, tool, and path narrow hook rows like every other kind, and the row already states
+  each declaration’s carrier form, tool, and surfaces beside the owner it links.)*
+- [X] T907 [US1] Add English unified Hook inventory, shared-recognition, owner, and exclusion
+  messages in the Vue components that render them *(amended 2026-08-26: the messages this kind
+  renders were already written where they render: the carrier-form caption, the per-declaration
+  owner link, and the closing row’s unknown-events statement. A shared read shows as one owner
+  listing a declaration per product, which needs no message of its own.)*
+
+---
+
+## Phase 91: Hook Comparison
+
+**Purpose**: Design the Hook kind’s own comparison surface with literal and typed Hook differences, allowing selection only by a real readable file; contained Hook recognitions are selected through their owner file and runtime facts alone are not selectable.
+
+**Independent Test**: Select exactly two current-generation readable physical owner files, including contained Hook declarations through their owners, and verify each side's canonical serialized declarations plus aligned events; reject synthetic paths and runtime-fact-only rows.
+
+**Visible Checkpoint**: Users can compare hook declarations without executing them.
+
+### Tests first
+
+- [X] T908 [US3] Add failing selection and comparison regressions for exactly two distinct readable
+  physical owner files and rejection of the same file in both inputs, contained Hooks through their
+  owners, runtime-fact rejection, the canonical serialized declaration documents and events in
+  `tests/unit/app/hook-comparison.test.ts` *(amended 2026-08-19: declared metadata is the file's one
+  parse per kind, compared once per pair with tool recognition compared per tool beside it — a tool
+  is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-08: an admission stays
+  a read-authorization record no surface reads out, so nothing displays provenance (T1068).)*
+  *(amended 2026-08-08: a detail shows the declarations the file wrote, and what a vendor documents
+  stays in its maintained contract, so no surface projects trust, precedence, order, or uncertainty
+  (FR-009, T091).)* *(amended 2026-08-21: the declared metadata compares as one canonical serialized
+  document per side diffed in Monaco, following the skill, instruction, and MCP comparison
+  precedents (research.md § 7).)* *(amended 2026-08-26: the same-file rejection and the
+  owner-selected pair are the compare route's own validation, and the unit project has no
+  single-file-component compiler to mount that page with, so both are asserted against the real page
+  in T909's browser acceptance; this file asserts the route's coordinates, the request sequence each
+  open issues, every outcome it settles to, and the canonical documents.)*
+- [X] T909 [US3] Add browser acceptance for owner-selected contained Hooks, complete literal Hook
+  diff including credential/environment-reference differences, the canonical serialized declaration
+  documents, no masking/reveal or environment substitution, typed event/composition differences, and
+  runtime-fact rejection in `tests/e2e/hooks-comparison.spec.ts` *(amended 2026-08-21: the
+  acceptance verifies the two sides' canonical serialized documents diffed in Monaco, the form every
+  kind's declared-metadata comparison takes (research.md § 7).)*
+
+### Implementation
+
+- [X] T910 [US3] Enforce comparison selection by real readable physical owner files and resolve
+  contained Hook recognitions through their owners in `src/app/composables/hook-comparison.ts`,
+  designed and created by this task with the kind’s comparison surface *(amended 2026-08-15: owned
+  by the kind’s own comparison surface — comparison is kind-specific with no shared module, and this
+  task designs and creates that surface following the skill precedent (spec.md § Clarifications
+  Session 2026-08-14).)*
+- [X] T911 [US3] Extend Hook comparison to serialize each side's declared metadata into one
+  canonical document diffed in Monaco without exposing runtime facts as selectable files in
+  `src/app/components/hook-comparison/RecognitionComparison.vue`, part of the kind’s own comparison
+  surface this task designs and creates following the skill precedent
+  (`src/app/pages/skills/compare/[family].vue`, `src/app/composables/skill-comparison.ts`,
+  `src/app/components/skill-comparison/`), including the entry links that reach it from that kind's
+  inventory row component under `src/app/components/inventory/rows/` and from that kind's detail
+  route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: declared metadata
+  is the file's one parse per kind, compared once per pair with tool recognition compared per tool
+  beside it — a tool is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-15:
+  owned by the kind’s own comparison surface — comparison is kind-specific with no shared module,
+  and this task designs and creates that surface following the skill precedent (spec.md §
+  Clarifications Session 2026-08-14).)* *(amended 2026-08-21: the declared metadata compares as one
+  canonical serialized document per side diffed in Monaco, following the skill, instruction, and MCP
+  comparison precedents (research.md § 7).)*
+- [X] T912 [US3] Add English hook comparison messages in the Vue components that render them
+
+---
+
+## Phase 92: Repository Inventory Acceptance
+
+**Purpose**: Verify that all preceding Repository inventory increments satisfy US1 without catch-all implementation.
+
+**Independent Test**: Install the package against the all-supported fixture and verify every allowlisted file, filter, recognition, unchanged propagation of injected non-file-confined failures, rescan path, package path, and performance target, with zero synthetic files or connections and no MCP row from any non-carrier file; the currently owned Repository registry gate is exactly 49 IDs—41 static, one bounded-derived, and seven vendor exclusions *(amended 2026-08-01: no rule derives skill metadata (Phase 6))* *(amended 2026-08-26: 49, because each contained hook declaration needs a rule of its own — a recognition is what a rule produces)*—and the four Global-era exclusions remain intentionally undefined until Phases 96–98. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: US1 discovery is complete for every initial-release Repository customization family.
+
+### Acceptance tests
+
+- [X] T913 [US1] Add the exact currently owned 49-ID Repository registry gate—41 static, one
+  bounded-derived, and seven vendor-excluded *(amended 2026-08-01: no rule derives skill metadata
+  (Phase 6))* *(amended 2026-08-26: 49, because each contained hook declaration needs a rule of its
+  own — a recognition is what a rule produces)*—including distinct `copilot.repo.mcp` and
+  `copilot.repo.mcp.vscode-root` provenances for one merged root file/read/recognition; prove every
+  contained MCP recognition adds zero candidate rules while each contained hook declaration is its
+  own rule — a recognition is what a rule produces — with one existing owner ID/read retained, no
+  synthetic file is created, and the four deferred Global-era non-read exclusions are not yet
+  defined in `tests/contract/inspection-rules.test.ts` *(amended 2026-08-27: the four deferred
+  exclusions are checked as an absent scope rather than as absent identifiers — a rule this release
+  does not have has no ID to name, while every shipped rule being the Repository Source's is what
+  says no Global-era record has arrived.)*
+- [X] T914 [US1] Finalize all-supported, near-miss, empty, multi-tool, derived, malformed, secret,
+  and performance fixtures with guidance in `tests/fixtures/repositories/build-fixtures.ts`,
+  `tests/fixtures/repositories/README.md`, and `tests/fixtures/repositories/README.ja.md`
+- [X] T915 [US1] Add integration tests injecting failures from Node.js, decoders, parsers,
+  filesystem, assembly, and publication; prove a failure confined to one file becomes that file's
+  Diagnostic in a partial generation with every unaffected file complete, while any other failure
+  aborts the attempt with no item/recognition/derived result/result body/generation, the failure is
+  reported ordinarily as the failed request's real error (pre-acceptance with no job, or
+  post-acceptance with the retained stale commit), and an ownerless automatic startup rejection
+  reaches the process top level, while the prior commit remains. Separately prove no capacity
+  ceiling or verdict exists and authority revocation discards late work without hard-cancellation
+  claims in `tests/integration/runtime-failures.test.ts`
+- [X] T916 [P] [US1] Add complete session/rescan API contracts for every Repository kind, including
+  generation 0 with exactly one enabled idle Source selected from captured `cwd`/`--root`, stable
+  source ID, escaped non-authorizing root, empty files/Diagnostics, null request ID, and zero source
+  I/O; strict inventory envelopes; one request ID across admitted Source/progress/final
+  state/successful generation; conflicts, stale IDs, atomic publication, loopback-only session
+  access, and no analysis/verdict fields. Require the ordinary request-owned failure lifecycle: a
+  pre-acceptance rejection fails with the request's real error and creates no job or retention; an
+  accepted-job fatal rejection retains that request's error message under its matching non-null ID
+  with no result/generation; and an ownerless startup rejection propagates to the process top level.
+  Require every accepted explicit-rescan job that terminates fatally, and no other operation, to
+  create or replace its Source stale overlay: reference only the failed request's error message for
+  a thrown or rejected operation or the source-scoped `root-unreadable` Diagnostic when the root
+  could not be read; pre-acceptance failures create no overlay, and a successful replacement alone
+  clears it in `tests/contract/http-api-session.test.ts`
+- [X] T917 [P] [US1] Add complete packaged Gunshi CLI tests for unrelated-working-directory
+  isolation, fixed assets, and optional `--root`, a repeated option resolving to the parser's last value: capture
+  invocation `process.cwd()` once and preserve its exact string when omitted; keep an absolute
+  option as given and resolve a relative option against the capture with lexical `node:path`
+  operations only. Instrument the entire packed entry: permit only fixed package-owned zero
+  product-owned reads before CLI import, require subsequent root selection to perform zero
+  filesystem/network I/O and no `process.chdir()`, and prove an explicit empty launch fails before
+  session/browser creation with fixed actionable source-value-free output while a missing value
+  fails there through Gunshi's typed argument validation. Include the ownerless
+  `process.cwd()`-throw case from T043. Also cover the fixed `open`-package default-browser helper
+  delegation and its environment behavior with no inspection-derived helper input,
+  `--no-open`/printed-URL fallback, non-binding help/version, strict unknown/positional/rest
+  rejection, awaited shutdown, root-only imports, and zero extra modes in
+  `tests/package/npx-launch.test.ts` *(amended 2026-08-27: the root-selection and rejection
+  behaviors this names are the CLI unit suite's (`tests/unit/cli.test.ts`), which drives them
+  directly; what this task adds is the packaged half — the optional and repeated `--root` through
+  the packed entry, a preload that fails the launch if it changes a working directory or opens an
+  outbound connection, one mode with no subcommand, and the empty-root rejection as the packed
+  process exits.)* *(amended 2026-09-04: this package suite launches `dist/cli.mjs` without an
+  install; T1051 owns fresh-directory installation and launch of the one CI tarball because that
+  networked path belongs to cross-platform lower-bound certification.)*
+- [X] T918 [P] [US1] Extend T183 to the final registry and execute the one non-gating smoke pass
+  against one unchanged profile/fixture *(amended 2026-09-03: the measurement protocol this task
+  once gated is withdrawn with the criterion it measured, T1052, because a figure measured on
+  another machine is a measurement of that machine rather than of this product; the pass is the
+  gate.)*: recompute and require the profile-bound
+  `tests/performance/sc002-fixture-manifest.json` version/canonical digest,
+  `tests/performance/sc002-fixture-manifest.sha256`, and every referenced content digest immediately
+  before and after the run, invalidating the full set on any missing entry or drift; wait for the
+  automatic first scan outside timing, dispatch exactly one explicit rescan, capture its
+  `scanRequestId`, start both timers at dispatch, and require the same ID on the qualifying
+  visible/assistive status and committed-generation inventory; reject prior/automatic state, assert
+  no threshold, repeat the profile ID/manifest version/canonical digest and record request
+  ID/generation/environment for the run, omit only personal identifiers/absolute user paths, and
+  reject cache reset/snapshot reuse/cross-profile comparison in
+  `tests/performance/repository-scan.test.ts` and
+  `tests/performance/inventory-interactions.test.ts`, with the run itself in the project's global
+  setup, which prints its figures. Update the performance expected-result bullet T183 restored in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` to this smoke pass, in the same change.
+  *(amended 2026-08-27: the digest revalidation and the request correlation are gated
+  everywhere.)*
+- [X] T919 [US1] Add Repository-complete browser acceptance plus the documented discovery command
+  target for inventory, filters, multi-recognition, diagnostics, empty state, request-correlated
+  rescan/retry, keyboard use, atomic replacement, zero source/metadata/sensitive-value exposure
+  outside an explicit detail request, and negative assertions that Inventory/Diagnostics expose no
+  natural-language interpretation/ranking, customization
+  validity/correctness/compliance/effectiveness/quality verdict, validation/lint, or remediation/fix
+  controls in `tests/e2e/repository-complete-inventory.spec.ts` and `tests/e2e/discovery.spec.ts`.
+  Restore the `pnpm exec playwright test tests/e2e/discovery.spec.ts` line in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` in the same change; it was removed while
+  the file did not exist.
+
+---
+
+## Phase 93: Repository Detail Acceptance
+
+**Purpose**: Verify that all preceding Repository detail increments satisfy US2 without catch-all implementation.
+
+**Independent Test**: Verify the complete currently owned 49-ID Repository rule registry—41 static, one bounded-derived, and seven vendor-excluded—plus explicit absence of the four deferred Global-era exclusions, the parser matrix, exact literal display and complete detail behavior under environment-owned capacity, safe filesystem boundary, every late owner-bound MCP activation, zero activation/connection/environment-reference resolution, file-detail and absent-reveal-function API behavior, relationships, diagnostics, stale cleanup, and zero candidate-rule additions or duplicate owner reads from contained Hook/MCP facts.
+
+**Visible Checkpoint**: US2 inert-detail coverage is complete for every initial-release Repository customization family.
+
+### Acceptance tests
+
+- [X] T920 [P] [US2] Add Repository-subgraph contracts for the exact currently owned 49-ID split of
+  41 static, one bounded-derived, and seven vendor-excluded *(amended 2026-08-01: no rule derives
+  skill metadata (Phase 6))* *(amended 2026-08-26: 49, because each contained hook declaration needs
+  a rule of its own)*, absence of the four deferred exclusions, distinct root CLI/VS Code rule
+  provenances merged into one owner ID/read with path-only VS Code semantics, zero contained MCP
+  candidate rules beside the contained hook rules each such declaration needs, the full
+  early-contract-to-late-owner activation matrix, zero synthetic files/connections, every currently
+  owned behavior/strategy/relationship/evidence backlink, exact closed presentation-allowlist
+  membership for every emitted relationship kind plus exact extractor applicability to the
+  occurrence's actual admitted source form with no unlisted inference or cross-form promotion — a
+  declaration passes no such gate, being the carrier's own key (FR-007) —, and offline separation in
+  `tests/contract/inspection-rules.test.ts`, and `tests/contract/runtime-composition.test.ts`
+  *(amended 2026-08-27: the allowlist half is checked
+  as absence, because this release ships no relationship-only rule and therefore emits no
+  relationship: a row that permits a kind is consumed by nothing. What the graph gate adds instead
+  is registry-wide — every rule and strategy edge resolving to the shipped record by identity, every
+  behavior reached by one of them, and the three User-scope facts the deferred
+  `copilot.excluded.user-runtime` will name frozen as the exception.)*
+- [X] T921 [P] [US2] Add a four-parser matrix for JSONC, YAML, TOML, and Markdown/frontmatter
+  proving NUL bytes are diagnostic-only `binary`, non-NUL bytes decode exactly once as readable
+  `utf-8` or `utf-8-replaced`, one leading BOM is removed/recorded, retained `U+FFFD` continues
+  through atomic extraction/display/comparison without making the scan partial, and no charset
+  fallback/sampling/truncation occurs; cover deterministic malformed returned outcomes,
+  file-confined parser exceptions caught as `recognition-parse-failed` Diagnostics,
+  environment-owned capacity, and unchanged propagation of every decoder/parser/extractor
+  throw/rejection not confined to one file with no domain catch, cause classification, retry,
+  recovered result, Diagnostic, or generation in `tests/unit/inspection/parsers.test.ts` and
+  `tests/unit/inspection/seed-parsers.test.ts`
+- [X] T922 [US2] Add thrown/rejected-operation tests across relationships, provenances, derivations,
+  fallbacks, source occurrences, authored text, parser messages, retained graphs, and file details;
+  verify unchanged propagation through domain layers with no catch, cause classification, retry,
+  recovered value, Diagnostic, result body, or generation, atomic abort and prior-snapshot
+  retention, and only the failed request's ordinary error at the trigger-owning boundary or
+  ownerless-startup top-level behavior in `tests/integration/runtime-failures.test.ts`
+- [X] T923 [US2] Add thrown/rejected-operation tests across Diagnostic construction/retention and
+  serialization; verify unchanged propagation through domain layers with no catch, cause
+  classification, retry, recovered Fact/assessment/Diagnostic/recognition/derived
+  result/body/generation, prior-snapshot continuity, no numeric caps, and only the failed request's
+  ordinary error at the trigger-owning boundary or ownerless-startup top-level behavior in
+  `tests/integration/runtime-failures.test.ts` *(amended 2026-08-27: the commit boundary
+  re-validates no diagnostic — the record's own constructor is the one guard, which
+  `tests/unit/shared/diagnostics.test.ts` owns — so what this asserts at the integration level is
+  retention and serialization: the snapshot publishes exactly the records the attempt produced,
+  every reference resolves, and no count is capped.)*
+- [X] T924 [P] [US2] Add full safety tests for malformed files, symlinked entries read transparently
+  through their targets with a broken link yielding `file-unreadable`, unreadable files,
+  cleanup-only late discard after disable/shutdown/supersession, read-only open flags, zero
+  mutation-capable calls, unchanged content/length/identity/link/mode/mtime/ctime and (where the
+  platform exposes a stable API — Node.js does not, so ctime is the indirect signal) xattr/ACL
+  observations, and separately recorded OS-only atime residuals. Include a table proving the closed
+  publication matrix: file-confined
+  `file-unreadable`/`file-content-binary`/`recognition-parse-failed` outcomes retain diagnostic-only
+  or partially derived records in a partial generation, an unreadable root fails its Source attempt
+  with the source-scoped `root-unreadable` Diagnostic, and a failure outside any single file commits
+  nothing in `tests/integration/inspection-safety.test.ts`
+- [X] T925 [P] [US2] Extend zero-activation regression across every Repository family under
+  `--no-open` or post-helper instrumentation. Use and record local fixture roots; instrument product
+  socket/HTTP(S)/DNS/SMB/MCP/URI/image surfaces, separately classify and validate the two exact
+  FR-022 authorized internal loopback classes, and prove
+  discovery/read/parse/display/comparison/relationship processing causes zero
+  child/evaluation/MCP/prohibited direct product-issued outbound
+  request/URI/image/mutation/reference reads across every other surface in
+  `tests/integration/security/zero-activation.test.ts`
+- [X] T926 [P] [US2] Add complete file-detail and absent-reveal-function API contracts for every
+  readable kind: `utf-8` and `utf-8-replaced` expose complete source — except a carrier's, whose
+  detail variant carries declarations and no `sourceText` at all (FR-007) — resolved values, and
+  comparison eligibility with retained `U+FFFD`, while `binary` is diagnostic-only and forbids them;
+  enforce source-form allowlists, unknown-key retention in readable text, stale IDs, and no
+  acknowledgement or notice operation (FR-027 has neither). Prove a thrown/rejected request-owned
+  operation fails that request with its real error and no job/result/generation/success payload; a
+  post-commit delivery rejection leaves the commit unchanged with no success payload and never
+  partial; and no analysis/validation/verdict/remediation field appears in
+  `tests/contract/http-api-files.test.ts`
+- [X] T927 [US2] Add Repository-complete browser acceptance for direct memory-only presentation with
+  no acknowledgement or notice (FR-027), complete literal readable detail including `utf-8-replaced`
+  text and comparison, diagnostic-only binary with no authored values, exact metadata/relationships,
+  no masking/reveal/substitution, and zero executable rendering. Verify file-confined
+  unreadable/binary/parse-failure outcomes alone may commit partial after complete traversal; every
+  request-owned throw/rejection produces no new result/generation and is reported as the failed
+  request's real error, an accepted explicit-rescan job that terminates fatally creates or replaces
+  its stale overlay referencing only that failed request's error message, and a pre-acceptance
+  failure creates none, while ownerless automatic first-scan rejection reaches the process top level
+  and deterministic first-scan failure retains the generation-0 Source without stale overlay. Also
+  cover purge/scoped cleanup, stale routes, and no analysis/verdict/remediation controls in
+  `tests/e2e/repository-complete-detail.spec.ts` and `tests/e2e/inspection-safety.spec.ts`. Restore
+  the `pnpm exec playwright test tests/e2e/inspection-safety.spec.ts` line in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` in the same change; it was removed while
+  the file did not exist. *(amended 2026-08-27: a fatal rescan's stale overlay stays the contract
+  suite's — nothing a browser can do makes a scan throw — so the browser acceptance covers the two
+  failure shapes a reader reaches: the deterministic first-scan root failure that retains the
+  generation-0 Source with no overlay, and the partial commit a file-confined outcome produces.)*
+
+---
+
+## Phase 94: Repository Comparison Acceptance
+
+**Purpose**: Verify that all preceding Repository comparison increments satisfy US3 without catch-all implementation.
+
+**Independent Test**: Compare two readable current-generation files within the same Repository Source, then cover representative files from every family that has a comparison surface — the rule and permissions kinds have none, because a comparison pairs two copies of one identity and a row whose unit is the file it was found in has none (Phase 39, withdrawn) — including MCP through every late-admitted real owner ID, and verify literal/typed differences, rejection of unreadable, diagnostic-only, and non-carrier selections, fallback, accessibility, stale invalidation, and complete client resource cleanup. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+**Visible Checkpoint**: US3 comparison is complete for every initial-release Repository customization family that has one.
+
+### Acceptance tests
+
+- [X] T928 [US3] Add lifecycle regressions for rescan invalidation of selections, request tokens,
+  FileDetail state, Monaco models/workers/subscriptions, late-owner MCP projections, client epochs,
+  and stale links; there is no acknowledgement state to retain or reset (FR-027) — ordinary scoped
+  route/file/Source/generation cleanup disposes only its own models, and document reload plus every
+  central full purge, including channel/document loss, pre-request Global disable, and observed
+  greater Global epoch/non-null fence. Prove that after every central full purge no complete source
+  text, declared authored metadata, relationship target, or comparison request/DOM/editor state
+  remains for any Repository kind in `tests/integration/session-lifecycle.test.ts` *(amended
+  2026-08-27: the client half of the lifecycle — the view state's held details, the Monaco models a
+  comparison mounts, and the epoch that makes a late settlement a no-op — is asserted under a DOM by
+  the app suite, because the integration project runs in Node where a model cannot exist; this file
+  owns the half the session itself answers for: lost and gained paths, per-attempt tokens, a carrier
+  projected only by the generation that admitted it, and the envelope a client compares against.)*
+- [X] T929 [US3] Add Repository-complete browser acceptance plus the documented comparison target
+  for literal comparison and typed differences between two distinct readable current-generation
+  files in the same Repository Source at this milestone; assert no semantic ranking, merge,
+  validation, lint, content verdict, policy/remediation, synchronization, conversion, formatting, or
+  fix suggestion — the declared-metadata sides' canonical serialized documents are FR-012's stated
+  presentation of the parse, not conversion; also cover MCP selection over explicit carriers alone
+  with non-carrier rejection, fallback behavior, accessibility, and lifecycle cleanup in
+  `tests/e2e/repository-complete-comparison.spec.ts` and `tests/e2e/comparison.spec.ts`. Restore the
+  `pnpm exec playwright test tests/e2e/comparison.spec.ts` line in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` in the same change; it was removed while
+  the file did not exist. *(amended 2026-08-20: only explicit MCP configuration joins the MCP
+  surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail
+  content, an agent's `mcp-servers` included.)* *(amended 2026-08-27: quickstart § 3 item 3 is
+  corrected in the same change — declared metadata is compared as one canonical serialized document
+  per side, diffed in Monaco beside each surface's typed recognition rows, which is FR-012's stated
+  presentation of the parse rather than a conversion.)*
+
+---
+
+## Phase 95: Global Consent Preview
+
+**Purpose**: Show an exact no-I/O preview with environment-owned capacity before any User-Global path is authorized and complete the remaining pure User-only behavior facts needed by the consent exclusions.
+
+**Independent Test**: Use isolated environment inputs and fake homes to verify zero proposed-path I/O, exact three-tool preview entries, complete environment-supported escaping, unchanged propagation with no partial preview after a thrown/rejected construction, invalid overrides, retained-preview `previewId` binding with its allowlist/traversal-plan versions, stale/replayed rejection, accessible review in the fixed-English UI, and one-time non-authorizing ownership of `codex.behavior.user.memories`, `codex.behavior.user.prompts`, and `claude.behavior.user.workflows`.
+
+**Visible Checkpoint**: Users can review the exact Global roots, exclusions, and lexical validity state — with the read scope explained in plain language rather than per-pattern path displays — before enabling inspection. *(amended 2026-08-27: the preview displays neither version it binds. A reader can act on neither and can look neither up, and the mismatch they would guard against cannot occur while the preview is on screen; the confirmation submits `allowlistVersion` and the host refuses a stale one, which is where the pair belongs.)*
+
+### Fixtures and tests first
+
+- [X] T930 [US4] Create isolated Global-home fixtures for exact candidates, exclusions, fallback,
+  invalid overrides, links, unreadable roots, injected Node.js/OS/filesystem throws/rejections,
+  distinct literal credentials/environment references, sentinel process values, inert
+  executable-looking payloads, and before/after content/length/identity/link/mode/mtime/ctime and
+  (where the platform exposes a stable API — Node.js does not, so ctime is the indirect signal)
+  xattr/ACL observations with OS-only atime recorded separately; document ordinary unchanged failure
+  propagation reported as the failed request's real error, no file-size/count validation, and no
+  validity/lint/verdict from availability in bilingual guidance at
+  `tests/fixtures/global-homes/build-fixtures.ts`, `tests/fixtures/global-homes/README.md`, and
+  `tests/fixtures/global-homes/README.ja.md`
+- [X] T931 [US4] Materialize and add failing registry/backlink coverage for the remaining pure
+  User-only facts `codex.behavior.user.memories`, `codex.behavior.user.prompts`, and
+  `claude.behavior.user.workflows` in `tests/fixtures/conformance/vendor-behaviors.json`, and
+  `tests/contract/vendor-behaviors.test.ts`
+- [X] T932 [P] [US4] Add failing preview tests for one session-start input capture with zero
+  filesystem/network I/O and the complete ordered Global `inputState` algorithm: environment-only
+  empty is `present-empty`; U+0000 or an unpaired UTF-16 surrogate is `invalid`; active-platform
+  `path.isAbsolute()` false is `relative`; every other value is `eligible` with its exact string
+  frozen into each preview and carrying no read authority until consent. Cover the three exact,
+  ordered, one-time environment reads, the one unconditional `node:os.homedir()` call, exact lexical
+  roots, complete environment-supported escaping, and the exact minimal four-entry frozen preview.
+  Prove create-or-replace occurs only through the state-changing preview-creation operation, always
+  from the retained startup inputs, while current-preview retrieval is non-mutating and neither path
+  rereads process inputs. A thrown startup input-capture operation propagates unchanged and leaves no
+  capture, preview, or path authority in `tests/unit/host/global-consent.test.ts`
+- [X] T933 [US4] Extend preview tests for immutable typed traversal-plan programs, the
+  server-retained raw/display record behind the opaque `previewId`, stale/replayed invalidation, and
+  the later enable-request material fixing `confirmedTools` exactly to
+  `[copilot, claude, codex, agents]` in closed order—including invalid frozen entries—with no
+  eligibility narrowing, reordering, or UI/API selector. Keep this Phase-95 test boundary
+  preview-only: post-consent initial/retry work-set derivation belongs to T945–T946 after the enable
+  foundation exists in `tests/unit/host/global-consent.test.ts`
+- [X] T934 [P] [US4] Add failing contracts for the non-mutating consent-preview read function, which
+  returns only the current frozen preview or the fixed `consent-preview-missing` rejection, and the
+  state-changing argument-free consent-preview creation function of the session API contract
+  (contracts/http-api.md), which atomically creates/replaces the unconsented preview from the
+  session's retained startup inputs and returns it. Cover zero proposed-root I/O,
+  active-consent/enable/disable conflicts, repeated creation with unchanged roots after process-input
+  mutation, and the read function's pure current-state behavior in
+  `tests/contract/http-api-global.test.ts`
+- [X] T935 [US4] Add failing browser acceptance that reaches the consent route from the launch URL
+  rather than by navigating to it directly, covering the fixed-English preview UI's roots,
+  plain-language read-scope copy, lexical states, exclusions, ordinarily reported request errors,
+  keyboard review, and zero pre-consent source results or enable requests in
+  `tests/e2e/global-consent-preview.spec.ts`
+
+### Implementation
+
+- [X] T936 [US4] Add only the previously unowned non-authorizing facts
+  `codex.behavior.user.memories`, `codex.behavior.user.prompts`, and
+  `claude.behavior.user.workflows` before Global exclusion records reference them in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T937 [US4] Add reciprocal backlinks for those three pure User-only behavior facts to existing
+  official-source records without creating source IDs in the owning registry record's `evidence`
+  citations
+- [X] T938 [US4] Implement one complete environment/default-home capture at session startup and the
+  ordered Global `inputState` algorithm (`present-empty`, `invalid` on U+0000 or an unpaired
+  surrogate, `relative`, otherwise `eligible`), retaining the exact strings for the session and
+  performing zero filesystem/network I/O. From those retained inputs, atomically create-or-replace
+  each preview and apply presentation escaping with no normalization or root creation; expose the
+  frozen record to GET as a pure current-state retrieval. Propagate any thrown/rejected startup
+  capture, classification, or escaping operation unchanged before the session exists, and leave the
+  prior preview current if construction of a replacement does not complete, in
+  `src/server/host/global-consent.ts`
+- [X] T939 [US4] Implement memory-only preview records behind opaque `previewId` values, stale
+  invalidation, and enable-request binding in `src/server/host/global-consent.ts`
+- [X] T940 [US4] Implement strict paired preview functions in `src/server/host/devframe-app.ts`: the
+  non-mutating consent-preview read returns only the current frozen preview or the fixed
+  `consent-preview-missing` rejection, while the argument-free creation function alone atomically
+  creates or replaces an unconsented preview from the retained session-start inputs and returns it.
+  Preserve exact conflict behavior and pure current-state retrieval; neither function rereads the
+  environment. A failure before complete preview construction leaves the prior preview unchanged;
+  DTO or transport serialization failure is the request's ordinary error and grants no authority or
+  job, while the already-created complete preview may remain current
+- [X] T941 [US4] Implement accessible preview presentation for exact roots, plain-language
+  read-scope copy, lexical states, exclusions, and ordinarily reported request errors without
+  Inspector-defined capacity fields/values in `src/app/components/consent/GlobalConsentPreview.vue`
+  *(amended 2026-08-30: the version pair the preview binds is a contract token the enable request
+  carries, not user copy, so the presentation does not render it.)*
+- [X] T942 [US4] Implement preview loading, local explicit-confirmation state, stale recovery,
+  session-identity-loss handling, and focus management without submitting enable in
+  `src/app/pages/global-consent.vue`, reached from the inventory the launch opens through a
+  keyboard-accessible entry in `src/app/pages/index.vue` *(amended 2026-08-17: the entry was named
+  here after a review found the consent route reachable only by typing its URL.)*
+- [X] T943 [US4] Add English Global preview, throw/rejection, invalid override, and consent messages
+  in the Vue components that render them
+
+---
+
+## Phase 96: Fixed-Member Global Enable Foundation and Codex Batch Member (Composite Slice 1/4)
+
+**Purpose**: Begin the single composite Phase-96–99 milestone by validating the exact stored preview, establishing a generic selector-free fixed-member coordinator over the closed typed member-admission ports, and binding the real Codex member. Claude and Copilot production ports are added only in Phases 97–98; this slice makes no independently releasable all-member production claim and cannot complete the composite milestone before Phase 99.
+
+**Independent Test**: Submit the exact preview-bound body with no tool selector and use test-only injected typed member outcomes at the generic coordinator boundary to exercise every zero-to-three accepted/rejected partition without pretending that the later Claude/Copilot production ports exist. Verify zero admitted outcomes produce `active-no-job`, while one to three injected admitted contexts transfer together into exactly one `GlobalBatchScan` with one shared `scanRequestId` and working set. Separately exercise the real Codex member, disable interleaving, exact retry state with carried existing Sources visible, Repository preservation, and `codex.excluded.user-runtime`. Phase 99 repeats the permutations through all three real ports before the composite milestone turns green.
+
+**Visible Checkpoint**: This internal slice is intentionally not a release milestone. Its harness shows the fixed tuple and shared pending/retryable state with no provisional Source; the user-visible all-member milestone is owned only by Phase 99 after the Claude and Copilot ports are bound.
+
+### Tests first
+
+- [X] T944 [P] [US4] Add failing Codex post-consent tests for canonical component identity, links
+  read through their targets, invalid overrides, and exhaustive first-non-empty traces: a read
+  non-binary decoded override with `trim().length > 0`—including retained `U+FFFD`—short-circuits; a
+  missing, empty, BOM-only, or whitespace-only override advances to the fallback; a binary override
+  ends the branch with its `file-content-binary` Diagnostic and no fallback; an unreadable
+  override—including a broken link—ends the branch with its `file-unreadable` Diagnostic and no
+  fallback; and a failure not confined to one file aborts the whole fixed-member transaction and
+  produces no context/candidate/plan/authority/batch/result. Assert that host consent code issues
+  zero `node:fs` calls in `tests/unit/host/global-consent.test.ts`
+- [X] T945 [P] [US4] Add failing Global-enable function contracts (the session API contract,
+  contracts/http-api.md) for `confirmed: true`, exact version/`previewId` binding, no tool selector,
+  extra-key and false/stale/superseded-preview rejection, fixed
+  `confirmedTools: [copilot, claude, codex, agents]`, server-derived initial-all or exact
+  `retryableTools` set, including admitted-unpublished and same-preview rejected controls but
+  excluding published, pending, and lexical new-preview-required controls, exact accepted/rejected
+  partition, and zero-admitted `active-no-job` with null ID and no new job/Source/generation—initial
+  enable has no Global Source, while retry validation/admission exposes only
+  `globalEnableInProgress` and preserves the exact existing
+  Sources/control/`pendingTools`/`retryableTools`/`batchStatus`/diagnostic/snapshot projection.
+  Require queued acceptance alone to atomically set `pendingTools`/`batchStatus` to the admitted
+  subset/shared ID. Use test-only injected typed outcomes for the not-yet-bound Claude/Copilot ports
+  to cover one-to-three-admitted `queued` with exactly one shared `scanRequestId` and one
+  unpublished `GlobalBatchScan`; never synthesize a production root/context, and repeat the same
+  cases through all real ports in T991/T993. Require the failed request's ordinary error on any
+  pre-acceptance failure not confined to one file: initial enable activates no consent/control/job,
+  while retry leaves existing consent/control, Sources, and prior snapshot unchanged; require one
+  retained terminal error with the shared non-null ID/no subset commit after acceptance in
+  `tests/contract/http-api-global.test.ts`
+- [X] T946 [P] [US4] Add failing initial-enable/retry coordinator tests for atomic fixed-member
+  control activation and admission partition, using only test-injected typed outcomes for member
+  ports not yet production-bound; registered operation-ID continuation and settlement-entry checks; FIFO generation selection; conflicts;
+  zero public provisional Source; zero-admitted `active-no-job` with no new job/Source/generation
+  and preserved retry state; and exactly one `GlobalBatchScan` with one request ID/publication
+  authority/working set for every nonempty injected admitted subset. Prove retry polling before
+  acceptance exposes only `globalEnableInProgress` and leaves the exact pre-operation
+  `pendingTools`, `retryableTools`, `batchStatus`, and diagnostic projection unchanged; queued
+  acceptance atomically installs only the admitted subset/shared request. Prove a failure not
+  confined to one file before acceptance activates no initial consent/control/job, but on retry
+  leaves existing consent/control, Sources, and prior snapshot unchanged; after acceptance it
+  terminates the shared batch with one retained ordinary terminal error. Either lifecycle commits no
+  sibling subset/generation, preserves the prior snapshot without initial/retry stale overlays, and
+  discards late work after disable/shutdown/supersession, with one
+  acceptance-versus-`global-disable-pending`-conflict linearization. Do not treat this injected
+  coordinator suite as production all-member completion; T991/T993 own that proof in
+  `tests/unit/session/coordinator.test.ts`
+- [X] T947 [P] [US4] Add boundary tests for the Codex member of the fixed-member transaction: exact
+  raw segments remain filesystem operands, public raw paths follow T019/T030, only the exact Codex
+  Global instruction branch is touched, fallback obeys T944, excluded surfaces receive zero
+  operations, no new/provisional public Source for an admitted missing-Source member appears before
+  the one batch commit while carried existing Sources remain visible, any failure not confined to
+  one file aborts every sibling, and Repository state is preserved; instrument that every
+  proposed-root operation originates only in the single inspection module and host admission code
+  performs zero direct filesystem calls in `tests/integration/global-boundaries.test.ts`
+- [X] T948 [US4] Materialize the reference-only Codex User behavior set,
+  `codex.global.instructions`, exact `codex.excluded.user-runtime`, composition, and evidence rows
+  in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T949 [US4] Add failing Codex Global registry contracts proving all Codex User behaviors were
+  already owned before enablement, `codex.global.instructions` is the only new Codex
+  read-authorizing rule, and `codex.excluded.user-runtime` is the only newly owned Codex exclusion
+  in `tests/contract/vendor-behaviors.test.ts`, `tests/contract/inspection-rules.test.ts`, and
+  `tests/contract/runtime-composition.test.ts`
+- [X] T950 [US4] Add browser acceptance for exact-preview submission with no tool selector, fixed
+  `[copilot, claude, codex, agents]` confirmation, and test-only injected typed outcomes for the
+  not-yet-bound Claude/Copilot ports; cover per-tool accepted/rejected controls tied to one shared
+  batch/request ID, `active-no-job`, the ordinary batch failure error, safe deterministic boundary
+  Diagnostics, zero new/provisional pre-commit Global Source/file rows for admitted missing-Source
+  members while carried existing Sources remain visible, and retained Repository results. Keep the
+  real Codex path production-backed and defer all-real-port browser completion to Phase 99 in
+  `tests/e2e/global-codex-admission.spec.ts`
+
+### Implementation
+
+- [X] T951 [US4] Implement Codex root-admission orchestration as one member of the fixed-member
+  operation: submit the frozen root and compiled plan to the inspection module, consume only its
+  typed admission outcome/context, retain raw root provenance, and propagate a rejected call
+  unchanged. Host code MUST issue no filesystem call and MUST NOT inspect or convert a Node error
+  code; it may transfer an admitted unpublished context/IDs to its `GlobalToolControl` only in the
+  atomic all-tools decision that feeds the single `GlobalBatchScan` in
+  `src/server/host/global-consent.ts`
+- [X] T952 [US4] Update the already-owned `codex.behavior.user.instructions`,
+  `codex.behavior.user.agents`, `codex.behavior.user.config`, `codex.behavior.user.hooks`,
+  `codex.behavior.user.memories`, `codex.behavior.user.plugins`, `codex.behavior.user.prompts`,
+  `codex.behavior.user.rules`, and `codex.behavior.user.skills` with reciprocal Global
+  rule/exclusion references without adding or redefining any behavior ID in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T953 [US4] Add only `codex.global.instructions` as a consent-gated read-authorizing rule and
+  own exactly the new non-read `codex.excluded.user-runtime` without changing any existing exclusion
+  record in `src/shared/registries/inspection-rules.ts`
+- [X] T954 [US4] Extend the existing Codex instruction strategy with Global selection, fallback, and
+  source-separation inputs without creating a new strategy ID in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T955 [US4] Update backlinks on existing official-source records for Codex Global coverage
+  without creating new source IDs in the owning registry record's `evidence` citations
+- [X] T956 [US4] Implement the compiled `codex-global-first-non-empty` traversal plan with exact
+  `utf-8`/`utf-8-replaced` emptiness semantics: a missing override advances to the fallback, an
+  empty/BOM-only/whitespace-only override advances, a binary or unreadable override ends the branch
+  with its Diagnostic and no fallback, at most one file is selected, exact
+  `codex.excluded.user-runtime` stays excluded, and a failure not confined to one file propagates
+  unchanged to abort the whole batch in `src/server/inspection/rules/codex.ts`. The fallback reads
+  its own targets, so a target another plan's walk also admitted must still be read once per Source
+  scan attempt (contracts/inspection-path-allowlist.md § Common conformance requirements): merging
+  the two admissions after both have read is one file read twice, and its bytes must reach
+  `readBytes` exactly once.
+- [X] T957 [US4] Implement Codex scanning only as one member of the single `GlobalBatchScan`, with
+  one admitted root, exact fallback, raw-path semantics, deterministic Diagnostics, and no
+  new/provisional public Source or graph for admitted missing-Source members until every committable
+  result is published together in the batch's one atomic generation; leave carried existing Sources
+  visible, and propagate a member failure not confined to one file unchanged to abort the whole
+  batch in `src/server/inspection/scan.ts`
+- [X] T958 [US4] Implement the generic selector-free initial-enable/exact-consent-retry coordinator
+  over the fixed closed typed member-admission ports. The production Codex port comes from T951;
+  T968 and T982 bind the Claude and Copilot ports later, while T945–T946 may inject typed test
+  outcomes only at this port boundary and may not synthesize a production root/context or perform
+  filesystem I/O. The generic layer evaluates every member slot for initial enable and derives
+  exactly the complete fixed-order `retryableTools` projection for retry, including non-pending
+  unpublished admitted and same-preview rejected controls while excluding published, pending, and
+  lexical new-preview-required controls, and one atomic decision activates fixed controls plus
+  accepted/rejected outcomes. During retry validation/admission expose only `globalEnableInProgress`
+  and preserve the exact pre-operation `globalControl`, `pendingTools`, `retryableTools`,
+  `batchStatus`, diagnostic fields, Sources, and snapshot; queued acceptance alone atomically
+  installs the admitted pending subset/shared batch. If none is admitted, return `active-no-job`
+  with null ID and no new job/Source/generation; otherwise transfer every supplied typed context/ID
+  together into exactly one `GlobalBatchScan` with one shared request ID, authority, and working
+  set. Preserve the exact pre-/post-acceptance error and late-discard lifecycle, but do not claim
+  production all-member activation until T998 binds all real ports and T1000–T1002 close
+  publication/API behavior in `src/server/session/session.ts` and
+  `src/server/session/scan-generation.ts`
+- [X] T959 [US4] Implement the foundation Global-enable session-API function adapter to the generic
+  coordinator with strict selector-free guards; stored-preview `previewId` validation; fixed-member
+  confirmation; server-derived exact `retryableTools` set and nonempty gate; operation-local
+  validation visibility exposing only `globalEnableInProgress`, with no provisional
+  `pendingTools`/`batchStatus` mutation; accepted/rejected partition; one shared request ID for a
+  queued batch or null for `active-no-job`; retry/disable conflicts; no Source summaries or client
+  path authority; and the exact ordinary pre-acceptance/accepted-job failure lifecycle (the failed
+  request's real error) with no partial subset. An unbound production member port may neither
+  fabricate a rejection/admission nor touch a root; T998/T1002 own the first complete all-real-port
+  function in `src/server/host/devframe-app.ts`
+- [X] T960 [US4] Wire the single explicit fixed-member confirmation control directly to the
+  selector-free enable endpoint, never offer a per-tool selector, and handle stale preview,
+  accepted/rejected partition, one shared batch state, `active-no-job`, the ordinary batch failure
+  error, and accessible focus in `src/app/pages/global-consent.vue`
+- [X] T961 [US4] Implement fixed-member confirmed controls that retain the exact pre-operation
+  control, pending, retryable, batch, and diagnostic projection while retry validation/admission
+  exposes only `globalEnableInProgress`; only atomic queued acceptance may set pending entries and
+  matching `batchStatus` to the admitted accepted-batch subset/shared request ID. Derive retryable
+  entries only from the exact non-pending unpublished-admitted plus same-preview-rejected
+  `retryableTools` set after pending empties, excluding lexical new-preview-required controls, and
+  `active-no-job` for an evaluated missing tool or any unpublished member never implies a new Source
+  or hides a carried existing Source in `src/app/components/consent/GlobalSourceControls.vue`
+- [X] T962 [US4] Add English messages for fixed-member Global admission, single-batch/request,
+  accepted/rejected outcomes, `active-no-job`, retryable boundary/fallback, and batch failure,
+  explicitly distinguishing no new/provisional pre-commit Source from carried existing Sources that
+  remain visible, in the Vue components that render them
+
+---
+
+## Phase 97: Claude Global Batch Member (Composite Slice 2/4)
+
+This slice adds the real Claude port to the open Phase-96–99 composite milestone; it is not an independently green or releasable milestone.
+
+**Purpose**: Add Claude root admission and scanning as a separately identified Source candidate inside the same fixed-member `GlobalBatchScan`, with exactly one root and no independent initial/retry job or commit.
+
+**Independent Test**: Partition valid and invalid Claude roots within the fixed-member operation, read only exact `CLAUDE.md`, retain a Claude control/context as one possible batch member, and prove every admitted sibling Source appears together in the batch's one generation or none appears after a failure not confined to one file; own exactly `claude.excluded.user-runtime` and preserve prior Repository/Global state.
+
+**Visible Checkpoint**: Global controls report Claude's per-tool outcome within one shared operation; no new/provisional Claude Source appears before the one batch commit, while carried existing Sources remain visible.
+
+### Tests first
+
+- [X] T963 [P] [US4] Add failing Claude post-consent boundary tests for canonical roots, raw-path
+  identity, links read through their targets, invalid overrides, and missing/unreadable files inside
+  the fixed-member operation. Require a missing or unreadable Claude root to record that tool as
+  absent or failed without preventing sibling tools from committing; require a file-confined failure
+  inside an admitted Claude root to yield that file's Diagnostic in a partial member result; and
+  require any failure not confined to one file to propagate unchanged and abort the whole batch with
+  no subset Source/generation; host consent code performs zero filesystem calls in
+  `tests/unit/host/global-consent.test.ts` *(amended 2026-08-30: the fixed-member operation spans
+  four members since FR-045; this task's own subject — the Claude member's boundaries — is
+  unchanged.)*
+- [X] T964 [P] [US4] Add boundary tests for only Claude Global `CLAUDE.md`, zero operations on
+  neighboring User/runtime surfaces, a distinct Claude control/context but no independent job, zero
+  new/provisional pre-commit Source for the admitted missing-Source member while carried existing
+  Sources remain visible, exact raw-path behavior, one shared batch request/working set, atomic
+  all-member publication, whole-batch abort on an unexpected failure, and Repository/prior-Source
+  preservation; instrument that every proposed-root operation originates only in the single
+  inspection module and host admission code performs zero direct filesystem calls in
+  `tests/integration/global-boundaries.test.ts`
+- [X] T965 [US4] Materialize the reference-only Claude User behavior set,
+  `claude.global.instructions`, exact `claude.excluded.user-runtime`, composition, and evidence rows
+  in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T966 [US4] Add failing Claude Global registry contracts proving all Claude User behaviors were
+  already owned before enablement, `claude.global.instructions` is the only new Claude
+  read-authorizing rule, and `claude.excluded.user-runtime` is the only newly owned Claude exclusion
+  in `tests/contract/vendor-behaviors.test.ts`, `tests/contract/inspection-rules.test.ts`, and
+  `tests/contract/runtime-composition.test.ts`
+- [X] T967 [US4] Add browser acceptance for Claude's confirmed/pending/retryable outcome within the
+  fixed-member controls, shared batch request/progress, deterministic per-tool Diagnostics, the
+  ordinary whole-batch failure error, zero new/provisional pre-commit Claude Source/file rows while
+  carried existing Sources remain visible, atomic sibling publication, and retained Repository
+  results in `tests/e2e/global-claude-admission.spec.ts`
+
+### Implementation
+
+- [X] T968 [US4] Implement Claude root-admission orchestration as one fixed-member member: submit
+  the frozen root and compiled plan to the inspection module, consume only its typed admission
+  outcome/context, retain raw provenance, and propagate a rejected call unchanged. Host code MUST
+  issue no filesystem call and MUST NOT inspect or convert a Node error code; it may transfer an
+  admitted unpublished context/IDs to the Claude control only in the atomic decision feeding the one
+  `GlobalBatchScan` in `src/server/host/global-consent.ts`
+- [X] T969 [US4] Update the already-owned `claude.behavior.user.instructions`,
+  `claude.behavior.user.rules`, `claude.behavior.user.skills`, `claude.behavior.user.commands`,
+  `claude.behavior.user.agents`, `claude.behavior.user.settings`,
+  `claude.behavior.user.output-style`, `claude.behavior.user.mcp-state`,
+  `claude.behavior.user.plugins`, `claude.behavior.user.agent-memory`,
+  `claude.behavior.user.auto-memory`, and `claude.behavior.user.workflows` with reciprocal Global
+  rule/exclusion references without adding or redefining any behavior ID in
+  `src/shared/registries/vendor-behaviors.ts`
+- [X] T970 [US4] Add only `claude.global.instructions` as a consent-gated read-authorizing rule and
+  own exactly the non-read `claude.excluded.user-runtime` record in
+  `src/shared/registries/inspection-rules.ts`
+- [X] T971 [US4] Extend the existing Claude instruction strategy with Global selection and
+  source-separation inputs without a new strategy ID in
+  `src/shared/registries/runtime-composition.ts` *(amended 2026-08-06: an admission stays a
+  read-authorization record, and what a vendor documents stays in its maintained contract, so no
+  surface projects a condition, applicability, order, runtime state, provenance, or documentation
+  status (FR-009; T091/T1068/T1042).)*
+- [X] T972 [US4] Update existing official-source backlinks for Claude Global coverage without
+  creating source IDs in the owning registry record's `evidence` citations
+- [X] T973 [US4] Implement only Claude `CLAUDE.md` below the consented boundary plus exact
+  `claude.excluded.user-runtime` enforcement in `src/server/inspection/rules/claude.ts`
+- [X] T974 [US4] Implement Claude scanning as one member of the single `GlobalBatchScan`, with
+  exactly one root, raw-path semantics, deterministic member Diagnostics, a missing or unreadable
+  root recording the member as absent or failed while siblings remain eligible, file-confined
+  outcomes contributing that file's Diagnostic to a partial member result, and zero new/provisional
+  member-Source publication until all admitted members' committable results publish together in one
+  generation while carried existing Sources remain visible; propagate any member failure not
+  confined to one file unchanged to abort the whole batch in `src/server/inspection/scan.ts`
+- [X] T975 [US4] Implement Claude control/context outcome and retry state as projections of the one
+  serialized fixed-member admission/batch operation, not an independent job; share its
+  request/progress with admitted siblings, preserve prior state until the one atomic commit, and on
+  any failure not confined to one file retain one ordinary terminal error for the shared ID with no
+  new item/Source/result/generation or initial/retry stale overlay, then discard late work in
+  `src/server/session/session.ts`
+- [X] T976 [US4] Add English messages for Claude Global admission, exact exclusion, shared-batch
+  progress, deterministic rejection/retry, and whole-batch failure, explicitly distinguishing no
+  new/provisional pre-commit Source from carried existing Sources that remain visible, in the Vue
+  components that render them
+
+---
+
+## Phase 98: Copilot Global Batch Member (Composite Slice 3/4)
+
+This slice adds the real Copilot port to the same open composite milestone; it is not independently green or releasable.
+
+**Purpose**: Land the four-member consent foundation, then add Copilot root admission and its contracted member selector set — instructions, skills, agents, hooks, settings, and MCP below `COPILOT_HOME`, and the shared-agent-home skill rule — as a separately identified Source candidate inside the same fixed-four `GlobalBatchScan`, while owning the exact Copilot and shared exclusions.
+
+**Independent Test**: Partition valid and invalid `COPILOT_HOME` roots within the fixed-four operation, read only the contracted selectors, map the behavior partitions, and prove every admitted sibling Source appears together in one batch generation or none appears after a failure not confined to one file, with no independent Copilot job or commit.
+
+**Visible Checkpoint**: Global controls report Copilot's per-member outcome within the shared operation; no new/provisional Copilot Source appears before the one batch commit, while carried existing Sources remain visible.
+
+### Four-member foundation
+
+- [X] T1137 [US4] Turn the fixed-member consent operation into the fixed-four member operation
+  FR-013 and FR-045 define, before any member widens: capture the three environment properties once
+  at session startup, call the imported `node:os.homedir()` exactly once for that session, derive the
+  shared agent home as `node:path.join(capturedHomedir, '.agents')`, and freeze four preview entries in fixed
+  order in `src/server/host/global-consent.ts`, bumping the
+  `allowlistVersion`/`traversalPlanVersion` literals to `2026-08-27` — a widened selector set is a
+  different consent, so the old version must stop matching — and pinning the new literals in
+  `tests/contract/http-api-global.test.ts`. Make the member id the closed
+  `copilot | claude | codex | agents` union in `src/shared/api-types.ts` with its caption in
+  `src/shared/api-text.ts`, key the preview entry, controls, and batch fields by member per the
+  amended contract (contracts/http-api.md), and let `SourceSelector` spell the fourth member as
+  `global-agents` through `src/shared/registries/identifier-types.ts` and the client route and
+  filter modules that parse it. Land the member itself with its Codex rules —
+  `codex.global.agents-home.skill` and `codex.global.agents-home.marketplace` in
+  `src/shared/registries/codex/rules.ts` and `src/server/inspection/rules/codex.ts` — and bind the
+  `agents` member's admission port beside the tool ports, so one skill below `~/.agents/skills`
+  publishes under the `agents` Source with a Codex recognition and gains the Copilot recognition
+  when T987 lands that vendor's rule. Extend `tests/fixtures/global-homes/build-fixtures.ts` with a
+  realistic shared agent home — skills with near-miss neighbours, a personal
+  `plugins/marketplace.json`, and excluded installed-plugin copies — following the README's
+  candidate/near-miss rule, update the consent copy in `src/app/pages/global-consent.vue` and
+  `src/app/components/consent/GlobalConsentPreview.vue` to state the four directories and the
+  widened file set, and prove the four-entry preview, the always-derived fourth root, the version
+  bump, and the `agents` member's admission end to end in `tests/contract/http-api-global.test.ts`,
+  `tests/unit/host/global-consent.test.ts`, and `tests/e2e/global-consent-preview.spec.ts`.
+
+### Tests first
+
+- [X] T977 [P] [US4] Add failing Copilot post-consent boundary tests for absent/default versus
+  invalid overrides, canonical roots, raw-path identity, links read through their targets, and
+  missing/unreadable files inside the fixed-four operation. Require a missing or unreadable Copilot
+  root to record that member as absent or failed without preventing sibling members from committing;
+  require a file-confined failure inside an admitted Copilot root to yield that file's Diagnostic in
+  a partial member result; and require any failure not confined to one file to propagate unchanged
+  and abort the whole batch with no subset Source/generation; host consent code performs zero
+  filesystem calls in `tests/unit/host/global-consent.test.ts` *(amended 2026-08-27: fixed-four —
+  the shared agent home joins the members (FR-045).)*
+- [X] T978 [P] [US4] Add boundary tests for the contracted Copilot Global selector sets — the
+  instruction pair, `skills/<name>/SKILL.md`, `agents/*.agent.md`, `hooks/*.json`, `settings.json`,
+  `mcp-config.json`, and the shared-agent-home skills — zero operations on neighboring
+  User/runtime/managed-remote surfaces, a distinct Copilot control/context but no independent job,
+  zero new/provisional pre-commit Source for the admitted missing-Source member while carried
+  existing Sources remain visible, exact raw-path behavior, one shared batch request/working set,
+  atomic all-member publication, whole-batch abort on an unexpected failure, and
+  Repository/prior-Source preservation; instrument that every proposed-root operation originates
+  only in the single inspection module and host admission code performs zero direct filesystem calls
+  in `tests/integration/global-boundaries.test.ts` *(amended 2026-08-27: the Global scope widened
+  from the instruction files to every documented user customization file across four member roots —
+  FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T979 [US4] Materialize the reference-only Copilot behavior partition:
+  `copilot.behavior.cli.user.instructions.root` only to `copilot.global.instructions.root`;
+  `copilot.behavior.cli.user.instructions.path` plus `copilot.behavior.vscode.user.instructions`
+  only to `copilot.global.instructions.path`; each admitted-kind behavior to its Copilot Global rule
+  per the contract's Global table; the remaining 11 Copilot User behaviors to
+  `copilot.excluded.user-runtime` — the three VS Code rows whose `COPILOT_HOME` subsets are admitted
+  backlink both their admitting rule and the exclusion; and only the contracted three Claude/Codex
+  User plus five Cloud behaviors to `shared.excluded.managed-remote-state`, with composition and
+  evidence rows in `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json` *(amended 2026-08-27: the Global scope
+  widened from the instruction files to every documented user customization file across four member
+  roots — FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts
+  follow the amended vendor contracts.)*
+- [X] T980 [US4] Add failing Copilot Global registry contracts proving the contracted admitted
+  behavior-to-Global-rule backlinks, the exact remaining-11-to-`copilot.excluded.user-runtime`
+  backlinks, the contracted-only shared-managed affected set, exactly the nine Copilot Global rules
+  newly authorizing reads — `copilot.global.instructions.root`, `copilot.global.instructions.path`,
+  `copilot.global.skill`, `copilot.global.agent`, `copilot.global.hooks`,
+  `copilot.global.hooks.inline`, `copilot.global.settings`, `copilot.global.mcp`, and
+  `copilot.global.agents-home.skill` — one newly owned vendor exclusion, and one shared exclusion in
+  `tests/contract/vendor-behaviors.test.ts`, `tests/contract/inspection-rules.test.ts`, and
+  `tests/contract/runtime-composition.test.ts` *(amended 2026-08-27: the Global scope widened from
+  the instruction files to every documented user customization file across four member roots —
+  FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T981 [US4] Add browser acceptance for Copilot's confirmed/pending/retryable outcome within the
+  fixed-four controls, shared batch request/progress, deterministic invalid-override Diagnostics,
+  the ordinary whole-batch failure error, zero new/provisional pre-commit Copilot Source/file rows
+  while carried existing Sources remain visible, atomic sibling publication, and retained Repository
+  results in `tests/e2e/global-copilot-admission.spec.ts` *(amended 2026-08-27: fixed-four — the
+  shared agent home joins the members (FR-045).)*
+
+### Implementation
+
+- [X] T982 [US4] Implement Copilot root-admission orchestration as one fixed-four member:
+  distinguish absent/default from invalid preview, submit the frozen root and compiled plan to the
+  inspection module, consume only its typed admission outcome/context, retain raw provenance, and
+  propagate a rejected call unchanged. Host code MUST issue no filesystem call and MUST NOT inspect
+  or convert a Node error code; it may transfer an admitted unpublished context/IDs to the Copilot
+  control only in the atomic decision feeding the one `GlobalBatchScan` in
+  `src/server/host/global-consent.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins
+  the members (FR-045).)*
+- [X] T983 [US4] Update already-owned behaviors with the contracted reciprocal backlink sets:
+  `copilot.behavior.cli.user.instructions.root` only to `copilot.global.instructions.root`;
+  `copilot.behavior.cli.user.instructions.path` and `copilot.behavior.vscode.user.instructions` only
+  to `copilot.global.instructions.path`; `copilot.behavior.cli.user.skills` and
+  `copilot.behavior.vscode.user.skills` to `copilot.global.skill` and
+  `copilot.global.agents-home.skill`; `copilot.behavior.cli.user.agents` and
+  `copilot.behavior.vscode.user.agents` to `copilot.global.agent`; `copilot.behavior.cli.user.hooks`
+  and `copilot.behavior.vscode.user.hooks` to `copilot.global.hooks`, the CLI row also to
+  `copilot.global.hooks.inline` — a settings behavior is a basis only for the settings rule (T624);
+  `copilot.behavior.cli.user.settings` to `copilot.global.settings`; `copilot.behavior.cli.user.mcp`
+  to `copilot.global.mcp`; the remaining 11 Copilot User
+  behaviors—`copilot.behavior.vscode.user.claude`, `copilot.behavior.vscode.user.skills`,
+  `copilot.behavior.vscode.user.agents`, `copilot.behavior.vscode.user.prompts`,
+  `copilot.behavior.vscode.user.hooks`, `copilot.behavior.vscode.user.mcp`,
+  `copilot.behavior.vscode.user.settings`, `copilot.behavior.vscode.user.plugins`,
+  `copilot.behavior.cli.user.plugins`, `copilot.behavior.cli.user.lsp`, and
+  `copilot.behavior.cli.user.extensions`—to `copilot.excluded.user-runtime`, the three VS Code rows
+  with admitted `COPILOT_HOME` subsets carrying both backlinks; and the contracted shared-managed
+  set—`claude.behavior.user.mcp-state`, `claude.behavior.user.plugins`,
+  `codex.behavior.user.plugins`, `copilot.behavior.cloud.mcp`,
+  `copilot.behavior.cloud.organization-agents`, `copilot.behavior.cloud.organization-instructions`,
+  `copilot.behavior.cloud.plugins`, and `copilot.behavior.cloud.remote-skills`—only to
+  `shared.excluded.managed-remote-state`, without adding or redefining any behavior ID in
+  `src/shared/registries/vendor-behaviors.ts` *(amended 2026-08-27: the Global scope widened from
+  the instruction files to every documented user customization file across four member roots —
+  FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T984 [US4] Add the nine Copilot Global rules with their contracted behavior refs, own exactly
+  `copilot.excluded.user-runtime` with only the remaining 11 User behavior refs, and add the single
+  shared non-read `shared.excluded.managed-remote-state` with only its contracted three Claude/Codex
+  User plus five Cloud refs in `src/shared/registries/inspection-rules.ts` *(amended 2026-08-27: the
+  Global scope widened from the instruction files to every documented user customization file across
+  four member roots — FR-015 through FR-018 and FR-045 — so this task's member set, selector sets,
+  and counts follow the amended vendor contracts.)*
+- [X] T985 [US4] Extend existing Copilot CLI/VS Code instruction strategies with Global source
+  separation without new strategy IDs in `src/shared/registries/runtime-composition.ts` *(amended
+  2026-08-06: an admission stays a read-authorization record, and what a vendor documents stays in
+  its maintained contract, so no surface projects a condition, applicability, order, runtime state,
+  provenance, or documentation status (FR-009; T091/T1068/T1042).)*
+- [X] T986 [US4] Update existing official-source backlinks for the contracted admitted Global-rule,
+  remaining-11 User-runtime, and contracted shared-managed partitions without creating source IDs in
+  the owning registry record's `evidence` citations *(amended 2026-08-27: the Global scope widened
+  from the instruction files to every documented user customization file across four member roots —
+  FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T987 [US4] Implement the contracted Copilot Global selectors — `copilot-instructions.md`,
+  `instructions/**/*.instructions.md`, `skills/<name>/SKILL.md`, `agents/*.agent.md`,
+  `hooks/*.json`, `settings.json` with its inline-hooks recognition, and `mcp-config.json` below the
+  consented boundary, and `copilot.global.agents-home.skill` below the shared agent home — plus
+  exact `copilot.excluded.user-runtime` and `shared.excluded.managed-remote-state` enforcement in
+  `src/server/inspection/rules/copilot.ts` *(amended 2026-08-27: the Global scope widened from the
+  instruction files to every documented user customization file across four member roots — FR-015
+  through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T988 [US4] Implement Copilot scanning as one member of the single `GlobalBatchScan`, with
+  member-selector traversal that reaches nothing the contracted selectors do not name, exactly one
+  root, raw-path semantics, deterministic member Diagnostics, a missing or unreadable root recording
+  the member as absent or failed while siblings remain eligible, file-confined outcomes contributing
+  that file's Diagnostic to a partial member result, and zero new/provisional member-Source
+  publication until all admitted members' committable results publish together in one generation
+  while carried existing Sources remain visible; propagate any member failure not confined to one
+  file unchanged to abort the whole batch in `src/server/inspection/scan.ts` *(amended 2026-08-27:
+  the Global scope widened from the instruction files to every documented user customization file
+  across four member roots — FR-015 through FR-018 and FR-045 — so this task's member set, selector
+  sets, and counts follow the amended vendor contracts.)*
+- [X] T989 [US4] Implement Copilot control/context outcome and retry state as projections of the one
+  serialized fixed-four admission/batch operation, not an independent job; share its
+  request/progress with admitted siblings, preserve prior state until the one atomic commit, and on
+  any failure not confined to one file retain one ordinary terminal error for the shared ID with no
+  new item/Source/result/generation or initial/retry stale overlay, then discard late work in
+  `src/server/session/session.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins the
+  members (FR-045).)*
+- [X] T990 [US4] Add English messages for Copilot Global override, admission, exact exclusions,
+  shared-batch progress, deterministic rejection/retry, and whole-batch failure, explicitly
+  distinguishing no new/provisional pre-commit Source from carried existing Sources that remain
+  visible, in the Vue components that render them *(amended 2026-08-27: fixed-four — the shared
+  agent home joins the members (FR-045).)*
+
+---
+
+## Phase 99: Atomic Global Batch Result Integration (Composite Closure 4/4)
+
+**Purpose**: Widen the shipped Claude and Codex members to their contracted kind sets, then close the composite milestone by binding all four real member-admission ports and integrating zero to four separately identified member Global Sources, each with one member/root, through exactly one initial/retry `GlobalBatchScan` commit without merging roots or exposing a per-member commit.
+
+**Independent Test**: Evaluate the fixed tuple, deterministically admit zero to four roots, and verify an empty subset creates no new job/generation while preserving carried Sources/controls and the prior snapshot, while a nonempty subset uses one request, working set, result, and Global generation to publish every admitted separately identified Source together; verify stable Source IDs, invalidation confined to the Global sequence while Repository generation and views stay untouched, exact 81-rule total, deterministic accepted/rejected partitioning, whole-batch abort on a failure not confined to one file, detail/comparison reuse, excluded-surface isolation, and the exact non-pending-unpublished-admitted plus same-preview-rejected `retryableTools` controls.
+
+**Visible Checkpoint**: Admitted Codex, Claude, Copilot, and shared-agent-home Global Sources appear separately but simultaneously after one batch commit and can then be filtered, inspected, compared, and explicitly rescanned per Source.
+
+### Member widening
+
+- [X] T1138 [US4] Widen the shipped Claude Global member from `CLAUDE.md` to the contracted set: add
+  `claude.global.rules`, `claude.global.skill`, `claude.global.command`, `claude.global.agent`,
+  `claude.global.settings`, `claude.global.permissions`, `claude.global.hooks.settings`, and
+  `claude.global.output-style` to `src/shared/registries/claude/rules.ts` and `CLAUDE_GLOBAL_RULES`
+  in `src/server/inspection/rules/claude.ts`, with their ids in
+  `src/shared/registries/identifier-types.ts` and their relations in
+  `src/shared/registries/claude/relations.ts`; shrink `claude.excluded.user-runtime` to the seven
+  behaviors no Global rule admits and add the `keybindings` and `themes` behavior records the
+  contract now carries. The three settings rules are one candidate read once, exactly as the
+  Repository trio is. Extend the Claude home in `tests/fixtures/global-homes/build-fixtures.ts` with
+  realistic admitted files and their near misses — flat `rules/*.md` beside a nested rules
+  subdirectory that stays a near miss, a personal skill beside the reserved `skills/synced/`
+  download tree, a namespaced command, a nested agent, `settings.json` carrying `permissions` and
+  `hooks`, an output style, and the excluded `plugins/`, `projects/`, `keybindings.json`, and
+  `themes/` state — and prove admission, recognitions, detail routes, and exclusion end to end in
+  `tests/contract/inspection-rules.test.ts`, `tests/contract/vendor-behaviors.test.ts`, and
+  `tests/e2e/global-claude-admission.spec.ts`.
+- [X] T1139 [US4] Widen the shipped Codex Global member from the instruction fallback to the
+  contracted set: add `codex.global.config`, `codex.global.settings`, `codex.global.hooks.inline`,
+  `codex.global.hooks`, `codex.global.agent`, `codex.global.rules`, and `codex.global.prompts` to
+  `src/shared/registries/codex/rules.ts` and `CODEX_GLOBAL_RULES` in
+  `src/server/inspection/rules/codex.ts`, with their ids and relations beside them; the config trio
+  is one candidate read once, exactly as the Repository trio is, and the user `rules/*.rules` files
+  are `permissions` recognitions exactly as the Repository rule's are. Shrink
+  `codex.excluded.user-runtime` to memories and installed plugin copies. Extend the Codex home in
+  `tests/fixtures/global-homes/build-fixtures.ts` with a realistic `config.toml` carrying
+  `[mcp_servers]`, an inline `[hooks]` table, and settings keys, a standalone `hooks.json`,
+  `agents/*.toml`, `rules/*.rules`, deprecated `prompts/*.md`, and the excluded `memories/` and
+  `plugins/` state, each with the near misses the README requires, and prove admission,
+  recognitions, detail routes, and exclusion end to end in
+  `tests/contract/inspection-rules.test.ts`, `tests/contract/vendor-behaviors.test.ts`, and
+  `tests/e2e/global-codex-admission.spec.ts`.
+- [X] T1140 [US4] Carry the Source qualifier through every surface a widened member can now reach:
+  make `get-mcp-carrier-detail`, `get-hook-carrier-detail`, `get-permission-policy-detail`,
+  `get-plugin-carrier-detail`, and `get-plugin-file-detail` take the Source with the path per the
+  amended contract (contracts/http-api.md), and give the skill, MCP, prompt-and-command, plugin,
+  agent, and hook comparison surfaces the `compare`-led address the instruction comparison carries —
+  `/<kind>/compare/<family>` with per-side Source query parameters (contracts/http-api.md § Host
+  requirements #5) — so a pair stays inside one Source family while a family's two consented homes
+  remain comparable with each other. Keep the family grouping the inventory already renders — one
+  block per Source family, each file naming its directory where the family holds more than one
+  Source — for every kind a member now publishes, in `src/server/session/session.ts`,
+  `src/server/host/devframe-app.ts`, `src/app/session/api-client.ts`,
+  `src/app/session/view-state.ts`, the comparison composables and pages, and the per-kind row
+  components, proven in the kind-specific comparison e2e specs. *(amended 2026-08-28: the row
+  identity half landed with Phase 98 — every row member of a kind the Copilot and shared-agent-home
+  rules publish (skill definitions, MCP and hook declarations, agent definitions, plugin carriers,
+  settings rows) publishes its `sourceId`, and the inventory resolves, filters, and links by it —
+  because that phase is where two Sources first hold one path of those kinds, which is where
+  path-only resolution has to stop (T1001). What remains here is the Source parameter on the
+  carrier, policy, and plugin detail functions, the per-side comparison Sources, and the
+  family-grouping presentation.)* *(amended 2026-08-28: every kind's comparison lives under its own
+  `compare` segment with the Source family after it and never pairs across families — each family
+  block owns its own entry, pairing that family's members, and a row whose blocks hold one member
+  each offers none — because the repository and a consented home are different kinds of place, the
+  decision the instruction blocks already carry.)*
+
+### Tests first
+
+- [X] T991 [P] [US4] Add integrated boundary tests for the contracted member selector sets and one
+  fixed-four transaction: zero admitted roots allocate no new `scanRequestId`/job/Source/generation
+  and preserve all carried Sources/controls and the prior snapshot; one to four admitted roots yield
+  separately identified one-member/one-root Sources together in exactly one complete or partial
+  generation; a member root that disappears or cannot be read is recorded as absent or failed while
+  a file-confined outcome inside an admitted root contributes its per-file diagnostic to that
+  partial generation with one shared request ID and no observable per-member commit. Derive each
+  escaped boundary one way from its retained raw context; preserve raw filesystem operands, raw-path
+  semantics and distinct provenance within each Source; never reverse preview/display labels into
+  authority; perform zero excluded-surface reads; abort the entire subset on every failure not
+  confined to one file; and preserve Repository/prior Sources in
+  `tests/integration/global-boundaries.test.ts` *(amended 2026-08-27: the Global scope widened from
+  the instruction files to every documented user customization file across four member roots —
+  FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T992 [US4] Add final Global registry contracts proving exactly 81 rule IDs—the 49-ID
+  pre-Global gate *(amended 2026-08-01: no rule derives skill metadata (Phase 6))* plus three vendor
+  `*.excluded.user-runtime` records, `shared.excluded.managed-remote-state`, and twenty-eight Global
+  static read-authorizing rules—exact exclusion ownership, reciprocity, zero contained MCP candidate
+  additions — a contained hook declaration is its own rule — and existing-source evidence backlinks
+  in `tests/contract/vendor-behaviors.test.ts`, `tests/contract/inspection-rules.test.ts`, and
+  `tests/contract/runtime-composition.test.ts` *(amended 2026-08-27: the Global scope widened from
+  the instruction files to every documented user customization file across four member roots —
+  FR-015 through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T993 [P] [US4] Add coordinator tests for one atomic batch publication of every admitted member
+  Source; one shared request ID, authority, working set, result, and exactly one Global generation;
+  stable `Source.sourceId`; one-root/member invariants; one-way boundaries from retained raw
+  contexts; carried-Source semantic preservation with Global-confined invalidation and untouched
+  Repository state; deterministic partial member outcomes from file-confined per-file diagnostics,
+  with a missing or unreadable member root recorded as absent or failed; no per-member commit;
+  whole-batch failure on an unexpected failure with one ordinary terminal error and no subset/stale
+  overlay; the exact `retryableTools` projection and operation-local validation versus accepted
+  pending-state lifecycle; progress; and conflicts in `tests/unit/session/coordinator.test.ts`
+  *(amended 2026-08-27: fixed-four — the shared agent home joins the members (FR-045).)*
+- [X] T994 [P] [US4] Add lifecycle tests proving one successful initial/retry batch commits exactly
+  one generation of the independent Global sequence, publishes all admitted Sources together,
+  preserves process-lifetime Source IDs and carried Global semantic inventory/authored content,
+  invalidates stale Global FileDetail/comparison/Monaco state while leaving Repository generation
+  and views untouched, and leaks no provisional context/pending admission; prove no poll can observe
+  an intermediate per-member commit in `tests/integration/session-lifecycle.test.ts` *(amended
+  2026-08-27: fixed-four — the shared agent home joins the members (FR-045).)*
+- [X] T995 [P] [US4] Add failing exact-display API/integration tests for Global literal credentials,
+  environment references, process sentinels, inert executable-looking payloads, binary and
+  `utf-8-replaced` files, injected throws/rejections, and mutation observations; prove readable text
+  is exact with no substitution, binary is diagnostic-only, and every failure not confined to one
+  file propagates without domain classification/retry/result, aborts the whole shared batch, commits
+  no subset/generation, and is reported only as the failed request's ordinary pre- or accepted-job
+  error with no initial/retry stale overlay, while prior state and filesystem observations remain
+  intact in `tests/contract/http-api-files.test.ts` and
+  `tests/integration/global-literal-display.test.ts`
+- [X] T996 [P] [US4] Add failing zero-activation security tests using recorded local Global fixture
+  roots and instrumented product socket/HTTP(S)/DNS/SMB/MCP/URI/image surfaces. Separately classify
+  and validate the two exact FR-022 authorized internal loopback classes; prove zero dynamic
+  evaluation, command/hook execution, browser-helper launch, prohibited direct product-issued
+  outbound or MCP request across every other surface, environment substitution, or mutation-capable
+  filesystem call. Prove no removed surface reappears in
+  `tests/security/global-zero-activation.test.ts`. *(amended 2026-08-06:
+  `tests/integration/source-condition-facts.test.ts` does not exist — nothing projects a condition
+  fact (T091), so the zero-activation suite alone owns this proof.)* Restore this suite's own gate
+  in the same change: the `security` project in `./vitest.config.ts`, the `test:security` script in
+  `./package.json`, the CI job in `./.github/workflows/ci.yml`, and its gate line and any command
+  naming its directory in
+  `specs/001-inspect-agent-customizations/quickstart.md`/`specs/001-inspect-agent-customizations/quickstart.ja.md`
+  — all removed while the suite was empty, because a suite that does not exist yet cannot be
+  declared: an empty project fails the run outright, and the allowance that would let it pass
+  instead would report success for a verification nobody wrote. The integration/security
+  expected-result bullet was not removed and stays where it is; extend it only if this suite reports
+  something it does not already cover. The restored command lines are the one in the § Automated
+  quality gates list and the one in § Inspect without activation.
+- [X] T997 [US4] Add browser acceptance for selector-free fixed-four enablement, `active-no-job`,
+  and one shared batch request; verify separately identified admitted Sources appear simultaneously
+  after one generation, with escaped inert boundaries distinct from preview and Source-relative
+  paths; filters, Diagnostics, exact readable literals including replacement characters,
+  diagnostic-only binary, no activation/substitution/analysis/verdict, Fact isolation, detail reuse
+  and cross-Source comparison. An unexpected batch failure must show only one ordinary batch failure
+  error, publish no subset/generation or `StaleSourceFailure`, and preserve prior Repository/Global
+  state and stable Source IDs in `tests/e2e/global-enable.spec.ts` *(amended 2026-08-27: fixed-four
+  — the shared agent home joins the members (FR-045).)*
+
+### Implementation
+
+- [X] T998 [US4] Finalize fixed-four post-consent admission by binding the real T951/T968/T982/T1137
+  Codex/Claude/Copilot/shared-agent-home ports as four one-root `GlobalToolControl` records and
+  operation-local contexts, with initial evaluation of all members, server-derived exact
+  `retryableTools` retry, including non-pending unpublished admitted and same-preview rejected
+  controls while excluding published, pending, and lexical new-preview-required controls,
+  deterministic rejected partition, and one atomic transfer of every admitted context/ID into
+  exactly one `GlobalBatchScan`; prohibit any remaining injected test outcome or unbound production
+  port, create no independent per-member job or new/provisional pre-commit Source, keep carried
+  existing Sources visible, and propagate any failure not confined to one file before transfer in
+  `src/server/host/global-consent.ts` *(amended 2026-08-27: the Global scope widened from the
+  instruction files to every documented user customization file across four member roots — FR-015
+  through FR-018 and FR-045 — so this task's member set, selector sets, and counts follow the
+  amended vendor contracts.)*
+- [X] T999 [US4] Finalize all Global behavior, exactly twenty-eight Global static candidate rules,
+  the existing exact exclusions, strategy references, the evidence backlinks the amended contracts
+  produce — recounted and frozen in the same gate — and the exact 81-rule total *(amended
+  2026-08-01: no rule derives skill metadata (Phase 6))* in
+  `src/shared/registries/vendor-behaviors.ts`, `src/shared/registries/inspection-rules.ts`,
+  `src/shared/registries/runtime-composition.ts`, and the owning registry record's `evidence`
+  citations *(amended 2026-08-27: the Global scope widened from the instruction files to every
+  documented user customization file across four member roots — FR-015 through FR-018 and FR-045 —
+  so this task's member set, selector sets, and counts follow the amended vendor contracts.)*
+- [X] T1000 [US4] Implement one integrated `GlobalBatchScan` that consumes every admitted member
+  root through one request, publication authority, and working set; keep each member's
+  selectors/root/Source identity isolated, apply exact Codex fallback and raw-path rules, assemble
+  deterministic complete or partial member results from file-confined per-file diagnostics while
+  recording a missing or unreadable member root as absent or failed, publish no new/provisional
+  member result or Source until the coordinator accepts the whole batch, and leave carried existing
+  Sources visible; let any member failure not confined to one file propagate unchanged and abandon
+  every sibling in `src/server/inspection/scan.ts` *(amended 2026-08-27: fixed-four — the shared
+  agent home joins the members (FR-045).)*
+- [X] T1001 [US4] Atomically publish every admitted member Global Source together only when the
+  single batch has a committable complete or partial result after complete traversal; permit
+  file-confined per-file diagnostics in that partial publication while a missing or unreadable
+  member root is recorded as absent or failed rather than committed. Construct each boundary one way
+  from its admitted raw context, retain internal authority outside DTOs/logs, carry prior Global
+  semantic content unchanged, preserve all Global Source IDs, commit exactly one generation of the
+  independent Global sequence, invalidate only Global detail/comparison/editor state—Repository
+  generation and views are untouched—and clear only participating deterministic failures. A
+  zero-admitted operation allocates no new `scanRequestId`/job/Source/generation and preserves all
+  carried Sources/controls and the prior snapshot; any failure not confined to one file or other
+  noncommittable batch outcome commits no subset/generation, retains prior graphs and retry
+  controls, and for initial/retry creates no `StaleSourceFailure` in `src/server/session/session.ts`
+  and `src/server/session/scan-generation.ts`. Resolve `get-file-detail` by the file's full identity
+  — Source and Source-relative Path (FR-030) — in the same change, adding the Source qualifier to
+  the RPC parameter and its contract (contracts/http-api.md § get-file-detail): this task is where a
+  second Source first becomes able to hold a path the Repository also holds, so it is where
+  path-only resolution has to stop. The per-kind inventories stop there too: an instruction row is
+  one file, and a skill definition names one, both keyed by Source-relative Path alone, so publish
+  each row's `sourceId` and aggregate the server projection by Source and Path — otherwise two
+  Sources holding one path merge into a row that claims a file neither Source has. *(amended
+  2026-08-17: the per-kind inventory rows were named here after a review found the qualifier owned
+  for the detail RPC and the client routes but for no row identity.)* Make `SourceDto` a
+  discriminated union in the same change: `kind` and `tool` are independent fields today, so a
+  Repository Source carrying a tool, or a Global Source carrying none, type-checks. This task is
+  where a second Source kind first becomes constructible, so it is where the type has to stop
+  permitting the combinations that are not. *(amended 2026-08-27: the Source qualifier is
+  implemented — `get-file-detail` takes the pair as one object, every path-addressed detail route
+  reads `/<kind>/<source>/<path>`, the instruction comparison reads `/instructions/compare/<family>`
+  with each side naming its own Source, and each per-kind inventory row publishes its `sourceId`.
+  Phase 96's Codex Global member is where two Sources first hold one path, so it is where path-only
+  resolution had to stop; what remains here is the atomic batch publication and the `SourceDto`
+  union.)* *(amended 2026-08-27: the publication is of member Global Sources — the shared agent home
+  included (FR-045).)*
+- [X] T1002 [US4] Complete the Global-enable function responses for exact fixed-four
+  accepted/rejected partitions, one shared request ID plus `queued` for a nonempty batch or null
+  plus `active-no-job` for an empty subset, conflicts, retry state, and ordinary
+  pre-/post-acceptance failure errors, while leaving every admitted-member Source publication to a
+  later session poll after the one atomic batch commit and preserving carried existing Sources in
+  `src/server/host/devframe-app.ts` *(amended 2026-08-27: fixed-four — the shared agent home joins
+  the members (FR-045).)*
+- [X] T1003 [US4] Implement a Source-family filter — the selected repository, and the reader's own
+  configuration directories as one — beside the tool filter, so the Source axis states where a file
+  came from while the tool axis states which product recognized it and the selection can ride in
+  the inventory's URL as the family's own word, which a per-launch Source ID cannot; one-root summaries that render each
+  enabled Source's escaped, inert `SourceBoundary.displayRoot`/`origin` distinctly from
+  consent-preview display and Source-relative item paths and never as a locator; detail and
+  comparison navigation that addresses files by their full identity — Source and Source-relative
+  Path (FR-030) — carrying the Source qualifier through the detail route, the comparison route's
+  pair, the client's `get-file-detail` calls, and the inventory views' own row keys, so a Repository
+  file never shadows a same-path Global file; all after a Global commit in
+  `src/app/composables/filters.ts`, `src/app/session/view-state.ts`, `src/app/pages/index.vue`, and
+  the detail/comparison route components *(amended 2026-08-27: the Source filter, the one-root
+  summaries, and the detail and comparison navigation are implemented; what remains is Claude's and
+  Copilot's Global Sources, which arrive with the phases that bind their ports. The Source axis is
+  the family rather than one option per Source, because a per-tool Source option asked what the tool
+  filter beside it already answers, and because the selection rides in the URL. Each instructions
+  row and each instruction detail names its Source in that same vocabulary, and only where the
+  session carries more than one: a row is one range of one Source and two rows at one path are
+  otherwise identical on screen, while the ordinary session has one Source and needs no such line.
+  The Source filter is rendered on the same terms, because one family is a question with one
+  answer.)*
+- [X] T1004 [US4] Complete fixed-four confirmation and per-member outcome/retry controls tied to one
+  shared batch request/progress, focus recovery, `active-no-job`, the ordinary whole-batch failure
+  error, and simultaneous separate-Source outcome presentation in `src/app/pages/global-consent.vue`
+  and `src/app/components/consent/GlobalSourceControls.vue`; reuse T071's on-demand-refresh
+  contract for status *(amended 2026-08-27: fixed-four —
+  the shared agent home joins the members (FR-045).)* *(amended 2026-09-04: the pause/resume
+  half is dropped, because T071's own note records that no such control exists — nothing on
+  these pages updates automatically, so there is nothing to pause.)*
+- [X] T1005 [US4] Add English fixed-four/single-batch, one-root separate Source, accepted/rejected,
+  `active-no-job`, whole-batch failure, retry with carried existing Sources kept visible,
+  source/tool-filter, detail/comparison, and shared-progress messages in the Vue components that
+  render them *(amended 2026-08-27: fixed-four — the shared agent home joins the members (FR-045).)*
+
+---
+
+## Phase 100: Global Rescan and Recovery
+
+**Purpose**: Add explicit Global rescan, FIFO serialization, atomic carried-source generation construction, and recovery after fatal attempts.
+
+**Independent Test**: Queue Repository and Global work, trigger partial and fatal Global attempts, and verify dequeue-time generations, process-lifetime-stable Repository and Global `Source.sourceId` values, invalidation only of the committing Global sequence's views, atomic publication under environment-owned capacity, duplicate conflicts, retained consent/boundaries/prior graph, and successful explicit retry.
+
+**Visible Checkpoint**: Users can rescan Global results and recover from a failed attempt without re-consenting.
+
+### Tests first
+
+- [X] T1006 [US4] Add failing coordinator tests for serialized cross-source FIFO processing,
+  dequeue-time generations, one `scanRequestId` across admission/progress/final status/commit,
+  duplicate conflicts, fatal retention, and per-job counters; require every failure not confined to
+  one file to propagate without domain catch or cause classification, abort with no
+  item/recognition/derived result/Diagnostic/result body/generation, retain the prior snapshot, and
+  terminate an accepted explicit rescan only through the retained ordinary error for that same
+  request ID in `tests/unit/session/coordinator.test.ts`
+- [X] T1007 [US4] Extend coordinator tests for carried-Source graph construction, lifecycle/control
+  state, serialized state transitions, and cleanup of in-flight filesystem work. Also cover
+  publication-authority revocation after disable/shutdown/supersession with pending filesystem work
+  treated as cleanup-only, late discard, no later source I/O, responsive API, and no
+  hard-cancellation assertion in `tests/unit/session/coordinator.test.ts`
+- [X] T1008 [P] [US4] Add failing Global-rescan function contracts (the session API contract,
+  contracts/http-api.md) for strict `sourceId`, `ScanAdmission { scanRequestId, source }`, same-ID
+  waiting/active/final status and successful generation, one identified Global Source,
+  unknown/removed Source, disable-pending/duplicate conflicts, and rejection of older state as
+  completion. A pre-acceptance unexpected failure must fail with the request's real error and no
+  job; an accepted rescan unexpected failure must expose only the retained error with that request
+  ID, no attempt result/generation, the stale prior snapshot, and a Source stale reference; cover
+  retry and stale IDs in `tests/contract/http-api-global.test.ts`
+- [X] T1009 [P] [US4] Add concurrency tests for enable completion, queued Repository/Global scans,
+  partial publication, fatal retention, explicit retry, and unchanged consent/boundaries in
+  `tests/integration/global-concurrency.test.ts`
+- [X] T1010 [P] [US4] Add lifecycle tests distinguishing a successful initial/retry batch—which
+  publishes every admitted Source together and advances the Global sequence exactly once—from a
+  later successful explicit single-Source Global rescan—which replaces only that Source while
+  carrying all others. Both preserve every Global Source ID and carried semantic inventory/authored
+  content, and invalidate only Global FileDetail/comparison/Monaco state while Repository generation
+  and views stay untouched; only the explicit rescan clears its Source stale reference, while an
+  all-rejected enable/retry commits no generation and changes no committed state in
+  `tests/integration/session-lifecycle.test.ts`
+- [X] T1011 [US4] Add browser acceptance for Global rescan, waiting/active progress, duplicate
+  prevention, partial diagnostics, fatal retry, and retained prior results in
+  `tests/e2e/global-rescan.spec.ts`
+
+### Implementation
+
+- [X] T1012 [US4] Implement FIFO rescan for one identified member Global Source, complete or partial
+  commits of the Global sequence only that preserve all Global Source IDs, clear only the rescanned
+  Source's stale failure, preserve sibling failures, and invalidate old Global FileDetail/comparison
+  state while Repository state is untouched in `src/server/session/session.ts`,
+  `src/server/session/stale-failures.ts`, and `src/server/session/scan-generation.ts`
+- [X] T1013 [US4] Implement serialized carried-source generation construction and per-job counters
+  with environment-owned capacity; convert a file-confined failure into its per-file Diagnostic
+  under FR-028, let any other failure propagate unchanged through session/scan domain code without
+  cause classification, retry, item/recognition/derived result/body/generation, retain the prior
+  snapshot, and leave lifecycle conversion to the trigger-owning boundary; revoke publication
+  authority on disable/shutdown/supersession and discard/release late work once in
+  `src/server/session/session.ts` and `src/server/session/scan-generation.ts`
+- [X] T1014 [US4] Implement the strict Global-rescan session-API function for one opaque `sourceId`;
+  return admission and preserve its request ID through progress/final status/commit; enforce
+  disable/duplicate conflicts and report unexpected failures ordinarily: a pre-acceptance failure
+  fails with the request's real error and no job, while an accepted-job failure retains the same-ID
+  error via `failScan(scanRequestId, message)` with no attempt result/generation and a stale prior
+  snapshot; preserve retry/stale-Source responses in `src/server/host/devframe-app.ts`
+- [X] T1015 [US4] Implement Global rescan loading, duplicate suppression, stale recovery, fatal
+  retry, and progress refresh in `src/app/components/consent/GlobalSourceControls.vue` and
+  `src/app/session/view-state.ts`
+- [X] T1016 [US4] Add English Global rescan, queue, public `partial` (file-confined outcomes only),
+  failure-retention, and retry messages in the Vue components that render them
+
+---
+
+## Phase 101: Global Disable Barrier and Teardown
+
+**Purpose**: Add the recoverable priority zero-I/O disable barrier, full client-data purge/fence, and exact `remove-active-state` versus operation-local `cleanup-only` outcomes.
+
+**Independent Test**: Purge the browser before requesting disable, disable during Repository/enable/Global work, and repeat/join/retry after failures. Verify epoch/fence response gates, control-only recovery, the failed request's error and restart when closure is unconfirmed, confirmed cleanup, `remove-active-state` discarding the entire Global generation sequence while the Repository sequence and its IDs stay untouched, `cleanup-only` changing no committed state and permitted only for unpublished initial enable, and immediate fresh-snapshot recovery after pre-acceptance failure or true no-op.
+
+**Visible Checkpoint**: Disable immediately removes all browser inspection content, exposes only recovery controls while fenced, and restores a fresh Repository-only snapshot only after confirmed terminal success.
+
+### Tests first
+
+- [X] T1017 [US4] Add failing coordinator tests for first non-no-op disable acceptance atomically
+  choosing and retaining `commitKind`, incrementing `globalContentEpoch`, installing non-null
+  `globalDisableInProgress`, revoking authority, and fencing data. Choose `remove-active-state`
+  whenever public Global consent/control/Source exists and discard the entire Global generation
+  sequence and its Sources while the Repository sequence, its generation, and its IDs stay
+  untouched; choose `cleanup-only` only for unpublished operation-local initial enable and change no
+  committed state. Prove a true no-op requires the complete absence of member Global Source/graph,
+  active consent, retained admitted root context, running/queued Global scan/enable work, and
+  retained disable failure; unrelated Repository work does not prevent it. Cover joined requests,
+  retained failed barrier/retry lineage carrying the failed request's error, exact resource
+  references, and Repository requeue exactly once only after success while preserving the same
+  `operationId`, `scanRequestId`, trigger owner, requested Source, and queue order, returning the
+  existing command to `waiting`, allocating no new scan admission, and emitting no interim success;
+  also prove no rollback/rebase in `tests/unit/session/coordinator.test.ts`
+- [X] T1018 [P] [US4] Add failing session-API contracts for the strict argument-free Global-disable
+  function; the full true-no-op predicate and mutationless success result; the fence as the
+  disabling page observes it on its own responses; final response gates that permit an
+  inspection-data success only when its captured epoch is still current and the current fence is
+  null, while the fenced session route returns only the control DTO; `GlobalFenceRecoverySnapshot`
+  as the session route's sole fenced success; the fixed `global-disable-pending` conflict on every
+  other inspection-data route and generation mutation; joined/retry/failed responses carrying the
+  failed request's error; and exact terminal buffers—a Repository-only snapshot whose Global
+  sequence is discarded and whose Repository generation is unchanged after `remove-active-state`
+  versus the unchanged committed state after `cleanup-only`—in
+  `tests/contract/http-api-global.test.ts` and `tests/contract/http-api-session.test.ts`.
+- [X] T1019 [P] [US4] Add concurrency tests for interrupted Repository/enable/Global work, queued
+  cancellation, acceptance-versus-atomic-disposition interleavings, joined disable, retained failure
+  and retry with the same cleanup lineage/epoch/commit kind, exact
+  same-ID/same-owner/same-Source/same-order requeue once to `waiting` after terminal success with no
+  new admission or interim success, true no-op, and pre-acceptance failure. Prove the fence never
+  reopens on post-acceptance failure and no stale captured-epoch response publishes in
+  `tests/integration/global-concurrency.test.ts`
+- [X] T1020 [P] [US4] Add boundary instrumentation proving disable performs zero enumeration/read,
+  emits zero expected-cancellation Diagnostics, drains or discards every affected in-flight
+  filesystem operation exactly once, and completes only after affected resources are closed, with
+  restart presented as the fallback when cleanup cannot be confirmed and no guessed closure in
+  `tests/integration/global-boundaries.test.ts`
+- [X] T1021 [P] [US4] Add lifecycle tests proving the browser performs a full purge before sending
+  disable and again before rendering any greater epoch/non-null fence, removing every
+  session/inventory/Source/file/Diagnostic/relationship/authored/detail/comparison/Monaco/filter
+  value. While fenced expose only `GlobalFenceRecoverySnapshot`; after `remove-active-state` fetch
+  the fresh Repository-only snapshot with the Global sequence discarded and the Repository
+  generation and IDs unchanged, after `cleanup-only` fetch the unchanged committed snapshot, and
+  after pre-acceptance failure/no-op immediately refetch a full snapshot. Prove late results never
+  publish and resources release only through confirmed registry cleanup in
+  `tests/integration/session-lifecycle.test.ts`
+- [X] T1022 [US4] Add browser acceptance plus the documented Global-consent target for
+  preview/enable/rescan/disable, pre-request purge, epoch/fence observation purge, exact
+  control-only failed/retry/join/restart recovery, no purged-content restoration, enable/disable
+  interleavings, focus restoration, and fresh terminal snapshots. Cover both the public-state
+  `remove-active-state` outcome that discards the Global sequence and the unpublished-initial-enable
+  `cleanup-only` outcome that changes no committed state, plus pre-acceptance/no-op immediate
+  recovery in `tests/e2e/global-disable.spec.ts` and `tests/e2e/global-consent.spec.ts`. Restore the
+  `pnpm exec playwright test tests/e2e/global-consent.spec.ts` line in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` in the same change; it was removed while
+  the file did not exist.
+
+### Implementation
+
+- [X] T1023 [US4] Implement the serialized priority zero-I/O barrier: on first non-no-op acceptance
+  fix `remove-active-state` versus `cleanup-only`, increment command/content epochs, install the
+  fence, revoke authority, cancel Global work, and hold running Repository work for exactly one
+  requeue only after terminal success. Preserve that existing command's exact `operationId`,
+  `scanRequestId`, trigger owner, requested Source, and queue order, return it to `waiting`, and
+  create no new scan admission or interim success; retain the exact operation/error/cleanup lineage
+  across failure, join, and retry. Evaluate the complete true-no-op predicate under coordinator
+  ownership: no member Global Source/graph, active consent, retained admitted root context,
+  running/queued Global scan/enable work, or retained disable failure; unrelated Repository work is
+  permitted. A true no-op or pre-acceptance failure performs no I/O, creates no job, and mutates no
+  generation, epoch, or fence; a post-acceptance failure keeps all data fenced in
+  `src/server/session/session.ts`
+- [X] T1024 [US4] Implement disable cleanup by draining or discarding the affected in-flight
+  filesystem work with one close attempt per resource, no double close, and no hard-cancellation
+  claim; when cleanup cannot be confirmed, keep the fence and present restart as the fallback. In
+  one atomic terminal commit, discard the entire Global generation sequence and its Sources for
+  `remove-active-state`—leaving the Repository sequence, its generation, and its IDs untouched—or
+  remove only unpublished operation-local state while changing no committed state for
+  `cleanup-only`, then clear the fence in `src/server/session/session.ts`,
+  `src/server/session/stale-failures.ts`, and `src/server/session/scan-generation.ts`
+- [X] T1025 [US4] Implement the strict argument-free Global-disable function at the request-owning
+  boundary with a mutationless success only for the complete true-no-op predicate, pre-acceptance
+  responses, first-acceptance/join/retry progress, the failed request's real error on failed
+  drain/close while keeping the process and fence alive, restart guidance for unconfirmed cleanup,
+  and the exact terminal commit-kind response in `src/server/host/devframe-app.ts`
+- [X] T1026 [US4] Implement pre-request full client-data purge, disable submission/loading, fenced
+  `GlobalFenceRecoverySnapshot` rendering, failed retry/join/restart controls, no-op/pre-acceptance
+  immediate full refetch, terminal fresh-snapshot adoption, and focus restoration in
+  `src/app/pages/global-consent.vue`, `src/app/components/consent/GlobalSourceControls.vue`, and
+  `src/app/session/view-state.ts`
+- [X] T1027 [US4] Implement the shared full-purge and response gate: clear all
+  session/global/Repository DTOs and rendered/derived state before disable and upon greater
+  epoch/non-null fence; reject every stale/late response; while fenced retain only the exact
+  control/error recovery state; after the fence clears fetch the full authoritative snapshot rather
+  than reconstructing purged content in `src/app/composables/filters.ts`,
+  `src/app/session/view-state.ts`, `src/app/composables/skill-comparison.ts`,
+  `src/app/composables/monaco.ts`, and every kind-specific comparison composable that exists by then
+  Re-add the two client surfaces Phase 3 deliberately deferred, because the fence that requires them
+  exists only here: the control-only recovery view the disabling page shows from barrier acceptance
+  through terminal success, and the explicit Resume inspection action a null fence permits — Phase 3
+  removed both with the liveness probe on 2026-07-24 rather than shipping UI no trigger could reach
+  (T049). Extend `SessionView` in `src/app/session/view-state.ts` from its Phase 3
+  `booting | inspection | ended` set accordingly, and add the `global-disable-request` pre-send
+  reason to `PurgeReason` in `src/app/session/client-data.ts`, which Phase 3 also removed for having
+  no emitter. Consider pushing the fence over the devframe channel the way eslint/config-inspector
+  pushes `invalidate`, so another tab observes disable without being polled; the product still
+  treats the server as the only authority, so a push is a trigger to refetch, never adopted state.
+  *(amended 2026-08-15: comparison is kind-specific, so the purge gate targets
+  `skill-comparison.ts` and later kinds add their own (spec.md § Clarifications
+  Session 2026-08-14).)*
+- [X] T1028 [US4] Add English messages for pre-request purge, epoch/fence control-only recovery,
+  failed retry/join/restart, true no-op/pre-acceptance refetch, `remove-active-state`
+  Repository-only state with the Global sequence discarded, and operation-local `cleanup-only`
+  unchanged committed state in the Vue components that render them
+
+---
+
+## Phase 102: Documentation, Evidence, and Dependency Review
+
+**Purpose**: Finalize bilingual operating guidance, official-source evidence, conformance data, and reviewed dependency decisions.
+
+**Independent Test**: Run the explicit opt-in official-source workflow with environment-owned capacity, review every drift/dependency decision, and verify synchronized English/Japanese guidance and conformance records.
+
+**Visible Checkpoint**: Maintainers have reviewable guidance, evidence provenance, and dependency rationale for the release candidate.
+
+### Documentation
+
+- [X] T1029 Draft semantically equivalent user-facing guidance in `./README.md`/`./README.ja.md`:
+  what the product lists and that being listed is not being loaded; the verified launch line and
+  every option the CLI accepts, exact `--root` included; the eleven customization kinds and the
+  comparison surface, illustrated by `docs/images/inventory.png` and `docs/images/comparison.png`;
+  the fixed-four Global consent that `--inspect-personal-setup` confirms; per-file
+  `file-unreadable`/`file-content-binary`/`recognition-parse-failed` diagnostics and the
+  source-scoped `root-unreadable` failure, whose failed explicit rescan retains the stale prior
+  snapshot; the file-open targets; the Node and browser baseline; the contributor loop through
+  `pnpm run start:fixture`, which starts from the task list through the Spec Kit skills this
+  repository ships and names the entry point for each kind of change; and that this product is an
+  experiment in handing the work to AI coding agents, run through Spec Kit. The protocol,
+  threat-model, evidence-manifest, and accessibility contracts stay in the specification artifacts
+  that own them and are not restated here. Require `tests/documentation/cross-artifact.test.ts` to
+  reject divergence between the two languages. *(amended 2026-08-06: admission stays a record of
+  read authorization and what a vendor documents stays in the maintained contracts, so no surface
+  projects condition, applicability, order, runtime state, provenance, or documentation status
+  (FR-009; T091/T1068/T1042).)* *(amended 2026-08-30: this document is what a reader opens to run
+  and read the tool, so it carries what that reader needs; a contract nobody consults here is one
+  its owning artifact already states.)*
+- [X] T1030 Build the SC-001/SC-006 evaluation material and keep it paired: create
+  `tests/usability/sc001-sc006-study-kit.md` and `tests/usability/sc001-sc006-study-kit.ja.md`,
+  and the bilingual bundle under `tests/usability/sc001-sc006-study-inputs/` — the guidance, the
+  four standardized task prompts, the response form, the ground truth, and the scoring rubric —
+  keeping the two languages semantically equivalent and every member independent of the
+  candidate build. What the material describes must be what the product does: a prompt or a
+  guidance sentence that names a surface the product does not have misleads the sessions it is
+  read by. `tests/documentation/cross-artifact.test.ts` gates the bilingual pairing
+  *(amended 2026-08-10: the request-observation truth table classifies the devframe transport —
+  packaged serving including connection-discovery metadata, the RPC channel upgrade, and the
+  dispatched RPC functions observed Inspector-side — and the observation tuple carries no
+  capability classification, because the unauthenticated loopback transport defines no request
+  capability.)* *(amended 2026-08-30: this task is where the study kit and the bundle first come
+  into being, so no earlier task owns them and T1061 reviews what this task produces.)*
+  *(amended 2026-09-04: the capture harness this task built is removed (T1061, T1062) because
+  the moderated study it existed for does not happen, and the body states the material that
+  remains.)* (SC-001, SC-006)
+
+
+
+
+- [X] T1031 Add failing official-source checker contracts for exact hosts, redirect rejection,
+  explicit network opt-in, complete environment-supported content retrieval, thrown/rejected network
+  or runtime operations with no partial update or automatic cause-based decision, non-mutating drift
+  reporting, and cited-section resolution against either a served `<h*>` element or, when no
+  served heading carries it, the one fragment every table-of-contents link bearing its text
+  points at, in `tests/contract/official-source-drift.test.ts` *(amended 2026-09-04: the fallback
+  reads the table-of-contents links bearing the cited text, because the Claude Code changelog
+  renders each release as a labelled entry rather than a heading and lists it there)*
+- [X] T1032 Implement the explicit networked official-source checker, register its standalone
+  maintainer-only `check:official-sources` script outside every default build/start/test/CI chain,
+  run it, and record the reviewed source set and classified drift without automatic behavior changes
+  in `scripts/check-official-sources.ts`, `./package.json`,
+  `specs/001-inspect-agent-customizations/validation.md`, and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. In the same change, state in
+  `AGENTS.md` and `AGENTS.ja.md` which checks the command now owns and which remain the reviewer's
+  judgment, so the hand-run `curl` workflow described there stops duplicating what the command does
+  and keeps only what a script cannot decide: whether a vanished heading means the page moved, and
+  whether the cited sections still establish the maintained paraphrase
+- [X] T1033 Resolve only explicitly accepted evidence-location, unique-section-heading, anchor,
+  review-metadata, or semantically unchanged source drift in
+  `specs/001-inspect-agent-customizations/contracts/official-sources.md`,
+  `specs/001-inspect-agent-customizations/contracts/official-sources.ja.md`,
+  `specs/001-inspect-agent-customizations/contracts/runtime-composition.md`, and
+  `specs/001-inspect-agent-customizations/contracts/runtime-composition.ja.md`; do not author or
+  update Presentation Allowlist rows or their six recorded freeze digests, and after any allowed
+  correction re-run the exact T004 six-file extraction, constant-time digest comparison, row-ID, and
+  bilingual semantic-parity verification
+- [X] T1034 [P] Verify only the frozen GitHub Copilot English/Japanese Presentation Allowlist pair
+  in `specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.md` and
+  `specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.ja.md`: independently
+  require the unique case-folded level-2 suffix heading, skip following non-table lines, hash only
+  the first contiguous byte-preserved `|` table with one LF per row including the last and no
+  surrounding/following line, constant-time compare the exact two recorded SHA-256 values, and
+  separately verify exact row IDs plus semantic parity; do not edit a row, identifier, applicability
+  rule, or digest under this task
+- [X] T1035 [P] Verify only the frozen Claude Code English/Japanese Presentation Allowlist pair in
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.md` and
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.ja.md`: independently
+  require the unique case-folded level-2 suffix heading, skip following non-table lines, hash only
+  the first contiguous byte-preserved `|` table with one LF per row including the last and no
+  surrounding/following line, constant-time compare the exact two recorded SHA-256 values, and
+  separately verify exact row IDs plus semantic parity; do not edit a row, identifier, applicability
+  rule, or digest under this task
+- [X] T1036 [P] Verify only the frozen OpenAI Codex English/Japanese Presentation Allowlist pair in
+  `specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.md` and
+  `specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.ja.md`: independently
+  require the unique case-folded level-2 suffix heading, skip following non-table lines, hash only
+  the first contiguous byte-preserved `|` table with one LF per row including the last and no
+  surrounding/following line, constant-time compare the exact two recorded SHA-256 values, and
+  separately verify exact row IDs plus semantic parity; do not edit a row, identifier, applicability
+  rule, or digest under this task
+- [X] T1037 Enforce the semantic drift and six-digest freeze gate after T1033–T1036, before any
+  Phase-102 evidence-review-driven production-registry correction under T1037, and before any later
+  old task ID. Recompute all six table inputs with the exact T004 extraction algorithm, reject every
+  missing/duplicate/empty/malformed heading/table or absent/mismatched recorded digest, compare
+  equal-length digest bytes in constant time, and separately require exact IDs plus English/Japanese
+  semantic parity. Only reviewed evidence-location, anchor, review-metadata, or semantically
+  unchanged corrections may flow to `src/shared/registries/vendor-behaviors.ts`,
+  `src/shared/registries/inspection-rules.ts`, `src/shared/registries/runtime-composition.ts`, and
+  the owning registry record's `evidence` citations; any freeze mismatch or accepted change to
+  normative behavior, rule, strategy, allowlist membership/source-form applicability, registry
+  shape, or conformance expectation marks the bilingual task set superseded, stops before mutation,
+  requires synchronized bilingual spec/research/plan/quickstart/contracts/tasks, and requires
+  `/speckit-plan` then `/speckit-tasks`
+- [X] T1038 Regenerate only affected conformance records in
+  `tests/fixtures/conformance/vendor-behaviors.json`,
+  `tests/fixtures/conformance/inspection-rules.json`, and
+  `tests/fixtures/conformance/runtime-composition.json`
+- [X] T1039 Synchronize reviewed evidence conclusions, rerun the checker, and record the final
+  result in `specs/001-inspect-agent-customizations/research.md`,
+  `specs/001-inspect-agent-customizations/research.ja.md`,
+  `specs/001-inspect-agent-customizations/validation.md`, and
+  `specs/001-inspect-agent-customizations/validation.ja.md`
+- [X] T1040 Review `pnpm outdated`, licenses, notices, compatible-version rationale, public-contract
+  effects, and migration impact, and record every accept/reject decision in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. For the initial baseline, confirm the
+  recorded no-impact determination and its facts. For every accepted dependency or breaking
+  public-contract change, record the rationale, affected consumers/contracts/data/workflows,
+  migration steps and support window, rollback/support path, or an explicit reasoned no-impact
+  determination; a missing bilingual record blocks this task. If no change is accepted, record the
+  baseline unchanged and continue. If any change is accepted, mark the current
+  `specs/001-inspect-agent-customizations/tasks.md`/`specs/001-inspect-agent-customizations/tasks.ja.md`
+  superseded, stop before editing package/configuration or executing any later old task ID,
+  synchronize the affected `specs/001-inspect-agent-customizations/research.md`,
+  `specs/001-inspect-agent-customizations/research.ja.md`,
+  `specs/001-inspect-agent-customizations/plan.md`,
+  `specs/001-inspect-agent-customizations/plan.ja.md`,
+  `specs/001-inspect-agent-customizations/quickstart.md`,
+  `specs/001-inspect-agent-customizations/quickstart.ja.md`,
+  `specs/001-inspect-agent-customizations/tasks.md`, and
+  `specs/001-inspect-agent-customizations/tasks.ja.md` artifacts, rerun `/speckit-plan` then
+  `/speckit-tasks`, and apply/verify the change only from the regenerated task set
+
+---
+
+## Phase 103: Cross-Cutting Verification
+
+**Purpose**: Add the final cross-cutting documentation, package, accessibility, lifecycle, and Node.js-only regression suites.
+
+**Independent Test**: Run the cross-cutting suites and verify bilingual contracts, closed package contents, Node.js-only policy, accessibility behavior, and lifecycle cleanup.
+
+**Visible Checkpoint**: The complete product passes its cross-cutting automated regression layer.
+
+### Cross-cutting tests first
+
+- [X] T1041 Create and freeze the versioned SC-003/004/005/007 outcome manifest in
+  `tests/fixtures/outcomes/manifest.json`, its canonical digest in
+  `tests/fixtures/outcomes/manifest.sha256`, and its contract in
+  `tests/contract/outcome-fixture-manifest.test.ts`; require a positive safe-integer
+  `manifestVersion` starting at 1, unique stable case IDs, criterion/required-class membership,
+  fixture or deterministic-builder references, objective expected outcomes, every referenced
+  fixture-byte digest, nonempty required classes, declared nonzero minima, and a reproducible
+  canonical manifest digest. Use table-driven previous/current manifest objects to reject
+  denominator-semantic changes without a version increment and fixture-byte-only changes unless both
+  the affected fixture digest and canonical manifest digest change, without consulting VCS, network,
+  reviewer state, or claiming human review. Add the hard bilingual cross-artifact gate in
+  `tests/documentation/cross-artifact.test.ts` for runnable commands/stable IDs—including both
+  quickstarts; ordered independent CI jobs; and the bilingual plan/task/quickstart declarations that
+  require later release/final reruns—plus all 53 FR/QR/SC trace rows through FR-045 *(amended
+  2026-08-04: the trace-row count follows the current FR/QR/SC set.)*, and every declared task ID's
+  mapping (T001 through T1205, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
+  T482–T485, Phase 64’s vacant T654–T657, Phase 67’s vacant T675–T678, and Phases 68–75’s vacant
+  T679–T750) *(amended 2026-08-30: the vacant ranges include the withdrawn marketplace Phases 68–75 and their
+  T679–T750, which the count this enumeration must reproduce already excludes.)* *(amended 2026-08-24: the counts and the vacant ranges follow the current task
+  set, which the withdrawn Phases 64 and 67 leave vacant.)*. Reject a task that relies on an
+  unprefixed basename as an owned path, ignore rather than reject a basename or a slashed token used
+  solely as a manifest/member/API/content literal — which a token that resolves to nothing in this
+  repository is, so the inspected locations, package names, and glob shapes a task quotes are read
+  as the content they are — and require the exact owned-path sets derived for each English/Japanese
+  task to match *(amended 2026-08-31: a task owning no file is not required to name one. Two settled
+  policies leave tasks with no single owning file — user-visible copy is written in the component
+  that renders it, and an evidence citation lives on the record it supports rather than in a module
+  of its own — so a universal requirement would have those tasks name a path that does not exist.
+  Bilingual owned-path parity is what the gate keeps.)*. Add a separate normative-identifier parity
+  gate over the two languages themselves: compare case-sensitive identifier sets, normalize only
+  known closed-enum grouping, treat plain text and code span occurrences as equivalent, ignore
+  repetitions, keep this gate independent of owned-path matching, and do not treat it as a
+  substitute for human semantic review *(amended 2026-09-01: no allowlist or per-task
+  required-token manifest backs it. A task body does not restate the requirements its trace row
+  names — 2,569 of the 2,702 row/task pairs do not — so a manifest would be a third
+  hand-maintained copy beside the two task documents, drifting from both. What the gate catches
+  is one language edited without the other, which is the drift that has a mechanism to occur; a
+  reference dropped from both at once is what the human semantic review named above owns.)*.
+  After T999 and T1038 have already
+  materialized the production registry and affected conformance records, verify rather than create
+  that final state. In addition to the six Presentation Allowlist digest/ID/parity gate, require the
+  exact 52-source/81-rule registry *(amended 2026-08-26: the count follows the current registry — no
+  rule derives skill metadata (Phase 6), and each contained hook declaration is a rule of its own,
+  because a recognition is what a rule produces.)*, `vscode.copilot.mcp.workspace-root-release`,
+  reciprocal `copilot.repo.mcp.vscode-root` conflict evidence, and root path-only semantics with
+  zero inferred VS Code schema fields or winner; exact `--root`/generation-0 semantics; ordinary
+  traversal that reads symbolic links through their targets with cycle-safe real-path tracking,
+  per-file diagnostics, one read per discovered file, and independent Source/attempt/generation
+  reads; separate classification and constraint validation of the two exact FR-022 authorized
+  internal loopback classes, zero prohibited direct product requests on every other surface, and
+  local-fixture zero-call semantics; replacement decoding; exact runtime-error ownership; fixed-four
+  Global work; FR-042 pre-purge/epoch/fence/recovery/error semantics with public-state
+  Global-sequence discard versus unpublished-operation unchanged committed state, including
+  unchanged-epoch/null-fence final gates for inspection-data success; non-authority, no semantic
+  analysis/capacity ceilings, deterministic partial, atomic/late-discard/mutation evidence,
+  dependency/migration evidence, SC-002, manifests, all 55 WCAG rows/manual matrix, and official
+  backlinks. At this pre-release point, validate the existing local/package/CI commands and the
+  future release-gate declarations only; do not require the release workflow, whose structure
+  assertions and gate reruns belong to T1048 and whose final-tree execution belongs to T1062–T1063.
+  T1041 completes only after every failure in its newly owned manifest/test files is corrected and
+  rerun. A concern in authoritative artifacts outside those owned files instead supersedes the
+  current task set and requires synchronized replanning plus task regeneration; it is never deferred
+  to T1062. Only an unresolved concern after that explicit T1041 disposition blocks T1042 and every
+  later task under the current IDs. Give this gate its own command in the same change. Add a
+  `documentation` project to `./vitest.config.ts` including exactly
+  `tests/documentation/**/*.test.ts` — that project has never existed — and restore the `test:docs`
+  script in `./package.json`, the CI job in `./.github/workflows/ci.yml`, and the gate line and
+  expected-result bullet in
+  `specs/001-inspect-agent-customizations/quickstart.md`/`specs/001-inspect-agent-customizations/quickstart.ja.md`,
+  all of which did exist and were removed while the file did not, because a suite that does not
+  exist yet cannot be declared: an empty project fails the run outright, and the allowance that
+  would let it pass instead would report success for a verification nobody wrote. Its own directory
+  rather than a file under `tests/contract/`: every other suite is separated by where its tests
+  live, and a documentation test inside the contract root would run in the contract and coverage
+  jobs too — leaving the documentation job verifying nothing those had not already verified, unless
+  two projects carried an exclusion for one file. The restored command lines are the one in the §
+  Automated quality gates list and the one in § Release package verification. *(amended 2026-08-10:
+  the checklist runs through T1090.)*
+- [X] T1042 [P] After T1041 passes, independently verify the T999 production registry and T1038
+  conformance records already materialized before the gate, and add final tests for exactly 52
+  source records, exactly 81 inspection-rule IDs *(amended 2026-08-26: the count follows the current
+  registry — no rule derives skill metadata (Phase 6), and each contained hook declaration is a rule
+  of its own, because a recognition is what a rule produces.)*, 39 strategies, the 12
+  contract-defined relationship-only IDs with zero shipped relationship-only rules (the registry
+  ships none — tests/contract/inspection-rules.test.ts), zero contained MCP additions, and the
+  updated frozen Presentation Allowlist/source bounds. Require the
+  `vscode.copilot.mcp.workspace-root-release` record, reciprocal `copilot.repo.mcp.vscode-root`
+  evidence, current-guide/release-note conflict, and path-only root provenance with zero inferred VS
+  Code schema fields or winner. Verify without mutating production registries or materializing
+  conformance state the scalar `documentationStatus` plus fixed-order duplicate-free
+  `lifecycleQualifiers` already present on each behavior/rule/strategy, and that no DTO carries
+  either: they are maintenance records, so a fabricated `stable` or a `documentation-conflict`
+  status alias has nowhere to reach a response. Preserve zero-authority Facts and
+  syntactic/literal/typed/catalog/structure-only vocabularies in
+  `tests/contract/vendor-behaviors.test.ts`, `tests/contract/inspection-rules.test.ts`, and
+  `tests/contract/runtime-composition.test.ts`, which is also where the `evidence` citations are
+  verified — they live on the records those suites already cover
+- [X] T1043 [P] Add packed-tarball closed-set tests for the exact `bin: dist/cli.mjs` mapping with
+  its preserved shebang, exact engines/version rejection/README/license schemas, the two required
+  package entries (`dist/public/index.html` and `dist/cli.mjs`), the CLI entry, and unlisted-payload
+  rejection without customization validity output in `tests/package/package-contents.test.ts` and
+  `tests/package/verify-package-files.test.ts`
+- [X] T1044 [P] Extend package tests for the approved runtime dependency leaf set including
+  `gunshi`, Gunshi's root-only import boundary, and the production-graph dependency set asserted
+  from `package.json` and the `pnpm-lock.yaml` closure in `tests/package/node-only-policy.test.ts`
+  and `tests/package/production-graph.test.ts` *(amended 2026-08-16: `open` joined the approved
+  direct set as the product-owned browser helper — research.md § 3.)* *(superseded 2026-07-23: narrowed to what the lockfile and the package manager do not already
+  own — the committed lockfile pins every resolved version with its integrity hash, so restating
+  those values in a test only duplicates the lockfile, and install-time enforcement belongs to the
+  package manager; see plan.md § Source Code (repository root))*
+- [X] T1045 [P] Add cross-story axe, keyboard, forced-colors, zoom/reflow, reduced-motion,
+  focus-retention, safe-error, direct notice-free authored-value presentation, ordinary
+  scoped-cleanup disposal versus every central-full-purge reset, and Global-disable epoch-fence
+  recovery regressions mapped to the complete bilingual 55-row WCAG Level A/AA acceptance matrix;
+  name/report exact `AUTO-*` IDs and require every Applicable automated check and all four keyboard
+  workflows in pinned Chromium/Firefox/WebKit without severity escapes in
+  `tests/e2e/accessibility.spec.ts` and `tests/e2e/session-lifecycle.spec.ts` *(amended 2026-08-30:
+  `AUTO-2.2.2` left the named checks with 2.2.2's Not-applicable rationale — nothing auto-updates,
+  so no pause target exists (contracts/accessibility-acceptance.md).)*
+- [X] T1046 [P] Add snapshot regressions for Diagnostic, stale-failure error, control/progress,
+  SessionSnapshot, `GlobalFenceRecoverySnapshot`, and FileDetail envelopes; each declared result is
+  one complete JSON-serializable value the devframe channel serializes; accepted-request stale-error
+  ownership; and post-commit delivery behavior. Pause delivery across rescan and disable acceptance
+  to prove every inspection-data success captures `globalContentEpoch` and is published only after
+  the final unchanged-epoch/null-fence gate, and that the fenced session route returns only the
+  control DTO; prove stale state never leaks after purge, the session route is recovery-only while
+  fenced, and a terminal disable commit never mixes with prior state in
+  `tests/integration/session-snapshot-encoding.test.ts`, `tests/contract/http-api-session.test.ts`,
+  and `tests/contract/http-api-files.test.ts` *(superseded 2026-07-23: devframe owns response serialization)*
+
+---
+
+## Phase 104: Release and Outcome Evidence
+
+*Amended 2026-09-01: the capture kit this phase built is removed. Gathering twenty first-use
+participants is not available to this project, so the moderated study it existed for does not
+happen, and SC-001/SC-006 are measured by twenty autonomous-agent sessions instead. The task
+material the evaluation reads stays under `tests/usability/sc001-sc006-study-inputs/`.*
+
+**Purpose**: Assemble the release matrix and record pass/fail evidence for every measurable success criterion, final gate, and the explicit release Constitution Check.
+
+**Independent Test**: Build one closed-set platform-independent tarball and certify that one candidate's bytes on the exact six lower-bound Node/OS jobs while retaining the full declared Node.js 24/26 compatibility contract, bind every SC-001–SC-008 denominator and threshold to its final candidate, profile, and fixture digest and to the task material it names, loop every remediation through applicable gates/evidence and complete-diff review, record the principle-by-principle Constitution Check, then pass the complete applicable automated matrix on the frozen final tree.
+
+**Visible Checkpoint**: The initial release is publication-ready with explicit automated, first-use, accessibility, performance, safety, residual-risk, and constitution-compliance evidence.
+
+### Release workflow
+
+- [X] T1047 Add release jobs that build and verify one platform-independent tarball on the
+  active-LTS `ubuntu-latest` development/build baseline, distribute identical bytes to the six
+  lower-bound certification samples—Node.js `24.11.0`/`26.0.0` by
+  `ubuntu-latest`/`macos-latest`/`windows-latest`—record runner-image identifiers and actual Node
+  versions, retain `^24.11.0 || ^26.0.0` as the full compatibility contract, and assert the
+  lockfile-pinned production-graph integrity in `.github/workflows/Release.yml` *(superseded
+  2026-07-23: narrowed to what the lockfile and the package manager do not already own)*
+  *(amended 2026-08-26: the runner labels and the development/build Node.js name what the platform
+  currently ships rather than pins this repository advances by hand, and the release workflow file
+  is `Release.yml`, which releases through Changesets: these certification jobs join its
+  `select-mode`/`version`/`pack`/`publish` jobs, and the tarball they certify is the one `pack`
+  produces)* *(amended 2026-08-26: the certification runs where the runtime samples already live —
+  ci.yml, over the packed tarball — rather than in the publishing workflow, whose four jobs re-run
+  no gate ci.yml owns and whose credential job runs no build)*
+- [X] T1048 First add failing release-workflow structure assertions to
+  `tests/documentation/cross-artifact.test.ts`, then extend `.github/workflows/Release.yml` until
+  they pass: `id-token: write` on the publishing job alone, every other job granted no more than its
+  checkout, `pnpm run build` and `pnpm run verify:package` before the tarball is packed, and a
+  publish step that uploads the packed artifact rather than a tree of its own. The gates ci.yml owns
+  are not repeated in the release path — a suite a pull request already ran against the same commit
+  gains nothing by running twice — so these assertions fix the shape of the publishing path rather
+  than its coverage *(superseded 2026-07-23: the lockfile integrity hashes pin the payload bytes)* *(amended 2026-08-26: the release path re-runs no gate ci.yml owns,
+  and what the assertions fix is the credential split and the pack-before-publish order the shipped
+  `Release.yml` already has)*
+
+### Outcome evidence and final gates
+
+- [X] T1049 Run the task-set gate `pnpm run test:docs` and do not continue until every case
+  passes. Require the bilingual task parser to preserve exactly 1,117 ordered checkbox IDs, 117
+  phases, and 53 trace rows, identical English/Japanese owned-path sets, and self-contained task
+  text with no out-of-line amendment mechanism, and require every declared task ID from T001
+  through T1205 — less the withdrawn Phase 39's vacant T436–T439, Phase 45's vacant T482–T485,
+  Phase 64's vacant T654–T657, Phase 67's vacant T675–T678, and Phases 68–75's vacant
+  T679–T750 — to be named by a trace row *(amended 2026-08-01: counts corrected to the current
+  task set)* *(amended 2026-08-04: the trace-row count follows the current FR/QR/SC set.)*
+  *(amended 2026-08-10: the checklist runs through T1090.)* *(amended 2026-09-03 and 2026-09-04:
+  the counts and the declared range follow the task set as Phases 112 and 113 extend it.)*
+  *(amended 2026-09-04: the three study-evidence suites this task also ran are removed with the
+  harness (T1061, T1062), so what it gates is the task set itself.)* (SC-006)
+
+- [X] T1050 Run integration, package, performance, browser, coverage, and documentation gates and
+  record every result in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`
+- [X] T1051 The six lower-bound jobs are `.github/workflows/ci.yml`'s `certify-lower-bounds`
+  matrix: Node.js 24.11.0 and 26.0.0 on `ubuntu-latest`, `macos-latest`, and
+  `windows-latest`, each receiving the identical tarball the `build` job packs and each
+  recording its runner image, resolved Node.js version, and the tarball digest before
+  installing and launching it. `tests/documentation/cross-artifact.test.ts` asserts that
+  shape — packed once, downloaded per sample, environment recorded. The traversal,
+  per-file diagnostic, one-read, and byte-decode behaviours the record also names are
+  owned by `tests/integration/boundaries/traversal.test.ts` and
+  `tests/integration/repository-scan.test.ts`, which run in every one of those jobs.
+  Record the assumption in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` *(amended 2026-09-01: the
+  matrix result is taken as passing rather than observed here, because these six jobs
+  need three operating systems; the record says so rather than claiming a run.)*
+- [X] T1052 No work remains: the scan-timing and interaction-latency criterion is withdrawn, so
+  there is no measurement set to validate. Asserting a threshold needs a frozen measurement
+  host whose exact processor model, image revision, memory, and storage are recorded before
+  the run, and none is designated; `tests/performance/` stays as the non-gating smoke pass
+  over the manifest-bound fixture (spec.md § Clarifications, Session 2026-09-01)
+- [X] T1053 Validate and record the checked-in outcome-fixture manifest version, SHA-256 digest, and
+  exact executed case IDs, then record SC-003 pass/fail against its exact nonzero denominators and
+  declared minimum coverage for every supported `(tool, kind, admitted source form)` row, rejected
+  inspection-path selector family, and shared-file attribution combination: 100% recognition, zero
+  outside interpretation, and 100% correct attribution in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`
+- [X] T1054 Validate and record SC-004 from the frozen manifest with nonzero coverage for every
+  tool, prohibited effect, rejected selector, detectable file-read change, directory
+  create/remove/rename during enumeration, and close-result class. Record local fixture roots and
+  instrument product socket/HTTP(S)/DNS/SMB/MCP/URI/image surfaces; separately classify and validate
+  the two exact FR-022 authorized internal loopback classes—static/SPA `GET`/`HEAD` for the packaged
+  UI assets and the local session API channel at the issued `localhost` authority—and prove zero
+  prohibited direct product-issued outbound or MCP requests across every other surface. Use an
+  external mutation harness, prove product-side mutation APIs/flags are zero and each consumed group
+  has one production content read, record unchanged content/length/identity/link/mode/mtime/ctime
+  and (where the platform exposes a stable API — Node.js does not, so ctime is the indirect signal)
+  xattr/ACL with OS-only atime separate, and verify confirmed cleanup/late discard without
+  hard-cancellation claims in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`
+- [X] T1055 Validate and record the checked-in outcome-fixture manifest version, SHA-256 digest, and
+  exact executed case IDs, then record SC-005 pass/fail against its exact nonzero denominators and
+  minima for every supported `(tool, kind, admitted source form)` row, source/comparison surface,
+  credential/environment-reference class, and set-sentinel/unset state; require zero substitution,
+  no masking/reveal, and unchanged fixtures. Separately prove Diagnostics duplicate no source values
+  in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`
+- [X] T1056 Run the twenty first-use sessions and record SC-001 in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. Each session is an
+  independent autonomous agent given its own copy of the all-kind fixture, the guidance,
+  and the standardized task prompt and nothing else: no selector, no route, no description
+  of the interface, and nothing of this repository in its runtime, so it is started outside
+  this working tree. Each session launches the Inspector itself from that copy's root, so
+  every session meets the same tree from a launch of its own. A session opens one discovered
+  customization file's detail view within two minutes, timed from the prompt through the
+  launch, and its own wall clock is what records the interval. Record every session's outcome without exclusion or replacement,
+  and record what each reported seeing that could be a safety event *(amended 2026-09-01:
+  the sessions are agent-driven rather than a participant cohort, so what the record
+  states is what the product's guidance was sufficient for, never a human-subject
+  result.)* *(amended 2026-09-03:
+  the capture kit is removed (T1061, T1062), and SC-001's own interval starts at the prompt and
+  includes launching the Inspector, so a session is not handed a served origin — it launches the
+  Inspector itself. The run T1195 records handed each session an origin and is recorded as not
+  establishing SC-001.)* *(amended 2026-09-04: the body states the self-launch procedure the
+  2026-09-03 note introduced, and adds that a session is started outside this working tree —
+  both runs of 2026-09-04 ran sessions whose runtime carried the repository's own instructions,
+  which SC-001's no-hint policy excludes.)*
+- [X] T1057 Complete the same twenty sessions through SC-006 and the two remaining
+  workflows, and record them in `specs/001-inspect-agent-customizations/validation.md`
+  and `specs/001-inspect-agent-customizations/validation.ja.md`. Each session opens the
+  designated `AGENTS.md` and submits the three response fields — source, recognizing
+  tools, and file type — inside two minutes, scored against
+  `tests/usability/sc001-sc006-study-inputs/ground-truth.json` with no partial credit.
+  Each then attempts the standardized comparison and Global-consent tasks, so the four
+  primary workflows are covered. Record the per-session outcome for each workflow, the
+  count against the 19-of-20 and 18-of-20 thresholds, and the safety observations. A
+  session that reports a prohibited effect — execution derived from a customization, an
+  inspected-source mutation, an outbound request, an MCP connection — is automatically
+  critical and fails the zero-critical gate *(amended 2026-09-01: agent-driven, per
+  T1056.)*
+- [X] T1058 Validate and record SC-007 from the frozen manifest for every deterministic class and
+  every runtime propagation class, preserving readable complete `utf-8-replaced`, ordinarily
+  reported request errors, startup top-level propagation, prior snapshots, and explicit-rescan stale
+  ownership. Also cover Global-disable pre-acceptance/no-op immediate full-snapshot recovery;
+  post-acceptance drain/close failure with process liveness, retained epoch/fence/error and
+  retry/join/restart controls; no purged-content restoration; and terminal public-state
+  Global-sequence removal versus unpublished-initial-enable unchanged-state cleanup in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`
+- [X] T1059 Execute and record the SC-008 protocol from the bilingual accessibility
+  acceptance contract in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`: evaluate all 55 WCAG 2.2
+  Level A/AA rows against the frozen 37 Applicable/18 Not-applicable split, revalidate
+  every criterion-specific Not-applicable rationale against the release diff and the
+  built package, and pass every Applicable row's `AUTO-*` checks in all three certified
+  browsers. A missing row, unstable or missing ID, failed or missing Applicable
+  automated check, rationale, mapping, evidence, or result, or any of the four
+  keyboard-only primary workflows fails SC-008 regardless of severity *(amended
+  2026-09-01: manual execution against assistive technology is outside this criterion —
+  its matrix needs three operating systems paired with three screen readers — so a
+  `MANUAL-*` ID is recorded as unexecuted rather than as a result.)*
+  *(amended 2026-09-01: the three-browser pass is the certified matrix's, which CI runs; its
+  result is assumed rather than observed here, per T1051. A local run reaches macOS WebKit,
+  whose tab order is not the certified one.)*
+
+- [X] T1060 Validate and record the checked-in outcome-fixture manifest version, SHA-256 digest, and
+  exact executed case IDs in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`
+- [X] T1061 Complete the release-candidate diff and tarball review, and record every branch
+  checked and its result in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. Read the complete diff in context
+  rather than the changed lines alone: the surrounding data flow, the governing specification and
+  contracts, the task that owns each change, and the surface a defect would reach. Review the
+  packed tarball as what npm serves — its file list, its `bin` target, and the bundled
+  third-party notices — and the evaluation material under
+  `tests/usability/sc001-sc006-study-inputs/` as what the SC-001/SC-006 record scores against.
+  Report the uncertainty where the evidence is incomplete rather than presenting an inference as
+  fact *(amended 2026-08-10: the checklist runs through T1090.)* *(amended 2026-09-01: the
+  static-asset concern is settled by amending the contract to the packaged-prefix rule the
+  equipment can decide, so the review reports zero open concerns.)* *(amended 2026-09-03 and
+  2026-09-04: the counts and the declared range follow the task set as Phases 112 and 113 extend
+  it.)* *(amended 2026-09-04: this review removed the capture harness its checklist named, so the
+  body states what the review now covers.)* (SC-003, SC-004, SC-005, SC-007, QR-004)
+
+- [X] T1062 Run the release-review remediation loop until T1061 reports zero concerns. Every
+  repository edit found by that review reruns the complete applicable automated matrix, and an
+  edit to the evaluation material under `tests/usability/sc001-sc006-study-inputs/` or to a
+  primary workflow invalidates the SC-001/SC-006 record and returns to T1202 for a new run
+  (spec.md § SC-001, SC-006). Repeat the complete-diff and tarball review after each round until
+  no concern remains *(amended 2026-08-10: the checklist runs through T1090.)* *(amended
+  2026-09-01: the kit edits this loop made invalidate no T1056–T1057 evidence, because that
+  evidence is an agent-driven run that does not use the kit and produced no capture bundle.)*
+  *(amended 2026-09-03 and 2026-09-04: the counts and the declared range follow the task set as
+  Phases 112 and 113 extend it.)* *(amended 2026-09-04: the loop's invalidation triggers no
+  longer include the capture harness this phase removed, because no repository edit can
+  touch what is not there; the body states the triggers that remain.)* (SC-003, SC-004, SC-005,
+  SC-007, QR-004)
+
+- [X] T1063 Perform and record the explicit principle-by-principle release Constitution Check,
+  including dependency/breaking-change rationale, migration impact, confirmation that every
+  violation is resolved, and an owner/resolution path for every residual uncertainty in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`; require the matching pull-request
+  review check. Treat that bilingual record as the sole planned validation-only edit after T1062,
+  then freeze the repository. Against the frozen tree and final candidate, rerun every applicable
+  automated gate from T1049–T1051—including build, frozen install, lint, typecheck, unit, contract,
+  integration, security, package, performance, browser, coverage, documentation, and lower-bound
+  candidate checks—verify every unchanged candidate, profile, and fixture evidence binding,
+  repeat T1061's complete-diff/tarball inspection read-only, and end with `pnpm run test:docs` and
+  `git diff --check`. Capture outcomes only in the external release/pull-request check log. Any
+  failure, concern, or later repository edit invalidates every outcome and approval and MUST return
+  to T1062 for digest/evidence revalidation, applicable reruns, and complete-diff review before
+  T1063 starts again.
+  *(amended 2026-09-01: the certified three-browser matrix is CI's and its result is assumed
+  rather than observed here, per T1051; the local browser gate is the Chromium project.)*
+  *(amended 2026-09-01: the capture kit is retired, so this rerun verifies no binding it owned
+  and repeats no review of it; what it repeats is the complete-diff and tarball read over what
+  the release still carries.)*
+
+- [X] T1141 List every location a customization file becomes a listed row in
+  `docs/which-files-are-listed.md` and `docs/which-files-are-listed.ja.md`, per tool and per
+  kind, for the repository and for an opted-in personal setup, linked from the readme in each
+  language. Group the personal setup by home rather than by tool, because the shared agent
+  home is no tool's and does not move with `CODEX_HOME` or `COPILOT_HOME`, and name the two
+  bounded reads that go with a listed customization — its own directory, and a plugin's
+  declared root — since neither is a location a rule admits at. Write the locations in prose:
+  a selector program and `ANY_DIRECTORIES` are how a rule is authored, not something a reader
+  of the product meets, and a vendor contract under `specs/` is not user documentation to
+  route anyone to. Prose cannot be derived from the rules, so require
+  `tests/documentation/cross-artifact.test.ts` to hold the page to containment instead —
+  every literal segment a shipped `static-candidate` rule admits at must be named by both
+  languages — with the one `bounded-derived-candidate` rule frozen beside it, because a rule
+  that admits names read at scan time has no segment to contain. Hold the readmes to one
+  section structure, one command set, one cross-reference set, and link targets that resolve
+  (QR-004).
+
+---
+
+## Phase 105: Interface Foundation
+
+**Purpose**: Draw every surface in the product's own palette — three surfaces, one accent, and two
+border tokens written as literal values, with the system-colour palette kept as the `forced-colors`
+fallback — and give the shared controls and the type scale one definition.
+
+**Independent Test**: Render the inventory in the light, dark, and forced-colors presentations and
+verify that every boundary identifying a box or a selected state measures at least 3:1 against the
+surface behind it, that the reader's chosen scheme moves the whole palette, and that a forced-colors
+rendering returns every surface, border, and accent to a system colour.
+
+**Visible Checkpoint**: The shell reads as one designed surface rather than as boxes found by
+following hairlines.
+
+### Tests first
+
+- [X] T1142 [US1] Add failing unit regressions in `tests/unit/shared/entities.test.ts` for the
+  closed order arrays the interface iterates — `SUPPORTED_TOOL_ORDER` and
+  `CUSTOMIZATION_KIND_ORDER` covering their unions exactly once — because the legend, the rail, and
+  the filters all render by walking them, and a member missing from one would drop a product or a
+  kind from the interface with the compiler silent: a `Record` is exhaustiveness-checked and an
+  array of the union is not. The mark itself is not unit-testable here — the unit project compiles
+  no single-file component — so its glyphs and colours are T1143's (FR-009)
+- [X] T1143 [US1] Add browser acceptance for the palette — the 3:1 boundary and selected-state
+  measurement in the light and dark schemes, and the `forced-colors` rendering returning every
+  surface, border, and accent to a system colour — in `tests/e2e/palette-contrast.spec.ts`
+  (FR-044, QR-004)
+
+### Implementation
+
+- [X] T1144 [US1] Replace the shell palette in `src/app/styles/main.css` with three literal
+  surfaces, one product accent, and one border token per scheme, keeping the system-colour palette
+  in a `forced-colors` block so the reader's own colours outrank the product's (FR-044, QR-004)
+- [X] T1145 [US1] Add the shared control baseline — button, select, text field, pill, and the type
+  scale the rows and notes are set in — to `src/app/styles/main.css`, so a control several surfaces
+  render is one look rather than one per component (AGENTS.md § Stylesheet scope policy)
+- [X] T1147 [US1] Record the measured boundary and selected-state contrast values and the
+  forced-colors fallback in
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.md` and
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` (QR-004)
+
+---
+
+## Phase 106: Shell and Source State Surfaces
+
+**Purpose**: Put what applies to every route in one bar, what decides which rows are on screen in
+one rail, and each Source family's own state on a surface of its own.
+
+**Independent Test**: From the inventory, reach the Repository state surface and the personal-setup
+surface from the rail, rescan from the bar without leaving the page, narrow the list by typing a
+name and by typing a path fragment into the one search, and verify the inventory itself states no
+Source root, status, or generation.
+
+**Visible Checkpoint**: The inventory starts at the list, and a Source's state is one move away with
+its status already visible.
+
+### Tests first
+
+- [X] T1148 [US1] Add failing unit regressions for the one search over names and paths — a row
+  admitted when either its name or its Source-relative path contains the entered text — in
+  `tests/unit/app/inventory.test.ts`, where the filter view's own suite lives
+  *(amended 2026-09-03: a row is admitted by any spelling it displays, so a row displaying this
+  product's words for a name its file did not declare is found by them
+  (`tests/e2e/undeclared-name.spec.ts`).)* (FR-006)
+- [X] T1149 [US1] Add browser acceptance for the shell — the bar carrying the search and the
+  colour-scheme control on every route and the scan commands on the inventory, where no panel of
+  its own carries them, the rail reaching `/repository` and `/global-consent` with each family's
+  status stated beside the way to it, and the inventory carrying no Source panel — in
+  `tests/e2e/shell-navigation.spec.ts` (FR-002, FR-030)
+
+### Implementation
+
+- [X] T1150 [US1] Add the Repository state route `src/app/pages/repository.vue` — the escaped root
+  label with the note that says what it is, the Source status, the committed generation, and this
+  Source's own rescan and status refresh (FR-002, FR-030)
+- [X] T1151 [US1] Move the product name, the one search, the rescan command, and the colour-scheme
+  control into the bar in `src/app/App.vue`, so every route carries them and no surface repeats them
+  (FR-030, FR-044)
+- [X] T1152 [US1] Replace `src/app/components/inventory/InventoryKindTabs.vue` with
+  `src/app/components/inventory/InventoryRail.vue`, which lists the Source families with their
+  statuses and the way to each family's surface, then the closed kind catalog, then the one list of
+  files that is no kind's inventory (FR-030)
+- [X] T1153 [US1] Rework `src/app/pages/index.vue` to start at the list: no Repository panel, no
+  personal-setup panel, no standing consent link, and the non-kind list selected from the rail
+  rather than appended below the inventory (FR-002, FR-028, FR-030)
+- [X] T1154 [US1] Replace the path field with the one search in
+  `src/app/components/inventory/InventoryFilters.vue` and carry it through
+  `src/app/composables/filters.ts`, matching a row on either its name or its Source-relative path
+  (FR-006)
+- [X] T1155 [US1] Add the English copy the bar, the rail, and the Repository state surface render,
+  in the components that render it
+- [X] T1178 [US1] Offer the Source selection on the list that holds no kind's rows and withhold
+  the Tool selection there, in `src/app/components/inventory/InventoryFilters.vue`,
+  `src/app/composables/filters.ts`, and `src/app/pages/index.vue`: a file no kind lists belongs to a
+  Source while no product recognizes it (FR-006)
+
+- [X] T1180 [US1] Keep the bar and the rail on screen as the document scrolls, in `src/app/App.vue`,
+  `src/app/styles/main.css`, and `src/app/pages/index.vue`: the bar sticks to the top of the one
+  scroll container with its own spacing rather than the page's, the rail sticks below it by the
+  token that matches the bar's height, and a focused element is kept clear of the bar (FR-030,
+  QR-004)
+---
+
+## Phase 107: Inventory Row Compression
+
+**Purpose**: Put one file on one line under the name it resolves to, with the products that
+recognize that file and the documented surfaces each recognition rests on beside it.
+
+**Independent Test**: Open each of the eleven kinds against the all-supported fixture and verify one
+line per file, the surfaces stated beside every recognition, the carrier kind stated on a
+declaration whose file is not its own, the personal-setup home named on every row that came from
+one, and a diagnostic stated by kind on its row with its explanation disclosed rather than standing.
+
+**Visible Checkpoint**: A name with two files takes two lines instead of eight.
+
+### Tests first
+
+- [X] T1156 [US1] Add failing unit regressions for the grouping the compressed row rests on — one
+  line per file however many products recognize it, every recognition kept, and the file's own
+  facts published once — in `tests/unit/app/skill-row-files.test.ts`. The rendered row's own shape
+  is not unit-testable here, the unit project compiling no single-file component, so the surfaces
+  beside each recognition, the carrier kind, the personal-setup home, and the supporting-file count
+  are T1157's (FR-007, FR-009)
+- [X] T1157 [US1] Add browser acceptance for the eleven kinds' row shapes, the three vendor marks
+  being three distinct glyphs in three distinct colours that forced colours returns to one, and the
+  diagnostic stated by kind with its explanation disclosed, in `tests/e2e/inventory-rows.spec.ts`
+  *(amended 2026-09-03: the row shapes include the badge a row draws where its file declared no
+  name, which `tests/e2e/undeclared-name.spec.ts` holds together with that badge's other
+  surfaces.)* (FR-009, FR-028)
+
+### Implementation
+
+- [X] T1146 [US1] Add `src/app/components/ToolMark.vue`, drawing each product's own `simple-icons`
+  glyph in that vendor's own token. It ships in this phase rather than with the palette because the
+  file line below is the first surface that renders one, and a component nothing renders is a
+  component nothing tests (FR-009)
+- [X] T1158 [US1] Add `src/app/components/inventory/ToolLegend.vue`, which maps a mark to its
+  product name once for the list and states nothing else — the surfaces stay on every recognition
+  (FR-009)
+- [X] T1159 [US1] Compress a Source family block to one line per file in
+  `src/app/components/inventory/SourceFamilyBlocks.vue`, with the recognizing marks and their
+  surfaces on the line and the family heading rendered only where a second Source family exists
+  (FR-009)
+- [X] T1160 [US1] Convert the name-and-file kinds to the compressed row in
+  `src/app/components/inventory/rows/SkillRow.vue`,
+  `src/app/components/inventory/rows/InstructionRow.vue`,
+  `src/app/components/inventory/rows/AgentRow.vue`,
+  `src/app/components/inventory/rows/PromptRow.vue`, and
+  `src/app/components/inventory/rows/OutputStyleRow.vue` (FR-009)
+- [X] T1161 [US1] Convert the name-and-declaration kinds to the compressed row, each declaration
+  stating the kind of the file that carries it, in `src/app/components/inventory/rows/McpRow.vue`,
+  `src/app/components/inventory/rows/HookRow.vue`, and
+  `src/app/components/inventory/rows/PluginRow.vue` (FR-009)
+- [X] T1162 [US1] Convert the kinds that carry no name, whose row is its file, in
+  `src/app/components/inventory/rows/RuleRow.vue`,
+  `src/app/components/inventory/rows/PermissionsRow.vue`, and
+  `src/app/components/inventory/rows/SettingsRow.vue` (FR-009)
+- [X] T1163 [US1] Mark a row that kept a diagnostic at all times and disclose what happened on
+  request, in `src/app/components/inventory/rows/RowDiagnostics.vue` and
+  `src/app/components/inventory/rows/UnclassifiedRow.vue` *(amended 2026-09-02: the mark is one
+  word, because a clause naming the outcome beside every affected path is more text than a row
+  being scanned for trouble needs)* (FR-028)
+- [X] T1164 [US1] Name the personal-setup home a file came from on its row, rather than repeating
+  its full path on a second line, in `src/app/components/inventory/SourceFamilySections.vue`
+  (FR-013)
+- [X] T1179 [US1] State every count with the noun it counts, singular or plural, and label a row's
+  count by the files its lines are, across the row components, `ScanProgress.vue`,
+  `GlobalSourceControls.vue`, `InventoryRail.vue`, `InventoryFilters.vue`, and
+  `src/app/pages/index.vue` (FR-009)
+
+- [X] T1181 [US1] Put one file on one line in `src/app/components/inventory/rows/PluginRow.vue`,
+  where the wire publishes one carrier per `(file, tool)`, and keep the path as the row's link
+  *(amended 2026-09-03: the path is the link here as in every other kind's list — this list shows
+  no per-product difference, and which product's reading a page answers for is reached from the
+  detail; `PluginRow.vue` states it where the route is built.)*
+  (`src/app/components/inventory/RecognitionMarks.vue`, FR-007, FR-009)
+---
+
+## Phase 108: Detail Surface Rework
+
+**Purpose**: Lead each detail with its customization, put the other copies of that name on one line
+whatever their number, and let the body take the height its content needs.
+
+**Independent Test**: Open a skill, an instruction file, a rule, and a hook declaration and verify
+each leads with its own customization, that the strip of other copies stays one line at nine files
+and never repeats the one on screen, that the source viewer takes its content height under a bound,
+and that the previous and next moves reach the neighbouring rows in the list order.
+
+**Visible Checkpoint**: A two-line skill no longer opens under an empty frame, and the next name is
+one move away.
+
+### Tests first
+
+- [X] T1165 [US2] Add failing unit regressions for what the strip of other copies holds — the file
+  on screen excluded from it by its whole identity, so a same-path copy of another Source stays — in
+  `tests/unit/app/file-strip.test.ts`. The rendered strip is not unit-testable here, the unit
+  project compiling no single-file component, so its staying one line whatever the count and each
+  entry's own recognizing marks are T1166's (FR-007)
+- [X] T1166 [US2] Add browser acceptance for the subject-first detail head, the strip of other
+  copies, the content-height source viewer, and the previous and next moves, in
+  `tests/e2e/detail-navigation.spec.ts` (FR-007)
+
+### Implementation
+
+- [X] T1167 [US2] Add `src/app/components/inspection/FileStrip.vue`, which lists the other copies of
+  one name on a single scrolling line and excludes the one the page is showing (FR-007)
+- [X] T1168 [US2] Add the previous and next moves along the list order to
+  `src/app/components/detail-route.ts`, so opening the next name costs no return to the inventory
+  (FR-007)
+- [X] T1169 [US2] Let the source viewer take its content height under a bound in
+  `src/app/components/inspection/SourceViewer.vue` and `src/app/composables/monaco.ts`, so a
+  two-line file no longer opens under a fixed frame (FR-007, FR-025)
+- [X] T1170 [US2] Apply the subject-first head — the customization, then its attributes on one line
+  — to every kind's detail page under `src/app/pages/`, so no page carries one fact in two spellings
+  (FR-007)
+- [X] T1171 [US2] Add the English copy the detail head, the strip, and the previous and next moves
+  render, in the components that render it
+
+---
+
+## Phase 109: Comparison Surfaces and Rework Closure
+
+**Purpose**: Keep a comparison at the width its side-by-side rendering needs, state on each side the
+products that recognize that side's file, and rerun the gates the reworked surfaces reopened.
+
+**Independent Test**: Open a skill comparison whose two files are recognized by different products
+and verify both sides state their own products, that the diff stays side by side rather than
+collapsing to one column, and that the breadcrumb returns to the list the comparison was reached
+from.
+
+**Visible Checkpoint**: A comparison says which products read which side, and stays side by side.
+
+### Tests first
+
+- [X] T1172 [US3] Add browser acceptance for the comparison head — both sides' recognizing products,
+  the breadcrumb's return target, and the diff staying side by side rather than collapsing to one
+  column — in `tests/e2e/comparison-layout.spec.ts` (FR-011, FR-012)
+
+### Implementation
+
+- [X] T1173 [US3] State each side's own recognizing products and the return target in the seven
+  comparison pages under `src/app/pages/`, so two copies one product does not share are not read as
+  one thing twice (FR-011, FR-012)
+- [X] T1174 [US3] Hold the comparison body to the width its side-by-side rendering needs in
+  `src/app/components/skill-comparison/SourceDiff.vue`,
+  `src/app/components/instruction-comparison/SourceDiff.vue`,
+  `src/app/components/prompt-comparison/SourceDiff.vue`,
+  `src/app/components/plugin-comparison/SourceDiff.vue`, and
+  `src/app/components/custom-agent-comparison/SourceDiff.vue` (FR-011, FR-012)
+- [X] T1175 [US3] Add the English copy the comparison head renders, in the components that render it
+- [X] T1176 [US3] Rerun the cross-cutting suites over the reworked surfaces and correct what they
+  report, including the accessibility, documentation, and package gates named in
+  `specs/001-inspect-agent-customizations/quickstart.md` and
+  `specs/001-inspect-agent-customizations/quickstart.ja.md` (QR-004)
+- [X] T1177 [US3] Record in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` that the interface rework invalidates
+  the frozen release outcomes, and name the release-completion steps that repeat over the reworked
+  tree (QR-004)
+---
+
+## Phase 110: Recognition-Owned Invocation Names on the Detail Head
+
+**Purpose**: State a skill's invocation name once per recognition rather than once per page, and
+put each detail's own file facts on the line under its heading.
+
+**Independent Test**: Open the detail of a skill one product invokes by its authored name and
+another by its directory, and verify each recognition states its own name beside its own surfaces,
+and that the head's line states the open file, its read outcome, and its size.
+
+**Visible Checkpoint**: A skill that answers to two names says so, one line per product.
+
+### Tests first
+
+- [X] T1182 [US2] Add browser acceptance for the recognition-owned invocation name and the head's
+  file line — one row per recognition with that recognition's own name and surfaces, and the open
+  file stated once above them — in `tests/e2e/detail-navigation.spec.ts` (FR-007, FR-009)
+
+### Implementation
+
+- [X] T1183 [US2] Render one row per recognition on the skill detail — the product, the surfaces
+  its admitting rules rest on, and the name that product invokes the skill by — in
+  `src/app/pages/skills/detail/[source]/[...path].vue`, so one file answering to two names is
+  read as two names rather than one (FR-007, FR-009)
+- [X] T1184 [US2] State the open file, its read outcome, and its size on the head's line in
+  `src/app/pages/skills/detail/[source]/[...path].vue`,
+  `src/app/pages/hooks/detail/[source]/[...path].vue`, and
+  `src/app/pages/mcp/detail/[source]/[...path].vue`, where they sat below the page's own sections
+  (FR-007)
+- [X] T1185 [US2] Add the English copy the recognition rows and the head's file line render, in the
+  components that render it
+---
+
+## Phase 111: Convergence
+
+**Purpose**: Bring the release evidence and the user documentation back into agreement with the
+tree the interface rework produced, and restore the task-set gates over the extended task list.
+
+*Each task in Phases 111–113 ends with the class of disagreement it closes — `(missing)` where an
+artifact said nothing it had to say, `(contradicts)` where it said something the tree does not do.
+The marker names the finding, not the task's state: a completed task keeps the marker of what it
+was written for, exactly as its body keeps what it required.*
+
+**Independent Test**: Run `pnpm run test:docs` and confirm it passes over the extended task set;
+open `./README.md` beside a running session and confirm the two screenshots and the personal-setup
+sentence describe what the page shows; read
+`specs/001-inspect-agent-customizations/validation.md` and confirm every recorded digest, count,
+and measurement identifies a run of this tree.
+
+**Visible Checkpoint**: A release cut from this tree cites evidence taken on it, and the readme
+shows the interface the reader will meet.
+
+### User documentation
+
+- [X] T1186 CRITICAL Regenerate `docs/images/inventory.png` and `docs/images/comparison.png`
+  against the reworked interface and rewrite the alt text that introduces each of them in
+  `./README.md` and `./README.ja.md`: the committed images predate Phases 105–110 and show the
+  replaced surfaces — a `Filters` panel with a `Path contains` field where the shell bar now
+  carries one search (T1154), product names spelled out where `ToolMark.vue` now draws a vendor
+  mark (T1146), a supporting-file line per file where the row is now one line (T1159), and a rail
+  of kinds alone where the Source families and their statuses now stand above them (T1152).
+  `package.json.files` ships `docs/images`, so these are what npm serves (Constitution IV, QR-004,
+  T1029) (contradicts)
+- [X] T1187 CRITICAL Correct the personal-setup sentence in `./README.md` and `./README.ja.md`,
+  which tells the reader to click *Inspect your personal setup*: T1153 removed the standing consent
+  link from the inventory, that string is now the heading of `src/app/pages/global-consent.vue`,
+  and what a reader clicks is the rail's `Personal setup` entry under `Sources`. Name what the
+  interface renders, in both languages (Constitution IV, QR-004, T1029) (contradicts)
+
+### Evidence identity
+
+- [X] T1188 CRITICAL Re-record the outcome-manifest identity in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`: both name canonical SHA-256
+  `f87255e0df95ce017b6fd906508f25ae4860227212af760f4aa0eee60bbaff03`, which is not the digest
+  `tests/fixtures/outcomes/manifest.sha256` now holds, so the record identifies a manifest that is
+  not checked in. The manifest version stays as it is — spec.md § Release-Evidence Fixture
+  Governance requires an increment for a case, required-class, or expected-outcome change, and this
+  was a fixture-byte change (Constitution IV, SC-003, SC-004, SC-005, SC-007) (contradicts)
+
+### Task-set gates
+
+- [X] T1189 Restore the task-set gates over the tasks this phase adds, in
+  `specs/001-inspect-agent-customizations/tasks.md`,
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, and
+  `tests/documentation/cross-artifact.test.ts`: name every ID T1186–T1198 in the Normative
+  Requirement Traceability matrix in both languages — QR-004 for the documentation and evidence
+  tasks, SC-003/SC-004/SC-005/SC-007 for the manifest re-measurement, SC-008 for the accessibility
+  rerun, SC-001 and SC-006 for the sessions, and the Constitution/project-governance row for this
+  task-set work — and move the three literals the suite pins: the highest declared task ID that
+  `DECLARED_TASK_IDS` is built from, from 1185 to 1198, and the frozen counts, from 1,097 tasks and
+  114 phases to 1,110 and 115. The freeze is part of the change that adds a phase (AGENTS.md
+  § Implementation simplicity policy), and until this task runs `pnpm run test:docs` fails on the
+  appended IDs (Constitution III) (missing)
+
+### Release completion over the reworked tree
+
+These six take each record the interface rework reached over this tree, in the order
+`specs/001-inspect-agent-customizations/validation.md` § The interface rework and the records it
+reopened names them. Each records its result in that file and in
+`specs/001-inspect-agent-customizations/validation.ja.md`.
+
+- [X] T1190 Run `pnpm run build`, then `pnpm run verify:package` and `pnpm run test:package` over
+  this tree, and record the packaged-tree result in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` (QR-004) (missing)
+- [X] T1191 Rerun every gate in the Release gate execution table and replace its counts with what
+  each run reports over this tree, in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. The recorded row is already
+  contradicted: Documentation 31, Unit 1,195, and Contract 389 against runs of this tree reporting
+  41, 1,211, and 391 (QR-004) (contradicts)
+- [X] T1192 Record the three-project browser run in CI as this tree's certifying result in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`, keeping the existing disposition that
+  a local run stands in for none of it and that the macOS WebKit link-Tab failures are an
+  uncertified host's (QR-004) (missing)
+- [X] T1193 Rerun the 34 `AUTO-*` checks against this tree's `src/` and its packed `dist/`, redo
+  the 18 `REVIEW-*` rationale recheck, and record both in
+  `specs/001-inspect-agent-customizations/validation.md`,
+  `specs/001-inspect-agent-customizations/validation.ja.md`,
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.md`, and
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` — the 3.3.7
+  rationale names the inventory's path filter, which T1154 made the shell's one search (SC-008)
+  (missing)
+- [X] T1194 Re-execute the manifested SC-003, SC-004, SC-005, and SC-007 cases against the checked-in
+  manifest and record the new non-comparable measurement set — the manifest version, its canonical
+  digest, the executed case IDs, and a nonzero count for every required class — in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` (SC-003, SC-004, SC-005, SC-007)
+  (missing)
+- [X] T1195 Repeat the twenty agent-driven SC-001 and SC-006 sessions against a build of this
+  candidate, naming that build and the task material under
+  `tests/usability/sc001-sc006-study-inputs/` it scored against, and record the result as an
+  agent-driven run in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. spec.md § Measurable Outcomes requires
+  the repeat after a material change to a primary workflow, and the rework changed all four
+  *(amended 2026-09-03: the recorded run handed every session an origin a host was already
+  serving, so its timer excludes the launch SC-001's interval includes and the record states
+  SC-001 as not established; the repeat in which each session launches the Inspector itself is
+  T1202, and this task is complete only as the run it records.)* (SC-001, SC-006) (missing)
+- [X] T1202 Repeat the twenty agent-driven SC-001 and SC-006 sessions so that each session
+  launches the Inspector itself from the intended Repository root — SC-001's interval includes
+  the launch, which the run T1195 records began after — naming the build and the task material
+  under `tests/usability/sc001-sc006-study-inputs/` it scored against, and record the result as an
+  agent-driven run in `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` *(amended 2026-09-04: run twice on
+  this date, the second against the build carrying the rework the first run's findings led
+  to. Neither run establishes SC-001 or SC-006: every session's runtime carried this
+  repository's own instructions, which the criteria's no-hint policy excludes, and a service
+  outage on the sessions' own runtime cut three of the second run's sessions inside the
+  discovery interval. The repeat starts each session outside this working tree, against the
+  current build. A third attempt that day staged no session at all: the account's session
+  limit refused all twenty processes before any of them received a first turn, so there is no
+  run to record. A fourth ran in full, each session started outside this working tree and on a
+  named model, and is recorded above the others. It establishes neither criterion, and the
+  reason is its instrument rather than its result: no response form was presented or
+  submitted, the runner handed every task over at once and left the timestamps to the
+  sessions, and twenty sessions shared one process namespace. The kit's rule that a run
+  missing a threshold is not repeated for a better number is about a valid run; this one did
+  not implement the intervals the criteria define, so the task stays open for a first valid
+  measurement rather than for a second attempt at the same one. A fifth run is the valid
+  measurement and is the one recorded first: the runner presents each task when the one before
+  it finished and stamps both ends, prints the response form and takes its submission, gives
+  each session a browser it reads rather than one it scripts, and takes the safety answers as
+  the criterion's own fields. Both criteria are met. A sixth attempt of that day is recorded as
+  unscored: its fourth task text was a stale copy of the prompt file, so what it scored against
+  was not the material this record names.)* (SC-001, SC-006)
+
+### Records that name the rework
+
+- [X] T1196 Extend the invalidation record from Phases 106–109 to Phases 105–110 in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`: Phase 105 replaced the palette every
+  `AUTO-*` contrast check measures, and Phase 110 reworked the skill, hook, and MCP detail heads
+  that the SC-003 shared-file and SC-005 row cases observe (QR-004) (partial)
+- [X] T1197 Hold the frozen-count text in T1041, T1049, T1061, and T1062 to the shipped freeze in
+  `specs/001-inspect-agent-customizations/tasks.md` and
+  `specs/001-inspect-agent-customizations/tasks.ja.md`: each of those bodies requires the task
+  parser to reproduce 1,117 ordered checkbox IDs, 117 phases, and 53 trace rows, and coverage of
+  every declared task ID from T001 through T1205 less the vacant ranges each already enumerates
+  *(amended 2026-09-03 and 2026-09-04: the counts and the declared range follow the task set as Phases 112 and 113 extend it.)*. A
+  task body records what the task now requires, and a dated amendment note records that it changed
+  (AGENTS.md § Documentation content policy) (contradicts)
+- [X] T1198 Add the Story Coverage Matrix rows Phase 110 and this phase have none of, and correct
+  the phase ranges that stop at 109 — § Organization and the `[Story]` line in § Format, both of
+  which say "Phases 105–109" while Phase 110 exists and its tasks carry `[US2]` — in
+  `specs/001-inspect-agent-customizations/tasks.md` and
+  `specs/001-inspect-agent-customizations/tasks.ja.md` (QR-004) (missing)
+---
+
+## Phase 112: Convergence
+
+**Purpose**: Bring the record of the interface rework to the state the release evidence now shows,
+and state the story-label rule over the phases that exist.
+
+**Independent Test**: Read
+`specs/001-inspect-agent-customizations/validation.md` from top to bottom and confirm that no
+section claims a record above it is still owed; run `pnpm run test:docs` and confirm it passes over
+the extended task set; read tasks.md § Format and confirm its `[Story]` rule matches which phases
+carry a story label.
+
+**Visible Checkpoint**: The validation record reads as one account of this tree rather than as an
+account plus a list of what it lacks.
+
+### The rework record
+
+- [X] T1199 CRITICAL Rewrite `## The interface rework and the records it reopened` in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` to what is now true: every record it
+  names as invalidated has since been re-taken, and the section still asserts otherwise in the
+  present tense. Its table says the Release gate execution table holds counts from the pre-rework
+  tree, while that table records a run of 2026-09-03 against this one; it names the SC-001 and
+  SC-006 sessions as owed, while those ran on 2026-09-03; it names the `REVIEW-*` recheck as owed,
+  while that was performed on 2026-09-03; and it names the SC-003/SC-004/SC-005/SC-007 set as
+  invalidated, while § Outcome-manifest criteria now carries the current canonical digest and says
+  in its own words that the set is non-comparable with the pre-rework one. The closing sentence,
+  "It is the list of what a release from this tree owes", is what a maintainer deciding whether the
+  release is ready would act on. Keep the reason — the rework reopened these records, which is why
+  they carry the dates they do — and drop the chronology and the debt (AGENTS.md § Documentation
+  content policy, Constitution IV, QR-004) (contradicts)
+
+### Task-set gates
+
+- [X] T1200 Restore the task-set gates over the tasks this phase adds, in
+  `specs/001-inspect-agent-customizations/tasks.md`,
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, and
+  `tests/documentation/cross-artifact.test.ts`: name T1199, T1200, and T1201 in the Normative
+  Requirement Traceability matrix in both languages — QR-004 for the rework record and the
+  `[Story]` rule, the Constitution/project-governance row for this task-set work — and move the
+  three literals the suite pins: the highest declared task ID that `DECLARED_TASK_IDS` is built
+  from, from 1198 to 1201, and the frozen counts, from 1,110 tasks and 115 phases to 1,113 and 116.
+  Until this task runs `pnpm run test:docs` fails on the appended IDs (Constitution III) (missing)
+
+### The story-label rule
+
+- [X] T1201 Correct the `[Story]` line in tasks.md § Format in
+  `specs/001-inspect-agent-customizations/tasks.md` and
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, which still requires a story label for
+  "Phases 3–101 and 105–109" and omits it only in "Setup, Minimal Secure Foundation, and Phases
+  102–104". Phase 110's tasks carry `[US2]`, so the rule fails to require what they have; the
+  Convergence phases carry none, so it fails to excuse what they omit. T1198 named this line and
+  corrected § Organization and the Story Coverage note instead, and no gate covers it. Write the
+  exemption as every Convergence phase rather than by number, so a later convergence run does not
+  reopen the same line (QR-004) (partial)
+---
+
+## Phase 113: Convergence
+
+**Purpose**: Make the two records that name an artifact by its identity name the artifact this
+tree holds — the outcome manifest's digest, and the screenshots the readme shows.
+
+**Independent Test**: Run `shasum -a 256 tests/fixtures/outcomes/manifest.json` and find that
+digest in both validation records; open `./README.md` beside a running session and find the rail
+it shows on screen in the image above the text; run `pnpm run test:docs` and confirm it passes
+over the extended task set.
+
+**Visible Checkpoint**: A reader who checks either record against the tree finds them the same.
+
+### Evidence identity
+
+- [X] T1203 CRITICAL Make the recorded outcome-manifest digest name the checked-in manifest, in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md`. Both record canonical SHA-256
+  `58e3a057a3713d0896efd472527d3d2f73c89f4ade794a05c0fd07942cf372f5`, while
+  `shasum -a 256 tests/fixtures/outcomes/manifest.json` yields
+  `784ea623d2120935e9a7153be6f3f73e67e7ed0e5953c900ef396999765911f1` — which is what
+  `tests/fixtures/outcomes/manifest.sha256` holds, and which appears nowhere in `specs/`. Settle
+  which of the two the recorded execution ran against before editing: if the manifest reached its
+  current bytes before the 99 cases were executed, the digest line is a transcription to correct;
+  if it changed afterwards, spec.md § Release-Evidence Fixture Governance makes those bytes a new
+  non-comparable measurement set, and the cases are re-executed and recorded rather than
+  re-labelled. `tests/contract/outcome-fixture-manifest.test.ts` compares the manifest against its
+  own companion file and reaches neither record, so nothing detected this — the second time this
+  value has drifted, which the fix should take into account (Constitution IV, SC-003, SC-004,
+  SC-005, SC-007) (contradicts)
+
+### The readme's screenshots
+
+- [X] T1204 CRITICAL Retake `docs/images/inventory.png` and `docs/images/comparison.png` against
+  the current interface and check the alt text in `./README.md` and `./README.ja.md` still
+  describes what each shows. A screenshot is the one document that goes stale without a word of
+  it changing, and the rail, the status vocabulary, and the route marks all moved after the
+  committed pair was taken. `package.json.files` ships `docs/images`, so these are what npm
+  serves (Constitution IV, QR-004, T1029) (contradicts)
+
+### Task-set gates
+
+- [X] T1205 Restore the task-set gates over the tasks this phase adds, in
+  `specs/001-inspect-agent-customizations/tasks.md`,
+  `specs/001-inspect-agent-customizations/tasks.ja.md`, and
+  `tests/documentation/cross-artifact.test.ts`: name T1203, T1204, and T1205 in the Normative
+  Requirement Traceability matrix in both languages — SC-003/SC-004/SC-005/SC-007 for the manifest
+  record, QR-004 for the screenshots, the Constitution/project-governance row for this task-set
+  work — and move the three literals the suite pins: the highest declared task ID that
+  `DECLARED_TASK_IDS` is built from, from 1202 to 1205, and the frozen counts, from 1,114 tasks and
+  116 phases to 1,117 and 117. Until this task runs `pnpm run test:docs` fails on the appended IDs
+  (Constitution III) (missing)
+---
+
+## Story Coverage Matrix
+
+| Phase | Primary story coverage | Cumulative milestone |
+|---:|---|---|
+| 1 Setup | shared prerequisite | Contributors can install the project and run the empty build/test toolchain. |
+| 2 Minimal Secure Foundation | shared prerequisite | Security and package foundations pass independently, while no vendor matcher or inspected-source read exists outside the single inspection module. |
+| 3 Bootable Authorized Empty Screen | US1 | The browser screen starts and displays almost no product content. |
+| 4 Codex Skill List | US1 | Users can see a Codex SKILL list, but cannot open file detail yet. |
+| 5 Codex Skill Detail | US2 | Selecting a Codex SKILL opens a complete inert detail screen. |
+| 6 Codex Skill Metadata List | US1 | Users confirm a skill's metadata file on that skill's own detail page; no metadata tab, row, or separate candidate exists *(amended 2026-08-01: see Phase 6)*. |
+| 7 Codex Skill Metadata Detail | US2 | Selecting `agents/openai.yaml` in a skill's detail tree shows its complete literal source *(amended 2026-08-01: see Phase 7)*. |
+| 8 Claude Skill List | US1 | Claude and Codex SKILL lists coexist in the same inventory. |
+| 9 Claude Skill Detail | US2 | Claude SKILL detail is complete and consistent with Codex detail. |
+| 10 Copilot Skill List | US1 | Copilot skill rows show the exact three recognition combinations, while extra depth, configured roots, and extra tool recognitions remain absent. |
+| 11 Copilot Skill Detail | US2 | Copilot SKILL detail is complete and consistent with the Codex and Claude details, and a shared physical file opens as each product's own definition *(amended 2026-08-10: see Phase 11)*. |
+| 12 Unified Skill Inventory | US1 | Users can filter and understand the complete skill-first inventory. |
+| 13 Skill Comparison | US3 | One skill name’s copies can be compared file by corresponding file without activation or mutation. |
+| 14 Skill Metadata Comparison | US3 | Users can compare two census-published `agents/openai.yaml` files through the generic literal comparison, with authored sensitive values shown unchanged and no typed metadata rows fabricated *(amended 2026-08-01: see Phase 14)*. |
+| 15 Codex Instructions Inventory | US1 | Users can filter static Codex instructions together with every instruction file the repository's own `.codex/config.toml` configures, while the configuration file itself appears nowhere. |
+| 16 Codex Instructions Detail | US2 | Selecting a Codex instruction opens complete inert detail — the file led by what it declares, its instructions, and its diagnostics — whether it is one of the exact static files or a name the repository's configuration adds. |
+| 17 Claude Instructions Inventory | US1 | Users can filter Claude instruction files. |
+| 17b Instruction Applicability Grouping | US1 | Instruction files that govern the same range stand together, each still naming only the products that recognize it. |
+| 18 Claude Instructions Detail | US2 | Selecting a Claude instruction shows complete inert detail without importing referenced files. |
+| 19 Copilot Instructions Inventory | US1 | Users can filter Copilot instruction candidates and see explicit exclusions. |
+| 20 Copilot Instructions Detail | US2 | Selecting a Copilot instruction shows separate surface interpretations. |
+| 21 Unified Instructions Inventory | US1 | Users can understand the complete static instruction inventory, every shared-file interpretation, and the configured fallback integration Phase 15 activated. |
+| 22 Instructions Comparison | US3 | Users can compare two instruction files and understand their structure-level differences. |
+| 23 Codex MCP Carrier and Contained Declarations | US1 | Users can filter Codex contained MCP declarations on their minimum carrier, with Phase 15's instructions and configured fallbacks unchanged and the carrier's own source shown nowhere; full configuration inventory/detail remains deferred to Phases 57–58. |
+| 24 Codex MCP Detail | US2 | Selecting a Codex MCP recognition shows exact configuration semantics while every server remains inactive. |
+| 25 Claude MCP Files Inventory | US1 | Users can filter the Claude project MCP file. |
+| 26 Claude MCP File Detail | US2 | Selecting Claude `.mcp.json` shows exact file semantics and inactive server declarations. |
+| 27 Claude Explicit-Carrier MCP Boundary | US2 | A skill whose frontmatter spells `mcpServers` shows that frontmatter on its own skill detail and contributes nothing to the MCP inventory — the permanent rule for every kind. |
+| 28 Copilot CLI MCP Files Inventory | US1 | Users can filter Copilot CLI MCP files. |
+| 29 Copilot CLI MCP Detail | US2 | Selecting a Copilot CLI MCP file shows its complete inert detail. |
+| 30 Copilot VS Code MCP File Inventory | US1 | Users can identify the VS Code `servers` schema separately from Copilot CLI MCP files. |
+| 31 Copilot VS Code MCP Detail | US2 | Selecting either VS Code MCP path shows complete inert detail while clearly separating documented `.vscode` schema from unresolved root semantics. |
+| 32 Copilot Cloud MCP Facts and the Explicit-Carrier Boundary | US2 | The MCP tab lists only explicit carriers even when agent, plugin, or settings files spell MCP configuration, and hosted Cloud MCP facts appear on no session surface. |
+| 33 Priority MCP Inventory | US1 | Users can use the one MCP inventory across all four carriers — a name every vendor declares grouped into one row — and see nothing but explicit carriers, whatever other files spell. |
+| 34 MCP Comparison | US3 | Users can compare MCP declarations without connecting to them. |
+| 35 Codex Rules Inventory | US1 | Users can filter Codex rules by source and path. |
+| 36 Codex Rules Detail | US2 | Selecting a Codex rule opens complete inert detail without executing or enforcing it. |
+| 37 Claude Rules Inventory | US1 | Users can filter Claude rules with no unsupported Copilot badge. |
+| 38 Claude Rules Detail | US2 | Selecting a Claude rule shows its complete inert detail without evaluating a glob against arbitrary filesystem paths. |
+| 38A Permission Policy Shapes | US1, US2 | A permissions row and its detail are a policy's own, shared with no other kind, while both surfaces behave as before. |
+| 38B Review Corrections | US1, US2 | Every inventory row opens, every recognition states its surfaces, and no artifact claims more than its evidence. |
+| 39 Rules Comparison | — | Withdrawn: a rule kind has no identity two files could be two copies of. |
+| 39A Claude Permissions Carrier | US1, US2 | The permissions list holds both vendors' policies, and a Claude one opens as the block its settings carrier declares. |
+| 40 Claude Commands Inventory | US1 | Users can filter Claude commands with recursive namespaces. |
+| 41 Claude Commands Detail | US2 | Selecting a Claude command opens complete inert detail without executing, importing, or reading referenced targets. |
+| 42 Copilot Commands Inventory | US1 | Users can identify the Copilot CLI interpretation of supported root command files. |
+| 43 Copilot Commands Detail | US2 | Selecting a Copilot command shows complete inert CLI-qualified detail. |
+| 44 Unified Commands Inventory | US1 | Users can distinguish shared root commands from nested Claude-only commands. |
+| 45 Commands Comparison (withdrawn) | US3 | Withdrawn into Phase 48: one kind is one comparison surface. |
+| 46 Copilot Prompts Inventory | US1 | Users can filter supported Copilot prompts. |
+| 47 Copilot Prompts Detail | US2 | Selecting a Copilot prompt opens complete inert detail without navigating to or reading referenced targets. |
+| 48 Prompts and Commands Comparison | US3 | Users can compare the kind's files — a prompt beside a command included — without navigating to or executing content. |
+| 49 Codex Custom Agents Inventory | US1 | Users can filter Codex custom-agent files. |
+| 50 Codex Custom Agents Detail | US2 | Selecting a Codex custom agent shows its complete inert declarations and instructions without an agent-owned MCP recognition, connection, or configured-path read. |
+| 51 Claude Custom Agents Inventory | US1 | Users can filter Claude custom agents with duplicate-name uncertainty. |
+| 52 Claude Custom Agents Detail | US2 | Selecting a Claude custom agent shows its complete inert declarations and instructions without reading memory or connecting to MCP. |
+| 53 Copilot Custom Agents Inventory | US1 | Users can filter Copilot custom agents. |
+| 54 Copilot Custom Agents Detail | US2 | Selecting a Copilot custom agent shows separate surface-aware context without executing handoffs, hooks, tools, or MCP. |
+| 55 Unified Custom Agents Inventory | US1 | Users can understand the complete custom-agent inventory and its shared Claude/Copilot interpretations, without duplicate files and with no MCP row owned by any agent. |
+| 56 Custom Agents Comparison | US3 | Users can compare custom-agent definitions without executing or ranking them. |
+| 57 Codex Configuration Recognition | US1 | Users can filter Codex project configuration on the same physical carrier already used for MCP and fallback derivation, while no configured path gains read authority. |
+| 58 Codex Configuration Detail | US2 | Selecting `.codex/config.toml` under its settings row shows the complete document its author wrote, nothing read out of it, and no declared target opened. |
+| 59 Claude Settings Inventory | US1 | Users can identify exact-launch Claude settings files and their project/local layers. |
+| 60 Claude Settings Detail | US2 | Selecting Claude settings shows complete inert detail — any inline MCP map as the file's own declared content — without activating components, connecting to servers, or creating a standalone configuration row. |
+| 61 Copilot Settings Inventory | US1 | Users can identify supported Copilot settings candidates without seeing excluded VS Code or CLI state. |
+| 62 Copilot Settings Detail | US2 | Selecting Copilot settings shows complete inert surface-qualified detail without enabling plugins or composing contained hooks. |
+| 63 Unified Settings and Configuration Inventory | US1 | Users can filter the complete settings/configuration inventory and see that no settings document publishes an MCP row of its own, while the Codex configuration carrier keeps the MCP rows its own carrier rule reads. |
+| 64 Settings and Configuration Comparison (withdrawn) | — | Withdrawn: a settings row's detail is the document its author wrote, so a comparison would pair two complete sources with nothing of the kind's own to compare. |
+| 65 Claude Output Styles Inventory | US1 | Users can filter supported Claude output styles. |
+| 66 Claude Output Styles Detail | US2 | Selecting an output style opens complete inert detail without applying the style. |
+| 67 Claude Output Styles Comparison (withdrawn) | — | Withdrawn: one tool and one admitted location, so no two files can be two copies of one style name. |
+| 68 Codex Marketplaces Inventory (withdrawn) | — | Withdrawn: a catalog resolves plugin names to their sources, so it is a carrier of the plugin kind and its entries surface as plugin rows. |
+| 69 Codex Marketplaces Detail (withdrawn) | — | Withdrawn: Phase 68 withdrew the row this detail would open, and each entry's facts belong to the plugin it resolves. |
+| 70 Claude Marketplaces Inventory (withdrawn) | — | Withdrawn: `.claude-plugin/marketplace.json` is a plugin carrier for the reason Phase 68 gives. |
+| 71 Claude Marketplaces Detail (withdrawn) | — | Withdrawn: Phase 70 withdrew the row, and its entries' sources and pins belong to the plugin rows they resolve. |
+| 72 Copilot Marketplaces Inventory (withdrawn) | — | Withdrawn: Copilot's catalog is a plugin carrier for the reason Phase 68 gives. |
+| 73 Copilot Marketplaces Detail (withdrawn) | — | Withdrawn: Phase 72 withdrew the row this detail would open. |
+| 74 Unified Marketplaces Inventory (withdrawn) | — | Withdrawn: the three vendor rows it would join are withdrawn; the join is the unified plugin inventory. |
+| 75 Marketplaces Comparison (withdrawn) | — | Withdrawn: with no catalog row there is no catalog identity to pair; two catalogs meet in the plugin comparison. |
+| 76 Codex Plugins Inventory | US1 | Users can filter authored Codex plugins, including the ones whose declared source is outside the Repository. |
+| 77 Codex Plugins Detail | US2 | Selecting a Codex plugin shows complete inert authored metadata from every carrier that resolves it, without loading any component. |
+| 78 Claude Plugins Inventory | US1 | Users can filter Claude plugins, including the ones a catalog names but the Repository does not carry. |
+| 79 Claude Plugins Detail | US2 | Selecting a Claude plugin shows complete inert authored metadata and component relationships from every carrier, without activation. |
+| 80 Copilot Plugins Inventory | US1 | Users can filter Copilot plugins, and each row names the exact manifest form its carrier took. |
+| 81 Copilot Plugins Detail | US2 | Selecting a Copilot plugin shows its authored metadata from every carrier without loading components. |
+| 82 Unified Plugins Inventory | US1 | Users can understand every authored plugin interpretation as one row per name and see every inline MCP map as its carrier's content beside non-readable component paths. |
+| 83 Plugins Comparison | US3 | Users can compare two copies of one plugin name without loading or executing components. |
+| 84 Codex Standalone Hook Files Inventory | US1 | Users can filter standalone Codex hook files without any command execution. |
+| 85 Codex Hook Detail | US1 + US2 | Selecting a Codex Hook recognition shows its declarations without running them. |
+| 86 Claude Contained Hook Declarations | US1 | Users can filter Claude contained Hook recognitions on their owning files without seeing invented hook files. |
+| 87 Claude Hook Detail | US2 | Selecting a Claude Hook recognition shows its declarations without running them. |
+| 88 Copilot Standalone Hook Files Inventory | US1 | Users can filter standalone Copilot hook files. |
+| 89 Copilot Hook Detail | US1 + US2 | Selecting a Copilot Hook recognition shows its declarations without running them. |
+| 90 Unified Hook Inventory | US1 | Users can distinguish every supported standalone and contained Hook interpretation. |
+| 91 Hook Comparison | US3 | Users can compare hook declarations without executing them. |
+| 92 Repository Inventory Acceptance | US1 | US1 discovery is complete for every initial-release Repository customization family. |
+| 93 Repository Detail Acceptance | US2 | US2 inert-detail coverage is complete for every initial-release Repository customization family. |
+| 94 Repository Comparison Acceptance | US3 | US3 comparison is complete for every initial-release Repository customization family. |
+| 95 Global Consent Preview | US4 | Users can review the exact Global roots, exclusions, and lexical validity state — with the read scope explained in plain language — before enabling inspection. |
+| 96 Fixed-Member Global Enable Foundation and Codex Batch Member | US4 | Controls expose the fixed tuple and one shared enable/batch operation; Codex is one possible member and no Global Source is published before the atomic commit. |
+| 97 Claude Global Batch Member | US4 | Claude admission and scanning join the same batch while retaining a separate one-root candidate Source identity. |
+| 98 Copilot Global Batch Member | US4 | Copilot admission and scanning join the same batch while retaining a separate one-root candidate Source identity. |
+| 99 Atomic Global Batch Result Integration | US4 | Separately identified one-root member Sources appear together in exactly one complete or partial generation and reuse detail/comparison workflows. |
+| 100 Global Rescan and Recovery | US4 | Users can rescan Global results and recover from a failed attempt without re-consenting. |
+| 101 Global Disable Barrier and Teardown | US4 | Disabling Global inspection completely tears down its session state and leaves Repository inspection usable. |
+| 102 Documentation, Evidence, and Dependency Review | release evidence | Maintainers have reviewable guidance, evidence provenance, and a dependency decision before the cross-cutting suites validate those artifacts. |
+| 103 Cross-Cutting Verification | regression | The complete documented product passes its cross-cutting automated regression layer. |
+| 104 Release and Outcome Evidence | measured outcomes | The initial release is publication-ready with explicit automated, first-use, accessibility, performance, safety, residual-risk, and constitution-compliance evidence. |
+| 105 Interface Foundation | US1 | Every surface is drawn in the product's own palette, with the reader's system colours restored under forced colours. |
+| 106 Shell and Source State Surfaces | US1 | The inventory starts at the list, and each Source family's state has a surface of its own. |
+| 107 Inventory Row Compression | US1 | One file takes one line, with its recognizing products and their documented surfaces beside it. |
+| 108 Detail Surface Rework | US2 | A detail leads with its customization and gives the authored source the height it needs. |
+| 109 Comparison Surfaces and Rework Closure | US3 | A comparison names the products on each side, stays side by side, and the reopened gates are rerun. |
+| 110 Recognition-Owned Invocation Names on the Detail Head | US2 | A detail states each product's own invocation name beside that product, and its file's facts on the line under the heading. |
+| 111 Convergence | shared prerequisite | The release evidence and the user documentation describe the tree the rework produced, and the task-set gates cover the tasks it added. |
+| 112 Convergence | shared prerequisite | The validation record reads as one account of this tree, and the story-label rule matches the phases that exist. |
+| 113 Convergence | shared prerequisite | The two records that name an artifact by its identity — the outcome manifest's digest and the readme's screenshots — name the artifact this tree holds. |
+
+## Dependencies and Execution Order
+
+### Phase dependencies
+
+```text
+Setup
+  → Minimal Secure Foundation
+  → Bootable Authorized Empty Screen
+  → Codex Skill List → Codex Skill Detail
+  → Codex Skill Metadata List → Codex Skill Metadata Detail
+  → Claude Skill List → Claude Skill Detail
+  → Copilot Skill List → Copilot Skill Detail
+  → Unified Skill Inventory → Skill Comparison → Skill Metadata Comparison
+  → Codex Instructions Inventory → Codex Instructions Detail
+  → Claude Instructions Inventory → Claude Instructions Detail
+  → Copilot Instructions Inventory → Copilot Instructions Detail
+  → Unified Instructions Inventory → Instructions Comparison
+  → Codex MCP Carrier and Contained Declarations → Codex MCP Detail
+  → Claude MCP Files Inventory → Claude MCP File Detail → Claude Contained MCP Core
+  → Copilot CLI MCP Files Inventory → Copilot CLI MCP Detail
+  → Copilot VS Code MCP File Inventory → Copilot VS Code MCP Detail
+  → Copilot Agent-Contained MCP Contract and Cloud Runtime Facts
+  → Priority MCP Inventory → MCP Comparison
+  → Codex Rules Inventory → Codex Rules Detail
+  → Claude Rules Inventory → Claude Rules Detail
+  → Permission Policy Shapes → Review Corrections → Claude Permissions Carrier
+  → Claude Commands Inventory → Claude Commands Detail
+  → Copilot Commands Inventory → Copilot Commands Detail
+  → Unified Commands Inventory
+  → Copilot Prompts Inventory → Copilot Prompts Detail → Prompts and Commands Comparison
+  → Codex Custom Agents Inventory → Codex Custom Agents Detail
+  → Claude Custom Agents Inventory → Claude Custom Agents Detail
+  → Copilot Custom Agents Inventory → Copilot Custom Agents Detail
+  → Unified Custom Agents Inventory → Custom Agents Comparison
+  → Codex Configuration Recognition → Codex Configuration Detail
+  → Claude Settings Inventory → Claude Settings Detail
+  → Copilot Settings Inventory → Copilot Settings Detail
+  → Unified Settings and Configuration Inventory
+  → Claude Output Styles Inventory → Claude Output Styles Detail
+  → Codex Plugins Inventory → Codex Plugins Detail
+  → Claude Plugins Inventory → Claude Plugins Detail
+  → Copilot Plugins Inventory → Copilot Plugins Detail
+  → Unified Plugins Inventory → Plugins Comparison
+  → Codex Standalone Hook Files Inventory → Codex Hook Detail
+  → Claude Contained Hook Declarations → Claude Hook Detail
+  → Copilot Standalone Hook Files Inventory → Copilot Hook Detail
+  → Unified Hook Inventory → Hook Comparison
+  → Repository Inventory Acceptance → Repository Detail Acceptance → Repository Comparison Acceptance
+  → Global Consent Preview
+  → Fixed-Member Global Enable Foundation and Codex Batch Member
+  → Claude Global Batch Member
+  → Copilot Global Batch Member
+  → Atomic Global Batch Result Integration
+  → Global Rescan and Recovery
+  → Global Disable Barrier and Teardown
+  → Documentation, Evidence, and Dependency Review
+  → Cross-Cutting Verification
+  → Release and Outcome Evidence
+  → Interface Foundation → Shell and Source State Routes → Inventory Row Compression
+  → Detail Surface Rework → Comparison Surfaces and Rework Closure
+  → Recognition-Owned Invocation Names on the Detail Head
+  → Convergence (111) → Convergence (112) → Convergence (113)
+```
+
+- Delivery milestones are strictly sequential because every later milestone reuses and regresses the preceding product slice. Phases 96–99 are the sole composite milestone: their numbered slices execute in order, but none of Phases 96–98 may be declared green or releasable, and only Phase 99 closes the milestone after every real member port passes the all-real-port suites.
+- Within each ordinary phase, fixtures and failing tests precede implementation. Within the Phase-96–99 composite milestone, each slice's tests precede that slice's implementation, generic coordinator tests may inject only typed port outcomes, and the all-real-port acceptance suites remain red until Phase 99. An Implementation section never edits a test file.
+- Phase 15 defines the pure Codex fallback-declaration interface, reads the carrier as configuration input only, registers `codex.derived.fallback-basename` with its pinned seed path, and activates configured instruction fallbacks; Phase 23 first admits the carrier and attaches Codex MCP declarations, and Phase 24 ships their detail.
+- Phase 27 settles the explicit-carrier MCP boundary for Claude: only the root carrier holds MCP recognitions, and settings, custom-agent, marketplace, and plugin-manifest files show any MCP-spelling configuration as their own declared content in every later phase. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- Phases 57–58 extend the already admitted Codex configuration carrier with the `settings/config` recognition and full detail presentation; they do not add a second candidate, physical read, fallback rule, or MCP recognition.
+- Marketplace detail precedes plugin-manifest inventory so only validated local source declarations can seed one direct one-edge derivation.
+- Phase 61 owns the exact Copilot VS Code settings exclusion after the earlier MCP phase keeps that path negative; Phases 77 and 79 similarly own the exact Codex and Claude plugin-file exclusions and upgrade the earlier MCP path-negative contexts without changing their admitted candidates.
+- All owner families precede Hook recognition. Contained Hook recognition reuses already admitted owners, while priority MCP recognition is delivered earlier through the explicit carriers alone — no contained-owner mechanism exists for MCP.
+- Phase 96 establishes the generic selector-free fixed-member coordinator, three closed typed admission ports, Codex's real port, and test-only injected outcome coverage without claiming production all-member activation. Phases 97–98 bind the real Claude and Copilot ports to that same still-open composite milestone. Phase 99 repeats the fixed-member permutations through all real ports, completes the endpoint and atomic publication, and publishes every admitted separately identified one-root Source together in exactly one complete or partial generation; only then is the composite milestone green, while later explicit Global rescans remain single-Source operations.
+- Phase 102 task T1037 is the semantic evidence-drift gate: after that gate passes, semantically unchanged reviewed Phase-102 citation/evidence metadata corrections may update production registries, but any accepted normative behavior, rule, strategy, Presentation Allowlist, registry-shape, or conformance change supersedes the current bilingual task set and requires synchronized artifacts plus replanning before later old IDs run.
+- Phase 103 task T1041 is the later pre-release hard cross-artifact gate: T999 must already have materialized the production registry and T1038 any affected conformance records; the manifest and documentation/traceability suite verify that final state, existing local/CI commands, and the declared later release/final reruns, but do not require the future release workflow before T1048. Failures in T1041-owned manifest/test files are corrected and rerun within T1041; a concern in an authoritative external artifact supersedes the current task set for synchronized replanning/regeneration rather than waiting for T1062. Only after that disposition leaves no unresolved concern may verification-only T1042 or any later task under the current IDs begin.
+- Phases 105–110 rework the interface the completed surfaces are read through, so they follow the release evidence rather than preceding it: each reworks one layer — the palette and the shared controls, the shell and the Source state routes, the inventory row, the detail head, and the comparison head — and Phase 109 closes by rerunning the cross-cutting gates the rework reopened and recording that the frozen release outcomes no longer describe the tree.
+- Repository Inventory, Detail, and Comparison Acceptance complete US1, US2, and US3; Global Disable Barrier and Teardown is the first phase at which US4 is complete.
+
+## Parallel Opportunities
+
+- Setup configuration files can proceed in parallel after the dependency baseline and runnable commands are frozen.
+- In Minimal Secure Foundation, shared DTO/Diagnostic and environment-failure tests, package-policy tests, and filesystem-fixture preparation use different files and can proceed in parallel where marked.
+- Within a vendor Inventory phase, matcher, recognizer, integration, API, and browser tests may proceed in parallel only after that phase's fixture and conformance rows are complete and only when their exact file sets do not overlap.
+- Within a vendor Detail phase, metadata, relationship, zero-activation, API, and browser tests commonly use separate files and may proceed in parallel where marked; parser work on the same parser file remains sequential.
+- Vendor phases themselves remain milestone-sequential even when their implementation files differ, because every next visible milestone must regress the preceding vendor slice.
+- Marketplace vendors cannot derive plugin candidates in parallel with their own Detail phase; plugin derivation starts only after local-source extraction passes.
+- Codex, Claude, and Copilot plugin recognizer work occurs in separate phases; the Unified Plugin Manifests Inventory performs the first cross-tool one-read assembly.
+- Hook parser/recognizer work is parallel only inside a phase when exact files differ. Shared `src/server/inspection/scan.ts`, UI, and registry files are never marked parallel against another task in the same phase.
+- MCP CLI, VS Code, contained-owner, and Cloud-fact phases use distinct tests, but shared Copilot recognizer, JSON parser, scan, and UI work stays sequential by phase.
+- Repository acceptance tests marked `[P]` may proceed after the all-supported fixture and final registry graph are fixed.
+- Global vendor boundary tests use isolated fixture roots, but Phases 96–98 remain milestone-sequential while they add one shared fixed-member consent/admission/batch contract and distinct per-tool control/context projections; tentative work never publishes a Source before the Phase 99 atomic batch integration exists.
+- Global rescan and disable API, concurrency, boundary, lifecycle, and browser tests may proceed in parallel after their coordinator-state tests where exact files differ.
+- Within their ordered phases, the three vendor evidence reviews are independent marked work streams; after their artifacts and README pair are complete, cross-cutting package, Node.js-only, accessibility, lifecycle, and documentation tests can use independent marked work streams.
+
+### Parallel example: vendor Inventory phase
+
+```text
+After the phase fixture and conformance tasks:
+  matcher/registry contract
+  recognizer unit test
+  repository-scan integration test
+  inventory UI unit test
+  browser acceptance
+```
+
+### Parallel example: complete inert Detail phase
+
+```text
+After the phase metadata shape is fixed:
+  vendor metadata test
+  relationship test
+  zero-activation or zero-connection test
+  session-API file-detail and absent-reveal-function contract
+  browser detail acceptance
+```
+
+## Implementation Strategy
+
+### First visible milestone
+
+1. Complete Setup and Minimal Secure Foundation.
+2. Launch the authorized generation-zero shell.
+3. Stop and review the bootable empty screen before any Repository I/O is introduced.
+
+### Priority wave 1 — SKILL, Instructions, and MCP
+
+1. Deliver the complete Codex, Claude, and Copilot SKILL list/detail path, one-read shared inventory, and SKILL comparison, then verify the generic comparison covers the census-published `agents/openai.yaml` companions *(amended 2026-08-01: no `skill metadata` recognition ships after the Phase 6 decision; see Phase 14)*.
+2. Deliver static Instructions list/detail milestones for all three tools. Codex's configured fallbacks arrive with its own Instructions phase, which reads `.codex/config.toml` as configuration without admitting or publishing it.
+3. Admit the minimum Codex `.codex/config.toml` carrier in the first MCP phase and activate its contained MCP declarations there, without presenting it as a settings/config item yet and without showing its source text at all (FR-007).
+4. Deliver standalone Claude, Copilot CLI, and Copilot VS Code MCP files immediately. Only explicit MCP configuration joins the MCP surfaces; settings, custom agents, marketplaces, and plugin manifests show any MCP-spelling configuration as their own declared content when their phases ship them.
+5. Consolidate the explicit carriers, then deliver complete literal MCP comparison over them alone. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+
+### Priority wave 2 — Rules, Commands, Prompts, and Custom Agents
+
+1. Deliver the Codex permission policy and Claude rule list/detail milestones, then the Claude permission policy carrier; keep Copilot `.claude/rules` as an explicit initial-scope exclusion. Neither kind gains a comparison: a comparison pairs two copies of one identity, and a row whose unit is the file it was found in has none (Phase 39, withdrawn).
+2. Deliver Claude and Copilot Commands list/detail milestones, their shared-file integration, and comparison.
+3. Deliver the single-vendor Copilot Prompts inventory, detail, and comparison milestones.
+4. Deliver Codex, Claude, and Copilot Custom Agents list/detail milestones; each agent's MCP-spelling declarations stay its own detail content, and no MCP recognition, candidate, reread, or synthetic file arrives with them. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+5. Consolidate one-read shared custom-agent files and deliver comparison over their declared values.
+
+### Priority wave 3 — Remaining customizations
+
+1. Extend the existing Codex carrier into full configuration recognition/detail, then deliver Claude and Copilot settings; a settings file's inline MCP map is its own declared content, never an MCP recognition, and Copilot instruction enablement is reprojected. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+2. Deliver Claude Output Styles.
+3. Deliver Marketplaces; a catalog's MCP-spelling content stays the catalog's own declared detail content, because only explicit MCP configuration joins the MCP surfaces.
+4. Deliver Plugin Manifests after marketplace local-source validation; a manifest's inline MCP map stays the manifest's own declared detail content.
+5. Deliver Hooks last among Repository customization families so every contained Hook attaches to an already admitted owner.
+6. Complete Repository acceptance and Global inspection, finish documentation/evidence/dependency review, then run cross-cutting verification and release evidence.
+
+### Vendor-first vertical slices within each family
+
+1. Complete each supported vendor's List/Inventory milestone.
+2. Complete that vendor's complete inert Detail or contained-metadata milestone.
+3. Add the explicit shared physical-file integration milestone where the allowlist permits multi-tool recognition.
+4. Add one family comparison milestone after all supported vendor semantics exist.
+
+Single-vendor families retain their own inventory/detail/comparison milestones. Every phase remains independently demonstrable even when an earlier MCP contract is waiting for a later owner family.
+
+### Marketplace-to-plugin boundary
+
+1. Marketplace Inventory admits authored catalogs only.
+2. Marketplace Detail validates and retains validated direct one-edge local source declarations without reading targets.
+3. Plugin Manifest Inventory alone may use those declarations for a one-edge bounded-derived candidate.
+4. Plugin component, Hook, MCP, script, asset, remote, installed, cache, and hosted targets remain relationships or exclusions.
+
+### Explicit-carrier MCP boundary
+
+1. Only explicit MCP configuration joins the MCP surfaces: the MCP kind's recognitions come from the explicit carrier rules alone, and no contained-owner machinery exists. *(amended 2026-08-20: an owner-adapter activation path would attach MCP recognitions to files of other kinds, so this section holds the boundary at the explicit carrier rules.)*
+2. A file of any other kind that spells MCP-looking configuration — an agent's `mcp-servers`, a plugin manifest's or settings file's inline map, a skill's frontmatter — holds that kind's recognition alone, its configuration visible in its own detail as the declarations it wrote, and joins no MCP row, `get-mcp-carrier-detail` resource, or MCP comparison.
+3. Codex's admitted configuration carrier is itself an explicit carrier: its `[mcp_servers.*]` tables are the MCP rows its own recognition publishes, beside its fallback declarations and later configuration presentation.
+4. Hook phases attach contained Hook recognitions to already admitted owners and never create a Claude standalone hook or synthetic file — the Hook containment mechanism is its own and is not affected by the MCP boundary.
+5. Unified and acceptance phases prove one-read carrier assembly before comparison and reject any non-carrier entry as a selectable MCP comparison file.
+
+### Declared skill name in the inventory row
+
+A skill's authored `name` is an independent value: it lives in the `SKILL.md` frontmatter
+and is not required to match the containing directory, so a reader cannot recover it from
+the path. These tasks put a name on the row. The name a skill row shows is the one its
+recognizing tool invokes the file by — the authored `name` for Codex and Copilot, the
+skill directory for Claude Code, root-relative-prefixed when nested (FR-007, T1081);
+every declaration, that `name` included, reaches a reader through the detail's
+frontmatter list and the complete `sourceText` (T090).
+
+- [X] T1064 [US1] Amend the wire contract so a recognition can carry the name its tool invokes the
+  skill by in `src/shared/api-types.ts`, and state in
+  `specs/001-inspect-agent-customizations/data-model.md` and `data-model.ja.md` § ToolRecognition
+  that the inventory carries this one authored value while every other declared value is reachable
+  only through the FR-027 detail surface, by an explicit request for one file. Record in FR-007
+  (`spec.md`/`spec.ja.md`) why the name is presentation identity rather than content: it is the name
+  the products' own skill listings show, it is not recoverable from the Source-relative Path, and a
+  list that cannot name what it lists is not an inventory. The field is absent, not empty, when the
+  recognizer extracted no name. *(amended 2026-07-29: the one-file-at-a-time detail surface is now
+  the whole boundary.)* *(amended 2026-08-05: the name lives on the recognition's kind-discriminated
+  details, since a file publishes no recognition summary (T1068/T1073); and the rationale is the
+  listings' label, not a selector identifier.)* *(amended 2026-08-23: the value carried is the
+  invocation name the admitting rule resolved, never null, because a row headed by a name its tool
+  does not answer to names something the reader cannot invoke; the declared `name` reaches a reader
+  through the published frontmatter, where it is one declaration among the rest.)*
+- [X] T1065 [P] [US1] Add failing tests for the declared name: a recognizer test proving the
+  frontmatter `name` is carried on the recognition's details exactly as authored, including a skill
+  whose `name` differs from its directory and one with no `name` at all; a unit test proving the
+  inventory projection keys the row by the name the tool resolves — the authored `name`, or the
+  skill directory when the file declares none — rendering itself is asserted only in the browser,
+  because the unit project mounts no components (T058) — and browser acceptance in
+  `tests/e2e/codex-skills-list.spec.ts` proving the rendered row shows the authored name where the
+  tool invokes one, never overridden by the directory segment. *(amended 2026-08-08: aligned to
+  T1081's row unit. 2026-08-23: the row unit is the name each tool invokes, so a Codex or Copilot
+  row keeps the authored name with the skill-directory fallback while a Claude Code row is the skill
+  directory itself; what the recognition carries is that resolved name, and the declaration reaches
+  the assertions through the published frontmatter.)*
+- [X] T1066 [US1] Populate the invocation name in `src/server/inspection/recognizers/candidate.ts`
+  by asking the admitting rule, handing it the declarations the one parse resolved, so the name a
+  row groups by and the declarations the detail shows come from the same parse. A document the
+  extractor cannot parse fails that recognition all-or-nothing and publishes no declaration
+  (FR-028); a rule that invokes the authored name then falls back to the skill directory, which is
+  the path's own fact. Where a rule reads the `name` key it takes the resolved scalar exactly — no
+  trimming and no re-casing. The value rather than the authored literal: a quoted `name` declares
+  the string inside the quotes, and that is the name the vendor's own listings show, so carrying the
+  quote characters into a display name would show something those listings never contain. *(amended
+  2026-07-29: the allowlisted extractor now runs, so the name is read from the entry it publishes.)*
+  *(amended 2026-08-04: one recognizer serves both vendors, and the name is the file's own `name`
+  key rather than a catalog entry; a parse the extractor cannot complete fails the recognition
+  instead of leaving a field absent.)* *(amended 2026-08-23: which fact names a skill is the admitting vendor's own contract, so the
+  rule answers it rather than the recognizer reading the `name` key.)*
+- [X] T1067 [US1] Render the declared name in that kind's row component under
+  `src/app/components/inventory/rows/` beside the Source-relative Path. The name is authored text:
+  it is inert, never a locator, and never replaces the path as the row's identity, because two
+  skills may share a name across directories.
+- [X] T1081 [US1] Key each skill inventory row by the name the recognizing tool invokes it by
+  (spec.md § Clarifications Session 2026-08-08 and Session 2026-08-23; FR-007): the name is the one
+  that tool's own documentation invokes the file by, answered by the rule that admitted it because
+  how a name follows from a path and a declaration is that vendor's own contract — Codex and Copilot
+  invoke the authored frontmatter `name`, Claude Code the skill directory whatever the frontmatter
+  declares, prefixed for a nested skill with the root-relative `/`-joined path of the directory
+  holding its `.claude` and a `:`, so `apps/web/.claude/skills/deploy/SKILL.md` declaring
+  `name: ship` is `apps/web:deploy` on its Claude Code row and `ship` on its Copilot one. The prefix
+  is always applied, because the vendor's clash-conditional prefix is relative to a session working
+  directory this product never observes. A file that declares no name — or declares it empty — is
+  invoked by its skill directory, so `name` is never null and the nameless per-file row does not
+  exist: two such files in same-named directories share a row like any other files one tool invokes
+  by one name. Compile each vendor's skill rule into a unit that answers it
+  (`CompiledStaticSkillRule` in `src/server/inspection/rules/registry.ts`, with the shared
+  authored-name answer beside `declaredAgentNameOf`), resolve it once in
+  `ToolRecognition.recognizeSkill` the way a command recognition resolves its own, and publish it as
+  the row's `name` alone (contracts/http-api.md § get-session `skills[]`) — a definition carries no
+  name of its own, because a second copy beside the row's would be a fact and something derived from
+  it. Publish one definition per recognition — the `(file, tool)` unit, named by
+  `definitions[].tool`, each carrying the file's census — gate each tool's same-name statement
+  through its own collision policy's per-view gate — Claude's spans the generation's skill
+  directories (`src/shared/registries/claude/skill-collision.ts`) — applied by the projection and
+  rebuilt from the visible definitions by the filtered view in `src/app/composables/filters.ts`,
+  head the skill detail with the row's own name, address the detail route by the file's identity as
+  `/skills/detail/<source>/<source-relative path>` with companions under the same route, and render
+  names with the same control-character escaping as paths. *(2026-08-23 amendment: the row key
+  changed from the authored `name` every tool shares to the name each tool invokes, because a row
+  headed by a name one of its own tools does not answer to names something the reader cannot invoke;
+  the per-definition invocation name and the detail's second name line went with it, being the row's
+  own fact.)*
+- [X] T1082 [US1] Make the Source-relative Path the file's whole identity (FR-030): remove the
+  per-generation opaque `fileId` from the wire and the internals —
+  `CustomizationFileDto`/`CustomizationFileSummaryDto`, `ToolRecognitionDto`, `SkillDefinitionDto`,
+  and the Diagnostic location shape, whose file scope is now the coherent
+  `sourceId`/`sourceRelativePath` pair — key the `get-file-detail` request by the path, and delete
+  the commit-time ID rekeying in `src/server/session/scan-generation.ts`, publishing the attempt's
+  records as constructed. A commit invalidates the previous generation's client state through
+  snapshot adoption: adopting the newer generation closes the open detail and the route re-requests
+  the same path under it, a detail answered from a generation newer than the adopted snapshot is
+  withheld until that adoption, and a path the current committed generations do not hold is the
+  `stale-resource` rejection. The path was already the definition's route identity, so publishing an
+  opaque alias beside it was one fact in two spellings that could disagree.
+- [X] T1083 [US2] Discriminate the detail response by what owns the file and publish the parse once
+  (contracts/http-api.md § get-file-detail): `FileDetailDto` becomes `SkillFileDetailDto` —
+  `kind: 'skill'`, the file, `presentation` (the one scan-time parse: `frontmatter` and `bodyText`,
+  null exactly for a failed extraction), and the file's diagnostics — beside
+  `UnrecognizedFileDetailDto` (`kind: 'file'`) for a file no recognition owns. The per-tool
+  `recognitions` array leaves the wire: the parse is the file's fact — every shipped vendor reads
+  the same fixed YAML semantics — and the recognizing tools, invocation names, and parse states are
+  the inventory's `definitions[]`, so the copies could only disagree; admissions stay internal
+  records for the relationship phases. One extraction per kind is one failure record (FR-028),
+  shared by the kind's failed definitions and listed once by the file. `ToolRecognition` and
+  `CandidateProvenance` become classes in `src/server/inspection/recognizers/candidate.ts` —
+  internal single-producer records, no longer wire shapes — with `CandidateProvenance` deriving its
+  rule identifiers from the compiled rule it holds; the recognize seam (`CandidateRecognition`)
+  stays a literal-double interface. The detail page derives its definition line from the inventory
+  and renders the presentation block; `RecognitionSummary.vue` is removed with the list it rendered.
+
+### Decide whether the recognition summary still needs its provenance count
+
+The number of admissions behind one recognition has no reader: it is always 1 for every
+shipped rule, `rule admission` is registry vocabulary rather than something a reader can
+act on, and the row already says everything a count would qualify. This task settles what
+happens to the field itself.
+
+- [X] T1068 [US2] No surface reads the number of admissions behind one recognition: a file publishes
+  no recognition summary at all once each kind's inventory is its own (T1073–T1078), and an
+  admission is a read-authorization record rather than something a surface reads out.
+  `RecognitionSummaryDto` and its `provenanceCount` are gone from `src/shared/api-types.ts` and from
+  the session projection; the record's own `provenances` remain, because each admission names the
+  rule that authorized its read. `specs/001-inspect-agent-customizations/data-model.md` and
+  `data-model.ja.md` § ToolRecognition state it. *(amended 2026-08-04: no surface shows a
+  provenance, so an admission carries only what authorized the read — `ruleId`, `discoveryClass`,
+  and `matchedPath`. It carries no scope descriptor and no order descriptor: those are the
+  vocabulary of a projection this product does not make, and a `matching-path` scope would also only
+  restate the `matchedPath` beside it.)*
+
+### Companion files of an admitted skill
+
+A skill is a directory, not a file: `SKILL.md` sits beside the scripts, references, and
+assets it uses, and a row that named only the `SKILL.md` would make a skill with twenty
+scripts and one with none look identical. Listing what accompanies a recognized skill takes
+a bounded census — enumeration rooted only at the admitted candidate's own directory —
+which these tasks add.
+
+- [X] T1069 [US1] Add the bounded companion census to the allowlist contract in
+  `specs/001-inspect-agent-customizations/contracts/inspection-path-allowlist.md` and `.ja.md`: the
+  directory containing an admitted candidate of a kind that is a directory is enumerated recursively
+  to list the regular files accompanying it. State that the recognized kind decides, because being a
+  directory is part of what a kind is and a per-rule flag would state twice what the kind already
+  decides; the census therefore runs for every recognition of such a kind, and its result —
+  published once, on the inventory definition the recognition backs (T1074) — is empty when the
+  admitted file sits alone. State that the result is the sorted list of Source-relative Paths rather
+  than a count, because the inventory row shows how many and the file detail view names each one,
+  and one fact cannot disagree with itself. State that enumerating reads no bytes and admits no
+  candidate; that the scan reads each listed file exactly once through the ordinary read path and
+  publishes it as an ordinary file of the generation, its bytes counted in `readBytes` and an
+  unreadable one carrying `file-unreadable` under a partial commit; that listing grants no authority
+  beyond that one read and cannot escape the Source root; that it excludes VCS internals and the
+  seed itself; and that it follows symbolic links under the same real-path cycle rules as the
+  ordinary walk. Record why it is enumeration rather than admission: the accompanying files are
+  relationship targets that are never read through those edges (contracts/vendors/openai-codex.md §
+  Presentation allowlist), so listing them must not promote them to candidates. *(amended
+  2026-07-29: the census-listed files are read and published by the scan —
+  contracts/inspection-path-allowlist.md § Bounded companion census.)* *(amended 2026-08-07: the
+  census result is published once, on the inventory definition's `companionFiles` — a second
+  spelling of one list could disagree with it.)* *(amended 2026-08-24: the recognizer names the
+  directories a recognized customization occupies and reads nothing; `scan.ts` enumerates each named
+  directory once and publishes what it lists as ordinary files of the generation, and the file list
+  a definition shows is derived from those paths in `projectSkillInventory`. One enumeration site
+  serves a skill's own directory and a plugin root a catalog names alike.)*
+- [X] T1070 [US1] Keep the census out of the rule record and out of the compiled plan.
+  `InspectionRule` in `src/shared/registries/rule-types.ts` declares no census scope: the recognized
+  kind decides, so a field on the record would carry no information its `kind` does not already
+  carry, and the closed union it needed would ship a member no rule ever holds. The plan does not
+  carry it either — the census is not part of the walk, so `src/server/inspection/traversal.ts`
+  stays the generic allowlist traversal.
+- [X] T1071 [P] [US1] Add failing tests for the census: a test proving the list covers nested
+  directories, excludes the seed and VCS internals, lists a symlinked file at its own entry path, is
+  sorted, terminates on a link cycle, and descends no further than the candidate's own directory
+  even through a link to an ancestor; a test proving no additional file is admitted and enumerating
+  reads no bytes — the scan then reads every listed file once, which the scan-publication tests
+  assert; a recognizer test proving the census list is returned beside the skill's recognitions and
+  is empty rather than absent when the `SKILL.md` sits alone; and browser acceptance proving the row
+  states how many there are. *(amended 2026-07-29: the census-listed files are read and published by
+  the scan; the no-byte assertion covers enumeration alone.)* *(amended 2026-08-07: the census
+  result is published once, on the inventory definition's `companionFiles`.)* *(amended 2026-08-24:
+  the recognizer names the directories a recognized customization occupies and reads nothing;
+  `scan.ts` enumerates each named directory once and publishes what it lists as ordinary files of
+  the generation, and the file list a definition shows is derived from those paths in
+  `projectSkillInventory`. One enumeration site serves a skill's own directory and a plugin root a
+  catalog names alike.)*
+- [X] T1072 [US1] Implement the census in `src/server/inspection/companion-census.ts` and run it in
+  the recognizer, in `src/server/inspection/recognizers/candidate.ts`: the recognizer holds both the
+  candidate's path and its recognized kind, so no caller has to know which kinds want a census or
+  precompute one for them. The recognizer returns the list beside its recognitions;
+  `src/server/inspection/scan.ts` — which passes the candidate's filesystem path beside its display
+  path and computes no census of its own — collects it keyed by the candidate's path, and the
+  session publishes it once, on the inventory definition (T1074). Render the list's length in
+  `src/app/components/inventory/rows/SkillRow.vue`. The list itself is what the file detail view
+  will name file by file, so the count is derived from it and never published beside it. *(amended
+  2026-08-07: the census result is published once, on the inventory definition's `companionFiles` —
+  a second spelling of one list could disagree with it.)* *(amended 2026-08-24: the recognizer names
+  the directories a recognized customization occupies and reads nothing; `scan.ts` enumerates each
+  named directory once and publishes what it lists as ordinary files of the generation, and the file
+  list a definition shows is derived from those paths in `projectSkillInventory`. One enumeration
+  site serves a skill's own directory and a plugin root a catalog names alike.)*
+
+### Per-kind inventory units
+
+A row's unit is the kind's own, and only `instructions` and `settings/config` share their
+unit with the physical file. A skill row is one name as one tool resolves it — the
+authored `name`, the skill directory naming a file that declares none, a nested Claude
+Code recognition prefixed root-relative — which need not match the directory. An MCP server is one
+`[mcp_servers.*]` table inside an admitted `.codex/config.toml`, so one file publishes as
+many rows as it declares servers. A contained hook is the same. One file-shaped row cannot
+express either case: grouping skills by name collides with the one-recognition per
+`(file, tool, kind)` rule, and a file-shaped row has no way to become N rows.
+
+These tasks separate the two facts. A file stays what it is — a path, a read outcome, a
+size, its diagnostics — and each kind publishes its own inventory whose row is that kind's
+own unit, referring to files by their Source-relative Path rather than repeating what
+they already state.
+
+- [X] T1073 [US2] Record the separation in `specs/001-inspect-agent-customizations/data-model.md`
+  and `data-model.ja.md`, `contracts/http-api.md` and `.ja.md` § get-session, and FR-007 in
+  `spec.md` and `spec.ja.md`: the inventory row's unit is decided by the kind, not by the file.
+  State the units the shipped kinds use — a skill is one name as one tool resolves it, an MCP row is
+  one declared server name listing every declaration resolving it, an instructions row is one
+  applicability range listing the files that govern it *(amended 2026-08-18: the instructions unit
+  is the range, so that a repository's `AGENTS.md` and `CLAUDE.md` stand together (T1091))* — and
+  that a physical file is published once with its own facts while each kind's inventory refers to it
+  by its Source-relative Path *(amended 2026-08-08: the reference is the path — a file's identity is
+  its Source-relative Path, stable across generations (T1082))*. State why: the row unit is the one
+  the vendor's own listings use, and a single file-shaped row can express neither a name shared by
+  several files nor several declarations inside one file. *(amended 2026-08-08: aligned to T1081's
+  row unit — every row is keyed by the name the tool resolves, with the skill-directory fallback.)*
+  *(amended 2026-08-20: aligned to the shipped name-headed MCP row — one row per declared server
+  name, every declaration resolving it listed inside, per the decision that shaped
+  `McpInventoryEntryDto`.)*
+- [X] T1074 [US2] Add the skill inventory to the wire contract in `src/shared/api-types.ts`: a
+  snapshot publishes skills as entries keyed by the name a tool resolves, each holding its
+  definitions (the Source-relative Path of the `SKILL.md`, the recognizing tool, and its companion
+  files). Remove `recognitions` from `CustomizationFileSummaryDto`, which becomes the physical
+  file's own facts only; the per-kind payload moves to the kind's inventory, so `RecognitionDetails`
+  stays a kind-discriminated payload instead of one shape every kind widens with optional fields. A
+  definition names its file by its Source-relative Path and repeats no file-scoped fact the file
+  already publishes *(amended 2026-08-08: the reference is the path — a file's identity is its
+  Source-relative Path, stable across generations (T1082))* *(amended 2026-08-08: the definition
+  carries its own recognition's `parseStatus` and the extraction-failure reference of its kind — one
+  record per `(file, kind)`, shared by the file's failed definitions and listed once by the file
+  (T1083).)*.
+- [X] T1075 [US2] Project the skill inventory in `src/server/session/session.ts`: group the
+  committed skill recognitions by the name each tool invokes the file by, in a deterministic order —
+  the skill-directory fallback naming the files a declared-name tool finds no name in. *(amended
+  2026-08-08: aligned to T1081's row unit. 2026-08-23: the name is resolved by the admitting rule at
+  recognition time, so the projection groups by the published value rather than resolving one.)* The
+  projection reads the same committed generations it already reads and performs no filesystem work.
+- [X] T1076 [US2] Publish how each tool resolves a same-name skill in
+  `src/shared/registries/skill-resolution.ts` and `src/server/session/session.ts`, so a grouped
+  entry never implies a winner the Inspector has not recorded. The shipped statements differ — Codex
+  does not merge same-name skills and both stay available with no documented order
+  (`codex.skills.discovery`), Claude Code keeps every one available within a root and picks the
+  variant matching the files being worked on (`claude.skills.selection`), Copilot CLI resolves the
+  first in a documented source order (`copilot.cli.skills.selection`), and Copilot in VS Code has no
+  documented duplicate precedence (`copilot.vscode.skills.selection`) — so the entry carries one
+  resolution per product that recognizes two or more of its definitions, sourced from the vendor's
+  shipped composition strategy rather than restated in the browser. Publish a statement only for a
+  product whose strategy record is shipped: a product with no skill rule recognizes no skill, so no
+  entry can reach it, and writing the other statements now would put claims in the product that
+  nothing can check them against. Add the contract gate that fails when a product ships a skill rule
+  without its statement. An entry with one definition states none: there is nothing to resolve.
+  *(amended 2026-08-04: a statement belongs to a tool facing the collision, so a tool that
+  recognizes only one of the definitions publishes none.)* *(amended 2026-08-04: Claude's statement
+  is corrected against the official page — within one root every same-name skill stays available, a
+  nested one under a directory-qualified command, and Claude picks the variant matching the files
+  being worked on; the enterprise-over-User-over-project precedence is a rule between levels, which
+  the Inspector lists as separate Sources.)*
+- [X] T1077 [US2] Render the skill tab from the skill inventory in `src/app/components/inventory/`:
+  the row is one resolved name, beneath it one item per physical file stating that file’s
+  Source-relative Path and companion census once, and beneath each file its recognitions — one
+  definition line per recognizing tool. *(amended 2026-08-16: grouped by file — several definitions
+  can name one file, and repeating the file’s own facts per tool made the reader compare identical
+  lines to discover one file (T1078 owns the same non-repetition).)* When a tool recognizes several
+  of an entry's definitions, the row states that tool's same-name resolution instead of ordering
+  them. *(amended 2026-08-04: a statement belongs to a tool facing the collision, so a tool that
+  recognizes only one of the definitions publishes none.)* `InventoryList.vue` dispatches on the
+  kind in view and renders that kind's own row type; a per-row dispatcher cannot, because each
+  kind's row takes different props. The files with no kind are listed by `UnclassifiedList.vue`,
+  outside every tab.
+- [X] T1078 [P] [US2] Cover the separation in `tests/unit/app/inventory.test.ts`,
+  `tests/contract/http-api-session.test.ts`, and `tests/e2e/codex-skills-list.spec.ts`: a projection
+  test proving two `SKILL.md` files declaring one name publish one entry with two definitions while
+  two names publish two entries; a test proving files that declare no name group by their
+  skill-directory name rather than joining an authored name; a test proving a file's own facts are
+  published once and never repeated per definition; and browser acceptance proving a duplicated name
+  renders one row that states each tool's resolution and names both paths.
+
+- [X] T1079 [US2] Decide where the file-level parse rollup belongs now that a file publishes only
+  its own facts, and act on the decision in the same change. `parseSummary` aggregates the parse
+  states of a file's recognitions, which a file no longer carries: no surface reads it, and the
+  recognitions it summarizes are now grouped by each kind's own row. Keep it only if a surface reads
+  it — a kind's row already carries its own definitions' diagnostics, so a file-level rollup beside
+  them may say nothing a reader can act on. If nothing reads it, remove `parseSummary` from
+  `CustomizationFileSummaryDto` in `src/shared/api-types.ts`, drop its projection in
+  `src/server/session/session.ts`, and update `contracts/http-api.md`/`.ja.md` § get-session and
+  `data-model.md`/`data-model.ja.md` § CustomizationFile. The record's own `parseStatus` stays: it
+  is what a recognition failed at, and the detail view shows it. *(completed 2026-07-29: nothing
+  reads it. `parseSummary` is removed from the summary and the detail DTOs, `projectParseSummary`
+  from the scan, and the field from `contracts/http-api.md`/`.ja.md` and `data-model.md`/`.ja.md`;
+  the recognition's own `parseStatus` remains the parse fact.)*
+
+- [X] T1080 Ship the third-party notices the published browser bundle requires (FR-043). Derive the
+  list from the finished bundle in `scripts/third-party-notices-plugin.mjs`, collecting each bundled
+  package's own notice files, and register the plugin in `./nuxt.config.ts` so the document is
+  emitted into the published browser output. Gate it in `tests/package/third-party-notices.test.ts`:
+  the packaged file exists, carries the bundled editor's copyright holder and the MIT permission
+  text, names every package whose code the bundle inlines, omits dependencies the package manager
+  installs for the user, and gives every listed package a body.
+
+- [X] T1098 Reuse an already-open session tab on macOS before opening a new one (2026-08-19). When
+  automatic opening is enabled, the startup opener in `src/server/host/browser-opener.ts` probes the
+  process list (`ps cax`) for a running Chromium-family application and, when one is running, runs
+  the fixed embedded JXA reuse script through the OS `osascript` automation host — focusing and
+  reloading a tab already showing the session origin, retargeting an empty new-tab page, or only
+  otherwise opening a new tab in that browser — and every other case falls back to the `open`
+  package helper the host invokes through `src/server/host/devframe-app.ts`. Cover the opener's
+  platform split, fixed-argument boundary, and fallbacks in `tests/unit/host/browser-opener.test.ts`
+  and the host wiring in `tests/contract/host-startup.test.ts`, and amend the child-process and
+  probe clauses in `specs/001-inspect-agent-customizations/spec.md` (FR-001, FR-022, §
+  Clarifications), `research.md` § 3, `plan.md`, `quickstart.md`, and `contracts/http-api.md` § Host
+  requirements, in both languages.
+
+- [X] T1099 Serve a deterministic fixture repository for manual verification (2026-08-19).
+  `pnpm run start:fixture [name] [cli flags...]` in `scripts/serve-fixture.ts` rebuilds the named
+  fixture tree — through the builders `tests/fixtures/repositories/build-fixtures.ts` exports, which
+  accept an explicit root for this launcher — under the git-ignored `.tmp/fixtures/` and serves it
+  with the packaged `dist/cli.mjs`, so a manual check runs against the exact trees the suites assert
+  against rather than a hand-built lookalike; each launch replaces that fixture's previous tree and
+  leaves it on disk afterwards for inspection. Register the script in `./package.json`, exclude
+  `.tmp/` in `./.gitignore`, `./.prettierignore`, and `./eslint.config.js`'s ignores, and document
+  the launcher in `quickstart.md` § Run the local inspector manually in both languages, replacing
+  the root-selection examples there that pointed at a static fixture directory the repository does
+  not ship. *(amended 2026-08-21: a combined fixture named `all`, now the launcher's default, builds
+  every `all-*` tree into one root through `buildAllCustomizationKindFixture`, so one launch serves
+  all three inventories at once; the two `.codex/config.toml` paths both the MCP and instruction
+  builders write whole are rewritten as the concatenation of both outputs — the top-level fallback
+  key first, the server tables after, as TOML requires — and
+  `tests/integration/repository-scan.test.ts` proves the merged carrier feeds both readers.)*
+
+- [X] T1122 Return the reader to where they left the inventory (2026-08-22). The inventory's own
+  leave guard in `src/app/pages/index.vue` records the row link the departing navigation follows and
+  how far below the top of the viewport it sat, and a page change arriving back at the inventory
+  focuses that row and scrolls it to the place it sat, both in `src/app/router.options.ts` — the
+  module that already owns what counts as a page change, so the rule and the point it restores stay
+  in one place. One rule covers both ways back, because the reader made the same move either way:
+  the browser's Back, and a detail page's own `Back to the inventory` link, which pushes a fresh
+  history entry carrying no saved position at all. What is restored is the row rather than the
+  document offset, so a reader whose list changed under them still lands on the row they followed.
+  Which list that is belongs to the URL: the kind tab and the Source, tool, and path filters are all
+  query parameters the page writes back (T187), so the browser's Back, a reload, and a pasted link
+  render the same narrowed list. A detail page's own back link keeps naming its kind's tab, so a
+  return through it lands on the whole list — and the row that was followed is still put back on
+  screen and focused inside it, which is what restoring the row rather than the offset is for. The
+  placement is vue-router's own element scroll target — the row, and the offset below the top of the
+  viewport it sat at — so no document arithmetic is written beside the router that already performs
+  it. A departure matching no rendered link, and a row the generation a detail route adopted no
+  longer publishes, both fall back to the ordinary page-change rule: the top of the page, with focus
+  on the shell heading. Cover the whole rule — the same-page parameter change, the page change, the
+  return, and each fallback — in `tests/unit/app/router-options.test.ts`, and, against the rendered
+  page, both ways back and a narrowed list returned to through the browser's Back, in
+  `tests/e2e/inventory-return.spec.ts`, whose short viewport is what makes the committed inventory
+  scroll at all.
+
+- [X] T1123 Open a committed file in an application on the reader's own machine (2026-08-22). A
+  detail surface's split button opens the file with the application the reader last chose and offers
+  the others under its chevron; the host performs every launch, because the absolute path is the
+  host's and the page holds only the Source-relative Path it addresses every other request with.
+  `src/server/host/file-opener.ts` probes this machine once before the port is bound — each catalog
+  editor's command on `PATH` through `which`, then the installation locations `env-editor` maintains
+  for it — and offers exactly what it can start: the editors it resolved, then the reader's
+  registered handler for the file type and that handler applied to the file's own directory.
+  `src/server/session/session.ts` holds that opener, derives the offered targets into the snapshot,
+  and resolves an open request against the committed generations before anything is launched, so the
+  only absolute path a launch receives is one the session published;
+  `src/server/host/devframe-app.ts` registers `agent-customization-inspector:open-file` with no
+  shape guard in front of either parameter, and `src/server/cli.ts` runs the probe at bootstrap.
+  Carry the closed target set and the offered list in `src/shared/api-types.ts` with their captions
+  in `src/shared/api-text.ts`, the command in `src/app/session/api-client.ts` and
+  `src/app/session/view-state.ts`, and the control in
+  `src/app/components/inspection/OpenFileButton.vue` with the remembered choice and the rule that
+  selects from it in `src/app/components/inspection/open-target-preference.ts` — one of the two
+  values this application stores — the other being the colour scheme the page is drawn in — a
+  preference about the reader's own machine that carries nothing inspected. Render it from
+  `src/app/pages/instructions/detail/[source]/[...path].vue`,
+  `src/app/pages/rules/detail/[source]/[...path].vue`,
+  `src/app/pages/permissions/detail/[source]/[...path].vue`,
+  `src/app/pages/mcp/detail/[source]/[...path].vue`, and
+  `src/app/pages/skills/detail/[source]/[...path].vue`. Compile the icons at build time through
+  `unplugin-icons` configured in `./nuxt.config.ts` and typed by `src/app/icon-modules.d.ts`, so the
+  page fetches nothing; attribute each icon collection in `scripts/third-party-notices-plugin.mjs`,
+  which reads the upstream text of a bundled package that ships none from
+  `licenses/@iconify-json/lucide.txt` and `licenses/@iconify-json/simple-icons.txt`. Declare the two
+  new production dependencies in `./package.json` and approve them in
+  `tests/package/production-graph.test.ts` and `tests/package/node-only-policy.test.ts`. Cover the
+  probe, the offer, and each launch in `tests/unit/host/file-opener.test.ts`, the selection and the
+  remembered choice in `tests/unit/app/open-target-preference.test.ts`, and the function's
+  resolution and staleness outcome in `tests/contract/http-api-open-file.test.ts` against the double
+  in `tests/fixtures/file-opener.ts`, which refuses what it does not offer exactly as the real
+  opener does. Amend the child-process clause of FR-022 in
+  `specs/001-inspect-agent-customizations/spec.md`, the function catalog and `open-file` in
+  `specs/001-inspect-agent-customizations/contracts/http-api.md`, the dependency records in
+  `specs/001-inspect-agent-customizations/research.md`, and the approved production set in
+  `specs/001-inspect-agent-customizations/plan.md`, in both languages. *(amended 2026-08-22: the
+  reader's own `$EDITOR` joins the set on macOS, given a terminal window through the operating
+  system's `osascript` automation host: `src/server/host/file-opener.ts` hands its fixed script the
+  editor and the path as arguments, so the command line a terminal needs is quoted by that host
+  rather than assembled here.)* *(amended 2026-09-04: launcher discovery resolves each `PATH`
+  entry — including an empty entry meaning the invocation directory — to an absolute directory,
+  rejects any candidate inside the selected Repository root or an eligible personal-setup root
+  before calling `which`, and probes a bare executable only as an absolute per-directory candidate.
+  A configured command containing a path separator is rejected before probing, and the catalog
+  installation fallback applies the same inspected-root exclusion. The open control clears an old
+  launch error when the reader selects another target, and the installed-launch check distinguishes
+  the shutdown it requests from a process that exited successfully on its own. Unit and package
+  tests cover each boundary.)*
+
+- [X] T1124 Collapse the inventory's files in no kind into a disclosure (2026-08-22). That section
+  is defined by absence — an admitted file no kind's inventory lists — so every repository holding
+  one unreadable, binary, or nothing-declaring candidate has one, and as a standing section it stood
+  open on every visit, beneath whatever kind tab was being read, with its explanation and each of
+  its rows. `src/app/pages/index.vue` renders it as a list of its own, reached from the rail beside
+  the kinds and carrying its count there *(amended 2026-09-03: the rail selects it, so no disclosure
+  stands under a kind's rows; T1152, T1153.)*. What a `partial` status is
+  about moves to where that status is read: `src/app/components/inventory/ScanProgress.vue` states
+  how many of the Source's committed files kept a file-confined diagnostic (FR-028), counted from
+  the published files by the page that owns the snapshot, so the number follows the rows a reader
+  can open rather than the diagnostic records behind them. The tool selection stops emptying the
+  list in `src/app/composables/filters.ts`: no tool recognized any of these files, so no tool
+  selection can match one, and emptying the list under one took the only statement a `partial`
+  generation has about that file off the page — the rows stand, and the page says a tool filter is
+  applied instead of listing them under a tool none of them belongs to. Cover the rows surviving a
+  tool selection in `tests/unit/app/inventory.test.ts` and, against the rendered page, the closed
+  arrival, the summary count, the stated diagnostic count, and the rows behind the disclosure in
+  `tests/e2e/codex-permissions-inventory.spec.ts`, whose fixture publishes exactly one such file;
+  every other suite that reads those rows opens the section through
+  `tests/e2e/no-kind-disclosure.ts`.
+
+- [X] T1125 Let a launch state the port it prefers (2026-08-25). devframe's default port is the one
+  every launch of this host reached for unasked, so a suite run or a manual launch took it from
+  whoever was holding it for their own use. `--port <number>` in `src/server/cli.ts` reaches the
+  devframe definition's `cli.port` in `src/server/host/devframe-app.ts` exactly as parsed, and
+  devframe resolves it the way it resolves its own default: a free port is kept, an occupied one
+  moves to another, and 0 asks for a free port to be selected automatically — so which port is bound
+  stays devframe's decision and the printed launch line stays the only statement of it. With the
+  option omitted the key is absent and devframe's default stands, so the product substitutes no
+  default of its own and re-checks no value. `tests/e2e/launch-host.ts` and
+  `tests/package/npx-launch.test.ts` pass `--port 0`, which is what keeps the e2e, performance, and
+  package suites off a reserved port (AGENTS.md § Agent-started process policy, in both languages).
+  Cover the forwarded preference — 0 included, since it means something an absent key does not — in
+  `tests/unit/cli.test.ts` and `tests/contract/host-startup.test.ts`, and amend FR-001 and §
+  Clarifications in `spec.md`, `contracts/http-api.md` § Host requirements, `plan.md`, `research.md`
+  § 8, and `quickstart.md`, in both languages (FR-001).
+- [X] T1126 Read every documented plugin source form, and state where a plugin's files come from
+  (2026-08-25). A catalog entry's `source` was read for one shape — a `./` path, or the object
+  spelling `{ "source": "local", "path": … }` — so every other spelling reached one silent answer:
+  no directory here, worded as though this repository were missing a file the offering never put in
+  it, and a plugin fetched from GitHub read as a broken local path. `src/shared/api-types.ts`
+  carries the closed `PluginSourceForm` every product's documented forms map onto, published on
+  `PluginDeclarationDto.sourceForm` beside the root rather than derived from it — a relative path
+  leaving the Source is a form that was read and a directory that cannot be named, while an npm
+  package names no directory anywhere — with the words each member reads as in
+  `src/shared/api-text.ts`. Each vendor's reading maps only the forms its own documentation lists:
+  Claude's `github`, `url`, `git-subdir`, `npm`, `archive`, and `command` objects, its `./` paths,
+  and the bare names its catalog's `metadata.pluginRoot` resolves; Codex's `local` object or plain
+  `./` string, `url`, `git-subdir`, and `npm`; Copilot's relative path and its `github` and `url`
+  objects — in `src/server/inspection/rules/plugins/claude.ts`,
+  `src/server/inspection/rules/plugins/codex.ts`, and
+  `src/server/inspection/rules/plugins/copilot.ts` over the shared reading in
+  `src/server/inspection/rules/plugins/plugin-source.ts`. A spelling its vendor documents nowhere is
+  `unrecognized` rather than a directory quietly absent, which the plugin's own page and the
+  comparison's manifest section state as what it is in
+  `src/app/pages/plugins/detail/[source]/[...path].vue` and
+  `src/app/pages/plugins/compare/[family].vue`. The census in
+  `src/server/inspection/recognizers/candidate.ts` reads every plugin admission rather than stopping
+  at the first, because one catalog all three products admit can name a directory to one of them and
+  nothing to the others, and stopping first left that directory unenumerated. Cover the readings in
+  `tests/unit/inspection/rules.test.ts`, the rows in `tests/integration/repository-scan.test.ts`,
+  and both absences on the rendered page in `tests/e2e/claude-plugins-detail.spec.ts`,
+  `tests/e2e/codex-plugins-detail.spec.ts`, and `tests/e2e/copilot-plugins-detail.spec.ts`, with one
+  fixture entry per form in `tests/fixtures/repositories/build-fixtures.ts`. Record the forms in
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.md`,
+  `specs/001-inspect-agent-customizations/contracts/vendors/openai-codex.md`, and
+  `specs/001-inspect-agent-customizations/contracts/vendors/github-copilot.md`, the published field
+  in `specs/001-inspect-agent-customizations/contracts/http-api.md`, and the reviewed sections in
+  `specs/001-inspect-agent-customizations/contracts/official-sources.md`, in both languages, with
+  the maintained paraphrases in `src/shared/registries/claude/rules.ts`,
+  `src/shared/registries/claude/behaviors.ts`, `src/shared/registries/codex/behaviors.ts`, and
+  `src/shared/registries/copilot/behaviors.ts` and the conformance fixtures they materialize in
+  `tests/fixtures/conformance/inspection-rules.json` and
+  `tests/fixtures/conformance/vendor-behaviors.json` (FR-004, FR-007). *(amended 2026-08-25: a
+  discriminant resolves through own keys alone — a `Map` rather than an object index, where
+  `"source": "constructor"` had reached a function on the prototype and published it as the form;
+  `metadata.pluginRoot` and a bare `source` require `scalarKind === 'string'`, so a number's
+  rendering never becomes a directory; and `localPluginRootSegments` is the path contract's
+  tokenizer exactly, refusing a leading, trailing, or repeated separator, a backslash or colon, a
+  first-segment home marker, a control character, and an unpaired surrogate with zero target I/O
+  (contracts/inspection-path-allowlist.md § Common conformance requirements).)* *(amended
+  2026-08-25: a Copilot entry's string source is a path with an optional `./`, joined under a
+  declared `metadata.pluginRoot`, because that is what its client resolves — `plugins/formatter` and
+  `./plugins/formatter` are one directory and a string is never a repository shorthand, which
+  belongs to the CLI's marketplace-add command; the plugin comparison states when a catalog declares
+  one name more than once instead of dropping the offerings it does not diff; and a one-sided file
+  is read from the side that has it, where a name only the second copy shipped had asked for nothing
+  at all.)*
+
+- [X] T1127 Give the plugin rules a directory of their own (2026-08-25). Each vendor's module had
+  grown to hold every kind that vendor recognizes, the plugin carriers among them, and a plugin
+  carrier is the one kind whose rule reads a declaration about another directory.
+  `src/server/inspection/rules/plugins/` now holds that reading and the units that answer with it —
+  `src/server/inspection/rules/plugins/claude.ts`, `src/server/inspection/rules/plugins/codex.ts`,
+  and `src/server/inspection/rules/plugins/copilot.ts` — over
+  `src/server/inspection/rules/plugins/compiled-rule.ts`, which carries what a plugin rule answers,
+  and `src/server/inspection/rules/plugins/plugin-source.ts`, which carries the `./`-anchored root
+  every vendor validates the same way. Each vendor's compiled-rule base moves to
+  `src/server/inspection/rules/vendor/claude.ts`, `src/server/inspection/rules/vendor/codex.ts`, and
+  `src/server/inspection/rules/vendor/copilot.ts`, because both that vendor's kind module and its
+  plugin module extend it and a base declared in either would have to be imported back by the other.
+  `src/server/inspection/rules/registry.ts` publishes the plugin contract it no longer declares, so
+  no module outside `src/server/inspection/rules/` imports the plugins directory:
+  `src/server/inspection/recognizers/candidate.ts` reaches it through the registry as before, and
+  only `tests/unit/inspection/rules.test.ts` names the vendor plugin modules directly.
+- [X] T1128 Give the instruction rules a directory of their own (2026-08-25). What an instruction
+  file governs is the instructions inventory's row unit, and each product answers it differently —
+  the Repository root's `**` for a root-anchored lookup, the directory holding the file for a
+  per-directory product, what the file declared for a product whose files name their own range — so
+  those readings now sit together in `src/server/inspection/rules/instructions/claude.ts`,
+  `src/server/inspection/rules/instructions/codex.ts`, and
+  `src/server/inspection/rules/instructions/copilot.ts`. Beside them,
+  `src/server/inspection/rules/instructions/compiled-rule.ts` carries what a rule of this kind
+  answers — the static contract and the derived one — and
+  `src/server/inspection/rules/instructions/applicability-range.ts` the glob spelling every derived
+  range shares, because a range is grouped by exact spelling and two products escaping a directory
+  name differently would be two rows. The Codex configured-basename derivation is instruction work
+  of the same kind, so its unit, its shipped instance, the seed read, the
+  `project_doc_fallback_filenames` reading, and the stage the scan calls all move with it, with
+  `src/server/inspection/rules/vendor/codex.ts` taking that vendor's derived base beside its static
+  one. `src/server/inspection/rules/registry.ts` publishes both kinds' contracts and
+  `src/server/inspection/rules/codex.ts` publishes the configuration read, so no module outside
+  `src/server/inspection/rules/` imports a kind directory: `src/server/inspection/scan.ts` and
+  `src/server/inspection/recognizers/candidate.ts` reach them exactly as before, and only
+  `tests/unit/inspection/rules.test.ts`, `tests/unit/inspection/recognizers.test.ts`,
+  `tests/unit/inspection/codex-metadata.test.ts`, `tests/unit/inspection/seed-parsers.test.ts`,
+  `tests/integration/repository-scan.test.ts`, and `tests/integration/boundaries/traversal.test.ts`
+  name them directly.
+- [X] T1129 Give the prompt-and-command rules a directory of their own (2026-08-25). The name a
+  reader invokes a file by is this kind's inventory unit, and each location answers it differently —
+  Claude joins the path below its commands directory with `:` and reads no `name` key, the Copilot
+  CLI takes the file name of a root direct child, and a VS Code prompt file declares the name a
+  reader types and falls back to its own — so those derivations now sit in
+  `src/server/inspection/rules/prompts-and-commands/claude.ts` and
+  `src/server/inspection/rules/prompts-and-commands/copilot.ts`, the second carrying both of that
+  vendor's units. Beside them, `src/server/inspection/rules/prompts-and-commands/compiled-rule.ts`
+  carries what a rule of this kind answers, and nothing shared sits between the vendors: the
+  differences are documented decisions, so a common derivation would put one product's namespace on
+  another that never wrote about one. The directory is named for the kind the inventory publishes,
+  as `src/app/pages/prompts-and-commands/` is. `src/server/inspection/rules/registry.ts` publishes
+  the contract it no longer declares, so `src/server/inspection/rules/claude.ts` and
+  `src/server/inspection/rules/copilot.ts` keep only their remaining kinds and the rule lists that
+  compile them.
+- [X] T1130 Give the MCP rules a directory of their own (2026-08-25). Which servers a carrier
+  declares is this kind's inventory unit, and where that map sits is each vendor's own contract —
+  Codex's TOML `[mcp_servers.*]` tables, Claude's strict-JSON `mcpServers`, the Copilot CLI's
+  wrapper of the same name that it also accepts without, the VS Code guide's top-level `servers` in
+  JSONC — so those readings now sit in `src/server/inspection/rules/mcp/claude.ts`,
+  `src/server/inspection/rules/mcp/codex.ts`, and `src/server/inspection/rules/mcp/copilot.ts`, the
+  last carrying both of that vendor's carriers and the root-file admission that reads nothing and
+  records provenance alone. What a found map means is not a vendor difference, so the projection all
+  four spelled identically — one server per mapping-valued entry, every other value declaring none,
+  no field validated and no reference resolved — is written once in
+  `src/server/inspection/rules/mcp/server-map.ts`, and
+  `src/server/inspection/rules/mcp/compiled-rule.ts` carries what a rule of this kind answers, the
+  provenance-only variant included. `src/server/inspection/rules/registry.ts` publishes the
+  contracts it no longer declares, so `src/server/inspection/rules/claude.ts`,
+  `src/server/inspection/rules/codex.ts`, and `src/server/inspection/rules/copilot.ts` keep only
+  their remaining kinds; only `tests/unit/inspection/claude-metadata.test.ts` names an MCP unit
+  directly.
+- [X] T1131 Give the permission-policy rules a directory of their own (2026-08-25). A policy takes
+  two shapes, and the two share nothing but the kind: Claude's is a `permissions` object inside a
+  settings file, published whole because an allowlist of some of its keys would drop authored policy
+  without being able to say which, while a Codex `.codex/rules/*.rules` file is the policy entirely
+  and its unit reads nothing out of it. Those two now sit in
+  `src/server/inspection/rules/permissions/claude.ts` and
+  `src/server/inspection/rules/permissions/codex.ts`, with
+  `src/server/inspection/rules/permissions/compiled-rule.ts` carrying what a rule of this kind
+  answers — the block-reading contract, the whole-document one, and the `permissionsReading`
+  discriminant that lets a recognizer prove which admission can answer without a cast. No shared
+  module sits between them, because there is nothing to share: one reads a block out of strict JSON
+  and the other reads no block at all. `src/server/inspection/rules/registry.ts` publishes the
+  contracts it no longer declares, so `src/server/inspection/rules/claude.ts` and
+  `src/server/inspection/rules/codex.ts` keep only their remaining kinds.
+- [X] T1132 Answer a plugin carrier's detail for the product the reader followed (2026-08-25). A
+  catalog every product admits is one carrier line per `(file, tool)` on its inventory row, and
+  which directory an entry's source names is each vendor's own contract — the object spelling only
+  Codex documents names a plugin root to Codex and nothing to the other two — so three lines led to
+  one page that served whichever recognition the projection reached first, stating one product's
+  root, source form, and manifest under another product's name. `PluginCarrierDetailParams` in
+  `src/shared/api-types.ts` gains the product, `src/server/session/session.ts` answers for that
+  recognition alone, `src/app/components/plugin-detail-route.ts` carries it in the link every
+  carrier line renders from `src/app/components/inventory/rows/PluginRow.vue`, and
+  `src/app/pages/plugins/detail/[source]/[...path].vue` states which product's reading it shows —
+  falling back to the row's first carrier in the closed tool order for a link that names none, and
+  saying so. The files the page lists narrow the same way, because two products reading one catalog
+  reach different files from it. The comparison passes a product per side in
+  `src/app/composables/plugin-comparison.ts` and `src/app/pages/plugins/compare/[family].vue`: a
+  file several products recognize stays one carrier to that surface — a pair of its recognitions
+  would compare a document with itself — so each side is fetched for the first product in the closed
+  order that recognizes it, and the side line names that product where the file has more than one.
+  Cover the request identity in `tests/unit/app/plugin-manifest-comparison.test.ts` and both
+  readings of one catalog on the rendered page in `tests/e2e/codex-plugins-inventory.spec.ts`, and
+  record the parameter in `specs/001-inspect-agent-customizations/contracts/http-api.md` §
+  get-plugin-carrier-detail in both languages (FR-007, FR-030).
+- [X] T1133 Give the skill rules a directory of their own (2026-08-25). The name a product invokes a
+  skill by is this kind's inventory unit, and the three products split two ways: Codex and Copilot
+  document the frontmatter `name` as the skill's identity with the skill directory as the fallback,
+  while Claude Code invokes the directory whatever the file declares and prefixes a nested skill
+  with the root-relative path of the directory holding its `.claude`.
+  `src/server/inspection/rules/skills/invocation-name.ts` holds the answer the first two share — one
+  rule rather than two that happen to agree — `src/server/inspection/rules/skills/claude.ts` the
+  path-only answer that is this vendor's alone, and `src/server/inspection/rules/skills/codex.ts`
+  and `src/server/inspection/rules/skills/copilot.ts` their units over the shared one. Beside them,
+  `src/server/inspection/rules/skills/compiled-rule.ts` carries what a rule of this kind answers.
+  `src/server/inspection/rules/registry.ts` publishes that contract and keeps every other kind's, so
+  `src/server/inspection/rules/claude.ts`, `src/server/inspection/rules/codex.ts`, and
+  `src/server/inspection/rules/copilot.ts` keep only their remaining kinds; only
+  `tests/integration/boundaries/traversal.test.ts` names the shared answer directly, and the
+  comments that cited the contract's old home — `src/server/session/session.ts`,
+  `src/shared/api-types.ts`, `src/shared/skill-collision.ts`, and
+  `src/shared/registries/skill-collision.ts` — cite its new one.
+- [X] T1134 Give the output-style and custom-agent rules directories of their own (2026-08-25). Both
+  kinds answer a question no other kind has: which name a reader selects a style by, and where an
+  agent file's configuration ends and its instructions begin.
+  `src/server/inspection/rules/output-styles/claude.ts` holds the one product that documents styles
+  — the frontmatter `name` with the file name as the fallback — over the contract in
+  `src/server/inspection/rules/output-styles/compiled-rule.ts`.
+  `src/server/inspection/rules/agents/claude.ts`, `src/server/inspection/rules/agents/codex.ts`, and
+  `src/server/inspection/rules/agents/copilot.ts` hold the three splits, which are three contracts
+  rather than one: Claude and Copilot split at the Markdown frontmatter fence while Codex splits at
+  the `developer_instructions` key its own document carries, so each parse stays with the vendor
+  that documents it. `src/server/inspection/rules/agents/declared-name.ts` holds the name Codex and
+  Claude Code share, because their answer is one rule rather than two that happen to agree, and
+  `src/server/inspection/rules/agents/compiled-rule.ts` what a rule of this kind answers.
+  `src/server/inspection/rules/registry.ts` publishes both contracts, so
+  `src/server/inspection/rules/claude.ts`, `src/server/inspection/rules/codex.ts`, and
+  `src/server/inspection/rules/copilot.ts` keep only their rule lists and the plain unit every other
+  kind compiles into; the comments citing the contracts' old home in `src/shared/api-types.ts` and
+  `src/app/components/custom-agent-comparison/recognition-comparison.ts` cite their new ones.
+- [X] T1135 Read a plugin's own files through the plugin (2026-08-25). A plugin's files are what the
+  census enumerated below the directory its offering named, and `get-file-detail` answers for the
+  row whose subject a file is — so a path whose only rows name declarations inside it, a declared
+  permission policy or an MCP carrier, was refused there and reported as gone on the very page that
+  lists it. `agent-customization-inspector:get-plugin-file-detail` in `src/shared/api-types.ts`,
+  `src/server/session/session.ts`, and `src/server/host/devframe-app.ts` answers for the file as
+  that plugin's: the carrier, the product whose reading reached it, the row's name, and the path,
+  with membership below one of that offering's directories as the condition — so no arbitrary file
+  can be read through a plugin's name. `src/app/session/api-client.ts` fetches it through the one
+  detail token family, `src/app/session/view-state.ts` holds it in the plugin route's own two slots
+  rather than the skill route's, and `src/app/pages/plugins/detail/[source]/[...path].vue` reads
+  what a file *is* from the inventory instead of from its own request — the kinds whose rows name
+  it, in the closed kind order — because a plugin's file is served as the plugin's and a rule that
+  independently admitted it publishes that on its own kind's rows. The comparison does the same for
+  both of its file panes in `src/app/composables/plugin-comparison.ts` and
+  `src/app/pages/plugins/compare/[family].vue`. Cover the request identity in
+  `tests/unit/app/plugin-manifest-comparison.test.ts`, the published surface in
+  `tests/unit/app/authored-content.test.ts`, the registered catalog in
+  `tests/contract/host-startup.test.ts` and `tests/contract/http-api-routes.test.ts`, and a policy
+  document inside a plugin root opened from the tree in `tests/e2e/codex-plugins-detail.spec.ts`;
+  record the function in `specs/001-inspect-agent-customizations/contracts/http-api.md` in both
+  languages (FR-007, FR-025, FR-030).
+- [X] T1136 Draw the page in the reader's own colour scheme (2026-08-25). The shell carries a switch
+  that moves the page between the two schemes and remembers the choice, which is the second of the
+  two values this application stores — the other being the application a file opens in — and, like
+  it, a preference about the reader's own machine holding nothing inspected (FR-044).
+  `src/app/composables/color-scheme.ts` owns the rule: the stored choice while there is one, the
+  operating system's own setting until then and while the page is open, an unrecognized stored
+  spelling treated as no choice, and one class on the document root as the choice's single
+  expression. `src/app/styles/main.css` resolves the whole palette from CSS system colours against
+  that root's `color-scheme`, so nothing restates a colour per scheme and every control the browser
+  draws itself follows; `src/app/composables/monaco.ts` picks the editor's theme by name, because an
+  editor resolves no system colour. `src/app/components/ColorSchemeSwitch.vue` renders the control
+  `shine-and-bright` draws — declared in `./package.json` and recorded in
+  `specs/001-inspect-agent-customizations/research.md` — and `src/app/App.vue` places it in the
+  shell, where every surface reaches it. Cover the rule in `tests/unit/app/color-scheme.test.ts` and
+  the repaint a real engine performs in `tests/e2e/color-scheme-switch.spec.ts`, which the unit
+  suite cannot stand in for: whether an engine re-resolves `Canvas` when that declaration changes is
+  a fact about the certified browsers. State the requirement as FR-044 in
+  `specs/001-inspect-agent-customizations/spec.md` and the two stored preferences in
+  `specs/001-inspect-agent-customizations/plan.md`, in both languages (FR-027, FR-031, FR-043,
+  FR-044).
+
+### Release completion
+
+1. Pass Repository Inventory, Detail, and Comparison Acceptance.
+2. Deliver no-I/O Global consent preview.
+3. Activate selector-free consent for fixed `[copilot, claude, codex, agents]`, evaluate all four on initial enable or exactly the complete fixed-order `retryableTools` projection—non-pending unpublished admitted plus same-preview rejected controls, excluding published, pending, and lexical new-preview-required controls—on retry, and validate their one-root controls without publishing tentative Sources.
+4. For a nonempty admitted subset, run exactly one shared-ID `GlobalBatchScan` and atomically publish zero to four separate member Sources together through one complete or partial Global generation, preserving carried Sources and never merging roots; an empty deterministic subset creates no job or generation.
+5. Add Global rescan/recovery and the priority zero-I/O disable barrier.
+6. Complete documentation/evidence/dependency review, then run the cross-cutting suites against those completed artifacts; after every remediation, invalidate prior post-review results, rerun all applicable automated gates and affected evidence protocols, and repeat complete-diff/tarball review until it reports no concern.
+7. Record SC-001–SC-008 denominators, thresholds, and pass/fail results; the task material under `tests/usability/sc001-sc006-study-inputs/` and the ground truth the twenty agent-driven sessions scored against, recorded as an agent-driven run and never as a participant cohort (spec.md § Clarifications, Session 2026-09-01); the outcome-fixture manifest version and canonical digest; the final packed-candidate digest; the full Node.js engines contract plus exact lower-bound/browser certification samples; and residual risks. The capture kit is removed (spec.md § Clarifications, Session 2026-09-01; T1061, T1062), so nothing here runs or records it.
+8. Record the explicit principle-by-principle release Constitution Check and require the matching pull request review check; complete every resulting repository evidence edit.
+9. With the repository now frozen, rerun the complete applicable automated matrix and read-only complete-diff/tarball review, ending with `pnpm run test:docs` and `git diff --check`; capture outcomes only in the external release/pull-request check log. Any later repository edit invalidates every outcome and returns to step 6/T1062 before the Constitution and final-tree gates repeat.
+
+## Notes
+
+- Only the inspection module under `src/server/inspection/` may enumerate or read enabled inspected sources (QR-003); caller paths, relationship targets, vendor locators, strategies, and evidence records never grant read authority.
+- Traversal and reading follow symbolic links transparently (FR-024): the inspector shows what an agent reading the same path would see; a broken link yields that file's `file-unreadable` Diagnostic, and visited directories are tracked by real path so a link cycle cannot prevent scan termination.
+- A file-confined problem—an unreadable file, binary content, or a parser or extractor failure—keeps a per-file diagnostic while every unaffected file publishes in a partial generation; an unreadable root fails that Source's attempt with the source-scoped `root-unreadable` Diagnostic and publishes no partial inventory for that attempt (FR-002, FR-028).
+- Inspected customization files are not modeled as an adversary (FR-019): traversal and reads are ordinary `fs/promises` operations with per-file diagnostics, and there is no identity re-verification between operations, detected-change taxonomy, or kernel-containment claim.
+- FR-038 applies to project-authored executable application code and executable code in the production closure as pinned by the committed lockfile and audited at release; a consumer install’s fresh resolution of the caret ranges lies outside that audit (research.md § 3). Project-authored build and test code also uses JavaScript/TypeScript as a repository design choice, while third-party development/test tooling remains outside FR-038 and is pinned and audited separately. Rust, Cargo, Node-API/native addons, prebuilt binaries, lifecycle compilation, and lifecycle/runtime artifact downloads remain prohibited from the product boundary defined by FR-038.
+- Vendor behavior, Inspector matchers, runtime composition, and official evidence have separate ownership. Only static and bounded-derived Inspector rules can authorize a read.
+- The only non-read `excluded` rule IDs are `shared.excluded.managed-remote-state`, `copilot.excluded.additional-standard-locations`, `copilot.excluded.extra-directories`, `copilot.excluded.vscode-settings`, `copilot.excluded.cli-lsp`, `copilot.excluded.cli-extensions`, `codex.excluded.plugin-files`, `claude.excluded.plugin-files`, `codex.excluded.user-runtime`, `claude.excluded.user-runtime`, and `copilot.excluded.user-runtime`; every other rejection is a path-negative test or relationship-only condition.
+- Relationships are descriptive, direct, non-recursive, and non-following. A relationship target is readable only through its own independent static or bounded-derived admission.
+- Hard links are ordinary files: each discovered path is read once within a scan attempt with no physical-identity grouping; distinct Sources, scan attempts, and generations are independent and may each read the same underlying object. One published file may retain multiple tool recognitions and direct provenances.
+- A Codex Repository surface whose vendor lookup walks the project-root-to-`cwd` chain — instructions, `.codex/config.toml`, `.codex/rules`, `.codex/hooks.json` — is matched at the selected root only. A nested `.codex` layer belongs to a runtime working directory this tool never selects, so it stays a near miss rather than a candidate, exactly as a nested `AGENTS.md` does *(amended 2026-08-17: Claude's nested discovery is unaffected, being documented as root-relative rather than `cwd`-relative)*.
+- A kind's first detail phase owns the way into that detail: the inventory row component for
+  that kind stops rendering plain text and links to the route, and that phase's browser
+  acceptance reaches the detail through the row rather than by navigating to a URL. A row
+  renders plain text only while no route exists to link to (`rows/InstructionRow.vue` before
+  T224). The same holds for any route a launch does not open: the phase that ships it owns
+  the entry that reaches it.
+- `agents/openai.yaml` is published as its owning skill's census companion: no separate candidate and no `skill metadata` recognition exists, and its bytes stay its own file in `files[]` rather than being folded into the seed `SKILL.md` identity *(amended 2026-08-01: no bounded-derived candidate ships; see Phase 6)*.
+- Phase 15 reads `.codex/config.toml` only as the configuration input of the fallback derivation and publishes nothing of it. Phase 23 first admits the carrier for contained Codex MCP declarations, and Phases 57–58 add the `settings/config` recognition and its detail through a second rule over the one candidate. What a surface shows follows from the row a reader arrives through: an MCP row's subject is one declaration, so its detail publishes declarations and never the file's bytes, while the settings row's subject is the file, so its detail is the complete document its author wrote.
+- Claude standalone hooks, Codex standalone MCP, hosted/organization/managed/remote inputs, Claude workflows and agent memory, Codex Repository prompts and plugin components, Copilot LSP/extensions/general `.vscode/settings.json`, and extra configured roots never receive List phases or read authority.
+- Contained Hook recognitions reuse their already admitted owner physical file and never create a synthetic file. MCP has no contained mechanism: only explicit carriers hold MCP recognitions. *(amended 2026-08-20: only explicit MCP configuration joins the MCP surfaces; a file of another kind that spells MCP configuration shows it as that kind's own detail content, an agent's `mcp-servers` included.)*
+- A marketplace catalog and the manifests below its entries' roots are one `plugin` kind: the catalog is the carrier, a validated local source names each plugin's root, and the census enumerates that root's files — no rule admits a plugin manifest and none derives one; components never recurse.
+- Global inspection has one fixed-four consent record, four controls, and zero to four separately identified Sources, at most one per member and exactly one root per Source. Tentative admission/scan work is not a Source. Initial enable or retry transfers every admitted context into one `GlobalBatchScan` with one request ID, authority, and working set, then publishes all admitted Sources together in one complete or partial generation of the independent Global sequence; no per-member intermediate commit exists, and a Global commit never touches Repository generation or views. A later explicit Global rescan remains a single-Source transaction. Source IDs remain process-lifetime stable, and file identities are Source-relative Paths, stable across generations.
+- Complete decoded authored source, exact metadata literals, and authored relationship targets remain available in the active session. The loopback-only session API returns them only through explicit detail requests; it has no acknowledgement or notice field, because neither exists anywhere (FR-027). The bundled browser issues those requests and renders their authored values directly, with nothing in front of or beside them. Credentials and environment-reference syntax are displayed unchanged; referenced process-environment values are never read or substituted; diagnostics and logs do not duplicate source values.
+- Credential detection, masking, redaction, and reveal controls are absent. No reveal, masking, or environment-resolution function exists in the session API, and no notice about authored content appears before or beside a source or comparison open.
+- Normal startup, scans, builds, and tests are offline with respect to official documentation. Only the explicit maintainer source-check command may access the network.
+- Every human-authored repository document change updates the English canonical file and Japanese companion together.
+- Passing automated tests is evidence rather than exhaustive proof; Phase 104 requires full-context diff, package, first-use, accessibility, measurable-outcome, and residual-risk review.

@@ -1,0 +1,7 @@
+# esbuild and unrs-resolver ship prebuilt platform packages and work without
+# their install scripts; keeping builds disabled keeps installs deterministic
+# and script-free (development tooling only — the published package payload
+# stays Node.js-only).
+allowBuilds:
+  esbuild: false
+  unrs-resolver: false

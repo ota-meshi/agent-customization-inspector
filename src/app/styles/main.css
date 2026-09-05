@@ -1,0 +1,1088 @@
+/*
+ * Shell stylesheet (T049, palette and controls by T1144 and T1145).
+ * Deliberately small and dependency-free: it holds the design tokens, the
+ * element-level baseline, and the utilities several components apply, while
+ * every component's own rules live in its own `<style scoped>`
+ * (AGENTS.md § Stylesheet scope policy).
+ *
+ * Three rules are load-bearing rather than cosmetic:
+ *  - the visible :focus-visible outline, because keyboard operation of the
+ *    focused heading and every control the shell renders is an
+ *    accessibility acceptance criterion
+ *    (contracts/accessibility-acceptance.md);
+ *  - the `overflow-wrap` on presentation labels, because an escaped root
+ *    label has no spaces and would otherwise force the page to scroll
+ *    horizontally; and
+ *  - the forced-colors block at the end of the token section, which hands the
+ *    whole palette back to the reader's own system colours. Everything above
+ *    it is a literal value, so that block is the only thing standing between
+ *    a reader who needs their own colours and a palette this repository chose.
+ */
+
+:root {
+  /* The scheme the page draws in before the reader has chosen one, which is
+     their own system preference. It is also what `light-dark()` below resolves
+     every token against, so this declaration is the palette's switch rather
+     than a hint beside it: the two class rules further down move it, and every
+     token follows without a value being written twice.
+
+     `light-dark()` is supported by all three certified revisions and resolves
+     against the root's `color-scheme` in each — measured 2026-09-01 through
+     `playwright` against the pinned Chromium, Firefox, and WebKit
+     (AGENTS.md § Platform baseline policy). */
+  color-scheme: light dark;
+
+  /* Three surfaces rather than two, and literal values rather than mixes of
+     `Canvas` and `CanvasText`. Two reasons, both measured rather than assumed
+     (T1143, contracts/accessibility-acceptance.md):
+
+     A two-step scale drew a panel, a row, and the page as one plane, so the
+     reader found every boundary by following a hairline. With three steps the
+     fill does part of the separating, which is what lets the hairline inside
+     an identified box be quiet.
+
+     And an `AccentColor` that follows the operating system has a different
+     contrast against those surfaces on every machine, so no measurement of it
+     holds anywhere but where it was taken. A literal accent is one number this
+     repository can measure and keep. What the reader gives up by that choice —
+     their own colours — the forced-colors block below gives back, where their
+     setting outranks the product's. */
+  --aci-surface: light-dark(#f7f8fa, #0d1117);
+  --aci-surface-raised: light-dark(#ffffff, #151b23);
+  --aci-surface-sunken: light-dark(#eff2f6, #1b222b);
+  --aci-text: light-dark(#131820, #e6edf3);
+  --aci-muted: light-dark(#5c6b7a, #96a5b4);
+
+  /* The mark a `select` draws in place of the platform's own; see
+     `:where(select)` below. One value rather than a `light-dark()` pair,
+     because that function takes colours and this is a `url()` — and one
+     spelling of the stroke rather than the token it matches, because a data
+     URI reads no custom property. It is `--aci-line`'s own light value, which
+     was chosen to clear 3:1 against both the light and the dark raised
+     surface, so the one stroke reads in either scheme. */
+  --aci-select-chevron: url('data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%237f8899%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m6%209%206%206%206-6%27%2F%3E%3C%2Fsvg%3E');
+  /* Two line weights, named for what they do rather than for how dark they
+     are. `--aci-line` draws what identifies a component or its state — a
+     control's edge, a source viewer, a panel — and meets the 3:1 WCAG 1.4.11
+     asks of such a boundary against every surface above: 3.36:1, 3.57:1, and
+     3.18:1 in light; 3.72:1, 3.40:1, and 3.15:1 in dark.
+     `--aci-hairline` separates rows inside a box `--aci-line` has already
+     identified. It identifies nothing on its own, so 1.4.11 does not reach it,
+     and drawing sixty rows at the identifying weight would lay a grid over the
+     list the rework exists to make readable.
+
+     Two tokens rather than one, against `main.css`'s own earlier argument that
+     a second token is a second rule to keep true: the names are what answer it.
+     A weight name would leave every use a judgement; `line` and `hairline` ask
+     a question with one answer — does this line identify a component, or does
+     it only separate two rows of one?
+     (contracts/accessibility-acceptance.md § Palette measurements.) */
+  --aci-line: light-dark(#7f8899, #656f7e);
+  --aci-hairline: light-dark(#e2e7ee, #262e39);
+
+  --aci-accent: light-dark(#2d4ea2, #7a9bf0);
+  /* The fill under a selected item. It is not what identifies the selection —
+     forced colours discard it — so a selected item also carries the accent on
+     its leading edge and its own font weight (WCAG 1.4.1). */
+  --aci-accent-soft: light-dark(#e8edf9, #1b2540);
+  --aci-on-accent: light-dark(#ffffff, #0d1117);
+  /* A partial scan, and the rows that kept a diagnostic. Measured 4.96:1
+     against the sunken surface in light and 7.32:1 in dark, so it carries
+     text as well as a border. */
+  --aci-warn: light-dark(#8f5e00, #dda63c);
+  /* A read that did not happen: a root that could not be opened, a file that
+     could not be read, a request that failed. Its own token rather than the
+     accent, because the accent is what a reader scans a list for to find the
+     selected row — one colour cannot mean both "you are here" and "this
+     failed". Measured against all three surfaces:
+     6.54:1 on the raised panel, 6.15:1 on the page, 5.82:1 on the sunken well
+     in light; 7.16:1, 7.82:1, and 6.62:1 in dark. */
+  --aci-danger: light-dark(#b3261e, #f08b7a);
+
+  /* The vendor marks, desaturated until they read against both grounds rather
+     than taken from the vendors' published brand colours. This is the one
+     place an icon does not inherit `currentColor`, and the reason and its
+     limits are the Icon policy's (AGENTS.md § Icon policy). */
+  --aci-brand-copilot: light-dark(#1f2328, #e6edf3);
+  --aci-brand-claude: light-dark(#c2603f, #e08b6b);
+  --aci-brand-codex: light-dark(#0b8f74, #2fd0ad);
+
+  /* How far below the viewport's top a sticky element clears the bar: the
+     bar's own height, which comes from the controls in it and which CSS cannot
+     read. The shell publishes the measured height over this value while it is
+     mounted (`App.vue` § barHeightObserver), because the bar wraps — 49.84px
+     on one line, 81.84px on two — and a focused element cleared by the
+     one-line value lands under a wrapped bar. This is the one-line value, so
+     the first paint before the observer reports is right for the common case;
+     the browser suite asserts the two agree. */
+  --aci-sticky-bar: 3.125rem;
+  --aci-radius: 0.5rem;
+  --aci-radius-sm: 0.4375rem;
+
+  /* How long a line of prose may run, counted in characters because that is
+     what a measure is: `ch` resolves against the font size of whatever reads
+     it, so an 11px note and a 13px paragraph both stop at 78 characters and
+     both read at the same pace. A `rem` or `px` cap would give the smaller
+     type more characters a line, which is the thing a measure exists to
+     prevent.
+
+     One token rather than a value per surface. The paragraphs it holds — the
+     consent page and its preview, the panel a dead link lands on, a
+     diagnostic's explanation in a row and in the list — are one decision, and
+     a second constant beside it would be a second decision nobody made. */
+  --aci-measure: 78ch;
+}
+
+/* The resolved scheme, written onto the document root as one of these two
+   class names by `composables/color-scheme.ts`. Each declares only the scheme,
+   because that is what every token above is resolved against: the reader's
+   choice moves one property and the whole palette follows it. */
+:root.light {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
+/* Forced colours: the reader has told their platform to paint everything from
+   a palette of their own, and that instruction outranks every value above.
+   Each token returns to the system colour whose role it took, so the shell
+   keeps its structure — a boundary is still a boundary, a selected item is
+   still identified — drawn in colours this repository did not choose. The
+   vendor marks return to `CanvasText` with them: their colour is a scanning
+   aid and nothing rests on it (AGENTS.md § Icon policy). Source order is what
+   makes this win: no rule above it names a class, so nothing here has to
+   out-specify one. */
+@media (forced-colors: active) {
+  :root {
+    --aci-surface: Canvas;
+    --aci-surface-raised: Canvas;
+    --aci-surface-sunken: Canvas;
+    --aci-text: CanvasText;
+    /* A `background-image` is not painted at all under forced colours, so the
+       select's replaced mark would simply vanish and leave the control with no
+       indicator. Returning `appearance` to the platform's is what puts one
+       back: the system draws its own, in the reader's palette. */
+    --aci-select-chevron: none;
+    --aci-muted: CanvasText;
+    --aci-line: CanvasText;
+    --aci-hairline: CanvasText;
+    --aci-accent: LinkText;
+    --aci-accent-soft: Canvas;
+    --aci-on-accent: Canvas;
+    --aci-warn: CanvasText;
+    --aci-danger: CanvasText;
+    --aci-brand-copilot: CanvasText;
+    --aci-brand-claude: CanvasText;
+    --aci-brand-codex: CanvasText;
+  }
+}
+
+/* The interface's own scale: 13px over 1.45, which is what the density the
+   design is built on rests on — a file on one line, a rail of thirteen entries
+   beside it, and the documented surfaces still beside every mark. Written on
+   `body` rather than on `html`, so a reader who has raised their browser's own
+   base size still moves every value here with it. */
+/* The document is the one scroll container (`App.vue`), and the bar sticks to
+   its top. A focused element scrolled to must not land under that bar, which
+   would leave a keyboard reader with a focus indicator they cannot see (WCAG
+   2.4.11): the padding is what the browser keeps clear when it scrolls one into
+   view, for a Tab, an anchor, and a programmatic `scrollIntoView` alike. */
+:root {
+  /* The type every read-only source surface is laid out in — the single-file
+     viewer, the comparison diffs, and the inert `<pre>` that stands in for a
+     viewer until its editor mounts. One declaration, because `monaco.ts` reads
+     it off each editor's own container rather than keeping a copy
+     (§ typeMetricsOf), and because a placeholder that predicted a different
+     size than the editor took moved whatever sat under it at mount. In `rem`,
+     so a reader who enlarges text without zooming moves all of them — the
+     editor's own default is an absolute pixel count no stylesheet reaches.
+
+     The value is this product's rather than the editor's: Monaco defaults to
+     12px on macOS and 14px everywhere else, so the source a reader saw was one
+     size on their machine and another on the next, and one value is what a
+     surface can hold a placeholder to.
+
+     Which value is the scale's answer, not the editor's. Source text is
+     reference material the prose around it explains, so it sits one step below
+     the body rather than above it: the body is 0.8125rem and this is the step
+     under it, already spelled elsewhere in this file. Monospace reads larger
+     than proportional at one size, which this product's own rows already
+     account for — an inline monospace count is 0.6875rem beside that same
+     body. The line height is looser than the ratio the body carries, because
+     what is read here is a long document rather than a row. */
+  --aci-source-font-size: 0.75rem;
+  --aci-source-line-height: 1.0625rem;
+  scroll-padding-block-start: var(--aci-sticky-bar);
+}
+
+body {
+  margin: 0;
+  background: var(--aci-surface);
+  color: var(--aci-text);
+  font-family: system-ui, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+/* Links carry the body's own color and are identified by their underline, not
+   by a hue. Two reasons rather than taste: the inventory is mostly links —
+   every path and every recognizing tool — and the browser default painted that
+   list in two colors at once, unvisited beside visited, which reports browsing
+   history as though it were something the scan found. An underline also says
+   "link" without color doing it alone (WCAG 1.4.1). Thickening on hover and
+   focus is the feedback the color change used to give. */
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration-thickness: 2px;
+}
+
+/* Section headings. Written as the element rather than through the shell's
+   class: components across the application render an `h2`, so the rule has to
+   reach markup the shell component does not own — scoping it to any one of
+   them would stop it matching the rest — and naming a component's class here
+   would put the global sheet and that component on one name.
+
+   No rule under it. A full-width line under every heading drew a border for
+   each section on a page that is already a stack of bordered boxes, so the
+   boxes stopped reading as the divisions and the lines did. Size and space
+   separate the headings now, which is what the surface scale freed them to
+   do (T1145). */
+h2 {
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
+/* Controls (T1145). Written as `:where(element)` so the whole baseline has
+   zero specificity: a component that styles its own control — the vendor
+   drawing behind `ColorSchemeSwitch.vue` most of all — wins without having to
+   out-specify anything, and a control nobody has styled still arrives dressed.
+   Every one of them is the same handful of tokens, so the button in the bar,
+   the select in the filters, and the search field read as one set rather than
+   as three components' guesses. */
+:where(button, select, input, textarea) {
+  font: inherit;
+}
+
+/* `.aci-button` puts a link on the same baseline: a link that offers an action
+   on what is on screen rather than a way to somewhere else reads as a command,
+   and the underline every other link carries would say the opposite. It sits
+   inside `:where()` with the element, so both stay at zero specificity and a
+   component's own rule wins without an override. */
+:where(button, .aci-button) {
+  align-items: center;
+  background: var(--aci-surface-raised);
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  color: var(--aci-text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.75rem;
+  gap: 0.3125rem;
+  /* 14px at this size, which is the height the open control draws its mark at:
+     a button carrying a label and a button carrying a glyph then stand the same
+     height beside each other, which is what the design draws and what a looser
+     line box quietly broke. */
+  line-height: 1.1667;
+  padding: 0.25rem 0.6875rem;
+  text-decoration: none;
+}
+
+:where(button:hover, .aci-button:hover) {
+  background: var(--aci-surface-sunken);
+}
+
+/* The one command a surface is there to offer. It is filled rather than merely
+   heavier, because the surrounding buttons are outlined and weight alone at
+   this size is not a difference a reader notices in passing. */
+.aci-button--primary {
+  background: var(--aci-accent);
+  border-color: var(--aci-accent);
+  color: var(--aci-on-accent);
+  font-weight: 500;
+}
+
+.aci-button--primary:hover {
+  /* Kept explicit so the baseline's hover, which lightens toward the sunken
+     surface, does not turn the filled button into an outlined one. */
+  background: var(--aci-accent);
+}
+
+/* The native control is replaced rather than merely bordered: left at
+   `appearance: auto` a select keeps the platform's own indicator — two stacked
+   triangles on macOS — beside buttons that carry this sheet's single chevron,
+   so the row reads as two component sets rather than one. The mark is an
+   inline SVG in a `background-image`, because a `::after` cannot be placed on
+   a replaced element; it is the same glyph `lucide/chevron-down` draws, at the
+   muted colour, and `padding-inline-end` is what keeps the longest option from
+   running under it. `currentColor` is not available to a data URI, so the
+   stroke is the muted token's own light value with the dark one swapped in
+   below. */
+:where(select) {
+  appearance: none;
+  background-color: var(--aci-surface-raised);
+  background-image: var(--aci-select-chevron);
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 0.75rem;
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  color: var(--aci-text);
+  font-size: 0.75rem;
+  padding: 0.25rem 1.75rem 0.25rem 0.5625rem;
+}
+
+@media (forced-colors: active) {
+  :where(select) {
+    appearance: auto;
+    padding-inline: 0.5625rem;
+  }
+}
+
+/* A select whose writing mode runs right to left puts the mark on the other
+   side, which `background-position` cannot express in logical terms. */
+:where(select:dir(rtl)) {
+  background-position: left 0.5rem center;
+  padding: 0.25rem 0.5625rem 0.25rem 1.75rem;
+}
+
+:where(input[type='search'], input[type='text']) {
+  background: var(--aci-surface-sunken);
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius-sm);
+  color: var(--aci-text);
+  padding: 0.25rem 0.5rem;
+}
+
+/* The smallest step in the scale: an inline label or annotation that rides
+   beside a value rather than under it — a documented surface next to a mark, a
+   carrier kind next to a path. Below this size the row stops being scannable,
+   which is why there is no fourth step. */
+.aci-meta {
+  color: var(--aci-muted);
+  font-size: 0.65625rem;
+}
+
+.aci-note,
+.aci-empty {
+  color: var(--aci-muted);
+  margin: 0.25rem 0;
+}
+
+/* A note qualifies what is beside it — what a label is, what a count counts,
+   what the page does not do — so it is set below the text it qualifies. At body
+   size these notes are most of the vertical space above the inventory, and they
+   read as the page's own subject rather than as its margin. `.aci-empty` keeps
+   body size: it is not a qualifier but the whole answer a surface has. */
+.aci-note {
+  font-size: 0.71875rem;
+}
+
+/* A Source-family heading inside an inventory grouping: a quiet band between
+   the row's own name above it and the file lines under it, so the three read
+   as a name, a family, and its files. A utility because several components
+   render the line — the shared family blocks, the instruction family block,
+   and the list-level family sections — and one look must not be written once
+   per component. */
+.aci-family-heading {
+  align-items: center;
+  background: var(--aci-surface-sunken);
+  border-block-start: 1px solid var(--aci-hairline);
+  color: var(--aci-muted);
+  display: flex;
+  font-size: 0.65625rem;
+  font-weight: 600;
+  gap: 0.5rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+  padding: 0.1875rem 0.75rem 0.1875rem 1.125rem;
+  text-transform: uppercase;
+}
+
+/* The entry a row closes its family line with — at the end of the line, as the
+   name line's own entry is, so a reader scanning for one finds both in the same
+   column. It selects the element rather than a class, because the link is the
+   owning row's markup passed through the block's slot and every row's would
+   otherwise carry the same rule: where the entry sits, and the band's uppercase
+   treatment it has to give back, are facts about the heading rather than about
+   any one row. */
+.aci-family-heading a {
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-inline-start: auto;
+  text-transform: none;
+}
+
+.aci-list {
+  /* Markerless, so every such list carries `role="list"`: WebKit drops list
+     semantics from a list with no marker, and VoiceOver stops announcing the
+     item count (QR-004). */
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Source-relative paths have no break opportunities of their own; without this
+ * the shell scrolls sideways. */
+.aci-path {
+  font-family: ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}
+
+/* Authored text renders its own whitespace: two authored values differing only
+ * in consecutive or edge spaces are different identities, and normal collapsing
+ * would draw them identically. Applied only to elements whose text content is
+ * exactly the bound value — around any other markup it would also render the
+ * template's own indentation. */
+.aci-authored-text {
+  overflow-wrap: anywhere;
+  /* An authored run is its own bidi context: a directional control the file
+   * wrote — an RLO, an embedding — still renders inside the run exactly as
+   * authored, but stops there instead of reordering the product's own labels
+   * beside it. Isolation changes no character; it closes the scope. */
+  unicode-bidi: isolate;
+  white-space: pre-wrap;
+}
+
+/* Keyboard operability is an acceptance criterion, so the focus ring is
+ * strengthened rather than removed. */
+:focus-visible {
+  outline: 2px solid var(--aci-accent);
+  outline-offset: 2px;
+}
+
+/* A control that is momentarily inert uses `aria-disabled` with a click guard
+ * rather than `disabled`: disabling a focused button drops keyboard focus to
+ * the document body (WCAG 2.4.3). This carries the same visual signal. */
+button[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Stable live regions announce asynchronous state without duplicating the
+ * visible status and error copy or moving keyboard focus (WCAG 4.1.3). */
+.aci-live-region {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* Text that is announced but not drawn: a label a visible mark or placeholder
+   already says, the product name a vendor glyph stands for, the unit a bare
+   number counts. Clipped rather than `display: none`, which would take it out
+   of the accessibility tree along with the layout. A utility because six
+   surfaces state something this way and one look must not be written once per
+   component. */
+.aci-visually-hidden {
+  border: 0;
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.aci-error {
+  border-left: 3px solid var(--aci-danger);
+  overflow-wrap: anywhere;
+  padding-left: 0.75rem;
+}
+
+/* Inventory surface (T071). Layout only: the meaning of a row comes from its
+ * text, so nothing here is the sole carrier of information (WCAG 1.4.1). */
+
+/* A titled box standing apart from the flow of the page. A utility rather than
+ * each section's own rule, because the scan status and the filters are one
+ * shape a reader sees twice; drawn separately the two would drift. */
+.aci-panel {
+  background: var(--aci-surface-raised);
+  border: 1px solid var(--aci-line);
+  border-radius: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+}
+
+.aci-panel h3 {
+  font-size: 0.8125rem;
+  margin: 0 0 0.5rem;
+}
+
+/* The empty answer as a box rather than a line: a single sentence over an empty
+   column reads as a page that failed to render. A utility because two surfaces
+   draw it — a kind's list with nothing in it, and the list that belongs to no
+   kind with none — and one look drawn twice drifts. */
+.aci-empty-result {
+  border: 1px solid var(--aci-line);
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.125rem;
+}
+
+.aci-empty-result__statement {
+  font-weight: 600;
+  margin: 0;
+}
+
+/* The way out, where clearing a filter can bring the rows back. Here rather
+   than in the one list that draws it, because it is an element of the shared
+   block above: a block whose parts lived in two files would be styled from two
+   owners. */
+.aci-empty-result__exit {
+  margin: 0.75rem 0 0;
+}
+
+/* A definition list drawn as a term column beside a value column, which is how
+ * every short label/value pair in the shell reads. */
+.aci-definition-grid {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0;
+}
+
+.aci-definition-grid dt {
+  color: var(--aci-muted);
+}
+
+.aci-definition-grid dd {
+  margin: 0;
+  min-width: 0;
+}
+
+/* One bordered box holding every row, rather than a card each. At sixty rows a
+   card apiece spent a border and a gap on each, which is most of the height the
+   compression exists to give back — and it drew sixty boxes where the reader is
+   looking for one list. The box's own edge is what identifies it, so the lines
+   inside it are hairlines (`main.css` § tokens). */
+.aci-inventory {
+  border: 1px solid var(--aci-line);
+  border-radius: var(--aci-radius);
+  overflow: hidden;
+}
+
+/* One row: a name and the files under it, or — for a kind that carries no name
+   — the file itself. Separated from the next by a hairline rather than by a
+   gap, so the list reads as one column. */
+.aci-item {
+  border-block-end: 1px solid var(--aci-hairline);
+}
+
+.aci-item:last-child {
+  border-block-end: 0;
+}
+
+.aci-item p {
+  margin: 0;
+}
+
+/* The name line of a row: the name, its count, and whatever the row offers at
+   the end. On the sunken surface, so a reader scanning for a name sees the
+   names as a column of their own against the files beneath them. */
+.aci-row-head {
+  align-items: baseline;
+  background: var(--aci-surface-sunken);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.625rem;
+  padding: 0.3125rem 0.75rem;
+}
+
+.aci-row-head__name {
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.aci-row-head__count {
+  color: var(--aci-muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Whatever closes the name line — a comparison entry, most often. */
+.aci-row-head__end {
+  display: flex;
+  gap: 0.625rem;
+  margin-inline-start: auto;
+  white-space: nowrap;
+}
+
+/* One file, one line: its path, the products that recognize that file, and its
+   own count. Nothing here is hoisted to the name above, because a recognition
+   is a fact about this file rather than about the name (FR-009). Three columns
+   so the paths align down the list and the marks form a column of their own. */
+.aci-row-file {
+  /* Centred rather than baseline-aligned: the marks are a flex box of icons,
+     which takes its baseline from its own first item and so sits above the
+     baseline of the text beside it — measured 4px above the path's centre on a
+     29px row. Centring lines all three columns on one axis and takes the row
+     to 26px. */
+  align-items: center;
+  background: var(--aci-surface-raised);
+  border-block-start: 1px solid var(--aci-hairline);
+  display: grid;
+  gap: 0.625rem;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
+  padding: 0.25rem 0.75rem 0.25rem 1.5rem;
+}
+
+/* A row whose kind carries no name has no line above its file, so its file
+   line starts where a name would have. */
+.aci-row-file--only {
+  padding-inline-start: 0.75rem;
+}
+
+.aci-row-file__path {
+  color: var(--aci-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Every tag riding in a file line keeps its own gap from the text beside it —
+   the home a file came from, the carrier kind, the diagnostic. They sit in the
+   line's inline flow, where the space between two elements is whatever
+   whitespace the template happened to leave, and the compiler condenses a
+   newline between two tags to nothing at all: without this the border of a tag
+   touches the last character of the path it annotates. Wider than the space it
+   replaces, because a bordered tag needs the separation a word does not. */
+.aci-row-file__path > * + * {
+  margin-inline-start: 0.375rem;
+}
+
+/* A minimum width, so a one-digit count and a two-digit one start at the same
+   place down the list and the marks beside them keep one right edge. The width
+   is held for a kind with no such count too, whose column is empty. */
+.aci-row-file__end {
+  color: var(--aci-muted);
+  font-family: ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  min-inline-size: 2.25rem;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* Below the width where three columns fit, the row stacks. Two of them are
+   `max-content` — the products with their documented surfaces, and the count
+   with its unit — so on a narrow viewport they take what they ask for and the
+   path, the only flexible column, is left with nothing: measured 0px at a
+   440px viewport, which draws an authored path one character per line. The
+   same threshold every other two-column region here reflows at
+   (WCAG 1.4.10). */
+@media (width < 52rem) {
+  .aci-row-file {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked, the count is a line of its own rather than a column's end. */
+  .aci-row-file__end {
+    text-align: start;
+  }
+}
+
+/* What a vendor documents for a name several files contend for, stated once
+   under the files it describes (FR-008). */
+.aci-row-note {
+  background: var(--aci-surface-raised);
+  border-block-start: 1px solid var(--aci-hairline);
+  color: var(--aci-muted);
+  font-size: 0.6875rem;
+  padding: 0.1875rem 0.75rem 0.25rem 1.5rem;
+}
+
+/* A carrier kind, stated on a declaration whose file is not its own: a hook
+   file, a settings document that also holds hooks, a plugin catalog. The path
+   alone does not say which, and the reader needs it to know what they are
+   opening. */
+.aci-carrier-kind {
+  border: 1px solid var(--aci-line);
+  border-radius: 0.25rem;
+  color: var(--aci-muted);
+  font-size: 0.625rem;
+  padding: 0 0.3125rem;
+  white-space: nowrap;
+}
+
+.aci-muted {
+  color: var(--aci-muted);
+}
+
+/* A detail page's head: where the page is, what it is showing, and that
+   customization's own attributes. A utility rather than each kind's own rules,
+   because eleven pages draw the same three lines and one look must not be
+   written eleven times (AGENTS.md § Stylesheet scope policy). */
+
+/* Where the page sits: the Source family, the kind, and the subject. Location
+   rather than navigation — the way back is the bar's move
+   (`DetailNavigation.vue`) — so nothing here is a link. */
+.aci-detail-crumbs {
+  align-items: center;
+  color: var(--aci-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.71875rem;
+  gap: 0.375rem;
+  margin: 0;
+}
+
+.aci-detail-crumbs__subject {
+  color: var(--aci-text);
+  overflow-wrap: anywhere;
+}
+
+/* A heading that takes focus on arrival is what the ring is drawn around, so
+   it is only as wide as its words: a block heading is as wide as the page, and
+   the ring then draws a thousand-pixel rectangle around mostly empty space,
+   which reads as a border the page grew rather than as the thing focus is on.
+   Keyed on the `tabindex` that makes it focusable rather than on a class, so a
+   page that gives a heading focus cannot forget it — the inventory, the two
+   Source pages, and the seven comparisons each focus a heading of their own.
+   It still wraps, and the ring follows the wrapped shape. */
+:where(h1, h2, h3)[tabindex='-1'] {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}
+
+/* The subject itself: what the page is showing, which FR-007 fixes as the
+   customization rather than the file carrying it. */
+/* The subject the page leads with, and where focus lands on arrival
+   (`router.options.ts`). Its width is the focusable-heading rule's above. */
+.aci-detail-title {
+  font-size: 1.0625rem;
+  margin: 0.375rem 0 0.625rem;
+  overflow-wrap: anywhere;
+}
+
+/* The no-name badge where a title's subject goes. The badge's own size is a
+   row's, and a row's size under a 1.0625rem title reads as a footnote to the
+   title rather than as the subject of it — so it takes a size of its own here,
+   which is the one place the badge is the heading rather than a note beside
+   one (`AuthoredNameText.vue`). */
+.aci-detail-title .aci-carrier-kind {
+  font-size: 0.8125rem;
+  padding: 0.0625rem 0.5rem;
+}
+
+/* Everything the customization is, on one wrapping line: the kind's own
+   attribute, how the file read, the products that recognize it, and the
+   command that opens it. One line rather than a paragraph each, because a page
+   that stated them separately spent its first screen on facts a reader takes in
+   at a glance (FR-007). */
+.aci-detail-attributes {
+  align-items: center;
+  color: var(--aci-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.71875rem;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+}
+
+.aci-detail-attributes strong {
+  color: var(--aci-text);
+  font-weight: 600;
+}
+
+/* A comparison's subject, on the line under its heading. It is the only thing
+   on that line, so it is set a step above the attributes whose line style it
+   shares: at the attributes' own size the page's subject would read as one
+   more muted fact rather than as what is being compared. */
+.aci-detail-attributes__subject {
+  font-size: 0.8125rem;
+}
+
+/* The two sides of a comparison, each in its own box. The boxes are what make
+   the pair read as two things rather than as two columns of one: what a reader
+   is deciding is which of two files a fact belongs to, and a bare column pair
+   leaves that to alignment. Applied by all seven comparison pages, which is why
+   the class is here rather than in one of them. */
+.aci-compare-sides {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  margin-block: 0.625rem 0.25rem;
+}
+
+.aci-compare-side {
+  background: var(--aci-surface-raised);
+  border: 1px solid var(--aci-line);
+  border-radius: 0.4375rem;
+  padding: 0.4375rem 0.625rem;
+}
+
+/* Which side this is, above what it holds: it labels the box rather than
+   titling a section, so it is set at the size of the facts it introduces. */
+.aci-compare-side__caption {
+  color: var(--aci-muted);
+  display: block;
+  font-size: 0.6875rem;
+  margin-block-end: 0.125rem;
+}
+
+/* The mark on a command that leaves the page — the comparison a detail offers
+   of what it is showing. The same arrow the rail's Source entries carry, for
+   the same reason: activating it goes somewhere rather than changing what is
+   on screen. */
+.aci-detail-compare__mark {
+  block-size: 0.8125rem;
+  inline-size: 0.8125rem;
+}
+
+/* Which product reads which side, and on what surfaces. A table rather than
+   sentences because the relationship is three-way — this product, this side's
+   state, that side's state — which is what table headers state for a screen
+   reader. It is also the only place a comparison can say `Not recognized` or
+   `No file`: a side's own card can omit what is absent but cannot name it,
+   which is why the cards carry the files' own facts and this table carries
+   every recognition, neither stating the other's.
+
+   A utility rather than each comparison's own rule: all seven kinds draw this
+   one table, and drawn separately the seven would drift. The absent states are
+   set in `.aci-muted` by the components, so nothing here rests on colour alone
+   (WCAG 1.4.1) — the words say which state a cell is in. */
+/* The box is the scroll container and the table is what it holds: a `<table>`
+   made to scroll itself has to become a block box, and a block box no longer
+   stretches its columns to the width it was given — the table would then be as
+   wide as its text and the ground would stop short of the page
+   (WCAG 1.4.10 wants the scroll; the design wants the full width). */
+.aci-recognition-table {
+  border: 1px solid var(--aci-line);
+  border-radius: 0.4375rem;
+  /* `hidden` on the block axis so the corners clip: a box that scrolls on one
+     axis still rounds. */
+  overflow: auto hidden;
+}
+
+.aci-recognition-table table {
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  inline-size: 100%;
+}
+
+.aci-recognition-table th,
+.aci-recognition-table td {
+  border-block-end: 1px solid var(--aci-hairline);
+  padding: 0.3125rem 0.625rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+.aci-recognition-table tr:last-child th,
+.aci-recognition-table tr:last-child td {
+  border-block-end: 0;
+}
+
+/* The column captions read as the key they are rather than as a first row of
+   data: the band is what tells a reader scanning down a column what its cells
+   are answers to. */
+.aci-recognition-table thead th {
+  background: var(--aci-surface-sunken);
+  color: var(--aci-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* The product a row is about, kept on one line: it is the row's own key, and a
+   wrapped product name stops reading as one. */
+.aci-recognition-table tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The mark centred on its product's name, the way a mark sits beside text
+   everywhere else in this product (`RecognitionMarks.vue`). A wrapper rather
+   than a rule on the cell, because a `th` made a flex container leaves the
+   table layout and the row stops being a row: as a table cell it aligns the
+   mark on the baseline instead, which put the mark 1.5px above the name's
+   centre — measured, and 0.01px with this. `vertical-align: middle` was the
+   other candidate and lands 0.65px out, because it aligns on half the
+   x-height rather than on the line box. */
+.aci-recognition-table__tool {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.375rem;
+}
+
+/* Authored values keep their spelling but wrap rather than widening the row
+   past the viewport; a value with no break opportunities still scrolls inside
+   the table's own box. */
+.aci-recognition-table td {
+  overflow-wrap: anywhere;
+}
+
+/* On a narrow viewport the columns reflow into one stacked block per row
+   instead of scrolling in two dimensions: the contract allows two-dimensional
+   scrolling only for essential source-code regions
+   (accessibility-acceptance.md § WCAG 1.4.10), and these rows are data, not
+   source. Each cell repeats its column caption from `data-label`, so the
+   association the hidden header row carried stays visible in reading order. */
+@media (width < 52rem) {
+  .aci-recognition-table thead {
+    display: none;
+  }
+
+  .aci-recognition-table tbody,
+  .aci-recognition-table tr,
+  .aci-recognition-table th[scope='row'],
+  .aci-recognition-table td {
+    display: block;
+  }
+
+  .aci-recognition-table tr {
+    border: 1px solid var(--aci-line);
+    border-radius: 0.25rem;
+    margin-block-end: 0.5rem;
+  }
+
+  .aci-recognition-table th,
+  .aci-recognition-table td {
+    border: 0;
+    border-block-start: 1px solid var(--aci-hairline);
+  }
+
+  .aci-recognition-table tr > :first-child {
+    border-block-start: 0;
+  }
+
+  .aci-recognition-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-weight: 600;
+  }
+}
+
+/* One picker per side, each directly over the card it changes and in the same
+   two columns: what a reader is choosing is what stands in that box, so the
+   control belongs above the box rather than up on the heading row, where the
+   pair it changes is out of view. A picker that changes the pair as a whole —
+   which file of a skill both sides show — stays on the heading row instead
+   (`skills/compare/[family].vue` § .aci-skill-compare__head), because it
+   belongs to neither card. */
+.aci-compare-pickers {
+  display: grid;
+  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  margin-block-start: 0.75rem;
+}
+
+.aci-compare-pickers > * {
+  align-items: baseline;
+  display: flex;
+  flex-direction: row;
+  gap: 0.375rem;
+}
+
+/* The select takes what the label leaves. A select is sized by its widest
+   option and these options are the reader's own file names, so left to itself
+   one of them widens the page and the reader scrolls sideways to read anything
+   (WCAG 1.4.10); `min-inline-size` is what lets it shrink below that intrinsic
+   width inside the flex row. */
+.aci-compare-pickers select {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+/* What a comparison calls each half of itself — the declarations, the
+   instructions, the complete sources. A label over the pair rather than a
+   section heading over a page: the page's heading is above them all. */
+.aci-compare-block-title {
+  font-size: 0.78125rem;
+  font-weight: 600;
+  margin: 0.875rem 0 0.375rem;
+}
+
+/* A routed surface's own inset from the shell's edges, and the space under the
+   bar. It belongs to the surfaces rather than to the frame because one of them
+   has none: the inventory's rail is a panel that continues the bar's, so it
+   reaches the shell's edge and starts at the bar's own border. A wrapper
+   imposing the inset would be something that page then had to escape, and a
+   negative margin equal to a padding declared elsewhere is two numbers that
+   have to agree. */
+.aci-route {
+  padding: 0.75rem 1.25rem 2rem;
+}
+
+/* Whatever closes the line — the command that opens the file in an editor. */
+.aci-detail-attributes__end {
+  margin-inline-start: auto;
+}
+
+/* Detail tabs: the two or three halves a detail page shows one at a time.
+   Colors come from the same system-color tokens as the rest of the shell, so
+   the strip follows the OS light/dark scheme instead of pinning one palette.
+   The selected tab is marked by weight and a border as well as color, so it
+   survives a monochrome or forced-colors rendering (WCAG 2.2 AA, QR-004).
+
+   A detail page's tabs are a fixed handful named by its own module, so the
+   strip is a row that fits. The inventory's entries are not: that list is the
+   closed customization catalog plus the one list that belongs to no kind,
+   which outgrew a row and is a rail of its own (`InventoryRail.vue`). */
+/* The edge the tabs sit on. */
+.aci-kind-tabs {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--aci-line);
+  margin: 0.875rem 0 0.625rem;
+}
+
+/* Underlined rather than outlined: the strip's own rule is the line these sit
+   on, and a tab that draws its own box on three sides makes the row read as a
+   set of buttons above a panel instead of one edge with a marker on it. What
+   marks the selected one is a segment of that edge in the accent, drawn thicker
+   so it survives a forced-colors rendering where the accent does not
+   (WCAG 1.4.11). */
+.aci-kind-tab {
+  background: none;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  border-radius: 0;
+  color: var(--aci-muted);
+  cursor: pointer;
+  font: inherit;
+  /* Covers the strip's own bottom border, so the marker sits on that edge
+     rather than above it. */
+  margin-block-end: -1px;
+  padding: 0.3125rem 0.625rem;
+}
+
+.aci-kind-tab:hover {
+  color: var(--aci-text);
+}
+
+.aci-kind-tab[aria-selected='true'] {
+  border-block-end-color: var(--aci-accent);
+  color: var(--aci-text);
+  font-weight: 600;
+}
+
+.aci-kind-tab:focus-visible {
+  outline: 2px solid var(--aci-accent);
+  outline-offset: -2px;
+}
+
+.aci-kind-count {
+  color: var(--aci-muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: 0.4rem;
+}
+
+.aci-kind-tab[aria-selected='true'] .aci-kind-count {
+  color: inherit;
+}

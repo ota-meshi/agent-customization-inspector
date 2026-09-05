@@ -1,0 +1,15 @@
+# Editor-level byte hygiene (https://editorconfig.org). Enforcement beyond
+# this is deliberately not implemented here: line endings are owned by
+# .gitattributes, code formatting by Prettier (`format` rewrites,
+# `format:check` gates locally and in CI), and non-formatting style by ESLint.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+# Trailing double-spaces are meaningful hard line breaks in Markdown.
+trim_trailing_whitespace = false

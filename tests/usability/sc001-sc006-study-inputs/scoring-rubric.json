@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "rubricLocale": "en",
+  "criteria": {
+    "SC-001": {
+      "successCondition": "The source or details view for one discovered customization file is visibly open and operable within two minutes of the prompt.",
+      "timerStart": "the moment the standardized prompt is presented",
+      "timerStop": "the moment that view is visibly open and operable",
+      "limitSeconds": 120,
+      "included": [
+        "entering the launch command",
+        "launching from the prepared root",
+        "using the printed URL when no browser opens"
+      ],
+      "excluded": [
+        "selecting a repository root"
+      ],
+      "threshold": 19
+    },
+    "SC-006": {
+      "successCondition": "All three response fields are submitted within two minutes and every field matches the ground truth.",
+      "timerStart": "the moment the prepared state is ready and the prompt is presented",
+      "timerStop": "the moment the form is submitted",
+      "limitSeconds": 120,
+      "partialCredit": false,
+      "threshold": 18
+    },
+    "comparison": {
+      "successCondition": "The two changelog skill copies are side by side and one difference between them is named.",
+      "limitSeconds": null,
+      "threshold": null
+    },
+    "consent": {
+      "successCondition": "The personal-setup page is reached and the directories it names are read back.",
+      "limitSeconds": null,
+      "threshold": null
+    }
+  },
+  "unsuccessful": [
+    "a missing or incorrect response field",
+    "exceeding two minutes",
+    "an equipment, environment, or product failure that prevents or interrupts the attempt"
+  ],
+  "promptPolicy": "The runner presents the standardized prompt verbatim and may repeat it verbatim. No command, navigation, or interface-operation hint may be given, for either criterion or for the untimed workflow tasks."
+}
