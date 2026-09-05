@@ -24,7 +24,7 @@ import {
   isVcsInternalPath,
   pathUnderRoot,
   readCandidate,
-  rethrowIfResourceExhaustion,
+  rethrowIfEnvironmentFailure,
   statThroughLink,
   type ConfigurationReadResult,
   type SeededCandidateRead,
@@ -216,8 +216,8 @@ async function readConfigurationSeed(
     // error (traversal.ts § PATH_CONDITION_FAILURE_CODES), because
     // reporting the machine's moment as "this repository declares nothing"
     // would commit a complete generation missing every configured target —
-    // exactly what the resource-exhaustion rethrow already prevents.
-    rethrowIfResourceExhaustion(error);
+    // exactly what the environment-failure rethrow already prevents.
+    rethrowIfEnvironmentFailure(error);
     const code = (error as { code?: string }).code;
     if (code === undefined || !PATH_CONDITION_FAILURE_CODES.has(code)) {
       throw error;
@@ -270,7 +270,7 @@ async function readConfigurationSeed(
     // The same closed judgement as the stat above: a seed removed between
     // the probe and the resolution configures nothing, while an
     // environmental failure propagates.
-    rethrowIfResourceExhaustion(error);
+    rethrowIfEnvironmentFailure(error);
     const code = (error as { code?: string }).code;
     if (code === undefined || !PATH_CONDITION_FAILURE_CODES.has(code)) {
       throw error;

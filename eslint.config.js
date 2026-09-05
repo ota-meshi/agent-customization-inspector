@@ -5,6 +5,7 @@
 // generated base exists.
 import stylistic from '@stylistic/eslint-plugin';
 import withNuxt from './.nuxt/eslint.config.mjs';
+import noUnattachedJsdoc from './eslint-rules/no-unattached-jsdoc.ts';
 
 export default withNuxt()
   .prepend({
@@ -27,7 +28,12 @@ export default withNuxt()
   .append({
     name: 'agent-customization-inspector/all-sources',
     files: ['**/*.{ts,tsx,mts,cts,vue,js,jsx,mjs,cjs}'],
-    plugins: { '@stylistic': stylistic },
+    plugins: {
+      '@stylistic': stylistic,
+      'agent-customization-inspector': {
+        rules: { 'no-unattached-jsdoc': noUnattachedJsdoc },
+      },
+    },
     rules: {
       // Every regular expression carries the u (or v) flag so it runs in
       // Unicode mode: proper surrogate handling and strict escape rules. The
@@ -47,6 +53,13 @@ export default withNuxt()
         'single',
         { allowTemplateLiterals: 'never', avoidEscape: true },
       ],
+      // A JSDoc block whose declaration was deleted or renamed away keeps
+      // reading as documentation while no symbol carries it and no hover
+      // shows it (AGENTS.md Code commenting policy). This repository's own
+      // rule reports a block that no node begins after; the reasoning it
+      // deliberately leaves to review is stated in
+      // eslint-rules/no-unattached-jsdoc.ts.
+      'agent-customization-inspector/no-unattached-jsdoc': 'error',
     },
   })
   .append({

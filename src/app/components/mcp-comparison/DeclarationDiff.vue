@@ -249,6 +249,10 @@ onBeforeUnmount(() => {
    definite height; the same sizing contract as the file-comparison
    surfaces. */
 .aci-declaration-diff {
+  /* The type every read-only source surface is laid out in, which `monaco.ts`
+     reads off this element rather than keeping a copy (§ typeMetricsOf). */
+  font-size: var(--aci-source-font-size);
+  line-height: var(--aci-source-line-height);
   border: 1px solid var(--aci-line);
   border-radius: var(--aci-radius-sm);
   /* The corners are the box's, so what it holds is clipped to them: Monaco

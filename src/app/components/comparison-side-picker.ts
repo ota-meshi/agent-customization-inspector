@@ -73,6 +73,22 @@ export function comparisonSourceQualifierOf(
 }
 
 /**
+ * What one offered side reads as, wherever a surface names a side rather than
+ * a pair: the path's own spelling and, where its family holds more than one
+ * Source, the directory that Source was admitted at
+ * ({@link comparisonSourceQualifierOf}). The pickers' options and the
+ * sentence a comparison states about one unreadable side go through this one
+ * function, because a path alone names two files when two consented homes
+ * hold one spelling.
+ */
+export function comparisonSideLabel(sources: readonly SourceDto[], side: ComparisonSide): string {
+  return comparisonOptionLabel(
+    inlinePresentationLabel(side.sourceRelativePath),
+    comparisonSourceQualifierOf(sources, sourceIdOf(sources, side.source)),
+  );
+}
+
+/**
  * The options one picker offers for a row's comparable sides, in the row's
  * own order.
  */
@@ -80,17 +96,11 @@ export function comparisonSideOptions(
   sources: readonly SourceDto[],
   sides: readonly ComparisonSide[],
 ): readonly ComparisonSideOption[] {
-  return sides.map((side, index) => {
-    const sourceId = sourceIdOf(sources, side.source);
-    return {
-      value: String(index),
-      side,
-      label: comparisonOptionLabel(
-        inlinePresentationLabel(side.sourceRelativePath),
-        comparisonSourceQualifierOf(sources, sourceId),
-      ),
-    };
-  });
+  return sides.map((side, index) => ({
+    value: String(index),
+    side,
+    label: comparisonSideLabel(sources, side),
+  }));
 }
 
 /** The offered side one picker value names, or null for a value none does. */

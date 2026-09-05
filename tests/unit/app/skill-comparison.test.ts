@@ -269,7 +269,7 @@ describe('comparison view', () => {
     // Binary input is textless (FR-025): one-sided or not, there is nothing
     // to show, and the state names the file.
     expect(state.skillComparison.status.value).toBe('not-readable');
-    expect(state.skillComparison.unreadablePath.value).toBe(LEFT_PATH);
+    expect(state.skillComparison.unreadableSide.value).toEqual(side(LEFT_PATH));
     expect(state.skillComparison.leftDetail.value).toBeNull();
     state.dispose();
   });
@@ -328,7 +328,7 @@ describe('comparison view', () => {
     // Binary input is textless and comparison-ineligible (FR-025): the state
     // names the file rather than fabricating an empty side.
     expect(state.skillComparison.status.value).toBe('not-readable');
-    expect(state.skillComparison.unreadablePath.value).toBe(RIGHT_PATH);
+    expect(state.skillComparison.unreadableSide.value).toEqual(side(RIGHT_PATH));
     expect(state.skillComparison.leftDetail.value).toBeNull();
     expect(state.skillComparison.rightDetail.value).toBeNull();
     state.dispose();

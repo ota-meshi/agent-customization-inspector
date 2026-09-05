@@ -494,9 +494,9 @@ src/
 │   ├── components/
 │   │   ├── inventory/
 │   │   ├── inspection/
+│   │   ├── comparison/
 │   │   ├── skill-comparison/
-│   │   ├── consent/
-│   │   └── diagnostics/
+│   │   └── consent/
 │   ├── composables/
 │   │   ├── skill-comparison.ts
 │   │   ├── filters.ts
@@ -554,10 +554,11 @@ src/
         ├── inspection-rules.ts
         ├── runtime-composition.ts
         ├── relations.ts              # the graph the recognizer walks
-        └── codex/                    # one directory per vendor, four files each
+        └── codex/                    # one directory per vendor, five files each
             ├── behaviors.ts
             ├── strategies.ts
             ├── rules.ts
+            ├── skill-collision.ts
             └── relations.ts
 
 tests/
@@ -819,8 +820,9 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   readするagentが見るものを示すため、traversalとreadはsymbolic linkを透過的にfollowする。再帰的
   traversalは訪問済みdirectoryをreal pathで追跡するため、link cycleがscanのterminationを妨げることは
   なく、link先がmissingまたはunreadableなlinkはfile-scoped `file-unreadable` diagnosticになる。
-  Hard linkは通常のfileとする。Filesystem operandにはraw entry nameだけを使い、publicな
-  Source-relative Pathはそれを`/`でjoinしたものである。Client指定pathはI/Oを認可せず、readは
+  Hard linkは通常のfileとする。Filesystem operandにはplanが保持したsegment — enumerated pathでは保存されたentry name、
+  targeted fixed pathではimmutable registryの綴り — だけを使い、publicなSource-relative Pathは
+  それを`/`でjoinしたものである。Client指定pathはI/Oを認可せず、readは
   compile済みallowlist planとserver所有identifierだけで駆動する。
 - File別の問題はclosedなDiagnostic registryを使う。`root-unreadable`（source scope、error）、
   `file-unreadable`（file scope、error）、`file-content-binary`（file scope、warning）、
@@ -1024,7 +1026,9 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   external worker、blob workerを許可しない。Editor/model
   instanceとsubscriptionはroute close、selection replacement、source disable、generation replacement時に
   個別にdisposeする。Accessible diff viewer、意味のあるARIA label、keyboard navigation、narrow-screen
-  inline viewを有効に保ち、browser testとmanual checkの両方で検証する。Browserまたはeditorが利用可能なenvironment
+  inline viewを有効に保ち、SC-008が数えるautomatedとkeyboardのevidenceで検証する。`MANUAL-*`の
+  screen-reader matrixは、このreleaseで実行できるrunが持たない環境を名指しており、未実行のresidualの
+  ままである（contracts/accessibility-acceptance.ja.md § Manual checkのmatrix（このreleaseでは未実行））。Browserまたはeditorが利用可能なenvironment
   capacityでdiffを計算できない場合も、記述された完全なside-by-side sourceを表示し、actionable diagnosticを示す。
   `src/app/session/client-data.ts`はshared central client-data purge実装を所有し、
   `src/app/session/view-state.ts`はloopback session API channel上で`App.vue`が描画するreactive valueを所有する。

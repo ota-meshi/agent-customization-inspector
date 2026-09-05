@@ -18,7 +18,7 @@
 - [x] No `[NEEDS CLARIFICATION]` markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
-- [x] SC-002 uses a versioned, published reference profile, a fixture digest, and an objective explicit-rescan protocol that correlates status and the committed inventory generation to one `scanRequestId` after the automatic initial scan
+- [x] The scan-timing criterion is withdrawn rather than asserted: measuring it needs one designated frozen host whose processor model and image revision are recorded, none is designated, and a figure taken elsewhere would describe that machine rather than this product. The request correlation the protocol rested on stays as FR-030's own requirement *(amended 2026-09-05: restated after the criterion left the specification.)*
 - [x] Success criteria are technology-agnostic
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
@@ -40,7 +40,7 @@
 - [x] Repository-root selection is closed to captured `process.cwd()` or one resolved `--root` value, performs no `chdir`, rejects invalid option shapes before session creation, and creates exactly one generation-0 Repository Source at bootstrap
 - [x] One selector-free session-wide Global action binds the fixed four-member preview — the Copilot, Claude, and Codex homes and the shared agent home — evaluates all four entries, excludes a missing or unreadable root without blocking the others, and publishes every admitted Source in one batch and one atomic generation; an unexpected failure aborts the whole transaction *(amended 2026-08-30: restated for FR-045.)*
 - [x] Active-consent Global retry reuses the frozen preview and fixed tuple, derives the complete retryable target set server-side only after pending work empties, preserves existing Sources and the prior snapshot, creates no request/job/generation for an all-rejected retry, and otherwise publishes one request-correlated atomic batch
-- [x] Filesystem operations use raw entry names, and a public Source-relative Path is those names joined with `/`; hard links are ordinary files, and symbolic links are read through their targets, with a broken link yielding a per-file diagnostic *(amended 2026-07-29: the derived NFC display spelling and its collision rejection are removed — the raw spelling is the published identity)*
+- [x] Filesystem operations use the segments the plan retained — an enumerated path's stored entry names, a targeted fixed path's immutable registry spelling — and a public Source-relative Path is those segments joined with `/`; hard links are ordinary files, and symbolic links are read through their targets, with a broken link yielding a per-file diagnostic *(amended 2026-07-29: restated for the decision that the published identity is the file's own unnormalized spelling)* *(amended 2026-09-05: restated for the two path provenances the specification distinguishes)*
 - [x] Traversal is ordinary and reads only allowlisted paths: a problem confined to one file yields that file's diagnostic without affecting other files, and the specification adds no adversarial-input machinery (FR-019)
 - [x] The Codex Global override fallback defines emptiness by one optional leading-BOM removal followed by `String.prototype.trim()`, treats retained `U+FFFD` as non-whitespace, and permits fallback only for safely read empty content or an absent initial target
 - [x] Presentation Allowlist freeze is verification-only; any semantic membership, source-form, extractor-applicability, or relationship-kind change stops dependent implementation and requires synchronized design plus regenerated plan/tasks
@@ -48,14 +48,14 @@
 - [x] The fixed browser helper receives no inspection-derived path or content; it inherits the launch environment unchanged — the product writes no inspection-derived value into any environment variable — and lexical equality with a Source root neither changes provenance nor grants authority
 - [x] SC-008 defines a bilingual all-Level-A-and-AA applicability matrix, criterion-specific non-applicability rationale, automated/manual check mappings, a nonzero applicable-criterion denominator, and a zero-failure pass rule
 - [x] Every applicable SC-008 row has stable criterion-specific check IDs and an expected observation, and the closed manual matrix fixes release/environment versions, responsive and visual profiles, workflow states, and input profiles with no unrecorded sampling
-- [x] WCAG 2.2 criterion 2.2.2 treats parallel automatically updating scan/status information as applicable and requires a tested pause/stop/hide or user-frequency mechanism unless a criterion-compliant essential exception is proved
+- [x] WCAG 2.2 criterion 2.2.2 is Not applicable, with the rationale stated per criterion: nothing moves, blinks, scrolls, or auto-updates, because status advances only on an explicit reader-initiated refresh and the product defines no timer, filesystem watcher, or server push. The row becomes Applicable if a self-updating surface appears (contracts/accessibility-acceptance.md) *(amended 2026-09-05: restated for the applicability the accessibility matrix settled.)*
 
 ## Feature Readiness
 
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] The first-time study states its necessity, accountable ownership, recruitment and compensation funding, participant support, privacy, accessibility, defined review protocol, and rerun trigger without making ordinary contributors responsible
+- [x] The first-use evaluation is maintainer-owned and asks no contributor to do what only a funded study could: it is twenty agent-driven sessions against the task material, recorded as an agent-driven run and never as a participant cohort, with every enrolled session kept in the result *(amended 2026-09-05: restated for the agent-driven run this release performs.)*
 - [x] No implementation details leak into the specification beyond the intentional Node.js-only constraint and public-API checks needed to make security and cancellation limitations testable, plus request/generation identity, mutation measurement, and state-lifecycle terms needed to make scan completion and US4 result stability testable
 
 ## Notes
@@ -71,10 +71,10 @@
   Global Sources, exact unmasked value presentation without environment substitution,
   fatal-rescan rollback, Source-relative path terminology, and use of the
   then-current unpublished performance-environment proposal, later superseded in iteration 7.
-  Three checklist items were reopened because SC-002 still lacks a
-  fixed sampling and aggregation protocol, while SC-001 and SC-006 still lack a participant
-  population and study protocol. A follow-up clarification pass is required before these
-  success criteria can serve as release gates.
+  Three checklist items were reopened at that iteration, for a scan-timing criterion with no
+  fixed sampling and aggregation protocol and for SC-001 and SC-006 with no evaluation
+  population or protocol, and a clarification pass was required before those criteria could
+  serve as release gates. The entries below close all three.
 - Validation iteration 6 passed all items on 2026-07-19 after distinguishing the one fixed
   startup browser-launch helper from customization-derived child processes, closing the
   FR-007 metadata/relationship presentation allowlist, adding the exact sub-100-millisecond
@@ -119,7 +119,7 @@
   file-size, count, parser, transport, queue, time, and concurrency ceilings. Capacity is
   inherited from the supported engine and environment and never becomes a customization
   validation, correctness/compliance implication, or lint finding. The 2026-07-20 refinement
-  supersedes domain classification of thrown/rejected failures with FR-041 propagation.
+  supersedes domain classification of thrown/rejected failures with ordinary propagation.
 - Validation iteration 15 passed all items on 2026-07-19 after closing Global-root admission,
   verified-byte decoding, and scan-publication outcomes. The 2026-07-20 refinement limits
   contracted partial commits to FR-028-eligible deterministic non-throwing outcomes after
@@ -193,5 +193,16 @@
   unauthenticated session API already serves complete content, so the log-content rules
   and the generic OperationError envelope protected nothing; errors are now reported
   ordinarily and the affected rows above were restated.
+- Validation iteration 28 passed all items on 2026-09-05, closing what the entries above
+  record as added and this release does not carry. The scan-timing criterion is withdrawn
+  rather than measured, so the sampling protocol and the interaction threshold iterations 5
+  through 7 asked for have no criterion to serve; what remains under that name is the
+  non-gating performance harness, whose files keep the prefix a recorded digest names
+  (spec.md § Clarifications, Session 2026-09-01). The first-use evaluation is twenty
+  agent-driven sessions rather than the population iteration 7 assigned obligations for, and
+  the moderated study those obligations existed for does not happen. The trusted-workspace
+  re-scope that iteration 25 records removed the race taxonomy iteration 24 had added a table
+  row for; no diagnostic code names a vanished entry, and the closed registry is the four
+  codes `diagnostics.ts` declares.
 - The exact repository inspection path allowlist is intentionally frozen during planning after revalidation against official vendor specifications; the specification fixes the supported product families and forbids Global-scope expansion without a specification change.
 - The temporary local product-description file is neither linked nor required by this specification.

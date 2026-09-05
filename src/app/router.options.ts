@@ -200,11 +200,17 @@ export function recordInventoryReturnPoint(followedHref: string): void {
 }
 
 /**
- * Drops the recorded point, registered with the client-data purge
- * (`session/client-data.ts`): the href and viewport offset are derived from
- * the Source the purged session inspected, so a fresh session that happens to
- * render the same path must not restore the previous session's position and
- * focus.
+ * Drops the recorded point, for the two moves that make it the wrong answer.
+ *
+ * The client-data purge registers it (`session/client-data.ts`): the href and
+ * viewport offset are derived from the Source the purged session inspected, so
+ * a fresh session that happens to render the same path must not restore the
+ * previous session's position and focus.
+ *
+ * The shell's search field calls it before it navigates (`App.vue`
+ * § searchText): typing is a new question about the list rather than a return
+ * to the row the reader left, and restoring that row would take focus off the
+ * field they are still typing into.
  */
 export function clearInventoryReturnPoint(): void {
   returnPoint = null;

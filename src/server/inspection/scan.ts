@@ -54,7 +54,7 @@ import {
   hasExcludedDirectorySegment,
   pathUnderRoot,
   readCandidate,
-  rethrowIfResourceExhaustion,
+  rethrowIfEnvironmentFailure,
   runTraversalScan,
   statThroughLink,
   type ConfigurationReadResult,
@@ -521,7 +521,7 @@ export async function assembleScanPublication(
       // not a directory that holds nothing, and answering "no files" on the
       // strength of not having looked would publish a fact about the plugin
       // the scan never established.
-      rethrowIfResourceExhaustion(error);
+      rethrowIfEnvironmentFailure(error);
       const code = (error as { code?: string }).code;
       if (code === 'ENOENT' || code === 'ENOTDIR') {
         continue;
@@ -755,7 +755,7 @@ async function holdsEveryEntryName(
       try {
         entries = await readdir(parent);
       } catch (error) {
-        rethrowIfResourceExhaustion(error);
+        rethrowIfEnvironmentFailure(error);
         const code = (error as { code?: string }).code;
         if (code === 'ENOENT' || code === 'ENOTDIR') {
           return false;

@@ -200,17 +200,6 @@ const headingAccessibleText = computed(() =>
 );
 
 /**
- * The recognizing products beside the kind's own caption, restated from the
- * inventory entry so the page and the list agree (FR-007) — every product
- * whose declaration at this path the URL's view covers, each with the surfaces
- * its admission rests on. No product is quoted for what it would review,
- * trust, or run: existence is what an admission proves (FR-009).
- *
- * Empty for a carrier the inventory lists nowhere: a parsed settings document
- * declaring no event is on no row, so this page has no row's statement to
- * restate and {@link overviewText} leads with the kind's caption instead.
- */
-/**
  * The products that recognize this carrier and the surfaces they recognize it
  * on, restated from the row so the page and the list agree (FR-007). One
  * declaration per `(carrier, tool)`, so the carrier's declarations here are
@@ -234,10 +223,6 @@ const recognitions = computed(() => {
   return SUPPORTED_TOOL_ORDER.filter((tool) => byTool.has(tool)).map((tool) => byTool.get(tool)!);
 });
 
-/**
- * The rows either side of this one in the list's own order, so the next
- * declaration is one move rather than a return to the inventory (FR-007).
- */
 /**
  * The other carriers declaring the event this page is showing, so the next
  * declaration of it is one move rather than a return to the list (FR-007).
@@ -301,6 +286,10 @@ const otherCarriers = computed<readonly FileStripEntry[]>(() => {
   );
 });
 
+/**
+ * The rows either side of this one in the list's own order, so the next
+ * declaration is one move rather than a return to the inventory (FR-007).
+ */
 const listNeighbours = computed(() => {
   const entries = snapshot.value?.hooks ?? [];
   const rows = entries.map((entry) => {
@@ -461,12 +450,6 @@ function compareRouteForEvent(event: string): ReturnType<typeof hookComparisonRo
 }
 
 /**
- * The events with the rendering each one's section needs: the declared event
- * heads its section — through the shared label rule, so a name of invisible
- * code points still identifies it — and its groups render as the JSON document
- * the file wrote under that key.
- */
-/**
  * The addressed event's comparison, for the declaration view only: that view's
  * heading names one event, so the comparison of it acts on the subject the
  * heading states rather than on one of the sections below. The carrier view
@@ -477,6 +460,12 @@ const openEventCompareRoute = computed(() =>
   openEventName.value === null ? null : (eventBlocks.value[0]?.compareRoute ?? null),
 );
 
+/**
+ * The events with the rendering each one's section needs: the declared event
+ * heads its section — through the shared label rule, so a name of invisible
+ * code points still identifies it — and its groups render as the JSON document
+ * the file wrote under that key.
+ */
 const eventBlocks = computed(() =>
   (openDetail.value?.events ?? [])
     .filter((event) => openEventName.value === null || event.event === openEventName.value)
@@ -773,10 +762,12 @@ onBeforeUnmount(() => {
            no pair to make (FR-011). The skill detail says the same of a name
            with one copy. -->
       <!-- Said only where there is a subject to say it of: on a link the scan
-           holds nothing at, and before the carrier has loaded, "one carrier
-           here" would be a claim about a name that resolves nothing. -->
+           holds nothing at, before the carrier has loaded, and on a carrier
+           that holds no declaration for this event, "one carrier here" would
+           be a claim about a name that resolves nothing — and the last of the
+           three says so directly below, so the two would stand together. -->
       <span
-        v-else-if="openEventName !== null && openDetail !== null"
+        v-else-if="openEventName !== null && openDetail !== null && !declarationMissing"
         class="aci-hook-detail__title-end aci-muted"
         >This event has one carrier here, so there is nothing to compare</span
       >
@@ -864,6 +855,16 @@ onBeforeUnmount(() => {
               · byte-order mark removed before decoding</template
             ></span
           >
+          <!-- The carrier's readers, and every event's: one line answers for
+               all of them here, where the MCP carrier view states each server
+               block's own readers. A shared hook carrier is read to the same
+               schema by both products — `.claude/settings*.json` carries
+               Claude's recognition and the Copilot editor's, each its own row
+               of the same declared events (`registries/copilot/rules.ts`
+               § copilot.repo.hooks.settings.claude) — so a per-event line
+               would repeat these marks under every heading. MCP differs
+               because the CLI's bare schema makes one carrier's server names
+               differ by reader. -->
           <RecognitionMarks :recognitions="recognitions" named />
           <!-- The command that opens the file, at the end of the line that
                states that file's facts — the one place every kind puts it, so
@@ -1011,13 +1012,6 @@ onBeforeUnmount(() => {
    declarations do not get, so it is tighter here than the shell's default
    heading spacing. */
 .aci-hook-detail > p:first-child {
-  margin: 0;
-}
-
-/* The recognition caption line, weighted like a heading within the overview:
-   it says whose recognition the page restates. */
-.aci-hook-detail__recognition {
-  font-weight: 600;
   margin: 0;
 }
 

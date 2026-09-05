@@ -109,6 +109,7 @@ import {
   pathPresentationLabel,
   rendersNothingVisible,
   type SupportedTool,
+  inlinePresentationLabel,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 
@@ -185,7 +186,7 @@ const { sourceRootText, sourceFamilyCrumbText } = useOpenSourceFacts(
  *
  * A query rather than the address itself, because the subject is the skill:
  * selecting `scripts/run.sh` changes which source is shown and nothing about
- * what the page is describing (`detail-route.ts` § withSelectedFile).
+ * what the page is describing (`detail-route.ts` § selectedFileOf).
  */
 const openPath = computed((): string => selectedFileOf(route.query['file']) ?? entryPath.value);
 
@@ -312,7 +313,7 @@ const selectionResolved = computed(() => treeFiles.value.includes(openPath.value
  * Where one file of this skill's directory opens: this same page, with that
  * file selected. The entry point drops the query rather than naming itself,
  * so the skill has one address and the link from the inventory is that address
- * (`detail-route.ts` § withSelectedFile).
+ * (`detail-route.ts` § selectedFileQuery).
  */
 function skillFileRoute(sourceRelativePath: string): RouteLocationRaw {
   return {
@@ -338,6 +339,14 @@ const treeDirectory = computed(() => directoryOf(treeFiles.value[0] ?? ''));
  * by (FR-007) — and the surfaces of the documented behaviors the admitting
  * rules rest on. A class because production builds these in exactly one
  * place, {@link invocationNames}.
+ *
+ * Why this page draws its recognitions itself where every other detail hands
+ * them to `RecognitionMarks`: that component states a product and its
+ * surfaces, and a skill's recognition carries a third fact those rows have no
+ * place for — the name that product invokes the skill by, which differs
+ * between products and is what its inventory row is keyed by (FR-007). It is
+ * the same split `comparison/RecognitionTable.vue` records for the kinds whose
+ * cell carries more than a mark.
  */
 class SkillInvocation {
   /** The recognizing product, rendered through its closed-union caption. */
@@ -624,6 +633,17 @@ const listNeighbours = computed(() => {
 const skillDirectoryText = computed(() => escapeControlCharacters(treeDirectory.value));
 
 /**
+ * What a screen reader announces the heading as. The accessible-name
+ * computation collapses whitespace, so two directories differing only in consecutive
+ * or edge spaces would announce as one heading; the inline label spells such a
+ * run out instead, while the visible heading keeps the authored spelling
+ * (FR-025) — the same rule every other detail's heading follows.
+ */
+const headingAccessibleText = computed(() =>
+  treeDirectory.value === '' ? 'Skill' : inlinePresentationLabel(treeDirectory.value),
+);
+
+/**
  * The skill's own presentation — the one scan-time parse, published once on
  * the skill variant of the detail (SkillFileDetailDto). Null when extraction
  * failed all-or-nothing, which is when there is nothing parsed to show and
@@ -764,8 +784,12 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * matches the (Source, skill, open file) already decided for — which is what keeps a
  * reader who had opened the files list from being sent back to the
  * declarations. Leaving the route drops the memory with the component.
+ *
+ * A plain `let` rather than a ref: nothing but the watch below reads it, so
+ * there is no render to keep in step and a ref would declare state the view
+ * depends on when none does.
  */
-const tabDecidedFor = ref<string | null>(null);
+let tabDecidedFor: string | null = null;
 
 /**
  * The skill the strip last led with, so leading with it happens on the skill's
@@ -777,8 +801,11 @@ const tabDecidedFor = ref<string | null>(null);
  * arriving at a skill at all. Choosing `SKILL.md` from the file list is a new
  * selection but the same skill, and answering it by leaving the list would
  * undo the reader's own click.
+ *
+ * A plain `let` for the reason {@link tabDecidedFor} is one: the watch below
+ * is its only reader.
  */
-const skillLedFor = ref<string | null>(null);
+let skillLedFor: string | null = null;
 watch(
   [
     openSource,
@@ -795,13 +822,13 @@ watch(
       return;
     }
     const decidingFor = `${sourceValue}\u0000${entryPathValue}\u0000${openPathValue}`;
-    if (tabDecidedFor.value === decidingFor) {
+    if (tabDecidedFor === decidingFor) {
       return;
     }
-    tabDecidedFor.value = decidingFor;
+    tabDecidedFor = decidingFor;
     const ledFor = `${sourceValue}\u0000${entryPathValue}`;
-    const skillArrived = skillLedFor.value !== ledFor;
-    skillLedFor.value = ledFor;
+    const skillArrived = skillLedFor !== ledFor;
+    skillLedFor = ledFor;
     // A companion is shown in the files panel, so that is where the reader has
     // to be to see it — however they arrived. Keying only on the skill left a
     // history step to another of its files changing the URL and the tree's
@@ -1203,7 +1230,7 @@ onBeforeUnmount(() => {
       </template>
     </p>
 
-    <h2 ref="heading" tabindex="-1" class="aci-detail-title">
+    <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
       <!-- The skill's own directory heads the page: the directory is the
            skill (FR-007), and it is the one identity every product reading
            it shares, where the names they invoke it by differ and are listed

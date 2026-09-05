@@ -64,6 +64,7 @@ import {
   comparisonSideOptions,
   pickedSideOf,
   sideValueOf,
+  comparisonSideLabel,
 } from '../../../components/comparison-side-picker';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
@@ -88,7 +89,6 @@ import {
   CUSTOMIZATION_KIND_TEXT,
   escapeControlCharacters,
   FILE_ENCODING_TEXT,
-  inlinePresentationLabel,
   isReadableFile,
 } from '../../../../shared/entities';
 import type {
@@ -646,14 +646,19 @@ const stateStatement = computed<string | null>(() => {
     case 'stale':
       return 'Nothing in the current scan sits at one of this link’s paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
     case 'not-readable':
-      // Through the pickers' own spelling ({@link inlinePresentationLabel}),
-      // because this paragraph collapses whitespace: a path with
-      // consecutive, leading, or trailing spaces would otherwise be
-      // announced under a different spelling than the file it names
-      // (FR-025).
-      return `This file has no readable source text to compare: ${inlinePresentationLabel(
-        comparison.unreadablePath.value ?? '',
-      )}`;
+      // Through the pickers' own name for a side
+      // ({@link comparisonSideLabel}): that rule collapses whitespace, so a path
+      // with consecutive, leading, or trailing spaces is announced under the
+      // spelling the file is offered by (FR-025), and it carries the Source's
+      // own directory where the family holds more than one — one path in two
+      // consented homes is two files, and naming only the path would state a
+      // fault against both.
+      return comparison.unreadableSide.value === null
+        ? 'This file has no readable source text to compare.'
+        : `This file has no readable source text to compare: ${comparisonSideLabel(
+            sources.value,
+            comparison.unreadableSide.value,
+          )}`;
     case 'failed':
       return comparison.errorMessage.value === null
         ? 'This comparison could not be loaded.'

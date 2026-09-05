@@ -52,7 +52,8 @@ Emptyはreview済みsourceがlifecycle claimを行わないことを意味する
 各statusは自身のsubjectに属し、source IDやvendor全体へ付けるものではない。これらはmaintenance recordであり、
 どのresponseも運ばない（QR-005）。provenanceが公開するのはどのruleがfileをadmitしたかであって、そのruleが
 どれだけ文書化されているかではない。Assessmentは該当subjectのcompleteな`sourceRefs` setに
-裏付けられ、後述するreverse-index ownershipを変更しない。
+裏付けられ、変更されたpageのreviewがどのrecordを覆うかは変えない。それを決めるのは
+citation自身のsource IDである（後述）。
 
 維持対象の各behavior・rule・strategy recordが持つ`evidence`配列が、これらrowのmachine-readableな
 materializationである: citationは、review済みURL・見出し・review日・maintainedなparaphraseを、それが支える

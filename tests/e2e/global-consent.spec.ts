@@ -87,9 +87,24 @@ test('carries one consent from preview through enable, refresh, and disable', as
   // The confirmation answers once the read finished and the page refetches on
   // that answer, so the committed statuses arrive with no other press
   // (contracts/http-api.md § enable-global).
-  await expect(main.getByText(/of these directories (was|were) read/u)).toHaveCount(1, {
-    timeout: 30_000,
+  //
+  // The settled sentence reaches two nodes on purpose — the panel a reader
+  // sees, and the status region that says the state changed — so each is
+  // asserted by its own subject rather than by counting the page's nodes. A
+  // count cannot tell them apart: the region is hidden by `clip-path` on a
+  // 1×1 box rather than by `display` or `visibility`, so a visibility filter
+  // matches it too. What must stay single is what a reader is shown, which is
+  // the panel's copy.
+  const scanStatus = main.locator('section', {
+    has: page.getByRole('heading', { name: 'Scan status' }),
   });
+  const settled = /of these directories (was|were) read/u;
+  await expect(scanStatus.getByText(settled)).toHaveCount(1, { timeout: 30_000 });
+  // Scoped to the routed content, because the shell keeps its own status
+  // region above it (`App.vue`) and both sit inside `main`.
+  await expect(page.locator('#aci-app-content p.aci-live-region[role="status"]')).toContainText(
+    settled,
+  );
   await expect(main).toContainText('Claude home — Inspected');
   // Once the read is taken in, the rows are current and no longer dated: the
   // sentence that dates them while a read is still running is gone.

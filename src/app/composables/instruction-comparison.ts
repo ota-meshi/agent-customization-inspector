@@ -184,11 +184,16 @@ export class InstructionComparisonState {
   public readonly errorMessage = shallowRef<string | null>(null);
 
   /**
-   * The named path whose file holds no readable source text, set with the
+   * The named side whose file holds no readable source text, set with the
    * 'not-readable' status so the page can say which file rather than which
    * pair (FR-025). Null in every other status.
+   *
+   * The whole identity rather than the path, for the reason the same-path
+   * guard weighs both halves: one path in two consented homes is two files,
+   * so a page told only the path could not say which of the two it is
+   * (`comparison-side-picker.ts` § comparisonSideLabel).
    */
-  public readonly unreadablePath = shallowRef<string | null>(null);
+  public readonly unreadableSide = shallowRef<ComparisonSide | null>(null);
 
   /**
    * Counts open requests, so a settlement can tell whether the view still
@@ -246,7 +251,7 @@ export class InstructionComparisonState {
     this.status.value = 'idle';
     this.openSequence.value = null;
     this.errorMessage.value = null;
-    this.unreadablePath.value = null;
+    this.unreadableSide.value = null;
     for (const disposer of this.#openContentOwners) {
       disposer();
     }
@@ -336,7 +341,7 @@ export class InstructionComparisonState {
           // Binary input is textless and a failed read has nothing to show:
           // neither is comparison-eligible (FR-025), and the state names
           // the file instead of fabricating an empty side.
-          this.unreadablePath.value = side.sourceRelativePath;
+          this.unreadableSide.value = side;
           this.status.value = 'not-readable';
           return null;
         }

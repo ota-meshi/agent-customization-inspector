@@ -314,7 +314,7 @@ describe('custom-agent comparison view (T573)', () => {
     // A textless side is not comparison-eligible (FR-025), and the state
     // names the file rather than fabricating an empty side.
     expect(state.customAgentComparison.status.value).toBe('not-readable');
-    expect(state.customAgentComparison.unreadablePath.value).toBe(RIGHT_PATH);
+    expect(state.customAgentComparison.unreadableSide.value).toEqual(routeSide(RIGHT_PATH));
     state.dispose();
   });
 

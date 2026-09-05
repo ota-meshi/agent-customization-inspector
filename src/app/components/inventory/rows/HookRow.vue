@@ -155,15 +155,6 @@ const comparableSides = computed<readonly ComparisonSide[]>(() => {
 });
 
 /**
- * Each family block's comparison entry — that family's first two comparable
- * identities, for the blocks that hold a pair (FR-011): a block's comparison
- * is that family's, and a pair never spans two families
- * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
- * hold one member offers no entry — exactly as an instruction range's blocks
- * do. The comparison surface's own pickers take over from there
- * (`detail-route.ts` § familyComparisonPairsOf).
- */
-/**
  * The comparison entry the row's own name line carries: the one family's
  * route, where the session holds one Source and so no family line exists to
  * close (`SourceFamilyBlocks.vue`).
@@ -172,6 +163,15 @@ const headCompareRoute = computed(() =>
   sessionSources.headEntryOf(carrierRows.value, blockCompareRoutes.value),
 );
 
+/**
+ * Each family block's comparison entry — that family's first two comparable
+ * identities, for the blocks that hold a pair (FR-011): a block's comparison
+ * is that family's, and a pair never spans two families
+ * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
+ * hold one member offers no entry — exactly as an instruction range's blocks
+ * do. The comparison surface's own pickers take over from there
+ * (`detail-route.ts` § familyComparisonPairsOf).
+ */
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof hookComparisonRouteFor>>();
   const event = props.entry.event;

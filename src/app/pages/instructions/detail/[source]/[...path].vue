@@ -68,6 +68,7 @@ import {
   escapeControlCharacters,
   isReadableFile,
   pathPresentationLabel,
+  inlinePresentationLabel,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 
@@ -276,6 +277,19 @@ const pathText = computed(() => pathPresentationLabel(openPath.value));
  * the two cannot answer differently.
  */
 const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacters(openPath.value));
+
+/**
+ * What a screen reader announces the heading as. The accessible-name
+ * computation collapses whitespace, so two paths differing only in consecutive
+ * or edge spaces would announce as one heading; the inline label spells such a
+ * run out instead, while the visible heading keeps the authored spelling
+ * (FR-025) — the same rule every other detail's heading follows.
+ */
+const headingAccessibleText = computed(() =>
+  openPath.value === ''
+    ? CUSTOMIZATION_KIND_TEXT.instructions
+    : inlinePresentationLabel(openPath.value),
+);
 
 // The open file's Source facts (FR-007 "show its source"): the family name
 // where more than one family is inspected, and the consented directory where
@@ -522,14 +536,32 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * The detail's arrival is where that is decided, because it is the first
  * moment there is anything to decide between: the strip is rendered beside
  * the detail, so until one is in hand no tab is on screen to have been
- * chosen. The URL moving is not a second moment — `openDetail` is this
- * path's or nothing (above), so a file the reader moves to decides on its
- * own arrival.
+ * chosen.
+ *
+ * Which file arrived, rather than that one did: a commit drops the open detail
+ * and the route re-requests under the new generation (FR-030), so a rescan
+ * while the reader is reading takes the detail away and brings the same one
+ * back, and deciding again on that round trip would move a reader who had
+ * switched tabs. The identity is the file's own — its Source and its
+ * Source-relative Path together — which is what makes a move to another file a
+ * new decision and a refetch of this one not (`plugins/detail`
+ * § tabDecidedFor, the same rule).
+ *
+ * A plain `let` rather than a ref: nothing but the watch below reads it, so
+ * there is no render to keep in step and a ref would declare state the view
+ * depends on when none does.
  */
-watch(openDetail, (detail) => {
-  if (detail !== null) {
-    activeTab.value = presentation.value !== null ? 'instructions' : 'file';
+let tabDecidedFor: string | null = null;
+watch([openDetail, openSource, openPath], ([detail, source, path]) => {
+  if (detail === null) {
+    return;
   }
+  const decidingFor = `${source}\u0000${path}`;
+  if (tabDecidedFor === decidingFor) {
+    return;
+  }
+  tabDecidedFor = decidingFor;
+  activeTab.value = presentation.value !== null ? 'instructions' : 'file';
 });
 
 /**
@@ -763,7 +795,7 @@ onBeforeUnmount(() => {
     </p>
 
     <div class="aci-instruction-detail__title">
-      <h2 ref="heading" tabindex="-1" class="aci-detail-title">
+      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
         <!-- The file's path heads the page — the row's own identity, in the
            same spelling the inventory lists: escaped for presentation, never
            a locator anything can open (FR-024, FR-030). A path whose escaped
@@ -1014,18 +1046,6 @@ onBeforeUnmount(() => {
    not get, so it is tighter here than the shell's default heading spacing. */
 .aci-instruction-detail > p:first-child {
   margin: 0;
-}
-
-/* The recognition caption line, weighted like a heading within the overview:
-   it says which products' recognition the page restates. */
-.aci-instruction-detail__recognition {
-  font-weight: 600;
-  margin: 0;
-}
-
-.aci-instruction-detail__overview {
-  border-bottom: 1px solid var(--aci-line);
-  padding-bottom: 0.5rem;
 }
 
 /* The two halves of the parse, inside the tab that holds them. */

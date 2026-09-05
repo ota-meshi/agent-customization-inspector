@@ -42,12 +42,6 @@ export const NON_KIND_SELECTION_ORDER: readonly [NonKindSelection, ...NonKindSel
 ];
 
 /**
- * What each rail entry is called. One table over the whole union rather than
- * one per group: a member added to either half cannot compile without its
- * label, and no caller has to ask which half a selection came from to find its
- * text (AGENTS.md § User-visible copy policy).
- */
-/**
  * What one row of each rail entry is, singular and plural, for the heading that
  * counts them. A row's unit is decided by its kind rather than by the file it
  * was found in (data-model.md § Inventory unit), so a heading counting `rows`
@@ -89,6 +83,12 @@ export const INVENTORY_SELECTION_UNIT_TEXT: Readonly<
   'files-in-no-kind': { one: 'file', many: 'files' },
 };
 
+/**
+ * What each rail entry is called. One table over the whole union rather than
+ * one per group: a member added to either half cannot compile without its
+ * label, and no caller has to ask which half a selection came from to find its
+ * text (AGENTS.md § User-visible copy policy).
+ */
 export const INVENTORY_SELECTION_TEXT: Readonly<Record<InventorySelection, string>> = {
   ...CUSTOMIZATION_KIND_TEXT,
   /** The heading the list of rule-admitted, kind-less files carries. */

@@ -544,6 +544,46 @@ export class PluginComparisonState {
   }
 
   /**
+   * The same lookup for the selected file pair, which may also adopt a
+   * document the manifest pane is holding.
+   *
+   * One direction only, and the lifetimes are why. The manifest pane's slots
+   * outlive a file change — {@link #dropFilePair} leaves them standing, which
+   * is what lets the reader step through a plugin's files with the manifests
+   * still open — so a file slot adopted from one is never left behind by its
+   * source. The reverse is what {@link #carrierDocument} refuses: a file slot
+   * is dropped on every file selection, so a manifest that had adopted one
+   * would be holding a document with no request of its own to restore it.
+   *
+   * Without this, selecting the file that is a plugin's own manifest reads a
+   * document this view is already showing one pane over — the second read the
+   * request contract forbids (contracts/http-api.md § Comparison views) — and
+   * a failure of that read would leave the file pane stating nothing while
+   * the bytes it wanted are on screen beside it.
+   */
+  #fileDocument(request: PluginComparisonFileRequest): PluginFileDetailDto | null {
+    const carried = this.#carrierDocument(request);
+    if (carried !== null) {
+      return carried;
+    }
+    for (const [manifest, selector] of [
+      [this.leftManifest.value, this.#leftCarrierSource] as const,
+      [this.rightManifest.value, this.#rightCarrierSource] as const,
+    ]) {
+      // The whole identity, for the reason {@link #carrierDocument} matches on
+      // it: two consented homes can hold one Source-relative Path.
+      if (
+        manifest !== null &&
+        manifest.file.sourceRelativePath === request.filePath &&
+        selector === request.carrier.source
+      ) {
+        return manifest;
+      }
+    }
+    return null;
+  }
+
+  /**
    * The Source selector each adopted carrier detail was requested for
    * ({@link #carrierDocument}). Null exactly while its detail is.
    */
@@ -557,8 +597,11 @@ export class PluginComparisonState {
    * entering the queue at all, so a panel showing a document this view holds
    * never renders a loading state on the way to it.
    */
-  #pairNeedsNoRequest(sides: readonly (PluginComparisonFileRequest | null)[]): boolean {
-    return sides.every((side) => side === null || this.#carrierDocument(side) !== null);
+  #pairNeedsNoRequest(
+    sides: readonly (PluginComparisonFileRequest | null)[],
+    held: (request: PluginComparisonFileRequest) => PluginFileDetailDto | null,
+  ): boolean {
+    return sides.every((side) => side === null || held(side) !== null);
   }
 
   /**
@@ -567,8 +610,9 @@ export class PluginComparisonState {
    * decides which file: it holds each side's own root and the census the row
    * published. A side may be null — a file only one copy ships — which is
    * requested as nothing and rendered as the stated absence it is, and a side
-   * whose document a carrier response already carried is adopted from it
-   * rather than read again ({@link #carrierDocument}).
+   * whose document this view already holds — a carrier's own response, or the
+   * manifest pane's slot — is adopted from it rather than read again
+   * ({@link #fileDocument}).
    *
    * Its own request family, so a file that cannot be read fails the file
    * pane and leaves the declaration comparison — the page's subject —
@@ -579,12 +623,12 @@ export class PluginComparisonState {
     right: PluginComparisonFileRequest | null,
   ): Promise<void> {
     this.#dropFilePair();
-    if (this.#pairNeedsNoRequest([left, right])) {
+    if (this.#pairNeedsNoRequest([left, right], (side) => this.#fileDocument(side))) {
       // Both copies are in hand: a selected file that is one carrier's own
-      // manifest is the document that carrier's response already carried
-      // ({@link #carrierDocument}).
-      this.leftFile.value = left === null ? null : this.#carrierDocument(left);
-      this.rightFile.value = right === null ? null : this.#carrierDocument(right);
+      // manifest, or one the manifest pane is showing, is a document this view
+      // already holds ({@link #fileDocument}).
+      this.leftFile.value = left === null ? null : this.#fileDocument(left);
+      this.rightFile.value = right === null ? null : this.#fileDocument(right);
       this.fileStatus.value = 'ready';
       return Promise.resolve();
     }
@@ -613,14 +657,14 @@ export class PluginComparisonState {
     const left =
       leftRequest === null
         ? null
-        : (this.#carrierDocument(leftRequest) ?? (await this.#fetchOwnedFile(leftRequest, owns)));
+        : (this.#fileDocument(leftRequest) ?? (await this.#fetchOwnedFile(leftRequest, owns)));
     if ((leftRequest !== null && left === null) || !owns()) {
       return;
     }
     const right =
       rightRequest === null
         ? null
-        : (this.#carrierDocument(rightRequest) ?? (await this.#fetchOwnedFile(rightRequest, owns)));
+        : (this.#fileDocument(rightRequest) ?? (await this.#fetchOwnedFile(rightRequest, owns)));
     if ((rightRequest !== null && right === null) || !owns()) {
       return;
     }
@@ -648,7 +692,9 @@ export class PluginComparisonState {
     right: PluginComparisonFileRequest | null,
   ): Promise<void> {
     this.#dropManifestPair();
-    if (this.#pairNeedsNoRequest([left, right])) {
+    // The carrier lookup alone here, never the file pane's slots: those are
+    // dropped on every file selection ({@link #fileDocument}).
+    if (this.#pairNeedsNoRequest([left, right], (side) => this.#carrierDocument(side))) {
       // Nothing to fetch: each side's manifest is either absent from this scan
       // or a document a carrier response already carried, which is adopted
       // here instead ({@link #carrierDocument}).

@@ -14,7 +14,7 @@
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "279e3d9f14c43f9f19268f8c32ad9c03274e622f8d3d89480ae0ad1dfb8cc809"
+      "sha256": "f30e427e19e2505614d35298c6b710a10af79b1468e48ed51abe19dcd370539b"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -24,7 +24,7 @@
     "tests/contract/host-startup.test.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/contract/host-startup.test.ts",
-      "sha256": "fea5c8ed3248cb11687a5aac0666c96595845842ba67a0abb605e65bfb92d5b0"
+      "sha256": "0b29860e9784338b8c4cf277ea52db9f545dcd27dc9963441fe8683e5bdac14f"
     },
     "tests/contract/http-api-session.test.ts": {
       "kind": "inline-fixture-suite",

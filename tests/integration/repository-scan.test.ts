@@ -1854,6 +1854,38 @@ describe('the unified skill inventory (T180)', () => {
     expect(after.snapshotState).toBe('stale-after-fatal-rescan');
   });
 
+  it('aborts the attempt for an injected device failure on one file', async () => {
+    const fixture = buildAllToolSkillFixture('inspector-scan-inject-eio');
+    cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
+    const context = bootstrap(fixture.root);
+    await scanOnce(context);
+    const committed = context.session.snapshot();
+
+    // A device that failed mid-read is the machine's condition, not the
+    // file's. Folded into `file-unreadable` it would tell the reader to check
+    // that the file exists and is readable — which it is — and publish a
+    // partial generation whose own message says the other files were
+    // unaffected, which is exactly what a failing device makes unknowable
+    // (Constitution § Quality and Safety Standards; FR-029).
+    const target = join(fixture.root, ...fixture.injectionTargetPath.split('/'));
+    vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
+      if (String(path) === target) {
+        throw Object.assign(new Error('injected device failure'), { code: 'EIO' });
+      }
+      return realReadFile(path, options as never);
+    });
+    const sourceId = context.session.repositorySourceId;
+    await expect(
+      runSourceScan({
+        sourceId,
+        root: fixture.root,
+        rootFailureOwner: `published-source:${sourceId}`,
+        scope: 'repository',
+      }),
+    ).rejects.toThrow('injected device failure');
+    expect(context.session.snapshot().files).toEqual(committed.files);
+  });
+
   it('aborts the attempt for an injected resource-exhaustion read failure', async () => {
     const fixture = buildAllToolSkillFixture('inspector-scan-inject-emfile');
     cleanups.push(() => rmSync(fixture.root, { recursive: true, force: true }));
@@ -1863,7 +1895,7 @@ describe('the unified skill inventory (T180)', () => {
 
     // Running out of descriptors is a process condition, not a fact about one
     // file; converting it into that file's diagnostic would misreport the
-    // whole repository (traversal.ts § rethrowIfResourceExhaustion).
+    // whole repository (traversal.ts § rethrowIfEnvironmentFailure).
     const target = join(fixture.root, ...fixture.injectionTargetPath.split('/'));
     vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
       if (String(path) === target) {

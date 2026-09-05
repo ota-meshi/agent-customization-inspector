@@ -21,6 +21,7 @@
 import {
   accessibleApplicabilityRangePresentation,
   applicabilityRangePresentation,
+  escapedApplicabilityRange,
   inlineApplicabilityRangePresentation,
 } from '../../shared/entities';
 
@@ -69,7 +70,7 @@ export class ApplicabilityRange {
    * (`main.css` § .aci-authored-text).
    */
   public get isDeclared(): boolean {
-    return this.#declared !== null && this.text === this.#declared;
+    return this.#declared !== null && this.text === escapedApplicabilityRange(this.#declared);
   }
 
   /**

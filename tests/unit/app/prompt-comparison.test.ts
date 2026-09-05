@@ -292,7 +292,7 @@ describe('prompt and command comparison view (T503)', () => {
     await state.start();
     await state.promptComparison.open(side(LEFT_PATH), side(RIGHT_PATH));
     expect(state.promptComparison.status.value).toBe('not-readable');
-    expect(state.promptComparison.unreadablePath.value).toBe(RIGHT_PATH);
+    expect(state.promptComparison.unreadableSide.value).toEqual(side(RIGHT_PATH));
     // Neither side renders: a comparison with one side is not a comparison.
     expect(state.promptComparison.leftDetail.value).toBeNull();
     expect(state.promptComparison.rightDetail.value).toBeNull();

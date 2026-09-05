@@ -224,17 +224,6 @@ const openFamily = computed<SourceKind>(() =>
 );
 
 /**
- * The comparison entry for one of this carrier's declared names (FR-011):
- * that name's declaration here beside the same name's declaration in the
- * first other carrier of its row — the comparison never leaves the name's
- * row, exactly as a skill's entry link stays inside its name's row
- * (data-model.md § Inventory unit), and every carrier of a named row is
- * comparison-eligible (FR-025) because its declarations are parsed
- * (api-types.ts § McpDeclarationDto.parseStatus). Null when the name's row
- * holds no second carrier; the comparison surface's own pickers take over
- * from there.
- */
-/**
  * The other carriers declaring the name this page is showing, so the next
  * declaration of it is one move rather than a return to the list (FR-007).
  * Empty on a carrier view, which has no name to gather by, and on a name one
@@ -291,6 +280,17 @@ const otherCarriers = computed<readonly FileStripEntry[]>(() => {
   );
 });
 
+/**
+ * The comparison entry for one of this carrier's declared names (FR-011):
+ * that name's declaration here beside the same name's declaration in the
+ * first other carrier of its row — the comparison never leaves the name's
+ * row, exactly as a skill's entry link stays inside its name's row
+ * (data-model.md § Inventory unit), and every carrier of a named row is
+ * comparison-eligible (FR-025) because its declarations are parsed
+ * (api-types.ts § McpDeclarationDto.parseStatus). Null when the name's row
+ * holds no second carrier; the comparison surface's own pickers take over
+ * from there.
+ */
 function compareRouteForName(name: string): ReturnType<typeof mcpComparisonRouteFor> | null {
   const row = (snapshot.value?.mcp ?? []).find((entry) => entry.name === name);
   // The counterpart is any carrier of the row that is not this page's own and
@@ -373,16 +373,6 @@ const headingAccessibleText = computed(() =>
     : (serverName.value?.singleLineText ?? inlinePresentationLabel(openPath.value)),
 );
 
-/**
- * The recognizing products beside the kind's own caption, restated from the
- * inventory entry so the page and the list agree (FR-007) — every product
- * whose declaration at this path the URL's view covers, each with the
- * surfaces its admission rests on, because one physical carrier can be two
- * products' declaration file at once (the root `.mcp.json` is Claude's
- * project file and a Copilot CLI workspace file). No product is quoted for
- * what it would enable, trust, or connect to: existence is what an admission
- * proves (FR-009).
- */
 /**
  * The products that recognize this carrier and the surfaces they recognize it
  * on, restated from the row so the page and the list agree (FR-007). One
@@ -1030,13 +1020,6 @@ onBeforeUnmount(() => {
    declarations do not get, so it is tighter here than the shell's default
    heading spacing. */
 .aci-mcp-detail > p:first-child {
-  margin: 0;
-}
-
-/* The recognition caption line, weighted like a heading within the overview:
-   it says whose recognition the page restates. */
-.aci-mcp-detail__recognition {
-  font-weight: 600;
   margin: 0;
 }
 

@@ -1404,15 +1404,6 @@ function sortInventory(
 }
 
 /**
- * Creates the bootstrap session synchronously with zero filesystem I/O.
- * The selection (invocation cwd, `--root` value, selected root) is retained
- * internally for later scans and lifecycle correlation; publicly it
- * surfaces only as the non-authorizing boundary presentation. There is no
- * separate admission layer: the first scan simply reads the retained
- * selected root, and a missing or unreadable root fails that scan with the
- * source-scoped `root-unreadable` Diagnostic (FR-002).
- */
-/**
  * The Repository root an invocation selects (FR-002): the captured working
  * directory when `--root` was omitted, the option value unchanged when it is
  * absolute, and the option resolved against the captured directory when it is
@@ -1422,7 +1413,7 @@ function sortInventory(
  *
  * One function rather than the session's own expression, because the CLI
  * needs the same answer before the session exists: the editor probe removes
- * every `PATH` entry inside this root (`file-opener.ts` § probeSearchPath),
+ * every `PATH` entry inside this root (`file-opener.ts` § probeDirectories),
  * and two spellings of the selection would be two roots.
  */
 export function selectRepositoryRoot(
@@ -1436,6 +1427,15 @@ export function selectRepositoryRoot(
       : resolve(invocationCwd, rootOptionValue);
 }
 
+/**
+ * Creates the bootstrap session synchronously with zero filesystem I/O.
+ * The selection (invocation cwd, `--root` value, selected root) is retained
+ * internally for later scans and lifecycle correlation; publicly it
+ * surfaces only as the non-authorizing boundary presentation. There is no
+ * separate admission layer: the first scan simply reads the retained
+ * selected root, and a missing or unreadable root fails that scan with the
+ * source-scoped `root-unreadable` Diagnostic (FR-002).
+ */
 export class InspectionSession {
   /** Opaque identity of this process's one session. */
   public readonly sessionId: string;
@@ -1451,7 +1451,7 @@ export class InspectionSession {
 
   /**
    * The sole validated `--root` value, null when omitted; retained for
-   * lifecycle correlation (data-model.md § InspectionSession).
+   * lifecycle correlation (data-model.md § SessionSnapshot).
    */
   public readonly rootOptionValue: string | null;
 
@@ -3527,16 +3527,35 @@ export class SessionCoordinator {
    * alone, deliberately: the generation's files and recognitions are
    * re-sorted by every surface that renders them, while the diagnostics
    * list is served as committed.
+   *
+   * `publishing` carries the members whose Sources this commit publishes for
+   * the first time, because a commit is assembled before it is applied
+   * ({@link completeGlobalBatch}): at this point `globalSources` still holds
+   * only what earlier commits published, so a first publication ranked from
+   * that map alone would take the first member's position and read before a
+   * sibling an earlier batch published.
    */
   #diagnosticsInMemberOrder(
     diagnostics: readonly SerializedDiagnostic[],
+    publishing: readonly { readonly sourceId: string; readonly member: GlobalMemberId }[],
   ): readonly SerializedDiagnostic[] {
     const rank = new Map<string, number>();
     for (const [sourceId, identity] of this.#session.globalSources) {
       rank.set(sourceId, GLOBAL_MEMBER_ORDER.indexOf(identity.member));
     }
+    for (const publication of publishing) {
+      rank.set(publication.sourceId, GLOBAL_MEMBER_ORDER.indexOf(publication.member));
+    }
+    // Every record in a committed generation belongs to a Source that map now
+    // holds — one this commit publishes, or one it carries forward — so
+    // `unpublished` answers for none of them. It exists because the
+    // comparator needs a number, and it sorts after every member rather than
+    // before, so a record that somehow reached it could not take the first
+    // member's place unseen.
+    const unpublished = GLOBAL_MEMBER_ORDER.length;
     return diagnostics.toSorted(
-      (left, right) => (rank.get(left.sourceId) ?? 0) - (rank.get(right.sourceId) ?? 0),
+      (left, right) =>
+        (rank.get(left.sourceId) ?? unpublished) - (rank.get(right.sourceId) ?? unpublished),
     );
   }
 
@@ -3644,32 +3663,49 @@ export class SessionCoordinator {
     }
     const now = new Date().toISOString();
 
+    // Everything this commit will do is worked out before any of it is
+    // applied, and applying it touches nothing that can fail. The contract has
+    // one shape for a successful batch — every Source published, both fields
+    // cleared, exactly one generation committed, all together
+    // (contracts/http-api.md § enable-global) — and computing in place would
+    // leave a throw between two of those with the others already done.
+
     // A member whose admitted root could not be read after all, or whose own
     // scan failed deterministically. Admission tests readability, so this is
     // not the mode case it once was: what reaches here is a root that changed
     // between admission and the scan — removed, or made unreadable — which is
     // this member's own failure and leaves the others free to commit
     // (FR-014).
+    const rejections: {
+      readonly member: GlobalMemberId;
+      readonly rejected: GlobalToolControl;
+      readonly abandonedSourceId: string | null;
+    }[] = [];
     for (const failure of failures) {
       const control = consent.controls.get(failure.member);
       if (control === undefined) {
         continue;
       }
-      const rejected = GlobalToolControl.rejectedControl(failure.member, failure.failureCode);
-      consent.controls.set(failure.member, rejected);
-      const abandoned = control.sourceId;
-      if (abandoned !== null) {
+      rejections.push({
+        member: failure.member,
+        rejected: GlobalToolControl.rejectedControl(failure.member, failure.failureCode),
         // The Source ID was allocated at admission and never published, so it
         // names nothing: dropping the overlay is what keeps a failed member
         // from leaving a Source behind (data-model.md § GlobalToolControl).
-        this.#session.sourceStates.delete(abandoned);
-      }
+        abandonedSourceId: control.sourceId,
+      });
     }
 
     if (results.length === 0) {
       // Every admitted member failed deterministically: no generation commits,
       // and the batch's terminal status names the members rather than repeating
       // their reasons, each of which is on its own control.
+      for (const rejection of rejections) {
+        consent.controls.set(rejection.member, rejection.rejected);
+        if (rejection.abandonedSourceId !== null) {
+          this.#session.sourceStates.delete(rejection.abandonedSourceId);
+        }
+      }
       consent.batchStatus = {
         ...consent.batchStatus,
         phase: 'failed',
@@ -3687,6 +3723,16 @@ export class SessionCoordinator {
     // publication facts — the escaped census roots — with the ID the
     // generation records them by.
     const memberSourceIds = new Map<GlobalMemberId, string>();
+    const publications: {
+      readonly control: GlobalToolControl;
+      readonly sourceId: string;
+      readonly member: GlobalMemberId;
+      readonly boundary: SourceBoundaryDto;
+      readonly overlay: MutableSourceState | undefined;
+      readonly status: 'ready' | 'partial';
+      readonly diagnosticIds: readonly string[];
+      readonly progress: ScanProgressDto;
+    }[] = [];
     for (const result of results) {
       const control = consent.controls.get(result.member);
       if (control?.sourceId === undefined || control.sourceId === null) {
@@ -3694,41 +3740,37 @@ export class SessionCoordinator {
       }
       scannedSourceIds.push(control.sourceId);
       memberSourceIds.set(result.member, control.sourceId);
-      // The batch is this Source's first commit: a later session-API rescan
-      // of it is an explicit rescan whose terminal failure leaves the stale
-      // overlay ({@link SessionCoordinator.admitScan}).
-      this.#hasCommittedBefore.add(control.sourceId);
-      control.markPublished();
-      this.#session.globalSources.set(control.sourceId, {
+      const overlay = this.#session.sourceStates.get(control.sourceId);
+      publications.push({
+        control,
+        sourceId: control.sourceId,
         member: result.member,
         boundary: createSourceBoundaryDto(control.root!, control.origin!),
-      });
-      const overlay = this.#session.sourceStates.get(control.sourceId);
-      if (overlay !== undefined) {
-        overlay.status = result.outcome === 'partial' ? 'partial' : 'ready';
+        overlay,
+        status: result.outcome === 'partial' ? 'partial' : 'ready',
         // Only the source-scoped records: a file-scoped Diagnostic is listed
         // by its file, and the Source lists what has no file to carry it
         // (data-model.md § Source `diagnosticIds`).
-        overlay.diagnosticIds = result.diagnostics
+        diagnosticIds: result.diagnostics
           .filter((diagnostic) => diagnostic.sourceRelativePath === null)
-          .map((diagnostic) => diagnostic.diagnosticId);
+          .map((diagnostic) => diagnostic.diagnosticId),
         // The member's completed counters, exactly as `completeScan` commits
         // them: leaving the admission's zeros would report no work beside a
         // published inventory (contracts/http-api.md § get-session
         // `progress`).
-        overlay.progress = {
+        progress: {
           scanRequestId,
           // Null through complete (data-model.md § ScanProgress), exactly as
           // the single-Source commit writes it.
           queuedAt: null,
-          startedAt: overlay.progress?.startedAt ?? now,
+          startedAt: overlay?.progress?.startedAt ?? now,
           phase: 'complete',
           visitedEntries: result.visitedEntries,
           candidateFiles: result.candidateFiles,
           readBytes: result.readBytes,
           diagnosticCount: result.diagnostics.length,
-        };
-      }
+        },
+      });
     }
     // A retry's batch covers only the retried subset, and a Global commit
     // replaces the sequence's one committed generation — so the members this
@@ -3755,10 +3797,10 @@ export class SessionCoordinator {
           : ('complete' as GenerationOutcome),
       files: [...carried.files, ...results.flatMap((result) => result.files)],
       recognitions: [...carried.recognitions, ...results.flatMap((result) => result.recognitions)],
-      diagnostics: this.#diagnosticsInMemberOrder([
-        ...carried.diagnostics,
-        ...results.flatMap((result) => result.diagnostics),
-      ]),
+      diagnostics: this.#diagnosticsInMemberOrder(
+        [...carried.diagnostics, ...results.flatMap((result) => result.diagnostics)],
+        publications,
+      ),
       censusEscapedDirectories: [
         ...carried.censusEscapedDirectories,
         ...results.flatMap((result) =>
@@ -3769,10 +3811,35 @@ export class SessionCoordinator {
         ),
       ],
     };
-    this.#session.committedGlobalGeneration =
+    const generation =
       previous === null
         ? createGlobalEnableGeneration(commit)
         : prepareNextGlobalGeneration(previous, commit);
+
+    // Applied from here: assignments over values already in hand.
+    for (const rejection of rejections) {
+      consent.controls.set(rejection.member, rejection.rejected);
+      if (rejection.abandonedSourceId !== null) {
+        this.#session.sourceStates.delete(rejection.abandonedSourceId);
+      }
+    }
+    for (const publication of publications) {
+      // The batch is this Source's first commit: a later session-API rescan
+      // of it is an explicit rescan whose terminal failure leaves the stale
+      // overlay ({@link SessionCoordinator.admitScan}).
+      this.#hasCommittedBefore.add(publication.sourceId);
+      publication.control.markPublished();
+      this.#session.globalSources.set(publication.sourceId, {
+        member: publication.member,
+        boundary: publication.boundary,
+      });
+      if (publication.overlay !== undefined) {
+        publication.overlay.status = publication.status;
+        publication.overlay.diagnosticIds = publication.diagnosticIds;
+        publication.overlay.progress = publication.progress;
+      }
+    }
+    this.#session.committedGlobalGeneration = generation;
     // The status is removed by the same commit that publishes the Sources: a
     // batch that finished is not a batch anyone is waiting for.
     consent.pendingTools = [];
@@ -4452,10 +4519,12 @@ export class SessionCoordinator {
         outcome: carried.partial || result.outcome === 'partial' ? 'partial' : 'complete',
         files: [...carried.files, ...result.files],
         recognitions: [...carried.recognitions, ...result.recognitions],
-        diagnostics: this.#diagnosticsInMemberOrder([
-          ...carried.diagnostics,
-          ...result.diagnostics,
-        ]),
+        // No first publication: an explicit rescan's Source was published by
+        // the commit that created it, so `globalSources` already ranks it.
+        diagnostics: this.#diagnosticsInMemberOrder(
+          [...carried.diagnostics, ...result.diagnostics],
+          [],
+        ),
         censusEscapedDirectories: [
           ...carried.censusEscapedDirectories,
           ...result.censusEscapedDirectories.map((directory) => ({

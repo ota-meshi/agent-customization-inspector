@@ -11,10 +11,14 @@
 //
 // It carries an empty state, as every kind's list does: this entry is a tab a
 // reader can select whatever its count, and a selected tab whose panel draws
-// nothing leaves them with the note above and blank space. One sentence is
-// enough — the note already says what this list is, and nothing here can be
-// narrowed away, so there is no way out to offer (`InventoryList.vue` gives
-// the filtered case its own).
+// nothing leaves them with the note above and blank space. Two sentences, for
+// the same reason `InventoryList.vue` has two: the Source selection and the
+// search both narrow this list — a file here belongs to a Source and has a
+// path like any other — so an empty panel is either a scan that admitted no
+// such file or a filter that hid the ones it did, and one sentence for both
+// would state the first while the second is true. The tool selection is the
+// one that cannot narrow it, and the page offers no tool control here
+// (`filters.ts` § unrecognizedRows).
 import SourceFamilySections from './SourceFamilySections.vue';
 import UnclassifiedRow from './rows/UnclassifiedRow.vue';
 import { fileIdentityKey } from '../../../shared/entities';
@@ -23,14 +27,32 @@ import type { CustomizationFileSummaryDto, SerializedDiagnostic } from '../../..
 defineProps<{
   /** The unrecognized files that passed the active filters, in snapshot order. */
   files: readonly CustomizationFileSummaryDto[];
+  /** How many this generation holds before any filter, which tells the two empty states apart. */
+  totalCount: number;
+  /** Whether any filter is applied, which decides whether a way out is offered. */
+  narrowed: boolean;
   /** The generation's diagnostics, resolved per row. */
   diagnostics: readonly SerializedDiagnostic[];
+}>();
+
+const emit = defineEmits<{
+  /** Asked for by the empty result's own control, cleared and refocused by the page. */
+  clear: [];
 }>();
 </script>
 
 <template>
   <div v-if="files.length === 0" class="aci-empty-result">
-    <p class="aci-empty-result__statement">No files.</p>
+    <p v-if="totalCount === 0" class="aci-empty-result__statement">No files.</p>
+    <template v-else>
+      <p class="aci-empty-result__statement">No files match the current filters.</p>
+      <!-- The same command the filter row carries, where the reader is
+           looking, exactly as the kind lists' empty result offers it
+           (`InventoryList.vue`). -->
+      <p v-if="narrowed" class="aci-empty-result__exit">
+        <button type="button" @click="emit('clear')">Clear filters</button>
+      </p>
+    </template>
   </div>
   <ul v-else class="aci-list aci-inventory" role="list">
     <!-- One section per Source family, exactly as the file-unit kinds' lists

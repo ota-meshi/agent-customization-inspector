@@ -1874,8 +1874,10 @@ interface CustomizationFileBase {
   /** The Source this file was discovered in. */
   readonly sourceId: string;
   /**
-   * The exact raw entry names joined with `/`, relative to the owning Source's
-   * single root (FR-024). With `sourceId` it is the file's identity — stable
+   * The file's own path segments joined with `/`, relative to the owning
+   * Source's single root — the stored entry names where enumeration produced
+   * them, an exact Global target's immutable registry spelling where it did
+   * not (FR-024). With `sourceId` it is the file's identity — stable
    * across generations, so no per-generation file ID exists (FR-030).
    */
   readonly sourceRelativePath: string;

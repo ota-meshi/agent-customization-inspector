@@ -580,19 +580,6 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-/* The recognition caption line, weighted like a heading within the overview:
-   it says which products' recognition the page restates. */
-.aci-settings-detail__recognition {
-  font-weight: 600;
-  margin: 0;
-}
-
-.aci-settings-detail__overview {
-  border-bottom: 1px solid var(--aci-line);
-  margin-block-end: 0.75rem;
-  padding-bottom: 0.5rem;
-}
-
 /* Tighter than the shell's section-heading baseline, because the heading
    block is chrome; the authored path may have no break opportunities of its
    own, and without the wrap a long one forces sideways scrolling at narrow

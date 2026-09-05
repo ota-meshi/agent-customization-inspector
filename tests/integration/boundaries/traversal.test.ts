@@ -598,48 +598,63 @@ describe('external mutation during a scan is not a product mutation', () => {
     // enumeration and descent is an ordinary race on a live checkout — a build
     // finishing, a branch switch — and the scan has to publish what it reached
     // rather than fail the Source or report a phantom entry (T1054, FR-023).
+    //
+    // The reshaping fires from the `readdir` seam, not from a read: the walk
+    // enumerates the whole tree before it classifies anything, so a `readFile`
+    // hook would change the tree after enumeration was over and would be a
+    // read-phase race wearing this class's name. The names sort so the trigger
+    // is not the last directory listed, which is what leaves the walk still
+    // enumerating when the tree moves.
     const root = createFixtureRoot('inspector-reshaped');
     try {
-      for (const directory of ['stays', 'vanishes', 'renamed']) {
+      for (const directory of ['a-stays', 'b-vanishes', 'c-renamed']) {
         mkdirSync(join(root, directory));
         writeFileSync(join(root, directory, 'AGENTS.md'), `${directory}\n`);
       }
       writeFileSync(join(root, 'AGENTS.md'), 'root\n');
-      const trigger = join(root, 'AGENTS.md');
+      const trigger = join(root, 'b-vanishes');
       const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
-      vi.mocked(fsIo.readFile).mockImplementation(async (path, options) => {
-        if (path === trigger) {
-          // The harness reshapes the tree the walk is standing in: one
-          // directory removed, one renamed, one created.
-          rmSync(join(root, 'vanishes'), { recursive: true, force: true });
-          renameSync(join(root, 'renamed'), join(root, 'renamed-away'));
-          mkdirSync(join(root, 'appeared'));
-          writeFileSync(join(root, 'appeared', 'AGENTS.md'), 'appeared\n');
+      vi.mocked(fsIo.readdir).mockImplementation((async (path: never, options: never) => {
+        const entries = await actual.readdir(path, options);
+        if (String(path) === trigger) {
+          // Enumerated, then gone: the harness reshapes the tree the walk is
+          // standing in — one directory removed after its own listing, one
+          // renamed before the walk reaches it, one created where the walk has
+          // already been.
+          rmSync(join(root, 'b-vanishes'), { recursive: true, force: true });
+          renameSync(join(root, 'c-renamed'), join(root, 'c-renamed-away'));
+          mkdirSync(join(root, 'a-appeared'));
+          writeFileSync(join(root, 'a-appeared', 'AGENTS.md'), 'appeared\n');
         }
-        return actual.readFile(path as never, options as never) as never;
-      });
+        return entries;
+      }) as never);
       try {
         const result = await runTraversalScan({ root, plans: [AGENTS_PLAN] });
         // The attempt publishes rather than failing the Source, and the product
         // issued no write of its own while the tree moved under it.
         expect(result.kind).toBe('scanned');
         expect(collectFsMutationViolations(fsIo as unknown as Record<string, unknown>)).toEqual([]);
+        const files = result.kind === 'scanned' ? result.files : [];
         // An entry enumerated before its directory went away is published as
         // its own file-confined outcome, never as a successful read of a file
-        // that is no longer there (FR-028). What the reshaping must not do is
-        // fail the Source or invent content.
-        const files = result.kind === 'scanned' ? result.files : [];
-        const vanished = files.find((file) => file.publicPath === 'vanishes/AGENTS.md');
+        // that is no longer there (FR-028).
+        const vanished = files.find((file) => file.publicPath === 'b-vanishes/AGENTS.md');
+        expect(vanished, 'the removed directory published no entry at all').toBeDefined();
         expect(vanished?.outcome.kind, 'the removed entry published as readable').not.toBe(
           'readable',
         );
+        // A directory renamed before the walk reached it is absent rather than
+        // a phantom, and one created behind the walk is not invented.
+        const published = files.map((file) => file.publicPath);
+        expect(published).not.toContain('c-renamed/AGENTS.md');
+        expect(published).not.toContain('a-appeared/AGENTS.md');
         // The directories that stayed are read normally, so the walk finished
         // rather than stopping where the tree moved.
         expect(
           files.filter((file) => file.outcome.kind === 'readable').map((file) => file.publicPath),
-        ).toContain('stays/AGENTS.md');
+        ).toContain('a-stays/AGENTS.md');
       } finally {
-        vi.mocked(fsIo.readFile).mockReset();
+        vi.mocked(fsIo.readdir).mockReset();
       }
     } finally {
       rmSync(root, { recursive: true, force: true });

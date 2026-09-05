@@ -26,7 +26,7 @@ import { RecordingFileOpener } from '../fixtures/file-opener';
 
 // Only the walk is stubbed. The rest of the module is the real thing, because
 // the scan's configuration-read stage reads the carrier through the same
-// module — `statThroughLink`, `readCandidate`, `rethrowIfResourceExhaustion` —
+// module — `statThroughLink`, `readCandidate`, `rethrowIfEnvironmentFailure` —
 // and a whole-module replacement would make those exports undefined rather
 // than exercise the failure this suite is about.
 vi.mock('../../src/server/inspection/traversal', async (importOriginal) => ({

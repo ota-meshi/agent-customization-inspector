@@ -465,7 +465,7 @@ describe('session view state — session loss', () => {
     expect(runningGlobalBatch(withBatch('waiting'))?.scanRequestId).toBe('batch-1');
     expect(runningGlobalBatch(withBatch('reading'))?.tools).toEqual(['codex']);
     // A failed batch is not a read still running: the page offers its retry
-    // rather than saying the directories are being read.
+    // rather than stating a read as in progress.
     expect(runningGlobalBatch(withBatch('failed'))).toBeNull();
     // No batch at all, and no snapshot at all: nothing is out either way.
     expect(runningGlobalBatch(withBatch(null))).toBeNull();
@@ -671,6 +671,59 @@ describe('session view state — session loss', () => {
     await confirmed;
     expect(observedDuringRefetch).toBe('answered');
     expect(state.globalEnableState.value).toBe('idle');
+    state.dispose();
+  });
+
+  it('tells a refetch still running from one that never brought the state', async () => {
+    // The consent page says different things of the two, and one of them would
+    // be false of the other: its summary is a live region, so announcing
+    // "fetching the result failed" while the refetch is still running states an
+    // outcome that has not happened. `answered` therefore spans only the
+    // running refetch, and `unfetched` is what a refetch that settled without
+    // adopting leaves behind.
+    let fetches = 0;
+    const refetchGate = Promise.withResolvers<null>();
+    const channel = {
+      call: (method: SessionRpcFunctionName) => {
+        if (method === SESSION_RPC_FUNCTIONS.getGlobalConsentPreview) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            data: {
+              previewId: 'p-unfetched',
+              allowlistVersion: 'v-a',
+              traversalPlanVersion: 'v-t',
+              entries: [],
+              excludedRuleIds: [],
+            },
+          });
+        }
+        if (method === SESSION_RPC_FUNCTIONS.enableGlobal) {
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            data: { state: 'active-no-job', acceptedTools: [], scanRequestId: null },
+          });
+        }
+        fetches += 1;
+        if (fetches === 1) {
+          return Promise.resolve(sessionResult(bootstrapSnapshot()));
+        }
+        // The refetch this confirmation started, which fails: nothing is
+        // adopted, so the hold is never released by an adoption.
+        return refetchGate.promise.then(() => Promise.reject(new Error('refetch failed')));
+      },
+    };
+    const state = new SessionViewState({ channel });
+    await state.start();
+    await state.loadConsentPreview();
+    const confirmed = state.confirmGlobalConsent();
+    await Promise.resolve();
+    await Promise.resolve();
+    const observedDuringRefetch = state.globalEnableState.value;
+    refetchGate.resolve(null);
+    await confirmed;
+
+    expect(observedDuringRefetch).toBe('answered');
+    expect(state.globalEnableState.value).toBe('unfetched');
     state.dispose();
   });
 

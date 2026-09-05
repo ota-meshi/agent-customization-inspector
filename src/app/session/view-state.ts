@@ -533,15 +533,30 @@ export class SessionViewState {
 
   /**
    * Where the one confirmation stands, so the control cannot be pressed
-   * twice: `submitting` while the confirmation is out — which lasts until
-   * every admitted member's scan settled, because the host answers with the
-   * batch committed (contracts/http-api.md § enable-global) — and `answered`
-   * from the answer until the refetch it starts is adopted. The page states
-   * a read in progress on the first and its recovery offer on the second, so
-   * a confirmation still being read is never described as one whose outcome
-   * could not be fetched.
+   * three times: `submitting` while the confirmation is out — which lasts
+   * until every admitted member's scan settled, because the host answers with
+   * the batch committed (contracts/http-api.md § enable-global) — `answered`
+   * from that answer until the refetch it starts settles, and `unfetched`
+   * when that refetch settled without adopting a snapshot.
+   *
+   * The first two are apart because the host answers with the batch committed:
+   * a read is running through `submitting` and over through `answered`, so the
+   * consent page states each as what it is (`pages/global-consent.vue`
+   * § consentSummary) and a rail that read them as one would keep saying
+   * `Scanning` of a read that had finished (`pages/index.vue`
+   * § globalReadInProgress).
+   *
+   * The last two are apart because the page says different things of them and
+   * one of those things would be false of the other: a refetch that is still
+   * running has not failed, and announcing "fetching the result failed" of it
+   * — which this page's summary is a live region, so it is announced — states
+   * an outcome that has not happened. The hold on confirm and recapture spans
+   * both, because until a snapshot is adopted the accepted operation is what
+   * a second confirmation would collide with.
    */
-  public readonly globalEnableState = shallowRef<'idle' | 'submitting' | 'answered'>('idle');
+  public readonly globalEnableState = shallowRef<'idle' | 'submitting' | 'answered' | 'unfetched'>(
+    'idle',
+  );
 
   /**
    * Reports the active route's title subject as the calling page instance's
@@ -1277,8 +1292,10 @@ export class SessionViewState {
       case 'failed':
         this.consentPreview.value = null;
         this.consentPreviewState.value = 'failed';
-        // The failed request's own error, reported as it arrived: there is no
-        // envelope and no cause classification (FR-040/FR-041 removed).
+        // The failed request's own error, reported as it arrived: the host
+        // sends an ordinary serialized RPC error and this side shows its
+        // message, with no envelope and no cause classification
+        // (contracts/http-api.md § Common results and errors).
         this.consentPreviewError.value = outcome.error.message;
         if (outcome.fatal) {
           this.view.value = 'ended';
@@ -1308,6 +1325,11 @@ export class SessionViewState {
     this.#globalEnableVersion.value += 1;
     this.consentPreviewRejection.value = null;
     this.consentPreviewError.value = null;
+    // The previous confirmation's acceptance is not this one's. Kept, it would
+    // answer for a retry whose own delivery failed — the page reads it to say
+    // whether this side is holding an acceptance, and a stale one says yes
+    // about a confirmation that never landed.
+    this.globalEnableResult.value = null;
     const capturedEpoch = this.#clientData.epoch();
     const outcome = await this.#client.enableGlobal(preview.previewId, preview.allowlistVersion);
     // Answered: the reading the confirmation started is over, and what
@@ -1347,6 +1369,7 @@ export class SessionViewState {
         // its Sources is the one fetched now — and a refresh is how a queued
         // batch's later commit reaches the page at all.
         await this.#refreshFreshly();
+        this.#markOutcomeUnfetched();
         // Released only once the authoritative snapshot landed: a failed
         // refetch leaves the stale preview with no controls on screen, and an
         // idle state there would re-arm confirm and recapture against an
@@ -1384,11 +1407,28 @@ export class SessionViewState {
         // failure can hide an acceptance, so until a snapshot is adopted the
         // state stays unresolved and the page keeps confirm and recapture
         // out, offering its Refresh-and-Disable recovery instead.
+        this.#markOutcomeUnfetched();
         if (this.#clientData.epoch() === capturedEpoch) {
           this.consentPreviewError.value = outcome.error.message;
         }
         return;
       }
+    }
+  }
+
+  /**
+   * Records that this confirmation's own refetch settled without bringing the
+   * committed state, which is the state the consent page offers its recovery
+   * on ({@link globalEnableState}).
+   *
+   * Called by {@link confirmGlobalConsent} after each of its refetches, and
+   * writes only from `answered`: an adoption releases the hold to `idle` and a
+   * later confirmation takes the slot to `submitting`, so finding anything
+   * else there means this command no longer owns it.
+   */
+  #markOutcomeUnfetched(): void {
+    if (this.globalEnableState.value === 'answered') {
+      this.globalEnableState.value = 'unfetched';
     }
   }
 
@@ -2531,8 +2571,8 @@ export class SessionViewState {
  * exists and has not failed (contracts/http-api.md § enable-global).
  *
  * Written once and read by both surfaces that answer for that read — the
- * personal-setup page, which says how many directories are being read and
- * dates the rows beneath it, and the inventory, which passes the rail a
+ * personal-setup page, which says how many directories the read in progress
+ * covers and dates the rows beneath it, and the inventory, which passes the rail a
  * running read so its personal-setup entry says `Scanning` rather than
  * `Not inspected`. Two copies of this rule would be two answers to one
  * question.

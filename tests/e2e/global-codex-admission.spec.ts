@@ -100,7 +100,7 @@ async function confirmConsent(page: Page, origin: string): Promise<void> {
   );
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Inspect these directories' }).click();
-  await expect(page.locator('main')).toContainText('What is inspected');
+  await expect(page.locator('main')).toContainText('Scan status');
   // The confirmation answers once the read finished and the page refetches on
   // that answer (contracts/http-api.md § enable-global), so returning only
   // once the panel states a finished read is what lets the caller reload or
@@ -384,7 +384,7 @@ test('inspects the personal setup from the command line, with no consent click',
       .getByRole('link', { name: /^Personal setup/u })
       .click();
     await expect(main).toContainText(homes.homes.codex);
-    await expect(page.locator('main')).toContainText('What is inspected');
+    await expect(page.locator('main')).toContainText('Scan status');
     await expect(page.locator('main')).toContainText('Codex home — Inspected');
     await expect(page.getByRole('button', { name: 'Inspect these directories' })).toHaveCount(0);
   } finally {
@@ -681,12 +681,12 @@ test('states the current consent after a reload, not the acceptance response', a
     // each tool ended as — because that is what a reader coming back needs.
     await page.goto(new URL('/global-consent', own.origin).toString());
     const main = page.locator('main');
-    await expect(main).toContainText('What is inspected');
+    await expect(main).toContainText('Scan status');
     await expect(main).toContainText('Codex home — Inspected');
-    // And the finished read is stated in the past: "being read now" after the
-    // reading is over would describe work that is not happening.
+    // And the finished read is stated in the past: a read stated as in progress
+    // after the reading is over would describe work that is not happening.
     await expect(main).toContainText('were read');
-    await expect(main).not.toContainText('being read now');
+    await expect(main).not.toContainText('is in progress');
     // The confirmation control is gone, because confirming again is refused.
     // That absence is also why no browser case drives an enable refusal: once
     // consent is active the UI offers neither the confirmation nor a fresh

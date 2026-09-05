@@ -61,9 +61,18 @@
   またいで旧版と現行版の manifest version を保持するよう求める場所であり、その遷移はそこに記録
   される事実であって、語られる経緯ではありません）です。それ以外には書かないでください —
   requirement にも、contract clause にも、plan の段落にも、code comment にもです。この5つでも
-  旧名・旧要求は書かないでください。本文は task が今何を要求するか、回答が今どうであるかを
-  記録し、日付付き修正 note は「いつ・なぜ変わったか」だけを短く記録します。以前どう書かれて
-  いたかは記録しません。
+  旧名・旧要求を現行のものとして提示しないでください。置き換えられた本文の説明も書かないで
+  ください。本文は task が今何を要求するか、回答が今どうであるかを記録し、日付付き修正 note は
+  「いつ・なぜ変わったか」だけを短く記録します。以前どう書かれていたかは記録しません。
+  取り除いたものを名指すことは、そのどちらでもありません。日付つきentryは、その除去を記録する
+  文の中でそれを名指してよく、それこそがそのentryの内容であり、この5つが日付つきentryを保つ
+  理由です。2つの要件がまだ必要かを問う `Clarifications` の問いは、それらを名指さずには答え
+  られません。ある機構を追加したiterationは、releaseがそれを落とした記録が入るまで、穴の
+  空いたlogのままです。両者の境目は、その文が何について述べているかです。「catalogがplugin
+  kindを担うため、Marketplaces familyが順序から外れた」は変更とその理由を述べており、noteとして
+  許されます。「1つしか存在しなかった時点の答えが1つだけを名指していた」「この項目はmoderated
+  studyのrecruitment条件を求めていた」は、置き換えられた本文そのものを説明しており、許されません。
+  旧entryを引用しないと意味が通らないnoteは、entry本体の書き直しがまだ終わっていないということです。
 - 履歴記述の削除も他の編集と同様です。その括弧が `FR-` 識別子のような規範参照を一緒に持っていな
   いか確認してください。
 - 決定をユーザーに帰属させないでください。「user decision」「by user decision」やその訳語は何も
@@ -251,8 +260,9 @@ Browserの下限はBaseline Newly available、Nodeの下限は`engines.node`が�
   置き換えたものです。
 - 別のobjectのfieldを転記するだけの値は、代わりに元のobjectを保持し、読む場所で導出します —
   出元を名指すgetter、またはguardが元のfieldをnarrowし終えた場所でのconstructor代入です。
-  例: `CompanionSourceFile`はcensus entryとcandidateのdirectoryを保持し、公開する2つの
-  addressをそこから導出します。
+  例: `CompanionFile`はcensus rootとscanが読む生の絶対パスを保持し、表示用パスは読む
+  ときに導出します。2つは1つのentryを指すため、両方を保持すれば食い違いうる2つの
+  stateになるからです。
 - 全vendorが共有するものはabstract baseに、あるvendor固有のもの — その`tool` literal、
   そのrelations catalog — はそのvendorのsubclassに置きます。例: `CodexCompiledRule`は
   `CompiledInspectionRule`をextendsします。

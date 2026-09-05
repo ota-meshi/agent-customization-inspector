@@ -83,7 +83,15 @@ no registry record was edited, and no conformance record needed regeneration.
 resolved versions, so none of the 27 is behind what this repository declares: each is a
 newer release inside or above a range that is satisfied as it stands.
 
-**No update is accepted in this review, and the baseline stands unchanged.** Routine
+**One direct declaration is added, and no version is accepted in this review.** The
+`@typescript-eslint/parser` this repository's own ESLint rule is tested against moves from a
+transitive resolution to a declared devDependency: `RuleTester` takes its parser from the test
+rather than from a config, and a test that imports a package the manifest does not declare is
+resolving a version nothing here controls. It reaches no runtime, no published payload, and no
+public contract, so there is no migration to provide — the dependency table in research.md
+records it beside the other lint tooling.
+
+Routine
 version movement is Renovate's, under the rules `renovate.json` and
 [AGENTS.md](../../AGENTS.md) § Release policy state: every update automerges once ci.yml has
 run the whole suite against it, except a major to a runtime dependency and a minor to a
@@ -138,14 +146,17 @@ browser test cannot hold the confirmation open long enough to read the rail whil
 and the unit project has no single-file-component compiler. What is covered is the predicate
 that decides it and the wording it selects; the branch itself was read on a fixture launch.
 
-**Personal-setup rail release blocker — implementation required.** `globalStatusText` returns
-`Scanning` whenever `globalReadInProgress` is true, before consulting the ranked member state.
-A same-preview retry can run while already-published members retain `partial` or `failed`, so
-the text hides the actionable state while the warning class still derives from it. Treat the
-running read as a `scanning` candidate in the existing rank calculation and derive both text
-and warning treatment from that one effective state. Add regressions for a partial member and
-a failed member during retry, ready-only members during retry, and the initial enable before
-any member Source exists (FR-030; WCAG 4.1.3).
+**A running read is a candidate in that ranking, not a verdict over it.** A same-preview retry
+runs over members that are already published, so a read reported as `Scanning` on its own
+would hide the `failed` member the reader is retrying for — and would disagree with the pill
+beside it, which is derived from the same value. The read enters the existing rank calculation
+as a `scanning` candidate instead: it outranks `idle` and `ready` and loses to `failed` and
+`partial`, so one effective state decides both the words and the warning treatment (FR-030;
+WCAG 4.1.3). What the automated gates reach is the predicate that supplies the input —
+`view-state.ts` § runningGlobalBatch, asserted over every batch phase — and the ranking with
+no read out, which every rail assertion already reads. The fold itself is read on a fixture
+launch, for the reason recorded above: the branch needs a read held open, the RPC channel is a
+WebSocket, and the unit project has no single-file-component compiler.
 
 **A source surface's type is this product's, and the personal setup states its generation.**
 Removing the rail entry left four things behind, each fixed here. The inventory's live region
@@ -161,19 +172,31 @@ Monaco mounts was laid out in the browser's own monospace metrics while Monaco u
 platform default — 12px on macOS, 14px elsewhere — so the box jumped at mount, further under
 text enlargement, which is what the placeholder exists to prevent. The two now share one
 declaration: `--aci-source-font-size` and `--aci-source-line-height` in `rem`, which
-`monaco.ts` reads off each editor's own container. Measured on the hook detail's five viewers,
-the entry link below them moves 0–12px at mount instead of 2–29px, and 12–36px instead of a
-doubling, at 200% text size; what is left is the horizontal scrollbar Monaco reserves and a
-`<pre>` does not. The value is the product's own choice rather than the editor's, which is a
-change of appearance on macOS.
+`monaco.ts` reads off each editor's own container. Measured on the hook detail's five viewers
+against the value in force that day, the entry link below them moves 0–12px at mount instead
+of 2–29px, and 12–36px instead of a doubling, at 200% text size; what is left is the
+horizontal scrollbar Monaco reserves and a `<pre>` does not. What that measured is the shared
+declaration rather than any particular size: the placeholder and the editor read one value,
+so neither can predict a size the other does not take.
 
-**Source-editor metrics release blocker — implementation required.** `typeMetricsOf` applies
-each Monaco host's computed type metrics to every source and declaration diff, but the MCP
-`DeclarationDiff`, plugin `DeclarationDiff`, and plugin `SourceDiff` hosts do not declare
-`--aci-source-font-size` and `--aci-source-line-height`. They therefore inherit the 13px body
-type instead of the 14px/19px source-surface metrics the other hosts use. Put the shared tokens
-on those three host classes as well, and freeze every Monaco host's computed font size and line
-height in a browser regression so one surface cannot silently depart from the family.
+The size itself is the interface's own scale, not the editor's: source text is reference
+material the prose around it explains, so it sits one step below the 0.8125rem body at
+0.75rem, and monospace reads larger than proportional at one size — which this product's own
+rows already account for. It is therefore smaller than Monaco would have drawn on every
+platform whose default is 14px, and the same size as its macOS default by coincidence rather
+than by following it.
+
+**Every Monaco host is laid out in the product's own type.** `typeMetricsOf` applies each
+host's computed type metrics to the editor it creates, so a host that does not declare
+`--aci-source-font-size` and `--aci-source-line-height` hands Monaco the 13px body type
+instead. Three did — the MCP `DeclarationDiff`, the plugin `DeclarationDiff`, and the plugin
+`SourceDiff` — and all nine now declare the shared tokens. `tests/e2e/source-type.spec.ts`
+freezes the computed font size and line height of every Monaco host on nine routes, and it
+reads the host element this product owns rather than Monaco's own text: with the declaration
+absent Monaco falls back to its own platform default, which on macOS is the same 12px this
+product declares, so a check that read the text would pass there on exactly the surface it
+exists to catch. Removing the declaration from those three hosts was
+watched failing three of the nine before the check was accepted.
 
 **The rail's `Source diagnostics` entry is gone, and one table states a Source's status
 everywhere.** Five first-use sessions across two runs read the rail's
@@ -201,9 +224,8 @@ rule in one place rather than a condition in each surface, and the copy states t
 another and must not claim the distinction. Separately, the hook detail's comparison entry sat
 below its declaration viewer and could move while Monaco mounted; it now precedes the viewer,
 as the sibling surfaces do, and the first-click browser regression passes in Chromium, Firefox,
-and WebKit. `SourceViewer` also renders the same text into an inert `<pre>` until the editor
-takes over, but that placeholder does not share Monaco's font and line metrics. Its general
-height-stability claim remains unverified and is not release evidence for other surfaces.
+and WebKit. What `SourceViewer`'s own placeholder holds still while the editor mounts is
+recorded above, with the residual that measurement left.
 
 **Two certification jobs the local gates could not see now pass.** The gates below run on
 one machine, and two of CI's run elsewhere. `tests/unit/host/file-opener.test.ts` built its
@@ -216,65 +238,50 @@ longer was and the address stayed the carrier's; the press is retried until the 
 moves, which is what a reader does. Neither is observable on this machine — the first needs
 Windows, the second the certified Linux WebKit — so CI is what establishes them.
 
-**The launcher-exclusion review is only partly resolved.** A spelling is not where a path is:
-an outside `PATH` entry or configured `EDITOR` can be a symbolic link into the Repository,
-and the executable resolver keeps that outside spelling, so a lexical comparison alone would
-offer a repository-supplied executable as an editor and then start it (FR-020, FR-022). The
-implemented part resolves an existing selected Repository root at startup and passes its
-physical location beside its selected spelling. It also compares each launcher candidate —
-each `PATH` entry, a separator-carrying configured editor, and each resolver result — as it is
-spelled and as it physically is. `tests/unit/host/file-opener.test.ts` stages a real aliased
-tree for both candidate directions, and `tests/unit/cli.test.ts` establishes the existing-root
-handoff.
+**The launcher exclusion is one comparison, and two residuals stand beside it.** A spelling is
+not where a path is: an outside `PATH` entry or configured `EDITOR` can be a symbolic link into
+the Repository, and the executable resolver keeps that outside spelling, so a lexical comparison
+alone would offer a repository-supplied executable as an editor and then start it (FR-020,
+FR-022). The probe therefore compares every candidate as it is spelled and where it physically
+is, against the Repository root's own physical location — which startup establishes and passes
+beside its spelling — and against each proposed personal-setup root's spelling.
+`tests/unit/host/file-opener.test.ts` stages a real aliased tree for both candidate directions,
+and `tests/unit/cli.test.ts` establishes the existing-root handoff.
 
-**Launcher release blocker — implementation required.** Three reachable gaps remain outside that
-coverage. First, the pre-consent probe now calls `resolvePhysicalLocation` for every
-outside-spelled launcher candidate. If such a candidate is a symbolic link into a proposed
-personal-setup root, `realpath` follows it into that root before consent, violating FR-013.
-Yet the proposed root itself is still supplied only by spelling, so the same probe neither
-proves the candidate is outside it nor prevents that editor from remaining offered and
-launchable after admission. FR-013 requires lexical proposed-root filtering and zero such
-physical access before the reader's action; it permits physical authorization against every
-admitted root after that action and before launch. Second,
-the Repository root's physical location is captured only once. A missing root is an explicitly
-recoverable `root-unreadable` state — its Diagnostic tells the reader to repair it and rescan —
-so repairing it as a symbolic link after startup is a user-visible lifecycle, not an
-unreachable machine race, and the opener retains only the old lexical exclusion. Third,
-`resolvePhysicalLocation` catches every `realpath` failure and returns null. That leaves a
-Repository root on lexical fallback, while `outsideInspectedRoots` treats a candidate whose
-physical location is unknown as outside and admits it; unexpected `EIO`/`ESTALE`-class failures
-therefore fail open instead of propagating as the rest of the inspection boundary requires.
-SC-004 excludes only a pre-mounted or mapped network filesystem that is lexically
-indistinguishable from a local one. These local aliases are distinguishable through permitted
-post-consent or launch-time resolution and are not that accepted platform limitation.
+Two review rounds asked for more: a launch-time re-authorization against the roots the session
+then holds, and a macOS launch by the bundle path rather than the catalog's application name.
+Both were built and both were withdrawn. The first rested on reading FR-013's no-I/O rule as
+forbidding the probe's own resolution; FR-013 now states that editor-launcher discovery is the
+one operation whose resolution the operating system may route through a proposed root, which
+leaves the split with nothing to buy but the repaired-root case — a launch on a root that does
+not exist, then a `PATH` entry pointing into whatever the reader creates there. The second is
+the same proposal the `osascript` spelling already declines, and FR-019 declines it for the same
+reason. What each leaves open is recorded where the launch is described
+(contracts/http-api.md § open-file) rather than closed with machinery.
 
-Keep the physical root/candidate comparisons already present, but split their timing: before
-consent, perform only lexical proposed-root exclusion plus Repository safety work that cannot
-enter a proposed root; after consent and before launch, authorize the candidate physically
-against the current selected Repository root and every currently admitted personal root (or
-perform an equivalent lifecycle-owned revalidation). Refuse authorization when a physical
-comparison cannot be established, and propagate unexpected filesystem errors. Add regressions
-for zero pre-consent I/O through an outside-spelled alias into a proposed root, the same local
-personal-root alias after admission, a missing Repository root repaired as a link before
-rescan/open, and injected unexpected `realpath` failure. Release approval remains blocked until
-those cases satisfy FR-013, FR-020, FR-022, and the `open-file` contract.
+**A VCS internal is excluded by the name the filesystem gave, and the allowlist contract now
+says so.** A review reported that a case-insensitive volume presenting Git's directory as `.GIT`
+is walked, and a volume-identity comparison — an `lstat` pair per candidate name — was built for
+it. It is removed. `VCS_INTERNALS`' own comment had already recorded this case as an accepted
+residual, with its reason and its bounded outcome: what decides is the volume's name resolution,
+which no platform check answers because macOS ships both kinds of volume, while folding case by
+platform would hide a `.GIT` a reader authored on a case-sensitive one — and entering one costs
+over-listing, on a surface whose whole claim is that being listed is not being loaded. Reaching
+it needs a store the reader created under that spelling before the VCS used it, which is the
+adversarial-input shape FR-019 declines to build for. The tree held two committed statements of
+this rule and they disagreed; `contracts/inspection-path-allowlist.md` is amended in both
+languages to the one the code has always implemented and reasoned about.
 
-**VCS-internal traversal release blocker — implementation required.** `VCS_INTERNALS` compares
-entry segments by exact string, so a case-insensitive volume that presents Git's actual
-directory as `.GIT` is walked and publishes a customization placed inside it. That is the same
-Git object store — `git rev-parse --git-dir` still identifies `.git` — and contradicts FR-003,
-T019, and the specification's requirement to exclude VCS internals on the resolved real path.
-Use the containing volume's name identity rather than platform-wide lowercasing: exclude a
-case variant when it names the same internal directory, while retaining a genuinely distinct
-authored `.GIT` on a case-sensitive volume. Cover both volume behaviours, including an
-internal reached through an alias.
-
-**Maintenance release blocker — implementation required.** The runtime has one non-kind list,
-`Files in no known kind`, but comments in `InventoryRail.vue`, `InventoryFilters.vue`,
-`inventory-filter-state.ts`, `main.css`, and `index.vue`, plus the title of the browser test in
-`inventory-rows.spec.ts`, still describe two non-kind lists and the removed Source-diagnostics
-entry. Update the whole family together; leaving only some of those statements corrected would
-preserve the same false model for the next change.
+**One non-kind list is what the comments describe.** The five production comment families and
+the browser test that still described two, and the removed Source-diagnostics entry beside
+them, were corrected together: `InventoryRail.vue`, `InventoryFilters.vue`,
+`inventory-filter-state.ts`, `main.css`, `index.vue`, and `inventory-rows.spec.ts`, whose loop
+over a one-member list is now the single case it always ran. Two of those went further than
+their wording. The rail's status comment recorded an experiment rather than a property, so it
+states why a number beside the word arrives without its answer. And `.aci-notices` was a global
+utility whose stated reason — that the diagnostics list and every detail's failure state drew
+the same box — went with the list: one component renders it, so the frame is now that
+component's own block in its own scoped style (AGENTS.md § Stylesheet scope policy).
 
 Every gate below was run on 2026-09-05 against this tree. Build, package, performance, and
 browser verification ran from an isolated copy of the same working tree so an already-running
@@ -286,15 +293,92 @@ produced there. The counts are what each run reported.
 | Format | `pnpm run format:check` | silent, exit 0 |
 | Lint | `pnpm run lint` | silent, exit 0 |
 | Types | `pnpm run typecheck` | silent, exit 0 |
-| Unit | `pnpm run test:unit` | 52 files, 1,232 tests passed |
+| Unit | `pnpm run test:unit` | 54 files, 1,250 tests passed |
 | Contract | `pnpm run test:contract` | 12 files, 405 tests passed |
-| Integration | `pnpm run test:integration` | 11 files, 270 tests passed |
+| Integration | `pnpm run test:integration` | 11 files, 271 tests passed |
 | Security | `pnpm run test:security` | 1 file, 5 tests passed |
 | Package | `pnpm run verify:package`, then `pnpm run test:package` | verification silent and exit 0; 8 files, 56 tests passed |
 | Performance | `pnpm run test:performance` | 2 files, 4 tests passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 files, 1,907 tests passed; statements 86.15% (5,950/6,906), branches 71.60% (3,556/4,966), functions 87.41% (1,160/1,327), lines 86.46% (5,834/6,747) |
+| Browser | `pnpm exec playwright test --project=chromium` | 577 passed |
+| Coverage | `pnpm run test:coverage` | 77 files, 1,926 tests passed; statements 86.07% (6,023/6,997), branches 71.87% (3,557/4,949), functions 87.46% (1,200/1,372), lines 86.37% (5,900/6,831) |
 | Documentation | `pnpm run test:docs` | 1 file, 41 tests passed |
+
+**A search typed from a detail page reaches the field.** The shell's search navigates to the
+inventory, and the inventory restores the row the reader followed — so focus left the field
+between the first character and the second, and every character after it landed nowhere. Typing
+is a new question about the list rather than a return to where the reader was, so the recorded
+point is dropped before that navigation. The browser regression types a term the followed row
+still matches, which is exactly when the restore would fire; it was watched failing first.
+
+**One instance of the open control serves a sequence of files, and a launch belongs to one of
+them.** The in-flight launch was a flag, so it stayed raised after the reader moved through a
+skill's tree and disabled another file's button for a launch that was never about it — for as
+long as the launch that is out takes, which is precisely the terminal-editor case the flag
+exists for. It holds the file it was made for instead, and the control disables only when that
+file is the one on screen; a settlement clears only its own request, so an earlier launch's
+answer cannot clear a later file's. No gate reaches this: the browser suite may not activate a
+launch at all, and the unit project has no single-file-component compiler.
+
+**The consent panel no longer reports settled rows while a read is running.** Its one sentence
+covered this tab's own confirmation and a batch the snapshot carries, but not an accepted enable
+this page has not taken in — another tab's, or this one's across a reload — whose batch has not
+reached the adopted snapshot. With published rows on screen that state read as a finished count
+while a read was out. It says a read is running and names `Refresh status`, which the panel
+already offers, so nothing moved.
+
+**A running personal-setup read is announced.** The rail's entry changes to `Scanning` before a
+batch commits, and the page's live region said nothing until the first member Source arrived, so
+a reader who cannot see that entry was told nothing at all — and during a retry over published
+members, the sentence stated statuses without saying a read was out
+(contracts/accessibility-acceptance.md § 4.1.3). It says both now, the members first so the
+state a reader must act on still leads. Like the rail's own ranking fold, the branch needs a read
+held open and is read on a fixture launch rather than asserted.
+
+**A lower artifact cannot relax a requirement, so FR-013 says what the launcher probe does.**
+The prohibition read "no proposed-root filesystem I/O" without qualification while the contract
+recorded an exception to it, which is a contract amending a requirement. It cannot: FR-013 now
+states the rule and its one exception itself, in both languages — no operation of the product's
+own takes a proposed root or a path below one as its operand, and editor-launcher discovery is
+the one whose operands are the machine's own configuration and whose resolution the operating
+system may route through such a root, because FR-022 requires each launcher to be resolved
+before the host binds its port and asking whether a candidate is executable examines wherever
+the reader's own spelling leads. It enumerates, reads and publishes nothing from there, and the
+four eligible entries stay excluded from what it may offer.
+
+**macOS still hands LaunchServices the application name, and the residual is recorded rather
+than closed.** A review asked for the bundle the authorized launcher sits inside to be resolved
+and launched by path, because a name is resolved against every bundle LaunchServices has
+registered and an inspected repository could ship a second one of that name. That was
+implemented and then withdrawn: the same file already declines the same proposal for the
+`osascript` spelling, on the grounds that it is the adversarial-workspace model FR-019 rejects
+and that the machinery it asks for is what FR-019 forbids adding. The distinction offered for
+treating the two differently — that `PATH` is filtered by this product while the LaunchServices
+name space is not — was too thin to carry a mechanism, and `env-editor` publishes the name this
+launch has always used. The contract states the residual where the launch is described.
+
+**The source-type regression reads what the reader sees as well as what the product declared.**
+It read the parent of the *nearest* Monaco root, which inside a diff is Monaco's own wrapper: a
+diff mounts one editor per side, so the element read was Monaco's and reported the product's
+cascade back to itself. Breaking the option wiring so the editor laid out at 12px/18px left it
+passing. It now reads the outermost root's parent for the declaration and the visible
+`.view-lines` for what was actually laid out, and each route names the host it is about — which
+is what turned up a ninth host no route had ever reached, because two of them selected the same
+first visible editor. Both halves were watched failing: the tokens removed from three hosts, and
+`typeMetricsOf` returning Monaco's own defaults.
+
+**The consent panel says a read is in progress, and names what it is reading.** Two of its
+sentences claimed more than the projection establishes: `These directories are being read now`
+stood over all four rows while a retry reads only the subset the same preview can retry, and
+`N of these directories are being read now` counted a batch whose phase can be `waiting` —
+queued and not yet started, and read from the last refresh at that. Both now say `is in
+progress`, which is the form the Repository's own `Rescan in progress.` already carries for the
+same reason: this side cannot tell a running read from one queued behind another and must not
+claim the distinction. The first-consent and retry cases are two sentences rather than one — the
+retry names its count from the retryable subset the snapshot already carries, and splits on the
+same value the confirm control's own label switches on, so a press that says `Try the failed
+members again` cannot be answered by a sentence that says `these directories`. The fourth
+sentence changed with them, because a family states one thing one way: the read this page has
+not taken in is `in progress` too.
 
 **The browser gate here is one project; the certification matrix is CI's.**
 `playwright.config.ts` pins one Chromium, one Firefox, and one WebKit revision, and the
@@ -314,8 +398,8 @@ pinned revisions, and it is not reproduced here: the row above is one project on
 a local run stands in for none of it. The disposition is unchanged from the tree the rework
 started on — what changed is which commit the certifying run is of.
 
-**The coverage percentages are a run's, not a constant.** This tree's run reported the 75
-files, 1,907 passing tests, and percentages recorded in the row above. No threshold is asserted
+**The coverage percentages are a run's, not a constant.** This tree's run reported the 77
+files, 1,926 passing tests, and percentages recorded in the row above. No threshold is asserted
 on them anywhere.
 
 **The performance gate is the smoke pass, not a measurement.** `tests/performance/` runs one
@@ -331,15 +415,181 @@ after the rescan was dispatched, the filter feedback at 25.1 ms and the selectio
 45 ms; the global setup prints these for whoever reads the log, and they describe this
 machine.
 
+**The consent page states a finished read as finished.** One sentence stood for two states of
+the confirmation: while it is out, and after the host answered. The host answers once every
+admitted member's scan is terminal, with the batch committed
+(contracts/http-api.md § enable-global), so the second of those is a read that is over and a
+result this page is fetching — and the sentence said `Reading … is in progress` of it, into a
+live region. The states are two branches now, the second saying `Reading finished. The result
+is loading.` with no count, because nothing was read on this side, and without the destination
+clause the running sentences carry, because the commit already put the files on the inventory.
+The rail was already right: `globalReadInProgress` counts `submitting` and never `answered`.
+
+This does not reopen the SC-001/SC-006 record. The consent workflow is scored on naming the
+proposed directories *before* they are read (`ground-truth.json` § workflows.consent), which
+is a step the confirmation has not been given at; the state whose wording changed cannot occur
+until after it.
+
+**Two comments named requirements the specification no longer has.** `view-state.ts` explained
+the consent failure path as `FR-040/FR-041 removed`, and a checklist iteration record said a
+2026-07-20 refinement replaced domain classification `with FR-041 propagation`. Both were
+written when those requirements existed; a reader who looks either up now finds nothing, which
+is what the commenting policy's "open the artifact before naming it" exists to prevent. The
+first names the clause that governs today (contracts/http-api.md § Common results and errors)
+and the second says what the refinement did rather than the identifier it did it under. A sweep
+of every `FR-`, `QR-`, and `SC-` identifier cited under `src/` against the ones spec.md defines
+now reports none missing.
+
+`SC-002` is the one identifier that stays without being a criterion, and the withdrawal
+clarification now says so: the performance harness keeps the `sc002-` prefix its files were
+built under, because that prefix is a recorded digest's subject, and a task or checklist item
+spelling `SC-002` names that harness.
+
+**The tarball is what the release policy describes.** `npm pack` produces 186 files: `dist/`,
+the two `docs/images` screenshots, both readmes, the licence, and the manifest. `bin` points at
+`dist/cli.mjs` and that file is in the tarball; the bundled `THIRD-PARTY-NOTICES.txt` is
+generated from the browser bundle and carries each bundled package's own licence text; no
+`CHANGELOG.md`, no `specs/`, no tests. `verify:package` passes over the same tree.
+
+**The screenshots were retaken against this tree, and one did not move.**
+`docs/images/comparison.png` is retaken: the source type is the `0.75rem`/`1.0625rem` the token
+now carries, and all three diff blocks fit where the last block was clipped.
+`docs/images/inventory.png` came back byte-identical to the committed file — the same SHA-256 —
+because nothing the interface rework left to do reaches that screen and the source token no
+inventory row reads. Both readmes' alt text still describes what its image shows, so neither
+changed.
+
+**What this round checked mechanically, and what it did not.** Exhaustive over the tree: every
+`§` citation and `{@link}` added since the last round resolves to a file, heading, or
+declaration that exists; no exported name and no component is unreferenced; no reactive value
+is declared without a reader; every `DiagnosticCode` the registry declares is emitted and none
+is emitted that it does not declare; no stylesheet rule is declared without markup that renders
+it; every edited Markdown file has its counterpart edited in the same change; `git diff --check`
+reports nothing outside the vendored skills. Read rather than swept: the server diff — the
+commit's compute-then-apply restructuring, the launcher probe, the traversal error policy — and
+the inventory filter tables. The class-ownership sweep reports two names in both the global
+sheet and a component; one is a comment naming the global rule, and the other is
+`.aci-compare-side p`, whose subject is the `p` the component renders, which is where that
+policy puts it.
+
+**A launch token has to keep its identity, so it is a `shallowRef`.** The open control tells one
+file's launch from another's by holding the call itself and comparing it by reference. A deep
+`ref` hands back `reactive(value)` for an object, so the token read out was never the token put
+in: every settlement read as some other call's, which left the control disabled on a launch that
+had already answered and never showed its failure. Measured rather than recalled — a deep `ref`
+returns a proxy for a plain object and the same object for a DOM element, which is why the
+element refs beside this one are ordinary `ref`s and only this one moved. A sweep over every
+`ref` in `src/app/` whose value is compared with `===` found no other: the rest hold template
+elements or a string union.
+
+Neither suite can reach it, and that is recorded rather than repaired: no browser test may
+activate a launch at all, and the unit project compiles no single-file component. The reason the
+kind matters is written where the token is declared, so the next reader does not simplify it
+back.
+
+**A device failure is the machine's condition, and the closed errno set now says which those
+are.** A round read the exact-target probe's `EIO`/`ESTALE` handling as violating the rule that
+an environment failure aborts the attempt. A previous round of this record answered that it did
+not, on the ground that the failure was confined to one operation. That answer was wrong, and
+what settles it is the sentence the per-file outcome actually shows: `file-unreadable` says the
+file may have been removed or its permissions may deny reading, and that the other files were
+unaffected. On a failing device or a vanished mount none of the three is true, and the third is
+exactly what such a failure makes unknowable — so folding one into a per-file outcome publishes a
+partial generation that states a condition of the machine as a property of the reader's content,
+which the Constitution's abort rule exists to prevent.
+
+The fix is not a second errno allowlist beside the first, which is what the earlier answer was
+right to refuse. It is the membership of the one closed set the specification already permits:
+`EMFILE`, `ENFILE`, and `ENOMEM` are joined by `EIO` and `ESTALE`, the two the codebase already
+named as environmental wherever it drew the line, and the set is named for what it holds rather
+than for one of its causes. Every call site that ruled out the machine's own failures before
+classifying a path keeps doing exactly that, and the integration suite injects a device failure
+on one file and watches the attempt reject rather than commit — run against the old set first,
+where it published the file as unreadable.
+
+**The consent page's status region says what the page's status is.** Its scan-status sentence
+and its not-this-page's-operation sentence each carried `aria-live="polite"` inside a block that
+appears with the state it describes, so each region was created with its text already in it and
+announced nothing (W3C ARIA22). Those attributes are gone, and the always-mounted region carries
+whichever of the page's three status sentences is current — one at a time, because the three
+states are exclusive.
+
+The same string then reaches two nodes, and that is the design rather than a duplicate: the
+region says a state changed, the visible sentence is the state itself, and a reader meets each
+in its own way. It is the shell's own shape, where `errorAnnouncement` and the visible
+`.aci-error` paragraph carry one string (`App.vue`). What a reader must not be shown twice is
+the visible copy, so the consent walkthrough asserts the panel's copy by the panel and the
+region's by the region, rather than counting the page's nodes: the region is hidden by
+`clip-path` on a 1×1 box, which no visibility filter separates from real content.
+
+**The list of files in no kind says which empty it is.** Its own comment claimed nothing there
+could be narrowed away; the Source selection and the search both narrow it, because a file there
+belongs to a Source and has a path like any other — only the tool selection cannot, and the page
+offers no tool control on it. So an empty panel was stating "No files." over a scan that had
+admitted several. It now tells the two apart the way every kind's list does, with the same
+sentence and the same way out.
+
+**A document one panel is holding is not read again for another.** The plugin comparison adopts a
+carrier's own response for the file pair, and now the manifest pane's slots as well. One
+direction only, and the lifetimes are the reason: the manifest pane outlives a file selection,
+while the file pane's slots are dropped on every one, so a manifest adopting a file slot would
+hold a document with no request of its own to restore it. Without this, selecting the file that
+is a plugin's own manifest read a document the view was already showing one pane over, and a
+failure of that read left the file pane stating nothing while the bytes were on screen beside it
+(contracts/http-api.md § Comparison views).
+
+**The checklist's log now closes what it opened.** Its dated entries record mechanisms this
+release does not carry — a scan-timing sampling protocol, a twenty-person study's obligations, a
+row for a vanished-entry taxonomy — each recorded as added and none recorded as gone, and one
+iteration's finding was written in the present tense as though it still stood. The entries are
+what a change log is for and are not erased; what was missing is the entry that closes them,
+which is now written, and the present-tense finding is stated as that iteration's.
+
+A later round read the documentation policy's "never write the superseded name or requirement"
+as forbidding those entries outright. It cannot be read that way and leave the artifacts it
+names able to do their job: a `Clarifications` question asking whether two requirements are
+still required is unanswerable without naming them, and an iteration that added something the
+release later dropped is a log with a hole in it until an entry records the drop. The policy now
+states the two things it actually forbids — presenting a superseded name as current, and
+explaining the text that was replaced — so the absolute reading is not available to derive
+again.
+
+**The editor a configured value names is the one that is classified.** `EDITOR` reads two ways
+no lexical test separates — a path with spaces in it, and a command carrying flags — and the
+probe read only the first, taking the value's last path segment as the editor's name. For
+`vim -u /tmp/minimal.vim` that segment is a file the flags name, so the catalog reported an
+unknown editor, an unknown editor is non-terminal, and the reader's own editor was replaced by
+whatever `vi` resolves to. Both readings are tried now, the path one first so
+`/Applications/My Editor.app/…/vim` keeps working, and the command one when it names no terminal
+editor. The value that runs is still the configured one and flags are still never honoured; only
+the classification changed. Measured against the catalog: `nvim -u /tmp/minimal.lua` resolved to
+`minimal.lua` before and to `neovim` now.
+
+**`@typescript-eslint/parser` is a declared devDependency, and the dependency review says so.**
+This repository's own ESLint rule is tested through `RuleTester`, which takes its parser from the
+test rather than from a config, so the test imported a package the manifest did not declare and
+resolved whatever version `@nuxt/eslint` happened to bring. The lockfile gains the direct link
+and no package: it already resolved the same version transitively, so the licence set and the
+bundled notices are unchanged, and the review's own entry no longer reads as though nothing was
+added.
+
+**CI certifies one candidate tarball on six environments, not the bytes a release publishes.**
+The comment beside the pack step said the six samples exist to prove something about "the one
+that gets published". They cannot: `Release.yml` packs its own tarball from its own checkout, and
+this record already states that two packs of one source differ in the build id Nuxt writes into
+the bundle. What the six jobs establish is that one tarball built from this commit installs and
+runs on every lower-bound environment, which is what the comment and the task now say. The claim
+that one pack's identical bytes reach all six jobs is unchanged, because that is what happens.
+
 
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `784ea623d2120935e9a7153be6f3f73e67e7ed0e5953c900ef396999765911f1`, recorded in
+SHA-256 `5fe2e9e6b4978e1201d4bb44efaaaa82df86089c35a64d416659c756a237d8d5`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-05 by
 running every suite each case names in `verifiedBy`: the vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
-whole Chromium suite, 567 tests, all passing in the one run the release-gate table above
+whole Chromium suite, 577 tests, all passing in the one run the release-gate table above
 records. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
 all 66 fixture digests in the same session.
 
@@ -350,14 +600,24 @@ because it compares the manifest against its own companion file and reaches no r
 `tests/fixtures/outcomes/manifest.sha256` are written from the same command in the change that
 moves the bytes.
 
-The set is non-comparable with the one recorded after the interface rework: five referenced
-fixtures changed — `tests/contract/http-api-session.test.ts`, whose rescan cases now
-observe the answer a scan command gives once its scan reached a terminal state
-(contracts/http-api.md § rescan-repository), the three skills specs that read the rail's
-status words, and `tests/fixtures/global-homes/build-fixtures.ts`, which now pins
-`USERPROFILE` beside `HOME` so a Windows run reads the fixture's shared agent home rather
-than the developer's own — which spec.md § Release-Evidence Fixture Governance makes a new
-measurement set. The manifest version stays at 3, because that governance requires an increment for a
+The set is non-comparable with the one before it: `tests/contract/host-startup.test.ts` changed
+when the closed environment-failure errno set was renamed for what it holds, which moved that
+fixture's digest and the canonical manifest digest with it. spec.md § Release-Evidence Fixture
+Governance makes a fixture-byte change a new, non-comparable measurement set; the manifest
+version stays at 3, because that governance requires an increment for a case, required-class, or
+expected-outcome change and this is none of them — the same 99 case IDs across the same four
+criteria, each with a nonzero count for every required class.
+
+The set before it was non-comparable with the one recorded after the interface rework for its own
+reason: five referenced fixtures changed, all of them for the removal of the rail's
+`Source diagnostics` entry. The
+three instructions inventory specs — `claude-`, `codex-`, and `copilot-` — dropped the
+assertions that opened that entry and read an empty list, and the Codex one now counts four
+tabs where it counted five. `inspection-safety.spec.ts` reads `Inspected` where it read
+`Partial`, because one table states a Source's status everywhere, and no longer counts the
+root failure under an entry that does not exist. `settings-config-inventory.spec.ts` ends its
+rail walk at `Files in no kind`, one step from the last kind rather than two. spec.md
+§ Release-Evidence Fixture Governance makes that a new measurement set. The manifest version stays at 3, because that governance requires an increment for a
 case, required-class, or expected-outcome change and this was neither — the same 99 case IDs
 across the same four criteria, each with a nonzero count for every required class. The
 browser half of this execution was the Chromium project on this host; the three pinned
@@ -425,8 +685,10 @@ three-project run on 2026-09-04 passed 32 in every project; `AUTO-2.1.1` and `AU
 passed in chromium and firefox and failed in macOS WebKit, both for the tab-order reason
 recorded above — one cannot reach a link-driven workflow by Tab, the other cannot focus the
 skip link. The certified WebKit is the Linux revision CI runs, so the certifying result for
-this half is CI's: run `33868211321` executed all 34 `AUTO-*` checks there and passed every
-one, `AUTO-2.1.1` and `AUTO-2.4.1` included. No local run stands in for it.
+this half is CI's run of this tree's own commit, over the three pinned revisions, and it is not
+reproduced here — the same disposition the release-gate review above records for the browser
+gate. No local run stands in for it, and naming an earlier run would name one taken before the
+interface, editor, and traversal changes this tree carries.
 
 ### WCAG results
 
@@ -535,7 +797,8 @@ matrix produces, and none is recorded.
 ## SC-001 and SC-006 first-use sessions
 
 **Twenty agent-driven sessions, run on 2026-09-05 against the release candidate, with the
-runner holding the clock.** The build is `npm pack` of the tree these gates were run on,
+runner holding the clock.** The build is `npm pack` of the tree as it stood for that run —
+which later edits do not reach, the digest below being the artifact the sessions actually ran —
 tarball SHA-256
 `7e852c2305971d91ca0e23aa23bafa1cac4d5b986b243d9ec8e167fc24245837`, installed with
 `npm install` into one run folder. The digest names the artifact the sessions ran rather than
@@ -645,7 +908,7 @@ makes a reason to repeat the evaluation rather than to carry a result forward.
 
 **Twenty agent-driven sessions, run on 2026-09-04 against the build carrying this release's
 review corrections, each session started outside this working tree.** The build is
-`pnpm pack` of the tree the release gate above was run on, tarball SHA-256
+`pnpm pack` of the tree as it stood for that run, tarball SHA-256
 `169372b9fa8ff1df8c2ce6d0ec47f67e4eb09702757ed830a6ae34cebad44fdc`, installed with
 `npm install` into one run folder. Each session had its own `repository/` — the all-kind
 fixture built in place by `tests/fixtures/repositories/build-fixtures.ts`, which is where the
@@ -1174,7 +1437,7 @@ once-per-process confirmation, and a reader with one session changes that state 
 the product's own printed and rendered guidance is sufficient to reach a file and to state
 what the product says about it. How a person experiences the same interface is not in this
 record; SC-001 and SC-006 say so in their own text, and no sentence here may be read as a
-human-subject result. The run used no capture harness: the sealed-capture kit that a
+human-subject result. The run used no capture harness: the kit that a
 moderated study would have needed was not exercised by it and has since been retired, which
 the record below covers.
 
@@ -1273,22 +1536,19 @@ tests, not a repository it had never seen.
 
 ## Release-candidate review of the study kit, and its retirement
 
-T1061's branch-by-branch review read the sealed-capture kit against its protocol contract and
-found fifteen defects, each traced to both the code and the clause it contradicted, corrected,
-and given a check that fails without the fix. T1062 ran that loop to zero open concerns; the
-last of them was settled by amending the contract's static-asset row to the packaged-prefix
-rule the equipment could actually decide.
+T1061's branch-by-branch review read the capture kit against its protocol contract and found
+fifteen defects, each traced to both the code and the clause it contradicted, corrected, and
+given a check that fails without the fix. T1062 ran that loop to zero open concerns; the last
+of them was settled by amending the contract's static-asset row to the packaged-prefix rule
+the equipment could actually decide.
 
-The kit is then removed. It existed to make a moderated human study auditable — the fixed
-launch line, the study-input distribution and its digest freeze, the request ledger, the
-browser proxy and its navigation grant, the reviewer processes, the inherited-IPC supervisor
-and its evidence seal — and no such study will be run, because twenty first-use participants
-are not available to this project. What went with it: the protocol contract, the three
-`scripts/*usability-study*` modules, their contract, integration, and security suites, the
-three `study:evidence:*` package commands, and the product's own readiness probe in
-`src/server/cli.ts`, whose only caller was the kit. What stayed is what the evaluation reads:
-the guidance, the four standardized task prompts, the response form, the ground truth, and
-the scoring rubric.
+The capture kit is then removed, with its contract, its modules, their suites, its package
+commands, and the product's own readiness probe whose only caller it was. It existed to make a
+moderated human study auditable, and no such study will be run, because twenty first-use
+participants are not available to this project. What stayed is what a run reads — the guidance,
+the four standardized task prompts, the response form, the ground truth, and the scoring
+rubric — and what says how one run is performed: `tests/usability/sc001-sc006-study-kit.md`
+and its Japanese companion, now a static operator protocol rather than a harness.
 
 The corrections are not recorded here in detail, because a table of defects in code this
 release does not carry describes nothing a reader can check. What the review established, and
@@ -1317,23 +1577,21 @@ that would have forced 76 tasks to name a file they do not own was corrected in 
 languages. No ad hoc patch, silenced failure, or speculative abstraction was introduced to
 avoid any of these.
 
-*Open release blockers.* Pre-consent launcher discovery physically resolves every
-outside-spelled candidate, so an alias into a proposed personal-setup root can cross FR-013's
-no-I/O boundary before the reader acts; it nevertheless compares that personal root only by
-spelling. It also retains only the startup physical location of the Repository root and treats
-any failed physical resolution as permission to continue lexically. FR-013 permits the required
-personal-root authorization after consent, and the `root-unreadable` recovery path makes a
-repaired root reachable. The implementation work and regression cases are specified in the
-launcher review above; this is not an accepted residual.
+A fifth turned on the same clause from the other side: here no specification mandated the
+redundancy, a reading of one did. The launcher exclusion was proposed as two stages — a
+pre-consent physical resolution of every candidate, then a re-authorization at the launch
+against the roots the session then held — because FR-013's no-I/O rule was read as forbidding
+the probe's own resolution. The operand is a `PATH` entry or a configured editor rather than
+one of the four proposed roots, so FR-013 was corrected to state editor-launcher discovery as
+the one operation whose resolution the operating system may route through such a root, and the
+second stage had nothing left to buy. One comparison stands, made at probe time: each candidate
+as it is spelled and where it physically is, against the Repository root's own physical
+location and each proposed personal root's spelling. Repeating it before the launch it admits
+is the identity re-verification FR-019 forbids, so what it leaves open is recorded at
+`contracts/http-api.md` § open-file — which is also where a candidate the filesystem cannot
+resolve is refused rather than admitted — instead of closed with machinery.
 
-Three other product or contract violations are open. A running Global retry overrides a
-ranked `partial` or `failed` rail state while leaving its warning treatment in place; three
-Monaco diff hosts omit the shared source-surface type metrics; and exact-string VCS filtering
-walks the actual `.GIT` directory on a case-insensitive volume. Their required implementation
-and regression cases are recorded in the release-gate review above; none is an accepted
-residual.
-
-*Resolved rather than residual.* The sealed-capture study kit was machinery with no run
+*Resolved rather than residual.* The capture study kit was machinery with no run
 behind it — twenty first-use participants are not available to this project, so the moderated
 study it existed for does not happen — which is the shape this principle forbids. It is
 removed in this change, together with its protocol contract, its three suites, its package
@@ -1347,10 +1605,19 @@ inherited across a reload; the question it actually needed was whether this load
 all, which the session already publishes. The set and the arrival-time restamp that existed to
 compensate for it are both gone, and the comments that explained them went with them.
 
-*Open release blocker.* Removing the Source-diagnostics entry left five production comment
-families and one browser-test title describing two non-kind lists. The runtime and the
-bilingual task text have one. The exact files and required family-wide correction are recorded
-in the release-gate review above.
+The same rule caught the second. Removing the Source-diagnostics entry left five production
+comment families and one browser test describing two non-kind lists, and left `.aci-notices` a
+global utility whose stated reason for being global — two surfaces drawing one box — had gone
+with the list. The family was corrected together, and the rule that a deviation whose reason is
+gone is a defect rather than a decision moved that frame into the one component that renders it.
+
+A third came from the final round, and it is the same rule read one level up: a comment naming a
+requirement is stale the moment the specification drops that requirement, and nothing had been
+checking. Two places still cited `FR-040`/`FR-041`, removed in July. What closed the family is
+not the two edits but the sweep that found them — every `FR-`, `QR-`, and `SC-` identifier cited
+under `src/` is now checked against the ones spec.md defines, and the one identifier that
+legitimately outlives its criterion, the performance harness's `sc002-` prefix, is stated as
+such where a reader looks it up.
 
 **III. Verification Before Completion.** Every accepted correction in this release carries a
 check that fails without it, and each was watched failing before it was accepted. The
@@ -1359,8 +1626,28 @@ over the reader-visible path (apply a narrowing, leave, reload, disable, and go 
 both were run against the unfixed predicate first and seen to fail. A passing suite is not
 treated as proof: the review that preceded the study kit's retirement read the branches its
 suites did not reach, and recorded what it found sound as well as what it found unverified.
-The open rail, launcher, VCS, and Monaco findings are not treated as accepted corrections; the
-review above specifies the regressions each must carry before this check can complete.
+The Monaco host metrics carry the regression the review above specifies, watched failing
+against the unfixed source. The launcher exclusion and the VCS exclusion are the two where a
+review's mechanism was built and then withdrawn; what stands is the comparison that was already
+there and the residual each leaves, recorded in the entries above. The rail's ranking fold is the one correction whose own branch no gate reaches — it
+needs a read held open, the RPC channel is a WebSocket, and the unit project has no
+single-file-component compiler — so what is checked is the predicate that supplies its input
+and the ranking with no read out, and the fold itself is recorded as read on a fixture launch
+rather than as asserted. Two later corrections are in that same position and are recorded as
+such: the personal-setup live region's running sentence, which needs the same held-open read,
+and the open control's per-file launch, which no browser suite may reach because none may
+activate a launch at all.
+
+Two of this release's corrections were regressions its own earlier corrections introduced, and
+both were caught by reading the fix against the code it changed rather than by a suite. Widening
+the launcher probe's error split had narrowed the physical resolver to two errno values, which
+turned a Repository root that is a link cycle or sits under a directory this process may not
+search into a startup failure with no host behind it, where FR-002 gives it a `root-unreadable`
+Diagnostic a reader can see. Restructuring the Global commit into compute-then-apply had left a
+member's first publication unranked while its diagnostics were sorted, which read a retried
+member before one an earlier batch published. Each carries a check that was watched failing
+first: the launcher one stages a real denied ancestor and launches, and the ordering one commits
+a retry over an earlier publication and reads the committed order back.
 
 *Residual.* Seven browser cases fail on this machine and only on macOS WebKit;
 all seven assert that a link is reachable by pressing Tab, which macOS does not do unless the
@@ -1390,11 +1677,23 @@ migration to provide. Every runtime dependency is declared as a caret range with
 resolutions owned by the committed lockfile, and each was reviewed for what it reaches at
 user runtime — the record of that review is the Dependency review above.
 
-**Four product or contract violations and one maintainability concern remain release
-blocking.** They are the launcher authorization, Global retry aggregation, VCS-internal
-traversal, Monaco host metrics, and stale two-list explanations recorded above. The two actual
-residuals are a standing property of the evidence and a machine-specific browser result the
-certified matrix answers.
+**Nothing recorded above is open on a decision.** Every finding is implemented and covered as
+its entry states, and the ones that turned on wording were settled and implemented with them.
+The loop closed on the last round recorded under the release-gate section above. The round
+before it found two comments citing removed requirements; the last one found a reactive
+declaration whose kind defeated the comparison it existed for, two live regions that could not
+announce, an empty state that stated the wrong empty, a document read twice across two panels,
+and a change log that recorded additions without their removals. Each is corrected above, one is
+answered in the code as a reading the contracts do not support, and the live regions are connected to the
+page's own status rather than left silent, which is the shape the shell already carries.
+
+The two actual residuals are unchanged, and neither is awaiting a decision. Manual execution
+against assistive technology is not performed: it needs operators this project does not have,
+for the same reason the moderated study does not happen, so it is a standing property of the
+evidence rather than an item with an owner — what would close it is a release that gains those
+operators, and the matrix each `MANUAL-*` row names is what it would then run. The seven
+macOS WebKit link-Tab failures are a property of this machine rather than of the product; their
+owner is CI, whose certified three-browser matrix is the result the release check log carries.
 
 ## SC-008 accessibility: Not-applicable revalidation
 
@@ -1421,9 +1720,10 @@ vendor marks that carry a colour of their own. What was looked at:
 | 3.3.7 | Nothing is asked twice | The inputs are the shell's one search over names and paths, the inventory's Tool and Source selects, the consent checkbox, and a comparison's two file pickers; none re-asks for information already supplied |
 
 **The Applicable rows' automated half** is recorded above under SC-008 accessibility: 34
-`AUTO-*` IDs, all passing in chromium and firefox, and all passing in the certified Linux
-WebKit CI runs. `AUTO-2.1.1` and `AUTO-2.4.1` fail only on the uncertified macOS WebKit, for
-the tab-order reason recorded there.
+`AUTO-*` IDs, 32 of them passing in every local project and `AUTO-2.1.1`/`AUTO-2.4.1` failing
+only on the uncertified macOS WebKit, for the tab-order reason recorded there. What the
+certified Linux WebKit does with those two is CI's run of this tree's own commit, which is not
+reproduced here and which no local run stands in for.
 
 **The `MANUAL-*` IDs are recorded as unexecuted.** Their matrix needs three operating systems
 paired with three screen readers, which this release does not assert

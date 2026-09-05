@@ -126,10 +126,10 @@ export class InventoryFilterState {
   public readonly tool: Ref<SupportedTool | null>;
 
   /**
-   * The rail entry in view: a kind, one of the two panels that are no kind's
-   * inventory, or null before the reader has chosen. Navigation rather than a
-   * filter — each entry renders differently, so exactly one is ever in view
-   * and there is no "all kinds" state.
+   * The rail entry in view: a kind, the panel that is no kind's inventory, or
+   * null before the reader has chosen. Navigation rather than a filter — each
+   * entry renders differently, so exactly one is ever in view and there is no
+   * "all kinds" state.
    */
   public readonly selection: Ref<InventorySelection | null>;
 
@@ -148,15 +148,15 @@ export class InventoryFilterState {
 
   /**
    * The kind the filters narrow, which is the selection only while the
-   * selection is one. The two lists that are no kind's inventory narrow by
-   * neither select, so a kind is not in view for them.
+   * selection is one. No kind is in view on the list that is no kind's
+   * inventory, so nothing there narrows by kind.
    */
   public readonly kind: ComputedRef<CustomizationKind | null>;
 
   /**
-   * The selection when it is one of the two non-kind panels, else null. The
+   * The selection when it is the non-kind panel, else null. The
    * closed-catalog predicate is what narrows: excluding every kind from the
-   * union leaves exactly the two, so nothing here asserts a type
+   * union leaves exactly that panel, so nothing here asserts a type
    * (AGENTS.md § Class and interface policy).
    */
   public readonly nonKindSelection: ComputedRef<NonKindSelection | null>;

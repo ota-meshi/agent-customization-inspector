@@ -57,7 +57,8 @@ Each status belongs to its own subject; it is not a status attached to a source 
 whole vendor. These are maintenance records and no response carries one (QR-005): a
 provenance publishes which rule admitted a file, never how completely that rule is
 documented. The assessment is backed by that
-subject's complete `sourceRefs` set and does not change the reverse-index ownership below.
+subject's complete `sourceRefs` set and does not change which records a changed page's
+review covers, which the citations' own source IDs decide (below).
 
 The `evidence` array on each maintained behavior, rule, and strategy record is the
 machine-readable materialization of these rows: a citation states its reviewed URL,

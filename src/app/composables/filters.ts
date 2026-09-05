@@ -500,62 +500,76 @@ export class InventoryFilterView {
       const present = new Set(shownToolsByKind[kindInView]());
       return SUPPORTED_TOOL_ORDER.filter((candidate) => present.has(candidate));
     });
-    this.availableTools = computed(() => {
-      const present = new Set([
-        ...(snapshot.value?.instructions ?? []).flatMap((entry) =>
+    // What each kind contributes to the whole inventory: one entry per row the
+    // snapshot publishes for it, each carrying that row's recognizing tools.
+    // Keyed by the closed union for the reason {@link shownToolsByKind} is —
+    // a kind added to the catalog cannot compile without saying where its rows
+    // live, where two hand-written lists would have left its tab and its tools
+    // silently absent. One table for both questions below, because which list
+    // is a kind's is one fact: the kinds present are those with a row, and the
+    // tools present are those any row names.
+    const snapshotToolsByKind: Readonly<
+      Record<CustomizationKind, () => readonly (readonly SupportedTool[])[]>
+    > = {
+      instructions: () =>
+        (snapshot.value?.instructions ?? []).map((entry) =>
           entry.files.flatMap((file) => file.recognitions.map((recognition) => recognition.tool)),
         ),
-        ...(snapshot.value?.skills ?? []).flatMap((entry) =>
+      skill: () =>
+        (snapshot.value?.skills ?? []).map((entry) =>
           entry.definitions.map((definition) => definition.tool),
         ),
-        ...(snapshot.value?.mcp ?? []).flatMap((entry) =>
+      MCP: () =>
+        (snapshot.value?.mcp ?? []).map((entry) =>
           entry.declarations.map((declaration) => declaration.tool),
         ),
-        ...(snapshot.value?.agents ?? []).flatMap((entry) =>
+      agent: () =>
+        (snapshot.value?.agents ?? []).map((entry) =>
           entry.definitions.map((definition) => definition.tool),
         ),
-        ...(snapshot.value?.prompts ?? []).flatMap((entry) =>
+      'prompt/command': () =>
+        (snapshot.value?.prompts ?? []).map((entry) =>
           entry.definitions.map((definition) => definition.tool),
         ),
-        ...(snapshot.value?.rules ?? []).flatMap((entry) =>
+      rule: () =>
+        (snapshot.value?.rules ?? []).map((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
-        ...(snapshot.value?.permissions ?? []).flatMap((entry) =>
+      permissions: () =>
+        (snapshot.value?.permissions ?? []).map((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
-        ...(snapshot.value?.hooks ?? []).flatMap((entry) =>
+      hook: () =>
+        (snapshot.value?.hooks ?? []).map((entry) =>
           entry.declarations.map((declaration) => declaration.tool),
         ),
-        ...(snapshot.value?.plugins ?? []).flatMap((entry) =>
+      plugin: () =>
+        (snapshot.value?.plugins ?? []).map((entry) =>
           entry.carriers.map((carrier) => carrier.tool),
         ),
-        ...(snapshot.value?.outputStyles ?? []).flatMap((entry) =>
+      // No inventory of its own, so it publishes no row and names no tool
+      // (data-model.md § Inventory unit).
+      'skill metadata': () => [],
+      'output style': () =>
+        (snapshot.value?.outputStyles ?? []).map((entry) =>
           entry.definitions.map((definition) => definition.tool),
         ),
-        ...(snapshot.value?.settings ?? []).flatMap((entry) =>
+      'settings/config': () =>
+        (snapshot.value?.settings ?? []).map((entry) =>
           entry.recognitions.map((recognition) => recognition.tool),
         ),
-      ]);
+    };
+    this.availableTools = computed(() => {
+      const present = new Set(
+        CUSTOMIZATION_KIND_ORDER.flatMap((kindOfRows) => snapshotToolsByKind[kindOfRows]().flat()),
+      );
       return SUPPORTED_TOOL_ORDER.filter((candidate) => present.has(candidate));
     });
-    this.availableKinds = computed(() => {
-      // One entry per kind whose inventory the snapshot publishes; a kind appears
-      // only once its recognizer phase ships an inventory of its own.
-      const present = new Set<CustomizationKind>([
-        ...((snapshot.value?.instructions ?? []).length > 0 ? (['instructions'] as const) : []),
-        ...((snapshot.value?.skills ?? []).length > 0 ? (['skill'] as const) : []),
-        ...((snapshot.value?.mcp ?? []).length > 0 ? (['MCP'] as const) : []),
-        ...((snapshot.value?.agents ?? []).length > 0 ? (['agent'] as const) : []),
-        ...((snapshot.value?.prompts ?? []).length > 0 ? (['prompt/command'] as const) : []),
-        ...((snapshot.value?.rules ?? []).length > 0 ? (['rule'] as const) : []),
-        ...((snapshot.value?.permissions ?? []).length > 0 ? (['permissions'] as const) : []),
-        ...((snapshot.value?.hooks ?? []).length > 0 ? (['hook'] as const) : []),
-        ...((snapshot.value?.plugins ?? []).length > 0 ? (['plugin'] as const) : []),
-        ...((snapshot.value?.outputStyles ?? []).length > 0 ? (['output style'] as const) : []),
-        ...((snapshot.value?.settings ?? []).length > 0 ? (['settings/config'] as const) : []),
-      ]);
-      return CUSTOMIZATION_KIND_ORDER.filter((candidate) => present.has(candidate));
-    });
+    this.availableKinds = computed(() =>
+      // A kind appears once its recognizer phase ships an inventory of its own,
+      // which is exactly when the snapshot publishes a row for it.
+      CUSTOMIZATION_KIND_ORDER.filter((candidate) => snapshotToolsByKind[candidate]().length > 0),
+    );
 
     // Only a selection the current inventory actually offers is applied. The rows
     // and `isNarrowed` read these rather than the raw fields, so the view never
@@ -588,7 +602,7 @@ export class InventoryFilterView {
      * path would stop matching the ASCII the user typed.
      *
      * No Unicode normalization on either side, and no trimming: a published
-     * path is the exact raw entry names (FR-024), an entry name can begin or
+     * path carries its segments verbatim (FR-024), an entry name can begin or
      * end in whitespace, and a query trimmed of the very characters that
      * distinguish such a name could never narrow the list down to it.
      */
@@ -1032,37 +1046,35 @@ export class InventoryFilterView {
       }),
     );
 
+    // One count per kind, keyed by the closed union for the reason
+    // {@link shownToolsByKind} is: a kind added to the catalog cannot compile
+    // without saying what its tab counts, where a chain of comparisons would
+    // have counted it zero and said so on screen.
+    const countByKind: Readonly<Record<CustomizationKind, () => number>> = {
+      // Groups, not rows: the list's items are the ranges, so what the tab
+      // counts is what a reader can count on the screen
+      // ({@link instructionRangeGroups}).
+      instructions: () => this.instructionRangeGroups.value.length,
+      skill: () => this.skillRows.value.length,
+      MCP: () => this.mcpRows.value.length,
+      agent: () => this.agentRows.value.length,
+      'prompt/command': () => this.promptRows.value.length,
+      rule: () => this.ruleRows.value.length,
+      permissions: () => this.permissionsRows.value.length,
+      hook: () => this.hookRows.value.length,
+      plugin: () => this.pluginRows.value.length,
+      // No inventory of its own, so no rows to count — the same fact
+      // {@link shownToolsByKind} states for it (data-model.md § Inventory unit).
+      'skill metadata': () => 0,
+      'output style': () => this.outputStyleRows.value.length,
+      'settings/config': () => this.settingsRows.value.length,
+    };
     this.kindCounts = computed(() => {
       const counts = new Map<CustomizationKind, number>();
       for (const candidate of this.availableKinds.value) {
         // Every kind's count is that kind's own row count with the other filters
         // applied, which is what selecting the tab would show.
-        counts.set(
-          candidate,
-          candidate === 'instructions'
-            ? this.instructionRangeGroups.value.length
-            : candidate === 'skill'
-              ? this.skillRows.value.length
-              : candidate === 'MCP'
-                ? this.mcpRows.value.length
-                : candidate === 'agent'
-                  ? this.agentRows.value.length
-                  : candidate === 'prompt/command'
-                    ? this.promptRows.value.length
-                    : candidate === 'rule'
-                      ? this.ruleRows.value.length
-                      : candidate === 'permissions'
-                        ? this.permissionsRows.value.length
-                        : candidate === 'hook'
-                          ? this.hookRows.value.length
-                          : candidate === 'plugin'
-                            ? this.pluginRows.value.length
-                            : candidate === 'output style'
-                              ? this.outputStyleRows.value.length
-                              : candidate === 'settings/config'
-                                ? this.settingsRows.value.length
-                                : 0,
-        );
+        counts.set(candidate, countByKind[candidate]());
       }
       return counts;
     });
@@ -1088,75 +1100,109 @@ export class InventoryFilterView {
       };
       // Every kind's row member names the Source that lists it: the
       // file-unit rows on the row itself, the definition-, declaration-, and
-      // carrier-grouped kinds on each member (FR-030). A kind shipping its
-      // own inventory adds itself here, or its files would be reported as
-      // unrecognized while its own tab lists them.
-      for (const entry of snapshot.value?.instructions ?? []) {
-        for (const file of entry.files) {
-          listPath(entry.sourceId, file.sourceRelativePath);
-        }
-      }
-      for (const entry of snapshot.value?.skills ?? []) {
-        for (const definition of entry.definitions) {
-          listPath(definition.sourceId, definition.sourceRelativePath);
-          // A companion belongs to the customization whose directory holds
-          // it, and that customization already has a row — so a companion is
-          // excluded here even when it carries a diagnostic. FR-003 is
-          // explicit that an accompanying file acquires no inventory row of
-          // its own, and the row it belongs to states the diagnostic instead:
-          // `SkillRow` resolves the census files' diagnostics beside the
-          // definition, which is what keeps a `partial` generation able to
-          // say which file (FR-028). The census is the definition's own
-          // Source's — its paths are relative to the same root.
-          for (const companion of definition.companionFiles) {
-            listPath(definition.sourceId, companion);
+      // carrier-grouped kinds on each member (FR-030). Keyed by the closed
+      // union rather than written as a run of loops, so a kind shipping its
+      // own inventory cannot compile without saying which paths it lists —
+      // where a missing loop would have reported that kind's files as
+      // unrecognized while its own tab listed them.
+      const listedPathsByKind: Readonly<Record<CustomizationKind, () => void>> = {
+        instructions: () => {
+          for (const entry of snapshot.value?.instructions ?? []) {
+            for (const file of entry.files) {
+              listPath(entry.sourceId, file.sourceRelativePath);
+            }
           }
-        }
-      }
-      for (const entry of snapshot.value?.mcp ?? []) {
-        for (const declaration of entry.declarations) {
-          listPath(declaration.sourceId, declaration.sourceRelativePath);
-        }
-      }
-      for (const entry of snapshot.value?.agents ?? []) {
-        for (const definition of entry.definitions) {
-          listPath(definition.sourceId, definition.sourceRelativePath);
-        }
-      }
-      for (const entry of snapshot.value?.hooks ?? []) {
-        for (const declaration of entry.declarations) {
-          listPath(declaration.sourceId, declaration.sourceRelativePath);
-        }
-      }
-      for (const entry of snapshot.value?.plugins ?? []) {
-        for (const carrier of entry.carriers) {
-          listPath(carrier.sourceId, carrier.sourceRelativePath);
-          // A plugin's own files belong to the plugin's row, which already
-          // has them: the row is one plugin, and the files it ships are its
-          // own — paths of the carrier's Source.
-          for (const file of carrier.files) {
-            listPath(carrier.sourceId, file);
+        },
+        skill: () => {
+          for (const entry of snapshot.value?.skills ?? []) {
+            for (const definition of entry.definitions) {
+              listPath(definition.sourceId, definition.sourceRelativePath);
+              // A companion belongs to the customization whose directory holds
+              // it, and that customization already has a row — so a companion is
+              // excluded here even when it carries a diagnostic. FR-003 is
+              // explicit that an accompanying file acquires no inventory row of
+              // its own, and the row it belongs to states the diagnostic instead:
+              // `SkillRow` resolves the census files' diagnostics beside the
+              // definition, which is what keeps a `partial` generation able to
+              // say which file (FR-028). The census is the definition's own
+              // Source's — its paths are relative to the same root.
+              for (const companion of definition.companionFiles) {
+                listPath(definition.sourceId, companion);
+              }
+            }
           }
-        }
-      }
-      for (const entry of snapshot.value?.settings ?? []) {
-        listPath(entry.sourceId, entry.sourceRelativePath);
-      }
-      for (const entry of snapshot.value?.prompts ?? []) {
-        for (const definition of entry.definitions) {
-          listPath(definition.sourceId, definition.sourceRelativePath);
-        }
-      }
-      for (const entry of snapshot.value?.rules ?? []) {
-        listPath(entry.sourceId, entry.sourceRelativePath);
-      }
-      for (const entry of snapshot.value?.permissions ?? []) {
-        listPath(entry.sourceId, entry.sourceRelativePath);
-      }
-      for (const entry of snapshot.value?.outputStyles ?? []) {
-        for (const definition of entry.definitions) {
-          listPath(definition.sourceId, definition.sourceRelativePath);
-        }
+        },
+        MCP: () => {
+          for (const entry of snapshot.value?.mcp ?? []) {
+            for (const declaration of entry.declarations) {
+              listPath(declaration.sourceId, declaration.sourceRelativePath);
+            }
+          }
+        },
+        agent: () => {
+          for (const entry of snapshot.value?.agents ?? []) {
+            for (const definition of entry.definitions) {
+              listPath(definition.sourceId, definition.sourceRelativePath);
+            }
+          }
+        },
+        'prompt/command': () => {
+          for (const entry of snapshot.value?.prompts ?? []) {
+            for (const definition of entry.definitions) {
+              listPath(definition.sourceId, definition.sourceRelativePath);
+            }
+          }
+        },
+        rule: () => {
+          for (const entry of snapshot.value?.rules ?? []) {
+            listPath(entry.sourceId, entry.sourceRelativePath);
+          }
+        },
+        permissions: () => {
+          for (const entry of snapshot.value?.permissions ?? []) {
+            listPath(entry.sourceId, entry.sourceRelativePath);
+          }
+        },
+        hook: () => {
+          for (const entry of snapshot.value?.hooks ?? []) {
+            for (const declaration of entry.declarations) {
+              listPath(declaration.sourceId, declaration.sourceRelativePath);
+            }
+          }
+        },
+        plugin: () => {
+          for (const entry of snapshot.value?.plugins ?? []) {
+            for (const carrier of entry.carriers) {
+              listPath(carrier.sourceId, carrier.sourceRelativePath);
+              // A plugin's own files belong to the plugin's row, which already
+              // has them: the row is one plugin, and the files it ships are its
+              // own — paths of the carrier's Source.
+              for (const file of carrier.files) {
+                listPath(carrier.sourceId, file);
+              }
+            }
+          }
+        },
+        // No inventory of its own, so it lists no path: a sibling metadata file
+        // is a companion of the skill whose directory holds it, and that
+        // skill's own entry above is what lists it (data-model.md
+        // § Inventory unit).
+        'skill metadata': () => {},
+        'output style': () => {
+          for (const entry of snapshot.value?.outputStyles ?? []) {
+            for (const definition of entry.definitions) {
+              listPath(definition.sourceId, definition.sourceRelativePath);
+            }
+          }
+        },
+        'settings/config': () => {
+          for (const entry of snapshot.value?.settings ?? []) {
+            listPath(entry.sourceId, entry.sourceRelativePath);
+          }
+        },
+      };
+      for (const kindListing of CUSTOMIZATION_KIND_ORDER) {
+        listedPathsByKind[kindListing]();
       }
       return (snapshot.value?.files ?? []).filter(
         (file) => listed.get(file.sourceId)?.has(file.sourceRelativePath) !== true,

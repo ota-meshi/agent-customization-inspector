@@ -205,8 +205,8 @@ dispositionである。
   fieldとして持ち、`documentation-conflict`をdocumentation statusとして拒否する。Closed descriptor、ordinary
   Diagnostic scope、opaque ID、internal
   stateが構築によってDTOへ入らないことも扱い、`tests/unit/shared/entities.test.ts`と`tests/unit/shared/api-types.test.ts`で拒否する
-  *(2026-07-29修正: 公開されるpathはraw entry nameを`/`でjoinしたものになった。spec.md Clarifications § Session
-  2026-07-29。)* *(2026-08-04 修正: 持つのはscalarのstatus/qualifier fieldだけである — source
+  *(2026-07-29修正: spec.md § Clarifications, Session 2026-07-29の公開path決定に合わせて
+  述べ直した。)* *(2026-08-04 修正: 持つのはscalarのstatus/qualifier fieldだけである — source
   conditionをprojectするものが無いため、どのentityもそれを記録しない（T091）。)*
 - [X] T018 fileとdirectoryへのsymbolic link (broken linkを含む)、link cycle、non-regular entry、deep
   tree、VCS内部、読み取り不能なfile/directory、NULを含むbinary file、invalid UTF-8/BOM
@@ -310,8 +310,8 @@ dispositionである。
   Pathとし、存在しないか読めないrootをSource attemptをfailさせるsource-scoped `root-unreadable` Diagnosticとして記録し
   (FR-002)、消えたか読めないfile (broken linkを含む) を他のfileに影響しないそのfileの`file-unreadable`
   Diagnosticとして記録する。operation間のidentity再検証、change検出taxonomy、resource registryは追加しない (FR-019, FR-024)
-  *(2026-07-29修正: 公開されるpathはraw entry nameを`/`でjoinしたものになった。spec.md Clarifications § Session
-  2026-07-29。)*
+  *(2026-07-29修正: spec.md § Clarifications, Session 2026-07-29の公開path決定に合わせて
+  述べ直した。)*
 - [X] T030 `data-model.md § TraversalPlan`のclosedでimmutableなversioned
   `TraversalPlan`とsegment-program
   typeをregistryとともに`src/server/inspection/rules/registry.ts`に定義し、`src/server/inspection/traversal.ts`にはそのcompile済みplanだけを解釈させる:
@@ -320,7 +320,7 @@ dispositionである。
   selectionは`src/server/cli.ts`のlexicalな処理に留まり (`--root`は反復指定をparserのlast
   valueへ解決、絶対値はそのまま、相対値は1回だけcaptureした`process.cwd()`に対して解決)、scanは保持されたselected
   rootを単に読む。共有root-grammar parser moduleや独立のadmission層は存在しない (FR-001, FR-019) *(2026-07-29修正:
-  公開されるpathはraw entry nameを`/`でjoinしたものになった。spec.md Clarifications § Session 2026-07-29。)*
+  spec.md § Clarifications, Session 2026-07-29の公開path決定に合わせて述べ直した。)*
 - [X] T031 file単位の読み取りを`src/server/inspection/traversal.ts`に実装する: 発見された各fileをscan
   attemptごとに1回、mutation-capable flagなしの通常のread-only `fs/promises`
   readで読み、symlinkされたcandidateはtargetを通して透過的に読む。read failure (broken linkを含む)
@@ -360,8 +360,8 @@ dispositionである。
   dependency—`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`—という集合を`package.json`と`pnpm-lock.yaml`
   closureから`tests/package/production-graph.test.ts`でassertし（別のproduction-graph scriptやevidence
   fileは存在しない）、T003でscaffoldしたfixed Node ESM CLI entryを保持する *（superseded 2026-07-23:
-  locked版versionとregistry
-  integrityのassertionは削除した。commit済みlockfileが両方を既にpinしており、testで再記述してもlockfileを二重化するだけである）*
+  commit済みlockfileが各resolved versionとintegrity
+  hashを既にpinしており、testで再記述してもlockfileを二重化するだけである）*
   *(2026-08-08 修正: `/skills/**` shell fallbackにより`h3`が承認済み直接依存になった。他と同じくcaret
   rangeで宣言し、lockfileがdevframe自身のh3へresolveすることで両者は1つのmodule instanceに解決される（research.md § 3）。)*
   *(2026-08-16 修正: product-ownedなstartup browser helperにより`open`が承認済み直接依存になった（research.md § 3）。)*
@@ -385,8 +385,8 @@ dispositionである。
   retention（`failScan(scanRequestId, message)`）、startup rejectionのprocess top-level
   propagation、authority revocation後のcleanup-only late-result
   discardを`src/server/session/scan-generation.ts`、`src/server/session/stale-failures.ts`、`src/server/session/session.ts`に実装する
-  *(superseded 2026-07-22: 旧来のmutation前overflow rejection句はdefensive-check削除で除去された — runtime
-  overflow guardは存在しない。)* *(2026-08-08 修正: file の identity は Source-relative Path で commit
+  *(superseded 2026-07-22: defensive-check削除の結果、句が要求できるruntime overflow guardは
+  存在しない。)* *(2026-08-08 修正: file の identity は Source-relative Path で commit
   を跨いで安定であるため、rekey 句は無い（T1082）。)*
 - [X] T038 devframe application定義とhostの配線を`src/server/host/devframe-app.ts`に実装する:
   製品の`id`/`name`と`cli: { distDir: 'dist/public', auth: false }`を持つ`defineDevframe`によってdevframeがbuild済みSPA
@@ -710,7 +710,8 @@ dispositionである。
   2.2.2は自動更新contentに適用されるが、pauseすべきものが存在せず、動かないcontentのためにcontrolを作ることはAGENTS.mdが禁じるspeculative
   mechanismにあたる。いずれの場合もunderlying scanには影響しない — browserがscanを止めることはない。）
 - [X] T072 [US1] actionable diagnostics と Codex scope の empty state を
-  `src/app/components/diagnostics/DiagnosticList.vue` に実装する
+  `src/app/components/inventory/rows/RowDiagnostics.vue` と
+  `src/app/components/inventory/InventoryList.vue` に実装する
 - [X] T073 [US1] 英語の Codex inventory、progress、empty-state、retry、boundary message をそれらを描画する Vue
   component に追加する
 
@@ -1471,7 +1472,7 @@ dispositionである。
   component（`src/app/components/inventory/rows/`）、`src/app/pages/index.vue` で完成させる *(2026-08-08修正:
   admission はどの surface も読み出さない read-authorization 記録に留まるため、provenance は表示されない（T1068）。)*
 - [X] T189 [US1] Source-value-free diagnostics を維持し、inventory の loading、empty、retry、replacement
-  state で source を露出しない処理を `src/app/components/diagnostics/DiagnosticList.vue`  に実装する
+  state で source を露出しない処理を `src/app/components/inventory/rows/RowDiagnostics.vue` に実装する
 - [X] T190 [US1] 英語の unified-inventory および multi-recognition message をそれらを描画する Vue component に追加する
 
 ---
@@ -7046,7 +7047,7 @@ dispositionである。
   pre-send
   reasonを`src/app/session/client-data.ts`の`PurgeReason`へ戻す。eslint/config-inspectorが`invalidate`をpushするのと同じ形でfenceをdevframe
   channel越しにpushし、他タブがpollingなしにdisableを観測できるようにすることを検討する。ただしauthorityはあくまでserverであり、pushはrefetchのtriggerであってstateとして採用するものではない。
-  *(2026-08-15 修正: purge-gate の対象名を改めた — 比較は kind 固有であり、既存の composable は `skill-comparison.ts`、後続
+  *(2026-08-15 修正: 比較は kind 固有であるため、purge gate の対象は `skill-comparison.ts` であり、後続
   kind は各自のものを追加する（spec.md § Clarifications Session 2026-08-14）。)*
 - [X] T1028 [US4] Pre-request purge、epoch/fence control-only recovery、failed retry/join/restart、true
   no-op/accept前failure refetch、Global sequenceをdiscardする`remove-active-state`のRepository-only
@@ -7088,10 +7089,9 @@ dispositionである。
   Observation tupleはcapability分類を持たない。認証のないloopback transportはrequest capabilityを
   定義しないからである。)* *(2026-08-30 修正: study kitとbundleはこのtaskで初めて存在するので、
   それらを所有する先行taskは無く、T1061がこのtaskの成果をreviewする。)*
-  *(2026-09-04 修正: このtaskが構築したsealed-capture harness — protocol contract、3つの
-  `scripts/*usability-study*` module、そのcontract/integration/security suite、3つの
-  `study:evidence:*` command — は削除済みである（T1061、T1062）。本文は、存在しない機構ではなく
-  残っている材料を述べる。)*（SC-001、SC-006）
+  *(2026-09-04 修正: このtaskが構築したcapture harnessは削除済みである（T1061、T1062）。それが
+  存在する理由であるmoderated studyは行われないためであり、本文は残っている材料を述べる。)*
+  （SC-001、SC-006）
 
 - [X] T1031 Exact host、redirect rejection、explicit network opt-in、complete environment-supported
   content retrieval、partial update も自動の cause ベース判断も生じさせない network/runtime の
@@ -7254,12 +7254,8 @@ dispositionである。
   boundary、`package.json`と`pnpm-lock.yaml` closureからassertするproduction-graph dependency集合に関するpackage
   testを`tests/package/node-only-policy.test.ts`と`tests/package/production-graph.test.ts`で拡張する
   *（2026-08-16 修正: `open`はproduct-ownedなbrowser helperとして承認済みdirect setに加わった（research.md § 3）。）*
-  *（superseded 2026-07-23: scripts-disabled/network-disabled installの各run、別個のgenerated-shim
-  audit、payload content scan —
-  Rust/C/C++/Cargo、Node-API/native/binary/Wasm、`binding.gyp`、prebuild、platform selector、shell
-  helper、non-Node shebang、lifecycle/runtime download —
-  と、dependency単位のversion/integrity/bundle済みpayload
-  digestのassertionはscopeから外した。commit済みlockfileが各resolved versionとintegrity
+  *（superseded 2026-07-23: lockfileとpackage
+  managerが既に所有していないものだけへ絞った。commit済みlockfileが各resolved versionとintegrity
   hashを既にpinしており、testで再記述してもlockfileを二重化するだけで、install時のenforcementはpackage managerが所有する。plan.md §
   Source Code (repository root) 参照）*
 - [X] T1045 [P] Axe、keyboard、forced colors、zoom/reflow、reduced
@@ -7278,25 +7274,22 @@ dispositionである。
   gate後だけpublishされる一方、fence中のsession routeはcontrol DTOだけを返すこと、purge後にstale
   stateがleakしないこと、fence中sessionはrecovery-only、terminal disable commitがprior
   stateと混在しないことを`tests/integration/session-snapshot-encoding.test.ts`、`tests/contract/http-api-session.test.ts`、`tests/contract/http-api-files.test.ts`で証明する
-  *（superseded 2026-07-23: 事前serialize済みimmutable response buffer/exact length
-  assertionは削除した。devframeがresponse serializationを所有する）*
+  *（superseded 2026-07-23: devframeがresponse serializationを所有する）*
 
 ---
 
 ## フェーズ 104: リリースと成果エビデンス
 
-*2026-09-01改訂: このphaseが構築したsealed-capture study kit — protocol contract、3つの
-`scripts/*usability-study*` module、それらのcontract/integration/security suite、3つの
-`study:evidence:*` package command、product側のreadiness probe — を削除した。初見の
-participant 20名がこのprojectには得られず、それが存在する理由であるmoderated studyは行われ
-ないため、SC-001/SC-006は20件の自律agent sessionで測る。評価が読むtask材料は
+*2026-09-01改訂: このphaseが構築したcapture kitを削除した。初見のparticipant 20名がこの
+projectには得られず、それが存在する理由であるmoderated studyは行われないため、SC-001/SC-006は
+20件の自律agent sessionで測る。評価が読むtask材料は
 `tests/usability/sc001-sc006-study-inputs/`配下に残る。*
 
 **目的**: リリースマトリクスを組み立て、測定可能なすべての成功基準、最終ゲート、明示的なrelease Constitution Checkの合否エビデンスを記録する。
 
-**独立テスト**: 1つのclosed setでplatform非依存tarballをbuildし、Node.js 24/26の宣言済みcompatibility contract全体を維持しながら正確な6つのlower-bound Node/OS jobで同一byteをcertifyし、SC-001～SC-008の全denominator/thresholdをfinal candidate/profile/fixture/study digestへbindし、全remediationをapplicable gate/evidenceとcomplete-diff reviewへloopし、principleごとのConstitution Checkを記録してfrozen final treeでcomplete applicable automated matrixをpassする。
+**独立テスト**: 1つのclosed setでplatform非依存tarballをbuildし、Node.js 24/26の宣言済みcompatibility contract全体を維持しながら、その1つのcandidateのbyteを正確な6つのlower-bound Node/OS jobでcertifyし、SC-001～SC-008の全denominator/thresholdをfinal candidate、profile、fixtureのdigestと、それが名指しするtask materialへbindし、全remediationをapplicable gate/evidenceとcomplete-diff reviewへloopし、principleごとのConstitution Checkを記録してfrozen final treeでcomplete applicable automated matrixをpassする。
 
-**目に見えるチェックポイント**: 初期リリースが、明示的な自動化、参加者、アクセシビリティ、性能、安全性、残存リスク、憲章準拠のエビデンスを備え、公開可能な状態になる。
+**目に見えるチェックポイント**: 初期リリースが、明示的な自動化、初見利用、アクセシビリティ、性能、安全性、残存リスク、憲章準拠のエビデンスを備え、公開可能な状態になる。
 
 ### リリースワークフロー
 
@@ -7305,8 +7298,8 @@ participant 20名がこのprojectには得られず、それが存在する理�
   `24.11.0`/`26.0.0`と`ubuntu-latest`/`macos-latest`/`windows-latest`の6 lower-bound certification
   sampleへ配布し、runner-image identifier/actual Node versionを記録して、`^24.11.0 || ^26.0.0`をfull
   compatibility contractとして維持し、lockfileでpinしたproduction-graph integrityをassertするrelease jobを
-  `.github/workflows/Release.yml` に追加する *（superseded 2026-07-23: OS別の別個shim
-  auditはpackage-gate整理でscopeから外した）* *（amended 2026-08-26: runner labelとdevelopment/build
+  `.github/workflows/Release.yml` に追加する *（superseded 2026-07-23: lockfileとpackage
+  managerが既に所有していないものだけへ絞った）* *（amended 2026-08-26: runner labelとdevelopment/build
   Node.jsは、このrepositoryが手で進めるpinではなくplatformが現在出荷しているものを指す、release workflow
   fileは`Release.yml`であり、Changesetsでreleaseする: これらのcertification
   jobはその`select-mode`/`version`/`pack`/`publish` jobに加わり、certifyするtarballは`pack`が生成したものである）*
@@ -7317,8 +7310,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
   `id-token: write`をpublishするjobだけが持つこと、他のjobはcheckout以上の権限を持たないこと、tarballをpackする前に`pnpm run build`と`pnpm run verify:package`を実行すること、publish
   stepが自前のtreeではなくpack済みartifactをuploadすること。ci.ymlが所有するgateはrelease pathで繰り返さない — 同じcommitに対しpull
   requestが既に実行したsuiteを二度走らせても得るものはない — ため、これらのassertionはcoverageではなくpublishing pathの形を固定する
-  *（superseded 2026-07-23: scripts-disabled/network-disabled installとpackage-content-scan
-  gateはpackage-gate整理で削除した。lockfile integrity hashがpayload byteをpinする）* *（amended 2026-08-26:
+  *（superseded 2026-07-23: lockfile integrity hashがpayload byteをpinする）* *（amended 2026-08-26:
   release
   pathはci.ymlが所有するgateを再実行せず、assertionが固定するのは出荷済み`Release.yml`が既に持つcredential分割とpack-before-publishの順序である）*
 
@@ -7385,7 +7377,7 @@ participant 20名がこのprojectには得られず、それが存在する理�
   outcomeを除外も置換もせず記録し、safety eventになり得るものとして各セッションが報告した内容も
   記録する *(2026-09-01 修正: セッションはparticipant cohortではなくagent駆動であるため、
   recordが述べるのはproductのguidanceで何ができたかであり、human-subjectの結果ではない。)*
-  *(2026-09-03 修正: sealed-capture kitは削除済みであり（T1061、T1062）、
+  *(2026-09-03 修正: capture kitは削除済みであり（T1061、T1062）、
   SC-001自身の区間はprompt提示で始まりInspectorの起動を含むので、sessionには配信済みのoriginを渡さず、
   session自身がInspectorを起動する。T1195が記録するrunは各sessionにoriginを渡しており、SC-001を
   確立しないものとして記録されている。)* *(2026-09-04 修正: 本文を2026-09-03の注記が導入した
@@ -7436,11 +7428,10 @@ participant 20名がこのprojectには得られず、それが存在する理�
   equipmentが判定できるpackaged-prefix ruleへcontractを修正することで解消したので、reviewは
   open concern 0件を報告する。)* *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と
   113 が拡張した task set に従う。)* *(2026-09-04 修正: このreviewはchecklistが名指していた
-  sealed-capture harness — protocol contract、3つの`scripts/*usability-study*` module、その3 suite、
-  `study:evidence:*` command — を削除したので、本文は退役させた機構ではなくreviewが現在
-  対象とするものを述べる。)*（SC-003、SC-004、SC-005、SC-007、QR-004）
+  capture harnessを削除したので、本文はreviewが現在対象とするものを述べる。)*
+  （SC-003、SC-004、SC-005、SC-007、QR-004）
 
-- [ ] T1062 T1061がconcern 0件を報告するまでrelease-reviewのremediation loopを回す。そのreviewが
+- [X] T1062 T1061がconcern 0件を報告するまでrelease-reviewのremediation loopを回す。そのreviewが
   見つけたrepository editごとに、適用可能な自動matrixを完全に再実行する。
   `tests/usability/sc001-sc006-study-inputs/`配下の評価材料への編集、またはprimary workflowへの
   編集は、SC-001/SC-006の記録を無効化し、新しいrunのためにT1202へ戻す（spec.md § SC-001、SC-006）。
@@ -7449,25 +7440,25 @@ participant 20名がこのprojectには得られず、それが存在する理�
   T1056–T1057のevidenceを無効化しない。そのevidenceはkitを使わず、capture bundleを生まなかった
   agent駆動のrunだからである。)* *(2026-09-03・2026-09-04 修正: countと宣言範囲は、フェーズ 112 と
   113 が拡張した task set に従う。)* *(2026-09-04 修正: このloopのinvalidation triggerは、この
-  phaseが削除したsealed-capture harnessを含まない。存在しないものにrepository editは触れられない
+  phaseが削除したcapture harnessを含まない。存在しないものにrepository editは触れられない
   からである。本文は残っているtriggerを述べる。)*（SC-003、SC-004、SC-005、SC-007、QR-004）
 
-- [ ] T1063 Dependency/breaking-change rationale、migration impact、全violation解消、各residual
+- [X] T1063 Dependency/breaking-change rationale、migration impact、全violation解消、各residual
   uncertaintyのowner/resolution pathを含むprinciple-by-principle release Constitution
   Checkを`specs/001-inspect-agent-customizations/validation.md`と`specs/001-inspect-agent-customizations/validation.ja.md`へ実施・記録し、matching
   pull-request review checkを要求する。そのbilingual recordをT1062後のsole planned validation-only
   editとしrepositoryをfreezeする。Frozen tree/final candidateへ、build、frozen
   install、lint、typecheck、unit、contract、integration、security、package、performance、browser、coverage、documentation、lower-bound
   candidate checkを含むT1049–T1051の全applicable automated gateを再実行し、unchanged
-  candidate/profile/fixture/human/manual evidence bindingを検証し、T1061 complete-diff/tarball
+  candidate、profile、fixtureの各evidence bindingを検証し、T1061 complete-diff/tarball
   inspectionをread-onlyで反復し、最後に`pnpm run test:docs`と`git diff --check`を実行する。Outcomeはexternal
   release/pull-request check logだけへcaptureする。Failure、concern、または後続repository
   editがあれば全outcome/approvalを無効にし、T1063だけでなくT1062へ戻してdigest/evidence再validation、applicable
   rerun、complete-diff review後にT1063を再開しなければならない（MUST）
   *(2026-09-01改訂: 認証済み3 browser matrixはCIのものであり、その結果はここでは観測ではなくT1051に従い前提とする。Localのbrowser
   gateはChromium projectである。)*
-  *(2026-09-01改訂: study kitは退役したため、この再実行はcandidate、seal、human/manual evidence
-  bindingを検証せず、それらのreviewも繰り返さない。繰り返すのは、releaseが今も持つものに対する完全diffとtarballの読みである。)*
+  *(2026-09-01改訂: capture kitは退役したため、この再実行はそれが所有していたbindingを検証せず、
+  それらのreviewも繰り返さない。繰り返すのは、releaseが今も持つものに対する完全diffとtarballの読みである。)*
 
 - [X] T1141 カスタマイズファイルが一覧の行になる場所のすべてを、ツールごと・種別ごとに、
   リポジトリと（オプトインした）個人設定について、`docs/which-files-are-listed.md`と
@@ -7764,6 +7755,11 @@ sizeを述べることを確認する。
 **目的**: release evidenceとuser documentationを、interface reworkが生んだこのtreeと再び一致
 させ、拡張されたtask listに対してtask setのgateを回復する。
 
+*フェーズ 111〜113 の各taskは、閉じる不一致の種別で終わる。artifactが述べるべきことを述べていな
+かった場合は`(missing)`、treeが行わないことを述べていた場合は`(contradicts)`である。このmarkerは
+findingの名前であって、taskの状態ではない。完了したtaskも、本文が要求したことを保つのと同じく、
+何のために書かれたかのmarkerを保つ。*
+
 **独立したテスト**: `pnpm run test:docs` を実行し、拡張されたtask setに対してpassすることを確認
 する。稼働中のsessionの傍らで `./README.md` を開き、2枚のscreenshotと個人設定の一文がpageの表示
 どおりであることを確認する。`specs/001-inspect-agent-customizations/validation.md` を読み、記録
@@ -7984,13 +7980,10 @@ screenshot — に、このtreeが実際に持つartifactを名指させる。
 
 - [X] T1204 CRITICAL `docs/images/inventory.png` と `docs/images/comparison.png` を現行の
   interfaceに対して撮り直し、`./README.md` と `./README.ja.md` のalt textが各画像の内容を
-  なお説明しているかを確認する。commit済みの画像は 2026-09-03 のもので、以後 `src/` の61ファイルが
-  変わっている。一覧の画像はrailに `Source diagnostics` という項目を映しているが、productはもはや
-  それをrenderせず、`InventoryRail.vue` に残るのは削除理由を述べたコメントだけである。同じ画像の
-  Repositoryの状態は `Partial · 14` と読めるが、railは現在
-  `SOURCE_STATUS_STANDALONE_TEXT[...].word` だけをrenderし、注記はその下の行に置き、画像にはない
-  route markを傍らに描く。`package.json.files` は `docs/images` を同梱するため、これらはnpmが
-  配信するものである（憲章 IV、QR-004、T1029）（contradicts）
+  なお説明しているかを確認する。スクリーンショットは、一語も変えずに古くなる唯一の文書であり、
+  rail、statusの語彙、route markはいずれもcommit済みの2枚を撮った後に動いた。`package.json.files`
+  は `docs/images` を同梱するため、これらはnpmが配信するものである（憲章 IV、QR-004、T1029）
+  （contradicts）
 
 ### Task set の gate
 
@@ -8026,6 +8019,7 @@ screenshot — に、このtreeが実際に持つartifactを名指させる。
 | 15 Codex Instructions inventory | US1 | 静的な Codex instruction に加えて、repository 自身の `.codex/config.toml` が設定した instruction file もフィルタリングでき、構成 file 自体はどこにも現れません。 |
 | 16 Codex Instructions 詳細 | US2 | Codex instruction を選択すると、それが正確な静的 file であっても repository の構成が加えた名前であっても、完全で inert な detail — file の宣言、instructions、diagnostics から始まる — が開く。 |
 | 17 Claude Instructions inventory | US1 | Claude instruction file を filter できます。 |
+| 17b Instruction Applicability Grouping | US1 | 同じ範囲を統べる instruction file が1つにまとまり、各 file はそれを認識する製品だけを名指したままになります。 |
 | 18 Claude Instructions 詳細 | US2 | Claude instruction を選択すると、参照 file を import せず、完全で inert な detail が表示されます。 |
 | 19 Copilot Instructions inventory | US1 | Copilot instruction candidate を filter でき、明示的な exclusion が見えます。 |
 | 20 Copilot Instructions 詳細 | US2 | Copilot instruction を選択すると、別々の surface interpretation が表示されます。 |
@@ -8124,6 +8118,7 @@ screenshot — に、このtreeが実際に持つartifactを名指させる。
 | 110 detail見出しの、recognitionが持つ呼び出し名 | US2 | detailは各productの呼び出し名をそのproductの隣で述べ、ファイル自身の事実を見出しの下の行に置く。 |
 | 111 収束 | 共通の前提 | release evidenceとユーザー向けドキュメントが、作り直しの結果であるtreeを記述し、task-set gateがそのtreeで追加されたtaskを覆う。 |
 | 112 収束 | 共通の前提 | validation recordがこのtreeについての1つの記述として読め、story labelのruleが存在するphaseと一致する。 |
+| 113 収束 | 共通の前提 | artifactをそのidentityで名指す2つの記録 — outcome manifestのdigestと readmeのscreenshot — が、このtreeが持つartifactを名指す。 |
 
 ## 依存関係と実行順序
 
@@ -8183,6 +8178,10 @@ Setup
   → Documentation, Evidence, and Dependency Review
   → Cross-Cutting Verification
   → Release and Outcome Evidence
+  → Interface Foundation → Shell and Source State Routes → Inventory Row Compression
+  → Detail Surface Rework → Comparison Surfaces and Rework Closure
+  → Recognition-Owned Invocation Names on the Detail Head
+  → Convergence (111) → Convergence (112) → Convergence (113)
 ```
 
 - Delivery milestoneは厳密に順次実行する。後続milestoneが先行product sliceを再利用して回帰テストするためである。Phase 96–99だけは単一composite milestoneであり、numbered sliceを順に実行するがPhase 96–98をgreenまたはrelease可能と宣言せず、real member portがall-real-port suiteをpassしたPhase 99だけがmilestoneをcloseする。
@@ -8331,7 +8330,7 @@ authored な `name`、Claude Code は skill directory で、nested なら root �
   extractorが実行されるようになったため、名前はそれが公開するentryから読む。)* *(2026-08-04 修正:
   recognizerは両vendorで1つになり、名前はcatalog entryではなくfile自身の`name`
   keyである。Extractorが完了できないparseはfieldをabsentにするのではなくrecognitionを失敗させる。)* *(2026-08-23 修正:
-  どの事実がskillを名付けるかはadmitしたvendor自身のcontractであるため、ruleが答え、recognizerは`name` keyを自分で読まなくなった。)*
+  どの事実がskillを名付けるかはadmitしたvendor自身のcontractであるため、recognizerが`name` keyを読むのではなくruleが答える。)*
 - [X] T1067 [US1] そのkindのrow component（`src/app/components/inventory/rows/`） で、Source 相対 Path
   の隣に宣言済み名を描画する。名前は authored text であり、inert で、locator ではなく、行の identity として path を置き換えない。異なる
   directory の 2 つの skill が同じ名前を持ちうるからである。
@@ -8731,7 +8730,7 @@ directory名、nestedなClaude Code recognitionはroot相対prefix付き — で
 4. Nonempty admitted subsetではexactly one shared-ID `GlobalBatchScan`を実行し、0〜4個のseparate member Sourceをone completeまたはpartial Global generationで同時にatomic publishしてcarried Sourcesを保持しrootをmergeしない。Empty deterministic subsetはjobもgenerationも作らない。
 5. Global の再スキャン/回復と、優先ゼロ I/O 無効化バリアを追加する。
 6. Documentation/evidence/dependency reviewを完了し、その完成artifactに対してcross-cutting suiteを実行する。Remediationごとにprior post-review resultを無効にし、全applicable automated gateと影響evidence protocolを再実行し、concern 0件までcomplete-diff/tarball reviewを反復する。
-7. SC-001～SC-008のdenominator、threshold、pass/fail、`tests/usability/sc001-sc006-study-inputs/`のtask materialと20件のagent駆動sessionが採点対象としたground truth（participant cohortではなくagent駆動のrunとして記録する。spec.md § Clarifications, Session 2026-09-01）、outcome-fixture manifestのversionとcanonical digest、final packed-candidate digest、Node.js engines contract全体とexact lower-bound/browser certification sample、residual riskを記録する。sealed-capture kit、そのpackage command、環境変数、sealは削除済みであり（spec.md § Clarifications, Session 2026-09-01。T1061、T1062）、ここでそれらを実行も記録もしない。
+7. SC-001～SC-008のdenominator、threshold、pass/fail、`tests/usability/sc001-sc006-study-inputs/`のtask materialと20件のagent駆動sessionが採点対象としたground truth（participant cohortではなくagent駆動のrunとして記録する。spec.md § Clarifications, Session 2026-09-01）、outcome-fixture manifestのversionとcanonical digest、final packed-candidate digest、Node.js engines contract全体とexact lower-bound/browser certification sample、residual riskを記録する。capture kitは削除済みであり（spec.md § Clarifications, Session 2026-09-01。T1061、T1062）、ここでそれを実行も記録もしない。
 8. 原則ごとの明示的なrelease Constitution Checkを記録し、対応するpull request review checkを必須とし、その結果生じるrepository evidence editをすべて完了する。
 9. Repositoryをfreezeした状態でcomplete applicable automated matrixとread-only complete-diff/tarball reviewを再実行し、`pnpm run test:docs`と`git diff --check`で終える。Outcomeはexternal release/pull-request check logだけへcaptureする。その後repositoryをeditした場合は全outcomeを無効にし、Constitution/final-tree gateの再実行前にstep 6/T1062へ戻る。
 

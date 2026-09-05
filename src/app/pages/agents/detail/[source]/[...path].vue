@@ -316,12 +316,6 @@ const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacte
 
 /**
  * The products that recognize this file and the surfaces they recognize it on,
- * restated from the row so the page and the list agree (FR-007). The row's
- * definitions are already in the closed tool order and each one's surfaces in
- * the closed surface order.
- */
-/**
- * The products that recognize this file and the surfaces they recognize it on,
  * restated from the row so the page and the list agree (FR-007). One
  * definition per `(file, tool)`, so the file's definitions are its
  * recognitions.
@@ -494,7 +488,7 @@ const noAgentNameText = computed(() =>
 );
 
 /**
- * The label {@link agentNamesText} is introduced by, plural exactly when the
+ * The label {@link displayedAgentNames} is introduced by, plural exactly when the
  * recognizing products name the file's agent differently. Counted from the
  * names themselves rather than from the rendered line, which a name holding a
  * comma and a space would split into two. Written here for the same reason the
@@ -677,11 +671,31 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * The detail's arrival is where that is decided, because it is the first
  * moment there is anything to decide between: the strip is rendered beside the
  * detail, so until one is in hand no tab is on screen to have been chosen.
+ *
+ * Which file arrived, rather than that one did: a commit drops the open detail
+ * and the route re-requests under the new generation (FR-030), so a rescan
+ * while the reader is reading takes the detail away and brings the same one
+ * back, and deciding again on that round trip would move a reader who had
+ * switched tabs. The identity is the file's own — its Source and its
+ * Source-relative Path together — which is what makes a move to another file a
+ * new decision and a refetch of this one not (`plugins/detail`
+ * § tabDecidedFor, the same rule).
+ *
+ * A plain `let` rather than a ref: nothing but the watch below reads it, so
+ * there is no render to keep in step and a ref would declare state the view
+ * depends on when none does.
  */
-watch(openDetail, (detail) => {
-  if (detail !== null) {
-    activeTab.value = detail !== null && presentationOf(detail) !== null ? 'agent' : 'file';
+let tabDecidedFor: string | null = null;
+watch([openDetail, openSource, openPath], ([detail, source, path]) => {
+  if (detail === null) {
+    return;
   }
+  const decidingFor = `${source}\u0000${path}`;
+  if (tabDecidedFor === decidingFor) {
+    return;
+  }
+  tabDecidedFor = decidingFor;
+  activeTab.value = presentationOf(detail) !== null ? 'agent' : 'file';
 });
 
 /**
@@ -1199,18 +1213,6 @@ onBeforeUnmount(() => {
    not get, so it is tighter here than the shell's default heading spacing. */
 .aci-agent-detail > p:first-child {
   margin: 0;
-}
-
-/* The recognition caption line, weighted like a heading within the overview:
-   it says which products' recognition the page restates. */
-.aci-agent-detail__recognition {
-  font-weight: 600;
-  margin: 0;
-}
-
-.aci-agent-detail__overview {
-  border-bottom: 1px solid var(--aci-line);
-  padding-bottom: 0.5rem;
 }
 
 /* The two halves of the parse, inside the tab that holds them. */

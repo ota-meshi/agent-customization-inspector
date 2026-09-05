@@ -122,7 +122,7 @@ export interface DeclaredPluginSource {
   /** The published classification (`api-types.ts` § PluginSourceForm). */
   readonly form: PluginSourceForm;
   /**
-   * The plugin root's raw entry-name segments, or null when the source names
+   * The plugin root's path segments as the declaration spelled them, or null when it names
    * no directory inside this Source — every form but a relative path, and a
    * relative path {@link localPluginRootSegments} refuses.
    */

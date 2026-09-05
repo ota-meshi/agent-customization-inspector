@@ -308,7 +308,10 @@ describe('instruction comparison view (T276)', () => {
       { source: 'repository', sourceRelativePath: RIGHT_PATH },
     );
     expect(state.instructionComparison.status.value).toBe('not-readable');
-    expect(state.instructionComparison.unreadablePath.value).toBe(RIGHT_PATH);
+    expect(state.instructionComparison.unreadableSide.value).toEqual({
+      source: 'repository',
+      sourceRelativePath: RIGHT_PATH,
+    });
     // Neither side renders: a comparison with one side is not a comparison.
     expect(state.instructionComparison.leftDetail.value).toBeNull();
     expect(state.instructionComparison.rightDetail.value).toBeNull();

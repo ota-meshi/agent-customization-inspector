@@ -79,22 +79,12 @@ const rejectionText = computed(() => {
 
 /**
  * Whether an accepted read is still running. While it is, the panel's summary
- * says the directories are being read and the rows below say what the last
- * refresh returned — two statements about one moment, unless the rows are
- * dated. The predicate is the session module's, because the inventory's rail
+ * says a read is in progress and the rows below say what the last refresh
+ * returned — two statements about one moment, unless the rows are dated. The predicate is the session module's, because the inventory's rail
  * answers for the same read (`view-state.ts` § runningGlobalBatch).
  */
 const runningBatch = computed(() => runningGlobalBatch(sessionViewState.snapshot.value));
 
-/**
- * What consent currently amounts to, in one sentence.
- *
- * Derived from the controls and the batch rather than from the acceptance
- * response, because that response is a statement about one moment: it says a
- * batch was queued, and repeating it after the batch committed would tell a
- * reader their files are "being read now" when the reading is over. The
- * controls are the current answer and survive a reload.
- */
 /**
  * The Global sequence's committed generation, or null before the sequence
  * exists. Read from the snapshot rather than counted here: one sequence has
@@ -102,20 +92,110 @@ const runningBatch = computed(() => runningGlobalBatch(sessionViewState.snapshot
  */
 const globalGeneration = computed(() => sessionViewState.snapshot.value?.globalGeneration ?? null);
 
+/**
+ * Whether this page's own confirmation was answered and its outcome never
+ * landed: the response was an acceptance, or a delivery failure that can hide
+ * one, and the refetch that would have brought the committed state settled
+ * without adopting a snapshot ({@link SessionViewState.globalEnableState}).
+ *
+ * That state is the whole of it. Whether the snapshot reports an operation
+ * running says nothing about it: when one is running and this page holds a
+ * confirmation, the operation *is* this page's, and describing it as a read
+ * this page has not taken in would read as someone else's. Nor does how many
+ * controls are on screen — what this states is the page's own state, and
+ * whether the panel below is drawn is the panel's business.
+ */
+const ownConfirmationOutcomeUnfetched = computed(
+  () => sessionViewState.globalEnableState.value === 'unfetched',
+);
+
+/**
+ * What every sentence about a read still running ends with, so the reader is
+ * told the same thing about where the files appear in each of those states.
+ * Where they appear is why anyone waits, and the subject of each sentence is
+ * the reading, so `it` is what the read is called back.
+ *
+ * A read that is over does not carry it: the batch commits before the host
+ * answers, so the files are on the inventory already and naming where they
+ * will appear would ask the reader to wait for something that has happened.
+ */
+const READ_DESTINATION = 'The files appear on the inventory when it finishes.';
+
+/**
+ * What consent currently amounts to, in one sentence.
+ *
+ * Derived from the controls, the batch, and this page's own request state
+ * rather than from the acceptance response, because that response is a
+ * statement about one moment: it says a batch was queued, and repeating it
+ * after the batch committed would tell a reader a read is in progress when the
+ * reading is over. The controls are the current answer and survive a reload.
+ */
 const consentSummary = computed(() => {
   if (sessionViewState.globalEnableState.value === 'submitting' && runningBatch.value === null) {
-    // The confirmation answers once the read finished (contracts/http-api.md
-    // § enable-global), so while it is out this page knows that a read is
-    // running and not yet which members were admitted: the count arrives
-    // with the answer, and the sentence below states it then.
-    return 'These directories are being read now. The files appear on the inventory when the read finishes.';
+    // Two states, not one: a first consent reads every directory the reader
+    // ticked, and a retry reads exactly the subset the same preview can retry
+    // (contracts/http-api.md § enable-global `retryableTools`) — so `these
+    // directories`, standing over all four rows, would overclaim on a retry.
+    //
+    // Split on `controls.length` rather than on the count, because that is
+    // what the confirm control's own label switches on: split on anything else
+    // and a press that says `Try the failed members again` could be answered
+    // by a sentence that says `these directories`. The count comes from the
+    // retryable subset, which the snapshot already carries and which cannot
+    // move while the confirmation is out — no refetch happens until it
+    // answers.
+    return controls.value.length === 0
+      ? `Reading these directories is in progress. ${READ_DESTINATION}`
+      : `Reading ${retryableTools.value.length} of these directories is in progress. ${READ_DESTINATION}`;
+  }
+  if (sessionViewState.globalEnableState.value === 'answered') {
+    // The reading this confirmation started is over: the host answers once
+    // every admitted member's scan is terminal, with the batch committed
+    // (contracts/http-api.md § enable-global), so what is still out is this
+    // page's own refetch of the committed state. Saying `in progress` of it
+    // would state a read that has finished, and this region is announced.
+    //
+    // No count: nothing was read on this side, and the number the branch above
+    // states is the number of directories being read. The snapshot on screen
+    // is still the one from before the confirmation, which is exactly what the
+    // refetch replaces, so this branch does not consult it at all.
+    return 'Reading finished. The result is loading.';
+  }
+  if (ownConfirmationOutcomeUnfetched.value) {
+    // Before the batch branch, not after it: the refetch failed, so the
+    // adopted snapshot is the one from before this confirmation and can still
+    // carry an earlier batch. Read in that order, the batch sentence below
+    // would count that earlier batch while nothing said this page's own
+    // outcome never arrived — and with rows on screen the settled count below would
+    // state them as final while a read this page started is unaccounted for,
+    // which is the one thing this panel must not do.
+    // Which of the two the outcome decides: whether this side is holding an
+    // acceptance, or a delivery failure that may still have reached the host.
+    // Each carries its own `Refresh status` instruction, because the note the
+    // panel draws is about a read that started elsewhere and this one is this
+    // page's own.
+    return sessionViewState.globalEnableResult.value !== null
+      ? 'Your confirmation was accepted, but fetching the result failed. Use “Refresh status” to load the current state.'
+      : 'Your confirmation was sent, but its outcome could not be fetched. The host may already be reading; use “Refresh status” to load the current state.';
   }
   const running = runningBatch.value;
   if (running !== null) {
-    const count = running.tools.length;
-    return `${count} of these directories ${
-      count === 1 ? 'is' : 'are'
-    } being read now. The files appear on the inventory when the read finishes.`;
+    // `in progress` rather than `being read now`, for the reason the
+    // Repository's own `Rescan in progress.` carries: a batch's phase includes
+    // `waiting` — queued and not yet started — and the phase itself is from
+    // the last refresh, so this side can say neither that the read is running
+    // nor that it is queued, and must not claim the distinction.
+    return `Reading ${running.tools.length} of these directories is in progress. ${READ_DESTINATION}`;
+  }
+  if (enableInProgress.value !== null) {
+    // An accepted enable this page has not taken in — another tab's, or this
+    // one's across a reload — whose batch is not in the adopted snapshot yet.
+    // Without this the sentence below would report the rows as settled while
+    // a read was running, which is the one thing this panel must not do: the
+    // rows are from before that read started, and `Refresh status` above is
+    // how a reader holding no command follows it (contracts/http-api.md
+    // § enable-global).
+    return 'A read this page has not taken in is in progress. Use “Refresh status” to follow it.';
   }
   const published = controls.value.filter((control) => control.state === 'published').length;
   if (batchStatus.value?.phase === 'failed') {
@@ -176,6 +256,69 @@ const controls = computed(() => sessionViewState.snapshot.value?.globalControl?.
  */
 const enableInProgress = computed(
   () => sessionViewState.snapshot.value?.globalEnableInProgress ?? null,
+);
+
+/**
+ * What this page says while it is fetching its own proposal, written once
+ * because the live region announces the same sentence the page renders.
+ */
+const LOADING_STATUS = "Loading this page's status…";
+
+/**
+ * What the block below says when the operation running is not this page's own,
+ * written once because the live region announces the same sentence the block
+ * renders.
+ */
+const OTHER_TAB_ENABLING =
+  'Personal inspection is already being enabled — possibly from another tab. Use “Refresh status” to follow it.';
+
+/**
+ * Whether the scan-status panel is on screen: this page holds a confirmation,
+ * or the snapshot carries controls a batch published or rejected.
+ */
+const scanStatusShown = computed(
+  () => controls.value.length > 0 || sessionViewState.globalEnableState.value !== 'idle',
+);
+
+/**
+ * Whether the page is showing an operation it does not own — another tab's
+ * enable, or this one's across a reload — which has no controls yet.
+ */
+const otherTabEnabling = computed(
+  () =>
+    enableInProgress.value !== null &&
+    controls.value.length === 0 &&
+    sessionViewState.globalEnableState.value === 'idle',
+);
+
+/**
+ * Whatever this page's status is at the moment, for the region to announce.
+ *
+ * The same string reaching two nodes is the shape rather than a duplicate: the
+ * region says a state changed, the visible sentence is the state itself, and a
+ * reader meets each in its own way — the region when it changes, the paragraph
+ * when they navigate to it. The shell does the same with its error
+ * (`App.vue` § errorAnnouncement, whose string the visible `.aci-error`
+ * paragraph repeats).
+ *
+ * It is stated here because each visible sentence lives inside a block that
+ * appears with the state it describes, so an `aria-live` on one of those is
+ * created with its text already in it and announces nothing (W3C ARIA22).
+ * This region is mounted empty from the first render, outside every `v-if`,
+ * which is what lets it speak at all.
+ *
+ * One sentence at a time, because the three states are exclusive:
+ * {@link otherTabEnabling} requires an idle enable and no controls, which is
+ * exactly what {@link scanStatusShown} is false for.
+ */
+const statusAnnouncement = computed(() =>
+  previewState.value === 'loading'
+    ? LOADING_STATUS
+    : scanStatusShown.value
+      ? consentSummary.value
+      : otherTabEnabling.value
+        ? OTHER_TAB_ENABLING
+        : '',
 );
 
 /**
@@ -317,13 +460,13 @@ watch(
          is the region's text; the visible sentence below is the state itself,
          and carries no region of its own so the two are not two announcements. -->
     <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ previewState === 'loading' ? "Loading this page's status…" : '' }}
+      {{ statusAnnouncement }}
     </p>
 
     <!-- Names what is loading, which is this page's own state: the proposal
          is fetched, and no directory is read for it (`view-state.ts`
          § consentPreviewState). -->
-    <p v-if="previewState === 'loading'">Loading this page's status…</p>
+    <p v-if="previewState === 'loading'">{{ LOADING_STATUS }}</p>
 
     <!-- The two states before a preview exist in a panel of their own, as the
          state of what was consented does below and as the Repository page's
@@ -406,11 +549,8 @@ watch(
            (`ScanProgress.vue`): both are a Source family's current state
            rather than the page's explanation of itself, and a reader coming
            back for it should find the same box on either surface. -->
-      <section
-        v-if="controls.length > 0 || sessionViewState.globalEnableState.value === 'submitting'"
-        class="aci-panel"
-      >
-        <h3>What is inspected</h3>
+      <section v-if="scanStatusShown" class="aci-panel">
+        <h3>Scan status</h3>
         <!-- The Global sequence's committed generation, which FR-030 puts on
              this Source family's own surface beside its roots, statuses, and
              rescans. Once for the family rather than once per member: the four
@@ -424,13 +564,13 @@ watch(
           <dt>Committed generation</dt>
           <dd>{{ globalGeneration }}</dd>
         </dl>
-        <p aria-live="polite">{{ consentSummary }}</p>
+        <p>{{ consentSummary }}</p>
         <!-- This surface commands its own reads, as the Repository's does: the
              bar's scan commands stop at the inventory, which is the one surface
              with no panel of its own to carry them (`App.vue`). The note is
              what the button is for — a batch that fails after the acceptance's
-             own refresh would otherwise leave "being read now" on screen with
-             no error and no retry, because the retry offer is derived from the
+             own refresh would otherwise leave a read stated as in progress on
+             screen with no error and no retry, because the retry offer is derived from the
              snapshot too and cannot appear until the reader asks for the
              current state. -->
         <!-- Who the refresh is for, in the Repository panel's exact form
@@ -439,7 +579,14 @@ watch(
              no command — a read that began before this page opened, or in
              another tab — whose only way to the result is to ask
              (contracts/http-api.md § get-session, § enable-global). -->
-        <p class="aci-note">
+        <!-- Not under the one summary that says a read started here did not
+             report its own result: the second sentence would then contradict
+             the line above it, and a reader comparing the two doubts the one
+             that is true. Every other summary leaves the note true, so this is
+             the single case it stands out of (AGENTS.md § Implementation
+             simplicity policy — a deviation exists only together with its
+             reason). -->
+        <p v-if="!ownConfirmationOutcomeUnfetched" class="aci-note">
           Nothing on this page updates by itself. A read you start here reports its own result. Use
           “Refresh status” for a read that started elsewhere — in another tab, or before this page
           opened.
@@ -490,50 +637,17 @@ watch(
         </p>
       </section>
 
-      <!-- A confirmation whose outcome has not landed: the response was an
-           acceptance, or a delivery failure that can hide one, and the
-           refetch failed — so the stale preview is on screen with no
-           controls. The hold in `SessionViewState.confirmGlobalConsent`
-           keeps confirm and recapture out; Refresh is the way forward, and
-           Disable stays offered because the host may already be reading
-           (contracts/http-api.md § disable-global: disable is available in
-           every state). -->
-      <template
-        v-if="
-          sessionViewState.globalEnableState.value === 'answered' &&
-          controls.length === 0 &&
-          enableInProgress === null
-        "
-      >
-        <p aria-live="polite">
-          {{
-            sessionViewState.globalEnableResult.value !== null
-              ? 'Your confirmation was accepted, but fetching the result failed. Use “Refresh status” to load the current state.'
-              : 'Your confirmation was sent, but its outcome could not be fetched. The host may already be reading; use “Refresh status” to load the current state.'
-          }}
-        </p>
-        <p>
-          <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
-          <button
-            type="button"
-            :aria-disabled="sessionViewState.globalDisableState.value === 'submitting' || undefined"
-            @click="sessionViewState.requestGlobalDisable()"
-          >
-            Disable personal inspection
-          </button>
-        </p>
-      </template>
-
       <!-- A live enable operation another tab (or a reload) is following:
            confirming or recapturing would only collect the fixed conflict,
            so the page states the operation and keeps disable available even
            though no control exists yet (data-model.md
-           § GlobalEnableOperation). -->
-      <template v-if="enableInProgress !== null && controls.length === 0">
-        <p aria-live="polite">
-          Personal inspection is already being enabled — possibly from another tab. Use “Refresh
-          status” to follow it.
-        </p>
+           § GlobalEnableOperation).
+           `idle` is what says the operation is not this page's own: a page
+           holding its own confirmation states that outcome in the panel above,
+           and both drawn at once would put two `Refresh status` buttons on
+           screen under two sentences about one operation. -->
+      <template v-if="otherTabEnabling">
+        <p>{{ OTHER_TAB_ENABLING }}</p>
         <p>
           <button type="button" @click="sessionViewState.refresh()">Refresh status</button>
           <button

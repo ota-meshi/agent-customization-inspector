@@ -222,8 +222,8 @@ occupies is a fact about that customization, and one directory is enumerated onc
 many products recognize its entry point.
 
 The census result is the files themselves, published as ordinary files of the generation at
-their Source-relative Paths, not a count of them. Each path is the exact raw entry names
-joined with `/`, like every published path: the filesystem holds one entry per name, so
+their Source-relative Paths, not a count of them. Each path is the stored entry names joined
+with `/`, like every enumerated path: the filesystem holds one entry per name, so
 every listed path is unambiguous, and two raw spellings that would render alike are two real
 files listed apart. A customization's own file list is derived from those published paths
 wherever it is shown: the inventory row states how many files there are and the file detail
@@ -385,12 +385,16 @@ target is missing or unreadable yields that file's `file-unreadable` Diagnostic,
 recursive traversal tracks visited directories by real path so a link cycle cannot
 prevent a scan from terminating. Hard links are ordinary files: there is no
 physical-identity grouping, no read-once semantics, and no primary/alias path selection.
-A directory named `.git`, `.hg`, `.svn`, or `node_modules` is never entered. A VCS-internal
-name follows the containing volume's own name identity: a case variant such as `.GIT` is
-excluded when that volume resolves it as `.git`, while a distinct directory authored with
-that spelling on a case-sensitive volume remains eligible. Resolved paths apply the same
-rule, because reaching VCS internals through another entry does not make them repository
-customizations. VCS internals are the repository's own machinery rather than customizations authored in it; a
+A directory named `.git`, `.hg`, `.svn`, or `node_modules` is never entered, matched as the
+filesystem spelled the entry. Resolved paths apply the same rule, because reaching VCS
+internals through another entry does not make them repository customizations. A case
+variant is not asked about: what would decide is the containing volume's own name
+resolution, which no platform check answers — macOS ships both kinds of volume — while
+folding case by platform would hide a `.GIT` a reader authored on a case-sensitive one.
+Reaching the variant needs a store the reader created under that spelling before the VCS
+used it, and what entering one costs is over-listing — a customization file inside VCS
+machinery is listed on a surface whose whole claim is that being listed is not being
+loaded; nothing is executed and nothing outside the selected root is read (FR-019). VCS internals are the repository's own machinery rather than customizations authored in it; a
 `node_modules` directory holds packages a package manager installed, so a customization
 file inside one belongs to the package that shipped it and is reproduced from the manifest
 and lockfile rather than authored in the repository under inspection. A product may still

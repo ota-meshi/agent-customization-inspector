@@ -68,7 +68,7 @@ export type PathAddressedDetailKind = Extract<
  * The URL segment each path-addressed detail route is rooted at, in the closed
  * kind order (`entities.ts` § CUSTOMIZATION_KIND_ORDER).
  */
-const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = {
+export const DETAIL_ROUTE_SEGMENT: Readonly<Record<PathAddressedDetailKind, string>> = {
   /** Instruction files live under `/instructions/`. */
   instructions: 'instructions',
   /**
@@ -176,6 +176,38 @@ export function encodeDetailRoutePath(sourceRelativePath: string): string {
  */
 export function decodeDetailRoutePath(segments: readonly string[]): string {
   return segments.map(fromJsonStringBody).join('/');
+}
+
+/**
+ * The kind each route family's first URL segment addresses, or null for a
+ * segment no kind is rooted at. The inverse of {@link DETAIL_ROUTE_SEGMENT},
+ * derived from it rather than spelled again: which segment a kind lives under
+ * is one fact, and a second table would be a place for the two to disagree
+ * about a kind added to only one of them.
+ *
+ * Every route of a family answers, not only its detail: a comparison lives
+ * under the same first segment, and what a surface asks this is which kind the
+ * page is about.
+ *
+ * The key type is restated on the entries because `Object.entries` widens it
+ * to `string`; the value it walks is a `Record` over that union, so every key
+ * it yields is a member and nothing is asserted that the table does not
+ * already prove.
+ */
+export function detailRouteKindOf(path: string): PathAddressedDetailKind | null {
+  const segment = path.split('/')[1];
+  if (segment === undefined) {
+    return null;
+  }
+  for (const [kind, rooted] of Object.entries(DETAIL_ROUTE_SEGMENT) as readonly [
+    PathAddressedDetailKind,
+    string,
+  ][]) {
+    if (rooted === segment) {
+      return kind;
+    }
+  }
+  return null;
 }
 
 /**

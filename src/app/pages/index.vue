@@ -12,10 +12,10 @@
 // question asked once, and the personal-setup panel duplicated the consent
 // page outright.
 //
-// `Files in no kind` and `Diagnostics` are rail entries rather than sections
-// appended below the rows. Both are lists of files, which is the whole test for
-// what belongs in the rail; as sections they sat past sixty rows of whatever
-// kind was in view, and moved every time the reader changed kinds.
+// `Files in no kind` is a rail entry rather than a section appended below the
+// rows. It is a list of files, which is the whole test for what belongs in the
+// rail; as a section it would sit past sixty rows of whatever kind is in view,
+// and move every time the reader changed kinds.
 //
 // The session view state is injected rather than created: the shell owns the
 // one RPC connection and the one adopted snapshot, and a second view state
@@ -191,6 +191,13 @@ onBeforeRouteLeave((to) => {
 });
 
 /**
+ * The unit the entry in view counts its rows by, for the filter row's own
+ * announcement — the same table the heading's count reads, so the sentence a
+ * reader hears and the words beside it cannot part.
+ */
+const selectionUnit = computed(() => INVENTORY_SELECTION_UNIT_TEXT[activeSelection.value]);
+
+/**
  * How many rows the entry in view holds, and what they are in that entry's own
  * unit (`rail-selection.ts` § INVENTORY_SELECTION_UNIT_TEXT).
  *
@@ -202,13 +209,6 @@ onBeforeRouteLeave((to) => {
  * diagnostic read "Customization files · 1 diagnostic" over a list saying no
  * customization file was recognized.
  */
-/**
- * The unit the entry in view counts its rows by, for the filter row's own
- * announcement — the same table the heading's count reads, so the sentence a
- * reader hears and the words beside it cannot part.
- */
-const selectionUnit = computed(() => INVENTORY_SELECTION_UNIT_TEXT[activeSelection.value]);
-
 const selectionSummary = computed<{ readonly count: number; readonly unit: string }>(() => {
   const selection = activeSelection.value;
   const count = railCounts.value.get(selection) ?? 0;
@@ -415,16 +415,24 @@ const globalSources = computed(
  * — and this client's own confirmation, which answers only once every admitted
  * member's scan settled, so until then no batch is in any snapshot it holds
  * (contracts/http-api.md § enable-global).
+ *
+ * A third way, and the one that is neither: an enable the host accepted whose
+ * batch has not reached the adopted snapshot. The consent page already reads
+ * it as a read in progress, so leaving it out here made the rail say
+ * `Not inspected` of the same moment that surface calls a running read — two
+ * answers to one question, which is what one predicate for both exists to
+ * prevent.
  */
 const globalReadInProgress = computed(
   () =>
     runningGlobalBatch(snapshot.value) !== null ||
+    (snapshot.value?.globalEnableInProgress ?? null) !== null ||
     sessionViewState.globalEnableState.value === 'submitting',
 );
 
 /**
  * The one sentence the panel's live region announces: which tools' personal
- * directories have been read, and how each ended.
+ * directories have been read, how each ended, and whether a read is out.
  *
  * Named tools rather than a count, because that is what a reader needs to know
  * without looking — and no root, because a root belongs in the labelled field
@@ -435,19 +443,29 @@ const globalReadInProgress = computed(
  * whole state: `ready` and `partial` are one word, so a member that came back
  * from a refresh with a file-confined diagnostic would otherwise be announced
  * in the sentence it was announced in before (WCAG 4.1.3).
+ *
+ * A read that is out is said too, and beside the members rather than instead
+ * of them. The rail's entry changes to `Scanning` when nothing outranks it, so
+ * a reader who cannot see that entry would otherwise be told nothing at all
+ * before the first commit — and during a retry over published members, saying
+ * only that a read is running would hide the very member the reader is
+ * retrying for (contracts/accessibility-acceptance.md § 4.1.3).
  */
-const globalSourcesAnnouncement = computed(() =>
-  globalSources.value.length === 0
-    ? ''
-    : `Your personal setup was inspected: ${globalSources.value
-        .map((source) => {
-          const { word, note } = SOURCE_STATUS_STANDALONE_TEXT[source.status];
-          const member =
-            source.member === null ? 'Unknown member' : GLOBAL_MEMBER_TEXT[source.member];
-          return `${member} ${word.toLowerCase()}${note === null ? '' : `, ${note}`}`;
-        })
-        .join('; ')}.`,
-);
+const globalSourcesAnnouncement = computed(() => {
+  const inspected =
+    globalSources.value.length === 0
+      ? ''
+      : `Your personal setup was inspected: ${globalSources.value
+          .map((source) => {
+            const { word, note } = SOURCE_STATUS_STANDALONE_TEXT[source.status];
+            const member =
+              source.member === null ? 'Unknown member' : GLOBAL_MEMBER_TEXT[source.member];
+            return `${member} ${word.toLowerCase()}${note === null ? '' : `, ${note}`}`;
+          })
+          .join('; ')}.`;
+  const running = globalReadInProgress.value ? 'Your personal setup is being inspected.' : '';
+  return [inspected, running].filter((part) => part !== '').join(' ');
+});
 </script>
 
 <template>
@@ -498,11 +516,11 @@ const globalSourcesAnnouncement = computed(() =>
              holds, and the selects that narrow it. They are here rather than in
              the rail because what they narrow is the list beside them; the rail
              answers which list is in view at all. The Source select is offered
-             on every list, the two that belong to no kind included — a file no
-             kind lists still belongs to a Source, and so does a Source-level
-             diagnostic. The Tool select is not offered there: no product
-             recognized a file in no kind, and a Source-level diagnostic is not
-             tied to a product (FR-006). -->
+             on every list, the one that belongs to no kind included — a file no
+             kind lists still belongs to a Source. The Tool select is not
+             offered there: no product recognized a file in no kind, so the
+             control would ask a question those rows cannot answer
+             (FR-006). -->
         <div class="aci-inventory-page__head">
           <h2 ref="inventoryHeading" class="aci-inventory-page__title" tabindex="-1">
             {{ INVENTORY_SELECTION_TEXT[activeSelection] }}
@@ -557,7 +575,10 @@ const globalSourcesAnnouncement = computed(() =>
           </p>
           <UnclassifiedList
             :files="filters.unrecognizedRows.value"
+            :total-count="filters.unrecognizedTotal.value"
+            :narrowed="filters.isNarrowed.value"
             :diagnostics="snapshot.diagnostics"
+            @clear="clearFiltersFromEmptyResult"
           />
         </section>
 

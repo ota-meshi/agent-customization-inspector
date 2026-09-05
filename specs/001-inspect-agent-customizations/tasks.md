@@ -239,7 +239,7 @@ the task would have built.
   use of `documentation-conflict` as a documentation status. Also cover closed descriptors, ordinary
   Diagnostic scopes, opaque IDs, and internal state kept out of DTOs by construction, in
   `tests/unit/shared/entities.test.ts` and `tests/unit/shared/api-types.test.ts` *(amended
-  2026-07-29: a published path is now the raw entry names joined with `/`; spec.md Clarifications §
+  2026-07-29: restated for the published-path decision in spec.md § Clarifications,
   Session 2026-07-29.)* *(amended 2026-08-04: the scalar status and qualifier fields are the whole
   shape — nothing projects a source condition (T091), so no entity records one.)*
 - [X] T018 Create deterministic cross-platform fixtures for symbolic links to files and directories
@@ -345,8 +345,8 @@ the task would have built.
   scalar fields `documentationStatus` and `lifecycleQualifiers`, and put them only on each behavior,
   rule, or strategy. Reject internal authority, acknowledgement, validation, scalar
   aggregate-status, or fabricated `stable` fields in `src/shared/entities.ts` and
-  `src/shared/api-types.ts` *(amended 2026-07-29: a published path is now the raw entry names joined
-  with `/`; spec.md Clarifications § Session 2026-07-29.)* *(amended 2026-08-04: the scalar status
+  `src/shared/api-types.ts` *(amended 2026-07-29: restated for the published-path decision in
+  spec.md § Clarifications, Session 2026-07-29.)* *(amended 2026-08-04: the scalar status
   and qualifier fields are the whole shape — nothing projects a source condition (T091), so no
   entity records one.)* *(amended 2026-08-21: the two fields are the expansion of the
   runtime-composition contract's canonical evidence-assessment index, so
@@ -362,8 +362,8 @@ the task would have built.
   attempt (FR-002), and record a file that disappears or cannot be read—including a broken link—as
   that file's `file-unreadable` Diagnostic without affecting other files; add no identity
   re-verification between operations, no detected-change taxonomy, and no resource registry (FR-019,
-  FR-024) *(amended 2026-07-29: a published path is now the raw entry names joined with `/`; spec.md
-  Clarifications § Session 2026-07-29.)*
+  FR-024) *(amended 2026-07-29: restated for the published-path decision in spec.md
+  § Clarifications, Session 2026-07-29.)*
 - [X] T030 Define the closed immutable versioned `TraversalPlan` and segment-program types from
   `data-model.md § TraversalPlan` beside the registry in `src/server/inspection/rules/registry.ts`,
   and make `src/server/inspection/traversal.ts` interpret only those compiled plans: typed
@@ -373,8 +373,8 @@ the task would have built.
   with a repeated option resolving to the parser's last value, an absolute value kept as given, a
   relative value resolved against the one captured `process.cwd()`—and the scan simply reads the
   retained selected root; no shared root-grammar parser module or separate admission layer exists
-  (FR-001, FR-019) *(amended 2026-07-29: a published path is now the raw entry names joined with
-  `/`; spec.md Clarifications § Session 2026-07-29.)*
+  (FR-001, FR-019) *(amended 2026-07-29: restated for the published-path decision in spec.md
+  § Clarifications, Session 2026-07-29.)*
 - [X] T031 Implement per-file reading in `src/server/inspection/traversal.ts`: read each discovered
   file exactly once per scan attempt with an ordinary read-only `fs/promises` read and no
   mutation-capable flag, reading a symlinked candidate transparently through its target, convert a
@@ -424,8 +424,8 @@ the task would have built.
   `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`—from `package.json` and the
   `pnpm-lock.yaml` closure in `tests/package/production-graph.test.ts` (no separate production-graph
   script or evidence file exists), retaining the fixed Node ESM CLI entry scaffolded by T003
-  *(superseded 2026-07-23: the locked-version and registry-integrity assertions were removed — the
-  committed lockfile already pins both, so a test restating them duplicates the lockfile)* *(amended
+  *(superseded 2026-07-23: the committed lockfile pins every resolved version with its integrity
+  hash, so a test restating either duplicates the lockfile)* *(amended
   2026-08-08: the `/skills/**` shell fallback made `h3` an approved direct dependency, declared as a
   caret range like the rest and resolved by the lockfile to devframe's own h3 so both resolve one
   module instance (research.md § 3).)* *(amended 2026-08-16: the product-owned startup browser
@@ -453,8 +453,8 @@ the task would have built.
   startup rejection propagation to the process top level, and cleanup-only late-result discard after
   authority revocation in `src/server/session/scan-generation.ts`,
   `src/server/session/stale-failures.ts`, and `src/server/session/session.ts` *(superseded
-  2026-07-22: the former overflow-rejection-before-mutation clause was removed with the
-  defensive-check cleanup — no runtime overflow guard exists.)* *(amended 2026-08-08: a file's
+  2026-07-22: the defensive-check cleanup left no runtime overflow guard for a clause to
+  require.)* *(amended 2026-08-08: a file's
   identity is its Source-relative Path, stable across commits, so no clause rekeys one (T1082).)*
 - [X] T038 Wire the devframe application definition and host in `src/server/host/devframe-app.ts`:
   `defineDevframe` with the product `id`/`name` and `cli: { distDir: 'dist/public', auth: false }`
@@ -786,8 +786,8 @@ the task would have built.
   reading in `src/server/inspection/traversal.ts` under T029/T031. Orchestrate the file-confined
   Diagnostic matrix and deterministic partial outcomes, source-scoped `root-unreadable` failure,
   unchanged propagation of any failure not confined to one file, authority revocation, late discard,
-  and no verdict in `src/server/inspection/scan.ts` *(amended 2026-07-29: a published path is now
-  the raw entry names joined with `/`; spec.md Clarifications § Session 2026-07-29.)*
+  and no verdict in `src/server/inspection/scan.ts` *(amended 2026-07-29: restated for the
+  published-path decision in spec.md § Clarifications, Session 2026-07-29.)*
 - [X] T068 [US1] Implement automatic first scan from the already-present generation-0 Repository
   Source and FIFO explicit rescan with one opaque request ID through
   Source/progress/attempt/successful generation; admit only the retained raw selected root, never
@@ -836,7 +836,8 @@ the task would have built.
   never moves would be the speculative mechanism AGENTS.md forbids. The underlying scan is
   unaffected either way — the browser never stops it.)*
 - [X] T072 [US1] Implement actionable diagnostics and a Codex-scope empty state in
-  `src/app/components/diagnostics/DiagnosticList.vue`
+  `src/app/components/inventory/rows/RowDiagnostics.vue` and
+  `src/app/components/inventory/InventoryList.vue`
 - [X] T073 [US1] Add English Codex inventory, progress, empty-state, retry, and boundary messages in
   the Vue components that render them
 
@@ -1759,7 +1760,7 @@ the task would have built.
   (T1068).)*
 - [X] T189 [US1] Preserve source-value-free diagnostics without exposing source during inventory
   loading, empty, retry, or replacement states in
-  `src/app/components/diagnostics/DiagnosticList.vue`
+  `src/app/components/inventory/rows/RowDiagnostics.vue`
 - [X] T190 [US1] Add English unified-inventory and multi-recognition messages in the Vue components
   that render them
 
@@ -3386,7 +3387,7 @@ the task would have built.
 
 **Independent Test**: Pin the origin-file-less `copilot.behavior.cloud.mcp` fact and the `copilot.cloud.mcp.selection` later-wins record; verify agent, plugin, and settings files spelling MCP configuration are unread, unrecognized, and connectionless; and verify the MCP inventory lists explicit carriers alone with no synthetic file and no hosted rendering.
 
-**Visible Checkpoint**: The MCP tab lists only explicit carriers even when agent, plugin, or settings files spell MCP configuration, and hosted Cloud MCP facts appear on no session surface. *(amended 2026-08-20: the earlier visible-facts checkpoint contradicted the 2026-08-02 clarification that hosted inputs are not represented — absence is what a user can see.)*
+**Visible Checkpoint**: The MCP tab lists only explicit carriers even when agent, plugin, or settings files spell MCP configuration, and hosted Cloud MCP facts appear on no session surface. *(amended 2026-08-20: hosted inputs are not represented (spec.md § Clarifications, Session 2026-08-02), so what a user can see is the absence.)*
 
 ### Tests first
 
@@ -5057,7 +5058,7 @@ the task would have built.
 
 ## Phase 57: Codex Configuration Recognition
 
-**Purpose**: Introduce the file-unit `settings/config` recognition and inventory presentation for the `.codex/config.toml` carrier Phase 23 already admitted, adding no second candidate, behavior record, evidence record, or file read — a second rule over the one candidate is what produces the recognition. *(amended 2026-08-17: this phase creates that recognition rather than extending one — Phase 23 admits the carrier and publishes its contained MCP declarations, and the ordering rule below states it presents no settings/config item yet, so no earlier phase produces the file-unit recognition this phase's rows need.)*
+**Purpose**: Introduce the file-unit `settings/config` recognition and inventory presentation for the `.codex/config.toml` carrier Phase 23 already admitted, adding no second candidate, behavior record, evidence record, or file read — a second rule over the one candidate is what produces the recognition. *(amended 2026-08-17: this phase creates that recognition — Phase 23 admits the carrier and publishes its contained MCP declarations, and the ordering rule below states it presents no settings/config item yet, so no earlier phase produces the file-unit recognition this phase's rows need.)*
 
 **Independent Test**: Reuse root and descendant carriers with direct and near-miss paths, links, and malformed filenames; verify the same physical file and its one read carry the new `settings/config` recognition beside the existing MCP and fallback identities, that configured instruction fallbacks remain unchanged, and that higher-scope paths and configured targets remain negative without new Repository exclusion IDs.
 
@@ -7276,7 +7277,7 @@ the task would have built.
 
 **Independent Test**: Use isolated environment inputs and fake homes to verify zero proposed-path I/O, exact three-tool preview entries, complete environment-supported escaping, unchanged propagation with no partial preview after a thrown/rejected construction, invalid overrides, retained-preview `previewId` binding with its allowlist/traversal-plan versions, stale/replayed rejection, accessible review in the fixed-English UI, and one-time non-authorizing ownership of `codex.behavior.user.memories`, `codex.behavior.user.prompts`, and `claude.behavior.user.workflows`.
 
-**Visible Checkpoint**: Users can review the exact Global roots, exclusions, and lexical validity state — with the read scope explained in plain language rather than per-pattern path displays — before enabling inspection. *(amended 2026-08-27: the contract version is no longer displayed. A reader can act on neither version the preview binds and can look neither up, and the mismatch they guard against cannot occur while the preview is on screen; the confirmation submits `allowlistVersion` and the host refuses a stale one, which is where the pair belongs.)*
+**Visible Checkpoint**: Users can review the exact Global roots, exclusions, and lexical validity state — with the read scope explained in plain language rather than per-pattern path displays — before enabling inspection. *(amended 2026-08-27: the preview displays neither version it binds. A reader can act on neither and can look neither up, and the mismatch they would guard against cannot occur while the preview is on screen; the confirmation submits `allowlistVersion` and the host refuses a stale one, which is where the pair belongs.)*
 
 ### Fixtures and tests first
 
@@ -8268,8 +8269,8 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   no emitter. Consider pushing the fence over the devframe channel the way eslint/config-inspector
   pushes `invalidate`, so another tab observes disable without being polled; the product still
   treats the server as the only authority, so a push is a trigger to refetch, never adopted state.
-  *(amended 2026-08-15: purge-gate targets renamed — comparison is kind-specific, so the existing
-  composable is `skill-comparison.ts` and later kinds add their own (spec.md § Clarifications
+  *(amended 2026-08-15: comparison is kind-specific, so the purge gate targets
+  `skill-comparison.ts` and later kinds add their own (spec.md § Clarifications
   Session 2026-08-14).)*
 - [X] T1028 [US4] Add English messages for pre-request purge, epoch/fence control-only recovery,
   failed retry/join/restart, true no-op/pre-acceptance refetch, `remove-active-state`
@@ -8321,10 +8322,9 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   capability classification, because the unauthenticated loopback transport defines no request
   capability.)* *(amended 2026-08-30: this task is where the study kit and the bundle first come
   into being, so no earlier task owns them and T1061 reviews what this task produces.)*
-  *(amended 2026-09-04: the sealed-capture harness this task built — the protocol contract, the
-  three `scripts/*usability-study*` modules, their contract, integration, and security suites,
-  and the three `study:evidence:*` commands — is removed (T1061, T1062), and the body states the
-  material that remains rather than the machinery that does not.)* (SC-001, SC-006)
+  *(amended 2026-09-04: the capture harness this task built is removed (T1061, T1062) because
+  the moderated study it existed for does not happen, and the body states the material that
+  remains.)* (SC-001, SC-006)
 
 
 
@@ -8452,9 +8452,8 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   2026-08-04: the trace-row count follows the current FR/QR/SC set.)*, and every declared task ID's
   mapping (T001 through T1205, less the withdrawn Phase 39’s vacant T436–T439, Phase 45’s vacant
   T482–T485, Phase 64’s vacant T654–T657, Phase 67’s vacant T675–T678, and Phases 68–75’s vacant
-  T679–T750) *(amended 2026-08-30: the vacant ranges include the withdrawn marketplace Phases 68–75,
-  whose T679–T750 the enumeration previously omitted while the same count it must reproduce already
-  excluded them.)* *(amended 2026-08-24: the counts and the vacant ranges follow the current task
+  T679–T750) *(amended 2026-08-30: the vacant ranges include the withdrawn marketplace Phases 68–75 and their
+  T679–T750, which the count this enumeration must reproduce already excludes.)* *(amended 2026-08-24: the counts and the vacant ranges follow the current task
   set, which the withdrawn Phases 64 and 67 leave vacant.)*. Reject a task that relies on an
   unprefixed basename as an owned path, ignore rather than reject a basename or a slashed token used
   solely as a manifest/member/API/content literal — which a token that resolves to nothing in this
@@ -8542,14 +8541,10 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   `gunshi`, Gunshi's root-only import boundary, and the production-graph dependency set asserted
   from `package.json` and the `pnpm-lock.yaml` closure in `tests/package/node-only-policy.test.ts`
   and `tests/package/production-graph.test.ts` *(amended 2026-08-16: `open` joined the approved
-  direct set as the product-owned browser helper — research.md § 3.)* *(superseded 2026-07-23: the
-  scripts-disabled and network-disabled install runs, the separate generated-shim audit, the payload
-  content scans — Rust/C/C++/Cargo, Node-API/native/binary/Wasm, `binding.gyp`, prebuilds, platform
-  selectors, shell helpers, non-Node shebangs, lifecycle/runtime downloads — and the per-dependency
-  version, integrity, and bundled-payload digest assertions were removed from scope: the committed
-  lockfile already pins every resolved version with its integrity hash, so restating those values in
-  a test only duplicates the lockfile, and install-time enforcement belongs to the package manager;
-  see plan.md § Source Code (repository root))*
+  direct set as the product-owned browser helper — research.md § 3.)* *(superseded 2026-07-23: narrowed to what the lockfile and the package manager do not already
+  own — the committed lockfile pins every resolved version with its integrity hash, so restating
+  those values in a test only duplicates the lockfile, and install-time enforcement belongs to the
+  package manager; see plan.md § Source Code (repository root))*
 - [X] T1045 [P] Add cross-story axe, keyboard, forced-colors, zoom/reflow, reduced-motion,
   focus-retention, safe-error, direct notice-free authored-value presentation, ordinary
   scoped-cleanup disposal versus every central-full-purge reset, and Global-disable epoch-fence
@@ -8568,26 +8563,22 @@ This slice adds the real Copilot port to the same open composite milestone; it i
   control DTO; prove stale state never leaks after purge, the session route is recovery-only while
   fenced, and a terminal disable commit never mixes with prior state in
   `tests/integration/session-snapshot-encoding.test.ts`, `tests/contract/http-api-session.test.ts`,
-  and `tests/contract/http-api-files.test.ts` *(superseded 2026-07-23: the pre-serialized immutable
-  response buffer / exact-length assertions were removed — devframe owns response serialization)*
+  and `tests/contract/http-api-files.test.ts` *(superseded 2026-07-23: devframe owns response serialization)*
 
 ---
 
 ## Phase 104: Release and Outcome Evidence
 
-*Amended 2026-09-01: the sealed-capture study kit this phase built — the protocol contract,
-the three `scripts/*usability-study*` modules, their contract, integration, and security
-suites, the three `study:evidence:*` package commands, and the product's readiness probe —
-is removed. Gathering twenty first-use participants is not available to this project, so the
-moderated study it existed for does not happen, and SC-001/SC-006 are measured by twenty
-autonomous-agent sessions instead. The task material the evaluation reads stays under
-`tests/usability/sc001-sc006-study-inputs/`.*
+*Amended 2026-09-01: the capture kit this phase built is removed. Gathering twenty first-use
+participants is not available to this project, so the moderated study it existed for does not
+happen, and SC-001/SC-006 are measured by twenty autonomous-agent sessions instead. The task
+material the evaluation reads stays under `tests/usability/sc001-sc006-study-inputs/`.*
 
 **Purpose**: Assemble the release matrix and record pass/fail evidence for every measurable success criterion, final gate, and the explicit release Constitution Check.
 
-**Independent Test**: Build one closed-set platform-independent tarball, certify identical bytes on the exact six lower-bound Node/OS jobs while retaining the full declared Node.js 24/26 compatibility contract, bind every SC-001–SC-008 denominator and threshold to its final candidate/profile/fixture/study digest, loop every remediation through applicable gates/evidence and complete-diff review, record the principle-by-principle Constitution Check, then pass the complete applicable automated matrix on the frozen final tree.
+**Independent Test**: Build one closed-set platform-independent tarball and certify that one candidate's bytes on the exact six lower-bound Node/OS jobs while retaining the full declared Node.js 24/26 compatibility contract, bind every SC-001–SC-008 denominator and threshold to its final candidate, profile, and fixture digest and to the task material it names, loop every remediation through applicable gates/evidence and complete-diff review, record the principle-by-principle Constitution Check, then pass the complete applicable automated matrix on the frozen final tree.
 
-**Visible Checkpoint**: The initial release is publication-ready with explicit automated, participant, accessibility, performance, safety, residual-risk, and constitution-compliance evidence.
+**Visible Checkpoint**: The initial release is publication-ready with explicit automated, first-use, accessibility, performance, safety, residual-risk, and constitution-compliance evidence.
 
 ### Release workflow
 
@@ -8597,7 +8588,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   `ubuntu-latest`/`macos-latest`/`windows-latest`—record runner-image identifiers and actual Node
   versions, retain `^24.11.0 || ^26.0.0` as the full compatibility contract, and assert the
   lockfile-pinned production-graph integrity in `.github/workflows/Release.yml` *(superseded
-  2026-07-23: the separate per-OS shim audit was removed from scope with the package-gate cleanup)*
+  2026-07-23: narrowed to what the lockfile and the package manager do not already own)*
   *(amended 2026-08-26: the runner labels and the development/build Node.js name what the platform
   currently ships rather than pins this repository advances by hand, and the release workflow file
   is `Release.yml`, which releases through Changesets: these certification jobs join its
@@ -8612,9 +8603,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   publish step that uploads the packed artifact rather than a tree of its own. The gates ci.yml owns
   are not repeated in the release path — a suite a pull request already ran against the same commit
   gains nothing by running twice — so these assertions fix the shape of the publishing path rather
-  than its coverage *(superseded 2026-07-23: the scripts-disabled/network-disabled install and
-  package-content-scan gates were removed with the package-gate cleanup — the lockfile integrity
-  hashes pin the payload bytes)* *(amended 2026-08-26: the release path re-runs no gate ci.yml owns,
+  than its coverage *(superseded 2026-07-23: the lockfile integrity hashes pin the payload bytes)* *(amended 2026-08-26: the release path re-runs no gate ci.yml owns,
   and what the assertions fix is the credential split and the pack-before-publish order the shipped
   `Release.yml` already has)*
 
@@ -8695,7 +8684,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   the sessions are agent-driven rather than a participant cohort, so what the record
   states is what the product's guidance was sufficient for, never a human-subject
   result.)* *(amended 2026-09-03:
-  the sealed-capture kit is removed (T1061, T1062), and SC-001's own interval starts at the prompt and
+  the capture kit is removed (T1061, T1062), and SC-001's own interval starts at the prompt and
   includes launching the Inspector, so a session is not handed a served origin — it launches the
   Inspector itself. The run T1195 records handed each session an origin and is recorded as not
   establishing SC-001.)* *(amended 2026-09-04: the body states the self-launch procedure the
@@ -8756,12 +8745,10 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   static-asset concern is settled by amending the contract to the packaged-prefix rule the
   equipment can decide, so the review reports zero open concerns.)* *(amended 2026-09-03 and
   2026-09-04: the counts and the declared range follow the task set as Phases 112 and 113 extend
-  it.)* *(amended 2026-09-04: this review removed the sealed-capture harness its checklist named
-  — the protocol contract, the three `scripts/*usability-study*` modules, their three suites, and
-  the `study:evidence:*` commands — so the body states what the review now covers rather than the
-  machinery it retired.)* (SC-003, SC-004, SC-005, SC-007, QR-004)
+  it.)* *(amended 2026-09-04: this review removed the capture harness its checklist named, so the
+  body states what the review now covers.)* (SC-003, SC-004, SC-005, SC-007, QR-004)
 
-- [ ] T1062 Run the release-review remediation loop until T1061 reports zero concerns. Every
+- [X] T1062 Run the release-review remediation loop until T1061 reports zero concerns. Every
   repository edit found by that review reruns the complete applicable automated matrix, and an
   edit to the evaluation material under `tests/usability/sc001-sc006-study-inputs/` or to a
   primary workflow invalidates the SC-001/SC-006 record and returns to T1202 for a new run
@@ -8771,11 +8758,11 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   evidence is an agent-driven run that does not use the kit and produced no capture bundle.)*
   *(amended 2026-09-03 and 2026-09-04: the counts and the declared range follow the task set as
   Phases 112 and 113 extend it.)* *(amended 2026-09-04: the loop's invalidation triggers no
-  longer include the sealed-capture harness this phase removed, because no repository edit can
+  longer include the capture harness this phase removed, because no repository edit can
   touch what is not there; the body states the triggers that remain.)* (SC-003, SC-004, SC-005,
   SC-007, QR-004)
 
-- [ ] T1063 Perform and record the explicit principle-by-principle release Constitution Check,
+- [X] T1063 Perform and record the explicit principle-by-principle release Constitution Check,
   including dependency/breaking-change rationale, migration impact, confirmation that every
   violation is resolved, and an owner/resolution path for every residual uncertainty in
   `specs/001-inspect-agent-customizations/validation.md` and
@@ -8784,7 +8771,7 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   then freeze the repository. Against the frozen tree and final candidate, rerun every applicable
   automated gate from T1049–T1051—including build, frozen install, lint, typecheck, unit, contract,
   integration, security, package, performance, browser, coverage, documentation, and lower-bound
-  candidate checks—verify all unchanged candidate/profile/fixture/human/manual evidence bindings,
+  candidate checks—verify every unchanged candidate, profile, and fixture evidence binding,
   repeat T1061's complete-diff/tarball inspection read-only, and end with `pnpm run test:docs` and
   `git diff --check`. Capture outcomes only in the external release/pull-request check log. Any
   failure, concern, or later repository edit invalidates every outcome and approval and MUST return
@@ -8792,9 +8779,9 @@ autonomous-agent sessions instead. The task material the evaluation reads stays 
   T1063 starts again.
   *(amended 2026-09-01: the certified three-browser matrix is CI's and its result is assumed
   rather than observed here, per T1051; the local browser gate is the Chromium project.)*
-  *(amended 2026-09-01: the study kit is retired, so this rerun verifies no candidate, seal, or
-  human/manual evidence binding and repeats no review of it; what it repeats is the
-  complete-diff and tarball read over what the release still carries.)*
+  *(amended 2026-09-01: the capture kit is retired, so this rerun verifies no binding it owned
+  and repeats no review of it; what it repeats is the complete-diff and tarball read over what
+  the release still carries.)*
 
 - [X] T1141 List every location a customization file becomes a listed row in
   `docs/which-files-are-listed.md` and `docs/which-files-are-listed.ja.md`, per tool and per
@@ -9112,6 +9099,11 @@ and that the head's line states the open file, its read outcome, and its size.
 **Purpose**: Bring the release evidence and the user documentation back into agreement with the
 tree the interface rework produced, and restore the task-set gates over the extended task list.
 
+*Each task in Phases 111–113 ends with the class of disagreement it closes — `(missing)` where an
+artifact said nothing it had to say, `(contradicts)` where it said something the tree does not do.
+The marker names the finding, not the task's state: a completed task keeps the marker of what it
+was written for, exactly as its body keeps what it required.*
+
 **Independent Test**: Run `pnpm run test:docs` and confirm it passes over the extended task set;
 open `./README.md` beside a running session and confirm the two screenshots and the personal-setup
 sentence describe what the page shows; read
@@ -9349,12 +9341,9 @@ over the extended task set.
 
 - [X] T1204 CRITICAL Retake `docs/images/inventory.png` and `docs/images/comparison.png` against
   the current interface and check the alt text in `./README.md` and `./README.ja.md` still
-  describes what each shows. The committed images are of 2026-09-03 and 61 files under `src/` have
-  changed since: the inventory image shows a rail entry named `Source diagnostics` that the product
-  no longer renders — what survives in `InventoryRail.vue` is the comment saying why it was removed
-  — and a Repository status reading `Partial · 14`, where the rail now renders
-  `SOURCE_STATUS_STANDALONE_TEXT[...].word` alone with its note on the line beneath, beside a route
-  mark the image does not carry. `package.json.files` ships `docs/images`, so these are what npm
+  describes what each shows. A screenshot is the one document that goes stale without a word of
+  it changing, and the rail, the status vocabulary, and the route marks all moved after the
+  committed pair was taken. `package.json.files` ships `docs/images`, so these are what npm
   serves (Constitution IV, QR-004, T1029) (contradicts)
 
 ### Task-set gates
@@ -9392,6 +9381,7 @@ over the extended task set.
 | 15 Codex Instructions Inventory | US1 | Users can filter static Codex instructions together with every instruction file the repository's own `.codex/config.toml` configures, while the configuration file itself appears nowhere. |
 | 16 Codex Instructions Detail | US2 | Selecting a Codex instruction opens complete inert detail — the file led by what it declares, its instructions, and its diagnostics — whether it is one of the exact static files or a name the repository's configuration adds. |
 | 17 Claude Instructions Inventory | US1 | Users can filter Claude instruction files. |
+| 17b Instruction Applicability Grouping | US1 | Instruction files that govern the same range stand together, each still naming only the products that recognize it. |
 | 18 Claude Instructions Detail | US2 | Selecting a Claude instruction shows complete inert detail without importing referenced files. |
 | 19 Copilot Instructions Inventory | US1 | Users can filter Copilot instruction candidates and see explicit exclusions. |
 | 20 Copilot Instructions Detail | US2 | Selecting a Copilot instruction shows separate surface interpretations. |
@@ -9490,6 +9480,7 @@ over the extended task set.
 | 110 Recognition-Owned Invocation Names on the Detail Head | US2 | A detail states each product's own invocation name beside that product, and its file's facts on the line under the heading. |
 | 111 Convergence | shared prerequisite | The release evidence and the user documentation describe the tree the rework produced, and the task-set gates cover the tasks it added. |
 | 112 Convergence | shared prerequisite | The validation record reads as one account of this tree, and the story-label rule matches the phases that exist. |
+| 113 Convergence | shared prerequisite | The two records that name an artifact by its identity — the outcome manifest's digest and the readme's screenshots — name the artifact this tree holds. |
 
 ## Dependencies and Execution Order
 
@@ -9549,6 +9540,10 @@ Setup
   → Documentation, Evidence, and Dependency Review
   → Cross-Cutting Verification
   → Release and Outcome Evidence
+  → Interface Foundation → Shell and Source State Routes → Inventory Row Compression
+  → Detail Surface Rework → Comparison Surfaces and Rework Closure
+  → Recognition-Owned Invocation Names on the Detail Head
+  → Convergence (111) → Convergence (112) → Convergence (113)
 ```
 
 - Delivery milestones are strictly sequential because every later milestone reuses and regresses the preceding product slice. Phases 96–99 are the sole composite milestone: their numbered slices execute in order, but none of Phases 96–98 may be declared green or releasable, and only Phase 99 closes the milestone after every real member port passes the all-real-port suites.
@@ -9709,9 +9704,8 @@ frontmatter list and the complete `sourceText` (T090).
   2026-07-29: the allowlisted extractor now runs, so the name is read from the entry it publishes.)*
   *(amended 2026-08-04: one recognizer serves both vendors, and the name is the file's own `name`
   key rather than a catalog entry; a parse the extractor cannot complete fails the recognition
-  instead of leaving a field absent.)* *(amended 2026-08-23: which fact names a skill is the
-  admitting vendor's own contract, so the rule answers it and the recognizer no longer reads the
-  `name` key itself.)*
+  instead of leaving a field absent.)* *(amended 2026-08-23: which fact names a skill is the admitting vendor's own contract, so the
+  rule answers it rather than the recognizer reading the `name` key.)*
 - [X] T1067 [US1] Render the declared name in that kind's row component under
   `src/app/components/inventory/rows/` beside the Source-relative Path. The name is authored text:
   it is inert, never a locator, and never replaces the path as the row's identity, because two
@@ -10364,7 +10358,7 @@ they already state.
 4. For a nonempty admitted subset, run exactly one shared-ID `GlobalBatchScan` and atomically publish zero to four separate member Sources together through one complete or partial Global generation, preserving carried Sources and never merging roots; an empty deterministic subset creates no job or generation.
 5. Add Global rescan/recovery and the priority zero-I/O disable barrier.
 6. Complete documentation/evidence/dependency review, then run the cross-cutting suites against those completed artifacts; after every remediation, invalidate prior post-review results, rerun all applicable automated gates and affected evidence protocols, and repeat complete-diff/tarball review until it reports no concern.
-7. Record SC-001–SC-008 denominators, thresholds, and pass/fail results; the task material under `tests/usability/sc001-sc006-study-inputs/` and the ground truth the twenty agent-driven sessions scored against, recorded as an agent-driven run and never as a participant cohort (spec.md § Clarifications, Session 2026-09-01); the outcome-fixture manifest version and canonical digest; the final packed-candidate digest; the full Node.js engines contract plus exact lower-bound/browser certification samples; and residual risks. The sealed-capture kit, its package commands, its environment variables, and its seals are removed (spec.md § Clarifications, Session 2026-09-01; T1061, T1062), so nothing here runs or records them.
+7. Record SC-001–SC-008 denominators, thresholds, and pass/fail results; the task material under `tests/usability/sc001-sc006-study-inputs/` and the ground truth the twenty agent-driven sessions scored against, recorded as an agent-driven run and never as a participant cohort (spec.md § Clarifications, Session 2026-09-01); the outcome-fixture manifest version and canonical digest; the final packed-candidate digest; the full Node.js engines contract plus exact lower-bound/browser certification samples; and residual risks. The capture kit is removed (spec.md § Clarifications, Session 2026-09-01; T1061, T1062), so nothing here runs or records it.
 8. Record the explicit principle-by-principle release Constitution Check and require the matching pull request review check; complete every resulting repository evidence edit.
 9. With the repository now frozen, rerun the complete applicable automated matrix and read-only complete-diff/tarball review, ending with `pnpm run test:docs` and `git diff --check`; capture outcomes only in the external release/pull-request check log. Any later repository edit invalidates every outcome and returns to step 6/T1062 before the Constitution and final-tree gates repeat.
 

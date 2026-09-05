@@ -1024,7 +1024,7 @@ const comparedFile = computed(
   () =>
     // The coordinate as the URL carries it: a name no side ships is a dead link
     // this page reports, and the switch that could produce one normalizes the
-    // URL instead ({@link normalizeSwitchedFile}).
+    // URL instead (the `switchedFile` normalization below).
     selectedFile.value ?? defaultComparedFile(),
 );
 
@@ -1067,7 +1067,11 @@ watch([fileRows, selectedFile], () => {
 // for that file, and landing them on the declarations would answer a question
 // they did not ask. Decided once per selection, so switching tabs afterwards
 // stays where the reader put it.
-const tabDecidedFor = ref<string | null>(null);
+//
+// A plain `let` rather than a ref: nothing but the watch below reads it, so
+// there is no render to keep in step and a ref would declare state the view
+// depends on when none does.
+let tabDecidedFor: string | null = null;
 watch(
   [subjectName, leftSide, rightSide],
   ([name, left, right]) => {
@@ -1081,10 +1085,10 @@ watch(
       right?.source ?? '',
       right?.sourceRelativePath ?? '',
     ].join('\u0000');
-    if (tabDecidedFor.value === decidingFor) {
+    if (tabDecidedFor === decidingFor) {
       return;
     }
-    tabDecidedFor.value = decidingFor;
+    tabDecidedFor = decidingFor;
     // The file the link arrived with, read once here rather than watched:
     // choosing a file inside the panel moves that coordinate too, and a
     // decision that watched it would move the reader's tab under them.

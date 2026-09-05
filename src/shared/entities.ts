@@ -646,8 +646,13 @@ export function applicabilityRangePresentation(value: string): string {
  * {@link inlineApplicabilityRangePresentation} share: a range's own backslash
  * is glob syntax and stays as written, except the one that would spell this
  * function's own escape introducer.
+ *
+ * Exported for the same reason {@link escapeControlCharacters} is reached
+ * directly: a surface deciding whether it is drawing the file's own characters
+ * compares the label it renders against this, and a range's escaping is not
+ * the name rule's (`applicability-range.ts` § isDeclared).
  */
-function escapedApplicabilityRange(value: string): string {
+export function escapedApplicabilityRange(value: string): string {
   return value.replaceAll(/\\(?=u[0-9A-Fa-f]{4})/gu, '\\u005C').replaceAll(
     // eslint-disable-next-line no-control-regex -- matching the Cc range is this function's purpose
     /[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069\uD800-\uDFFF]|\p{Default_Ignorable_Code_Point}/gu,

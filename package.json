@@ -76,6 +76,7 @@
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^24.13.3",
     "@types/which": "^3.0.4",
+    "@typescript-eslint/parser": "^8.64.0",
     "@vitest/coverage-v8": "^4.1.10",
     "@vue/test-utils": "^2.4.11",
     "eslint": "^10.7.0",

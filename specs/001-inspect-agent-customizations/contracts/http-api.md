@@ -618,8 +618,9 @@ failure surfaces as that request's ordinary error. Initial Global-enable failure
 all pre-existing entries and the derived snapshot state.
 Each `sourceRelativePath` is relative to its owning Source's single root; the
 API never substitutes an absolute or canonical filesystem path for it.
-A public Source-relative Path serializes as the exact raw entry names joined with `/`,
-the same spelling filesystem operations use internally (FR-024). Hard links are ordinary files:
+A public Source-relative Path serializes as the file's own path segments joined with `/`,
+the same spelling filesystem operations use internally — the stored entry names for an
+enumerated path, the selector's immutable literal for an exact Global target (FR-024). Hard links are ordinary files:
 there is no physical-identity grouping, no primary-path selection, and no alias path
 list.
 The inventory summary does not include source text. Deterministic sort order is source kind,
@@ -1495,24 +1496,28 @@ What each target reaches:
   then asks the executable resolver only about an absolute candidate in each remaining
   directory; known installation directories follow the same prefilter. A separator-carrying
   `EDITOR`/`VISUAL` spelling is likewise resolved and rejected before lookup when it lies
-  inside a root. The pre-consent stage compares every proposed personal-setup root only by
-  spelling and performs no candidate resolution that can follow a link into one; FR-013
-  forbids proposed-root I/O before the reader's action. It may establish the Repository
-  root's physical location and perform the Repository-only safety work that does not touch a
-  proposed personal root. Physical candidate comparison remains required because an outside
-  spelling can be a symbolic link into inspected content and the executable resolver keeps
-  that outside spelling, but it belongs to an authorization stage at which every root the
-  resolution can touch has been admitted. Once Global roots are admitted, and immediately
-  before any launch, the host therefore compares the launcher's physical location with the
-  current physical location of the selected Repository root and every admitted personal-setup
-  root. A candidate that cannot be resolved safely without pre-consent access to a proposed
-  root is not authorized at the pre-consent stage. The launch-time comparison also covers a
-  root that was missing at startup and was repaired or replaced before a later successful
-  rescan. Failure to establish either physical location must not authorize the launcher: a
-  path-condition failure refuses that target, while an unexpected filesystem failure
-  propagates as the request's ordinary error. SC-004's exception is only for a pre-mounted or
-  mapped network filesystem that is lexically indistinguishable from a local one; it does not
-  exempt a local symbolic-link alias.
+  inside a root. Every candidate this leaves is compared once more where it physically is:
+  an outside spelling can be a symbolic link into inspected content and the executable
+  resolver keeps that outside spelling, so the resolved location is compared against the
+  Repository root's own physical location — which startup establishes and passes beside its
+  spelling — and against every proposed personal-setup root's spelling. Failure to establish
+  that location must not authorize the launcher, and the two failures are not one: a path
+  condition — the path's own state: nothing there, a component that is not a directory, a
+  denial, a link cycle — refuses that candidate, because where it is decides whether it may be offered and a candidate that
+  cannot answer has skipped the comparison rather than passed it; every other filesystem
+  failure propagates as the request's ordinary error rather than being read as an answer
+  about the path.
+
+  Two residuals stand, each for a reason the alternative would cost more than it closes.
+  FR-013 forbids resolving a proposed personal-setup root before the reader's action, so a
+  member home reached through a link is compared by its spelling alone — the same class as
+  the SC-004 limitation for a lexically indistinguishable network filesystem. And the
+  Repository root's physical location is established once, at startup, so a root that was
+  missing then and is repaired or replaced before a later successful rescan is compared by
+  its spelling alone as well; reaching that needs a launch on a root that does not exist and
+  a `PATH` entry pointing into whatever the reader then creates there, which is the
+  adversarial-workspace shape FR-019 declines to build machinery for.
+
   An executable under inspected content is a destination chosen from
   inspected content, which FR-022 forbids (FR-020), so the repository's own
   `node_modules/.bin` or `bin/` is never even probed as the editor, while the same
@@ -1521,7 +1526,11 @@ What each target reaches:
   document goes to the application by name rather than to that launcher, because an
   editor's own command-line script resolves the editor's user data directory from
   `HOME`: a host whose `HOME` is not the reader's own would start a second instance
-  under it and open the file nowhere.
+  under it and open the file nowhere. A name is resolved against every bundle
+  LaunchServices has registered, so an inspected repository shipping a second one of that
+  name would be started instead — the residual FR-019 accepts, on the same terms as the
+  `osascript` spelling below: the workspace is one the reader already trusts, and the
+  machinery that would close it is what FR-019 forbids adding.
 - `terminal-editor` opens a terminal window running the editor `$EDITOR` or `$VISUAL`
   names. When neither names a terminal editor — neither is set, or the one that is
   brings its own window — it runs `vi`, the editor POSIX makes the default, since
@@ -2289,10 +2298,4 @@ the post-acceptance failure's ordinary error. Disable itself never returns
 11. Every automatic and explicit scan receives a unique opaque `scanRequestId`. Repository
     and Global rescan admission results, Source summaries, waiting/active/final progress,
     fatal status, and successful generation records preserve the same ID; stale or prior
-    request state cannot satisfy the newer request. The SC-002 browser protocol starts a
-    fresh process, waits for the automatic Repository scan to reach a terminal state outside
-    timing, dispatches exactly one explicit Repository rescan, captures its admission ID,
-    and stops the status and inventory timers only for visibly rendered state and the
-    committed Repository generation associated with that same ID. Evidence records both
-    the ID and Repository generation, and an already-rendered automatic inventory cannot
-    qualify.
+    request state cannot satisfy the newer request (FR-030).

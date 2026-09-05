@@ -23,7 +23,7 @@ import type { InspectionRule } from '../../../../shared/registries/rule-types';
  * plus the one question only a skill rule answers — the command name Claude
  * Code invokes an admitted `SKILL.md` by. The derivation lives here, beside
  * the rule that owns it, because it is built from the path this rule's own
- * selectors match (contracts/vendors/anthropic-claude-code.md § Normative
+ * selectors match (contracts/vendors/claude-code.md § Normative
  * initial-release presentation allowlist).
  */
 export class ClaudeCompiledSkillRule extends ClaudeCompiledRule implements CompiledStaticSkillRule {

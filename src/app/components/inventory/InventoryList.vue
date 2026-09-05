@@ -106,34 +106,35 @@ const emit = defineEmits<{
 }>();
 
 /**
+ * How many list items each kind has, keyed by the closed union so a kind added
+ * to the catalog cannot compile without saying what its panel counts — where a
+ * chain of comparisons would have counted it zero and drawn the empty state
+ * over rows it had (AGENTS.md § User-visible copy policy makes the same
+ * argument for a label table).
+ */
+const ROW_COUNT_BY_KIND: Readonly<Record<CustomizationKind, (p: typeof props) => number>> = {
+  instructions: (p) => p.instructionRangeGroups.length,
+  skill: (p) => p.skillRows.length,
+  MCP: (p) => p.mcpRows.length,
+  agent: (p) => p.agentRows.length,
+  'prompt/command': (p) => p.promptRows.length,
+  rule: (p) => p.ruleRows.length,
+  permissions: (p) => p.permissionsRows.length,
+  hook: (p) => p.hookRows.length,
+  plugin: (p) => p.pluginRows.length,
+  // No inventory of its own: a sibling metadata file belongs to the skill whose
+  // directory holds it, and that skill's row is where it appears
+  // (data-model.md § Inventory unit).
+  'skill metadata': () => 0,
+  'output style': (p) => p.outputStyleRows.length,
+  'settings/config': (p) => p.settingsRows.length,
+};
+
+/**
  * How many list items the kind in view has. It decides between the list and
  * the two empty states, and each kind answers from its own inventory.
  */
-const rowCount = computed(() =>
-  props.kind === 'instructions'
-    ? props.instructionRangeGroups.length
-    : props.kind === 'skill'
-      ? props.skillRows.length
-      : props.kind === 'MCP'
-        ? props.mcpRows.length
-        : props.kind === 'agent'
-          ? props.agentRows.length
-          : props.kind === 'prompt/command'
-            ? props.promptRows.length
-            : props.kind === 'rule'
-              ? props.ruleRows.length
-              : props.kind === 'permissions'
-                ? props.permissionsRows.length
-                : props.kind === 'hook'
-                  ? props.hookRows.length
-                  : props.kind === 'plugin'
-                    ? props.pluginRows.length
-                    : props.kind === 'output style'
-                      ? props.outputStyleRows.length
-                      : props.kind === 'settings/config'
-                        ? props.settingsRows.length
-                        : 0,
-);
+const rowCount = computed(() => ROW_COUNT_BY_KIND[props.kind](props));
 </script>
 
 <template>

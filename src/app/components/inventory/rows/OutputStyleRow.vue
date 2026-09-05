@@ -47,6 +47,13 @@ import type {
   SerializedDiagnostic,
 } from '../../../../shared/api-types';
 
+const props = defineProps<{
+  /** The committed output-style entry to render: one style name. */
+  entry: OutputStyleInventoryEntryDto;
+  /** The generation's diagnostics, resolved per file by {@link RowDiagnostics}. */
+  diagnostics: readonly SerializedDiagnostic[];
+}>();
+
 /**
  * The row's declared name, as every surface of the row needs it: the reader's
  * own characters, with this product's note beside them where they draw nothing
@@ -54,13 +61,6 @@ import type {
  * directory — so the substituting spelling is not the one this kind uses.
  */
 const name = computed(() => new AuthoredName(props.entry.name));
-
-const props = defineProps<{
-  /** The committed output-style entry to render: one style name. */
-  entry: OutputStyleInventoryEntryDto;
-  /** The generation's diagnostics, resolved per file by {@link RowDiagnostics}. */
-  diagnostics: readonly SerializedDiagnostic[];
-}>();
 
 /** The shared per-Source lookups (`session-sources.ts`). */
 const sessionSources = useSessionSources();

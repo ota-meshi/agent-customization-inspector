@@ -80,7 +80,7 @@ export type CandidateOutcome =
  * also admits as the `codex.repo.config` candidate.
  */
 export interface SeededCandidateRead {
-  /** Exact raw entry-name segments of the file the reader opened. */
+  /** The exact path segments of the file the reader opened, as its rule spells them. */
   readonly rawSegments: readonly string[];
   /** The reader's classification, exactly as the walk would have produced it. */
   readonly outcome: CandidateOutcome;
@@ -100,15 +100,22 @@ export interface ConfigurationReadResult {
 }
 
 /**
- * One discovered candidate file with its read outcome. Raw entry-name
- * segments stay the filesystem operands, and the public path is those names
- * `/`-joined (FR-024); the joined string is never decoded back into an
- * operand.
+ * One discovered candidate file with its read outcome. The segments the plan
+ * retained stay the filesystem operands, and the public path is those
+ * segments `/`-joined (FR-024); the joined string is never decoded back into
+ * an operand.
+ *
+ * Where a segment comes from is the plan's, not this type's: a walk keeps the
+ * entry name the enumeration returned, and a targeted fixed path — which
+ * enumerates no parent — keeps the rule's own immutable spelling
+ * ({@link probeExactTarget}). `raw` in the field name says the segment is
+ * unescaped and unnormalized, which both are; it does not say it was
+ * enumerated.
  */
 export interface TraversalCandidate {
-  /** Exact raw entry-name segments used for filesystem operations. */
+  /** The exact segments used for filesystem operations. */
   readonly rawSegments: readonly string[];
-  /** The raw entry names `/`-joined, relative to the root; the public identity. */
+  /** Those segments `/`-joined, relative to the root; the public identity. */
   readonly publicPath: string;
   /**
    * Every authored selector that admitted this file, deduplicated and
@@ -293,18 +300,30 @@ export function toPublicPath(rawSegments: readonly string[]): string {
 }
 
 /**
- * Resource-exhaustion errnos: the machine ran out of descriptors or memory,
- * which says nothing about the file being read. The Constitution requires such
- * a failure to abort the publication attempt, so it must not be folded into a
- * per-file outcome (Constitution § Quality and Safety Standards; spec.md
- * Clarifications § Session 2026-07-20).
+ * The closed environment-failure errnos: the machine ran out of descriptors or
+ * memory, the device failed, or the mount handle went stale. Each says
+ * something about the machine and nothing about the file being read, and the
+ * Constitution requires such a failure to abort the publication attempt rather
+ * than be folded into a per-file outcome (Constitution § Quality and Safety
+ * Standards; FR-029).
+ *
+ * Why these five and not a judgement about causes: the alternative is what a
+ * per-file outcome would say. `file-unreadable` tells the reader the file may
+ * have been removed or its permissions may deny reading, and that the other
+ * files were unaffected. On `EIO` or `ESTALE` all three are wrong — the file
+ * is fine, and whether the rest of the tree was read is exactly what a failing
+ * device or a vanished mount makes unknowable — so publishing a partial
+ * generation over one would state a condition of the machine as a property of
+ * the reader's content. This is one closed set, not a second allowlist beside
+ * another: every other errno stays classified by where the failure occurred
+ * (spec.md § Clarifications, the file-size and partial-generation answer).
  */
-const RESOURCE_EXHAUSTION_CODES = new Set(['EMFILE', 'ENFILE', 'ENOMEM']);
+const ENVIRONMENT_FAILURE_CODES = new Set(['EMFILE', 'ENFILE', 'ENOMEM', 'EIO', 'ESTALE']);
 
 /**
- * Rethrows a resource-exhaustion failure so the attempt aborts, and returns
- * otherwise so the caller can classify what is genuinely a fact about the path
- * it was reading. A rule that held only for `readFile` would report the machine
+ * Rethrows an environment failure so the attempt aborts, and returns otherwise
+ * so the caller can classify what is genuinely a fact about the path it was
+ * reading. A rule that held only for `readFile` would report the machine
  * running out of descriptors as an unreadable file at one call site and as an
  * unreadable root at another, so no `catch` here or in the companion census
  * turns a filesystem failure into an outcome for a path without first ruling
@@ -313,8 +332,8 @@ const RESOURCE_EXHAUSTION_CODES = new Set(['EMFILE', 'ENFILE', 'ENOMEM']);
  * missing, not a directory, unreadable, a link cycle — which these codes are not
  * in, and rethrows everything else.
  */
-export function rethrowIfResourceExhaustion(error: unknown): void {
-  if (RESOURCE_EXHAUSTION_CODES.has((error as { code?: string }).code ?? '')) {
+export function rethrowIfEnvironmentFailure(error: unknown): void {
+  if (ENVIRONMENT_FAILURE_CODES.has((error as { code?: string }).code ?? '')) {
     throw error;
   }
 }
@@ -338,20 +357,18 @@ export async function readCandidate(absolutePath: string): Promise<CandidateOutc
   try {
     bytes = await readFile(absolutePath);
   } catch (error) {
-    // Reached when the scan exhausts descriptors or memory partway through a
-    // repository. Reporting `unreadable` would tell the user that the files
-    // this attempt happened to reach afterwards are broken, and send them to
-    // check permissions on files that are fine.
+    // Reached when the machine fails partway through a repository: it ran out
+    // of descriptors or memory, the device failed, or the mount handle went
+    // stale. Reporting `unreadable` would send the reader to check permissions
+    // on a file that is fine and claim the other files were unaffected, which
+    // is the one thing such a failure makes unknowable.
     //
-    // Everything else — EIO and ESTALE included — is this file's own
-    // `unreadable` outcome, by the closed model: at the single-file boundary
-    // a failure is "classified by where the failure occurred rather than by
-    // inspecting its cause", and "the one closed cause check is the
-    // resource-exhaustion errno set" above (spec.md § Clarifications,
-    // file-size limits and partial-generation answers). A second errno
-    // allowlist here would be the cause inspection the specification
-    // forbids.
-    rethrowIfResourceExhaustion(error);
+    // Everything else is this file's own `unreadable` outcome, by the closed
+    // model: at the single-file boundary a failure is "classified by where the
+    // failure occurred rather than by inspecting its cause", and the one
+    // closed cause check is the environment-failure set above (spec.md
+    // § Clarifications, file-size limits and partial-generation answers).
+    rethrowIfEnvironmentFailure(error);
     return { kind: 'unreadable' };
   }
   const decoded = decodeSourceBytes(bytes);
@@ -396,8 +413,27 @@ function recordCandidate(
 // Recursively walks one directory with ordinary reads (FR-019): raw entry
 // names are the operands, VCS internals are excluded, symbolic links are
 // followed transparently, and visited directories are tracked by real path
-// so a link cycle terminates (FR-024). A readdir/stat failure below the root
-// is not confined to one file and intentionally propagates.
+// so a link cycle terminates (FR-024).
+//
+// Error policy below the root, in the order the branches ask it. A
+// environment-failure errno is a condition of the machine rather than of the
+// entry, so it aborts the attempt (FR-029, {@link rethrowIfEnvironmentFailure}).
+// A failure on an entry some selector admits as a file is that file's
+// `file-unreadable` Diagnostic (FR-024). A missing entry at a step no
+// candidate stands on — `ENOENT`/`ENOTDIR` from the classification stat or
+// from the descent realpath — is skipped, and the attempt publishes what it
+// did reach: a live checkout moves under a read-only walk, and the
+// release-evidence manifest fixes that outcome as case
+// `sc004.directory-mutation.during-enumeration`, whose expected outcome is
+// that such a walk "leaves the attempt publishable" — so aborting here would
+// reduce an SC-004 denominator, which spec.md § Release-Evidence Fixture
+// Governance admits only through a manifest-version increment and review.
+// This skip is not the exact-target conversion spec.md's expected-absence
+// clarification confines to the Global exact-file rules: no branch here
+// produces the closed `absent` outcome, and that same clarification's "no
+// `entry-disappeared` or race-detection taxonomy" is what forbids giving a
+// vanished directory step an outcome of its own. Every other failure is not
+// confined to one file and propagates (FR-030).
 async function walkDirectory(
   absoluteDir: string,
   rawSegments: readonly string[],
@@ -469,7 +505,7 @@ async function walkDirectory(
         isFile = target.isFile;
         isDirectory = target.isDirectory;
       } catch (error) {
-        rethrowIfResourceExhaustion(error);
+        rethrowIfEnvironmentFailure(error);
         if (fileAdmissions.length > 0) {
           recordCandidate(discovered, {
             rawSegments: entrySegments,
@@ -491,7 +527,7 @@ async function walkDirectory(
         isFile = target.isFile;
         isDirectory = target.isDirectory;
       } catch (error) {
-        rethrowIfResourceExhaustion(error);
+        rethrowIfEnvironmentFailure(error);
         // A candidate whose link target is missing or unreadable is that
         // file's file-unreadable Diagnostic (FR-024).
         if (fileAdmissions.length > 0) {
@@ -542,7 +578,25 @@ async function walkDirectory(
       // physical directory still walks transparently (two public paths, one
       // target — links are not aliases). The realpath read is ordinary and
       // read-only like every other operation.
-      const real = await realpath(entryPath);
+      let real: string;
+      try {
+        real = await realpath(entryPath);
+      } catch (error) {
+        const code = (error as { code?: string }).code;
+        if (code === 'ENOENT' || code === 'ENOTDIR') {
+          // The directory went away between its own classification and this
+          // descent — a writer on a live checkout: a build finishing, a branch
+          // switch. It reaches nothing now, which is the same answer the
+          // classification above gives a directory step that reaches nothing,
+          // and the attempt publishes what it did reach rather than failing
+          // the Source over a tree that moved (FR-030; the walk's error
+          // policy above states why this is not an ignored failure).
+          continue;
+        }
+        // Any other failure is not confined to this entry and fails the
+        // attempt ordinarily (FR-030).
+        throw error;
+      }
       // VCS internals are excluded here as well as by name: the name check
       // above cannot see a link that reaches an object store under another
       // spelling, and enumerating one is wrong however the walk got there.
@@ -650,12 +704,16 @@ async function probeExactTarget(
   try {
     entry = await lstat(absolutePath);
   } catch (error) {
-    rethrowIfResourceExhaustion(error);
+    rethrowIfEnvironmentFailure(error);
     const code = (error as { code?: string }).code;
     if (code === 'ENOENT' || code === 'ENOTDIR') {
       // Absent target: no candidate and no sibling discovery (FR-018).
       return null;
     }
+    // Anything else is this one target's own outcome: a denial, a directory
+    // where a file was named, a broken link. The machine's own failures left
+    // through the line above, which is the same closed set
+    // {@link readCandidate} applies to the same file.
     return pending(true);
   }
   if (entry.isSymbolicLink()) {
@@ -673,7 +731,11 @@ async function probeExactTarget(
       const target = await stat(absolutePath);
       return pending(!target.isFile());
     } catch (error) {
-      rethrowIfResourceExhaustion(error);
+      // The same closed judgement as the `lstat` above, for the same one
+      // file: an environment failure aborts the attempt, and every other
+      // failure — a dangling link, a denied target — is this candidate's own
+      // file-unreadable outcome.
+      rethrowIfEnvironmentFailure(error);
       return pending(true);
     }
   }
@@ -1209,7 +1271,7 @@ export async function runTraversalScan(input: TraversalScanInput): Promise<Trave
   }
 
   // Deterministic result order: the public path, which is unique — it is the
-  // raw entry names joined, and a filesystem holds one entry per name — so
+  // file's own segments joined, and a filesystem holds one entry per name — so
   // opaque IDs and enumeration interleaving never supply the order.
   files.sort((left, right) => (left.publicPath < right.publicPath ? -1 : 1));
   return {
@@ -1274,16 +1336,43 @@ export function isRootEnumerationFailure(error: unknown, root: string): boolean 
  * root is never passed, because FR-013 forbids touching one before the reader
  * has consented to it.
  *
- * Null rather than a throw: the caller still has the spelling to compare, and
- * a root nothing can resolve is one the first scan is about to report as
- * unreadable through its own `root-unreadable` Diagnostic (FR-002).
+ * Once per candidate, at the moment the candidate is judged — not again
+ * between the judgment and the launch. Re-resolving to see whether the answer
+ * moved is the repeated identity re-verification FR-019 forbids: the
+ * workspace is one the reader already trusts, so what this closes is a link
+ * an ordinary checkout has, not a writer racing the probe.
+ *
+ * Null for a path condition — the closed set {@link PATH_CONDITION_FAILURE_CODES}
+ * states, which is the same set the root's own enumeration failure is
+ * classified by — because that is an answer about the path rather than a
+ * failure of the machine: the caller still has the spelling, and a root
+ * nothing can resolve is one the first scan is about to report as unreadable
+ * through its own `root-unreadable` Diagnostic (FR-002). One set rather than
+ * a narrower one here, because the two questions have one answer: a root
+ * whose canonicalization is denied is a root whose `readdir` is denied, so
+ * throwing for it would replace that Diagnostic with a startup failure that
+ * has no host and no page behind it — `cli.ts` resolves the Repository root
+ * before a session exists.
+ *
+ * Every other failure propagates. Converting an `EIO` into "unresolvable"
+ * would hand a caller the same answer a missing path gives, and the launcher
+ * exclusion decides on that answer: failure to establish a physical location
+ * must not authorize a launcher, and an unexpected filesystem failure is the
+ * request's ordinary error rather than a path condition
+ * (contracts/http-api.md § open-file; spec.md § Clarifications — a rejected
+ * operation that is not a file-confined outcome propagates to the boundary
+ * that owns the trigger).
  * @param path an inspected root exactly as it was selected, or one launcher
  *   candidate exactly as the machine spelled it
  */
 export async function resolvePhysicalLocation(path: string): Promise<string | null> {
   try {
     return await realpath(path);
-  } catch {
-    return null;
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code !== undefined && PATH_CONDITION_FAILURE_CODES.has(code)) {
+      return null;
+    }
+    throw error;
   }
 }

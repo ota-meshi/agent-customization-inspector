@@ -37,3 +37,18 @@ const homeName = computed(() => sessionSources.homeNameOf(props.sourceId));
 <template>
   <span v-if="homeName !== null" class="aci-source-home">{{ homeName }}</span>
 </template>
+
+<style scoped>
+/* Which of the personal setup's directories a file came from. The full paths
+   are on that family's own surface, so the row carries the short name rather
+   than repeating a root per line (FR-002, FR-030). */
+.aci-source-home {
+  background: var(--aci-accent-soft);
+  border-radius: 0.25rem;
+  color: var(--aci-accent);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0 0.3125rem;
+  white-space: nowrap;
+}
+</style>

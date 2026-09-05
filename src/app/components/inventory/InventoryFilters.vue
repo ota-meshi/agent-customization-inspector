@@ -17,10 +17,10 @@
 // would be the same substring asked for twice.
 //
 // Each control appears only where it can narrow something, which is why both
-// are conditional rather than always drawn: the two lists that belong to no
-// kind are offered the Source control and not the Tool one. No product
-// recognized a file in no kind, and a Source-level diagnostic is not tied to a
-// product, so a tool selection there is a question with no answer (FR-006).
+// are conditional rather than always drawn: the list that belongs to no kind
+// is offered the Source control and not the Tool one. No product recognized a
+// file in no kind, so a tool selection there is a question with no answer
+// (FR-006).
 //
 // They sit at the end of the list's own heading row rather than in the rail:
 // what they narrow is the list beside them, and a control that changes what is
@@ -47,7 +47,7 @@ const props = defineProps<{
   availableSourceKinds: readonly SourceKind[];
   /**
    * The tools that can narrow the list in view, in the closed tool order.
-   * Empty for the two lists that belong to no kind, where nothing was
+   * Empty for the list that belongs to no kind, where nothing was
    * recognized by a product and the control is therefore not drawn.
    */
   availableTools: readonly SupportedTool[];
@@ -163,7 +163,7 @@ function toSelectValue(value: string | null): string {
         </option>
       </select>
     </template>
-    <!-- Only where a tool can narrow something. The two lists that belong to no
+    <!-- Only where a tool can narrow something. The list that belongs to no
          kind hold nothing a product recognized, so the control would offer a
          question none of their rows can answer. -->
     <template v-if="availableTools.length > 0">

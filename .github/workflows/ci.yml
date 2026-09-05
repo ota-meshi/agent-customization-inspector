@@ -264,9 +264,14 @@ jobs:
       # Packaged-artifact verification is a CI/release gate, not part of
       # every local build (Implementation simplicity policy).
       - run: pnpm run verify:package
-      # One tarball, packed once here, is what the six certification jobs
-      # receive. Packing per sample would certify six sets of bytes and prove
-      # nothing about the one that gets published (T1047).
+      # One candidate tarball, packed once here from this commit, is what the
+      # six certification jobs receive. Packing per sample would certify six
+      # sets of bytes and prove nothing about any one of them (T1047). It is
+      # not the tarball a release publishes: Release.yml packs its own from the
+      # same source, and two packs of one source differ in the build id Nuxt
+      # writes into the bundle. What the six jobs certify is that one tarball
+      # built from this commit installs and runs on every lower-bound
+      # environment.
       - name: Pack the tarball the certification samples receive
         run: pnpm pack --pack-destination "${{ runner.temp }}/tarball"
       - uses: actions/upload-artifact@v4

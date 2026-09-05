@@ -69,7 +69,13 @@ frozenであり、どのruleも行わないderivationを述べていると記述
 で宣言され、正確な解決versionはcommit済みlockfileが所有するので、27件のいずれもこのrepositoryが宣言
 する範囲より遅れてはいない。それぞれ、現状で満たされている範囲の内側または上にある新しいreleaseである。
 
-**このreviewではどの更新も受理せず、baselineは変更しない。** 日常的なversion移動はRenovateのもので、
+**直接宣言を1件追加し、このreviewではどのversionも受理しない。** このrepository自身のESLint ruleを
+試験する`@typescript-eslint/parser`を、推移的解決から宣言済みdevDependencyへ移した。`RuleTester`は
+configではなくtestからparserを受け取るため、manifestが宣言しないpackageをimportするtestは、ここが
+管理しないversionを解決していることになる。Runtimeにも公開payloadにも公開契約にも届かないので、提供
+すべき移行は存在しない。research.ja.mdのdependency tableが、他のlint toolingの隣にこれを記録する。
+
+日常的なversion移動はRenovateのもので、
 `renovate.json`と[AGENTS.ja.md](../../AGENTS.ja.md)のRelease方針が定める規則に従う。runtime dependency
 のmajorと1.0.0未満のpackageのminorを除き、ci.ymlが全suiteを走らせた後にautomergeされる。この2つは
 maintainerが判断する。ここで受理してしまうと、「受理された変更はこのtask setをsupersededにする」という
@@ -96,8 +102,8 @@ hostが存在する前にそれをthrowしてlaunch URLを出力しない。自�
 
 **railの個人設定の項目は、何を数えているかを述べ、読み取り中は`Scanning`と述べる。** statusの表が
 1つになったとき、この項目には2つが残っていた。項目自身の集約表はmemberの1状態を`partial`と綴った
-ままだった。今や読み手が他のどこでも出会わない語であり、初見利用の20人中15人が前で止まった語でも
-ある。その状態は`with diagnostics`と述べる。隣のRepositoryの項目が既に使っている語である。そして
+ままだった。今や読み手が他のどこでも出会わない語であり、初見利用の20 session中15 sessionが前で止まった
+語でもある。その状態は`with diagnostics`と述べる。隣のRepositoryの項目が既に使っている語である。そして
 countedな状態は単位を述べていなかった。`1 partial`は「1つの何が」を言っていない。countedな状態は
 数えているmemberを名指す — `1 home with diagnostics`、`2 homes not inspected`、`1 home failed` —
 各memberが呼ばれている語（`GLOBAL_MEMBER_TEXT`）で述べる。項目のrankingは変えていない。`idle`が
@@ -117,13 +123,15 @@ batchはcommitするまでmember Sourceを1つも公開しないので、項目�
 検査が届いているのは、その分岐を決める述語と、選ばれる文言である。分岐自体はfixture launchで
 目視した。
 
-**個人設定railのrelease blocker — 実装が必要。** `globalStatusText`は、rank済みのmember stateを
-参照する前に、`globalReadInProgress`がtrueなら必ず`Scanning`を返す。同じpreviewのretryは、既に
-publishされたmemberが`partial`または`failed`を保持したまま実行できるため、textはactionableな状態を
-隠す一方、warning classはその状態から導出されたままとなる。実行中のreadを既存rank計算の
-`scanning` candidateとして扱い、textとwarning表示の双方を1つのeffective stateから導出すること。
-Partial memberとfailed memberのretry中、readyだけのmemberのretry中、およびmember Sourceがまだ無い
-initial enableについてregressionを追加する（FR-030、WCAG 4.1.3）。
+**実行中のreadはそのrankingのcandidateであり、rankingを上書きするverdictではない。** 同じpreviewの
+retryは既にpublishされたmemberの上で走るため、readだけを`Scanning`として報告すると、読み手がretryして
+いる`failed` memberを隠し、同じ値から導出される隣のpillとも食い違う。代わりに、readは`scanning`
+candidateとして既存のrank計算へ入る。`idle`と`ready`には勝ち、`failed`と`partial`には負けるので、
+1つのeffective stateが語とwarning表示の双方を決める（FR-030、WCAG 4.1.3）。自動gateが届くのは、その
+入力を供給するpredicate — `view-state.ts` § runningGlobalBatch、全batch phaseについてassert — と、read
+が出ていないときのrankingであり、後者はrailに関する既存assertionがすべて読んでいる。Fold自体は
+fixture launchで確認した。理由は上に記録したとおりで、この分岐はreadを開いたまま保つ必要があり、RPC
+channelはWebSocketで、unit projectにsingle-file-component compilerが無い。
 
 **source surfaceの字はこの製品のものとし、個人設定は自分のgenerationを述べる。** rail項目の削除は
 4つの積み残しを生み、ここで直した。一覧のlive regionはmemberのstatus wordだけを読んでいたが、
@@ -137,18 +145,26 @@ familyの自分のsurfaceにそれを求める。Repository panelと同じ形で
 metricsで組まれる一方、Monacoはplatform既定 — macOSで12px、それ以外で14px — を使っていたため、
 mount時に箱が跳ね、text enlargement下ではさらに大きく跳ねていた。placeholderはそれを防ぐために
 存在する。今は1つの宣言を共有する。`rem`の`--aci-source-font-size`と`--aci-source-line-height`で
-あり、`monaco.ts`が各editorのcontainerから読み取る。hook detailの5 viewerで実測すると、その下の
-導線linkの移動はmount時に2〜29pxから0〜12pxへ、200%のtext sizeでは倍増から12〜36pxへ縮んだ。
-残るのはMonacoが確保して`<pre>`が確保しない横scrollbarである。値はeditorのものではなくこの製品の
-選択であり、macOSでは見た目が変わる。
+あり、`monaco.ts`が各editorのcontainerから読み取る。hook detailの5 viewerで、その日に有効だった値
+に対して実測すると、その下の導線linkの移動はmount時に2〜29pxから0〜12pxへ、200%のtext sizeでは
+倍増から12〜36pxへ縮んだ。残るのはMonacoが確保して`<pre>`が確保しない横scrollbarである。これが
+測ったのは特定の大きさではなく宣言の共有である。placeholderとeditorが1つの値を読む以上、
+一方が他方の取らない大きさを予測することはない。
 
-**Source editor metricsのrelease blocker — 実装が必要。** `typeMetricsOf`は各Monaco hostのcomputed
-type metricsを全source/declaration diffへ渡すが、MCPの`DeclarationDiff`、pluginの
-`DeclarationDiff`、pluginの`SourceDiff`のhostは`--aci-source-font-size`と
-`--aci-source-line-height`を宣言していない。そのため、他のhostが使う14px/19pxのsource-surface
-metricsではなく13pxのbody typeを継承する。この3つのhost classにもshared tokenを置き、全Monaco
-hostのcomputed font sizeとline heightをbrowser regressionで固定し、1 surfaceだけがfamilyから
-黙って外れないようにすること。
+大きさ自体はeditorのものではなくこのinterface自身のscaleである。source textは周囲の散文が説明する
+参照材料なので、0.8125remのbodyの1段下、0.75remに座る。同じpxでもmonospaceは比例フォントより
+大きく見え、この製品自身の行がすでにそれを織り込んでいる。したがって既定が14pxのplatformで
+Monacoが描いたはずの大きさより小さく、macOSの既定と同じなのは追従した結果ではなく偶然である。
+
+**全Monaco hostがこの製品自身の字で組まれる。** `typeMetricsOf`は各hostのcomputed type metricsを、
+そこで生成するeditorへ渡す。したがって`--aci-source-font-size`と`--aci-source-line-height`を宣言しない
+hostは、代わりに13pxのbody typeをMonacoへ渡す。MCPの`DeclarationDiff`、pluginの`DeclarationDiff`、
+pluginの`SourceDiff`の3つがそうなっており、9つすべてがshared tokenを宣言するようにした。
+`tests/e2e/source-type.spec.ts`は9 routeの全Monaco hostについてcomputed font sizeとline heightを固定
+する。読むのはMonaco自身のtextではなくこの製品が所有するhost要素である。宣言が無いときMonacoは
+自身のplatform既定へ落ちるが、macOSではそれがこの製品の宣言する12pxと同じなので、textを読むcheckは
+まさにそれが捕らえるべきsurfaceで、そこでは通ってしまう。この3つ
+から宣言を外して9件中3件が落ちることを確認してから採用した。
 
 **railの`Source diagnostics`項目を廃し、Sourceのstatusはどこでも1つの表が述べる。** 2回のrunで
 5 sessionが、railの`Inspected · some files kept a diagnostic`とその項目の`0`を、同じ母集団を
@@ -171,9 +187,8 @@ commandが飛んでいる間にslotが持つrequest IDは既に完了したscan�
 なく、1つのruleを1か所に置く形である。文言はcommandを述べる`Rescan in progress.`とした。この側は実行中の
 scanとFIFO待ちのscanを区別できず、区別を主張してはいけないからである。別件として、hook detailの比較
 導線はdeclaration viewerの下にあり、Monacoのmount中に位置が動き得た。現在は他のsurfaceと同じくviewer
-より前にあり、初回clickのbrowser回帰はChromium・Firefox・WebKitで通過した。`SourceViewer`もeditorが
-引き継ぐまで同じtextをinertな`<pre>`へ描くが、このplaceholderはMonacoのfontとline metricsを共有しない。
-一般的な高さ安定性は未検証であり、他surfaceのrelease evidenceには用いない。
+より前にあり、初回clickのbrowser回帰はChromium・Firefox・WebKitで通過した。`SourceViewer`自身の
+placeholderがeditorのmount中に何を保つかは上に記録しており、その測定が残した残差も併記している。
 
 **Localのgateからは見えない2つのcertification jobを通した。** 以下のgateは1台のmachineで実行し、
 CIのうち2つは別の場所で実行する。`tests/unit/host/file-opener.test.ts`はabsoluteなfixtureを
@@ -185,52 +200,45 @@ linkのなくなった位置に落ちてaddressがcarrierのままになって�
 が動くまでpressを再試行する。どちらもこのmachineでは観測できない — 前者はWindows、後者は認証対象の
 Linux WebKitを要する — ため、確立するのはCIである。
 
-**Launcher-exclusion reviewは一部だけ解消している。** 綴りはpathの所在ではない。Repository外の
-`PATH` entryや設定済み`EDITOR`をRepository内へのsymbolic linkにでき、executable resolverはその外側の
-綴りをそのまま返すため、字面だけの比較ではrepositoryが供給する実行fileをeditorとして提供し、起動して
-しまう（FR-020、FR-022）。実装済みの範囲では、startup時に存在する選択済みRepository rootをresolveし、
-選択時の綴りと並べてphysical locationを渡す。さらに各launcher candidate — 各`PATH` entry、separatorを
-含む設定済みeditor、およびresolverの結果 — を、綴りと物理的な位置の両方で比較する。
-`tests/unit/host/file-opener.test.ts`はcandidateの両方向について実際のalias treeをstageし、
-`tests/unit/cli.test.ts`は存在するrootの受け渡しを確立する。
+**Launcher exclusionは1つの比較であり、その傍らに残余が2つ立つ。** 綴りはpathの所在ではない。
+Repository外の`PATH` entryや設定済み`EDITOR`をRepository内へのsymbolic linkにでき、executable
+resolverはその外側の綴りをそのまま返すため、字面だけの比較ではrepositoryが供給する実行fileを
+editorとして提供し、起動してしまう（FR-020、FR-022）。よってprobeは各candidateを、綴りとしても
+物理的な位置としても比較する。比較先はstartupが確定して綴りの隣へ渡すRepository rootの物理的な
+位置と、proposed personal-setup rootそれぞれの綴りである。`tests/unit/host/file-opener.test.ts`は
+candidateの両方向について実際のalias treeをstageし、`tests/unit/cli.test.ts`は既存rootの受け渡しを
+確立する。
 
-**Launcherのrelease blocker — 実装が必要。** このcoverageの外に、到達可能なgapが3つ残る。第一に、consent前のprobeは
-outside spellingを持つ全launcher candidateについて`resolvePhysicalLocation`を呼ぶ。そのcandidateがproposed
-personal-setup root内へのsymbolic linkなら、`realpath`はconsent前にそのrootへ入り、FR-013に違反する。一方、
-proposed root自身はspellingだけで渡されるため、同じprobeはcandidateがその外側にあることを証明できず、admit後も
-そのeditorをofferしてlaunch可能なままにする。FR-013は読み手のaction前にlexicalなproposed-root filteringと
-この種のphysical access 0件を要求するが、そのaction後、launch前に全admitted rootに対してphysical authorizationを
-行うことは許可する。
-第二に、Repository rootのphysical locationは1回しかcaptureしない。Missing rootは明示的にrecover可能な
-`root-unreadable` stateであり、そのDiagnosticは修復してrescanするよう読み手へ案内する。したがってstartup後に
-symbolic linkとして修復するのはuser-visibleなlifecycleであり、到達不能なmachine raceではないが、openerには
-古いlexical exclusionしか残らない。第三に、`resolvePhysicalLocation`はすべての`realpath` failureをcatchして
-nullを返す。その結果Repository rootはlexical fallbackだけとなり、`outsideInspectedRoots`はphysical locationが
-不明なcandidateを外側としてadmitする。予期しない`EIO`/`ESTALE` classのfailureが、inspection boundaryの他の
-箇所のように伝播せずfail openする。SC-004が除外するのはlocal filesystemとlexicalに識別できない
-pre-mounted/mapped network filesystemだけである。これらのlocal aliasはconsent後またはlaunch時に許可された
-resolveで識別でき、accepted platform limitationには当たらない。
+2回のreviewがそれ以上を求めた。sessionがその時点で保持するrootに対するlaunch時の再認可と、macOSで
+catalogのapplication名ではなくbundleのpathで起動することである。どちらも実装し、どちらも取り下げた。
+前者はFR-013のno-I/O規則をprobe自身のresolutionまで禁じるものと読むことに依っていたが、FR-013は今、
+editor launcherの探索がoperating systemによるproposed root経由の解決を許す唯一の操作であることを述べる。
+そうすると分割が買えるのは修復済みrootのcaseだけになる — 存在しないrootでlaunchし、その後読み手が
+そこに作ったものへ`PATH` entryが向いている場合である。後者は`osascript`の綴りが既に断っているのと同じ
+提案であり、FR-019が同じ理由で断る。それぞれが残すものは、機構で塞ぐのではなくlaunchを述べている場所
+（contracts/http-api.ja.md § open-file）に記録する。
 
-既存のphysical root/candidate比較を維持しつつ、その時点を分けること。Consent前はlexicalなproposed-root exclusionと、
-proposed rootへ入らないRepository safetyだけを行う。Consent後かつlaunch前に、currentな選択済みRepository rootと
-現在admit済みの全personal rootに対してcandidateをphysicalにauthorizeするか、同等のlifecycle-owned revalidationを
-行う。Physical比較を確立できないときは認可せず、予期しないfilesystem errorを伝播させること。Outside spellingから
-proposed root内へ入るaliasについてconsent前I/Oが0件であるcase、admit後の同じlocal personal-root alias、missing
-Repository rootをlinkとして修復してからrescan/openするcase、および予期しない`realpath` failureのinjected caseを
-regressionへ追加すること。これらがFR-013、FR-020、FR-022、`open-file` contractを満たすまでrelease approvalは保留する。
+**VCS内部はfilesystemが与えた名前で除外し、allowlist contractもそう述べるようにした。** ある
+reviewは、case-insensitiveなvolumeがGitのdirectoryを`.GIT`として提示するとwalkが入ると報告し、
+そのためにvolume identityによる比較 — candidate名ごとの`lstat` 2回 — を建てた。それは削除した。
+`VCS_INTERNALS`自身のcommentが、この事例を理由と限定された帰結つきで、受け入れ済みの残余として
+既に記録していた。判定できるのはvolumeの名前解決だが、macOSは両種のvolumeを出荷するのでそれに答える
+platform checkは無く、platformでcaseをfoldすればcase-sensitiveなvolume上で読み手がauthorした`.GIT`を
+隠すことになる。そして入った場合の代償はover-listingであり、そのsurfaceの主張は「listされることは
+loadされることではない」に尽きる。到達には、VCSが使う前に読み手がその綴りでstoreを作っていることが
+要り、それはFR-019が機構を建てないと決めているadversarial-inputの形である。treeはこの規則について
+committedな記述を2つ持ち、互いに矛盾していた。`contracts/inspection-path-allowlist.md`を英日とも、
+codeが常に実装し理由づけてきた側へ改める。
 
-**VCS内部traversalのrelease blocker — 実装が必要。** `VCS_INTERNALS`はentry segmentを文字列の完全一致で
-比較するため、case-insensitiveなvolumeがGitの実directoryを`.GIT`として提示すると、その中をwalkして
-置かれたcustomizationをpublishする。それは同じGit object storeであり、`git rev-parse --git-dir`も
-`.git`を指すため、FR-003、T019、およびresolved real pathでもVCS内部を除外するspecificationに反する。
-Platform全体のlowercaseではなく、含むvolumeの名前identityを使うこと。同じ内部directoryを名指すcase
-variantは除外し、case-sensitiveなvolume上で別directoryとしてauthorされた`.GIT`は残す。Alias経由で
-到達する内部を含め、両volume behaviourをtestすること。
-
-**保守性のrelease blocker — 実装が必要。** Runtimeのnon-kind listは`Files in no known kind`の1つだが、
-`InventoryRail.vue`、`InventoryFilters.vue`、`inventory-filter-state.ts`、`main.css`、`index.vue`のcommentと、
-`inventory-rows.spec.ts`のbrowser test名は、2つのnon-kind listと削除済みSource diagnostics項目を今も記述する。
-Family全体を同時に更新すること。一部だけを修正すると、次の変更へ同じ誤ったmodelを残す。
+**commentが記述するnon-kind listは1つである。** 2つと記述していたproduction commentの5 familyと
+browser test、およびその隣の削除済みSource diagnostics項目を、まとめて修正した。対象は
+`InventoryRail.vue`、`InventoryFilters.vue`、`inventory-filter-state.ts`、`main.css`、`index.vue`、
+`inventory-rows.spec.ts`で、最後のものは1要素のlistを回すloopが、常に走っていた単一caseそのものに
+なった。うち2つは文言以上の修正になった。railのstatus commentは性質ではなく実験の経過を記録して
+いたので、語の隣の数がなぜ答えを伴わずに届くのかを述べる形にした。そして`.aci-notices`は、
+diagnostics listと各詳細の失敗表示が同じ箱を描くという理由でglobalに置かれたutilityであり、その理由は
+listと共に消えていた。描画するcomponentは1つなので、この枠はそのcomponent自身のblockとしてscoped
+styleへ移した（AGENTS.md § Stylesheet scope policy）。
 
 以下のgateはすべて2026-09-05に、このtreeに対して実行した。Build、package、performance、browserの
 検証は、shared workspaceで既に動いていたCLIを妨げないよう、同じworking treeの隔離copyから実行し、
@@ -241,15 +249,82 @@ artifactに依存するgateはそこで生成したbuildを用いた。件数は
 | Format | `pnpm run format:check` | 無出力、exit 0 |
 | Lint | `pnpm run lint` | 無出力、exit 0 |
 | Types | `pnpm run typecheck` | 無出力、exit 0 |
-| Unit | `pnpm run test:unit` | 52 file、1,232 test passed |
+| Unit | `pnpm run test:unit` | 54 file、1,250 test passed |
 | Contract | `pnpm run test:contract` | 12 file、405 test passed |
-| Integration | `pnpm run test:integration` | 11 file、270 test passed |
+| Integration | `pnpm run test:integration` | 11 file、271 test passed |
 | Security | `pnpm run test:security` | 1 file、5 test passed |
 | Package | `pnpm run verify:package`のあと`pnpm run test:package` | 検証はexit 0で無出力、8 file・56 test passed |
 | Performance | `pnpm run test:performance` | 2 file、4 test passed |
-| Browser | `pnpm exec playwright test --project=chromium` | 567 passed |
-| Coverage | `pnpm run test:coverage` | 75 file、1,907 test passed。statement 86.15%（5,950/6,906）、branch 71.60%（3,556/4,966）、function 87.41%（1,160/1,327）、line 86.46%（5,834/6,747） |
+| Browser | `pnpm exec playwright test --project=chromium` | 577 passed |
+| Coverage | `pnpm run test:coverage` | 77 file、1,926 test passed。statement 86.07%（6,023/6,997）、branch 71.87%（3,557/4,949）、function 87.46%（1,200/1,372）、line 86.37%（5,900/6,831） |
 | Documentation | `pnpm run test:docs` | 1 file、41 test passed |
+
+**detail pageから打つ検索が、fieldへ届く。** shellの検索はinventoryへ遷移し、inventoryは読み手が
+辿った行を復元する。そのためfocusは1文字目と2文字目の間でfieldを離れ、以降の文字はどこにも入らな
+かった。打鍵は、いた場所へ戻ることではなくlistへの新しい問いなので、その遷移の前に記録した地点を
+落とす。browser回帰は、辿った行がなお一致する語を打つ — 復元が発火するのはまさにその場合である。
+先に落ちることを確認した。
+
+**open controlの1 instanceは一連のfileに仕えるが、launchはそのうち1つのものである。** 実行中の
+launchはflagだったので、読み手がskillのtreeを移った後も立ったままになり、そのlaunchとは無関係な
+別fileのボタンを無効にしていた。しかもその期間は、実行中のlaunchが要する時間そのもの — flagが存在
+する理由であるterminal editorの場合そのものである。代わりに、そのlaunchが作られた対象のfileを保持
+し、controlはそのfileが画面にあるときだけ無効になる。決着は自分のrequestだけを消すので、先行launch
+の応答が後続fileのものを消すことはない。ここに届くgateは無い。browser suiteはlaunchを起動しては
+ならず、unit projectにsingle-file-component compilerが無いからである。
+
+**consent panelは、readの実行中にrowを確定として報告しなくなった。** 1つの文がcoverしていたのは、
+このtab自身の確認と、snapshotが持つbatchであり、このpageがまだ取り込んでいない受理済みenable —
+別tabのもの、あるいはreload越しのこのtab自身のもの — でbatchが採用済みsnapshotへ届いていないもの
+はcoverしていなかった。publish済みのrowが画面にある状態では、readが出ているのにその文は読み終えた
+件数として読めていた。現在はreadが実行中であることを述べ、panelが既にofferしている
+`Refresh status`を名指す。動かしたものは無い。
+
+**実行中の個人設定readを読み上げる。** railの項目はbatchのcommit前に`Scanning`へ変わるが、pageの
+live regionは最初のmember Sourceが届くまで何も述べなかった。そのため、その項目を見られない読み手は
+何も知らされず、publish済みmemberに対するretryの間も、readが出ていることを言わずにstatusだけを述べ
+ていた（contracts/accessibility-acceptance.ja.md § 4.1.3）。現在は両方を述べ、読み手が対処すべき
+状態が先に来るようmemberを先に置く。railのranking foldと同じく、この分岐はreadを開いたまま保つ必要
+があり、assertではなくfixture launchでの確認として記録する。
+
+**下位artifactは要件を緩められないので、FR-013がlauncher probeの行いを述べる。** 禁止は
+「proposed-root filesystem I/Oを行わない」と無限定に書かれる一方、contractがその例外を記録して
+いた。これはcontractが要件を改変することであり、できない。FR-013は今、規則とその唯一の例外を自ら
+述べる（英日とも）。productのどの操作もproposed rootまたはその配下のpathをoperandに取らない。
+editor launcherの探索はoperandがmachine自身の設定であり、そのresolutionをoperating systemが
+proposed root経由で解決し得る唯一のものである。FR-022が各launcherをhostのport bind前にresolveする
+ことを要求し、candidateが実行可能かを問うことは読み手自身の綴りが導く先を調べることだからである。
+そこからenumerate、read、publishするものは無く、4つのeligible entryはofferし得るものから除外された
+ままである。
+
+**macOSは今もapplication名をLaunchServicesへ渡し、残余は塞ぐのではなく記録する。** あるreviewは、
+認可済みlauncherが内側にあるbundleを解決してpathで起動するよう求めた。名前は登録済みの全bundleに
+対して解決され、inspected repositoryが同名の2つ目を持ち得るからである。一度実装し、取り下げた。
+同じfileが既に`osascript`の綴りについて同じ提案を却下しており、その理由は、これがFR-019の退ける
+adversarial-workspace modelであり、求められる機構こそFR-019が追加を禁じるものだ、というものである。
+両者を別扱いにする根拠として挙げた区別 — `PATH`はこの製品が濾すがLaunchServicesの名前空間は濾さない
+— は機構を支えるには薄く、`env-editor`はこのlaunchが元から使ってきた名前を公開している。残余は
+launchを述べているcontractに記す。
+
+**source typeの回帰は、productが宣言したものに加えて読み手が見るものを読む。** それは*最も近い*Monaco
+rootの親を読んでいたが、diffの内側ではそれはMonaco自身のwrapperである。diffは片側ごとに1つのeditorを
+mountするので、読んでいた要素はMonacoのものであり、productのcascadeを自分自身へ返していた。option配線
+を壊してeditorが12px/18pxで組むようにしても通っていた。今は宣言について最外のrootの親を、実際に組まれた
+ものについて可視の`.view-lines`を読み、各routeは対象のhostを名指す。それが、どのrouteも到達していな
+かった9つ目のhostを露わにした。2つのrouteが同じ「最初の可視editor」を選んでいたからである。両方が落ちる
+ことを確認した。3つのhostからtokenを外す場合と、`typeMetricsOf`がMonaco自身の既定値を返す場合である。
+
+**consent panelは読み取りが進行中であることを述べ、何を読んでいるかを名指す。** 2つの文が
+projectionの確立する以上を主張していた。`These directories are being read now`は、retryが同じ
+previewの再試行できるsubsetしか読まないのに4行すべての上に立ち、`N of these directories are being
+read now`は、phaseが`waiting` — queue済みで未開始、しかもそのphaseは前回のrefresh時点のもの —
+であり得るbatchを数えていた。どちらも`is in progress`と述べる。これはRepository自身の
+`Rescan in progress.`が同じ理由で既に持つ形である。この側は実行中のreadとFIFO待ちのreadを区別
+できず、その区別を主張してはいけない。初回同意とretryは1文ではなく2文にした。retryはsnapshotが
+既に持つretryable subsetから件数を名指し、確認controlのlabel自身が切り替わるのと同じ値で分岐する。
+そうしないと`Try the failed members again`と述べるpressに`these directories`と述べる文が返り得る。
+4つ目の文も一緒に変えた。familyは1つのことを1つの言い方で述べるからであり、このpageが取り込んで
+いないreadも`in progress`である。
 
 **ここでのbrowser gateは1 projectであり、certification matrixはCIのものである。**
 `playwright.config.ts`はChromium・Firefox・WebKitを各1 revision固定しており、3
@@ -269,19 +344,152 @@ revisionにわたるものであり、ここでは再現していない。上表
 いない。変わったのは、認証runがどのcommitに対するものかである。
 
 **Coverageの百分率はあるrunの値であり、定数ではない。** このtreeのrunは、上の行に記録した
-75 file・1,907 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
+77 file・1,926 test passedと百分率を報告した。これらにthresholdをassertしている箇所はどこにも無い。
 
 **Performance gateはsmoke passであり測定ではない。** `tests/performance/`は100,000
 entryのfixtureに対して非gatingのpassを1回実行しharnessの整合性をassertする。このreleaseは、どこにも
 timingのthresholdをassertしない。Checked-inのreference profile `sc002-smoke-reference-v2`は、hostedなUbuntu 24.04 x86_64 runner上のNode 24.18を記述し、profileのbenchmark fieldが変わって、profile自身の規則がfield変更を新しい非互換IDとするため新設した。これは観測値を読む際の参照であって、観測した場所の主張ではない。実行環境とprofileを比較する機構は無く、runは自分の環境を出力する。2026-09-05のpassはこのmachine — arm64、Node 24.14.0 — で走り、rescan dispatchからrequest相関のstatusまで344.7 ms、request committedのoperable inventoryまで500 ms、filter feedbackまで25.1 ms、selection feedbackまで45 msを観測した。global setupがlogを読む人のためにこれを出力し、値はこのmachineを記述する。
+**Consent pageは、終わった読み取りを終わったと述べる。** 1つの文がconfirmationの2つの状態 — 応答待ちと、
+hostが答えた後 — を兼ねていた。Hostはadmitした全memberのscanがterminalになり、batchがcommitされてから
+答える（contracts/http-api.ja.md § enable-global）。したがって後者は読み取りが終わってこのpageが結果を
+取得している状態であり、そこに`Reading … is in progress`とlive regionへ流していた。今は2つの分岐であり、
+後者は`Reading finished. The result is loading.`と述べる。この側は何も読んでいないので件数は付けず、
+commitが既にfileを一覧へ載せているので、走行中の文が持つ行き先の句も付けない。Railは元から正しく、
+`globalReadInProgress`は`submitting`だけを数え`answered`を数えない。
+
+これはSC-001/SC-006の記録を開き直さない。Consent workflowの採点は、提案されたdirectoryを**読む前に**
+名指すこと（`ground-truth.json` § workflows.consent）であり、それはconfirmationを与える前の段階である。
+文言が変わった状態は、その後でなければ発生しない。
+
+**2つのcommentが、仕様が既に持たない要件を名指していた。** `view-state.ts`はconsentのfailure pathを
+`FR-040/FR-041 removed`と説明し、checklistのiteration記録は2026-07-20のrefinementがdomain分類を
+`FR-041のpropagation`で置き換えたと述べていた。どちらもそれらの要件が存在した時点の記述であり、今引く
+読み手は何も見つけない。commenting policyの「名指す前にartifactを開く」はこれを防ぐためにある。前者は
+今日それを支配する条項（contracts/http-api.md § Common results and errors）を名指し、後者はrefinementが
+何をしたかを、それを行った識別子ではなく述べる。`src/`が引く`FR-`・`QR-`・`SC-`識別子すべてをspec.mdが
+定義するものと突き合わせたsweepは、今は欠落0件を報告する。
+
+`SC-002`だけは、criterionでないまま残る識別子である。撤回のclarificationがそれを述べるようにした。
+Performance harnessはfileが作られた当時の`sc002-`接頭辞を保つ。その接頭辞は記録済みdigestが名指す対象
+だからであり、taskやchecklist項目の`SC-002`はそのharnessを指す。
+
+**Tarballはrelease policyが述べるとおりである。** `npm pack`は186 fileを作る。`dist/`、`docs/images`の
+screenshot 2枚、両言語のreadme、licence、manifestである。`bin`は`dist/cli.mjs`を指し、そのfileはtarball
+に入っている。同梱の`THIRD-PARTY-NOTICES.txt`はbrowser bundleから生成され、bundleされた各packageのlicence
+本文を持つ。`CHANGELOG.md`、`specs/`、testは入らない。同じtreeで`verify:package`も通る。
+
+**Screenshotはこのtreeで撮り直し、1枚は動かなかった。** `docs/images/comparison.png`は撮り直した。
+Source typeはtokenが今持つ`0.75rem`/`1.0625rem`であり、最後のblockが切れていたところで3つのdiff blockが
+収まる。`docs/images/inventory.png`はcommit済みfileとbyte単位で同一 — 同じSHA-256 — で返った。Interface
+reworkが残した作業はこの画面に届かず、source tokenを読むinventory rowも無いからである。両readmeのalt
+textは今も各画像が示すものを説明しており、どちらも変えていない。
+
+**このroundが機械的に確認したものと、しなかったもの。** Tree全体を網羅したもの: 前回のround以降に加えた
+`§` citationと`{@link}`がすべて実在するfile・見出し・宣言へ解決すること。参照されないexport名もcomponentも
+無いこと。読み手のいないreactive valueが無いこと。registryが宣言する`DiagnosticCode`がすべて発行され、
+宣言に無いcodeが発行されていないこと。描画するmarkupを持たないstylesheet ruleが無いこと。編集した各Markdown
+の対言語版が同じ変更に入っていること。`git diff --check`がvendored skill以外に何も報告しないこと。Sweepでは
+なく読んだもの: serverのdiff — commitのcompute-then-apply化、launcher probe、traversalのerror policy — と、
+inventoryのfilter tableである。Class所有のsweepはglobal sheetとcomponentの双方にある名前を2件報告するが、
+一方はglobal ruleを名指すcommentであり、もう一方は`.aci-compare-side p`で、その主語はcomponentが描画する
+`p`であり、policyが置く先はそこである。
+
+**Launch tokenはidentityを保つ必要があるため`shallowRef`にした。** Open controlは、どのfileのlaunchかを
+call自体を保持して参照比較で見分ける。Deepな`ref`はobjectに対して`reactive(value)`を返すため、取り出した
+tokenは入れたtokenと同一ではなく、あらゆる settlement が別のcallのものとして読まれていた。結果として、
+既に答えたlaunchでcontrolがdisabledのまま残り、失敗も表示されなかった。記憶ではなく実測している。Deepな
+`ref`はplain objectにはproxyを返し、DOM elementには同じobjectを返す。だから隣のelement refは通常の`ref`
+のままで、移したのはこれだけである。`src/app/`の全`ref`のうち`===`で比較されるものを掃いたが、他には無い。
+残りはtemplate elementかstring unionを保持している。
+
+どちらのsuiteもここに届かず、それは修理ではなく記録として残す。Browser testはlaunchを起動してはならず、
+unit projectはsingle-file componentをcompileしない。Kindが効く理由はtokenの宣言の場所に書いたので、
+次の読み手が`ref`へ戻すことはない。
+
+**Deviceの障害はmachineの状態であり、closedなerrno集合がそれを名指すようにした。** あるroundは、
+exact-target probeの`EIO`/`ESTALE`処理を「environment failureはattemptをabortする」という規則の違反と
+読んだ。この記録の前のroundは、そのfailureが1つのoperationに閉じていることを根拠に違反ではないと答えた。
+その答えは誤りだった。決め手はper-file outcomeが実際に見せる文である。`file-unreadable`は、fileが
+削除されたか権限がreadを拒んでいるかもしれないこと、そして他のfileは影響を受けていないことを述べる。
+Deviceが壊れている場合やmountが消えた場合、3つとも真ではなく、3つ目はまさにそうしたfailureが不明に
+するものである。よってper-file outcomeへ畳むと、machineの状態を読み手のcontentの性質として述べるpartial
+generationを公開することになる。Constitutionのabort規則はそれを防ぐために存在する。
+
+修正は、1つ目の隣に2つ目のerrno allowlistを置くことではない。それを拒んだ点で以前の答えは正しかった。
+修正は、仕様が既に許している唯一のclosedな集合の要素である。`EMFILE`、`ENFILE`、`ENOMEM`に、codebaseが
+線を引くたびにenvironmentalと名指してきた`EIO`と`ESTALE`が加わり、集合の名前は原因の1つではなく中身に
+合わせた。Pathを分類する前にmachine自身のfailureを除外していた各call siteは、これまでどおり同じことを
+続ける。Integration suiteは1 fileにdevice failureを注入し、attemptがcommitではなくrejectすることを
+確かめる。旧集合に対して先に実行し、そのfileをunreadableとして公開するところを確認している。
+
+**Consent pageのstatus regionは、そのpageのstatusを述べる。** Scan status文と、このpageのものでは
+ないoperationの文は、それぞれ状態と一緒に現れるblockの中で`aria-live="polite"`を持っており、各regionは
+textが既に入った状態で作られて何もannounceしていなかった（W3C ARIA22）。その属性は削除し、常設のregionが
+pageの3つのstatus文のうち現在のものを持つようにした。3状態は排他なので、1度に1つである。
+
+その結果、同じ文字列が2つのnodeへ届く。これは重複ではなく設計である。Regionは状態が変わったことを告げ、
+可視の文はその状態そのものであり、読み手は各々に別の仕方で出会う。これはshell自身の形でもあり、
+`errorAnnouncement`と可視の`.aci-error`段落は1つの文字列を持つ（`App.vue`）。読み手に2回見せてはならないのは
+可視のcopyの方なので、consentのwalkthroughはpanelのcopyをpanelで、regionのものをregionで表明し、page
+全体のnodeを数えない。Regionは1×1のboxを`clip-path`で隠しており、可視性のfilterでは実contentと分けられない
+からである。
+
+**どのkindにも属さないfileのlistは、どちらのemptyかを述べる。** そのcommentは、ここには絞り込めるものが
+無いと述べていた。Source選択と検索はどちらもこのlistを絞る。そこにあるfileも他と同じくSourceに属し、path
+を持つからである。絞れないのはtool選択だけで、pageはこのlistにtool controlを出さない。よってempty panelは、
+複数をadmitしたscanに対して「No files.」と述べていた。今はどのkindのlistとも同じ文と同じ出口で、2つを
+区別する。
+
+**あるpanelが保持している文書を、別のpanelのために読み直さない。** Plugin comparisonはfile pairについて
+carrier自身のresponseを採用しており、manifest paneのslotも採用するようにした。方向は一方だけで、理由は
+lifetimeである。Manifest paneはfile選択より長く生き、file paneのslotは選択のたびに落ちる。よってmanifest
+がfile slotを採用すれば、復元するrequestを持たない文書を抱えることになる。これが無いと、pluginの自身の
+manifestであるfileを選んだときにviewが隣のpaneで既に表示している文書を読み直し、その読みが失敗すれば、
+byteが隣に出ているのにfile paneは何も述べられなかった（contracts/http-api.ja.md § Comparison views）。
+
+**Checklistのlogが、開いたものを閉じるようになった。** その日付つきentryは、このreleaseが持たない機構 —
+scan timingのsampling protocol、20人studyの義務、消えたentryのtaxonomyのtable row — を記録しており、
+いずれも追加として記録されて消えた記録が無く、あるiterationの所見は現在形で、今も成り立つかのように
+書かれていた。Entryはchange logの役目そのものなので消さない。欠けていたのはそれらを閉じるentryであり、
+それを書いた。現在形の所見は、そのiterationのものとして述べ直した。
+
+後のroundは、文書方針の「旧名・旧要求は書かない」をそれらのentry自体の禁止と読んだ。その読み方では、
+方針が名指すartifactが役目を果たせない。2つの要件がまだ必要かを問う`Clarifications`の問いは、それらを
+名指さずには答えられず、releaseが後に落としたものを追加したiterationは、その除去を記録するentryが入るまで
+穴の空いたlogである。方針は今、実際に禁じている2つ — 旧名を現行として提示すること、置き換えられた本文を
+説明すること — を述べるので、絶対的な読み方をもう一度導けない。
+
+**設定値が名指すeditorを分類する。** `EDITOR`は字面では分けられない2通りに読める — 空白を含むpathと、
+flagsを伴うcommandである — が、probeは前者しか読まず、値の最後のpath segmentをeditorの名前としていた。
+`vim -u /tmp/minimal.vim`ではそのsegmentはflagsが名指すfileなので、catalogは未知のeditorを報告し、未知の
+editorはnon-terminalであり、読み手自身のeditorは`vi`が解決するものへ置き換えられていた。今は両方の
+読み方を、pathの読みを先に試す。`/Applications/My Editor.app/…/vim`がそのまま働くためである。そこで
+terminal editorが名指されない場合にcommandの読みを使う。実行される値は設定値のままで、flagsは今も
+honourしない。変わったのは分類だけである。Catalogに対して実測した: `nvim -u /tmp/minimal.lua`は以前
+`minimal.lua`に解決し、今は`neovim`に解決する。
+
+**`@typescript-eslint/parser`は宣言済みdevDependencyであり、dependency reviewもそう述べる。**
+このrepository自身のESLint ruleは`RuleTester`で試験する。`RuleTester`はconfigではなくtestからparserを
+受け取るので、testはmanifestが宣言しないpackageをimportし、`@nuxt/eslint`がたまたま持ち込むversionを
+解決していた。Lockfileが得たのは直接linkだけでpackageは増えていない。同じversionを既に推移的に解決して
+いたためで、licenseの集合も同梱noticeも変わらない。Review自身のentryも、何も追加していないかのようには
+読めなくなった。
+
+**CIがcertifyするのは6環境で走る1つのcandidate tarballであり、releaseが公開するbyteではない。**
+Pack stepの脇のcommentは、6 sampleが「公開されるもの」について何かを証明するために在ると述べていた。
+それはできない。`Release.yml`は自身のcheckoutから自身のtarballをpackし、この記録自体が、同じsourceの
+2回のpackはNuxtがbundleへ書くbuild idで異なると述べている。6 jobが立証するのは、このcommitから作った
+1つのtarballがすべてのlower-bound環境でinstallされ動くことであり、commentとtaskは今それを述べる。
+1回のpackの同一byteが6 jobすべてへ届くという記述は変えていない。実際にそうだからである。
+
 
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`784ea623d2120935e9a7153be6f3f73e67e7ed0e5953c900ef396999765911f1`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+`5fe2e9e6b4978e1201d4bb44efaaaa82df86089c35a64d416659c756a237d8d5`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
 caseは、2026-09-05に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser specはChromium
-suite全体567件経由であり、上のrelease gate表が記録する1回のrunで全件が通った。
+suite全体577件経由であり、上のrelease gate表が記録する1回のrunで全件が通った。
 `tests/contract/outcome-fixture-manifest.test.ts`は
 同じsessionでcanonical digestと66件のfixture digestすべてを再現した。
 
@@ -291,13 +499,21 @@ checked-inのbytesが既に持たない値を名指していた。contract suite
 この行と`tests/fixtures/outcomes/manifest.sha256`を、bytesを動かす同じ変更の中で同じcommandから
 書くことである。
 
-このsetは、interface rework後に記録したsetとは比較できない。参照fixtureが5件変わった —
-`tests/contract/http-api-session.test.ts`は、rescan caseがscan commandの応答を、そのscanが終端
-状態に達してから得るようになったことを観測し（contracts/http-api.md § rescan-repository）、
-railの状態語を読む3つのskills spec、そして`tests/fixtures/global-homes/build-fixtures.ts`が
-`HOME`と並べて`USERPROFILE`も固定し、Windowsのrunがdeveloper自身のではなくfixtureの共有agent home
-を読むようにした — ので、spec.md § Release-Evidence Fixture
-Governanceはそれを新しい測定setとする。manifest versionは3のままである。同governanceが
+このsetは、その前のsetとは比較できない。Closedなenvironment-failure errno集合を中身に合わせて
+改名した際に`tests/contract/host-startup.test.ts`が変わり、そのfixture digestとcanonical manifest
+digestが一緒に動いたためである。spec.ja.md § Release-Evidence Fixtureのガバナンスは、fixture byte
+の変更を新しい比較不能なmeasurement setとする。Manifest versionは3のままである。そのガバナンスが
+incrementを要求するのはcase、required-class、expected-outcomeの変更であり、これはそのいずれでもない
+— 同じ4基準にまたがる同じ99 case IDで、required classごとに非ゼロの件数を持つ。
+
+その前のsetがinterface rework後のsetと比較できなかったのは、それ自身の理由による。参照fixtureが5件
+変わり、いずれもrailの`Source diagnostics`項目の削除によるものである。instructions inventoryの3 spec —
+`claude-`、`codex-`、`copilot-` — はその項目を開いて空listを読むassertionを落とし、Codexのものは
+tabを5件ではなく4件と数えるようになった。`inspection-safety.spec.ts`は`Partial`ではなく
+`Inspected`を読む。Sourceのstatusはどこでも1つの表が述べるからであり、存在しない項目の下でroot
+failureを数えることもなくなった。`settings-config-inventory.spec.ts`はrailの走査を
+`Files in no kind`で終え、最後のkindからは2歩ではなく1歩になった。spec.md § Release-Evidence
+Fixture Governanceはそれを新しい測定setとする。manifest versionは3のままである。同governanceが
 incrementを要求するのはcase・required class・expected outcomeの変更であり、今回はそのいずれでも
 ない — 同じ4 criteriaにわたる同じ99件のcase IDで、required classごとの件数はすべて非ゼロのまま
 である。この実行のbrowser側は、このhostのChromium projectであった。3つのpinned revisionはCIの
@@ -358,9 +574,10 @@ matrix rowが名指す34件そのもので、matrixが定義しないIDは持た
 project runでは32件が全projectで通過し、`AUTO-2.1.1`と`AUTO-2.4.1`はchromiumとfirefoxで通過し、
 macOS WebKitでは上記のtab orderの理由により失敗した — 一方はlinkで進むworkflowにTabで到達できず、
 もう一方はskip linkにfocusできない。認証対象のWebKitはCIが実行するLinux
-revisionであるため、この側の認証結果はCIのものである。run `33868211321`はそこで34件の`AUTO-*`
-checkをすべて実行し、`AUTO-2.1.1`と`AUTO-2.4.1`を含めて全件通過した。Localのrunがそれを代替する
-ことはない。
+revisionであるため、この側の認証結果は、このtree自身のcommitに対するCIのrunであり、3つのpinned
+revisionにわたる。ここでは再現しない — 上のrelease gate reviewがbrowser gateについて記録するのと
+同じ扱いである。Localのrunがそれを代替することはなく、それ以前のrunを名指せば、このtreeが持つ
+interface・editor・traversalの変更より前に取られたrunを名指すことになる。
 
 ### WCAG results
 
@@ -463,7 +680,7 @@ host 1台である。Certificationの結果はmatrix上のCI runが生むもの�
 ## SC-001とSC-006のfirst-use session
 
 **2026-09-05に、release candidateに対して、runnerが時計を持って実施した20件のagent駆動session。**
-buildはこれらのgateを実行したtreeの`npm pack`で、tarballのSHA-256は
+buildはそのrun時点のtreeの`npm pack`である。後の編集はそこへ及ばず、下のdigestがsessionが実際に走らせたartifactを指す。tarballのSHA-256は
 `7e852c2305971d91ca0e23aa23bafa1cac4d5b986b243d9ec8e167fc24245837`、これを`npm install`で1つの
 run folderに入れた。このdigestはsessionが実行したartifactを指すもので、re-packが再現する値では
 ない。同一sourceの2回のpackはNuxtが`dist/public`へ書くbuild idだけが異なり、`dist/cli.mjs`を含め
@@ -562,7 +779,7 @@ task材料も変わった。spec.md § SC-001はそのいずれも、結果を�
 ### 2026-09-04の3回目のrun
 
 **2026-09-04に、このreleaseのreview修正を載せたbuildに対して、各sessionをこのworking treeの外で
-開始して実施した20件のagent駆動session。** buildは上のrelease gateを実行したtreeの`pnpm pack`で、
+開始して実施した20件のagent駆動session。** buildはそのrun時点のtreeの`pnpm pack`で、
 tarballのSHA-256は`169372b9fa8ff1df8c2ce6d0ec47f67e4eb09702757ed830a6ae34cebad44fdc`、これを
 `npm install`で1つのrun folderに入れた。各sessionは自分の`repository/` —
 `tests/fixtures/repositories/build-fixtures.ts`がその場所に構築したall-kind fixtureであり、guideの
@@ -1028,7 +1245,7 @@ confirmationについて独立した20件のfirst useを保持できず、sessio
 描画するguidanceだけでfileに到達し、productがそのfileについて述べていることを言えるかである。
 同じinterfaceを人がどう体験するかはこの記録に無い。SC-001とSC-006は自身の文面でそう述べており、
 ここのどの文もhuman-subjectの結果として読んではならない。このrunはcapture harnessを使っていない。
-moderated studyが必要としたsealed-capture kitはこのrunで動かされておらず、その後退役した。後掲の
+moderated studyが必要としたcapture kitはこのrunで動かされておらず、その後退役した。後掲の
 記録がそれを扱う。
 
 | Workflow | 測るもの | 閾値 | 結果 |
@@ -1116,19 +1333,18 @@ customization fileであって、見たことのないrepositoryではない。
 
 ## Study kitのrelease-candidate reviewと、その退役
 
-T1061の分岐ごとのreviewは、sealed-capture kitをそのprotocol contractに照らして読み、15件の欠陥を
+T1061の分岐ごとのreviewは、capture kitをそのprotocol contractに照らして読み、15件の欠陥を
 見つけた。各件をcodeと矛盾する条項の双方へ追跡し、修正し、修正が無ければ落ちるcheckを与えた。
 T1062はそのloopを未解決concern zeroまで回した。最後の1件は、equipmentが実際に判定できる
 packaged-prefix規則へcontractのstatic asset rowを修正することで決着した。
 
-そのうえでkitを削除する。Kitはmoderatedな人間studyを監査可能にするために存在した — 固定launch
-line、study-input distributionとそのdigest freeze、request ledger、browser proxyとnavigation
-grant、reviewer process、inherited-IPCのsupervisorとevidence seal — が、そのstudyは行われない。
-初見のparticipant 20名がこのprojectには得られないからである。一緒に消えたもの: protocol
-contract、3つの`scripts/*usability-study*` module、それらのcontract/integration/security suite、
-3つの`study:evidence:*` package command、そして`src/server/cli.ts`にあったproduct側のreadiness
-probe（唯一のcallerがkitだった）。残したのは評価が読むもの、すなわちguidance、4つの定型task
-prompt、response form、ground truth、scoring rubricである。
+そのうえでcapture kitを削除する。contract、module、それらのsuite、package command、そして唯一の
+callerがkitだったproduct側のreadiness probeも一緒に消えた。Capture kitはmoderatedな人間studyを
+監査可能にするために存在したが、そのstudyは行われない。初見のparticipant 20名がこのprojectには
+得られないからである。残したのはrunが読むもの、すなわちguidance、4つの定型task prompt、response
+form、ground truth、scoring rubricと、1回のrunをどう実施するかを述べるもの、すなわち
+`tests/usability/sc001-sc006-study-kit.ja.md`とその英語版であり、後者はもはやharnessではなく
+静的なoperator protocolである。
 
 修正の詳細はここに記録しない。このreleaseが持たないcodeの欠陥表は、読者が確認できるものを何も
 説明しないからである。Reviewが立証し、この記録が保持するのは、退役を決める前にkitが未解決
@@ -1153,20 +1369,19 @@ dependency無しにequipmentはそれを判定できない。Contractは判定�
 そして、76 taskに所有しないfileを名指しさせるowned-path要件は、両言語で修正した。これらを避けるための
 その場しのぎのpatch、握り潰し、投機的抽象はいずれも導入していない。
 
-*未解決のrelease blocker。* Consent前のlauncher discoveryはoutside spellingの全candidateをphysicalに
-resolveするため、proposed personal-setup root内へのaliasが、読み手のaction前にFR-013のno-I/O boundaryを
-越え得る一方、そのpersonal root自体とは綴りだけで比較している。さらにRepository rootについてはstartup時の
-physical locationだけを保持し、physical resolveのfailureをすべてlexicalな続行許可として扱う。FR-013は
-consent後の必要なpersonal-root authorizationを許可し、`root-unreadable`のrecovery pathによって修復済みrootへ
-到達できる。必要な実装とregression caseは前掲のlauncher reviewに記載しており、これはaccepted residualではない。
+5つ目は同じ条項を逆側から使った。ここで冗長さを命じたのはspecificationではなく、その読み方である。
+Launcher exclusionは2段階として提案された。全candidateをconsent前にphysicalにresolveする段階と、session
+がその時点で保持するrootに対してlaunch時に再authorizeする段階である。FR-013のno-I/O規則をprobe自身の
+resolutionまで禁じるものと読んだためだった。だがoperandは`PATH` entryか設定済みeditorであり、4つの
+proposed rootのいずれでもない。よってFR-013を、editor launcherの探索がoperating systemによるproposed
+root経由の解決を許す唯一の操作であると述べるよう修正し、2段目は買えるものを失った。残る比較は1つ、probe
+時に行うものだけである。各candidateを綴りとしても物理的な位置としても、startupが確定するRepository rootの
+物理的な位置と、proposed personal setup rootそれぞれの綴りに対して比較する。それをadmit済みのlaunch直前に
+繰り返すことはFR-019が禁じるidentityの再verificationであるから、残るものは機構で塞がず、launchを述べている
+場所（`contracts/http-api.ja.md` § open-file）に記録する。filesystemがresolveできないcandidateを許可せず
+拒否するのも同じ場所である。
 
-他に3つのproductまたはcontract violationが未解決である。実行中のGlobal retryはrank済みの`partial`または
-`failed` rail stateを上書きしながらwarning表示を残す。3つのMonaco diff hostはsharedなsource-surface
-type metricsを欠く。そして文字列完全一致のVCS filterはcase-insensitiveなvolume上の実`.GIT` directoryを
-walkする。必要な実装とregression caseは前掲のrelease-gate reviewに記録しており、いずれもaccepted
-residualではない。
-
-*未決ではなく解消。* Sealed-capture study kitは背後にrunを持たない機構だった。初見のparticipant
+*未決ではなく解消。* Capture study kitは背後にrunを持たない機構だった。初見のparticipant
 20名がこのprojectには得られず、それが存在する理由であるmoderated studyは行われないからであり、それは
 この原則が禁じる形である。この変更で、protocol contract、3つのsuite、package command、そして唯一の
 callerがkitだったproduct側のreadiness probeとともに削除した。
@@ -1178,9 +1393,17 @@ stampをこのpage loadが発行したtokenの集合と照合していたが、r
 sessionが既に公開している。その集合と、それを補うために置かれていた到着時のrestampはどちらも
 削除し、それらを説明していたコメントも一緒に消えた。
 
-*未解決のrelease blocker。* Source diagnostics項目の削除後、production commentの5 familyとbrowser test名
-1つがnon-kind listを2つと記述したままである。Runtimeとbilingual task textは1つである。対象fileと必要な
-family-wideの修正は前掲のrelease-gate reviewに記録している。
+同じ規則が2つ目を捕らえた。Source diagnostics項目の削除は、non-kind listを2つと記述するproduction
+commentの5 familyとbrowser testを1つ残し、さらに`.aci-notices`を、globalに置く理由 — 2つのsurfaceが1つの
+箱を描く — がlistと共に消えたutilityとして残していた。Familyはまとめて修正し、理由の消えた逸脱は
+決定ではなく defectであるという規則に従って、その枠を描画する唯一のcomponentへ移した。
+
+3つ目は最終roundから出たもので、同じ規則を1段上で読んだものである。要件を名指すcommentは、仕様が
+その要件を落とした時点で真でなくなるが、それを見ている仕組みが無かった。7月に削除した
+`FR-040`/`FR-041`を、2箇所がまだ引いていた。Familyを閉じたのは2つの編集ではなくそれらを見つけたsweep
+である。`src/`が引く`FR-`・`QR-`・`SC-`識別子はすべてspec.mdが定義するものと突き合わせるようになり、
+criterionより長く正当に生き残る唯一の識別子 — performance harnessの`sc002-`接頭辞 — は、読み手が引く
+場所でそう述べてある。
 
 **III. Verification Before Completion。** このreleaseでaccept済みの各修正は、それが無ければ落ちるcheckを伴い、
 受け入れる前に落ちるところを実際に見ている。Filter-generationの修正は2重にassertしている。判定式に
@@ -1188,8 +1411,24 @@ family-wideの修正は前掲のrelease-gate reviewに記録している。
 対するbrowser testであり、いずれも修正前の判定式に対して先に実行し、落ちることを確認した。Suiteが
 通ることは証明として扱っていない。Study kit退役の前に行ったreviewは、suiteが到達しない分岐を読み、
 健全と判定したものも未検証と判定したものも記録した。
-未解決のrail、launcher、VCS、Monaco findingはaccept済みの修正として扱わない。各findingがこのcheckを
-完了する前に伴うべきregressionを、前掲のreviewに記載している。
+Monaco host metricsは前掲のreviewが述べるregressionを伴い、修正前のsourceに対して落ちるところを
+確認している。Launcher exclusionとVCS除外については、2回のreviewが求めた機構を建てて取り下げた。
+取り下げた理由は前掲の各項目にあり、残るのは既存の比較と、記録した残余である。Railのranking foldだけは
+その分岐自体にどのgateも届かない — readを開いたまま保つ必要があり、RPC channelはWebSocketで、unit
+projectにsingle-file-component compilerが無い — ので、checkされるのはその入力を供給するpredicateと、
+readが出ていないときのrankingであり、fold自体はassertではなくfixture launchでの確認として記録する。
+後続の修正2件も同じ位置にあり、そのように記録する。個人設定live regionの実行中の文はreadを開いたまま
+保つ必要があり、open controlのfile単位のlaunchは、どのbrowser suiteもlaunchを起動してはならない
+ため、どのsuiteも到達しない。
+
+このreleaseの修正のうち2件は、その前の修正自身が生んだregressionであり、どちらもsuiteではなく修正を
+それが変えたcodeに照らして読むことで見つけた。Launcher probeのerror分割を広げた際、物理resolverを2つの
+errno値へ狭めてしまい、link cycleであるRepository root、あるいはこのprocessがsearchできないdirectoryの
+下にあるRepository rootが、hostも持たないstartup失敗になっていた。FR-002はそれに、読み手が見られる
+`root-unreadable` Diagnosticを与える。Global commitをcompute-then-apply化した際は、memberの初回publication
+がdiagnosticのsort時点で未ランクのまま残り、retryしたmemberが先行batchのpublicationより前に読まれていた。
+いずれも先に落ちるところを見たcheckを伴う。前者は実際に権限を落とした親をstageしてlaunchし、後者は
+先行publicationの上にretryをcommitしてcommit済みの順序を読み戻す。
 
 *未決事項。* この機械では7件のbrowser caseが落ちるが、落ちるのはmacOS
 WebKitだけである。7件すべてがlinkにTabで到達できることをassertしており、macOSはFull Keyboard
@@ -1217,10 +1456,19 @@ workflowであり、これはcontributorが実際に走らせられるもので�
 dependencyはすべてcaret rangeで宣言し、正確な解決はcommit済みlockfileが所有する。各依存がuser
 runtimeで何に到達するかは検査済みであり、その記録が前掲のDependency reviewである。
 
-**Productまたはcontract violation 4件とmaintainability concern 1件がreleaseをblockしている。**
-前掲のlauncher authorization、Global retry aggregation、VCS内部traversal、Monaco host metrics、
-および古いtwo-list説明である。実際に残るresidualは2件で、1件はevidenceの恒常的な性質、もう1件は
-certified matrixが答えるmachine固有のbrowser結果である。
+**前掲のうち、判断待ちのものは無い。** findingはいずれも各項目が述べるとおり実装しcoverしており、
+文言に懸かったものも決着して同時に実装した。Loopは、前掲のrelease gate節に記録した最後のroundで閉じた。
+その前のroundは削除済み要件を引くcommentを2件見つけた。最後のroundは、存在理由である比較を無効にして
+いたreactive宣言の種別、announceできないlive region 2件、誤ったemptyを述べていたempty state、2つのpanel
+をまたいで二重に読まれていた文書、追加を記録して削除を記録していなかったchange logを見つけた。いずれも
+上で修正し、1件はcontractが支持しない読みとしてcode側で答え、live regionは黙ったままではなくpage自身のstatusへ
+繋いだ。これはshellが既に持つ形である。
+
+実際のresidual 2件は変わらず、どちらも判断待ちではない。支援技術に対するmanual実行は行わない。
+moderated studyが行われないのと同じ理由で、このprojectに得られないoperatorを必要とするからであり、
+所有者のいる項目ではなくevidenceの恒常的な性質である。これを閉じるのはそのoperatorを得たreleaseで
+あり、そのとき走らせるのは各`MANUAL-*`行が名指すmatrixである。macOS WebKitのlink-Tab 7件はproductでは
+なくこの機械の性質であり、所有者はCIである。認証済み3 browser matrixの結果がrelease check logに載る。
 
 ## SC-008 accessibility: Not-applicableの再検証
 
@@ -1245,9 +1493,10 @@ vendor markである。確認した内容:
 | 3.3.4 | 法的・金銭的commitmentが無く、永続dataを変更しない | inspectionとsessionのmoduleはfilesystem writeを一切発行しない。FR-023はmutation instrumentationが証明する |
 | 3.3.7 | 同じことを二度尋ねない | 入力はshellが持つ名前とpathの検索1つ、inventoryのToolとSourceのselect、consent checkbox、comparisonの2つのfile pickerである。いずれも既に与えられた情報を尋ね直さない |
 
-**Applicable rowの自動側**は上記のSC-008 accessibilityに記録している。34件の`AUTO-*` IDがchromiumと
-firefoxで全件通過し、CIが実行する認証対象のLinux WebKitでも全件通過する。`AUTO-2.1.1`と`AUTO-2.4.1`は
-認証外のmacOS WebKitでのみ、そこに記録したtab orderの理由により失敗する。
+**Applicable rowの自動側**は上記のSC-008 accessibilityに記録している。34件の`AUTO-*` IDのうち32件が
+localの全projectで通過し、`AUTO-2.1.1`と`AUTO-2.4.1`は認証外のmacOS WebKitでのみ、そこに記録した
+tab orderの理由により失敗する。認証対象のLinux WebKitがその2件をどうするかは、このtree自身のcommitに
+対するCIのrunであり、ここでは再現せず、localのrunがそれを代替することもない。
 
 **`MANUAL-*` IDは未実行として記録する。** そのmatrixは3つのoperating systemと3つのscreen readerの組を
 要し、このreleaseはそれを主張しない（contracts/accessibility-acceptance.ja.md § 判定rule）。

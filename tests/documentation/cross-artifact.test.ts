@@ -149,7 +149,7 @@ const englishTasks = parseTasks(tasksEnglish);
 const japaneseTasks = parseTasks(tasksJapanese);
 
 /**
- * The declared task-ID space: T001 through T1177, less the ranges the withdrawn
+ * The declared task-ID space: T001 through T1205, less the ranges the withdrawn
  * phases left vacant (tasks.md T1041). Written out here and in the task text
  * both, because what this freezes is that a range nobody meant to change did
  * not change.

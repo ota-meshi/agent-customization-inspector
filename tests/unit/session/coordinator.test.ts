@@ -335,6 +335,69 @@ describe('committing and failing one accepted batch (T946)', () => {
     ).toEqual(['diag-claude-2', 'diag-codex-1']);
   });
 
+  it('keeps that order when a retry publishes its member for the first time', () => {
+    // The commit is assembled before it is applied, so the member this batch
+    // publishes is not in `globalSources` yet while its records are sorted.
+    // Ranked from that map alone the newcomer takes the first member's
+    // position, which reads Codex before the Claude an earlier batch
+    // published — the reverse of the fixed order.
+    const context = bootstrap();
+    const operationId = register(context.coordinator);
+    const settled = context.coordinator.settleGlobalEnable(operationId, PREVIEW_ID, [
+      admitted('claude'),
+      rejected('codex', 'root-unreadable'),
+    ]);
+    if (settled.scanRequestId === null) {
+      throw new Error('expected a queued batch');
+    }
+    const sourceIdOf = (member: 'codex' | 'claude'): string =>
+      context.session.globalConsent!.controls.get(member)!.sourceId!;
+    const diagnosticOf = (id: string, member: 'codex' | 'claude') => ({
+      diagnosticId: id,
+      code: 'root-unreadable' as const,
+      sourceId: sourceIdOf(member),
+      sourceRelativePath: null,
+    });
+    context.coordinator.completeGlobalBatch(settled.scanRequestId, [
+      {
+        member: 'claude',
+        files: [],
+        recognitions: [],
+        diagnostics: [diagnosticOf('diag-claude', 'claude')],
+        outcome: 'complete',
+        visitedEntries: 1,
+        candidateFiles: 0,
+        readBytes: 0,
+        censusEscapedDirectories: [],
+      },
+    ]);
+
+    const retryId = register(context.coordinator, 'retry');
+    const retried = context.coordinator.settleGlobalEnable(retryId, PREVIEW_ID, [
+      admitted('codex'),
+    ]);
+    if (retried.scanRequestId === null) {
+      throw new Error('expected a queued retry batch');
+    }
+    context.coordinator.completeGlobalBatch(retried.scanRequestId, [
+      {
+        member: 'codex',
+        files: [],
+        recognitions: [],
+        diagnostics: [diagnosticOf('diag-codex', 'codex')],
+        outcome: 'complete',
+        visitedEntries: 1,
+        candidateFiles: 0,
+        readBytes: 0,
+        censusEscapedDirectories: [],
+      },
+    ]);
+
+    expect(
+      context.session.snapshot().diagnostics.map((diagnostic) => diagnostic.diagnosticId),
+    ).toEqual(['diag-claude', 'diag-codex']);
+  });
+
   it('advances the public batch phase with the member reports', () => {
     // The batch status is what a refreshing reader sees while the batch
     // reads: its phase follows the running member's own reports through the

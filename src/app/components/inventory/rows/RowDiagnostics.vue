@@ -74,16 +74,14 @@ const rowDiagnostics = computed(() =>
 </template>
 
 <style scoped>
-/* The badges ride inline with whatever states them — a path, or a row's
-   outcome column — and wrap rather than pushing it off the line (WCAG
-   1.4.10). */
 /* The badges ride on the line that states them — after a path, or in a row's
-   outcome column — and stay there when one is opened. `inline` rather than
-   `inline-flex` is what allows that: an inline box containing a block splits
-   around it, so the badge keeps its place on the line and the disclosed
-   paragraph lays out below at the row's own width. An inline-flex box instead
-   shrink-wraps the line's remainder, which set the sentence in whatever column
-   the path did not use. */
+   outcome column — wrapping rather than pushing it off the line (WCAG 1.4.10),
+   and staying there when one is opened. `inline` rather than `inline-flex` is
+   what allows that: an inline box containing a block splits around it, so the
+   badge keeps its place on the line and the disclosed paragraph lays out below
+   at the row's own width. An inline-flex box instead shrink-wraps the line's
+   remainder, which set the sentence in whatever column the path did not
+   use. */
 .aci-row-diagnostics {
   display: inline;
   list-style: none;

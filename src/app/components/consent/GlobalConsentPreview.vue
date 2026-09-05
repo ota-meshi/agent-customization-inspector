@@ -85,9 +85,7 @@ const exclusions = computed(() =>
     <!-- Future tense before a confirmation, past after it, on the same value
          the paragraph below branches on: a reader returning to this page has
          already made the decision, and a heading still proposing it says the
-         decision is outstanding. Deliberately not the wording of the
-         `What is inspected` panel further down, which would put the same
-         heading on the page twice (`pages/global-consent.vue`). -->
+         decision is outstanding. -->
     <h3>{{ consentGiven ? 'What your confirmation covers' : 'What would be inspected' }}</h3>
     <p>
       Inspecting your personal setup means reading the customization files each tool documents in

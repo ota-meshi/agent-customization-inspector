@@ -199,10 +199,10 @@ Expected:
   carries no per-session token, fragment, or other secret. With `--no-open` — the CLI's
   negatable product flag — no browser opens and no browser-helper child process is created.
 - The Repository source root shown by the browser is the launched fixture tree itself.
-- Within 1 second the UI visibly renders and exposes to assistive technology a status for the
-  current scan request that says queued, names an active phase, or reports complete, partial,
-  or failed (with a practical next step for failure), and the Source/progress identifies that
-  request's opaque `scanRequestId`. A generic spinner/loading label,
+- The UI visibly renders and exposes to assistive technology a status for the current scan
+  request that says queued, names an active phase, or reports complete, partial, or failed
+  (with a practical next step for failure), and the Source/progress identifies that request's
+  opaque `scanRequestId`. A generic spinner/loading label,
   unchanged control, acknowledgement without scan state, or earlier-scan status does not count.
 - The first complete inventory appears without any file outside the frozen path contract.
 - Stopping the process destroys the server session. On a loaded page, devframe reports loss
@@ -510,9 +510,10 @@ Verify:
 1. With no option, Repository Source equals the exact captured child-process
    `process.cwd()`. With relative/absolute `--root`, it equals the selected root;
    the process working directory is unchanged and no picker/ancestor search appears.
-2. Source, tool, kind, and Source-relative Path filters work with keyboard and pointer
-   input; every inventory-file or safely normalized target path is relative to its owning
-   Source's one root and no cross-Source path namespace is implied. Escaped enabled-Source
+2. The rail selects the kind in view, the Source and Tool selects narrow the list beside
+   them, and one search matches a name or a Source-relative Path — all with keyboard and
+   pointer input (FR-006); every inventory-file or safely normalized target path is relative
+   to its owning Source's one root and no cross-Source path namespace is implied. Escaped enabled-Source
    and consent-preview root labels remain presentation-only, are not Source-relative Paths,
    and grant no read authority.
 3. One physical `AGENTS.md`, `CLAUDE.md`, skill, `.mcp.json`, or marketplace remains one
@@ -731,8 +732,12 @@ pnpm exec vitest run --project integration tests/integration/global-boundaries.t
 The test harness supplies isolated fake tool homes; it must never inspect the developer's
 real home directory. Verify:
 
-1. No Global path is touched before consent; the preview is derived lexically without
-   `stat`, `realpath`, enumeration, or file reads. Instrumented startup capture proves each
+1. No proposed root is an operand of any product filesystem operation before consent, and the
+   preview is derived lexically without `stat`, `realpath`, enumeration, or file reads. The
+   one exception FR-013 states is editor-launcher discovery, whose operands are the machine's
+   own `PATH` and configured editor and whose resolution the operating system may route
+   through a proposed root; it enumerates, reads, and publishes nothing from one, and offers
+   no launcher inside one. Instrumented startup capture proves each
    of `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` is captured exactly once in that
    order; only `undefined` is absent; and `node:os.homedir()` is called exactly once
    unconditionally — the shared agent home always derives from it. Active-platform
@@ -1037,9 +1042,9 @@ Traversal-plan call traces additionally prove that Repository traversal executes
 compiled immutable plan, a Global exact target never opens the tool-home root, a fixed
 instruction-subtree walk opens only that subtree, and every neighboring Global path has
 zero I/O. Path-spelling fixtures prove the exact raw `Dirent.name` segment is the one spelling:
-filesystem operations use the raw entry name, a public Source-relative Path is those
-names joined with `/`, and a targeted fixed path uses the immutable registry target
-spelling as its sole I/O operand, so an NFD-only name is read through and published as
+filesystem operations use the segments the plan retained, a public Source-relative Path is
+those segments joined with `/`, and a targeted fixed path uses the immutable registry target
+spelling as both its sole I/O operand and its published segments, so an NFD-only name is read through and published as
 its raw segment. Hard links are ordinary files: two hard-linked paths
 that both match allowlisted selectors are simply two inventory files, with no identity
 grouping, alias ranking, or per-group bookkeeping to test. Symbolic links are followed
@@ -1221,7 +1226,7 @@ assumptions, accidental source mutation, and unrelated changes. After every resu
 repository remediation, rerun the complete applicable automated matrix—build, frozen install,
 lint, typecheck, unit, contract, integration, security, package, performance, browser,
 coverage, documentation, and lower-bound candidate checks—regenerate every affected
-candidate/profile/fixture/human or manual evidence set, and repeat complete-diff/tarball review
+candidate, profile, and fixture evidence set, and repeat complete-diff/tarball review
 until it reports no concern. Then record the bilingual Constitution Check as the sole planned
 validation-only edit and freeze the tree. Against that frozen tree and candidate, rerun all
 applicable automated gates, ending with the documentation gate and

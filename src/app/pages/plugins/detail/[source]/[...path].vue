@@ -1147,16 +1147,25 @@ function onTabKeydown(event: KeyboardEvent, index: number): void {
  * (FR-030), so a rescan while the reader is reading takes the detail away and
  * brings the same one back; deciding again on that round trip would move a
  * reader who had switched tabs.
+ *
+ * A plain `let` rather than a ref: nothing but the watch below reads it, so
+ * there is no render to keep in step and a ref would declare state the view
+ * depends on when none does.
  */
-const tabDecidedFor = ref<string | null>(null);
+let tabDecidedFor: string | null = null;
 watch(
-  [carrierPath, openPluginName, selectedFile],
-  ([path, pluginName, filePath]) => {
-    const decidingFor = `${path}\u0000${pluginName}\u0000${filePath}`;
-    if (tabDecidedFor.value === decidingFor) {
+  [openSource, carrierPath, openTool, openPluginName, selectedFile],
+  ([source, path, tool, pluginName, filePath]) => {
+    // The Source and the product belong in the identity as much as the path
+    // does: a file's identity is its Source and its Source-relative Path
+    // together (FR-030), so two Sources holding one path are two subjects —
+    // and the tab strip is one product's reading, so moving between products
+    // is moving to another subject too.
+    const decidingFor = `${source}\u0000${path}\u0000${tool}\u0000${pluginName}\u0000${filePath}`;
+    if (tabDecidedFor === decidingFor) {
       return;
     }
-    tabDecidedFor.value = decidingFor;
+    tabDecidedFor = decidingFor;
     selectTab(filePath === null ? 'plugin' : 'files');
   },
   { immediate: true },
@@ -1203,6 +1212,16 @@ const detailAnnouncement = computed(() => {
 });
 
 const heading = ref<HTMLHeadingElement | null>(null);
+
+/**
+ * Moves focus to this page's heading, which is where every focus decision on
+ * this route lands — the same one-line move each other detail names
+ * (`agents/detail` § focusHeading), so the six places that make it here cannot
+ * drift into six spellings of it.
+ */
+function focusHeading(): void {
+  heading.value?.focus();
+}
 const pageOwnership = usePageOwnership();
 
 /**
@@ -1241,7 +1260,7 @@ const requestOpen = (): void => {
  * the top of the document (WCAG 2.4.3).
  */
 const retryOpen = (): void => {
-  heading.value?.focus();
+  focusHeading();
   requestOpen();
 };
 
@@ -1285,14 +1304,14 @@ watch(
 // following a link in an SPA moves no focus by itself. Selecting another of the
 // plugin's files is not a change of subject, so it moves nothing.
 onMounted(() => {
-  heading.value?.focus();
+  focusHeading();
 });
 watch([openSource, carrierPath, openPluginName], () => {
   // After the DOM update, like every other detail's subject watcher: focusing
   // pre-flush lands on the outgoing heading, so assistive technology hears
   // the previous plugin's name and the new heading gets no focus event
   // (WCAG 2.4.3).
-  void nextTick(() => heading.value?.focus());
+  void nextTick(() => focusHeading());
 });
 
 /** Set as the route is left, so the focus guards below yield to the next route. */
@@ -1318,7 +1337,7 @@ watch(
       reservedPaneHeight.value = paneElement.value?.offsetHeight ?? 0;
     }
     if (file === null && !leaving && paneElement.value?.contains(document.activeElement) === true) {
-      heading.value?.focus();
+      focusHeading();
     }
   },
   { flush: 'sync' },
@@ -1343,7 +1362,7 @@ watch(
       pageRoot.value?.contains(document.activeElement) === true &&
       document.activeElement !== heading.value
     ) {
-      heading.value?.focus();
+      focusHeading();
     }
   },
   { flush: 'sync' },
@@ -1361,7 +1380,7 @@ watch(
       pageRoot.value?.contains(document.activeElement) === true &&
       document.activeElement !== heading.value
     ) {
-      heading.value?.focus();
+      focusHeading();
     }
   },
   { flush: 'sync' },

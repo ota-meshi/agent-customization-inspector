@@ -142,15 +142,6 @@ export class SessionSources {
   }
 
   /**
-   * One member list grouped into one block per Source family, in the
-   * published Source order the list already carries: the repository's members
-   * and the consented homes' are two statements rather than one merged list —
-   * the grouping the instruction blocks render, kept for every kind a member
-   * publishes (FR-030, tasks.md T1140). The heading names a block only where
-   * the session holds more than one Source
-   * ({@link SessionSources.familyNameOf}).
-   */
-  /**
    * The comparison entry a row's own name line carries, or null where none
    * belongs there: the entry of the one family the shown members leave, and
    * nothing at all while they leave two — there each block heads its own line
@@ -177,6 +168,15 @@ export class SessionSources {
     return shown === undefined || rest.length > 0 ? null : (entriesByFamily.get(shown) ?? null);
   }
 
+  /**
+   * One member list grouped into one block per Source family, in the
+   * published Source order the list already carries: the repository's members
+   * and the consented homes' are two statements rather than one merged list —
+   * the grouping the instruction blocks render, kept for every kind a member
+   * publishes (FR-030, tasks.md T1140). The heading names a block only where
+   * the session holds more than one Source
+   * ({@link SessionSources.familyNameOf}).
+   */
   public familyBlocksOf<Member extends { readonly sourceId: string }>(
     members: readonly Member[],
   ): readonly SourceFamilyBlock<Member>[] {

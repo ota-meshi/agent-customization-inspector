@@ -28,7 +28,7 @@ import type { CompiledDerivedRule, CompiledInspectionRule, TraversalPlan } from 
  * and a file admitted there governs the repository entirely, while a product
  * documenting per-directory discovery derives the range from the path.
  *
- * `sourceRelativePath` is raw entry names joined with `/` on every platform
+ * `sourceRelativePath` is the file's own path segments joined with `/` on every platform
  * ({@link toPublicPath}), so an implementation that reads it splits on `/`
  * rather than on the host separator.
  *

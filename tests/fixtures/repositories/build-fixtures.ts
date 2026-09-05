@@ -1425,27 +1425,6 @@ export interface ClaudeRuleFixture {
 }
 
 /**
- * Builds the canonical Claude rule fixture repository (T419).
- *
- * The admitted set is every `.md` file under any `.claude/rules/` subtree,
- * which is two documented recursions at once: nested `.claude/rules/`
- * directories load on demand, and all `.md` files inside one rules directory
- * are discovered recursively. The tree exercises both — a root rules
- * directory with a subdirectory, and a `packages/api/.claude/rules/` with one
- * of its own — beside the near misses one segment away from each.
- *
- * The admitted files carry what a Claude rule carries: a `paths` frontmatter
- * scoping a rule to globs this product never evaluates, a rule with no
- * frontmatter at all, malformed YAML whose extraction fails while the source
- * stays displayed, and a literal credential and environment reference that
- * must reach no inventory and never be resolved.
- *
- * Copilot compatibility is proved by absence: the `.claude` instruction
- * locations Copilot documents are the ones this release leaves out, so the
- * tree holds Copilot's own files and the Claude rule files, and no file is
- * recognized as both.
- */
-/**
  * Builds a Claude permission-policy fixture (T1105): the two root settings
  * files that declare a policy, one that declares none, one strict JSON
  * rejects, and a subdirectory copy no selector reaches.
@@ -1552,6 +1531,27 @@ export function buildClaudePermissionsFixture(
   };
 }
 
+/**
+ * Builds the canonical Claude rule fixture repository (T419).
+ *
+ * The admitted set is every `.md` file under any `.claude/rules/` subtree,
+ * which is two documented recursions at once: nested `.claude/rules/`
+ * directories load on demand, and all `.md` files inside one rules directory
+ * are discovered recursively. The tree exercises both — a root rules
+ * directory with a subdirectory, and a `packages/api/.claude/rules/` with one
+ * of its own — beside the near misses one segment away from each.
+ *
+ * The admitted files carry what a Claude rule carries: a `paths` frontmatter
+ * scoping a rule to globs this product never evaluates, a rule with no
+ * frontmatter at all, malformed YAML whose extraction fails while the source
+ * stays displayed, and a literal credential and environment reference that
+ * must reach no inventory and never be resolved.
+ *
+ * Copilot compatibility is proved by absence: the `.claude` instruction
+ * locations Copilot documents are the ones this release leaves out, so the
+ * tree holds Copilot's own files and the Claude rule files, and no file is
+ * recognized as both.
+ */
 export function buildClaudeRuleFixture(
   prefix = 'inspector-claude-rules',
   root = createRepositoryFixtureRoot(prefix),
@@ -2689,15 +2689,6 @@ export function buildCopilotPluginFixture(
 }
 
 /**
- * One built unified plugin fixture repository (T818): one repository whose
- * plugins reach it every way the three products document, including the one
- * catalog file all three read.
- *
- * The point of this tree is the cross-product view: a plugin name is one row
- * however many products resolve it, and one physical file is read once however
- * many of them recognize it (data-model.md § Inventory unit).
- */
-/**
  * What {@link buildPluginComparisonFixture} writes: one plugin name offered by
  * two catalogs, which is what a repository publishing the same marketplace for
  * two products has, plus a second name only one catalog offers.
@@ -2719,6 +2710,15 @@ export interface PluginComparisonFixture {
   readonly environmentReference: string;
 }
 
+/**
+ * One built unified plugin fixture repository (T818): one repository whose
+ * plugins reach it every way the three products document, including the one
+ * catalog file all three read.
+ *
+ * The point of this tree is the cross-product view: a plugin name is one row
+ * however many products resolve it, and one physical file is read once however
+ * many of them recognize it (data-model.md § Inventory unit).
+ */
 export interface UnifiedPluginFixture {
   /** The absolute fixture root to scan. */
   readonly root: string;
@@ -2754,11 +2754,6 @@ export interface UnifiedPluginFixture {
   readonly nonLocalPluginName: string;
 }
 
-/**
- * Builds the unified plugin fixture: one repository carrying the catalog all
- * three products read, each product's own catalog location, a placement-loaded
- * Claude plugin, and a cross-tool plugin root that ships two manifest forms.
- */
 /**
  * A repository that publishes one marketplace to two products: the same
  * catalog is kept at the location Claude documents for a repository's own
@@ -2911,6 +2906,11 @@ export function buildPluginComparisonFixture(
   };
 }
 
+/**
+ * Builds the unified plugin fixture: one repository carrying the catalog all
+ * three products read, each product's own catalog location, a placement-loaded
+ * Claude plugin, and a cross-tool plugin root that ships two manifest forms.
+ */
 export function buildUnifiedPluginFixture(
   prefix = 'inspector-unified-plugins',
   root = createRepositoryFixtureRoot(prefix),
@@ -6789,7 +6789,6 @@ export function buildAllVendorInstructionFixture(
   };
 }
 
-/** One combined fixture repository holding every customization kind at once. */
 /** One built Codex custom-agent fixture repository (T507). */
 export interface CodexAgentFixture {
   /** The absolute fixture root to scan. */
@@ -7685,6 +7684,7 @@ const CODEX_GENERAL_CONFIGURATION = [
   '',
 ].join('\n');
 
+/** One combined fixture repository holding every customization kind at once. */
 export interface AllCustomizationKindFixture {
   /** The absolute fixture root to scan. */
   readonly root: string;

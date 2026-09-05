@@ -520,8 +520,9 @@ failureはそのrequestのordinary errorとして表面化する。初回Global-
 そこから派生するsnapshot stateをすべて保持する。
 各`sourceRelativePath`はowning Sourceのsingle rootを基準とし、APIはabsolute/canonical filesystem
 pathへ置き換えない。
-Public Source-relative Pathは、filesystem operationがinternalに使うのと同じexactなraw entry
-nameを`/`でjoinしてserializeする（FR-024）。Hard linkは通常のfileであり、physical-identity grouping、
+Public Source-relative Pathは、filesystem operationがinternalに使うのと同じ綴りで、そのfile自身の
+path segmentを`/`でjoinしてserializeする。Enumerated pathでは保存されたentry name、exact Global
+targetではselectorのimmutableなliteralである（FR-024）。Hard linkは通常のfileであり、physical-identity grouping、
 primary-path selection、alias path listは存在しない。
 Inventory summaryはsource textを含まない。Sort orderはsource kind、Global tool（存在する場合）、
 source-relative pathの決定的順序 — pathはSource内でuniqueなので、これで既にtotal orderである。
@@ -1268,10 +1269,17 @@ generationへ解決されるため、launchが受け取り得る絶対pathはこ
 
 - `visual-studio-code`と`sublime-text`は、hostがportをbindする前にこのmachineで解決した
   editorへ届ける — `PATH`上のeditor command、またはcommandが`PATH`に無いときは既知の
-  install場所にあるlauncher。Lookup前に、inspectedなroot — 選択したRepository rootと、session-startのpersonal-setup captureにある各`eligible` member — の内側にある候補directoryをすべて除く。Relativeまたはemptyな`PATH` entryはinvocation directoryからresolveし、残った各directory内のabsolute candidateだけをexecutable resolverへ渡す。既知のinstall directoryにも同じprefilterを適用する。Separatorを含む`EDITOR`/`VISUAL` spellingもresolveし、root内ならlookup前に拒否する。Consent前の段階ではproposed personal-setup rootをすべてspellingだけで比較し、linkを辿ってそのいずれかへ入る可能性があるcandidate resolutionを行わない。FR-013は読み手のactionより前のproposed-root I/Oを禁じる。この段階で行ってよいのは、Repository rootの物理的な位置の確定と、proposed personal rootへ触れないRepository限定の安全判定である。Outside spellingがinspected contentへのsymbolic linkであることがあり、executable resolverはそのoutside spellingを保持するため、candidateの物理的な比較自体は必要だが、そのresolutionが触れ得る全rootをadmit済みのauthorization段階で行う。Global rootをadmitした後、かつ各launchの直前に、hostはlauncherの物理的な位置を、選択済みRepository rootおよびadmit済みpersonal-setup rootすべてのcurrentな物理的位置と比較しなければならない。Proposed rootへconsent前にaccessしなければ安全にresolveできないcandidateは、consent前の段階で認可しない。このlaunch時の比較は、startup時に存在せず、その後修復または置換されて再scanに成功したrootも扱う。どちらかの物理的位置を確定できない場合、それをlauncherの認可に使ってはならない。Path condition failureではそのtargetを拒否し、予期しないfilesystem failureはrequestのordinary errorとして伝播する。SC-004の例外は、local filesystemとlexicalに識別できないpre-mounted/mapped network filesystemだけを対象とし、local symbolic-link aliasを免除しない。Inspected contentの下にある実行fileはinspected contentから選んだ宛先であり、FR-022がそれを禁じる（FR-020）ので、repository自身の`node_modules/.bin`や`bin/`はeditor候補としてprobeさえしない。一方、machine上の他の場所にある同じdirectoryは読み手自身のtoolingであり、検索する。ただしmacOSでは、そのlauncherではなくapplicationの名前で
+  install場所にあるlauncher。Lookup前に、inspectedなroot — 選択したRepository rootと、session-startのpersonal-setup captureにある各`eligible` member — の内側にある候補directoryをすべて除く。Relativeまたはemptyな`PATH` entryはinvocation directoryからresolveし、残った各directory内のabsolute candidateだけをexecutable resolverへ渡す。既知のinstall directoryにも同じprefilterを適用する。Separatorを含む`EDITOR`/`VISUAL` spellingもresolveし、root内ならlookup前に拒否する。残ったcandidateは、物理的な位置でもう一度比較する。outside spellingがinspected contentへのsymbolic linkであることがあり、executable resolverはそのoutside spellingを保持するので、解決した位置を、startupが確定してspellingの隣へ渡すRepository rootの物理的な位置と、proposed personal-setup rootすべてのspellingに対して比較する。物理的な位置を確定できない失敗はlauncherを認可してはならず、2つの失敗は同じではない。path condition — そのpath自身の状態、すなわちそこに何も無い、途中の要素がdirectoryでない、拒否される、link cycleである — はそのcandidateを拒否する。どこにあるかがofferしてよいかを決めるので、答えられないcandidateは比較に通ったのではなく飛ばしたからである。それ以外のfilesystem失敗は、pathについての答えとして読まず、requestの通常のerrorとして伝播する。
+
+残余は2つあり、いずれも代替の代償の方が大きい。FR-013は読み手のactionより前にproposed personal-setup rootをresolveすることを禁じるので、linkで到達するmember homeはspellingだけで比較する — SC-004がlocal filesystemとlexicalに識別できないnetwork filesystemについて記録するのと同じ種類である。そしてRepository rootの物理的な位置はstartupで一度だけ確定するので、その時点で存在せず、後に修復または置換されて再scanに成功したrootも、spellingだけで比較する。そこへ到達するには存在しないrootでlaunchし、かつ読み手がそこに作ったものへ向く`PATH` entryが要る。これはFR-019が機構を建てないと決めているadversarial-workspaceの形である。
+
+Inspected contentの下にある実行fileはinspected contentから選んだ宛先であり、FR-022がそれを禁じる（FR-020）ので、repository自身の`node_modules/.bin`や`bin/`はeditor候補としてprobeさえしない。一方、machine上の他の場所にある同じdirectoryは読み手自身のtoolingであり、検索する。ただしmacOSでは、そのlauncherではなくapplicationの名前で
   documentを渡す。editor自身のcommand-line scriptはeditorのuser data directoryを`HOME`から
   解決するため、`HOME`が読み手自身のものでないhostでは、その配下に2つ目のinstanceを起動し、
-  fileはどこにも開かないからである。
+  fileはどこにも開かないからである。名前はLaunchServicesが登録済みの全bundleに対して解決される
+  ので、inspected repositoryが同名のbundleを持てばそちらが起動し得る。これはFR-019が受け入れる
+  残余であり、下の`osascript`の綴りと同じ条件による。workspaceは読み手が既に信頼しているもので
+  あり、これを塞ぐ機構こそFR-019が追加を禁じるものである。
 - `terminal-editor`は、`$EDITOR`または`$VISUAL`が指すeditorを実行するterminal windowを開く。
   どちらもterminal editorを指していないとき — 未設定であるか、指されたeditorが自前のwindowを
   持つとき — はPOSIXが既定とする`vi`を実行する。macOSのinstallはそれらの変数を設定しないためである。
@@ -1907,9 +1915,5 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
     I）、どのpackaging fixtureもcustomization-file contentを分類しない。
 11. 全自動/明示scanはuniqueなopaque `scanRequestId`を受ける。Repository/Global rescan
     admission result、Source summary、waiting/active/final progress、fatal status、successful
-    generation recordは同じIDを保持し、stale/prior request stateはnewer requestを満たせない。
-    SC-002 browser protocolはfresh processを開始し、自動Repository scanがterminal stateへ到達
-    するまでtiming外で待って、明示Repository rescanを正確に1件dispatchし、そのadmission IDを
-    captureする。Status/inventory timerは、同じIDに関連付けられたvisible render済みstateと
-    commit済みRepository generationでだけ停止する。EvidenceはIDとRepository generationの両方を
-    記録し、すでにrender済みの自動inventoryはqualifyしない。
+    generation recordは同じIDを保持し、stale/prior request stateはnewer requestを満たせない
+    （FR-030）。

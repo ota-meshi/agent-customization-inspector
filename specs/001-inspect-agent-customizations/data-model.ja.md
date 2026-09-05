@@ -203,11 +203,12 @@ value objectである。
 | Field | Type | Rule |
 |---|---|---|
 | `sourceId` | opaque ID | Pathを1つの所有Sourceへbindする。単独でread authorityとして受理しない |
-| `value` | POSIX-style string | Exactなraw entry nameを`/`でjoinしたそのSource rootからの相対path。Leading slash、URI scheme、NUL、empty/dot segment、`..`、home shorthand、environment expansionなし |
+| `value` | POSIX-style string | そのfile自身のpath segmentを`/`でjoinしたそのSource rootからの相対path。Enumerated pathでは保存されたentry name、exact Global targetではselectorのimmutableなliteral（contracts/inspection-path-allowlist.ja.md § Traversal-plan compilationとGlobal least privilege）。Leading slash、URI scheme、NUL、empty/dot segment、`..`、home shorthand、environment expansionなし |
 
 Repository Sourceでは`value`を選択済みRepository rootからの相対pathとする。Global Sourceではそのtoolについてadmit済みの
-home rootからの相対pathとする。Valueはpresentation、filter、lookup、selectionのidentityであり、traversalが返した
-raw entry nameそのままの綴りである（FR-024）。Filesystem operationはこれを再parseせず、保持したraw segmentを使う。
+home rootからの相対pathとする。Valueはpresentation、filter、lookup、selectionのidentityであり、planが保持したsegment —
+traversalが返したentry name、またはexact Global target自身のselector literal — そのままの綴りである（FR-024）。
+Filesystem operationはこれを再parseせず、保持したsegmentを使う。
 Raw nameはNode.jsがそのentryに対して返したstringである — `fs`は文書化された既定としてnameをUTF-8で
 decodeするため、valid UTF-8でないplatform上の名前はreplacement-decodeされて届き、そのstringを通じて
 platformが再解決できない名前は、影響を受けるoperationの通常のfailureとして表面化する。
@@ -243,7 +244,7 @@ Fixed mappingは、Copilot → `COPILOT_HOME`または`node:path.join(capturedHo
 `node:path.join(capturedHomedir, '.codex')`とする。Joinはそのsessionのabsent propertyだけに最大1回行うlexical operationで、existence check
 その他filesystem operationを行わない。Exact stringを`lexicalRoot`とし、empty、relative、NUL-containingその他表現不能な
 resultもstringのままclosed lexical input stateを受け、別fallbackを行わない。Environment access、`homedir()`、join、retention、
-classification、presentation encodingがthrowするかrequired stringを作れない場合、sessionもbrowserも存在しないstartupをそのownerless errorで通常どおり失敗させる。Preview、`scanRequestId`、consent、root、Source、authorityを作らない。正常なcaptureはsession全体で変更せず保持する。そのeligible rootを選択済みRepository rootと合わせて完全なlauncher exclusion setとする一方、capture自体はpreviewもauthorityも作らない。
+classification、presentation encodingがthrowするかrequired stringを作れない場合、sessionもbrowserも存在しないstartupをそのownerless errorで通常どおり失敗させる。Preview、`scanRequestId`、consent、root、Source、authorityを作らない。正常なcaptureはsession全体で変更せず保持する。そのeligible rootを、選択済みRepository rootおよび（両者が異なる場合は）そのrootが物理的に解決される位置と合わせて、完全なlauncher exclusion setとする。候補のGlobal rootは解決しない。FR-013がconsent前に触れることを禁じるためである。Capture自体はpreviewもauthorityも作らない。
 
 ### GlobalConsentPreview
 
@@ -1399,7 +1400,7 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
 
 このstateはauthoritativeではなく永続化しない。
 
-- `FilterState`: 選択したsource/tool/kindとSource-relative Path query。
+- `FilterState`: 表示中のrail entry — kind、またはどのkindにも属さないlist — と、それを絞るSource/Tool select、および名前とSource-relative Pathにまたがる1つの検索（FR-006）。
 - `ClientDataState`: Monotonicな`clientDataEpoch`、adopt済み`sessionId`と`globalContentEpoch`、
   sequenceごとのcurrent generation（adopt済みsnapshotの`repositoryGeneration`とnullableな
   `globalGeneration`）、request familyごとのexact request tokenを保持する。Ordinary settlementは最初に
@@ -1602,7 +1603,7 @@ candidate -> readable + not-applicable/all-parsed/mixed/all-failed parse summary
 4. Accepted file pathは、そのSource root配下で同梱したstaticまたはtyped derived ruleによりadmitされる。
    Parsed valueがcandidateをadmitできるのはその正確なderivation ruleを満たす場合だけで、
    relationship/excluded ruleは決してadmitしない。Client供給のpath stringはreadを認可しない。
-   Filesystem operationはraw entry-name segmentを使い、それを`/`でjoinしたものが公開されるdisplay pathである。Global traversalはconsent-bound
+   Filesystem operationはplanが保持したsegment — enumerated pathでは保存されたentry name、targeted fixed pathではimmutable registryの綴り — を使い、それを`/`でjoinしたものが公開されるdisplay pathである。Global traversalはconsent-bound
    `TraversalPlan`に表されたexact operationだけを行う。
 5. Discovered fileはSource/generationごとに、Source-relative Pathで識別する1つの`CustomizationFile`と、
    tool/kind pairごとに最大1 recognitionを持つ。Distinctなpathはdistinctなinventory itemであり、

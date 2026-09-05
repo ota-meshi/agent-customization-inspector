@@ -339,7 +339,21 @@ export async function executeGlobalBatch(
     );
     throw cause;
   }
-  context.coordinator.completeGlobalBatch(scanRequestId, results, failures);
+  try {
+    context.coordinator.completeGlobalBatch(scanRequestId, results, failures);
+  } catch (cause: unknown) {
+    // The commit is inside the batch's own failure handling for the reason
+    // every read above is: a throw here ends the batch, and the contract has
+    // one terminal shape for that — the error retained once on the failed
+    // status, no subset committed (contracts/http-api.md § enable-global).
+    // Left outside, a commit that threw would leave the batch reported as
+    // still running.
+    context.coordinator.failGlobalBatch(
+      scanRequestId,
+      cause instanceof Error ? cause.message : String(cause),
+    );
+    throw cause;
+  }
 }
 
 /**
@@ -905,13 +919,17 @@ export function createInspectorDevframe(
         handler: async (
           request: GlobalRescanParams,
         ): Promise<CommandResult<ScanAdmission> | DeterministicRejection> => {
-          const snapshot = context.session.snapshot();
-          if (snapshot.globalDisableInProgress !== null) {
+          if (context.session.globalDisableInProgress !== null) {
             // The disable barrier outranks every Global command: a scan
             // accepted behind it could commit into a sequence the barrier is
-            // discarding (contracts/http-api.md § rescan-global).
+            // discarding (contracts/http-api.md § rescan-global). Read from
+            // the session rather than from a projection of it, as every other
+            // Global command reads it: behind the barrier the projection is
+            // what a disable is dismantling, and building it first would let
+            // its failure answer a request the barrier had already decided.
             return { error: { code: 'global-disable-pending' } };
           }
+          const snapshot = context.session.snapshot();
           // The wire carries whatever was sent: a `null` or omitted argument
           // reaches the field read below, so the optional access resolves it
           // to no published Source — the same stale-resource rejection a

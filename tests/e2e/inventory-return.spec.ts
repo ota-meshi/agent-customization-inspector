@@ -188,6 +188,30 @@ test('returns to the row the reader left when two rows link one file', async ({ 
   expect(await focusedAccessibleName(page)).toBe(name);
 });
 
+test('lets the reader type a whole search from a detail page', async ({ page }) => {
+  // A search typed from a detail page navigates to the inventory, and the
+  // reader is asking a new question of the list rather than coming back to
+  // where they were. Restoring the followed row there would take focus off the
+  // field between the first character and the second, and every character
+  // after it would land nowhere (`App.vue` § searchText).
+  await page.goto(host.origin);
+  const row = page.locator('[role="tabpanel"] .aci-row-file a').last();
+  await expect(row).toBeVisible();
+  const followed = await row.getAttribute('aria-label');
+  await row.click();
+  await expect(page).not.toHaveURL(`${host.origin}/`);
+
+  const search = page.getByLabel('Search names and paths');
+  await search.click();
+  // A term the followed row itself matches, so the row is still rendered when
+  // the inventory arrives — which is exactly when the restore would fire.
+  const term = (followed ?? '').slice(0, 4).trim() || 'skill';
+  await search.pressSequentially(term, { delay: 40 });
+
+  await expect(search).toHaveValue(term);
+  await expect(search).toBeFocused();
+});
+
 test('opens a detail page at its top, as any page change does', async ({ page }) => {
   await page.goto(host.origin);
   const row = page.locator('[role="tabpanel"] .aci-row-file a').last();

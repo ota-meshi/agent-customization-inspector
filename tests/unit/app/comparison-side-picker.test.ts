@@ -1,7 +1,8 @@
-// The comparison side pickers' one option-label rule (FR-011, FR-030;
-// comparison-side-picker.ts): the qualifier names the member with the
-// directory, so two members pointed at one directory never read as one
-// option twice.
+// The one rule every comparison surface names a side by (FR-011, FR-030;
+// comparison-side-picker.ts § comparisonSideLabel): the qualifier names the
+// member with the directory, so two members pointed at one directory never
+// read as one option twice — nor as one file in the sentence a comparison
+// states about an unreadable side (FR-025).
 import { describe, expect, it } from 'vitest';
 
 import {

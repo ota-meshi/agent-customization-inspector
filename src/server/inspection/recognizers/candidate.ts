@@ -62,7 +62,6 @@ import type {
 import { RecognitionExtraction } from '../parsers/extraction';
 import { emptyHookCarrierReading } from '../rules/hooks/event-map';
 import { ParsedMarkdownDocument } from '../parsers/markdown';
-import type { CompanionFile } from '../companion-census';
 import type { CustomizationKind, SupportedTool } from '../../../shared/entities';
 import type { VendorSurface } from '../../../shared/registries/behavior-types';
 import type {
@@ -1085,48 +1084,6 @@ export interface CandidateRecognition {
    * companion census).
    */
   readonly directories: readonly string[];
-}
-
-/**
- * One accompanying file, addressed the way the scan publishes it.
- *
- * Distinct from a census result rather than the same record with a rewritten
- * field: a census names a path relative to the directory it walked, and this
- * names one relative to the Source. The class holds the census entry and the
- * candidate's own directory and derives the public address from them, so where
- * each half of an address came from is readable here rather than at whatever
- * call site assembled a copy.
- */
-export class CompanionSourceFile {
-  /**
-   * The admitted candidate's own directory within the Source, with its
-   * trailing slash — the census walked it, so every census-relative path is
-   * relative to it.
-   */
-  readonly #candidateDirectory: string;
-
-  /** The census entry itself. */
-  readonly #listed: CompanionFile;
-
-  /** Binds one census entry to the directory its paths are relative to. */
-  public constructor(candidateDirectory: string, listed: CompanionFile) {
-    this.#candidateDirectory = candidateDirectory;
-    this.#listed = listed;
-  }
-
-  /**
-   * The Source-relative Path; the public identity. Both halves are spelled
-   * with the exact raw entry names, so concatenating them yields exactly the
-   * public path the traversal would have derived (FR-024).
-   */
-  public get sourceRelativePath(): string {
-    return `${this.#candidateDirectory}${this.#listed.censusRelativePath}`;
-  }
-
-  /** The census entry's own raw absolute path the scan reads from; never published. */
-  public get absolutePath(): string {
-    return this.#listed.absolutePath;
-  }
 }
 
 /** One admitted candidate a recognizer is asked to classify. */

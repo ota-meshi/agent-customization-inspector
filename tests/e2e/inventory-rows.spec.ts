@@ -249,7 +249,7 @@ test('states a diagnostic by its kind at all times and discloses the explanation
   expect(((await explanation.textContent()) ?? '').length).toBeGreaterThan(label.length);
 });
 
-test('offers the two non-kind lists a Source filter and no Tool filter', async ({ page }) => {
+test('offers the non-kind list a Source filter and no Tool filter', async ({ page }) => {
   await page.goto(host.origin);
   // A kind's list narrows on both axes.
   await openKind(page, 'Skill');
@@ -257,15 +257,13 @@ test('offers the two non-kind lists a Source filter and no Tool filter', async (
 
   // The list that belongs to no kind keeps the Source control and loses the
   // Tool one: no product recognized a file in no kind (FR-006).
-  for (const entry of ['Files in no kind']) {
-    await page.getByRole('tab', { name: new RegExp(`^${entry}`, 'u') }).click();
-    await expect(page.getByLabel('Tool', { exact: true }), entry).toHaveCount(0);
-    // The all-supported tree carries one Source, where naming the only family
-    // would be a question with one answer; the control's own rule is the same
-    // on these lists as on a kind's (`InventoryFilters.vue`).
-    await expect(page.getByRole('group', { name: 'Filters' }), entry).toBeAttached();
-    await expect(page.getByRole('status').filter({ hasText: 'Showing' }), entry).toBeAttached();
-  }
+  await page.getByRole('tab', { name: /^Files in no kind/u }).click();
+  await expect(page.getByLabel('Tool', { exact: true })).toHaveCount(0);
+  // The all-supported tree carries one Source, where naming the only family
+  // would be a question with one answer; the control's own rule is the same on
+  // this list as on a kind's (`InventoryFilters.vue`).
+  await expect(page.getByRole('group', { name: 'Filters' })).toBeAttached();
+  await expect(page.getByRole('status').filter({ hasText: 'Showing' })).toBeAttached();
 });
 
 test('states a file in no kind by its read outcome, on one line', async ({ page }) => {

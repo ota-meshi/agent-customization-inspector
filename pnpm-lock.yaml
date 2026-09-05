@@ -78,6 +78,9 @@ importers:
       '@types/which':
         specifier: ^3.0.4
         version: 3.0.4
+      '@typescript-eslint/parser':
+        specifier: ^8.64.0
+        version: 8.64.0(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
       '@vitest/coverage-v8':
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)

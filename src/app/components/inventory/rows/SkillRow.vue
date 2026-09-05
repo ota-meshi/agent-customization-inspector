@@ -61,14 +61,6 @@ import type {
 import type { NarrowedInventoryRow } from '../../../composables/filters';
 import { AuthoredName } from '../../authored-name';
 
-/**
- * The row's declared name, as every surface of the row needs it: the reader's
- * own characters, with this product's note beside them where they draw nothing
- * ({@link AuthoredName}). Never empty — the name comes from a file or
- * directory — so the substituting spelling is not the one this kind uses.
- */
-const name = computed(() => new AuthoredName(props.entry.name));
-
 const props = defineProps<{
   /** The committed skill entry to render: one resolved name. */
   entry: NarrowedInventoryRow<SkillInventoryEntryDto>;
@@ -83,6 +75,14 @@ const props = defineProps<{
   /** The generation's diagnostics, resolved per definition by {@link RowDiagnostics}. */
   diagnostics: readonly SerializedDiagnostic[];
 }>();
+
+/**
+ * The row's declared name, as every surface of the row needs it: the reader's
+ * own characters, with this product's note beside them where they draw nothing
+ * ({@link AuthoredName}). Never empty — the name comes from a file or
+ * directory — so the substituting spelling is not the one this kind uses.
+ */
+const name = computed(() => new AuthoredName(props.entry.name));
 
 /** The shared per-Source lookups (`session-sources.ts`). */
 const sessionSources = useSessionSources();
@@ -120,15 +120,6 @@ const comparableEntrySides = computed<readonly ComparisonSide[]>(() => {
 });
 
 /**
- * Each family block's comparison entry — that family's first two comparable
- * identities, for the blocks that hold a pair (FR-011): a block's comparison
- * is that family's, and a pair never spans two families
- * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
- * hold one member offers no entry — exactly as an instruction range's blocks
- * do. The comparison surface's own pickers take over from there
- * (`detail-route.ts` § familyComparisonPairsOf).
- */
-/**
  * The comparison entry the row's own name line carries: the one family's
  * route, where the session holds one Source and so no family line exists to
  * close. Null where a family line does exist — there the entry belongs to that
@@ -138,6 +129,15 @@ const headCompareRoute = computed(() =>
   sessionSources.headEntryOf(rowFiles.value, blockCompareRoutes.value),
 );
 
+/**
+ * Each family block's comparison entry — that family's first two comparable
+ * identities, for the blocks that hold a pair (FR-011): a block's comparison
+ * is that family's, and a pair never spans two families
+ * (contracts/http-api.md § Host requirements #5), so a row whose blocks each
+ * hold one member offers no entry — exactly as an instruction range's blocks
+ * do. The comparison surface's own pickers take over from there
+ * (`detail-route.ts` § familyComparisonPairsOf).
+ */
 const blockCompareRoutes = computed(() => {
   const routes = new Map<SourceKind, ReturnType<typeof skillComparisonRouteFor>>();
   for (const [kind, [first, second]] of familyComparisonPairsOf(comparableEntrySides.value)) {

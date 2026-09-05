@@ -5,11 +5,10 @@
 // Either way the answer is that this URL shows nothing, and what differs is
 // only the way on — a retry for the first, the inventory for the second.
 //
-// So both are drawn the same, in the box a stated outcome sits in
-// (`main.css` § .aci-notices) with a leading edge in the colour of what
-// happened. The edge is an aid: the message states the outcome in words, and
-// no surface spells a severity — the reader is told what happened, not how the
-// registry rates it (WCAG 1.4.1).
+// So both are drawn the same, in the box a stated outcome sits in, with a
+// leading edge in the colour of what happened. The edge is an aid: the message
+// states the outcome in words, and no surface spells a severity — the reader is
+// told what happened, not how the registry rates it (WCAG 1.4.1).
 //
 // The copy is the caller's, because the sentence belongs to the surface that
 // knows what it was trying to show — a rule file, a skill, one carrier's
@@ -26,8 +25,8 @@ defineProps<{
 </script>
 
 <template>
-  <div class="aci-notices">
-    <div class="aci-subject-unavailable">
+  <div class="aci-subject-unavailable">
+    <div class="aci-subject-unavailable__row">
       <span
         class="aci-subject-unavailable__edge"
         :class="`aci-subject-unavailable__edge--${outcome}`"
@@ -45,7 +44,16 @@ defineProps<{
 </template>
 
 <style scoped>
+/* The frame the stated outcome sits in. Nothing clips against its rounded
+   corners: the row below is its only child and is inset from all four sides by
+   its own padding. */
 .aci-subject-unavailable {
+  border: 1px solid var(--aci-line);
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.aci-subject-unavailable__row {
   display: flex;
   gap: 0.625rem;
   padding: 0.625rem 0.75rem;

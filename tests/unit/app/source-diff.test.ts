@@ -40,9 +40,9 @@ let originalEditorOptions: Record<string, unknown> | null = null;
 let modifiedEditorOptions: Record<string, unknown> | null = null;
 /** A configuration listener as the handle registers it on an inner editor. */
 type ConfigurationListener = (event: { hasChanged: (id: number) => boolean }) => void;
-/** The registered listeners per inner editor, so a label wipe can be simulated. */
 /** Every theme name Monaco was set to, so following the display is observable. */
 const themesSet: string[] = [];
+/** The registered listeners per inner editor, so a label wipe can be simulated. */
 const originalConfigurationListeners: ConfigurationListener[] = [];
 const modifiedConfigurationListeners: ConfigurationListener[] = [];
 

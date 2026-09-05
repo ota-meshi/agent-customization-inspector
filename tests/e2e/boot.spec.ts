@@ -2,9 +2,8 @@
 // Empty Screen"). Launches the packaged CLI against a temporary fixture,
 // opens the printed loopback URL, and verifies the first rendered screen:
 // exactly one enabled Repository Source with its escaped, non-authorizing
-// selected-root label, an empty inventory and diagnostics list, keyboard
-// focus at the top of the shell, and no Repository picker or ancestor
-// discovery anywhere on the page.
+// selected-root label, an empty inventory, keyboard focus at the top of the
+// shell, and no Repository picker or ancestor discovery anywhere on the page.
 //
 // It then covers host loss, which ends the session on its own. There is no
 // page-lifecycle behavior to cover: the page installs no visibility or

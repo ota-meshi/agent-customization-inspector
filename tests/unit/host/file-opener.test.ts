@@ -17,7 +17,15 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { DetectedFileOpener } from '../../../src/server/host/file-opener';
 import type { FileOpenTarget } from '../../../src/shared/api-types';
 
-const { spawnMock, execFileAsyncMock, whichMock, resolvedCommands } = vi.hoisted(() => ({
+const {
+  spawnMock,
+  execFileAsyncMock,
+  whichMock,
+  resolvedCommands,
+  unresolvablePaths,
+  unexpectedFailurePaths,
+  physicalResolutions,
+} = vi.hoisted(() => ({
   // A real `ChildProcess` is an emitter the caller awaits `spawn` on before
   // detaching, so the double is one too: it emits `spawn` on the next tick,
   // which is what a successful launch does.
@@ -39,6 +47,20 @@ const { spawnMock, execFileAsyncMock, whichMock, resolvedCommands } = vi.hoisted
   // after every test. A command it holds no answer for is asked of the real
   // machine, which is what the probe does.
   resolvedCommands: new Map<string, string>(),
+  /** Paths the physical resolution refuses, so the refusal can be asserted. */
+  unresolvablePaths: new Set<string>(),
+  /**
+   * Paths the physical resolution fails on with an `EIO`-class error, which
+   * describes the machine's moment rather than the path and propagates.
+   */
+  unexpectedFailurePaths: new Set<string>(),
+  /**
+   * Every path the physical resolution was asked about, in order. The
+   * pre-consent probe must ask about none: resolving a launcher candidate
+   * can follow a link into a proposed personal-setup root, which is the
+   * filesystem I/O FR-013 forbids before the reader's action.
+   */
+  physicalResolutions: [] as string[],
 }));
 
 // The probe's one question to a machine is whether a command resolves, so a
@@ -48,6 +70,30 @@ const { spawnMock, execFileAsyncMock, whichMock, resolvedCommands } = vi.hoisted
 // file where it holds an answer, and from the real machine everywhere else —
 // which is what keeps the probe's own integration with `env-editor`'s catalog
 // exercised below.
+// Where a path physically is, answered the way the `which` double above
+// answers a lookup: from the real filesystem when the path is on it, and from
+// the path itself when it is not. Most cases here name directories no machine
+// has, because what they exercise is the comparison rather than the disk; a
+// case that exercises the resolution stages a real tree and gets the real
+// answer ({@link stageAliasedRepository}). The refusal a path nothing can
+// resolve receives is asserted directly instead, below.
+vi.mock('../../../src/server/inspection/traversal', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('../../../src/server/inspection/traversal')>();
+  return {
+    ...original,
+    resolvePhysicalLocation: async (path: string): Promise<string | null> => {
+      physicalResolutions.push(path);
+      if (unexpectedFailurePaths.has(path)) {
+        throw Object.assign(new Error('an input/output error occurred'), { code: 'EIO' });
+      }
+      return unresolvablePaths.has(path)
+        ? null
+        : ((await original.resolvePhysicalLocation(path)) ?? path);
+    },
+  };
+});
+
 vi.mock('which', async (importOriginal) => {
   const { default: realWhich } = await importOriginal<{ default: typeof import('which') }>();
   whichMock.mockImplementation(async (command, options) => {
@@ -190,6 +236,9 @@ afterEach(() => {
     process.env['VISUAL'] = realVisual;
   }
   resolvedCommands.clear();
+  unresolvablePaths.clear();
+  unexpectedFailurePaths.clear();
+  physicalResolutions.length = 0;
   vi.clearAllMocks();
 });
 
@@ -245,6 +294,36 @@ describe('the terminal editor a machine can host', () => {
     // the directory these answers sit in has to be on it. The machine's own
     // PATH cannot be relied on for that: a Windows runner names no `/usr/bin`.
     process.env['PATH'] = TERMINAL_EDITOR_DIR;
+  });
+
+  it('offers no terminal editor whose physical location the machine cannot answer for', async () => {
+    // Where a candidate is decides whether it may be offered, so one that
+    // cannot answer has skipped the comparison rather than passed it: the
+    // launcher exclusion is what keeps an executable under inspected content
+    // from being offered, and admitting an unanswerable candidate would rest
+    // on the executable lookup failing for the same reason
+    // (contracts/http-api.md § open-file; FR-020, FR-022).
+    setPlatform('darwin');
+    setConfiguredEditor('vim');
+    unresolvablePaths.add(join(TERMINAL_EDITOR_DIR, 'vim'));
+    resolvedCommands.set(join(TERMINAL_EDITOR_DIR, 'vim'), join(TERMINAL_EDITOR_DIR, 'vim'));
+    expect((await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).targets).not.toContain(
+      'terminal-editor',
+    );
+  });
+
+  it('fails the probe when the physical resolution fails unexpectedly', async () => {
+    // A path condition is an answer about the path; an `EIO` is a fact about
+    // the machine's moment, and reading it as "unresolvable" would give the
+    // caller the same answer a missing path gives. It propagates instead
+    // (contracts/http-api.md § open-file).
+    setPlatform('darwin');
+    setConfiguredEditor('vim');
+    unexpectedFailurePaths.add(join(TERMINAL_EDITOR_DIR, 'vim'));
+    resolvedCommands.set(join(TERMINAL_EDITOR_DIR, 'vim'), join(TERMINAL_EDITOR_DIR, 'vim'));
+    await expect(DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS)).rejects.toThrow(
+      /input\/output/u,
+    );
   });
 
   it('offers none where the host cannot open a terminal window for one', async () => {
@@ -640,6 +719,27 @@ describe('the terminal editor a machine can host', () => {
     // own command for the named editor is what runs, flags unhonoured.
     setPlatform('darwin');
     setConfiguredEditor('vim -u NONE');
+    const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
+    expect(opener.targets).toContain('terminal-editor');
+    execFileAsyncMock.mockResolvedValueOnce(undefined);
+    await opener.openFile(FILE, 'terminal-editor');
+    expect(execFileAsyncMock).toHaveBeenCalledWith('osascript', [
+      '-e',
+      expect.stringContaining('quoted form of'),
+      TERMINAL_EDITOR,
+      FILE,
+    ]);
+  });
+
+  it('reads the editor a flags-carrying value names, not a path inside its flags', async () => {
+    // `vim -u /tmp/minimal.vim` names vim. Classified by the value's last path
+    // segment the name becomes `minimal.vim`, which the catalog does not know,
+    // and an unknown editor is reported as non-terminal — so the reader's own
+    // editor would be replaced by whatever `vi` resolves to
+    // (contracts/http-api.md § open-file: the editor `$EDITOR` or `$VISUAL`
+    // names).
+    setPlatform('darwin');
+    setConfiguredEditor('vim -u /tmp/minimal.vim');
     const opener = await DetectedFileOpener.probe(INVOCATION_CWD, INSPECTED_ROOTS);
     expect(opener.targets).toContain('terminal-editor');
     execFileAsyncMock.mockResolvedValueOnce(undefined);

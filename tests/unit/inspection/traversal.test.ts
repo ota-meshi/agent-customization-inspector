@@ -325,16 +325,16 @@ describe('VCS-internal exclusion by resolved path', () => {
   // create on a POSIX runner — are exercised directly.
   const asPath = (...segments: string[]) => segments.join(sep);
 
-  it('excludes a resolved target under VCS internals below the container', () => {
+  it('excludes a resolved target under VCS internals below the container', async () => {
     expect(isVcsInternalPath(asPath('', 'repo'), asPath('', 'repo', '.git', 'objects'))).toBe(true);
   });
 
-  it('exempts the container itself and ordinary descendants', () => {
+  it('exempts the container itself and ordinary descendants', async () => {
     expect(isVcsInternalPath(asPath('', 'repo'), asPath('', 'repo'))).toBe(false);
     expect(isVcsInternalPath(asPath('', 'repo'), asPath('', 'repo', 'src'))).toBe(false);
   });
 
-  it('exempts VCS names the container carries in its own ancestry', () => {
+  it('exempts VCS names the container carries in its own ancestry', async () => {
     // A checkout at /srv/.git/worktree is an ordinary root: the shared prefix
     // is not evidence the scan descended into an object store.
     expect(
@@ -345,13 +345,13 @@ describe('VCS-internal exclusion by resolved path', () => {
     ).toBe(false);
   });
 
-  it('excludes an alias target under VCS internals outside the container', () => {
+  it('excludes an alias target under VCS internals outside the container', async () => {
     expect(
       isVcsInternalPath(asPath('', 'container'), asPath('', 'elsewhere', '.git', 'hooks')),
     ).toBe(true);
   });
 
-  it('leaves an installed-package path to the entry-name check alone', () => {
+  it('leaves an installed-package path to the entry-name check alone', async () => {
     // `node_modules` is excluded by entry name and nowhere else: a directory
     // the repository placed at a path of its own is the repository's, whatever
     // its link resolves to, so a resolved path running through an install tree
@@ -366,7 +366,7 @@ describe('VCS-internal exclusion by resolved path', () => {
     ).toBe(false);
   });
 
-  it('excludes an alias target sharing no prefix with the container', () => {
+  it('excludes an alias target sharing no prefix with the container', async () => {
     // The POSIX stand-in for a Windows cross-drive alias: `path.relative`
     // between two drives yields an absolute path, so a relative()-based check
     // would wave the target through while the same target on the container's

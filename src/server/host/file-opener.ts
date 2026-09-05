@@ -241,14 +241,14 @@ function comparablePath(invocationCwd: string, path: string): string {
  * without normalizing, so a root reached through a symbolic link — or one
  * whose `..` follows one, where the lexical fold in {@link comparablePath}
  * and the operating system's own resolution disagree (`traversal.ts`
- * § pathBelow) — is read at a location no spelling here names.
+ * § pathUnderRoot) — is read at a location no spelling here names.
  *
  * The caller closes that for the Repository root by passing the place it
  * physically is beside its own spelling (`cli.ts`; `traversal.ts`
  * § resolvePhysicalLocation): a root that is a link to `/` would
  * otherwise leave every executable on the machine outside this comparison
  * while the scan read them all. A proposed personal-setup root is not
- * resolved, because FR-013 forbids touching one before the reader has
+ * resolved here, because FR-013 forbids touching one before the reader has
  * consented to it, so a member home reached through a link keeps the
  * documented residual — the same class as the FR-022 limitation SC-004
  * records for a lexically indistinguishable network filesystem.
@@ -277,16 +277,26 @@ function insideInspectedRoot(candidate: string, inspectedRoots: readonly string[
  *
  * Resolving a candidate is not proposed-root I/O and does not become it when
  * the candidate leads into a personal home: the operand is a `PATH` entry or a
- * configured editor, never one of the four proposed roots, and a resolution
- * that passes through a home does so because the machine's own tooling was
- * spelled through it. The executable lookup below already resolves the same
- * candidate the same way, so this adds no class of pre-consent I/O that the
- * probe did not perform before it.
+ * configured editor, never one of the four proposed roots, and FR-013 states
+ * that discovery as the one operation whose resolution the operating system
+ * may route through such a root. The executable lookup below reaches the same
+ * places by the same route, so this adds no class of pre-consent I/O the probe
+ * did not already perform.
  *
- * A candidate the filesystem cannot resolve is admitted on its spelling alone.
- * Refusing it instead would take an editor away from a reader over a transient
- * error on a path that has already passed the lexical comparison, and the
- * probe's whole purpose is to offer what the machine actually has.
+ * A candidate the filesystem cannot resolve is refused. Where it is decides
+ * whether it may be offered, so a candidate that cannot answer has skipped the
+ * comparison rather than passed it — and admitting it would rest on the
+ * executable lookup failing for the same reason, which an `EIO` on the
+ * canonicalization alone does not promise (contracts/http-api.md § open-file).
+ * What refusing costs is an editor not offered over a transient error on a
+ * path that passed the lexical comparison; what admitting costs is the
+ * comparison FR-020 and FR-022 require.
+ *
+ * One judgment per candidate, made here at probe time and not repeated before
+ * the launch it admits. Checking again to see whether the answer moved between
+ * the two is the repeated identity re-verification FR-019 forbids: what stands
+ * between them is a workspace the reader already trusts, so the case this
+ * closes is a link a checkout ordinarily has, not a writer racing the probe.
  */
 async function outsideInspectedRoots(
   candidate: string,
@@ -298,7 +308,7 @@ async function outsideInspectedRoots(
   }
   const location = await resolvePhysicalLocation(candidate);
   return (
-    location === null ||
+    location !== null &&
     !insideInspectedRoot(comparablePath(invocationCwd, location), comparableRoots)
   );
 }
@@ -469,13 +479,31 @@ function terminalEditorCommands(): readonly string[] {
     return [DEFAULT_TERMINAL_EDITOR];
   }
   // Classified by the executable's own name rather than the whole configured
-  // value. The catalog resolves a bare `vi` through its keywords but reads
-  // `/custom/bin/vi` as an unknown editor — its lookup takes the last path
-  // segment as an *id* and no entry is named `vi` — and an unknown editor is
-  // reported as non-terminal, which would discard the reader's own
-  // executable and run whatever `vi` PATH offers instead. The value that
-  // runs stays the configured one; only the classification reads the name.
-  const editor: Editor = getEditor(configured.split(/[\\/]/u).at(-1) ?? configured);
+  // value, and the value reads two ways that no lexical test can tell apart —
+  // a path with spaces in it, and a command carrying flags — so both readings
+  // are tried in the order that keeps each one's own case right.
+  //
+  // The path reading first: the catalog resolves a bare `vi` through its
+  // keywords but reads a whole path as an unknown editor, because its lookup
+  // takes the last path segment as an *id*. Taking that segment is what keeps
+  // `/custom/bin/vi` from being reported as non-terminal and replaced by
+  // whatever `vi` PATH offers instead, and it is what reads
+  // `/Applications/My Editor.app/…/vim` correctly, where the first token is
+  // only half a directory name.
+  //
+  // The command reading second, when the path reading names no terminal
+  // editor: the last segment of `vim -u /tmp/minimal.vim` is a file the flags
+  // name, not the editor, and classifying by it would discard the reader's own
+  // editor exactly as the whole-path spelling would. The executable is the
+  // first token, and its own last segment is the name.
+  //
+  // The value that runs stays the configured one either way; only the
+  // classification reads the name, and flags are never honoured.
+  const bySpelling: Editor = getEditor(configured.split(/[\\/]/u).at(-1) ?? configured);
+  const firstToken = configured.split(/\s+/u)[0] ?? configured;
+  const editor: Editor = bySpelling.isTerminalEditor
+    ? bySpelling
+    : getEditor(firstToken.split(/[\\/]/u).at(-1) ?? firstToken);
   if (!editor.isTerminalEditor) {
     return [DEFAULT_TERMINAL_EDITOR];
   }
@@ -758,6 +786,13 @@ export class DetectedFileOpener implements FileOpener {
       // the document over, so awaiting it waits for the answer and not for the
       // reader to close the window (T1123; contracts/http-api.md
       // § open-file).
+      //
+      // The name rather than the bundle it sits in. LaunchServices resolves a
+      // name against every bundle it has registered, so an inspected
+      // repository shipping a second one of that name is started instead —
+      // the same residual the `osascript` spelling above carries, and declined
+      // for the same reason: the workspace is one the reader already trusts,
+      // and resolving the bundle to close it is machinery FR-019 forbids.
       await handoffOf(await open(absolutePath, { app: { name: editorNameOf(target) } }));
       return;
     }

@@ -140,6 +140,15 @@ const command = define({
     // inspected (FR-020, FR-022). A personal-setup root is not resolved:
     // FR-013 forbids touching a proposed one before consent, so those stay
     // lexical and `file-opener.ts` records what that leaves open.
+    //
+    // A root whose own condition has no physical answer — missing, not a
+    // directory, denied, a link cycle — resolves to null and is excluded by
+    // its spelling alone, because the first scan below is what reports that
+    // condition, as the root's `root-unreadable` Diagnostic (FR-002).
+    // Nothing is left unguarded by the shorter exclusion: whatever cannot be
+    // canonicalized here cannot be canonicalized under there either, so a
+    // launcher candidate inside such a root is refused by the same answer
+    // (`traversal.ts` § resolvePhysicalLocation).
     const repositoryRoot = selectRepositoryRoot(invocationCwd, rootOptionValue);
     const repositoryRootLocation = await resolvePhysicalLocation(repositoryRoot);
     const fileOpener = await DetectedFileOpener.probe(invocationCwd, [

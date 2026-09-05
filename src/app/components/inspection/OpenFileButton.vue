@@ -37,7 +37,7 @@
 // overflows least where neither side does, which is what keeps it inside the
 // viewport at the reflow width (WCAG 1.4.10) — measuring the room left beside
 // a box is the one thing hand-written positioning cannot do.
-import { computed, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, ref, shallowRef, useId, useTemplateRef, watch } from 'vue';
 import type { Component } from 'vue';
 import ChevronDownIcon from '~icons/lucide/chevron-down';
 import ContainingFolderIcon from '~icons/lucide/folder-open';
@@ -100,14 +100,57 @@ const listId = useId();
 const listOpen = ref(false);
 
 /**
- * True while a launch this control asked for has not answered yet. Most
- * launches answer in milliseconds, and one does not: opening a terminal
- * editor goes through the operating system's automation host, which on a
- * machine that has not yet granted this product permission to control the
- * terminal waits on a consent dialog the reader has to answer. Without this
- * the button would look inert for as long as that takes.
+ * The file whose launch this control asked for and has not been answered
+ * about, or null while none is out.
+ *
+ * The file rather than a flag, because one instance of this control serves a
+ * sequence of files — a skill's page keeps it while the reader walks the tree
+ * — and a launch belongs to the file it was made for (FR-030: a file's
+ * identity is its Source and its Source-relative Path together). A flag would
+ * still be raised after the reader moved on, disabling another file's button
+ * for a launch that was never about it; lowering it on the move instead would
+ * let the earlier launch's answer lower a later file's.
+ *
+ * One object per call, compared by reference rather than by its fields,
+ * because the fields alone do not say which call: a launch for one file, a
+ * launch for another, and a second launch for the first are three calls of
+ * which two carry one identity, and comparing identities would let the
+ * earliest to settle release the latest and report its own outcome as that
+ * one's.
+ *
+ * The object is the token, where the session's commands answer the same
+ * question with a version counter (`view-state.ts` § dispatchRescanCommand):
+ * this control has to publish which file is out as well as which call, and one
+ * value carrying both is what keeps them from disagreeing — a counter here
+ * would be a second piece of state saying what this one already says.
+ *
+ * `shallowRef`, and the identity above is why: a deep `ref` hands back
+ * `reactive(value)` for an object, so the token read out of it is a proxy and
+ * never `===` the token that was put in. Every settlement would then read as
+ * another call's, leaving this file's control disabled on a launch that had
+ * already answered and its failure unreported. A DOM element in a template
+ * ref is unaffected — Vue proxies only plain objects and collections, which is
+ * why the element refs around this one are ordinary `ref`s.
  */
-const requesting = ref(false);
+const launchOut = shallowRef<{ readonly source: SourceSelector; readonly path: string } | null>(
+  null,
+);
+
+/**
+ * True while the launch that is out is this file's, which is what both halves
+ * of the control disable on. Most launches answer in milliseconds, and one
+ * does not: opening a terminal editor goes through the operating system's
+ * automation host, which on a machine that has not yet granted this product
+ * permission to control the terminal waits on a consent dialog the reader has
+ * to answer. Without this the button would look inert for as long as that
+ * takes.
+ */
+const requesting = computed(
+  () =>
+    launchOut.value !== null &&
+    launchOut.value.path === props.sourceRelativePath &&
+    launchOut.value.source === props.source,
+);
 
 /**
  * What went wrong with the last open request, or null when nothing has. Held
@@ -155,13 +198,23 @@ async function openWith(target: FileOpenTarget): Promise<void> {
   // appear beside the new one's path.
   const requestedPath = props.sourceRelativePath;
   const requestedSource = props.source;
-  requesting.value = true;
+  const call = { source: requestedSource, path: requestedPath };
+  launchOut.value = call;
   const outcome = await sessionViewState.openFile(requestedPath, requestedSource, target);
-  if (requestedPath !== props.sourceRelativePath || requestedSource !== props.source) {
-    requesting.value = false;
+  const stillOurs = launchOut.value === call;
+  if (stillOurs) {
+    launchOut.value = null;
+  }
+  // Reported only while this call still owns the control and the page still
+  // shows the file it asked about: a later launch for the same file owns it
+  // now, and its own answer is the one that belongs beside that path.
+  if (
+    !stillOurs ||
+    requestedPath !== props.sourceRelativePath ||
+    requestedSource !== props.source
+  ) {
     return;
   }
-  requesting.value = false;
   switch (outcome.kind) {
     case 'opened':
       return;

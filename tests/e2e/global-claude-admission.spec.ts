@@ -120,7 +120,7 @@ test('inspects Claude and Codex from one confirmation, each as its own Source', 
 test('states each tool’s own outcome from the one shared batch', async ({ page }) => {
   await page.goto(new URL('/global-consent', host.origin).toString());
   const main = page.locator('main');
-  await expect(main).toContainText('What is inspected');
+  await expect(main).toContainText('Scan status');
   // All four members were read: every fixture root is a readable directory,
   // and each states its own outcome from the one shared batch (FR-014).
   await expect(main).toContainText('Copilot home — Inspected');

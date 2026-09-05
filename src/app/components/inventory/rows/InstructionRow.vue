@@ -123,6 +123,15 @@ const rowFiles = computed(() =>
 );
 
 /**
+ * The comparison entry the row's own name line carries: the one family's
+ * route, where the session holds one Source and so no family line exists to
+ * close (`SourceFamilyBlocks.vue`).
+ */
+const headCompareRoute = computed(() =>
+  sessionSources.headEntryOf(rowFiles.value, blockCompareRoutes.value),
+);
+
+/**
  * Each family block's comparison entry — that family's first two comparable
  * files, for the blocks that hold a pair (FR-011): a block's comparison is
  * that family's, and a pair never spans two families
@@ -135,15 +144,6 @@ const rowFiles = computed(() =>
  * compare route's own pickers take over from there
  * (`detail-route.ts` § familyComparisonPairsOf).
  */
-/**
- * The comparison entry the row's own name line carries: the one family's
- * route, where the session holds one Source and so no family line exists to
- * close (`SourceFamilyBlocks.vue`).
- */
-const headCompareRoute = computed(() =>
-  sessionSources.headEntryOf(rowFiles.value, blockCompareRoutes.value),
-);
-
 const blockCompareRoutes = computed(() => {
   const comparable = props.group.fileIdentities.flatMap((identity) => {
     const published = props.filesBySource.get(identity.sourceId)?.get(identity.sourceRelativePath);

@@ -30,7 +30,7 @@ import {
   VCS_INTERNALS,
   hasExcludedDirectorySegment,
   isVcsInternalPath,
-  rethrowIfResourceExhaustion,
+  rethrowIfEnvironmentFailure,
   statThroughLink,
   toPublicPath,
 } from './traversal';
@@ -283,7 +283,7 @@ async function collectWithin(
         // (FR-024, FR-028). Dropping them would show a skill missing a file its
         // own directory has, and failing the scan would let one entry's
         // permissions decide that the repository has no inventory at all.
-        rethrowIfResourceExhaustion(error);
+        rethrowIfEnvironmentFailure(error);
         isFile = true;
         isDirectory = false;
       }

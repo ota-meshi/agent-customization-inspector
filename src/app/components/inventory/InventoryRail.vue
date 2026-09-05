@@ -7,14 +7,14 @@
 // rather than an inventory of files (FR-030): the inventory therefore states
 // none of them and the reader still learns from here that a scan came back
 // partial. Below them is everything that selects the panel beside the rail —
-// the kinds this generation recognizes, then the two lists that are lists of
+// the kinds this generation recognizes, then the one list that is a list of
 // files without being a kind's inventory.
 //
 // Only kinds the committed generation actually recognizes get an entry.
 // Showing the whole closed catalog would advertise kinds this release cannot
 // recognize yet and turn the rail into a second, silently drifting copy of the
-// shipped rule catalog. The two non-kind entries are always present, because
-// their membership rule is absence and a reader has to be able to ask.
+// shipped rule catalog. The non-kind entry is always present, because its
+// membership rule is absence and a reader has to be able to ask.
 //
 // The panel selectors are a real `tablist` rather than a row of buttons,
 // because assistive technology has to announce "tab 2 of 13, selected" for the
@@ -25,9 +25,9 @@
 // strip is on: the column declares `aria-orientation="vertical"` and the
 // narrow layout's one scrolling line declares `horizontal`, and the pattern
 // gives the other pair no meaning either way — so the handler is told the same
-// axis the tablist announces. The two non-kind entries are inside the same
-// tablist, because they select the same panel and a keyboard user stepping the
-// rail must not fall out of it two entries early.
+// axis the tablist announces. The non-kind entry is inside the same tablist,
+// because it selects the same panel as the kinds do, and a keyboard user
+// stepping the rail must not fall out of it one entry early.
 //
 // The Source links are outside that tablist for the same reason: they change
 // the page rather than the panel, so they are ordinary links in their own
@@ -68,10 +68,12 @@ const props = defineProps<{
   /** Every Source the current generation published, in snapshot order. */
   sources: readonly SourceDto[];
   /**
-   * Whether an accepted personal-setup read is still out. A batch publishes no
-   * member Source until it commits, so this is the only thing that tells a
-   * running read from one that never started (`view-state.ts`
-   * § runningGlobalBatch, and this client's own confirmation while it is out).
+   * Whether an accepted personal-setup read is still out. A batch publishes
+   * nothing until it commits, so this is the only thing that tells a running
+   * read from one that never started (`view-state.ts` § runningGlobalBatch,
+   * and this client's own confirmation while it is out). It joins the status
+   * ranking rather than replacing it, because a retry runs over members that
+   * are already published ({@link globalStatus}).
    */
   globalReadInProgress: boolean;
 }>();
@@ -109,8 +111,8 @@ const emit = defineEmits<{
 }>();
 
 /**
- * Every panel selector in rail order: the recognized kinds, then the two lists
- * that belong to no kind. One array rather than two, because it is what the
+ * Every panel selector in rail order: the recognized kinds, then the one list
+ * that belongs to no kind. One array rather than two, because it is what the
  * tablist renders and what the arrow keys step — a keyboard pattern written
  * over one half of a strip would stop at the separator.
  */
@@ -178,7 +180,14 @@ const GLOBAL_STATUS_ENTRY: Readonly<
  * {@link GLOBAL_STATUS_ENTRY}, or null before any member is consented.
  */
 const globalStatus = computed<SourceStatus | null>(() => {
-  let worst: SourceStatus | null = null;
+  // A read that is out enters the same ranking rather than replacing it. A
+  // retry runs over members that are already published, so a batch reported as
+  // `Scanning` on its own would hide the `failed` member the reader is retrying
+  // for — and would disagree with the pill beside it, which is derived from
+  // this same value ({@link globalNeedsAttention}). `scanning` outranks `idle`
+  // and `ready` and loses to `failed` and `partial`, which is what leaves the
+  // states a reader must act on visible while the read runs.
+  let worst: SourceStatus | null = props.globalReadInProgress ? 'scanning' : null;
   for (const source of globalSources.value) {
     if (
       worst === null ||
@@ -199,13 +208,6 @@ const globalStatus = computed<SourceStatus | null>(() => {
  * that there is something to go and read (FR-030).
  */
 const globalStatusText = computed(() => {
-  if (props.globalReadInProgress) {
-    // A read is out and has committed nothing yet, so no member Source exists
-    // to report: without this the entry would say `Not inspected` of homes
-    // being read at that moment. `Scanning` because that is what this entry
-    // says while one member's own rescan runs — one event, one word.
-    return GLOBAL_STATUS_ENTRY.scanning.text;
-  }
   const status = globalStatus.value;
   if (status === null) {
     return 'Not inspected';
@@ -230,15 +232,13 @@ const globalStatusText = computed(() => {
  * added with its text.
  *
  * The standalone status word, with no count of the files that kept a
- * diagnostic. A count here sat beside the `Source diagnostics` entry, and five
- * of twenty first-use sessions read the two as one thing counted two ways;
- * with the count gone, fifteen of the next twenty still stopped at the word
- * `Partial` — six reading it as a failed scan — because a word that does not
- * say what it means sends a reader looking for its meaning. So this entry
- * draws the status in words that carry their own meaning
- * (`SOURCE_STATUS_STANDALONE_TEXT`), and the count stays on the Repository
- * page, where it arrives with its answer: each diagnostic is stated where that
- * file is listed (`ScanProgress.vue`).
+ * diagnostic. A number here arrives without its answer: a reader who sees it
+ * has to go looking for which files it counts, and a status word that does not
+ * say what it means — `Partial` — sends them looking in the same way, which is
+ * read as a failed scan. So this entry draws the status in words that carry
+ * their own meaning (`SOURCE_STATUS_STANDALONE_TEXT`), and the count stays on
+ * the Repository page, where it arrives with its answer: each diagnostic is
+ * stated where that file is listed (`ScanProgress.vue`).
  *
  * Not a notice that the rescan was pressed: the status moves through
  * `scanning` to its result, so the press is heard as that movement — and a
@@ -362,18 +362,18 @@ function onKeydown(event: KeyboardEvent, index: number): void {
       </NuxtLink>
     </nav>
 
-    <!-- Always rendered, because the two entries below the kinds are always
-         there: their membership rule is absence, so a generation that
-         recognized nothing is exactly when a reader needs to ask where their
-         files went. Gating the whole strip on the kinds would have taken the
-         answer away in the one case that needs it. -->
+    <!-- Always rendered, because the entry below the kinds is always there:
+         its membership rule is absence, so a generation that recognized
+         nothing is exactly when a reader needs to ask where their files went.
+         Gating the whole strip on the kinds would take the answer away in the
+         one case that needs it. -->
     <div class="aci-inventory-rail__tabs">
       <p id="aci-inventory-rail-kinds" class="aci-inventory-rail__group">Customization files</p>
       <!-- The group is what is empty, and the group is the rail's, so the rail
-           says so. Said in the panel it would sit under the heading of
-           whichever entry is selected — a statement about the kinds, under
-           `Files in no kind` — and would vanish when the reader moved to the
-           other entry, though nothing about the scan had changed. -->
+           says so. Said in the panel it would sit under the heading of the
+           selected entry — a statement about the kinds, under `Files in no
+           kind` — where it reads as a fact about that entry rather than about
+           the group. -->
       <p v-if="kinds.length === 0" class="aci-inventory-rail__group-note">None recognized.</p>
       <!-- The tablist is the strip of tabs and nothing else: the heading above
            names it through `aria-labelledby` rather than sitting inside it,

@@ -253,12 +253,13 @@ records, and normalized relationship targets.
 | Field | Type | Rules |
 |---|---|---|
 | `sourceId` | opaque ID | Binds the path to one owning Source; never accepted alone as read authority |
-| `value` | POSIX-style string | The exact raw entry names joined with `/`, relative to that Source root; no leading slash, URI scheme, NUL, empty or dot segment, `..`, home shorthand, or environment expansion |
+| `value` | POSIX-style string | The file's own path segments joined with `/`, relative to that Source root — the stored entry names for an enumerated path, the selector's immutable literal for an exact Global target (contracts/inspection-path-allowlist.md § Traversal-plan compilation and Global least privilege); no leading slash, URI scheme, NUL, empty or dot segment, `..`, home shorthand, or environment expansion |
 
 For the Repository Source, `value` is relative to the selected Repository root. For a
 Global Source, it is relative to that tool's admitted home root. The value is the
 presentation, filtering, lookup, and selection identity and is spelled exactly as the
-raw entry names traversal returned (FR-024); filesystem operations use the retained raw
+segments the plan retained — the entry names traversal returned, or an exact Global
+target's own selector literal (FR-024); filesystem operations use those retained
 segments rather than re-parsing it. A raw name is the string Node.js returned for the
 entry — `fs` decodes names as UTF-8 by documented default, so a platform name that is
 not valid UTF-8 arrives replacement-decoded, and a name the platform cannot resolve
@@ -316,8 +317,10 @@ instead of another fallback. If environment access, `homedir()`, joining, retent
 classification, or presentation encoding throws or cannot produce the required string, startup
 fails ordinarily with that ownerless error before a session or browser exists. It creates no
 preview, `scanRequestId`, consent, root, Source, or authority. A successful capture is retained
-unchanged for the whole session. Its eligible roots join the selected Repository root as the
-complete launcher-exclusion set, while the capture itself creates no preview or authority.
+unchanged for the whole session. Its eligible roots join the selected Repository root, and
+the location that root physically resolves to where the two differ, as the complete
+launcher-exclusion set; a proposed Global root is not resolved, because FR-013 forbids
+touching one before consent. The capture itself creates no preview or authority.
 
 ### GlobalConsentPreview
 
@@ -1820,7 +1823,7 @@ filesystem, or silently chooses another root.
 
 This state is not authoritative and is never persisted.
 
-- `FilterState`: selected source/tool/kind and Source-relative Path query.
+- `FilterState`: the rail entry in view — a kind, or the list that belongs to none — with the Source and Tool selects that narrow it and the one search over names and Source-relative Paths (FR-006).
 - `ClientDataState`: a monotonic `clientDataEpoch`, the adopted `sessionId` and
   `globalContentEpoch`, the current per-sequence generations (`repositoryGeneration` and
   nullable `globalGeneration` from the adopted snapshot), and one exact request token per
@@ -2078,8 +2081,9 @@ old file records in place.
 4. Every accepted file path is admitted by a shipped static or typed derived rule below
    its Source root. A parsed value admits a candidate only when
    it satisfies that exact derivation rule; relationships and excluded rules never do.
-   No client-supplied path string authorizes a read. Raw entry-name segments drive
-   filesystem operations, and joined with `/` they are the published display path. Global traversal
+   No client-supplied path string authorizes a read. The segments the plan retained drive filesystem
+   operations — an enumerated path's stored entry names, a targeted fixed path's immutable
+   registry spelling — and joined with `/` they are the published display path. Global traversal
    performs only the exact operations represented by the consent-bound `TraversalPlan`.
 5. A discovered file has one `CustomizationFile` record per Source/generation, identified
    by its Source-relative Path, and at most one

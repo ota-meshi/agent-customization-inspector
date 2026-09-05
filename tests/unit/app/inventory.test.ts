@@ -111,7 +111,6 @@ function instructionFile(
   };
 }
 
-/** One instructions row: an applicability range and the files governing it. */
 /**
  * One instruction row as the filter view publishes it. `rowFileIdentities` is
  * the row's own files, which no narrowing changes, so an expectation for a

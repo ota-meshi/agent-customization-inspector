@@ -12,6 +12,7 @@
     ".nuxt/nuxt.d.ts",
     ".nuxt/nuxt.node.d.ts",
     "src/**/*",
+    "eslint-rules/**/*",
     "scripts/**/*",
     "tests/**/*",
     "nuxt.config.ts",

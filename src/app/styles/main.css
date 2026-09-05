@@ -201,11 +201,19 @@
 
      The value is this product's rather than the editor's: Monaco defaults to
      12px on macOS and 14px everywhere else, so the source a reader saw was one
-     size on their machine and another on the next. 14px is what every
-     certified browser drew, and one value is what a surface can hold a
-     placeholder to. */
-  --aci-source-font-size: 0.875rem;
-  --aci-source-line-height: 1.1875rem;
+     size on their machine and another on the next, and one value is what a
+     surface can hold a placeholder to.
+
+     Which value is the scale's answer, not the editor's. Source text is
+     reference material the prose around it explains, so it sits one step below
+     the body rather than above it: the body is 0.8125rem and this is the step
+     under it, already spelled elsewhere in this file. Monospace reads larger
+     than proportional at one size, which this product's own rows already
+     account for — an inline monospace count is 0.6875rem beside that same
+     body. The line height is looser than the ratio the body carries, because
+     what is read here is a long document rather than a row. */
+  --aci-source-font-size: 0.75rem;
+  --aci-source-line-height: 1.0625rem;
   scroll-padding-block-start: var(--aci-sticky-bar);
 }
 
@@ -517,8 +525,8 @@ button[aria-disabled='true'] {
 
 /* The empty answer as a box rather than a line: a single sentence over an empty
    column reads as a page that failed to render. A utility because two surfaces
-   draw it — a kind's list with nothing in it, and the source-level diagnostics
-   with none — and one look drawn twice drifts. */
+   draw it — a kind's list with nothing in it, and the list that belongs to no
+   kind with none — and one look drawn twice drifts. */
 .aci-empty-result {
   border: 1px solid var(--aci-line);
   border-radius: 0.5rem;
@@ -530,25 +538,12 @@ button[aria-disabled='true'] {
   margin: 0;
 }
 
-/* The way out, where clearing a filter can bring the rows back. */
+/* The way out, where clearing a filter can bring the rows back. Here rather
+   than in the one list that draws it, because it is an element of the shared
+   block above: a block whose parts lived in two files would be styled from two
+   owners. */
 .aci-empty-result__exit {
   margin: 0.75rem 0 0;
-}
-
-/* The box a stated outcome sits in: a diagnostic the scan produced, a request
-   that failed, a link the current scan has nothing at. One box holds one row or
-   several, and the rows draw their own separators, so the frame is all this is.
-   A utility rather than each surface's own rule, because the diagnostics list
-   and every detail's failure state draw the same box and drawn separately they
-   would drift. `overflow` so a row's own leading edge meets the rounded
-   corner. */
-.aci-notices {
-  border: 1px solid var(--aci-line);
-  border-radius: 0.5rem;
-  list-style: none;
-  margin: 0.5rem 0;
-  overflow: hidden;
-  padding: 0;
 }
 
 /* A definition list drawn as a term column beside a value column, which is how
@@ -719,19 +714,6 @@ button[aria-disabled='true'] {
   border-radius: 0.25rem;
   color: var(--aci-muted);
   font-size: 0.625rem;
-  padding: 0 0.3125rem;
-  white-space: nowrap;
-}
-
-/* Which of the personal setup's directories a file came from. The full paths
-   are on that family's own surface, so the row carries the short name rather
-   than repeating a root per line (FR-002, FR-030). */
-.aci-source-home {
-  background: var(--aci-accent-soft);
-  border-radius: 0.25rem;
-  color: var(--aci-accent);
-  font-size: 0.625rem;
-  font-weight: 600;
   padding: 0 0.3125rem;
   white-space: nowrap;
 }
@@ -1048,10 +1030,9 @@ button[aria-disabled='true'] {
 
    A detail page's tabs are a fixed handful named by its own module, so the
    strip is a row that fits. The inventory's entries are not: that list is the
-   closed customization catalog plus the two lists that belong to no kind,
+   closed customization catalog plus the one list that belongs to no kind,
    which outgrew a row and is a rail of its own (`InventoryRail.vue`). */
-/* The edge the tabs sit on, and the end of the row where a page puts the
-   command that acts on what the tabs select. */
+/* The edge the tabs sit on. */
 .aci-kind-tabs {
   align-items: end;
   display: flex;
@@ -1059,13 +1040,6 @@ button[aria-disabled='true'] {
   gap: 0.25rem;
   border-bottom: 1px solid var(--aci-line);
   margin: 0.875rem 0 0.625rem;
-}
-
-.aci-kind-tabs__end {
-  display: flex;
-  gap: 0.375rem;
-  margin-inline-start: auto;
-  padding-block-end: 0.25rem;
 }
 
 /* Underlined rather than outlined: the strip's own rule is the line these sit

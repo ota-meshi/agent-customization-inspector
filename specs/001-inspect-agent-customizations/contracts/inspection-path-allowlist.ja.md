@@ -187,7 +187,7 @@ Recognitionが持つのはdirectoryそのものであって、その列挙結果
 認識しても1回だけ列挙されるからである。
 
 Censusの結果は件数ではなくfileそのものであり、generationの通常のfileとしてSource相対Pathで公開
-される。各pathは公開される他のすべてのpathと同じく、exactなraw entry nameを`/`でjoinしたもので
+される。各pathはenumerateされる他のすべてのpathと同じく、保存されたentry nameを`/`でjoinしたもので
 ある: filesystemは1つの名前につき1つのentryしか保持しないため、列挙されるpathはすべて曖昧さを
 持たず、見た目が同じにrenderされ得る2つのraw綴りは、別々に列挙される2つの実在fileである。
 Customization自身のfile listは、表示する場所でその公開済みpathから導く。Inventory rowはfile件数を
@@ -321,7 +321,7 @@ product内で唯一のpattern評価であり、一度に1つのentry nameへ適�
 readするagentが見るものを表示するからである。Targetがmissingまたはunreadableなlinkはそのfileの
 `file-unreadable` Diagnosticになり、recursiveなtraversalはreal pathで訪問済みdirectoryを追跡して
 link cycleがscanの終了を妨げないようにする。Hard linkは通常のfileであり、physical-identity grouping、
-read-once semantics、primary/alias path selectionは存在しない。`.git`、`.hg`、`.svn`、`node_modules`という名前のdirectoryには決して入らない。VCS内部の名前は、それを含むvolume自身の名前のidentityに従う。`.GIT`のようなcase variantは、そのvolumeが`.git`として解決する場合は除外し、case-sensitiveなvolume上でその綴りにより別directoryとしてauthorされた場合は対象に残す。別entryからVCS内部へ到達してもrepository customizationにはならないため、resolved pathにも同じ規則を適用する。VCS内部は
+read-once semantics、primary/alias path selectionは存在しない。`.git`、`.hg`、`.svn`、`node_modules`という名前のdirectoryには決して入らない。判定はfilesystemが綴ったentry名そのものに対して行う。別entryからVCS内部へ到達してもrepository customizationにはならないため、resolved pathにも同じ規則を適用する。case variantは問わない。判定できるのはそれを含むvolume自身の名前解決だが、それに答えるplatform checkは無く — macOSは両種のvolumeを出荷する — platformでcaseをfoldすれば、case-sensitiveなvolume上で読み手がauthorした`.GIT`を隠すことになる。variantへ到達するには、VCSが使う前に読み手自身がその綴りでstoreを作っている必要があり、入った場合の代償はover-listingである。VCS機構の中のcustomization fileが、「listされることはloadされることではない」を主張の全てとするsurfaceに載る。実行されるものは無く、選択したrootの外を読むこともない（FR-019）。VCS内部は
 repository自身の機構であってrepositoryでauthorされたcustomizationではない。`node_modules`
 directoryはpackage managerがinstallしたpackageを保持するため、その中のcustomization fileは
 それをshipしたpackageのものであり、検査対象のrepositoryでauthorされたものではなくmanifestと

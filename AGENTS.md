@@ -71,10 +71,20 @@ policy agreed in conversation and left there is a policy the next session does n
   Governance asks to hold the prior and current manifest versions across a
   denominator-semantics change — a transition is the fact it records there, not a
   chronology it narrates. Nowhere else — not a requirement, not a contract clause, not a
-  plan paragraph, not a code comment. Even in those five, never write the superseded name
-  or requirement: the body records what the task now requires, or what the answer now is,
-  and a dated amendment note records only that — and briefly why — it changed, not what it
-  used to say.
+  plan paragraph, not a code comment. Even in those five, never present a superseded name
+  or requirement as current, and never explain the text that was replaced: the body records
+  what the task now requires, or what the answer now is, and a dated amendment note records
+  only that — and briefly why — it changed, not what it used to say. Naming what was removed
+  is not the same as either: a dated entry may name it in the sentence that records its
+  removal, which is the whole content of such an entry and the reason these five keep dated
+  entries at all — a `Clarifications` question asking whether two requirements are still
+  required cannot be answered without naming them, and an iteration that added a mechanism
+  the release then dropped is a log with a hole in it until an entry records the drop. The line between the two is what the sentence is about: "the Marketplaces
+  family left the order, because a catalog carries the plugin kind" states the change and
+  its reason and is a note; "the answer named one surface when only one existed" and "the
+  item asked for a moderated study's recruitment terms" describe the superseded text itself
+  and are not. A note that has to quote the old entry to be understood is a note whose
+  entry is not yet rewritten.
 - Removing a historical note is an edit like any other: check that the parenthetical did
   not also carry a normative cross-reference such as an `FR-` identifier.
 - Never attribute a decision to the user. "user decision", "by user decision", and their
@@ -456,8 +466,9 @@ is written.
 - A value that only transcribes another object's fields instead holds the source
   object and derives each value where it is read — a getter naming its origin, or a
   constructor assignment made where a guard has already narrowed the source's own
-  field. Example: `CompanionSourceFile` holds the census entry and the candidate's
-  directory and derives both of its published addresses from them.
+  field. Example: `CompanionFile` holds the census root and the raw absolute path
+  the scan reads from, and derives its display path on read, because the two
+  address one entry and holding both would be two states that can disagree.
 - What every vendor shares lives in an abstract base; what is one vendor's — its
   `tool` literal, its relations catalog — lives in that vendor's subclass. Example:
   `CodexCompiledRule` extends `CompiledInspectionRule`.

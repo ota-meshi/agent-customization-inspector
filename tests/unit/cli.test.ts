@@ -10,7 +10,7 @@
 // default, and awaited before that launch line when it is given.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -401,6 +401,49 @@ describe('personal-setup consent', () => {
       // distinct because a link and its target have different names.
       expect(excludedRoots).toContain(realpathSync.native(link));
     } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('launches a Repository root whose physical location the platform cannot answer for', async () => {
+    // A root under a directory this process may not search: `realpath`
+    // answers `EACCES`, and so does the scan's own `readdir`, which is
+    // FR-002's `root-unreadable` Diagnostic — a Source with a reason the
+    // reader can read on the page. Failing the launch here would trade that
+    // Diagnostic for a message with no host and no page behind it, and the
+    // closed root conditions are exactly the ones the first scan reports
+    // (traversal.ts § PATH_CONDITION_FAILURE_CODES).
+    const base = mkdtempSync(join(tmpdir(), 'aci-denied-root-'));
+    try {
+      const outer = join(base, 'outer');
+      const root = join(outer, 'inner');
+      mkdirSync(root, { recursive: true });
+      chmodSync(outer, 0o000);
+      let protectionBinds = false;
+      try {
+        realpathSync.native(root);
+      } catch {
+        protectionBinds = true;
+      }
+      if (!protectionBinds) {
+        // Windows ignores the mode, so the condition this asserts about
+        // cannot be staged there; the same shape the traversal suite's
+        // unreadable-root case uses.
+        return;
+      }
+
+      await runInspectorCli(['--no-open', '--root', root]);
+
+      const [, excludedRoots] = fileOpenerProbeMock.mock.calls[0] ?? [];
+      // The spelling alone: there is no second entry to add, because the
+      // place the root physically is has no answer.
+      expect(excludedRoots).toContain(root);
+    } finally {
+      try {
+        chmodSync(join(base, 'outer'), 0o755);
+      } catch {
+        // Best effort; the directory may already be gone.
+      }
       rmSync(base, { recursive: true, force: true });
     }
   });

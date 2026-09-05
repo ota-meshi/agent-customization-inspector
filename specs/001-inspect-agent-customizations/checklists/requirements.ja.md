@@ -18,7 +18,7 @@
 - [x] `[NEEDS CLARIFICATION]` markerが残っていない
 - [x] 要件がtestableかつ明確である
 - [x] 成功基準が測定可能である
-- [x] SC-002がversion付きで公開されたreference profile、fixture digest、自動初回scan後にstatusとcommit済みinventory generationを1つの`scanRequestId`へ対応付ける客観的な明示rescan protocolを使用する
+- [x] scan timingの基準は、assertするのではなく撤回する。測るにはprocessor modelとimage revisionを記録した指定の凍結hostが1台必要だが、そのようなhostは指定されておらず、他所で得た数値はこのproductではなくその機械を説明する。protocolが依っていたrequest correlationは、FR-030自身の要件として残る *(2026-09-05 修正: 基準が仕様から外れたので述べ直した。)*
 - [x] Success criteriaがtechnology-agnosticである
 - [x] すべてのacceptance scenarioが定義されている
 - [x] 境界事例が特定されている
@@ -40,7 +40,7 @@
 - [x] Repository-root selectionを取得済み`process.cwd()`またはresolveした1つの`--root`値へ限定し、`chdir`を行わず、invalidなoption shapeをsession作成前にrejectし、bootstrap時にgeneration-0 Repository Sourceを正確に1つ作成する
 - [x] Selectorを持たない1回のsession-wide Global actionを固定4 member preview — Copilot・Claude・Codexのhomeとshared agent home — へbindし、4 entryすべてを評価し、missingまたはunreadableなrootを他memberをblockせずに除外して、admit済みSourceを1 batchかつ1 atomic generationで公開する。予期しないfailureはtransaction全体をabortする *(2026-08-30 修正: FR-045に合わせて記述し直した。)*
 - [x] Active-consent Global retryはfrozen preview/fixed tupleを再利用し、pending workがemptyになった後だけcompleteなretryable target setをserver側でderiveし、既存Source/prior snapshotを保持し、全件rejectならrequest/job/generationを作らず、それ以外はrequest-correlatedな1 atomic batchをpublishする
-- [x] Filesystem operationはraw entry nameを使用し、publicなSource-relative Pathはその名前を`/`でjoinしたものである。Hard linkは通常のfileであり、symbolic linkはtargetを透過的にreadし、壊れたlinkはper-file diagnosticになる *(2026-07-29修正: 導出されるNFC display綴りとそのcollision rejectionは削除 — raw綴りが公開identityである)*
+- [x] Filesystem operationはplanが保持したsegment — enumerated pathでは保存されたentry name、targeted fixed pathではimmutable registryの綴り — を使用し、publicなSource-relative Pathはそのsegmentを`/`でjoinしたものである。Hard linkは通常のfileであり、symbolic linkはtargetを透過的にreadし、壊れたlinkはper-file diagnosticになる *(2026-07-29修正: 公開identityはfile自身の正規化しない綴りであるという決定に合わせて述べ直した)* *(2026-09-05修正: 仕様が区別する2つのpath由来に合わせて述べ直した)*
 - [x] Traversalは通常方式で、調査対象パス一覧のpathだけをreadする。1つのfileに限定される問題はそのfileのdiagnosticになり他fileへ影響せず、specificationは敵対的入力向けの機構を追加しない（FR-019）
 - [x] Codex Global override fallbackのemptyを、任意の先頭BOM 1つを除去した後の`String.prototype.trim()`で定義し、保持した`U+FFFD`をnon-whitespaceとして扱い、安全にreadしたempty contentまたはabsentなinitial targetの場合だけfallbackを許可する
 - [x] Presentation Allowlist freezeをverification-onlyとし、意味上のmembership、source form、extractor applicability、relationship kindの変更が必要ならdependent implementationを停止し、設計同期とplan/tasks再生成を必須とする
@@ -48,14 +48,14 @@
 - [x] 固定browser helperがinspection由来のpath/contentを受け取らず、launch environmentを変更なしで継承し — productはどの環境変数にもinspection由来の値を書き込まない — Source rootとのlexical一致がprovenanceを変えずauthorityを与えない
 - [x] SC-008が、Level A/AA全基準のbilingual applicability matrix、criterion固有の非適用理由、automated/manual check mapping、0件ではないapplicable-criterion denominator、failure 0件の合格ruleを定義している
 - [x] ApplicableなSC-008 rowがcriterion固有のstable check IDとexpected observationを持ち、closed manual matrixがrelease/environment version、responsive/visual profile、workflow state、input profileを固定して、未記録のsamplingを許さない
-- [x] WCAG 2.2 criterion 2.2.2が、他contentと並行する自動更新scan/status informationをapplicableとして扱い、criterion準拠のessential exceptionを立証しない限り、検証済みpause/stop/hideまたはuser-frequency mechanismを要求する
+- [x] WCAG 2.2 criterion 2.2.2はNot applicableであり、その理由をcriterionごとに述べている。動くもの、点滅するもの、scrollするもの、自動更新するものが無いからである。statusは読み手が明示的に行うrefreshでのみ進み、productはtimerもfilesystem watcherもserver pushも定義しない。自己更新するsurfaceが現れればこの行はApplicableになる（contracts/accessibility-acceptance.ja.md） *(2026-09-05 修正: accessibility matrixが定めたapplicabilityに合わせて述べ直した。)*
 
 ## 機能の準備状況
 
 - [x] すべての機能要件に明確なacceptance criteriaがある
 - [x] User scenarioが主要flowを網羅している
 - [x] 成功基準で定義した測定可能な成果を満たしている
-- [x] 初回利用者studyについて、必要性、accountable ownership、recruitmentとcompensation funding、participant support、privacy、accessibility、定義済みreview protocol、再実施条件を明記し、通常のcontributorへ責任を負わせていない
+- [x] 初回利用の評価はmaintainerが所有し、資金のあるstudyにしかできないことをcontributorに求めない。task材料に対する20件のagent駆動sessionであり、participant cohortではなくagent駆動のrunとして記録し、登録した全sessionを結果に残す *(2026-09-05 修正: このreleaseが実際に走らせるagent駆動のrunに合わせて述べ直した。)*
 - [x] 意図したNode.js-only制約、security/cancellation limitationをtestableにする公開API check、scan完了とUS4 resultの安定性をtestableにするrequest/generation identity、mutation measurement、state-lifecycle用語を除き、実装詳細が仕様へ漏れていない
 
 ## 注記
@@ -67,10 +67,10 @@
   詳細なalgorithmとdata structureはplanとresearch artifactへ残している。
 - 2026-07-17の検証iteration 5では、tool別の独立したGlobal Source、environment置換を行わない
   値の完全表示、致命的な再scanのrollback、Source-relative path用語、後にiteration 7で置き換えた
-  当時の非公開performance-environment案という5件のclarificationを記録した。SC-002には固定済みの
-  sampling・aggregation protocolがなく、SC-001とSC-006には参加者populationとstudy protocolがないため、
-  3つのchecklist項目を未完了へ戻した。これらの成功基準をrelease gateとして使用する前に、追加の
-  clarification passが必要である。
+  当時の非公開performance-environment案という5件のclarificationを記録した。固定済みのsampling・aggregation
+  protocolを持たないscan timing基準と、評価populationもprotocolも持たないSC-001/SC-006のために、
+  そのiterationでは3つのchecklist項目を未完了へ戻し、それらの基準をrelease gateとして使う前に
+  clarification passを要するとした。以下の項目が3件すべてを閉じる。
 - 2026-07-19の検証iteration 6では、唯一の固定startup browser起動helperをcustomization由来の
   child processから区別し、FR-007のmetadata/relationship presentation allowlistをclosedにし、
   正確な100ミリ秒未満のinteraction protocolをSC-002へ追加し、仕様をimplementation-readyと
@@ -103,7 +103,7 @@
 - 2026-07-19の検証iteration 14では、製品定義のfile size、件数、parser、transport、queue、時間、
   concurrency上限を除去した。容量はsupported engineと環境から継承し、customizationのvalidation、
   correctness/complianceの含意、lint findingには使用しない。2026-07-20のrefinementにより、thrown/rejected failureの
-  domain分類をFR-041のpropagationで置き換えた。
+  domain分類を通常のpropagationで置き換えた。
 - 2026-07-19の検証iteration 15では、Global-root admission、検証済みbyte decoding、scan-publication outcomeを
   closedにした。2026-07-20のrefinementにより、contracted partial commitを完全なtraversal後のFR-028対象となる決定的で
   throwしないoutcomeだけに限定し、invalidなnon-NUL UTF-8を完全なreplacement-decoded textとし、non-carveoutなthrow/rejectionを
@@ -161,5 +161,13 @@
   APIは既に完全な内容を返すため、log内容規制とgenericなOperationError envelopeは何も
   守っていなかった。Errorは通常どおり報告し、影響する上記rowを再記述した後、すべての
   項目に合格した。
+- 2026-09-05の検証iteration 28では、上記の項目が追加として記録し、このreleaseが持たないものを
+  閉じた。Scan timingの基準は測定ではなく撤回したため、iteration 5から7が求めたsampling protocolと
+  interaction thresholdには、仕える基準が存在しない。その名前の下に残るのは非gatingのperformance
+  harnessであり、そのfileは記録済みdigestが名指す接頭辞を保つ（spec.ja.md § Clarifications, Session
+  2026-09-01）。初見利用の評価は、iteration 7が義務を割り当てたpopulationではなく20件のagent駆動
+  sessionであり、それらの義務が存在する理由だったmoderated studyは行われない。Iteration 25が記録する
+  trusted-workspace re-scopeは、iteration 24がtable rowを追加したrace taxonomyを取り除いた。消えたentry
+  を名指すdiagnostic codeは存在せず、closedなregistryは`diagnostics.ts`が宣言する4つのcodeである。
 - 正確なRepositoryの調査対象パス一覧は、公式vendor specificationを再確認した後、計画phaseで意図的に確定する。仕様はサポートするproduct familyを固定し、仕様変更なしのGlobal scope拡張を禁止している。
 - 一時的なローカルのプロダクト説明ファイルは、この仕様からリンクされず、仕様の利用にも必要ない。

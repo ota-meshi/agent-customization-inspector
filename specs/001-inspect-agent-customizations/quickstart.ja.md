@@ -168,7 +168,7 @@ sessionまたはsession-API errorではなくactionableなmessageを出す。
   bindしない。表示URLはplainなoriginであり、per-session token、fragment、その他のsecretを含まない。
   CLIのnegatableなproduct flagである`--no-open`ではbrowserを開かず、browser-helper child processも作らない。
 - Browser表示のRepository source rootはlaunchしたfixture tree自身。
-- 1秒以内に現在のscan requestについて、queued、active phase名、complete、partial、またはfailedを明示するstatusを画面に
+- 現在のscan requestについて、queued、active phase名、complete、partial、またはfailedを明示するstatusを画面に
   表示しassistive technologyにも公開する。Failureは実行可能な次の手順も示し、Source/progressはそのrequestのopaqueな
   `scanRequestId`を識別する。一般的なspinner/loading label、変化しない
   control、scan stateを示さないacknowledgement、以前のscanのstatusは数えない。
@@ -418,7 +418,8 @@ pnpm exec playwright test tests/e2e/repository-complete-inventory.spec.ts
 
 1. OptionなしではRepository Sourceがcapture済みchild-process `process.cwd()`のexact valueと等しい。Relative/absolute
    `--root`では選択したrootと等しく、process working directoryは変化せず、picker/ancestor searchもない。
-2. Source、tool、kind、Source-relative Path filterをkeyboard/pointerで操作できる。全inventory-file pathまたは安全に
+2. railが表示するkindを選び、その隣のSource/Tool selectがlistを絞り、1つの検索が名前または
+   Source-relative Pathに一致する。いずれもkeyboard/pointerで操作できる（FR-006）。全inventory-file pathまたは安全に
    normalize済みのtarget pathはowning Sourceの1 rootからの相対値であり、Sourceをまたぐpath namespaceを意味しない。
    Escape済みのenabled-Source root labelとconsent-preview root labelはpresentation-onlyのままで、Source-relative Pathではなく、
    read authorityを与えない。
@@ -593,8 +594,10 @@ pnpm exec vitest run --project integration tests/integration/global-boundaries.t
 
 Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対にinspectしない。確認項目:
 
-1. Consent前にGlobal pathへ一切touchせず、previewを`stat`、`realpath`、enumeration、file readなしでlexicalに
-   派生する。Instrumented startup captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に
+1. Consent前はproposed rootをproduct自身のfilesystem operationのoperandにせず、previewを`stat`、`realpath`、
+   enumeration、file readなしでlexicalに派生する。FR-013が述べる唯一の例外はeditor launcherの探索であり、
+   そのoperandはmachine自身の`PATH`と設定済みeditorで、OSがその解決をproposed root経由で行い得る。この探索は
+   proposed rootから何もenumerate・read・publishせず、その内側のlauncherをofferしない。Instrumented startup captureは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`をこの順で正確に
    1回ずつcaptureし、`undefined`だけをabsentとし、`node:os.homedir()`を無条件で正確に1回callすることを
    証明する — 共有agent homeは常にそこから導出される。Active-platformの`node:path.join`は対応する固定suffix
    だけを適用する。同じretained captureをlauncher exclusionとすべてのpreviewに使い、preview requestも
@@ -809,9 +812,9 @@ physical cancellationは保証しない。
 
 Traversal-plan call traceはさらに、Repository traversalがcompile済みimmutable planを実行し、Global exact targetがtool-home
 rootをopenせず、fixed instruction-subtree walkがそのsubtreeだけをopenし、隣接Global pathへのI/Oが0であることを証明する。
-Path-spelling fixtureはexact raw `Dirent.name` segmentが唯一の綴りであることを証明する。Filesystem operationはraw entry
-nameを使い、publicなSource-relative Pathはその名前を`/`でjoinしたものであり、targeted fixed pathはimmutable registry target
-spellingだけをI/O operandにするため、NFD-only nameはraw segmentでreadされそのraw綴りのまま公開される。Hard linkは
+Path-spelling fixtureはexact raw `Dirent.name` segmentが唯一の綴りであることを証明する。Filesystem operationはplanが保持した
+segmentを使い、publicなSource-relative Pathはそのsegmentを`/`でjoinしたものであり、targeted fixed pathはimmutable registry target
+spellingを唯一のI/O operandとしかつ公開segmentとするため、NFD-only nameはraw segmentでreadされそのraw綴りのまま公開される。Hard linkは
 ordinaryなfileである。2つのhard-linkされたpathが両方ともallowlisted selectorにmatchするなら、それは単に2つの
 inventory fileであり、identity grouping、alias ranking、group単位のbookkeepingはtest対象として存在しない。
 Symbolic linkはagentが解決するのとまったく同じようにtransparentにfollowされ、symlinkされたcustomization fileは
@@ -957,7 +960,7 @@ baselineである。これら有限sampleは、宣言済みNode.js 24/26 compati
 実行したとは主張せず、そのruntime contractも狭めない。最後にcomplete diffをreviewし、untested branch、secret exposure、古いofficial-path assumption、
 accidental source mutation、unrelated changeがないことを確認する。その結果生じたrepository remediationごとに、build、frozen install、
 lint、typecheck、unit、contract、integration、security、package、performance、browser、coverage、documentation、lower-bound candidate
-checkからなるcomplete applicable automated matrixを再実行し、影響するcandidate/profile/fixture/human/manual evidence setを再生成し、
+checkからなるcomplete applicable automated matrixを再実行し、影響するcandidate・profile・fixtureのevidence setを再生成し、
 concernが0件になるまでcomplete-diff/tarball reviewを反復する。次にbilingual Constitution Checkをsole planned validation-only editとして
 記録しtreeをfreezeする。そのfrozen tree/candidateへ全applicable automated gateを再実行し、documentation gateと`git diff --check`で終えてからreleaseをapproveする。Final outcomeはrepository evidence
 fileをeditせずexternal release/pull-request check logへcaptureする。その後repositoryをeditした場合は全outcome/approvalを無効にし、

@@ -655,9 +655,9 @@ src/
 │   ├── components/
 │   │   ├── inventory/
 │   │   ├── inspection/
+│   │   ├── comparison/
 │   │   ├── skill-comparison/
-│   │   ├── consent/
-│   │   └── diagnostics/
+│   │   └── consent/
 │   ├── composables/
 │   │   ├── skill-comparison.ts
 │   │   ├── filters.ts
@@ -715,10 +715,11 @@ src/
         ├── inspection-rules.ts
         ├── runtime-composition.ts
         ├── relations.ts              # the graph the recognizer walks
-        └── codex/                    # one directory per vendor, four files each
+        └── codex/                    # one directory per vendor, five files each
             ├── behaviors.ts
             ├── strategies.ts
             ├── rules.ts
+            ├── skill-collision.ts
             └── relations.ts
 
 tests/
@@ -1031,8 +1032,9 @@ configuration.
   traversal tracks visited directories by real path so a link cycle cannot prevent a scan
   from terminating, and a link whose target is missing or unreadable yields the
   file-scoped `file-unreadable` diagnostic. Hard links are
-  ordinary files. Raw entry names are the only filesystem operands, and joined with `/`
-  they are the published Source-relative Path. Client-supplied paths never authorize
+  ordinary files. The segments the plan retained are the only filesystem operands — an enumerated path's
+  stored entry names, a targeted fixed path's immutable registry spelling — and joined with
+  `/` they are the published Source-relative Path. Client-supplied paths never authorize
   I/O; reads are driven by the compiled allowlist plans and server-owned identifiers only.
 - Per-file problems use the closed Diagnostic registry: `root-unreadable` (source scope;
   error), `file-unreadable` (file scope, error),
@@ -1307,7 +1309,10 @@ configuration.
   instances and subscriptions are disposed independently on route close, selection
   replacement, source disable, and generation replacement. The accessible diff viewer,
   meaningful ARIA labels, keyboard navigation, and inline narrow-screen view remain
-  enabled and are verified manually as well as through browser tests. If the browser or
+  enabled and are verified through the automated and keyboard evidence SC-008 counts; the
+  `MANUAL-*` screen-reader matrix names environments no run available to this release has
+  and stays an unexecuted residual
+  (contracts/accessibility-acceptance.md § Manual check matrix (not executed for this release)). If the browser or
   editor cannot compute the diff with available environment capacity, an actionable
   diagnostic leaves the complete authored side-by-side source visible.
   `src/app/session/client-data.ts` owns the shared central client-data purge

@@ -39,7 +39,8 @@ import { connectDevframe, isCallableStatus } from 'devframe/client';
 import RescanIcon from '~icons/lucide/refresh-cw';
 import SearchIcon from '~icons/lucide/search';
 import ColorSchemeSwitch from './components/ColorSchemeSwitch.vue';
-import { pageKey } from './router.options';
+import { clearInventoryReturnPoint, pageKey } from './router.options';
+import { detailRouteKindOf } from './components/detail-route';
 import { provideInventoryFilterState } from './composables/inventory-filter-state';
 import GlobalFenceRecovery from './components/consent/GlobalFenceRecovery.vue';
 import { SESSION_VIEW_STATE, SessionViewState, type SessionView } from './session/view-state';
@@ -146,50 +147,34 @@ router.afterEach((to, from, failure) => {
  * What the current route is, for the document title: the fallback surface
  * name when the active page reports no subject of its own through
  * {@link SessionViewState.pageSubject}. A detail page falls back here when
- * its own subject draws nothing — a path of whitespace alone — so a family
- * missing from this chain titles such a tab `Inspection` rather than by its
- * kind.
+ * its own subject draws nothing — a path of whitespace alone — so a route
+ * whose kind this cannot name titles such a tab `Inspection` rather than by
+ * its kind.
  *
- * One branch per route family `detail-route.ts` declares, in the closed kind
- * order (`entities.ts` § CUSTOMIZATION_KIND_ORDER); a family added there
- * belongs here in the same change.
+ * The kind comes from the route's own first segment through the table that
+ * roots each family there (`detail-route.ts` § detailRouteKindOf), so a family
+ * added to that table is titled by this without a second edit — and a second
+ * spelling of which segment a kind lives under cannot disagree with the first.
+ * The branches below it are the two routes no kind owns, which no table names.
  */
-const routeTitle = computed(() =>
-  route.path.startsWith('/instructions')
-    ? CUSTOMIZATION_KIND_TEXT.instructions
-    : route.path.startsWith('/skills/')
-      ? CUSTOMIZATION_KIND_TEXT.skill
-      : route.path.startsWith('/mcp')
-        ? CUSTOMIZATION_KIND_TEXT.MCP
-        : route.path.startsWith('/agents')
-          ? CUSTOMIZATION_KIND_TEXT.agent
-          : route.path.startsWith('/prompts-and-commands')
-            ? CUSTOMIZATION_KIND_TEXT['prompt/command']
-            : route.path.startsWith('/rules')
-              ? CUSTOMIZATION_KIND_TEXT.rule
-              : route.path.startsWith('/permissions')
-                ? CUSTOMIZATION_KIND_TEXT.permissions
-                : route.path.startsWith('/hooks')
-                  ? CUSTOMIZATION_KIND_TEXT.hook
-                  : route.path.startsWith('/plugins')
-                    ? CUSTOMIZATION_KIND_TEXT.plugin
-                    : route.path.startsWith('/output-styles')
-                      ? CUSTOMIZATION_KIND_TEXT['output style']
-                      : route.path.startsWith('/settings-and-configuration')
-                        ? CUSTOMIZATION_KIND_TEXT['settings/config']
-                        : route.path.startsWith('/global-consent')
-                          ? // The consent page is no kind's, so no kind table
-                            // names it; its title is the decision it puts in
-                            // front of the reader — the page's own heading.
-                            'Personal setup consent'
-                          : route.path.startsWith('/repository')
-                            ? // The Repository Source's own state surface, no
-                              // kind's either: its title is its heading, so a
-                              // tab left open on it says which Source it is
-                              // about (WCAG 2.4.2).
-                              'Repository'
-                            : 'Inspection',
-);
+const routeTitle = computed(() => {
+  const kind = detailRouteKindOf(route.path);
+  if (kind !== null) {
+    return CUSTOMIZATION_KIND_TEXT[kind];
+  }
+  if (route.path.startsWith('/global-consent')) {
+    // The consent page is no kind's, so no kind table names it; its title is
+    // the decision it puts in front of the reader — the page's own heading.
+    return 'Personal setup consent';
+  }
+  if (route.path.startsWith('/repository')) {
+    // The Repository Source's own state surface, no kind's either: its title
+    // is its heading, so a tab left open on it says which Source it is about
+    // (WCAG 2.4.2).
+    return 'Repository';
+  }
+  return 'Inspection';
+});
 
 /**
  * The one search over names and paths (FR-006). The bar offers it; the
@@ -205,6 +190,11 @@ const searchText = computed<string>({
   set: (value: string) => {
     inventoryFilters.searchQuery.value = value;
     if (route.path !== '/') {
+      // Typing is a new question about the list, not a return to the row the
+      // reader left, so the recorded point goes: restoring it would move focus
+      // off this field as the inventory arrives, and every character after the
+      // first would land nowhere (`router.options.ts` § scrollBehavior).
+      clearInventoryReturnPoint();
       // The query travels with the navigation rather than being written after
       // it: the inventory is not mounted yet, so this cannot race its own
       // writer, and the page it arrives at then reads the search from the URL
