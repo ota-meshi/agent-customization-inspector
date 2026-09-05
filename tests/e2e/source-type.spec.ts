@@ -67,17 +67,17 @@ const SOURCE_ROUTES: readonly {
   },
   {
     name: 'instructions comparison',
-    host: '.aci-instruction-source-diff',
+    host: '.aci-source-diff',
     path: '/instructions/compare/repository?range=**&leftSource=repository&left=AGENTS.md&rightSource=repository&right=.github%2Fcopilot-instructions.md',
   },
   {
     name: 'prompt comparison',
-    host: '.aci-prompt-source-diff',
+    host: '.aci-source-diff',
     path: '/prompts-and-commands/compare/repository?leftSource=repository&left=.claude%2Fcommands%2Fdeploy.md&rightSource=repository&right=.github%2Fprompts%2Fdeploy.prompt.md',
   },
   {
     name: 'custom-agent comparison',
-    host: '.aci-custom-agent-source-diff',
+    host: '.aci-source-diff',
     path: '/agents/compare/repository?name=reviewer&leftSource=repository&left=.codex%2Fagents%2Freviewer.toml&rightSource=repository&right=.claude%2Fagents%2Freviewer.md',
   },
   {
@@ -94,7 +94,7 @@ const SOURCE_ROUTES: readonly {
     // The manifest diff this route opens on, which is the plugin comparison's
     // own source host.
     name: 'plugin manifest comparison',
-    host: '.aci-plugin-source-diff',
+    host: '.aci-source-diff',
     path: '/plugins/compare/repository?name=changelog-writer%40inspector-examples&leftSource=repository&left=.agents%2Fplugins%2Fmarketplace.json&rightSource=repository&right=marketplace.json',
   },
   {

@@ -115,7 +115,7 @@ test('opens from a row and shows the complete literal diff', async ({ page }) =>
   // and the environment reference exactly as authored, unmasked and
   // unresolved (FR-027, FR-025). `.first()`, because the declared-metadata
   // section below mounts its own diff of the serialized frontmatter.
-  const diff = page.locator('.aci-prompt-compare__source .aci-prompt-source-diff');
+  const diff = page.locator('.aci-prompt-compare__source .aci-source-diff');
   await expect(diff).toContainText(COMMAND_SECRET);
   await expect(diff).toContainText(PROMPT_SECRET);
   await expect(diff).toContainText(ENVIRONMENT_REFERENCE);
@@ -178,12 +178,12 @@ test('renders the per-tool invocation names and the serialized declarations', as
   // sorted and none promoted, diffed in Monaco under no tool caption
   // (frontmatter-yaml.ts): the shared key shows both values, and a side-only
   // key stands on its side alone (FR-011).
-  const metadataDiff = metadata.locator('.aci-prompt-source-diff').first();
+  const metadataDiff = metadata.locator('.aci-source-diff').first();
   // Two diffs in the sections: the declarations and the body, each the file's
   // own half of one parse. Scoped to `section`, because the page's complete
   // source comparison passes through this component's slot and sits beside
   // them rather than inside one.
-  await expect(metadata.locator('section .aci-prompt-source-diff')).toHaveCount(2);
+  await expect(metadata.locator('section .aci-source-diff')).toHaveCount(2);
   await expect(metadataDiff).toContainText('description: Deploy the current branch');
   await expect(metadataDiff).toContainText('description: Deploy from the editor');
   await expect(metadataDiff).toContainText('argument-hint');

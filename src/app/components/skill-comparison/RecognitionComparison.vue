@@ -12,8 +12,9 @@
 // states the serialized documents exactly: nothing here is markup, a link,
 // or a URI, and no value is masked, shortened, or reflowed (FR-025,
 // FR-033); no row or side ranks, orders, or prefers either file (FR-012).
-import SourceDiff from './SourceDiff.vue';
+import SourceDiff from '../comparison/SourceDiff.vue';
 import ToolMark from '../ToolMark.vue';
+import { useSessionViewState } from '../../composables/session-view-state';
 import { SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import {
@@ -30,6 +31,19 @@ defineProps<{
   /** The second compared file's path; see {@link leftPath}. */
   rightPath: string;
 }>();
+
+// The diffs below join the skill comparison's own registry rather than the
+// session's (`SourceDiff.registerContentOwner`).
+const sessionViewState = useSessionViewState();
+const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
+  sessionViewState.skillComparison.registerOpenContentOwner(disposer);
+
+/** What both diffs below say when the editor cannot be constructed. */
+const MOUNT_ERROR_MESSAGE =
+  'The comparison viewer could not be loaded. Each side is shown below in full.';
+
+/** What both diffs below call a side whose copy ships no corresponding file. */
+const ABSENCE_NOTE = 'no file in this skill directory';
 </script>
 
 <template>
@@ -140,8 +154,11 @@ defineProps<{
             :modified-path="rightPath"
             :original-absent="comparison.frontmatterDiff.originalAbsent"
             :modified-absent="comparison.frontmatterDiff.modifiedAbsent"
+            :absence-note="ABSENCE_NOTE"
             content-language="yaml"
             content-label="frontmatter of"
+            :mount-error-message="MOUNT_ERROR_MESSAGE"
+            :register-content-owner="registerComparisonContentOwner"
             fit-content
           />
         </template>
@@ -165,8 +182,11 @@ defineProps<{
           :modified-path="rightPath"
           :original-absent="comparison.bodyDiff.originalAbsent"
           :modified-absent="comparison.bodyDiff.modifiedAbsent"
+          :absence-note="ABSENCE_NOTE"
           content-language="markdown"
           content-label="instructions of"
+          :mount-error-message="MOUNT_ERROR_MESSAGE"
+          :register-content-owner="registerComparisonContentOwner"
           fit-content
         />
       </section>

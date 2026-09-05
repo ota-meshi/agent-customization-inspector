@@ -1530,9 +1530,11 @@ dispositionである。
   disposal を `src/app/composables/monaco.ts` に実装する *(2026-08-15 修正: operand は2つの readable
   file、または明示された不在の counterpart を伴う1つの readable file — FR-011 が記録する one-sided comparison である。)*
 - [X] T197 [US3] 正確に label 付けされた read-only/no-link/no-revert diff option、verbose accessibility、完全な
-  side-by-side fallback を `src/app/components/skill-comparison/SourceDiff.vue` に実装する *(2026-08-14
+  side-by-side fallback を `src/app/components/comparison/SourceDiff.vue` に実装する *(2026-08-14
   修正: route と module を skill スコープにした — 比較サーフェスは kind 固有である。spec.md § Clarifications Session
-  2026-08-14 を参照。)*
+  2026-08-14 を参照。)* *(2026-09-06 修正: この diff は共有の presentation primitive
+  である。入力と意味がこれを使うkind間で同一だからである。spec.md § Clarifications Session 2026-08-14
+  を参照。)*
 - [X] T198 [US3] inferred winner を作らず、各sideを1つのcanonical YAML
   documentへserializeしてMonacoでdiffするdeclared-metadata比較を
   `src/app/components/skill-comparison/RecognitionComparison.vue` に実装する *(2026-08-19 修正:
@@ -2219,7 +2221,7 @@ dispositionである。
   も、skill における T203 と同様にこの task が所有する） を拡張する *(2026-08-19 修正:
   宣言済みmetadataはfileのkindごとに1回のparseであり、pairごとに1回比較し、tool recognitionはtoolごとにその横で比較する —
   toolは宣言の座標ではない（research.md § 7）。)* *(2026-08-19修正: この task が作成した surface は
-  `src/app/pages/instructions/compare/[family].vue`、`src/app/composables/instruction-comparison.ts`、`src/app/components/instruction-comparison/`（`RecognitionComparison.vue`、`SourceDiff.vue`、`recognition-comparison.ts`）である
+  `src/app/pages/instructions/compare/[family].vue`、`src/app/composables/instruction-comparison.ts`、`src/app/components/instruction-comparison/`（`RecognitionComparison.vue`、`recognition-comparison.ts`）である
   — 各 file が所有 task へ解決できるようここに列挙する。)* *(2026-08-27修正: ペアを所有するのは、1つの範囲が1つのSource
   familyに対して保持するblockである。したがって両sideはconsentされた2つのhomeのfileでありうるが、2つのfamilyにまたがることはない。addressの先頭に立つのはfamilyであり、各sideは自身のSourceを名乗る。)*
   *(2026-08-19修正: ペアは1つのapplicability-range行のもの —
@@ -2228,7 +2230,8 @@ dispositionである。
   の前例に倣ってこの task が担う（spec.md § Clarifications Session 2026-08-14）。)* *(amended 2026-08-21:
   宣言済みmetadataはsideごとに1つのcanonical YAML
   document（skillは`name`と`description`を先頭に、他は全keyをsort順）としてMonacoでdiffし、tool
-  recognitionはその横にtypedなrowとして並べる（frontmatter-yaml.ts）。)*
+  recognitionはその横にtypedなrowとして並べる（frontmatter-yaml.ts）。)* *(2026-09-06修正: このサーフェスが描く
+  diff は共有の `src/app/components/comparison/SourceDiff.vue` であり、所有 task は T197 である。)*
 - [X] T279 [US3] 英語の instruction comparison message をそれらを描画する Vue component に追加する
 
 ---
@@ -7702,11 +7705,9 @@ source viewerが上限の下で内容の高さを取ること、そして前後�
 - [X] T1173 [US3] `src/app/pages/` 配下の7つの比較pageで、各side自身の認識productと戻り先を述べ、1つ
   のproductが共有しない2つのcopyが同じものの2度として読まれないようにする（FR-011、FR-012）
 - [X] T1174 [US3] 比較本文を、その並列renderingが必要とする幅に保つ。対象は
-  `src/app/components/skill-comparison/SourceDiff.vue`、
-  `src/app/components/instruction-comparison/SourceDiff.vue`、
-  `src/app/components/prompt-comparison/SourceDiff.vue`、
-  `src/app/components/plugin-comparison/SourceDiff.vue`、
-  `src/app/components/custom-agent-comparison/SourceDiff.vue` である（FR-011、FR-012）
+  `src/app/components/comparison/SourceDiff.vue` である（FR-011、FR-012）*(2026-09-06修正:
+  幅を保つのは、それをマウントするどのkindにとっても1つの共有diffである。spec.md § Clarifications Session
+  2026-08-14 を参照。)*
 - [X] T1175 [US3] 比較の見出しがrenderする英語のcopyを、それをrenderするcomponentの中に追加する
 - [X] T1176 [US3] 作り直したsurfaceに対して横断的なsuiteを再実行し、報告された内容を是正する。
   `specs/001-inspect-agent-customizations/quickstart.md` と

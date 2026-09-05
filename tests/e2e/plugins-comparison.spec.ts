@@ -198,7 +198,7 @@ test.describe('the plugin comparison surface', () => {
     await expect(declarationPanel).toContainText(
       'plugins/review-assistant/.claude-plugin/plugin.json',
     );
-    await expect(declarationPanel.locator('.aci-plugin-source-diff')).toBeVisible();
+    await expect(declarationPanel.locator('.aci-source-diff')).toBeVisible();
 
     // Runtime is stated as outside this repository, never as a fact about
     // either side (FR-009).
@@ -227,7 +227,7 @@ test.describe('the plugin comparison surface', () => {
     // Scoped to this panel: the declaration panel beside it diffs the two
     // plugins' own manifests, which is its own subject.
     const panel = page.locator('#aci-plugin-compare-panel-files');
-    await expect(panel.locator('.aci-plugin-source-diff')).toBeVisible();
+    await expect(panel.locator('.aci-source-diff')).toBeVisible();
 
     await switcher.selectOption('skills/checklist/SKILL.md');
     // Choosing a file stays on the panel the choice was made in.
@@ -239,7 +239,7 @@ test.describe('the plugin comparison surface', () => {
     // Both copies' complete sources, diffed under the declarations rather
     // than on a screen of their own: the vendored copy says one line more
     // than the current one.
-    const fileDiff = panel.locator('.aci-plugin-source-diff');
+    const fileDiff = panel.locator('.aci-source-diff');
     await expect(fileDiff).toBeVisible();
     await expect(fileDiff).toContainText('Walk the checklist');
     await expect(fileDiff).toContainText('then note the reviewer');
@@ -254,7 +254,7 @@ test.describe('the plugin comparison surface', () => {
     await page.getByRole('tab', { name: /^Files/u }).click();
     await switcher.selectOption('NOTICE.md');
     await expect(panel).toContainText('Only the first plugin ships this file');
-    await expect(panel.locator('.aci-plugin-source-diff')).toBeVisible();
+    await expect(panel.locator('.aci-source-diff')).toBeVisible();
     await expect(panel.locator('.aci-source-viewer')).toHaveCount(0);
     await expect(panel).toContainText('Vendored copy');
 
@@ -262,7 +262,7 @@ test.describe('the plugin comparison surface', () => {
     // other side: the side that has it is read whichever side that is.
     await switcher.selectOption('README.md');
     await expect(panel).toContainText('Only the second plugin ships this file');
-    await expect(panel.locator('.aci-plugin-source-diff')).toBeVisible();
+    await expect(panel.locator('.aci-source-diff')).toBeVisible();
     await expect(panel).toContainText('Maintained under plugins/');
     // What the live region announces is what the panel shows. A one-sided name
     // is rendered by the diff, so the sentence for bytes no reader shows must
@@ -296,7 +296,7 @@ test.describe('the plugin comparison surface', () => {
     const viewer = panel.locator('.aci-source-viewer');
     await expect(viewer).toBeVisible();
     await expect(viewer).toContainText('"name": "shared-tool"');
-    await expect(panel.locator('.aci-plugin-source-diff')).toHaveCount(0);
+    await expect(panel.locator('.aci-source-diff')).toHaveCount(0);
   });
 
   test('reports a link the model cannot express, and drops the content on leaving', async ({

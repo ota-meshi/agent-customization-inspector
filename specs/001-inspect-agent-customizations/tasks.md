@@ -1827,9 +1827,11 @@ the task would have built.
   readable file beside its stated absent counterpart — the one-sided comparison FR-011 records.)*
 - [X] T197 [US3] Implement exact labelled read-only/no-link/no-revert diff options, verbose
   accessibility, and complete side-by-side fallback in
-  `src/app/components/skill-comparison/SourceDiff.vue` *(amended 2026-08-14: skill-scoped route and
+  `src/app/components/comparison/SourceDiff.vue` *(amended 2026-08-14: skill-scoped route and
   modules — a comparison surface is kind-specific; see spec.md § Clarifications Session
-  2026-08-14.)*
+  2026-08-14.)* *(amended 2026-09-06: the diff is a shared presentation primitive,
+  because its inputs and meaning are identical for every kind that uses it; see
+  spec.md § Clarifications Session 2026-08-14.)*
 - [X] T198 [US3] Implement the declared-metadata comparison — each side serialized to one canonical
   YAML document diffed in Monaco — without inferred winners in
   `src/app/components/skill-comparison/RecognitionComparison.vue` *(amended 2026-08-19: declared
@@ -2642,8 +2644,8 @@ the task would have built.
   route under `src/app/pages/`, as T203 owns them for skills *(amended 2026-08-19: the surface this
   task created is `src/app/pages/instructions/compare/[family].vue`,
   `src/app/composables/instruction-comparison.ts`, and `src/app/components/instruction-comparison/`
-  (`RecognitionComparison.vue`, `SourceDiff.vue`, `recognition-comparison.ts`) — named here so each
-  file resolves to its owning task.)* *(amended 2026-08-19: declared metadata is the file's one
+  (`RecognitionComparison.vue`, `recognition-comparison.ts`) — named here so each file resolves to
+  its owning task.)* *(amended 2026-08-19: declared metadata is the file's one
   parse per kind, compared once per pair with tool recognition compared per tool beside it — a tool
   is not a coordinate of a declaration (research.md § 7).)* *(amended 2026-08-27: the pair's owner
   is the block a range holds for one Source family, so the two sides may be files of two consented
@@ -2656,7 +2658,8 @@ the task would have built.
   skill precedent (spec.md § Clarifications Session 2026-08-14).)* *(amended 2026-08-21: the
   declared metadata compares as one canonical YAML document per side, `name` and `description`
   leading for skills and every key sorted, diffed in Monaco (frontmatter-yaml.ts), with tool
-  recognition beside it as typed rows.)*
+  recognition beside it as typed rows.)* *(amended 2026-09-06: the diff this surface renders is
+  the shared `src/app/components/comparison/SourceDiff.vue`, which T197 owns.)*
 - [X] T279 [US3] Add English instruction comparison messages in the Vue components that render them
 
 ---
@@ -9046,11 +9049,9 @@ from.
   comparison pages under `src/app/pages/`, so two copies one product does not share are not read as
   one thing twice (FR-011, FR-012)
 - [X] T1174 [US3] Hold the comparison body to the width its side-by-side rendering needs in
-  `src/app/components/skill-comparison/SourceDiff.vue`,
-  `src/app/components/instruction-comparison/SourceDiff.vue`,
-  `src/app/components/prompt-comparison/SourceDiff.vue`,
-  `src/app/components/plugin-comparison/SourceDiff.vue`, and
-  `src/app/components/custom-agent-comparison/SourceDiff.vue` (FR-011, FR-012)
+  `src/app/components/comparison/SourceDiff.vue` (FR-011, FR-012) *(amended 2026-09-06: one shared
+  diff holds the width for every kind that mounts it; see spec.md § Clarifications Session
+  2026-08-14.)*
 - [X] T1175 [US3] Add the English copy the comparison head renders, in the components that render it
 - [X] T1176 [US3] Rerun the cross-cutting suites over the reworked surfaces and correct what they
   report, including the accessibility, documentation, and package gates named in

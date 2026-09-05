@@ -58,7 +58,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffe
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/instruction-comparison/RecognitionComparison.vue';
-import SourceDiff from '../../../components/instruction-comparison/SourceDiff.vue';
+import SourceDiff from '../../../components/comparison/SourceDiff.vue';
 import { InstructionRecognitionComparison } from '../../../components/instruction-comparison/recognition-comparison';
 import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
@@ -90,6 +90,17 @@ const sessionSources = useSessionSources();
 /** The published Sources; what every identity below resolves against. */
 const sources = sessionSources.sources;
 const status = comparison.status;
+
+/**
+ * Joins this comparison's own content-owner registry, which the source diff
+ * below takes. The session's registry covers a purge and a newer generation;
+ * this one also covers a pick and a URL edit, which replace the open pair
+ * without either — and the contract orders dispose before replace
+ * (data-model.md § BrowserState), so the previous pair's authored source must
+ * go synchronously rather than on Vue's unmount one flush later.
+ */
+const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
+  comparison.registerOpenContentOwner(disposer);
 
 const route = useRoute();
 
@@ -886,7 +897,11 @@ onBeforeUnmount(() => {
                  what its own two sides are: this one is the files themselves,
                  with nothing removed or reordered (FR-027). -->
             <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
-            <SourceDiff v-bind="readyView.diff" />
+            <SourceDiff
+              v-bind="readyView.diff"
+              mount-error-message="The comparison viewer could not be loaded. Each side is shown below in full."
+              :register-content-owner="registerComparisonContentOwner"
+            />
           </div>
         </template>
       </RecognitionComparison>

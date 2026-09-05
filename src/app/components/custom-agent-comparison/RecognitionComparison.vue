@@ -39,8 +39,9 @@
 // are runtime this tool never observes (FR-009).
 import { AuthoredName } from '../authored-name';
 import AuthoredNameText from '../AuthoredNameText.vue';
-import SourceDiff from './SourceDiff.vue';
+import SourceDiff from '../comparison/SourceDiff.vue';
 import ToolMark from '../ToolMark.vue';
+import { useSessionViewState } from '../../composables/session-view-state';
 import { SUPPORTED_TOOL_TEXT } from '../../../shared/entities';
 import { VENDOR_SURFACE_TEXT } from '../../../shared/registries/behavior-text';
 import {
@@ -57,6 +58,18 @@ defineProps<{
   /** The second compared file's path; see {@link leftPath}. */
   rightPath: string;
 }>();
+
+// The diffs below join the custom-agent comparison's own registry rather than
+// the session's (`SourceDiff.registerContentOwner`). It is the registry the
+// page's two source viewers take, so a replaced pair drops the halves and the
+// whole files together.
+const sessionViewState = useSessionViewState();
+const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
+  sessionViewState.customAgentComparison.registerOpenContentOwner(disposer);
+
+/** What both diffs below say when the editor cannot be constructed. */
+const MOUNT_ERROR_MESSAGE =
+  'The comparison viewer could not be loaded. Each side is shown below, exactly as this comparison holds it.';
 
 /**
  * What a cell with no definition reads as. A literal rather than a member of
@@ -209,6 +222,8 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
             :modified-path="rightPath"
             content-language="yaml"
             content-label="declared metadata of"
+            :mount-error-message="MOUNT_ERROR_MESSAGE"
+            :register-content-owner="registerComparisonContentOwner"
             fit-content
           />
         </template>
@@ -232,6 +247,8 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
           :modified-path="rightPath"
           content-language="markdown"
           content-label="instructions of"
+          :mount-error-message="MOUNT_ERROR_MESSAGE"
+          :register-content-owner="registerComparisonContentOwner"
           fit-content
         />
       </section>
