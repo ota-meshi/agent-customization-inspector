@@ -794,10 +794,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.aci-hook-compare > p:first-child {
-  margin: 0;
-}
-
 .aci-hook-compare h2 {
   margin: 0.25rem 0 0.5rem;
 }

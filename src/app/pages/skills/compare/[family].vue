@@ -1543,10 +1543,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.aci-skill-compare > p:first-child {
-  margin: 0;
-}
-
 .aci-skill-compare h2 {
   margin: 0.25rem 0 0.5rem;
 }

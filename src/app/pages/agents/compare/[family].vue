@@ -1042,10 +1042,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.aci-custom-agent-compare > p:first-child {
-  margin: 0;
-}
-
 .aci-custom-agent-compare h2 {
   margin: 0.25rem 0 0.5rem;
 }

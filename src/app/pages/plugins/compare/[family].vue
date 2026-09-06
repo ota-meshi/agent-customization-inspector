@@ -2160,10 +2160,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.aci-plugin-compare > p:first-child {
-  margin: 0;
-}
-
 /* The two roots side by side, stacking on a narrow viewport where two columns
    would crush both (WCAG 1.4.10) — the declaration panel's own arrangement. */
 .aci-plugin-compare__roots {

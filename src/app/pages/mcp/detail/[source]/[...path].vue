@@ -867,13 +867,6 @@ watch(
   flex-direction: column;
 }
 
-/* The heading block is chrome, and every line of it is a line the
-   declarations do not get, so it is tighter here than the shell's default
-   heading spacing. */
-.aci-mcp-detail > p:first-child {
-  margin: 0;
-}
-
 .aci-mcp-detail__overview {
   border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
@@ -891,10 +884,6 @@ watch(
   margin: 0 0 0.35rem;
 }
 
-/* Tighter than the shell's section-heading baseline, because the heading
-   block is chrome; the authored path may have no break opportunities of its
-   own, and without the wrap a long one forces sideways scrolling at narrow
-   widths and 200% zoom (WCAG 1.4.10). */
 /* The heading and the link that opens the file it names on one line, wrapping
    together when the path is long. */
 .aci-mcp-detail__title {
@@ -910,8 +899,9 @@ watch(
   margin-inline-start: auto;
 }
 
+/* Tighter than the shell's section-heading baseline, because the heading
+   block is chrome. */
 .aci-mcp-detail h2 {
   margin: 0.25rem 0 0;
-  overflow-wrap: anywhere;
 }
 </style>

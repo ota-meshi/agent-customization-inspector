@@ -854,13 +854,6 @@ watch(
   flex-direction: column;
 }
 
-/* The heading block is chrome, and every line of it is a line the
-   declarations do not get, so it is tighter here than the shell's default
-   heading spacing. */
-.aci-hook-detail > p:first-child {
-  margin: 0;
-}
-
 .aci-hook-detail__overview {
   border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
@@ -884,15 +877,13 @@ watch(
   margin: 0 0 0.35rem;
 }
 
-/* The heading and the link that opens the file it names on one line, wrapping
-   together when the path is long; the authored path may have no break
-   opportunities of its own, and without the wrap a long one forces sideways
-   scrolling at narrow widths and 200% zoom (WCAG 1.4.10). */
 /* Whatever closes the heading's line: the comparison of the subject it names. */
 .aci-hook-detail__title-end {
   margin-inline-start: auto;
 }
 
+/* The heading and the link that opens the file it names on one line, wrapping
+   together when the path is long. */
 .aci-hook-detail__title {
   display: flex;
   flex-wrap: wrap;
@@ -900,8 +891,9 @@ watch(
   margin-block-end: 0.5rem;
 }
 
+/* Tighter than the shell's section-heading baseline, because the heading
+   block is chrome. */
 .aci-hook-detail h2 {
   margin: 0.25rem 0 0;
-  overflow-wrap: anywhere;
 }
 </style>

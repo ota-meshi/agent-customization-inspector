@@ -66,6 +66,7 @@ import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
+import SkipLink from '../../../../components/inspection/SkipLink.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import ToolMark from '../../../../components/ToolMark.vue';
 import { AuthoredName } from '../../../../components/authored-name';
@@ -1395,14 +1396,7 @@ watch(
         :aria-labelledby="skillTabId('files')"
         tabindex="0"
       >
-        <!-- The tree is as long as the skill's directory happens to be, and it
-           stands between the reader and the file they came to read. A screen
-           reader can jump the `nav` landmark; a keyboard user has nothing
-           unless the page offers it, so this link is that mechanism
-           (WCAG 2.4.1). -->
-        <p class="aci-skill-detail__skip-link">
-          <a href="#aci-skill-detail-file-contents">Skip to file contents</a>
-        </p>
+        <SkipLink target-id="aci-skill-detail-file-contents" />
 
         <div class="aci-skill-detail__layout">
           <DirectoryFileTree
@@ -1511,11 +1505,9 @@ watch(
 </template>
 
 <style scoped>
-/* The file's path and the link that opens it on one line, wrapping together
-   when the path is long. */
 /* The open file's path with the command that opens it, on one line: the
    command acts on the file the line names, so a reader never has to work out
-   what it applies to. */
+   what it applies to. They wrap together when the path is long. */
 .aci-skill-detail__file-title {
   align-items: center;
   column-gap: 0.75rem;
@@ -1528,30 +1520,6 @@ watch(
   margin-inline-start: auto;
 }
 
-/* The detail route's bypass mechanism (WCAG 2.4.1): out of the way until it is
-   focused, then a normal visible link. Not `display: none`, which would take it
-   out of the tab order and leave nothing to bypass with. */
-.aci-skill-detail__skip-link {
-  margin: 0;
-}
-
-.aci-skill-detail__skip-link a {
-  block-size: 1px;
-  clip-path: inset(50%);
-  inline-size: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-}
-
-.aci-skill-detail__skip-link a:focus-visible {
-  block-size: auto;
-  clip-path: none;
-  inline-size: auto;
-  overflow: visible;
-  position: static;
-}
-
 /* The skill detail reads top to bottom: what the skill is, what it declares,
    what it instructs, then the files it ships. It scrolls as a page rather than
    fitting the viewport — fitting was tried, and the skill's own sections left
@@ -1559,12 +1527,6 @@ watch(
 .aci-skill-detail {
   display: flex;
   flex-direction: column;
-}
-
-/* The heading block is chrome, and every line of it is a line the files do not
-   get, so it is tighter here than the shell's default heading spacing. */
-.aci-skill-detail > p:first-child {
-  margin: 0;
 }
 
 /* The definition's own caption line, weighted like a heading within the
@@ -1713,13 +1675,9 @@ watch(
   padding: 0;
 }
 
-/* Tighter than the shell's section-heading baseline, because the heading block
-   is chrome and every line of it is a line the files do not get. The authored
-   name it carries has no break opportunities of its own; without the wrap a
-   long one forces the page to scroll sideways at narrow widths and 200% zoom
-   (WCAG 1.4.10). */
+/* Tighter than the shell's section-heading baseline, because the heading
+   block is chrome and every line of it is a line the files do not get. */
 .aci-skill-detail h2 {
   margin: 0.25rem 0 0.5rem;
-  overflow-wrap: anywhere;
 }
 </style>

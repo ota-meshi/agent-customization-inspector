@@ -7,6 +7,14 @@
 // § sourceRootOf), because the summary panel already states that one root and
 // a line repeating it on every detail would say where every file came from
 // twice.
+//
+// No styles of its own. The line's look is the shared `.aci-note` utility's,
+// and the escaped root breaks where it has to because the span holding it is
+// `.aci-authored-text`, which declares the wrap for every authored value the
+// product draws (main.css). An `overflow-wrap` on this paragraph would sit
+// above that span and reach no text of its own — the plugin page carried one
+// until it was measured. `aci-source-root-note` stays as the note's own name,
+// which is what a browser inspector and the acceptance tests identify it by.
 defineProps<{
   /**
    * The admitted root as it is drawn, or null where naming it distinguishes
@@ -21,11 +29,3 @@ defineProps<{
     <span class="aci-authored-text">{{ text }}</span>
   </p>
 </template>
-
-<style scoped>
-/* An escaped root label has no break opportunities of its own; without this
-   the shell scrolls sideways (WCAG 1.4.10). */
-.aci-source-root-note {
-  overflow-wrap: anywhere;
-}
-</style>

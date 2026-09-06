@@ -830,12 +830,6 @@ watch(
   flex-direction: column;
 }
 
-/* The heading block is chrome, and every line of it is a line the file does
-   not get, so it is tighter here than the shell's default heading spacing. */
-.aci-output-style-detail > p:first-child {
-  margin: 0;
-}
-
 /* The two halves of the parse, inside the tab that holds them. */
 .aci-output-style-detail__declarations,
 .aci-output-style-detail__instructions {
@@ -849,9 +843,7 @@ watch(
 }
 
 /* The path and the link that opens it on one line, wrapping together when the
-   path is long: the authored path may have no break opportunities of its own,
-   and without the wrap a long one forces sideways scrolling at narrow widths
-   and 200% zoom (WCAG 1.4.10). */
+   path is long. */
 .aci-output-style-detail__title {
   display: flex;
   flex-wrap: wrap;
@@ -863,6 +855,5 @@ watch(
    block is chrome. */
 .aci-output-style-detail h2 {
   margin: 0.25rem 0 0;
-  overflow-wrap: anywhere;
 }
 </style>

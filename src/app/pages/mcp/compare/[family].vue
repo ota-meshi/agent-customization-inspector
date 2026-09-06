@@ -869,10 +869,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.aci-mcp-compare > p:first-child {
-  margin: 0;
-}
-
 .aci-mcp-compare h2 {
   margin: 0.25rem 0 0.5rem;
 }

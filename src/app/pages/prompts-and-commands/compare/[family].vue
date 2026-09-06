@@ -919,10 +919,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.aci-prompt-compare > p:first-child {
-  margin: 0;
-}
-
 .aci-prompt-compare h2 {
   margin: 0.25rem 0 0.5rem;
 }

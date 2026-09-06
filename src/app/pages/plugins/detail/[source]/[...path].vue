@@ -47,6 +47,7 @@ import SubjectUnavailable from '../../../../components/inspection/SubjectUnavail
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
+import SkipLink from '../../../../components/inspection/SkipLink.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
@@ -1680,14 +1681,7 @@ useReportedPageSubject(titleSubject);
         </p>
 
         <template v-else>
-          <!-- The tree is as long as the plugin root happens to be, and it
-               stands between the reader and the file they came to read. A
-               screen reader can jump the `nav` landmark; a keyboard user has
-               nothing unless the page offers it, so this link is that mechanism
-               (WCAG 2.4.1). -->
-          <p class="aci-plugin-detail__skip-link">
-            <a href="#aci-plugin-detail-file-contents">Skip to file contents</a>
-          </p>
+          <SkipLink target-id="aci-plugin-detail-file-contents" />
 
           <div class="aci-plugin-detail__layout">
             <DirectoryFileTree
@@ -1817,11 +1811,9 @@ useReportedPageSubject(titleSubject);
   margin-inline-start: auto;
 }
 
-/* The file's path and the link that opens it on one line, wrapping together
-   when the path is long. */
 /* The open file's path with the command that opens it, on one line: the
    command acts on the file the line names, so a reader never has to work out
-   what it applies to. */
+   what it applies to. They wrap together when the path is long. */
 .aci-plugin-detail__file-title {
   align-items: center;
   column-gap: 0.75rem;
@@ -1832,30 +1824,6 @@ useReportedPageSubject(titleSubject);
 
 .aci-plugin-detail__file-title > :last-child {
   margin-inline-start: auto;
-}
-
-/* The detail route's bypass mechanism (WCAG 2.4.1): out of the way until it is
-   focused, then a normal visible link. Not `display: none`, which would take it
-   out of the tab order and leave nothing to bypass with. */
-.aci-plugin-detail__skip-link {
-  margin: 0;
-}
-
-.aci-plugin-detail__skip-link a {
-  block-size: 1px;
-  clip-path: inset(50%);
-  inline-size: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-}
-
-.aci-plugin-detail__skip-link a:focus-visible {
-  block-size: auto;
-  clip-path: none;
-  inline-size: auto;
-  overflow: visible;
-  position: static;
 }
 
 /* The tree beside the file it opens, stacking on a narrow viewport — the
