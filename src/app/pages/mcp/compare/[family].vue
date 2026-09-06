@@ -37,7 +37,7 @@
 // the comparison state owns: leaving the route closes it, a client-data
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same selection under the new snapshot (FR-030).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -64,7 +64,7 @@ import {
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -87,7 +87,6 @@ const status = comparison.status;
 
 const route = useRoute();
 
-const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -680,12 +679,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing MCP declarations';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus

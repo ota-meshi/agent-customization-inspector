@@ -31,7 +31,7 @@ import type { SourceSelector } from '../components/detail-route';
 export interface DetailHeadingFocusOptions {
   /**
    * The page's own outermost element, which {@link
-   * DetailHeadingFocus.shouldRescueFocus} asks about, so the question covers
+   * DetailHeadingFocus.requestFocusHeading} asks about, so the question covers
    * everything the page draws.
    */
   readonly pageRoot: Readonly<ShallowRef<HTMLElement | null>>;
@@ -64,12 +64,51 @@ export interface DetailHeadingFocusOptions {
 
 /**
  * The heading focus of one detail page; see the module header.
- *
- * An interface rather than a class, because every caller destructures this into
- * its own setup: a method read off an instance loses the receiver, so the same
- * value shaped as a class would answer through no instance at all.
  */
-export interface DetailHeadingFocus {
+export class DetailHeadingFocus {
+  /** The page's own outermost element, which a move asks about. */
+  #pageRoot: Readonly<ShallowRef<HTMLElement | null>>;
+
+  /** The heading every move lands on. */
+  #heading: Readonly<ShallowRef<HTMLHeadingElement | null>>;
+
+  /** Set as the route is left, so a move yields to the next route. */
+  #leaving = false;
+
+  /**
+   * Wires the entry focus, the re-focus when the address names a different
+   * subject, and the flag a move asks about; see {@link useDetailHeadingFocus}.
+   */
+  public constructor(options: DetailHeadingFocusOptions) {
+    this.#pageRoot = options.pageRoot;
+    this.#heading = options.heading;
+    onMounted(() => {
+      this.focusHeading();
+    });
+    // After the flush, because the heading the address now names is rendered by
+    // the render this change schedules rather than by the one it interrupts.
+    watch(
+      [options.openSource, options.openPath, () => toValue(options.selection)],
+      () => void nextTick(() => this.focusHeading()),
+    );
+    onBeforeUnmount(() => {
+      this.#leaving = true;
+      // The title subject and the open detail are both `usePageOwnership`'s to
+      // drop, after unmount, where a move is naturally inert and a replacement
+      // page's own report or open stands.
+    });
+  }
+
+  /**
+   * Moves focus to the heading whatever holds it: the entry focus, and the
+   * failed-load retry, whose control is unmounted by the state the click
+   * causes, so the move is made for that control rather than for whatever the
+   * reader happens to be on (`detail-request.ts` § retryOpen).
+   */
+  public focusHeading(): void {
+    this.#heading.value?.focus();
+  }
+
   /**
    * Asks for focus on the heading for a departure this page detected. Declined
    * unless focus is inside this page, is not already on the heading, and the
@@ -77,14 +116,15 @@ export interface DetailHeadingFocus {
    * focus from the page arriving after it, and one made with focus outside the
    * page would move a reader who was never in the departing subtree.
    */
-  readonly requestFocusHeading: () => void;
-  /**
-   * Moves focus to the heading whatever holds it: the entry focus, and the
-   * failed-load retry, whose control is unmounted by the state the click
-   * causes, so the move is made for that control rather than for whatever the
-   * reader happens to be on (`detail-request.ts` § retryOpen).
-   */
-  readonly focusHeading: () => void;
+  public requestFocusHeading(): void {
+    if (
+      !this.#leaving &&
+      this.#pageRoot.value?.contains(document.activeElement) === true &&
+      document.activeElement !== this.#heading.value
+    ) {
+      this.focusHeading();
+    }
+  }
 }
 
 /**
@@ -97,39 +137,5 @@ export interface DetailHeadingFocus {
  * template writes, which nothing checks.
  */
 export function useDetailHeadingFocus(options: DetailHeadingFocusOptions): DetailHeadingFocus {
-  const { pageRoot, heading } = options;
-  // Set as the route is left, so the guard yields to the next route.
-  let leaving = false;
-
-  function focusHeading(): void {
-    heading.value?.focus();
-  }
-
-  onMounted(focusHeading);
-  // After the flush, because the heading the address now names is rendered by
-  // the render this change schedules rather than by the one it interrupts.
-  watch(
-    [options.openSource, options.openPath, () => toValue(options.selection)],
-    () => void nextTick(focusHeading),
-  );
-
-  onBeforeUnmount(() => {
-    leaving = true;
-    // The title subject and the open detail are both `usePageOwnership`'s to
-    // drop, after unmount, where the guard above is naturally inert and a
-    // replacement page's own report or open stands.
-  });
-
-  return {
-    requestFocusHeading: (): void => {
-      if (
-        !leaving &&
-        pageRoot.value?.contains(document.activeElement) === true &&
-        document.activeElement !== heading.value
-      ) {
-        focusHeading();
-      }
-    },
-    focusHeading,
-  };
+  return new DetailHeadingFocus(options);
 }

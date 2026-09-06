@@ -28,7 +28,7 @@
 // generation all drop the open detail through the same cleanup the
 // instruction route uses; only the URL survives a commit, and the page
 // refetches the same path under the new generation.
-import { computed, useTemplateRef, watch, watchEffect } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -46,7 +46,7 @@ import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
-import { usePageOwnership } from '../../../../composables/page-ownership';
+import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { useSessionViewState } from '../../../../composables/session-view-state';
@@ -176,7 +176,7 @@ const headingAccessibleText = computed(() =>
 // (`detail-heading-focus.ts`).
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
 const heading = useTemplateRef<HTMLHeadingElement>('heading');
-const { requestFocusHeading, focusHeading } = useDetailHeadingFocus({
+const headingFocus = useDetailHeadingFocus({
   pageRoot,
   heading,
   openPath,
@@ -190,7 +190,7 @@ const pageOwnership = usePageOwnership();
 // (`detail-request.ts`). This kind's subject is its path alone, so nothing is
 // selected inside it; the one file is both arguments of the request, because
 // this kind has no companion to read from it.
-const { detailState, detailError, retryOpen } = useDetailRequest({
+const request = useDetailRequest({
   openPath,
   openSource,
   selection: null,
@@ -198,8 +198,9 @@ const { detailState, detailError, retryOpen } = useDetailRequest({
   perform: () => {
     void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
   },
-  focusHeading,
+  headingFocus,
 });
+const { detailState, detailError } = request;
 
 /**
  * What this route says when its own request failed, or null when none has:
@@ -261,12 +262,7 @@ const titleSubject = computed<string | null>(() => {
     ? null
     : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 // A generation replacement drops a detail that was on screen — the viewer
 // unmounts — without moving the URL, so if keyboard focus is inside that
@@ -286,7 +282,7 @@ watch(
       previous !== null &&
       previous.file.sourceRelativePath === openPath.value
     ) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -299,7 +295,7 @@ watch(
   [detailState, owner],
   ([state, resolved]) => {
     if (state === 'stale' || resolved === null) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -366,7 +362,7 @@ watch(
       <SubjectUnavailable outcome="error">
         {{ detailFailure }}
         <template #exit>
-          <button type="button" @click="retryOpen">Try again</button>
+          <button type="button" @click="request.retryOpen()">Try again</button>
         </template>
       </SubjectUnavailable>
     </template>

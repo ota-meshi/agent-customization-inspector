@@ -10,7 +10,13 @@
 // than beside the session classes because pages reach it through the
 // `usePageOwnership` composable, per Vue idiom, the way `useInventoryFilters`
 // wraps `InventoryFilterView`.
-import { getCurrentInstance, onUnmounted, type ComponentInternalInstance } from 'vue';
+import {
+  getCurrentInstance,
+  onUnmounted,
+  watchEffect,
+  type ComponentInternalInstance,
+  type ComputedRef,
+} from 'vue';
 import type { SessionViewState } from '../session/view-state';
 import { useSessionViewState } from './session-view-state';
 import type { PluginCarrierDetailParams, SourceSelector } from '../../shared/api-types';
@@ -137,12 +143,12 @@ export class PageOwnership {
  * return without dropping the detail the first one opened, silently, with
  * nothing on screen to show for it.
  *
- * Passing the page's handle down to whatever else needs it would work for the
- * callers that exist and is not what this replaces: it leaves the rule as a
- * line of prose that every future caller has to have read, and the failure it
- * misses is invisible — the state stays open, the page reports the link, and
- * no test sees a difference. The cost of the cache is one weak entry per page
- * instance, which is why the rule is kept here instead of at each call site.
+ * A shipped caller depends on it: `useDetailRequest` closes the open detail
+ * that the page's own `perform` opened, so the close and the open have to
+ * present one token. Threading the handle through that composable's options
+ * would preserve the identity, but would leave each detail page to forward
+ * ownership plumbing solely for that close. The cache preserves the identity
+ * at the composable boundary and costs one weak entry per page instance.
  */
 const HANDLES = new WeakMap<ComponentInternalInstance, PageOwnership>();
 
@@ -190,4 +196,24 @@ export function usePageOwnership(): PageOwnership {
     ownership.releaseSubject();
   });
   return ownership;
+}
+
+/**
+ * Keeps the session's document-title subject reported as this page instance's
+ * own, for as long as the page is mounted (WCAG 2.4.2).
+ *
+ * What the subject says is each page's — it names the thing on screen, or the
+ * state the page is in when there is nothing on screen to name — and reporting
+ * it is not: a route navigation mounts the next page before the previous one is
+ * torn down, so the report has to carry the instance's own token or the
+ * outgoing page's cleanup would erase the title its replacement just set
+ * (`SessionViewState.reportPageSubject`). That is the whole of what every
+ * surface repeated, and it is why this is a composable rather than a line each
+ * page writes.
+ */
+export function useReportedPageSubject(subject: ComputedRef<string | null>): void {
+  const ownership = usePageOwnership();
+  watchEffect(() => {
+    ownership.reportSubject(subject.value);
+  });
 }

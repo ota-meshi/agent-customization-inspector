@@ -55,7 +55,7 @@ import {
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/instruction-comparison/RecognitionComparison.vue';
@@ -63,7 +63,7 @@ import SourceDiff from '../../../components/comparison/SourceDiff.vue';
 import { InstructionRecognitionComparison } from '../../../components/instruction-comparison/recognition-comparison';
 import { instructionComparisonRouteFor } from '../../../composables/instruction-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { ApplicabilityRange } from '../../../components/applicability-range';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -105,7 +105,6 @@ const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
 
 const route = useRoute();
 
-const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -742,12 +741,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing instruction files';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus

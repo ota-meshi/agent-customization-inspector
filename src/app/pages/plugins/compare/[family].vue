@@ -28,7 +28,7 @@
 // Like the plugin detail, this surface shows declared values exactly as
 // authored — credentials included, with nothing masked and no control that
 // would uncover a masked value — and it says none of that (FR-027).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -61,7 +61,7 @@ import {
   pluginComparisonRouteFor,
   type PluginComparisonFileRequest,
 } from '../../../composables/plugin-comparison';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import { useSessionViewState } from '../../../composables/session-view-state';
@@ -104,7 +104,6 @@ const router = useRouter();
  * comparing.
  */
 const family = computed<SourceKind | null>(() => comparisonFamilyOf(route.params['family']));
-const pageOwnership = usePageOwnership();
 
 /**
  * The comparison's own content registry, for the viewer this page mounts when
@@ -1826,12 +1825,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing plugins';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus

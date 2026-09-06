@@ -21,17 +21,13 @@
 // derived from this one.
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
 import type { SourceSelector } from '../components/detail-route';
-import { useSessionSources } from './session-sources';
+import { useSessionSources, type SessionSources } from './session-sources';
 import { escapeControlCharacters, pathPresentationLabel } from '../../shared/entities';
 
 /**
  * What the URL names, for the page that is about it; see the module header.
- *
- * An interface rather than a class, because every caller destructures this into
- * its own setup: a method read off an instance loses the receiver, so the same
- * value shaped as a class would answer through no instance at all.
  */
-export interface DetailAddress {
+export class DetailAddress {
   /**
    * The Source this page's address names — the half {@link openPath} does not
    * carry (FR-030). It is what the detail request resolves against and what
@@ -44,31 +40,46 @@ export interface DetailAddress {
    * it exists so this is a `SourceSelector` rather than a null every caller
    * would branch on.
    */
-  readonly openSource: ComputedRef<SourceSelector>;
+  public readonly openSource: ComputedRef<SourceSelector>;
   /** The open Source's ID, or null while the snapshot does not carry it. */
-  readonly openSourceId: ComputedRef<string | null>;
+  public readonly openSourceId: ComputedRef<string | null>;
   /**
    * The Source-relative Path this page is about, or the empty string for an
    * address whose leading segment names no Source. No file has an empty path,
    * so such an address resolves nothing and the page reports what it already
    * reports for a path the current scan does not hold.
    */
-  readonly openPath: ComputedRef<string>;
+  public readonly openPath: ComputedRef<string>;
+
+  /**
+   * Derives both halves from the address the page decoded. `source` is null
+   * where the leading segment names no Source this product issues
+   * (`detail-route.ts` § asSourceSelector), which is the state both answer for.
+   */
+  public constructor(
+    source: MaybeRefOrGetter<SourceSelector | null>,
+    sourceRelativePath: MaybeRefOrGetter<string>,
+    sessionSources: SessionSources,
+  ) {
+    this.openSource = computed((): SourceSelector => toValue(source) ?? 'repository');
+    this.openSourceId = computed((): string | null =>
+      sessionSources.sourceIdFor(this.openSource.value),
+    );
+    this.openPath = computed((): string =>
+      toValue(source) === null ? '' : toValue(sourceRelativePath),
+    );
+  }
 }
 
 /**
  * How a page draws the path it is headed by; see {@link usePathPresentation}.
- *
- * An interface rather than a class, because every caller destructures this into
- * its own setup: a method read off an instance loses the receiver, so the same
- * value shaped as a class would answer through no instance at all.
  */
-export interface PathPresentation {
+export class PathPresentation {
   /**
    * The path as the heading shows it, through the one label rule every surface
    * that draws a path uses (`entities.ts` § pathPresentationLabel).
    */
-  readonly pathText: ComputedRef<string>;
+  public readonly pathText: ComputedRef<string>;
   /**
    * Whether {@link pathText} is the spelled-out form rather than the file's own
    * spelling, which an authored name of whitespace or default-ignorable code
@@ -77,7 +88,15 @@ export interface PathPresentation {
    * Compared against the escaping rather than tested again, so the two cannot
    * answer differently.
    */
-  readonly pathIsSpelledOut: ComputedRef<boolean>;
+  public readonly pathIsSpelledOut: ComputedRef<boolean>;
+
+  /** Derives how one path is drawn and whether it is this product's spelling. */
+  public constructor(path: MaybeRefOrGetter<string>) {
+    this.pathText = computed(() => pathPresentationLabel(toValue(path)));
+    this.pathIsSpelledOut = computed(
+      () => this.pathText.value !== escapeControlCharacters(toValue(path)),
+    );
+  }
 }
 
 /**
@@ -91,20 +110,10 @@ export function useDetailAddress(
   source: MaybeRefOrGetter<SourceSelector | null>,
   sourceRelativePath: MaybeRefOrGetter<string>,
 ): DetailAddress {
-  const sessionSources = useSessionSources();
-  const openSource = computed((): SourceSelector => toValue(source) ?? 'repository');
-  return {
-    openSource,
-    openSourceId: computed((): string | null => sessionSources.sourceIdFor(openSource.value)),
-    openPath: computed((): string => (toValue(source) === null ? '' : toValue(sourceRelativePath))),
-  };
+  return new DetailAddress(source, sourceRelativePath, useSessionSources());
 }
 
 /** Derives how one path is drawn and whether it is this product's spelling. */
 export function usePathPresentation(path: MaybeRefOrGetter<string>): PathPresentation {
-  const pathText = computed(() => pathPresentationLabel(toValue(path)));
-  return {
-    pathText,
-    pathIsSpelledOut: computed(() => pathText.value !== escapeControlCharacters(toValue(path))),
-  };
+  return new PathPresentation(path);
 }

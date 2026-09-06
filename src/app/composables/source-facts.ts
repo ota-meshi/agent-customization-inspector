@@ -13,14 +13,14 @@ import { SOURCE_KIND_TEXT } from '../../shared/api-text';
 import type { SourceDto } from '../../shared/api-types';
 
 /** The two Source facts of one open detail; see the module header. */
-export interface OpenSourceFacts {
+export class OpenSourceFacts {
   /**
    * The escaped presentation of the directory the open file's Source was
    * admitted at — never a path anything can open (FR-002) — or null where
    * its family holds one Source (`source-name.ts` § sourceRootOf). Rendered
    * as its own line under the recognition line.
    */
-  readonly sourceRootText: ComputedRef<string | null>;
+  public readonly sourceRootText: ComputedRef<string | null>;
   /**
    * The same family name, stated whether or not another Source is consented —
    * null only when the Source is not in the snapshot. What the crumbs use: a
@@ -29,7 +29,28 @@ export interface OpenSourceFacts {
    * read it. The family is not restated beside the file's own facts: a detail
    * states what the file is, and where the page sits is the crumbs' answer.
    */
-  readonly sourceFamilyCrumbText: ComputedRef<string | null>;
+  public readonly sourceFamilyCrumbText: ComputedRef<string | null>;
+
+  /**
+   * Derives both from the Sources the adopted snapshot published and the open
+   * Source's ID, each read lazily so the caller's own reactivity drives them.
+   */
+  public constructor(
+    sources: MaybeRefOrGetter<readonly SourceDto[]>,
+    openSourceId: MaybeRefOrGetter<string | null>,
+  ) {
+    const openSource = computed(
+      () => toValue(sources).find((source) => source.sourceId === toValue(openSourceId)) ?? null,
+    );
+    this.sourceRootText = computed(() =>
+      openSource.value === null
+        ? null
+        : sourceRootOf(toValue(sources), openSource.value.kind, openSource.value.sourceId),
+    );
+    this.sourceFamilyCrumbText = computed(() =>
+      openSource.value === null ? null : SOURCE_KIND_TEXT[openSource.value.kind],
+    );
+  }
 }
 
 /**
@@ -41,16 +62,5 @@ export function useOpenSourceFacts(
   sources: MaybeRefOrGetter<readonly SourceDto[]>,
   openSourceId: MaybeRefOrGetter<string | null>,
 ): OpenSourceFacts {
-  const openSource = computed(
-    () => toValue(sources).find((source) => source.sourceId === toValue(openSourceId)) ?? null,
-  );
-  const sourceRootText = computed(() =>
-    openSource.value === null
-      ? null
-      : sourceRootOf(toValue(sources), openSource.value.kind, openSource.value.sourceId),
-  );
-  const sourceFamilyCrumbText = computed(() =>
-    openSource.value === null ? null : SOURCE_KIND_TEXT[openSource.value.kind],
-  );
-  return { sourceRootText, sourceFamilyCrumbText };
+  return new OpenSourceFacts(sources, openSourceId);
 }

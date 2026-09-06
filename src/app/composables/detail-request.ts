@@ -15,8 +15,9 @@
 import { toValue, watch, type ComputedRef, type MaybeRefOrGetter, type ShallowRef } from 'vue';
 import { familyGenerationOf, type SourceSelector } from '../components/detail-route';
 import { usePageOwnership } from './page-ownership';
+import type { DetailHeadingFocus } from './detail-heading-focus';
 import { useSessionViewState } from './session-view-state';
-import type { FileDetailState } from '../session/view-state';
+import type { FileDetailState, SessionViewState } from '../session/view-state';
 
 /** What one detail page's request needs of the page; see the module header. */
 export interface DetailRequestOptions {
@@ -44,81 +45,90 @@ export interface DetailRequestOptions {
    */
   readonly perform: () => void;
   /**
-   * Moves focus to the heading (`detail-heading-focus.ts`), which
-   * {@link DetailRequest.retryOpen} does before re-requesting.
+   * This page's heading focus, whose move {@link DetailRequest.retryOpen} makes
+   * before re-requesting (`detail-heading-focus.ts`).
    */
-  readonly focusHeading: () => void;
+  readonly headingFocus: DetailHeadingFocus;
 }
 
 /**
  * One detail page's open subject and the controls over it.
- *
- * An interface rather than a class, because every caller destructures this into
- * its own setup: a method read off an instance loses the receiver, so the same
- * value shaped as a class would answer through no instance at all.
  */
-export interface DetailRequest {
+export class DetailRequest {
+  /** The session view state that owns the request state this page reads. */
+  #sessionViewState: SessionViewState;
+
+  /** This page's own request, for the retry and the effect below. */
+  #options: DetailRequestOptions;
+
   /** The session's detail request state, which the page's branches read. */
-  readonly detailState: ShallowRef<FileDetailState>;
+  public get detailState(): ShallowRef<FileDetailState> {
+    return this.#sessionViewState.fileDetailState;
+  }
+
   /** This route's own failed request, which the page reports and announces. */
-  readonly detailError: ComputedRef<string | null>;
-  /** Requests the subject the address currently names, if the inventory holds it. */
-  readonly requestOpen: () => void;
+  public get detailError(): ComputedRef<string | null> {
+    return this.#sessionViewState.detailErrorMessage;
+  }
+
   /**
-   * The failed-load retry. Separate from {@link requestOpen} because the button
-   * this click comes from vanishes with the failed branch the moment the state
+   * Wires the effect that keeps the open subject the one the URL names; see
+   * {@link useDetailRequest}.
+   */
+  public constructor(options: DetailRequestOptions) {
+    this.#options = options;
+    const sessionViewState = useSessionViewState();
+    this.#sessionViewState = sessionViewState;
+    // The page's own handle: `usePageOwnership` answers with the one this
+    // component already holds, so the close below drops the detail the page's
+    // own request opened rather than writing through a token the view state
+    // never adopted (`page-ownership.ts` § HANDLES).
+    const pageOwnership = usePageOwnership();
+    const snapshot = sessionViewState.snapshot;
+    watch(
+      [
+        options.openPath,
+        () => toValue(options.selection),
+        () => toValue(options.ready),
+        (): number => familyGenerationOf(snapshot.value ?? null, options.openSource.value),
+        options.openSource,
+      ],
+      ([path, , ready]) => {
+        if (path === '' || !ready) {
+          // The URL names nothing this generation holds. Dropping what is open
+          // is the point: the page shows the recoverable state below, and
+          // holding authored content the reader navigated away from would keep
+          // it in memory for nothing.
+          pageOwnership.close();
+          return;
+        }
+        this.#requestOpen();
+      },
+      { immediate: true },
+    );
+  }
+
+  /** Requests the subject the address names, if the inventory holds it. */
+  #requestOpen(): void {
+    if (!toValue(this.#options.ready)) {
+      return;
+    }
+    this.#options.perform();
+  }
+
+  /**
+   * The failed-load retry. Separate from the effect because the button this
+   * click comes from vanishes with the failed branch the moment the state
    * returns to loading, and focus would drop to the document body
    * (WCAG 2.4.3); the heading is the landmark that survives the transition.
    */
-  readonly retryOpen: () => void;
+  public retryOpen(): void {
+    this.#options.headingFocus.focusHeading();
+    this.#requestOpen();
+  }
 }
 
 /** Wires the effect that keeps the open subject the one the URL names. */
 export function useDetailRequest(options: DetailRequestOptions): DetailRequest {
-  const sessionViewState = useSessionViewState();
-  // The page's own handle: `usePageOwnership` answers with the one this
-  // component already holds, so the close below drops the detail the page's
-  // own request opened rather than writing through a token the view state
-  // never adopted (`page-ownership.ts` § HANDLES).
-  const pageOwnership = usePageOwnership();
-  const snapshot = sessionViewState.snapshot;
-
-  const requestOpen = (): void => {
-    if (!toValue(options.ready)) {
-      return;
-    }
-    options.perform();
-  };
-
-  watch(
-    [
-      options.openPath,
-      () => toValue(options.selection),
-      () => toValue(options.ready),
-      (): number => familyGenerationOf(snapshot.value ?? null, options.openSource.value),
-      options.openSource,
-    ],
-    ([path, , ready]) => {
-      if (path === '' || !ready) {
-        // The URL names nothing this generation holds. Dropping what is open is
-        // the point: the page shows the recoverable state below, and holding
-        // authored content the reader navigated away from would keep it in
-        // memory for nothing.
-        pageOwnership.close();
-        return;
-      }
-      requestOpen();
-    },
-    { immediate: true },
-  );
-
-  return {
-    detailState: sessionViewState.fileDetailState,
-    detailError: sessionViewState.detailErrorMessage,
-    requestOpen,
-    retryOpen: (): void => {
-      options.focusHeading();
-      requestOpen();
-    },
-  };
+  return new DetailRequest(options);
 }

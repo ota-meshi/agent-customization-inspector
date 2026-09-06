@@ -23,7 +23,7 @@
 // or probes a declared server, and nothing projects trust, precedence, or a
 // selected winner: what the vendor documents stays in its maintained contract
 // (FR-009).
-import { computed, useTemplateRef, watch, watchEffect } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -52,7 +52,7 @@ import type { SourceKind } from '../../../../../shared/api-types';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
-import { usePageOwnership } from '../../../../composables/page-ownership';
+import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
@@ -476,7 +476,7 @@ const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 // before moving it (`detail-heading-focus.ts`).
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
 const heading = useTemplateRef<HTMLHeadingElement>('heading');
-const { requestFocusHeading, focusHeading } = useDetailHeadingFocus({
+const headingFocus = useDetailHeadingFocus({
   pageRoot,
   heading,
   openPath,
@@ -490,7 +490,7 @@ const pageOwnership = usePageOwnership();
 // (`detail-request.ts`), requested through the carrier's own function. The
 // inventory has to hold the carrier first: a path it does not list is the dead
 // link the host would answer anyway.
-const { detailState, detailError, retryOpen } = useDetailRequest({
+const request = useDetailRequest({
   openPath,
   openSource,
   selection: () => openServerName.value,
@@ -498,8 +498,9 @@ const { detailState, detailError, retryOpen } = useDetailRequest({
   perform: () => {
     void pageOwnership.openCarrierDetail(openPath.value, openSource.value);
   },
-  focusHeading,
+  headingFocus,
 });
+const { detailState, detailError } = request;
 
 /**
  * What this route says when its own request failed, or null when none has:
@@ -573,12 +574,7 @@ const titleSubject = computed<string | null>(() => {
     ? null
     : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 // A generation replacement drops a detail that was on screen without moving
 // the URL; if keyboard focus was inside that subtree it would fall to the
@@ -592,7 +588,7 @@ watch(
       previous.file.sourceRelativePath === openPath.value &&
       previous.file.sourceId === openSourceId.value
     ) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -602,7 +598,7 @@ watch(
   [detailState, linkResolved],
   ([state, resolved]) => {
     if (state === 'stale' || !resolved) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -723,7 +719,7 @@ watch(
       <SubjectUnavailable outcome="error">
         {{ detailFailure }}
         <template #exit>
-          <button type="button" @click="retryOpen">Try again</button>
+          <button type="button" @click="request.retryOpen()">Try again</button>
         </template>
       </SubjectUnavailable>
     </template>

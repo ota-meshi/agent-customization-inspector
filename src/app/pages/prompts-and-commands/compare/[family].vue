@@ -58,7 +58,7 @@ import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/prompt-comparison/RecognitionComparison.vue';
@@ -69,7 +69,7 @@ import {
 } from '../../../components/prompt-comparison/recognition-comparison';
 import { promptComparisonRouteFor } from '../../../composables/prompt-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -105,7 +105,6 @@ const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
 
 const route = useRoute();
 
-const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -731,12 +730,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing prompt and command files';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus

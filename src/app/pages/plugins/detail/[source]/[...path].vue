@@ -65,7 +65,7 @@ import { pluginComparisonRouteFor } from '../../../../composables/plugin-compari
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
-import { usePageOwnership } from '../../../../composables/page-ownership';
+import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { useSessionViewState } from '../../../../composables/session-view-state';
@@ -1175,7 +1175,7 @@ const detailAnnouncement = computed(() => {
 // different plugin, and the question the guards below ask before moving it
 // (`detail-heading-focus.ts`). Selecting another of the plugin's files is not
 // a change of subject, so it is not among the coordinates watched.
-const { requestFocusHeading, focusHeading } = useDetailHeadingFocus({
+const headingFocus = useDetailHeadingFocus({
   pageRoot,
   heading,
   openPath: carrierPath,
@@ -1221,7 +1221,7 @@ const requestOpen = (): void => {
  * the top of the document (WCAG 2.4.3).
  */
 const retryOpen = (): void => {
-  focusHeading();
+  headingFocus.focusHeading();
   requestOpen();
 };
 
@@ -1281,7 +1281,7 @@ watch(
       reservedPaneHeight.value = paneElement.value?.offsetHeight ?? 0;
     }
     if (file === null && paneElement.value?.contains(document.activeElement) === true) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1303,7 +1303,7 @@ watch(
       previous.file.sourceRelativePath === carrierPath.value &&
       previous.file.sourceId === openSourceId.value
     ) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1316,7 +1316,7 @@ watch(
   [detailState, linkResolved],
   ([state, resolved]) => {
     if (state === 'stale' || !resolved) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1362,16 +1362,7 @@ const titleSubject = computed<string | null>(() => {
     ? null
     : `${subject} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
-watch(
-  titleSubject,
-  () => {
-    // Reported as this page instance's own, so an outgoing page's unmount
-    // cannot erase what this page just titled the tab with
-    // (`SessionViewState.reportPageSubject`).
-    pageOwnership.reportSubject(titleSubject.value);
-  },
-  { immediate: true },
-);
+useReportedPageSubject(titleSubject);
 </script>
 
 <template>

@@ -52,7 +52,7 @@
 // path names the same file in the new generation, and the page refetches it,
 // so the link survives the rescan, and only a path the new generation does
 // not hold is reported as dead.
-import { computed, nextTick, ref, useTemplateRef, watch, watchEffect } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -92,7 +92,7 @@ import { skillComparisonRouteFor } from '../../../../composables/skill-compariso
 import { useDetailAddress } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
-import { usePageOwnership } from '../../../../composables/page-ownership';
+import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { useSessionViewState } from '../../../../composables/session-view-state';
@@ -955,7 +955,7 @@ const reservedPaneHeight = ref(0);
 // the skill's directory and falls back to the kind's own word: two addresses
 // this scan holds no skill at are one heading, and moving focus would announce
 // it twice (`detail-heading-focus.ts` § openPath).
-const { requestFocusHeading, focusHeading } = useDetailHeadingFocus({
+const headingFocus = useDetailHeadingFocus({
   pageRoot,
   heading,
   openPath: computed(() => owner.value?.definition.sourceRelativePath ?? ''),
@@ -970,7 +970,7 @@ const pageOwnership = usePageOwnership();
 // beside it, because a skill's page reads one directory and shows one file of
 // it; the selection is the resolved definition, so a link naming a file this
 // skill does not hold requests nothing.
-const { detailState, detailError, retryOpen } = useDetailRequest({
+const request = useDetailRequest({
   openPath,
   openSource,
   selection: () => owner.value?.definition.sourceRelativePath ?? null,
@@ -986,8 +986,9 @@ const { detailState, detailError, retryOpen } = useDetailRequest({
       openSource.value,
     );
   },
-  focusHeading,
+  headingFocus,
 });
+const { detailState, detailError } = request;
 
 // Focus moves to the heading when the *skill* changes, not when a file within
 // it does. Following a link in an SPA moves no focus by itself, so arriving
@@ -1033,12 +1034,7 @@ const titleSubject = computed<string | null>(() => {
   }
   return `${directory} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 // While a switch to another file is in flight, the pane is replaced by its
 // loading state. If keyboard focus is inside it at that moment — reading the
@@ -1060,7 +1056,7 @@ watch(
       reservedPaneHeight.value = paneElement.value?.offsetHeight ?? 0;
     }
     if (file === null && paneElement.value?.contains(document.activeElement) === true) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1083,7 +1079,7 @@ watch(
       previous !== null &&
       previous.file.sourceRelativePath === owner.value?.definition.sourceRelativePath
     ) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1096,7 +1092,7 @@ watch(
   [detailState, owner],
   ([state, resolved]) => {
     if (state === 'stale' || resolved === null) {
-      requestFocusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1184,7 +1180,7 @@ watch(
       <SubjectUnavailable outcome="error">
         {{ detailFailure }}
         <template #exit>
-          <button type="button" @click="retryOpen">Try again</button>
+          <button type="button" @click="request.retryOpen()">Try again</button>
         </template>
       </SubjectUnavailable>
     </template>
@@ -1445,7 +1441,7 @@ watch(
               <SubjectUnavailable outcome="error">
                 {{ detailFailure }}
                 <template #exit>
-                  <button type="button" @click="retryOpen">Try again</button>
+                  <button type="button" @click="request.retryOpen()">Try again</button>
                 </template>
               </SubjectUnavailable>
             </template>
