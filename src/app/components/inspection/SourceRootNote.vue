@@ -11,10 +11,10 @@
 // No styles of its own. The line's look is the shared `.aci-note` utility's,
 // and the escaped root breaks where it has to because the span holding it is
 // `.aci-authored-text`, which declares the wrap for every authored value the
-// product draws (main.css). An `overflow-wrap` on this paragraph would sit
-// above that span and reach no text of its own — the plugin page carried one
-// until it was measured. `aci-source-root-note` stays as the note's own name,
-// which is what a browser inspector and the acceptance tests identify it by.
+// product draws (main.css). An `overflow-wrap` on this paragraph would
+// duplicate the span's own rule at a second level. `aci-source-root-note`
+// stays as the note's own name, which is what a browser inspector and the
+// acceptance tests identify it by.
 defineProps<{
   /**
    * The admitted root as it is drawn, or null where naming it distinguishes
