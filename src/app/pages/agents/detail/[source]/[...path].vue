@@ -51,6 +51,7 @@ import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
+import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
@@ -871,12 +872,7 @@ watch(
         :source="openSource"
       />
 
-      <!-- Which directory the file was in, where its family holds more
-           than one: an escaped presentation of the admitted root, never a
-           path anything can open (FR-002). -->
-      <p v-if="sourceRootText !== null" class="aci-agent-detail__root aci-note">
-        <span class="aci-authored-text">{{ sourceRootText }}</span>
-      </p>
+      <SourceRootNote :text="sourceRootText" />
 
       <!-- The name each inventory row this file is listed under carries —
            the declared `name` where the product makes it the agent's

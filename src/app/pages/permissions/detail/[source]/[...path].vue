@@ -47,6 +47,7 @@ import DetailAttributes from '../../../../components/inspection/DetailAttributes
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
@@ -399,12 +400,7 @@ watch(
         states-byte-order-mark
       />
 
-      <!-- Which directory the file was in, where its family holds more
-           than one: an escaped presentation of the admitted root, never a
-           path anything can open (FR-002). -->
-      <p v-if="sourceRootText !== null" class="aci-permission-policy-detail__root aci-note">
-        <span class="aci-authored-text">{{ sourceRootText }}</span>
-      </p>
+      <SourceRootNote :text="sourceRootText" />
 
       <!-- The whole document, which is what a policy file is. The grammar is
            the vendor's: Codex's `.rules` is Starlark, whose syntax its own

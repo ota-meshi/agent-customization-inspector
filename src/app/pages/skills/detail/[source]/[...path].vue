@@ -65,6 +65,7 @@ import DetailAttributes from '../../../../components/inspection/DetailAttributes
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
+import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import ToolMark from '../../../../components/ToolMark.vue';
 import { AuthoredName } from '../../../../components/authored-name';
@@ -1205,12 +1206,7 @@ watch(
              learn what the tab already says. -->
       </DetailAttributes>
 
-      <!-- Which directory the skill was in, where its family holds more than
-           one: an escaped presentation of the admitted root, never a path
-           anything can open (FR-002). -->
-      <p v-if="sourceRootText !== null" class="aci-skill-detail__root aci-note">
-        <span class="aci-authored-text">{{ sourceRootText }}</span>
-      </p>
+      <SourceRootNote :text="sourceRootText" />
 
       <!-- One row per recognition: the product, the surfaces of the documented
            behaviors its admitting rules rest on (FR-009), and the name that

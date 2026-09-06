@@ -39,6 +39,7 @@ import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
+import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { otherCopiesOf } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
@@ -735,12 +736,7 @@ watch(
         >
       </DetailAttributes>
 
-      <!-- Which directory the file was in, where its family holds more than
-           one: an escaped presentation of the admitted root, never a path
-           anything can open (FR-002). -->
-      <p v-if="sourceRootText !== null" class="aci-instruction-detail__root aci-note">
-        <span class="aci-authored-text">{{ sourceRootText }}</span>
-      </p>
+      <SourceRootNote :text="sourceRootText" />
 
       <!-- The other files governing the same range, one line whatever the
            count (`FileStrip.vue`). Nothing here states an order or a winner:

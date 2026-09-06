@@ -51,6 +51,7 @@ import DetailAttributes from '../../../../components/inspection/DetailAttributes
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
@@ -660,12 +661,7 @@ watch(
            because existence is what an admission proves (FR-009). -->
       <DetailAttributes :file="openDetail.file" :recognitions="recognitions" :source="openSource" />
 
-      <!-- Which directory the file was in, where its family holds more
-           than one: an escaped presentation of the admitted root, never a
-           path anything can open (FR-002). -->
-      <p v-if="sourceRootText !== null" class="aci-output-style-detail__root aci-note">
-        <span class="aci-authored-text">{{ sourceRootText }}</span>
-      </p>
+      <SourceRootNote :text="sourceRootText" />
 
       <!-- The name the inventory row this page was opened from is listed
            under: the answer of the rule that admitted the file, derived from

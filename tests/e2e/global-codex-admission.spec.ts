@@ -490,7 +490,7 @@ test('says which Source each row and each detail belongs to', async ({ page }) =
     await expect(page.locator('.aci-detail-crumbs')).toContainText('Your personal setup');
     // And which directory it was in, because two homes are carried: this case's
     // own Codex home, not the shared fixture's.
-    await expect(page.locator('.aci-instruction-detail__root')).toContainText(home.home);
+    await expect(page.locator('.aci-source-root-note')).toContainText(home.home);
     await page.goto(new URL('/instructions/detail/repository/AGENTS.md', own.origin).toString());
     await expect(page.locator('.aci-detail-crumbs')).toContainText('Repository');
   } finally {

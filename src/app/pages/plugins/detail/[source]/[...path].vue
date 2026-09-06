@@ -46,6 +46,7 @@ import DetailNavigation from '../../../../components/inspection/DetailNavigation
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
+import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
@@ -1498,13 +1499,7 @@ useReportedPageSubject(titleSubject);
         <span class="aci-carrier-kind">{{ carrierText }}</span>
       </DetailAttributes>
 
-      <!-- Which directory the carrier was in, where its family holds more than
-           one: an escaped presentation of the admitted root, never a path
-           anything can open (FR-002). The family itself is the first crumb
-           above, so it is not repeated here. -->
-      <p v-if="sourceRootText !== null" class="aci-plugin-detail__root aci-note">
-        <span class="aci-authored-text">{{ sourceRootText }}</span>
-      </p>
+      <SourceRootNote :text="sourceRootText" />
 
       <!-- Which of the recognizing products this page answers for: the root,
            the source form, and the manifest forms below are that product's
@@ -1809,12 +1804,6 @@ useReportedPageSubject(titleSubject);
 </template>
 
 <style scoped>
-/* An escaped root label has no break opportunities of its own; without this
-   the shell scrolls sideways (WCAG 1.4.10). */
-.aci-plugin-detail__root {
-  overflow-wrap: anywhere;
-}
-
 /* The heading and the comparison share a line, as every detail page's do. */
 .aci-plugin-detail__title {
   align-items: baseline;
