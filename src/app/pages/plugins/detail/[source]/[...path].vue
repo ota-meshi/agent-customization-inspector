@@ -42,6 +42,7 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -1763,19 +1764,7 @@ useReportedPageSubject(titleSubject);
                   >
                 </p>
 
-                <ul v-if="openFileDiagnostics.length > 0" class="aci-list" role="list">
-                  <li
-                    v-for="diagnostic in openFileDiagnostics"
-                    :key="diagnostic.diagnosticId"
-                    :class="
-                      DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error'
-                        ? 'aci-error'
-                        : 'aci-note'
-                    "
-                  >
-                    {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-                  </li>
-                </ul>
+                <DetailDiagnostics :diagnostics="openFileDiagnostics" />
 
                 <!-- Only the readable variants carry text. An unreadable file
                      has no source to show and its diagnostic above says why; a

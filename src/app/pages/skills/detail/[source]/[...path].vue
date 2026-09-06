@@ -63,6 +63,7 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -103,7 +104,6 @@ import type {
   SkillInventoryEntryDto,
   SourceKind,
 } from '../../../../../shared/api-types';
-import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   fileIdentityKey,
   CUSTOMIZATION_KIND_TEXT,
@@ -1340,17 +1340,7 @@ watch(
              reason stays on screen even while a companion's source — with
              that companion's own diagnostics — is open in the files tab
              (FR-028). -->
-        <ul v-if="entryDiagnostics.length > 0" class="aci-list" role="list">
-          <li
-            v-for="diagnostic in entryDiagnostics"
-            :key="diagnostic.diagnosticId"
-            :class="
-              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-            "
-          >
-            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          </li>
-        </ul>
+        <DetailDiagnostics :diagnostics="entryDiagnostics" />
 
         <div v-if="skillPresentation" class="aci-skill-detail__declarations">
           <p v-if="skillPresentation.frontmatter.length === 0" class="aci-note">
@@ -1471,19 +1461,7 @@ watch(
                 >
               </p>
 
-              <ul v-if="openFileDiagnostics.length > 0" class="aci-list" role="list">
-                <li
-                  v-for="diagnostic in openFileDiagnostics"
-                  :key="diagnostic.diagnosticId"
-                  :class="
-                    DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error'
-                      ? 'aci-error'
-                      : 'aci-note'
-                  "
-                >
-                  {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-                </li>
-              </ul>
+              <DetailDiagnostics :diagnostics="openFileDiagnostics" />
 
               <!-- Only the readable variants carry text. An unreadable file has no
                source to show and its diagnostic above says why; a binary one —

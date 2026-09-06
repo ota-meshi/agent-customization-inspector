@@ -48,6 +48,7 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
@@ -75,7 +76,6 @@ import { usePageOwnership, useReportedPageSubject } from '../../../../composable
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { useSessionViewState } from '../../../../composables/session-view-state';
-import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   accessiblePresentationLabel,
   fileIdentityKey,
@@ -947,21 +947,7 @@ watch(
         <!-- A failed extraction leaves this panel with nothing parsed to show;
              its Diagnostic is what says so, and the complete source is one tab
              away (FR-028). -->
-        <ul
-          v-if="openView.presentation === null && openDiagnostics.length > 0"
-          class="aci-list"
-          role="list"
-        >
-          <li
-            v-for="diagnostic in openDiagnostics"
-            :key="diagnostic.diagnosticId"
-            :class="
-              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-            "
-          >
-            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          </li>
-        </ul>
+        <DetailDiagnostics v-if="openView.presentation === null" :diagnostics="openDiagnostics" />
 
         <!-- The declarations lead the two halves, and the kind's comparison
              leads with the same half, so the two surfaces read alike
@@ -1028,17 +1014,7 @@ watch(
           >
         </p>
 
-        <ul v-if="openDiagnostics.length > 0" class="aci-list" role="list">
-          <li
-            v-for="diagnostic in openDiagnostics"
-            :key="diagnostic.diagnosticId"
-            :class="
-              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-            "
-          >
-            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          </li>
-        </ul>
+        <DetailDiagnostics :diagnostics="openDiagnostics" />
 
         <!-- Only the readable variants carry text. An unreadable file has no
              source to show and its diagnostic above says why. -->

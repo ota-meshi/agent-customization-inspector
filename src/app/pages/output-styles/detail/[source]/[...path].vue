@@ -49,6 +49,7 @@ import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -70,7 +71,6 @@ import {
   fileIdentityKey,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
-import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import { AuthoredName } from '../../../../components/authored-name';
 import { LEADING_OUTPUT_STYLE_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
@@ -726,17 +726,7 @@ watch(
         <!-- A failed extraction leaves this panel with nothing parsed to
              show; its Diagnostic is what says so, and the complete source is
              one tab away (FR-028). -->
-        <ul v-if="presentation === null && openDiagnostics.length > 0" class="aci-list" role="list">
-          <li
-            v-for="diagnostic in openDiagnostics"
-            :key="diagnostic.diagnosticId"
-            :class="
-              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-            "
-          >
-            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          </li>
-        </ul>
+        <DetailDiagnostics v-if="presentation === null" :diagnostics="openDiagnostics" />
 
         <div v-if="presentation" class="aci-output-style-detail__declarations">
           <p v-if="presentation.frontmatter.length === 0" class="aci-note">
@@ -795,17 +785,7 @@ watch(
           >
         </p>
 
-        <ul v-if="openDiagnostics.length > 0" class="aci-list" role="list">
-          <li
-            v-for="diagnostic in openDiagnostics"
-            :key="diagnostic.diagnosticId"
-            :class="
-              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-            "
-          >
-            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          </li>
-        </ul>
+        <DetailDiagnostics :diagnostics="openDiagnostics" />
 
         <!-- Only the readable variants carry text. An unreadable file has no
              source to show and its diagnostic above says why. -->

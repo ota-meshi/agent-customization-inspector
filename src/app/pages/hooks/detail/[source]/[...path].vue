@@ -32,6 +32,7 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -59,7 +60,6 @@ import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
 import { useSessionViewState } from '../../../../composables/session-view-state';
-import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import { HOOK_CARRIER_FORM_TEXT, SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 import { AuthoredName } from '../../../../components/authored-name';
 import {
@@ -747,17 +747,7 @@ watch(
         label="Other carriers declaring this event"
       />
 
-      <ul v-if="openDiagnostics.length > 0" class="aci-list" role="list">
-        <li
-          v-for="diagnostic in openDiagnostics"
-          :key="diagnostic.diagnosticId"
-          :class="
-            DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-          "
-        >
-          {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-        </li>
-      </ul>
+      <DetailDiagnostics :diagnostics="openDiagnostics" />
 
       <!-- An unreadable hook block leaves the rows unknown rather than absent
            (FR-028): the diagnostic above says what happened, and no source
