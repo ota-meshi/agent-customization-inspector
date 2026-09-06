@@ -33,6 +33,7 @@
 //    would drop keyboard focus on the body, so their handlers return focus
 //    to the page heading — the same landing every navigation uses.
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import LiveRegion from '../components/LiveRegion.vue';
 import GlobalConsentPreview from '../components/consent/GlobalConsentPreview.vue';
 import GlobalSourceControls from '../components/consent/GlobalSourceControls.vue';
 import DetailNavigation from '../components/inspection/DetailNavigation.vue';
@@ -475,18 +476,14 @@ watch(
     <DetailNavigation list-route="/" list-text="the inventory" :previous="null" :next="null" />
 
     <h2 ref="heading" tabindex="-1">Inspect your personal setup</h2>
-    <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
-      {{ failureAnnouncement }}
-    </p>
+    <LiveRegion :text="failureAnnouncement" assertive />
 
     <!-- Mounted from the first render with nothing in it, because a live region
          added together with its text is not announced (`index.vue` states the
          same rule for the consented homes' arrival, W3C ARIA22). What changes
          is the region's text; the visible sentence below is the state itself,
          and carries no region of its own so the two are not two announcements. -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ statusAnnouncement }}
-    </p>
+    <LiveRegion :text="statusAnnouncement" />
 
     <!-- Names what is loading, which is this page's own state: the proposal
          is fetched, and no directory is read for it (`view-state.ts`

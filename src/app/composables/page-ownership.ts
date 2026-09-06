@@ -10,7 +10,7 @@
 // than beside the session classes because pages reach it through the
 // `usePageOwnership` composable, per Vue idiom, the way `useInventoryFilters`
 // wraps `InventoryFilterView`.
-import { onUnmounted } from 'vue';
+import { getCurrentInstance, onUnmounted, type ComponentInternalInstance } from 'vue';
 import type { SessionViewState } from '../session/view-state';
 import { useSessionViewState } from './session-view-state';
 import type { PluginCarrierDetailParams, SourceSelector } from '../../shared/api-types';
@@ -126,7 +126,31 @@ export class PageOwnership {
 }
 
 /**
- * The composable a page calls once in setup for its own ownership handle.
+ * The handle each component instance has already been given, so a second call
+ * inside one setup answers with the first one's. Weak, so a handle is
+ * collected with the instance that owns it.
+ *
+ * The cache is what makes the one-handle-per-instance rule a mechanism rather
+ * than a convention. Two handles would each hold their own token, and the view
+ * state skips every write whose token is not the one that opened the state
+ * ({@link PageOwnership}): a close issued through the second handle would
+ * return without dropping the detail the first one opened, silently, with
+ * nothing on screen to show for it.
+ *
+ * Passing the page's handle down to whatever else needs it would work for the
+ * callers that exist and is not what this replaces: it leaves the rule as a
+ * line of prose that every future caller has to have read, and the failure it
+ * misses is invisible — the state stays open, the page reports the link, and
+ * no test sees a difference. The cost of the cache is one weak entry per page
+ * instance, which is why the rule is kept here instead of at each call site.
+ */
+const HANDLES = new WeakMap<ComponentInternalInstance, PageOwnership>();
+
+/**
+ * The composable a page calls in setup for its own ownership handle. Calling
+ * it again inside the same setup — from a composable the page passes it to, or
+ * one that asks for it itself — answers with the same handle rather than a
+ * second one; see {@link HANDLES}.
  * Injects the shell-provided view state itself, and owns the leave-the-route
  * cleanup — the detail close and the subject release — so a page needs no
  * token or unmount plumbing of its own. A page that never opens a detail — a
@@ -146,7 +170,21 @@ export class PageOwnership {
  * the DOM left.
  */
 export function usePageOwnership(): PageOwnership {
+  const instance = getCurrentInstance();
+  if (instance === null) {
+    // The same precondition `useSessionViewState` and `onUnmounted` below
+    // already carry, stated here because the handle is kept per instance and
+    // there is no instance to keep it under. Loud for the same reason the
+    // session's own inject is: a handle outside setup owns nothing and would
+    // write through a token the view state never adopts.
+    throw new Error('the page ownership handle was requested outside a component setup');
+  }
+  const held = HANDLES.get(instance);
+  if (held !== undefined) {
+    return held;
+  }
   const ownership = new PageOwnership(useSessionViewState());
+  HANDLES.set(instance, ownership);
   onUnmounted(() => {
     ownership.close();
     ownership.releaseSubject();

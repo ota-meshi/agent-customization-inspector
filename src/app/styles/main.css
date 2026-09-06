@@ -1017,11 +1017,6 @@ button[aria-disabled='true'] {
   padding: 0.75rem 1.25rem 2rem;
 }
 
-/* Whatever closes the line — the command that opens the file in an editor. */
-.aci-detail-attributes__end {
-  margin-inline-start: auto;
-}
-
 /* Detail tabs: the two or three halves a detail page shows one at a time.
    Colors come from the same system-color tokens as the rest of the shell, so
    the strip follows the OS light/dark scheme instead of pinning one palette.

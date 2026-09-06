@@ -34,27 +34,28 @@
 // reach no read (`codex.excluded.plugin-files`). Nothing on this page claims
 // the plugin is installed, enabled, trusted, or loaded — all four are User
 // state this product never reads (FR-009).
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
+import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
+import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
-import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
   familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
-  decodeDetailRoutePath,
   detailNeighbours,
-  type SourceSelector,
   fromJsonStringBody,
   selectedFileOf,
+  detailRoutePathOf,
 } from '../../../../components/detail-route';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
@@ -62,6 +63,8 @@ import { AuthoredName } from '../../../../components/authored-name';
 import { pluginCarrierDetailRoute } from '../../../../components/plugin-detail-route';
 import { pluginComparisonRouteFor } from '../../../../composables/plugin-comparison';
 import { nextTabForKey } from '../../../../components/tab-navigation';
+import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
+import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
@@ -95,58 +98,22 @@ const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
-/**
- * The carrier's Source-relative path from the URL's catch-all segments — the
- * file's identity and half the route identity (FR-030). The segments arrive
- * decoded but still spelled as the well-formed text the link carried, so the
- * escape the encoder applied is undone here (`detail-route.ts`).
- */
-const openAddress = computed(() => ({
-  // The router splits the address: `[source]` is its own parameter and the
-  // catch-all below it holds the path alone, so nothing here takes a segment
-  // off a joined string (`detail-route.ts` § SourceSelector).
-  source: asSourceSelector(route.params['source']),
-  sourceRelativePath: decodeDetailRoutePath(
-    ((parameter) => (typeof parameter === 'string' ? [parameter] : (parameter ?? [])))(
-      route.params['path'],
-    ),
-  ),
-}));
-/**
- * The Source-relative Path this page is about, or the empty string for an
- * address whose leading segment names no Source this product issues. No file
- * has an empty path, so such an address resolves nothing and the page reports
- * what it already reports for a path the current scan does not hold.
- */
-const carrierPath = computed((): string =>
-  openAddress.value.source === null ? '' : openAddress.value.sourceRelativePath,
+// The address this page's own filename declares (`[source]/[...path].vue`),
+// undone by the module that spells it (`detail-route.ts`). What the address
+// names is the carrier the plugin is declared in; the plugin and the file
+// shown are selected inside it below (`detail-address.ts`).
+const {
+  openSource,
+  openSourceId,
+  openPath: carrierPath,
+} = useDetailAddress(
+  () => asSourceSelector(route.params['source']),
+  () => detailRoutePathOf(route.params['path']),
 );
+const { pathText, pathIsSpelledOut } = usePathPresentation(carrierPath);
 
-/**
- * The Source this page's address names, the other half of the identity
- * {@link carrierPath} carries (FR-030). It is what the detail request resolves
- * against and what the open control hands the host, so both answer for the
- * file the address names rather than for whichever Source lists the path
- * first.
- *
- * An address whose leading segment names no Source takes the repository token.
- * Nothing renders under such an address — {@link carrierPath} is empty, so no
- * detail resolves — so the token is never what a request is made with; it
- * exists so this is a `SourceSelector` rather than a null every caller would
- * branch on.
- */
-const openSource = computed((): SourceSelector => openAddress.value.source ?? 'repository');
-
-/** The shared per-Source lookups (`session-sources.ts`). */
+/** The shared Source lookup, for the routes and strips below. */
 const sessionSources = useSessionSources();
-
-/**
- * The Source ID the address's own token names in the current snapshot, or
- * null while the snapshot lists no such Source — a link kept across a Global
- * disable. Every carrier resolution on this page is scoped by it, because a
- * same-path carrier in another Source is a different file (FR-030).
- */
-const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
 
 // The open file's Source facts (FR-007 "show its source"): the consented
 // directory where the family holds more than one Source, and the family name
@@ -550,14 +517,6 @@ const treeDirectory = computed(() => {
   }
   return shared.length === 0 ? '' : `${shared.join('/')}/`;
 });
-
-/** The carrier's path as the heading shows it, through the one label rule every surface uses. */
-const pathText = computed(() => pathPresentationLabel(carrierPath.value));
-
-/** Whether {@link pathText} is this product's spelled-out form rather than the file's own. */
-const pathIsSpelledOut = computed(
-  () => pathText.value !== escapeControlCharacters(carrierPath.value),
-);
 
 /**
  * The declared plugin name as this page needs it, or null for the row that
@@ -1070,7 +1029,8 @@ const tabButtons = ref<HTMLButtonElement[]>([]);
  * during setup, and a `const` declared after it would still be in its temporal
  * dead zone there.
  */
-const pageRoot = ref<HTMLElement | null>(null);
+const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
+const heading = useTemplateRef<HTMLHeadingElement>('heading');
 
 /** The pane holding the open file's source; read by the focus guard below. */
 const paneElement = ref<HTMLElement | null>(null);
@@ -1211,17 +1171,18 @@ const detailAnnouncement = computed(() => {
     : `${kindText} ready.`;
 });
 
-const heading = ref<HTMLHeadingElement | null>(null);
+// Where focus sits: the entry focus, the re-focus when the address names a
+// different plugin, and the question the guards below ask before moving it
+// (`detail-heading-focus.ts`). Selecting another of the plugin's files is not
+// a change of subject, so it is not among the coordinates watched.
+const { requestFocusHeading, focusHeading } = useDetailHeadingFocus({
+  pageRoot,
+  heading,
+  openPath: carrierPath,
+  openSource,
+  selection: () => openPluginName.value,
+});
 
-/**
- * Moves focus to this page's heading, which is where every focus decision on
- * this route lands — the same one-line move each other detail names
- * (`agents/detail` § focusHeading), so the six places that make it here cannot
- * drift into six spellings of it.
- */
-function focusHeading(): void {
-  heading.value?.focus();
-}
 const pageOwnership = usePageOwnership();
 
 /**
@@ -1300,23 +1261,6 @@ watch(
   { immediate: true },
 );
 
-// Focus moves to the heading when the page is entered or the plugin changes:
-// following a link in an SPA moves no focus by itself. Selecting another of the
-// plugin's files is not a change of subject, so it moves nothing.
-onMounted(() => {
-  focusHeading();
-});
-watch([openSource, carrierPath, openPluginName], () => {
-  // After the DOM update, like every other detail's subject watcher: focusing
-  // pre-flush lands on the outgoing heading, so assistive technology hears
-  // the previous plugin's name and the new heading gets no focus event
-  // (WCAG 2.4.3).
-  void nextTick(() => focusHeading());
-});
-
-/** Set as the route is left, so the focus guards below yield to the next route. */
-let leaving = false;
-
 // While a switch to another of the plugin's files is in flight, the pane is
 // replaced by its loading line. If keyboard focus is inside it at that moment —
 // reading a bundled skill in Monaco when a history step changes the selection —
@@ -1336,8 +1280,8 @@ watch(
       // watcher is synchronous; afterwards the element is already empty.
       reservedPaneHeight.value = paneElement.value?.offsetHeight ?? 0;
     }
-    if (file === null && !leaving && paneElement.value?.contains(document.activeElement) === true) {
-      focusHeading();
+    if (file === null && paneElement.value?.contains(document.activeElement) === true) {
+      requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1357,12 +1301,9 @@ watch(
       detail === null &&
       previous !== null &&
       previous.file.sourceRelativePath === carrierPath.value &&
-      previous.file.sourceId === openSourceId.value &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
+      previous.file.sourceId === openSourceId.value
     ) {
-      focusHeading();
+      requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1374,24 +1315,12 @@ watch(
 watch(
   [detailState, linkResolved],
   ([state, resolved]) => {
-    if (
-      (state === 'stale' || !resolved) &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
-    ) {
-      focusHeading();
+    if (state === 'stale' || !resolved) {
+      requestFocusHeading();
     }
   },
   { flush: 'sync' },
 );
-
-onBeforeUnmount(() => {
-  leaving = true;
-  // The title subject and the open detail are both `usePageOwnership`'s to
-  // drop, after unmount, where the guards above are naturally inert and a
-  // replacement page's own report or open stands.
-});
 
 /**
  * What the tab title says while this page is open (WCAG 2.4.2).
@@ -1460,15 +1389,17 @@ watch(
 
     <!-- Where the page sits, which is location rather than a way out: the
          Source family, the kind, and this page's own subject. -->
-    <p class="aci-detail-crumbs">
-      <template v-if="sourceFamilyCrumbText !== null"
-        >{{ sourceFamilyCrumbText }} <span>›</span> </template
-      >{{ CUSTOMIZATION_KIND_TEXT.plugin }} <span>›</span>
-      <AuthoredNameText v-if="pluginName !== null" :name="pluginName">
-        <span class="aci-detail-crumbs__subject aci-path">{{ pluginName.text }}</span>
-      </AuthoredNameText>
-      <span v-else class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
-    </p>
+    <DetailCrumbs
+      :source-family-crumb-text="sourceFamilyCrumbText"
+      :kind-text="CUSTOMIZATION_KIND_TEXT.plugin"
+      :path-text="pathText"
+    >
+      <template v-if="pluginName !== null" #subject>
+        <AuthoredNameText :name="pluginName">
+          <span class="aci-detail-crumbs__subject aci-path">{{ pluginName.text }}</span>
+        </AuthoredNameText>
+      </template>
+    </DetailCrumbs>
 
     <div class="aci-plugin-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
@@ -1508,11 +1439,7 @@ watch(
       >
     </div>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read. -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ detailAnnouncement }}
-    </p>
+    <LiveRegion :text="detailAnnouncement" />
 
     <template v-if="detailState === 'loading'">
       <p class="aci-empty">Loading this plugin…</p>
@@ -1562,7 +1489,12 @@ watch(
            of a file's own facts. Restated from the row so the page and the
            list agree (FR-007); no product is quoted for what it would load,
            because an admission is not an activation (FR-009). -->
-      <p class="aci-detail-attributes">
+      <DetailAttributes
+        :file="carrierFile"
+        :recognitions="recognitions"
+        :source="openSource"
+        states-byte-order-mark
+      >
         <!-- The carrier this page read, leading its own facts: the command at
              the end of this line opens it, and with the path on a line below
              the control pointed at something the line did not name. Inert
@@ -1573,25 +1505,7 @@ watch(
           pathText
         }}</span>
         <span class="aci-carrier-kind">{{ carrierText }}</span>
-        <span
-          >{{ FILE_ENCODING_TEXT[carrierFile.encoding]
-          }}<template v-if="carrierFile.encoding !== 'unknown'">
-            · {{ carrierFile.sizeBytes }} bytes</template
-          ><template v-if="isReadableFile(carrierFile) && carrierFile.hadLeadingBom">
-            · byte-order mark removed before decoding</template
-          ></span
-        >
-        <RecognitionMarks :recognitions="recognitions" named />
-        <!-- The command that opens the file, at the end of the line that
-             states that file's facts — the one place every kind puts it, so a
-             reader who found it on one detail finds it on the next. Outside
-             the heading so it does not join the heading's accessible name: a
-             reader hearing the page's landmarks should hear the file, not an
-             action on it (WCAG 2.4.6). -->
-        <span v-if="carrierFile !== null" class="aci-detail-attributes__end">
-          <OpenFileButton :source-relative-path="carrierPath" :source="openSource" />
-        </span>
-      </p>
+      </DetailAttributes>
 
       <!-- Which directory the carrier was in, where its family holds more than
            one: an escaped presentation of the admitted root, never a path

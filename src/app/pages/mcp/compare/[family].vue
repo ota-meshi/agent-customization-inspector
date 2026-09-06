@@ -38,6 +38,7 @@
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same selection under the new snapshot (FR-030).
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
@@ -744,12 +745,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The pickers: a comparison stays inside the one name row that owns
          it, so what a reader chooses is which of that row's carriers stands

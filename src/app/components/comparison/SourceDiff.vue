@@ -36,6 +36,7 @@
 // (research.md § 7). That rendering is the failure path only: there is
 // deliberately no standing toggle to it.
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import LiveRegion from '../LiveRegion.vue';
 import { SourceDiffHandle } from '../../composables/monaco';
 import {
   SOURCE_VIEWER_LANGUAGE_GRAMMAR,
@@ -264,11 +265,7 @@ onBeforeUnmount(() => {
   <div v-show="!mountError" class="aci-source-diff__scroller" tabindex="0">
     <div ref="host" class="aci-source-diff" />
   </div>
-  <!-- Stable rather than inserted with the failure it reports, because a
-       region that appears together with its message is not reliably read. -->
-  <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
-    {{ mountError ? mountErrorMessage : '' }}
-  </p>
+  <LiveRegion :text="mountError ? mountErrorMessage : ''" assertive />
   <p v-if="mountError" class="aci-error">
     {{ mountErrorMessage }}
     <button type="button" @click="retryMount">Try again</button>

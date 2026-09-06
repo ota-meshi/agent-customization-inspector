@@ -45,6 +45,7 @@ import {
   querySideOf,
   comparisonTitleSides,
 } from '../../../components/detail-route';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import {
   comparisonOptionLabel,
   comparisonSourceQualifierOf,
@@ -1406,12 +1407,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The switchers: a comparison is one corresponding file across two
          copies of one skill name, so what a reader chooses is which file —

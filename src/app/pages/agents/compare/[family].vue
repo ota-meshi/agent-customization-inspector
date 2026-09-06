@@ -60,6 +60,7 @@ import {
   sideIdentityKeyOf,
   comparisonTitleSides,
 } from '../../../components/detail-route';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import {
   comparisonSideOptions,
   pickedSideOf,
@@ -903,12 +904,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The pickers: a comparison stays inside the one range row that owns
          the pair, so what a reader chooses is which of that row's files

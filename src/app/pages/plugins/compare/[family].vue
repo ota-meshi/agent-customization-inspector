@@ -29,6 +29,7 @@
 // authored — credentials included, with nothing masked and no control that
 // would uncover a masked value — and it says none of that (FR-027).
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
@@ -1890,12 +1891,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The pickers: a comparison stays inside the one row that owns it, so
          what a reader chooses is which of that row's carriers stands on each

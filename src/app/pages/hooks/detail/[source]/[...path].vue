@@ -24,33 +24,35 @@
 // referenced script is read, and nothing projects trust, review state, or
 // precedence: what the vendor documents stays in its maintained contract
 // (FR-009).
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
+import { computed, useTemplateRef, watch, watchEffect } from 'vue';
+import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
+import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
+import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
-import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
-import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
-  familyGenerationOf,
   sideFamilyOf,
   asSourceSelector,
-  decodeDetailRoutePath,
   detailNeighbours,
   detailRoute,
   type ComparisonSide,
-  type SourceSelector,
   fromJsonStringBody,
+  detailRoutePathOf,
 } from '../../../../components/detail-route';
 import { hookEventDetailRoute } from '../../../../components/hook-detail-route';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import type { SourceKind } from '../../../../../shared/api-types';
 import { hookComparisonRouteFor } from '../../../../composables/hook-comparison';
+import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
+import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
+import { useDetailRequest } from '../../../../composables/detail-request';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
@@ -63,12 +65,9 @@ import {
   type SupportedTool,
   SUPPORTED_TOOL_ORDER,
   CUSTOMIZATION_KIND_TEXT,
-  FILE_ENCODING_TEXT,
   accessiblePresentationLabel,
-  escapeControlCharacters,
   fileIdentityKey,
   inlinePresentationLabel,
-  isReadableFile,
   pathPresentationLabel,
 } from '../../../../../shared/entities';
 
@@ -76,59 +75,17 @@ const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
-/**
- * The Source-relative path from the URL's catch-all segments — the carrier's
- * identity and the whole route identity (FR-030). The router hands the
- * segments over individually and decoded, so joining them with `/` restores
- * the published spelling exactly.
- */
-const openAddress = computed(() => ({
-  // The router splits the address: `[source]` is its own parameter and the
-  // catch-all below it holds the path alone, so nothing here takes a segment
-  // off a joined string (`detail-route.ts` § SourceSelector).
-  source: asSourceSelector(route.params['source']),
-  sourceRelativePath: decodeDetailRoutePath(
-    ((parameter) => (typeof parameter === 'string' ? [parameter] : (parameter ?? [])))(
-      route.params['path'],
-    ),
-  ),
-}));
-
-/**
- * The Source-relative Path this page is about, or the empty string for an
- * address whose leading segment names no Source this product issues. No file
- * has an empty path, so such an address resolves nothing and the page reports
- * what it already reports for a path the current scan does not hold.
- */
-const openPath = computed((): string =>
-  openAddress.value.source === null ? '' : openAddress.value.sourceRelativePath,
+// The address this page's own filename declares (`[source]/[...path].vue`),
+// undone by the module that spells it (`detail-route.ts`). What the resolved
+// halves then name is every detail route's alike (`detail-address.ts`).
+const { openSource, openSourceId, openPath } = useDetailAddress(
+  () => asSourceSelector(route.params['source']),
+  () => detailRoutePathOf(route.params['path']),
 );
+const { pathText, pathIsSpelledOut } = usePathPresentation(openPath);
 
-/**
- * The Source this page's address names, the other half of the identity
- * {@link openPath} carries (FR-030). It is what the detail request resolves
- * against and what the open control hands the host, so both answer for the
- * file the address names rather than for whichever Source lists the path
- * first.
- *
- * An address whose leading segment names no Source takes the repository token.
- * Nothing renders under such an address — {@link openPath} is empty, so no
- * detail resolves — so the token is never what a request is made with; it
- * exists so this is a `SourceSelector` rather than a null every caller would
- * branch on.
- */
-const openSource = computed((): SourceSelector => openAddress.value.source ?? 'repository');
-
-/** The shared per-Source lookups (`session-sources.ts`). */
+/** The shared Source lookup, for the neighbour routes below. */
 const sessionSources = useSessionSources();
-
-/**
- * The Source ID the address's own token names in the current snapshot, or
- * null while the snapshot lists no such Source — a link kept across a Global
- * disable. Every row resolution on this page is scoped by it, because a
- * same-path carrier in another Source is a different file (FR-030).
- */
-const openSourceId = computed((): string | null => sessionSources.sourceIdFor(openSource.value));
 
 // The open file's Source facts (FR-007 "show its source"): the family name
 // where more than one family is inspected, and the consented directory where
@@ -154,23 +111,7 @@ const openEventName = computed((): string | null => {
 });
 
 const hookDetail = sessionViewState.hookDetail;
-const detailState = sessionViewState.fileDetailState;
-/** This route's own failed request, which this page reports and announces. */
-const detailError = sessionViewState.detailErrorMessage;
 const snapshot = sessionViewState.snapshot;
-
-/**
- * The path as the heading shows it, through the one label rule every surface
- * that draws a path uses ({@link pathPresentationLabel}).
- */
-const pathText = computed(() => pathPresentationLabel(openPath.value));
-
-/**
- * Whether {@link pathText} is the spelled-out form rather than the file's own
- * spelling. The label then draws this product's characters instead of the
- * reader's, so it is not authored text and does not title the tab.
- */
-const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacters(openPath.value));
 
 /**
  * The carrier's file-unit route, which the declaration view's owner line links
@@ -506,6 +447,37 @@ const declarationsFailed = computed(
  */
 const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 
+// Where focus sits: the entry focus, the re-focus when the address names a
+// different carrier or declaration, and the question the guards below ask
+// before moving it (`detail-heading-focus.ts`).
+const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
+const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const { requestFocusHeading, focusHeading } = useDetailHeadingFocus({
+  pageRoot,
+  heading,
+  openPath,
+  openSource,
+  selection: () => openEventName.value,
+});
+
+const pageOwnership = usePageOwnership();
+
+// The effect that keeps the open carrier the one the URL names
+// (`detail-request.ts`). Nothing is asked of the inventory first: a carrier
+// page requests on the path alone, and a step between two declarations of one
+// carrier re-requests the same path, which the view state answers from the
+// held detail without a second fetch.
+const { detailState, detailError, retryOpen } = useDetailRequest({
+  openPath,
+  openSource,
+  selection: () => openEventName.value,
+  ready: () => true,
+  perform: () => {
+    void pageOwnership.openHookCarrierDetail(openPath.value, openSource.value);
+  },
+  focusHeading,
+});
+
 /**
  * What this route says when its own request failed, or null when none has: the
  * failing state's statement, then the failure's own message. One value, read
@@ -544,64 +516,6 @@ const detailAnnouncement = computed(() => {
   }
   return '';
 });
-
-/** The page heading, focused on entry so a keyboard user starts at the top. */
-const heading = ref<HTMLHeadingElement | null>(null);
-
-/** The page's root, for the focus guards below. */
-const pageRoot = ref<HTMLElement | null>(null);
-
-/** Set as the route is left, so the focus guards yield to the next route. */
-let leaving = false;
-
-/**
- * Requests the carrier the URL currently names, through the carrier's own
- * function. The route watcher below calls it on every selection, and the
- * failed-load branch calls it again as the retry.
- */
-const pageOwnership = usePageOwnership();
-
-const requestOpen = (): void => {
-  void pageOwnership.openHookCarrierDetail(openPath.value, openSource.value);
-};
-
-// One effect owns "which carrier should be open", so entering the route and a
-// history step between carriers take the same path; a committed generation is
-// part of what "open" means, exactly as on the other detail routes.
-watch(
-  [
-    openPath,
-    openEventName,
-    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
-    // The Source is a key beside the path, because it is the other half of the
-    // identity: a step between two Sources' details at one path leaves the path
-    // identical and the file different, so without this the page would keep
-    // showing the file it already had (FR-030).
-    openSource,
-  ],
-  ([path]) => {
-    if (path === '') {
-      // The URL names no carrier at all; the page shows the recoverable state
-      // below without a request that could not name a file.
-      pageOwnership.close();
-      return;
-    }
-    // A step between two declarations of one carrier re-requests the same
-    // path; the view state answers a held same-path detail without a second
-    // fetch, so the step costs nothing.
-    requestOpen();
-  },
-  { immediate: true },
-);
-
-// Focus moves to the heading when the page is entered or the open carrier
-// changes: following a link in an SPA moves no focus by itself.
-function focusHeading(): void {
-  heading.value?.focus();
-}
-
-onMounted(focusHeading);
-watch([openSource, openPath, openEventName], () => void nextTick(focusHeading));
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2); the same
@@ -643,16 +557,6 @@ watchEffect(() => {
   pageOwnership.reportSubject(titleSubject.value);
 });
 
-/**
- * The failed-load retry. Separate from {@link requestOpen} because the button
- * this click comes from vanishes with the failed branch the moment the state
- * returns to loading, and focus would drop to the document body (WCAG 2.4.3).
- */
-const retryOpen = (): void => {
-  focusHeading();
-  requestOpen();
-};
-
 // A generation replacement drops a detail that was on screen without moving
 // the URL; if keyboard focus was inside that subtree it would fall to the
 // document body (WCAG 2.4.3) — the same guards the other detail routes use.
@@ -663,12 +567,9 @@ watch(
       detail === null &&
       previous !== null &&
       previous.file.sourceRelativePath === openPath.value &&
-      previous.file.sourceId === openSourceId.value &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
+      previous.file.sourceId === openSourceId.value
     ) {
-      focusHeading();
+      requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -677,24 +578,12 @@ watch(
 watch(
   [detailState, declarationMissing],
   ([state, missing]) => {
-    if (
-      (state === 'stale' || missing) &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
-    ) {
-      focusHeading();
+    if (state === 'stale' || missing) {
+      requestFocusHeading();
     }
   },
   { flush: 'sync' },
 );
-
-onBeforeUnmount(() => {
-  leaving = true;
-  // The title subject and the open detail are both `usePageOwnership`'s to
-  // drop, after unmount, where the focus guards above are naturally inert and
-  // a replacement page's own report or open stands.
-});
 </script>
 
 <template>
@@ -712,24 +601,27 @@ onBeforeUnmount(() => {
 
     <!-- Where the page sits, which is location rather than a way out: the
          Source family, the kind, and this page's own subject. -->
-    <p class="aci-detail-crumbs">
-      <template v-if="sourceFamilyCrumbText !== null"
-        >{{ sourceFamilyCrumbText }} <span>›</span> </template
-      >{{ CUSTOMIZATION_KIND_TEXT.hook }} <span>›</span>
+    <DetailCrumbs
+      :source-family-crumb-text="sourceFamilyCrumbText"
+      :kind-text="CUSTOMIZATION_KIND_TEXT.hook"
+      :path-text="pathText"
+    >
       <!-- The page's own subject, which is the declared event on a declaration
-           view and the carrier's path on the carrier's own. The trail ended at
-           the carrier either way, so a declaration page's last step named a
-           file while its heading named an event. Which carrier it was declared
-           in is the `Declared in` line's, said once. -->
-      <AuthoredNameText v-if="eventName !== null" :name="eventName">
-        <span
-          class="aci-detail-crumbs__subject"
-          :class="{ 'aci-authored-text': eventName.isAuthored }"
-          >{{ eventName.text }}</span
-        >
-      </AuthoredNameText>
-      <span v-else class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
-    </p>
+           view and the carrier's path on the carrier's own — the trail's
+           default, taken when no event is named. The trail ended at the
+           carrier either way, so a declaration page's last step named a file
+           while its heading named an event. Which carrier it was declared in
+           is the `Declared in` line's, said once. -->
+      <template v-if="eventName !== null" #subject>
+        <AuthoredNameText :name="eventName">
+          <span
+            class="aci-detail-crumbs__subject"
+            :class="{ 'aci-authored-text': eventName.isAuthored }"
+            >{{ eventName.text }}</span
+          >
+        </AuthoredNameText>
+      </template>
+    </DetailCrumbs>
 
     <div class="aci-hook-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
@@ -773,11 +665,7 @@ onBeforeUnmount(() => {
       >
     </div>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read. -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ detailAnnouncement }}
-    </p>
+    <LiveRegion :text="detailAnnouncement" />
 
     <template v-if="detailState === 'loading'">
       <p v-if="openEventName === null" class="aci-empty">Loading this hook carrier…</p>
@@ -823,7 +711,12 @@ onBeforeUnmount(() => {
              inventory entry so the page and the list agree (FR-007). No
              product is quoted for what it would run, because an admission is
              not an activation (FR-009). -->
-        <p class="aci-detail-attributes">
+        <DetailAttributes
+          :file="openDetail.file"
+          :recognitions="recognitions"
+          :source="openSource"
+          states-byte-order-mark
+        >
           <!-- The carrier this page read, leading its own facts: the command at
                the end of this line opens it, and with the path on the line
                below the control pointed at something the line did not name. On
@@ -839,46 +732,7 @@ onBeforeUnmount(() => {
           <span v-if="carrierFormText !== null" class="aci-carrier-kind">{{
             carrierFormText
           }}</span>
-          <!-- What the read produced, on the head's line with the rest of
-               the carrier's own facts rather than below the page's sections:
-               the read outcome and the size are facts about the file this
-               page opened, and a reader deciding whether to trust what is
-               below reads them first (FR-007). Its source text is
-               deliberately not on this page — or on the wire at all: a file
-               admitted so its declarations can be published shows the
-               declarations, never its bytes. -->
-          <span
-            >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
-            }}<template v-if="openDetail.file.encoding !== 'unknown'">
-              · {{ openDetail.file.sizeBytes }} bytes</template
-            ><template v-if="isReadableFile(openDetail.file) && openDetail.file.hadLeadingBom">
-              · byte-order mark removed before decoding</template
-            ></span
-          >
-          <!-- The carrier's readers, and every event's: one line answers for
-               all of them here, where the MCP carrier view states each server
-               block's own readers. A shared hook carrier is read to the same
-               schema by both products — `.claude/settings*.json` carries
-               Claude's recognition and the Copilot editor's, each its own row
-               of the same declared events (`registries/copilot/rules.ts`
-               § copilot.repo.hooks.settings.claude) — so a per-event line
-               would repeat these marks under every heading. MCP differs
-               because the CLI's bare schema makes one carrier's server names
-               differ by reader. -->
-          <RecognitionMarks :recognitions="recognitions" named />
-          <!-- The command that opens the file, at the end of the line that
-               states that file's facts — the one place every kind puts it, so
-               a reader who found it on one detail finds it on the next.
-               Outside the heading so it does not join the heading's accessible
-               name: a reader hearing the page's landmarks should hear the
-               file, not an action on it (WCAG 2.4.6). -->
-          <span class="aci-detail-attributes__end">
-            <OpenFileButton
-              :source-relative-path="openDetail.file.sourceRelativePath"
-              :source="openSource"
-            />
-          </span>
-        </p>
+        </DetailAttributes>
 
         <!-- Which directory the carrier was in, where its family holds more
              than one: an escaped presentation of the admitted root, never a

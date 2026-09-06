@@ -29,31 +29,33 @@
 // generation all drop the open detail through the same cleanup the skill
 // route uses; only the URL survives a commit, and the page refetches the same
 // path under the new generation.
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
+import { computed, ref, useTemplateRef, watch, watchEffect } from 'vue';
+import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
+import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
+import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
-import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
-import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { otherCopiesOf } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
-  familyGenerationOf,
   asSourceSelector,
-  decodeDetailRoutePath,
   detailNeighbours,
   detailRoute,
-  type SourceSelector,
+  detailRoutePathOf,
 } from '../../../../components/detail-route';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { nextTabForKey } from '../../../../components/tab-navigation';
 import { instructionComparisonRouteFor } from '../../../../composables/instruction-comparison';
+import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
+import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
+import { useDetailRequest } from '../../../../composables/detail-request';
 import { usePageOwnership } from '../../../../composables/page-ownership';
 import { ApplicabilityRange } from '../../../../components/applicability-range';
 import { useSessionSources } from '../../../../composables/session-sources';
@@ -65,10 +67,9 @@ import {
   FILE_ENCODING_TEXT,
   accessiblePresentationLabel,
   applicabilityRangePresentation,
-  escapeControlCharacters,
   isReadableFile,
-  pathPresentationLabel,
   inlinePresentationLabel,
+  pathPresentationLabel,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 
@@ -76,68 +77,22 @@ const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
-/**
- * The Source-relative path from the URL's catch-all segments — the file's
- * identity and the whole route identity (FR-030). The router hands the
- * segments over individually and decoded, so joining them with `/` restores
- * the published spelling exactly.
- */
-const openAddress = computed(() => ({
-  // The router splits the address: `[source]` is its own parameter and the
-  // catch-all below it holds the path alone, so nothing here takes a segment
-  // off a joined string (`detail-route.ts` § SourceSelector).
-  source: asSourceSelector(route.params['source']),
-  sourceRelativePath: decodeDetailRoutePath(
-    ((parameter) => (typeof parameter === 'string' ? [parameter] : (parameter ?? [])))(
-      route.params['path'],
-    ),
-  ),
-}));
-
-/**
- * The Source-relative Path this page is about, or the empty string for an
- * address whose leading segment names no Source this product issues. No file
- * has an empty path, so such an address resolves nothing and the page reports
- * what it already reports for a path the current scan does not hold.
- */
-const openPath = computed((): string =>
-  openAddress.value.source === null ? '' : openAddress.value.sourceRelativePath,
+// The address this page's own filename declares (`[source]/[...path].vue`),
+// undone by the module that spells it (`detail-route.ts`). What the resolved
+// halves then name is every detail route's alike (`detail-address.ts`); the
+// unresolved Source stays in reach because the comparison link below needs the
+// token itself rather than the repository the address falls back to.
+const routeSource = computed(() => asSourceSelector(route.params['source']));
+const { openSource, openSourceId, openPath } = useDetailAddress(routeSource, () =>
+  detailRoutePathOf(route.params['path']),
 );
-
-/**
- * The Source this page's address names, the other half of the identity
- * {@link openPath} carries (FR-030). It is what the detail request resolves
- * against and what the open control hands the host, so both answer for the
- * file the address names rather than for whichever Source lists the path
- * first.
- *
- * An address whose leading segment names no Source takes the repository token.
- * Nothing renders under such an address — {@link openPath} is empty, so no
- * detail resolves — so the token is never what a request is made with; it
- * exists so this is a `SourceSelector` rather than a null every caller would
- * branch on.
- */
-const openSource = computed((): SourceSelector => openAddress.value.source ?? 'repository');
+const { pathText, pathIsSpelledOut } = usePathPresentation(openPath);
 
 const entryDetail = sessionViewState.entryDetail;
-const detailState = sessionViewState.fileDetailState;
-/** This route's own failed request, which this page reports and announces. */
-const detailError = sessionViewState.detailErrorMessage;
 const snapshot = sessionViewState.snapshot;
 
 /** The shared per-Source lookups (`session-sources.ts`). */
 const sessionSources = useSessionSources();
-
-/**
- * The addressed Source's own ID, or null when this session carries no such
- * Source — an address naming a token this product issues for a Global Source
- * that is not published now. Every row and file below is scoped by it: a path
- * names a file in each Source that holds it, so an unscoped lookup would state
- * one Source's recognitions under the other's address (FR-030).
- */
-const openSourceId = computed(() =>
-  openAddress.value.source === null ? null : sessionSources.sourceIdFor(openAddress.value.source),
-);
 
 /**
  * The instructions inventory row the URL's identity names, or null when the
@@ -263,22 +218,6 @@ const listNeighbours = computed(() => {
 });
 
 /**
- * The path as the heading shows it, through the one label rule every surface
- * that draws a path uses ({@link pathPresentationLabel}).
- */
-const pathText = computed(() => pathPresentationLabel(openPath.value));
-
-/**
- * Whether {@link pathText} is the spelled-out form rather than the file's own
- * spelling — which a configured fallback basename of whitespace or
- * default-ignorable code points produces. The label then draws this product's
- * characters instead of the reader's, so it is not authored text and does not
- * title the tab. Compared against the escaping rather than tested again, so
- * the two cannot answer differently.
- */
-const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacters(openPath.value));
-
-/**
  * What a screen reader announces the heading as. The accessible-name
  * computation collapses whitespace, so two paths differing only in consecutive
  * or edge spaces would announce as one heading; the inline label spells such a
@@ -373,7 +312,7 @@ const comparableIdentities = computed(() => {
  * families is a pair no block holds (`filters.ts` § InstructionRangeGroup).
  */
 const comparePairRoute = computed(() => {
-  const source = openAddress.value.source;
+  const source = routeSource.value;
   const kind = openFamily.value;
   if (
     source === null ||
@@ -497,8 +436,35 @@ const INSTRUCTION_DETAIL_TAB_TEXT: Readonly<Record<InstructionDetailTab, string>
 
 const activeTab = ref<InstructionDetailTab>('instructions');
 
-/** The page's root, for the focus guards below. */
-const pageRoot = ref<HTMLElement | null>(null);
+// Where focus sits: the entry focus, the re-focus when the address names a
+// different file, and the question the guards below ask before moving it
+// (`detail-heading-focus.ts`).
+const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
+const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const { requestFocusHeading, focusHeading } = useDetailHeadingFocus({
+  pageRoot,
+  heading,
+  openPath,
+  openSource,
+  selection: null,
+});
+
+const pageOwnership = usePageOwnership();
+
+// The effect that keeps the open file the one the URL names
+// (`detail-request.ts`). This kind's subject is its path alone, so nothing is
+// selected inside it; the page's own Source is passed so a same-path file in
+// the other Source cannot answer this request (FR-030).
+const { detailState, detailError, retryOpen } = useDetailRequest({
+  openPath,
+  openSource,
+  selection: null,
+  ready: () => owner.value !== null,
+  perform: () => {
+    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
+  },
+  focusHeading,
+});
 
 /** The `id` of the panel a tab controls (WCAG 4.1.2). */
 function instructionTabPanelId(tab: InstructionDetailTab): string {
@@ -604,74 +570,6 @@ const detailAnnouncement = computed(() => {
   return '';
 });
 
-/** The page heading, focused on entry so a keyboard user starts at the top. */
-const heading = ref<HTMLHeadingElement | null>(null);
-
-/** Set as the route is left, so the focus guards yield to the next route. */
-let leaving = false;
-
-/**
- * Requests the file the URL currently names. The route watcher below calls it
- * on every selection, and the failed-load branch calls it again as the retry.
- * The one file is both arguments: this kind has no companion to read from it.
- */
-const pageOwnership = usePageOwnership();
-
-const requestOpen = (): void => {
-  if (owner.value === null) {
-    return;
-  }
-  // The page's own Source, so a same-path file in the other Source cannot
-  // answer this request (FR-030).
-  void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
-};
-
-// One effect owns "which file should be open", so entering the route and a
-// history step between instruction files take the same path. The committed
-// generations are part of what "open" means: adopting a newer one closes the
-// open detail while the path stays identical, so their change is what
-// re-requests the same path under the new snapshot.
-watch(
-  [
-    openPath,
-    (): boolean => owner.value !== null,
-    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
-    // The Source is a key beside the path, because it is the other half of the
-    // identity: a step that changes only the Source leaves the path identical
-    // and the file different, and this page instance is reused across it — the
-    // shell keys a page by its route record (`router.options.ts` § pageKey), so
-    // a param-only change mounts nothing new. No surface links one Source's
-    // detail to the other's today, so every such step currently arrives through
-    // the inventory or a fresh load; the key is what keeps that an arrangement
-    // of the surfaces rather than something this page depends on (FR-030).
-    openSource,
-  ],
-  ([path, ownerPresent]) => {
-    if (path === '' || !ownerPresent) {
-      // The URL names nothing this generation holds. Dropping what is open is
-      // the point: the page shows the recoverable state below, and holding
-      // authored content the reader navigated away from would keep it in
-      // memory for nothing.
-      pageOwnership.close();
-      return;
-    }
-    requestOpen();
-  },
-  { immediate: true },
-);
-
-// Focus moves to the heading when the page is entered or the open file
-// changes: following a link in an SPA moves no focus by itself. The Source is
-// watched beside the path because this kind is the one two Sources can both
-// publish: a step between their same-path details changes the file the page
-// shows while the path stays put, and focus has to follow that (WCAG 2.4.3).
-function focusHeading(): void {
-  heading.value?.focus();
-}
-
-onMounted(focusHeading);
-watch([openPath, openSource], () => void nextTick(focusHeading));
-
 /**
  * What the document title says this page is showing (WCAG 2.4.2): the path
  * the heading shows while a file is open, and the state the page is in
@@ -705,17 +603,6 @@ watchEffect(() => {
   pageOwnership.reportSubject(titleSubject.value);
 });
 
-/**
- * The failed-load retry. Separate from {@link requestOpen} because the button
- * this click comes from vanishes with the failed branch the moment the state
- * returns to loading, and focus would drop to the document body
- * (WCAG 2.4.3); the heading is the landmark that survives the transition.
- */
-const retryOpen = (): void => {
-  focusHeading();
-  requestOpen();
-};
-
 // A generation replacement drops a detail that was on screen — the tabs and
 // the viewer unmount — without moving the URL, so if keyboard focus is inside
 // that subtree it would drop to the document body (WCAG 2.4.3). Only an
@@ -734,12 +621,9 @@ watch(
     if (
       detail === null &&
       previous !== null &&
-      previous.file.sourceRelativePath === openPath.value &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
+      previous.file.sourceRelativePath === openPath.value
     ) {
-      focusHeading();
+      requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -752,24 +636,12 @@ watch(
 watch(
   [detailState, owner],
   ([state, resolved]) => {
-    if (
-      (state === 'stale' || resolved === null) &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
-    ) {
-      focusHeading();
+    if (state === 'stale' || resolved === null) {
+      requestFocusHeading();
     }
   },
   { flush: 'sync' },
 );
-
-onBeforeUnmount(() => {
-  leaving = true;
-  // The title subject and the open detail are both `usePageOwnership`'s to
-  // drop, after unmount, where the focus guards above are naturally inert
-  // and a replacement page's own report or open stands.
-});
 </script>
 
 <template>
@@ -787,12 +659,11 @@ onBeforeUnmount(() => {
 
     <!-- Where the page sits, which is location rather than a way out: the
          Source family, the kind, and this page's own subject. -->
-    <p class="aci-detail-crumbs">
-      <template v-if="sourceFamilyCrumbText !== null"
-        >{{ sourceFamilyCrumbText }} <span>›</span> </template
-      >{{ CUSTOMIZATION_KIND_TEXT.instructions }} <span>›</span>
-      <span class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
-    </p>
+    <DetailCrumbs
+      :source-family-crumb-text="sourceFamilyCrumbText"
+      :kind-text="CUSTOMIZATION_KIND_TEXT.instructions"
+      :path-text="pathText"
+    />
 
     <div class="aci-instruction-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
@@ -823,11 +694,7 @@ onBeforeUnmount(() => {
       /></NuxtLink>
     </div>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read. -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ detailAnnouncement }}
-    </p>
+    <LiveRegion :text="detailAnnouncement" />
 
     <template v-if="detailState === 'loading'">
       <p class="aci-empty">Loading this instruction file…</p>
@@ -863,30 +730,14 @@ onBeforeUnmount(() => {
            and the list agree (FR-007); no product is quoted for what it would
            select or load, because existence is what an admission proves
            (FR-009). -->
-      <p class="aci-detail-attributes">
+      <DetailAttributes :file="openDetail.file" :recognitions="recognitions" :source="openSource">
+        <!-- The range this file applies to leads its own facts: it is what
+             puts the file in this kind's list, and the block the comparison
+             pairs inside. -->
         <span
           >Applies to <strong class="aci-path aci-authored-text">{{ rangeText }}</strong></span
         >
-        <span
-          >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
-          }}<template v-if="openDetail.file.encoding !== 'unknown'">
-            · {{ openDetail.file.sizeBytes }} bytes</template
-          ></span
-        >
-        <RecognitionMarks :recognitions="recognitions" named />
-        <!-- The command that opens the file, at the end of the line that
-             states that file's facts — the one place every kind puts it, so a
-             reader who found it on one detail finds it on the next. Outside
-             the heading so it does not join the heading's accessible name: a
-             reader hearing the page's landmarks should hear the file, not an
-             action on it (WCAG 2.4.6). -->
-        <span class="aci-detail-attributes__end">
-          <OpenFileButton
-            :source-relative-path="openDetail.file.sourceRelativePath"
-            :source="openSource"
-          />
-        </span>
-      </p>
+      </DetailAttributes>
 
       <!-- Which directory the file was in, where its family holds more than
            one: an escaped presentation of the admitted root, never a path

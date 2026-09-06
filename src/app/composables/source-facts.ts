@@ -7,7 +7,7 @@
 // follows the shared naming rules (`source-name.ts`), and the directory stays
 // silent in the ordinary single-Source session where the summary panel already
 // states the one root.
-import { computed, type ComputedRef } from 'vue';
+import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
 import { sourceRootOf } from '../components/source-name';
 import { SOURCE_KIND_TEXT } from '../../shared/api-text';
 import type { SourceDto } from '../../shared/api-types';
@@ -38,16 +38,16 @@ export interface OpenSourceFacts {
  * drives them.
  */
 export function useOpenSourceFacts(
-  sources: () => readonly SourceDto[],
-  openSourceId: () => string | null,
+  sources: MaybeRefOrGetter<readonly SourceDto[]>,
+  openSourceId: MaybeRefOrGetter<string | null>,
 ): OpenSourceFacts {
   const openSource = computed(
-    () => sources().find((source) => source.sourceId === openSourceId()) ?? null,
+    () => toValue(sources).find((source) => source.sourceId === toValue(openSourceId)) ?? null,
   );
   const sourceRootText = computed(() =>
     openSource.value === null
       ? null
-      : sourceRootOf(sources(), openSource.value.kind, openSource.value.sourceId),
+      : sourceRootOf(toValue(sources), openSource.value.kind, openSource.value.sourceId),
   );
   const sourceFamilyCrumbText = computed(() =>
     openSource.value === null ? null : SOURCE_KIND_TEXT[openSource.value.kind],
