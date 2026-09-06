@@ -40,6 +40,7 @@ import {
 } from '../../../../components/detail-route';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -324,18 +325,11 @@ watch(
 
     <div class="aci-rule-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <!-- The file's path heads the page — the row's own identity, in the
-           same spelling the inventory lists: escaped for presentation, never
-           a locator anything can open (FR-024, FR-030). A path whose escaped
-           spelling draws nothing is spelled out in full instead — a spelled
-           presentation, not the authored run, so it drops the authored-text
-           treatment (data-model.md § SourceRelativePath) — and a URL with no
-           path segments at all is headed by the kind, so the heading always
-           describes the page (WCAG 2.4.6). -->
-        <template v-if="openPath === ''">{{ kindText }}</template>
-        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-          pathText
-        }}</span>
+        <DetailHeadingSubject
+          :kind-text="kindText"
+          :path-text="pathText"
+          :path-is-spelled-out="pathIsSpelledOut"
+        />
       </h2>
     </div>
 
@@ -410,12 +404,7 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  gap: 0.5rem 0.75rem;
   margin-block-end: 0.5rem;
-}
-
-/* Tighter than the shell's section-heading baseline, because the heading
-   block is chrome. */
-.aci-rule-detail h2 {
-  margin: 0.25rem 0 0;
 }
 </style>

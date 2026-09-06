@@ -32,6 +32,7 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
@@ -622,18 +623,21 @@ watch(
 
     <div class="aci-hook-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <!-- The record's own identity heads the page: the declared event for a
-             declaration view — the same spelling its inventory record shows —
-             and the carrier's path for the file-unit view; either is escaped
-             for presentation, never a locator anything can open (FR-024,
-             FR-030). -->
-        <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.hook }}</template>
-        <AuthoredNameText v-else-if="eventName !== null" :name="eventName">
-          <span :class="{ 'aci-authored-text': eventName.isAuthored }">{{ eventName.text }}</span>
-        </AuthoredNameText>
-        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-          pathText
-        }}</span>
+        <DetailHeadingSubject
+          :kind-text="CUSTOMIZATION_KIND_TEXT.hook"
+          :path-text="pathText"
+          :path-is-spelled-out="pathIsSpelledOut"
+        >
+          <!-- The declared event names a declaration view, where the carrier's
+           own path names the file-unit one. -->
+          <template v-if="eventName !== null" #name>
+            <AuthoredNameText :name="eventName">
+              <span :class="{ 'aci-authored-text': eventName.isAuthored }">{{
+                eventName.text
+              }}</span>
+            </AuthoredNameText>
+          </template>
+        </DetailHeadingSubject>
       </h2>
       <!-- The addressed event's comparison, at the end of the heading's own
            line: it acts on the subject that heading names
@@ -878,12 +882,7 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  gap: 0.5rem 0.75rem;
   margin-block-end: 0.5rem;
-}
-
-/* Tighter than the shell's section-heading baseline, because the heading
-   block is chrome. */
-.aci-hook-detail h2 {
-  margin: 0.25rem 0 0;
 }
 </style>

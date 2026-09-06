@@ -40,7 +40,7 @@
 // generation all drop the open detail through the same cleanup the prompt
 // route uses; only the URL survives a commit, and the page refetches the same
 // path under the new generation.
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -48,6 +48,8 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
+import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
@@ -68,7 +70,7 @@ import {
   originRowNameQuery,
   detailRoutePathOf,
 } from '../../../../components/detail-route';
-import { nextTabForKey } from '../../../../components/tab-navigation';
+import { useDetailTabs } from '../../../../composables/detail-tabs';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
@@ -573,8 +575,6 @@ const AGENT_DETAIL_TAB_TEXT: Readonly<Record<AgentDetailTab, string>> = {
   file: 'File',
 };
 
-const activeTab = ref<AgentDetailTab>('agent');
-
 // Where focus sits: the entry focus, the re-focus when the address names a
 // different file, and the question the guards below ask before rescuing it
 // (`detail-heading-focus.ts`).
@@ -606,32 +606,13 @@ const request = useDetailRequest({
 });
 const { detailState, detailError } = request;
 
-/** The `id` of the panel a tab controls (WCAG 4.1.2). */
-function agentTabPanelId(tab: AgentDetailTab): string {
-  return `aci-agent-panel-${tab}`;
-}
-
-/** The `id` of the tab that controls {@link agentTabPanelId}'s panel. */
-function agentTabId(tab: AgentDetailTab): string {
-  return `aci-agent-tab-${tab}`;
-}
-
-/**
- * Arrow keys move the selection, matching the WAI-ARIA tabs pattern. Selection
- * follows focus because switching panels issues no request and loses no work:
- * both halves are already in hand.
- */
-function onTabKeydown(event: KeyboardEvent, index: number): void {
-  const next = nextTabForKey(event.key, AGENT_DETAIL_TABS, index);
-  if (next === null) {
-    // A key the pattern does not handle keeps its default behavior; swallowing
-    // it here would break Tab out of the strip.
-    return;
-  }
-  event.preventDefault();
-  activeTab.value = next;
-  document.getElementById(agentTabId(next))?.focus();
-}
+/** The strip and the panels it controls (`detail-tabs.ts` § DetailTabs). */
+const detailTabs = useDetailTabs({
+  pageRoot,
+  tabs: AGENT_DETAIL_TABS,
+  initialTab: 'agent',
+  idPrefix: 'agent',
+});
 
 /**
  * Opening a file starts on what it declares — unless its extraction failed,
@@ -665,7 +646,7 @@ watch([openDetail, openSource, openPath], ([detail, source, path]) => {
     return;
   }
   tabDecidedFor = decidingFor;
-  activeTab.value = presentationOf(detail) !== null ? 'agent' : 'file';
+  detailTabs.activeTab = presentationOf(detail) !== null ? 'agent' : 'file';
 });
 
 /**
@@ -802,18 +783,11 @@ watch(
 
     <div class="aci-agent-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <!-- The file's path heads the page — the row's own identity, in the
-             same spelling the inventory lists: escaped for presentation, never
-             a locator anything can open (FR-024, FR-030). A path whose escaped
-             spelling draws nothing is spelled out in full instead — a spelled
-             presentation, not the authored run, so it drops the authored-text
-             treatment (data-model.md § SourceRelativePath) — and a URL with no
-             path segments at all is headed by the kind, so the heading always
-             describes the page (WCAG 2.4.6). -->
-        <template v-if="openPath === ''">{{ kindText }}</template>
-        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-          pathText
-        }}</span>
+        <DetailHeadingSubject
+          :kind-text="kindText"
+          :path-text="pathText"
+          :path-is-spelled-out="pathIsSpelledOut"
+        />
       </h2>
       <!-- The comparisons this file's rows can make, at the end of the
            heading's own line — where every kind whose subject is the heading
@@ -916,32 +890,18 @@ watch(
            the complete file itself. A real `tablist`, with the roving tabindex and
            arrow keys the WAI-ARIA tabs pattern specifies (QR-004,
            contracts/accessibility-acceptance.md). -->
-      <div class="aci-kind-tabs" role="tablist" aria-label="Custom agent detail">
-        <button
-          v-for="(tab, index) in AGENT_DETAIL_TABS"
-          :id="agentTabId(tab)"
-          :key="tab"
-          class="aci-kind-tab"
-          type="button"
-          role="tab"
-          :aria-controls="agentTabPanelId(tab)"
-          :aria-selected="tab === activeTab"
-          :tabindex="tab === activeTab ? 0 : -1"
-          @click="activeTab = tab"
-          @keydown="onTabKeydown($event, index)"
-        >
-          {{ AGENT_DETAIL_TAB_TEXT[tab] }}
-        </button>
-      </div>
+      <DetailTabStrip :tabs="detailTabs" label="Custom agent detail">
+        <template #tab="{ tab }">{{ AGENT_DETAIL_TAB_TEXT[tab] }}</template>
+      </DetailTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
            so Monaco keeps its model and the reader's scroll position across a
            tab switch, and both `aria-controls` IDREFs resolve. -->
       <div
-        v-show="activeTab === 'agent'"
-        :id="agentTabPanelId('agent')"
+        v-show="detailTabs.activeTab === 'agent'"
+        :id="detailTabs.panelId('agent')"
         role="tabpanel"
-        :aria-labelledby="agentTabId('agent')"
+        :aria-labelledby="detailTabs.tabId('agent')"
         tabindex="0"
       >
         <!-- A failed extraction leaves this panel with nothing parsed to show;
@@ -994,10 +954,10 @@ watch(
       </div>
 
       <div
-        v-show="activeTab === 'file'"
-        :id="agentTabPanelId('file')"
+        v-show="detailTabs.activeTab === 'file'"
+        :id="detailTabs.panelId('file')"
         role="tabpanel"
-        :aria-labelledby="agentTabId('file')"
+        :aria-labelledby="detailTabs.tabId('file')"
         tabindex="0"
       >
         <!-- What the read produced, and nothing else. The file below is the
@@ -1057,7 +1017,7 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  column-gap: 0.75rem;
+  gap: 0.5rem 0.75rem;
   margin-block-end: 0.5rem;
 }
 
@@ -1065,11 +1025,5 @@ watch(
    subject is the heading. */
 .aci-agent-detail__title-end {
   margin-inline-start: auto;
-}
-
-/* Tighter than the shell's section-heading baseline, because the heading
-   block is chrome. */
-.aci-agent-detail h2 {
-  margin: 0.25rem 0 0;
 }
 </style>

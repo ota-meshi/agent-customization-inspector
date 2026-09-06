@@ -7,6 +7,8 @@
 // reason this is an element rather than a call: a region that appears together
 // with its message is not reliably read, so it stays in the document and only
 // its text changes.
+import { useTemplateRef } from 'vue';
+
 defineProps<{
   /**
    * What the region announces, which the surface words itself. Empty while
@@ -21,10 +23,27 @@ defineProps<{
    */
   assertive?: boolean;
 }>();
+
+/** The region itself, so a caller can land focus on it. */
+const region = useTemplateRef<HTMLParagraphElement>('region');
+
+/**
+ * Moves focus onto the region. Called where the control that had focus
+ * removes itself and this line is the outcome it produced, so focus never
+ * falls to the document body with nothing announced (WCAG 2.4.3); such a
+ * caller passes `tabindex="-1"` so the region can hold it
+ * (`InventoryFilters.vue`).
+ */
+function focus(): void {
+  region.value?.focus();
+}
+
+defineExpose({ focus });
 </script>
 
 <template>
   <p
+    ref="region"
     class="aci-live-region"
     :role="assertive ? 'alert' : 'status'"
     :aria-live="assertive ? 'assertive' : 'polite'"

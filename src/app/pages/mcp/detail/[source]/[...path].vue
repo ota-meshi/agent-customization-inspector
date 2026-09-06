@@ -31,6 +31,7 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
@@ -645,18 +646,21 @@ watch(
 
     <div class="aci-mcp-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <!-- The record's own identity heads the page: the declared server name
-             for a declaration view — the same spelling its inventory record
-             shows — and the carrier's path for the file-unit view; either is
-             escaped for presentation, never a locator anything can open
-             (FR-024, FR-030). -->
-        <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.MCP }}</template>
-        <AuthoredNameText v-else-if="serverName !== null" :name="serverName">
-          <span :class="{ 'aci-authored-text': serverName.isAuthored }">{{ serverName.text }}</span>
-        </AuthoredNameText>
-        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-          pathText
-        }}</span>
+        <DetailHeadingSubject
+          :kind-text="CUSTOMIZATION_KIND_TEXT.MCP"
+          :path-text="pathText"
+          :path-is-spelled-out="pathIsSpelledOut"
+        >
+          <!-- The declared server name names a declaration view, where the
+           carrier's own path names the file-unit one. -->
+          <template v-if="serverName !== null" #name>
+            <AuthoredNameText :name="serverName">
+              <span :class="{ 'aci-authored-text': serverName.isAuthored }">{{
+                serverName.text
+              }}</span>
+            </AuthoredNameText>
+          </template>
+        </DetailHeadingSubject>
       </h2>
       <!-- The declaration view's comparison entry (FR-011): present exactly
            when this name's row holds another readable carrier to stand
@@ -887,11 +891,5 @@ watch(
 /* Whatever closes the heading's line: the comparison of the subject it names. */
 .aci-mcp-detail__title-end {
   margin-inline-start: auto;
-}
-
-/* Tighter than the shell's section-heading baseline, because the heading
-   block is chrome. */
-.aci-mcp-detail h2 {
-  margin: 0.25rem 0 0;
 }
 </style>

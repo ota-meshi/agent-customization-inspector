@@ -1369,7 +1369,7 @@ onBeforeUnmount(() => {
          the two cards, where the per-side switchers are
          (`main.css` § .aci-compare-pickers). -->
     <div class="aci-skill-compare__head">
-      <h2 ref="heading" tabindex="-1">Compare skill files</h2>
+      <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare skill files</h2>
       <div v-if="fileSwitcherShown" ref="pickersRegion" class="aci-skill-compare__picker">
         <label for="aci-skill-compare-file">Compared file</label>
         <select id="aci-skill-compare-file" v-model="fileSelection">
@@ -1541,10 +1541,6 @@ onBeforeUnmount(() => {
 .aci-skill-compare {
   display: flex;
   flex-direction: column;
-}
-
-.aci-skill-compare h2 {
-  margin: 0.25rem 0 0.5rem;
 }
 
 .aci-skill-compare__pickers select {

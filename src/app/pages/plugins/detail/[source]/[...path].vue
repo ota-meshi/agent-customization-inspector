@@ -34,7 +34,7 @@
 // reach no read (`codex.excluded.plugin-files`). Nothing on this page claims
 // the plugin is installed, enabled, trusted, or loaded — all four are User
 // state this product never reads (FR-009).
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -42,6 +42,8 @@ import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
+import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
+import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
@@ -65,14 +67,13 @@ import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspe
 import { AuthoredName } from '../../../../components/authored-name';
 import { pluginCarrierDetailRoute } from '../../../../components/plugin-detail-route';
 import { pluginComparisonRouteFor } from '../../../../composables/plugin-comparison';
-import { nextTabForKey } from '../../../../components/tab-navigation';
+import { useDetailTabs } from '../../../../composables/detail-tabs';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { useSessionViewState } from '../../../../composables/session-view-state';
-import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   PLUGIN_CARRIER_TEXT,
   PLUGIN_SOURCE_FORM_TEXT,
@@ -943,14 +944,6 @@ const manifestPathText = computed(() =>
   manifestFile.value === null ? '' : escapeControlCharacters(manifestFile.value),
 );
 
-/** The carrier's own diagnostics, rendered as the registry's maintained text (FR-028). */
-const diagnosticMessages = computed(() =>
-  (openDetail.value?.diagnostics ?? []).map((diagnostic) => ({
-    key: diagnostic.diagnosticId,
-    text: DIAGNOSTIC_REGISTRY[diagnostic.code].message,
-  })),
-);
-
 /** The open file's own diagnostics — a read that failed, or bytes no reader shows. */
 const openFileDiagnostics = computed(() => {
   if (openFile.value === null) {
@@ -1022,15 +1015,9 @@ const PLUGIN_DETAIL_TAB_TEXT: Readonly<Record<PluginDetailTab, string>> = {
   files: 'Files',
 };
 
-const activeTab = ref<PluginDetailTab>('plugin');
-/** The tab buttons, so a switch this page decides can carry focus with it. */
-const tabButtons = ref<HTMLButtonElement[]>([]);
-
 /**
- * The page's root, for {@link selectTab}. Declared before the tab-selection
- * watch below: that watch is immediate, so it calls `selectTab` synchronously
- * during setup, and a `const` declared after it would still be in its temporal
- * dead zone there.
+ * The page's root, for the tab strip's own selection
+ * (`detail-tabs.ts` § DetailTabs.select).
  */
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
 const heading = useTemplateRef<HTMLHeadingElement>('heading');
@@ -1049,54 +1036,17 @@ const paneElement = ref<HTMLElement | null>(null);
 const reservedPaneHeight = ref(0);
 
 /**
- * Selects a tab on the reader's behalf, keeping focus reachable.
- *
- * Both panels stay in the document and the unselected one is hidden, so a
- * switch the reader did not click can hide the subtree their focus is in — a
- * history step to another of this plugin's files while they were reading the
- * declaration. Focus would then be on a hidden element, and the next Tab would
- * restart from the top of the document. Moving it to the tab that now owns the
- * panel keeps the reader where the content they navigated to is.
+ * The strip and the panels it controls (`detail-tabs.ts` § DetailTabs).
+ * Declared before the tab-selection watch below: that watch is immediate, so
+ * it calls `select` synchronously during setup, and a `const` declared after
+ * it would still be in its temporal dead zone there.
  */
-function selectTab(tab: PluginDetailTab): void {
-  if (activeTab.value === tab) {
-    return;
-  }
-  const hidden = pageRoot.value?.querySelector(`#${pluginTabPanelId(activeTab.value)}`);
-  const focusWasInside = hidden?.contains(document.activeElement) === true;
-  activeTab.value = tab;
-  if (focusWasInside) {
-    void nextTick(() => tabButtons.value[PLUGIN_DETAIL_TABS.indexOf(tab)]?.focus());
-  }
-}
-
-/** The `id` of the panel a tab controls (WCAG 4.1.2). */
-function pluginTabPanelId(tab: PluginDetailTab): string {
-  return `aci-plugin-panel-${tab}`;
-}
-
-/** The `id` of the tab that controls {@link pluginTabPanelId}'s panel. */
-function pluginTabId(tab: PluginDetailTab): string {
-  return `aci-plugin-tab-${tab}`;
-}
-
-/**
- * Arrow keys move the selection, matching the WAI-ARIA tabs pattern. Selection
- * follows focus because switching panels issues no request and loses no work:
- * both halves are already in hand, so the extra Enter that manual activation
- * asks for would be friction with nothing behind it.
- */
-function onTabKeydown(event: KeyboardEvent, index: number): void {
-  const next = nextTabForKey(event.key, PLUGIN_DETAIL_TABS, index);
-  if (next === null) {
-    // A key the pattern does not handle keeps its default behavior; swallowing
-    // it here would break Tab out of the strip.
-    return;
-  }
-  event.preventDefault();
-  activeTab.value = next;
-  document.getElementById(pluginTabId(next))?.focus();
-}
+const detailTabs = useDetailTabs({
+  pageRoot,
+  tabs: PLUGIN_DETAIL_TABS,
+  initialTab: 'plugin',
+  idPrefix: 'plugin',
+});
 
 /**
  * Opening a plugin starts on the plugin itself, unless the URL selected one of
@@ -1129,7 +1079,7 @@ watch(
       return;
     }
     tabDecidedFor = decidingFor;
-    selectTab(filePath === null ? 'plugin' : 'files');
+    detailTabs.select(filePath === null ? 'plugin' : 'files');
   },
   { immediate: true },
 );
@@ -1397,16 +1347,21 @@ useReportedPageSubject(titleSubject);
 
     <div class="aci-plugin-detail__title">
       <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <!-- The record's own identity heads the page: the declared plugin name,
-             or the carrier's path for the row that resolves none. Either is
-             escaped for presentation, never a locator anything can open
-             (FR-024, FR-030). -->
-        <AuthoredNameText v-if="pluginName !== null" :name="pluginName">
-          <span :class="{ 'aci-authored-text': pluginName.isAuthored }">{{ pluginName.text }}</span>
-        </AuthoredNameText>
-        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-          pathText
-        }}</span>
+        <DetailHeadingSubject
+          :kind-text="CUSTOMIZATION_KIND_TEXT.plugin"
+          :path-text="pathText"
+          :path-is-spelled-out="pathIsSpelledOut"
+        >
+          <!-- The declared plugin name heads the page where it resolves; the
+               carrier's own path heads the row that resolves none. -->
+          <template v-if="pluginName !== null" #name>
+            <AuthoredNameText :name="pluginName">
+              <span :class="{ 'aci-authored-text': pluginName.isAuthored }">{{
+                pluginName.text
+              }}</span>
+            </AuthoredNameText>
+          </template>
+        </DetailHeadingSubject>
       </h2>
       <!-- This plugin's comparison, at the end of the heading's own line: it
            acts on the subject that heading names — the declared plugin across
@@ -1520,11 +1475,7 @@ useReportedPageSubject(titleSubject);
         label="Other carriers declaring this name"
       />
 
-      <ul v-if="diagnosticMessages.length > 0" class="aci-plugin-detail__diagnostics" role="list">
-        <li v-for="diagnostic in diagnosticMessages" :key="diagnostic.key" class="aci-note">
-          {{ diagnostic.text }}
-        </li>
-      </ul>
+      <DetailDiagnostics :diagnostics="openDetail?.diagnostics ?? []" />
 
       <!-- Two subjects, two tabs: the offering the catalog declares, and the
            files the plugin ships. A real `tablist` rather than a pair of
@@ -1532,25 +1483,12 @@ useReportedPageSubject(titleSubject);
            selected" for the strip to be usable at all (QR-004,
            contracts/accessibility-acceptance.md) — which obliges the roving
            tabindex and arrow keys the WAI-ARIA tabs pattern specifies. -->
-      <div class="aci-kind-tabs" role="tablist" aria-label="Plugin detail">
-        <button
-          v-for="(tab, index) in PLUGIN_DETAIL_TABS"
-          :id="pluginTabId(tab)"
-          :key="tab"
-          ref="tabButtons"
-          class="aci-kind-tab"
-          type="button"
-          role="tab"
-          :aria-controls="pluginTabPanelId(tab)"
-          :aria-selected="tab === activeTab"
-          :tabindex="tab === activeTab ? 0 : -1"
-          @click="activeTab = tab"
-          @keydown="onTabKeydown($event, index)"
-        >
+      <DetailTabStrip :tabs="detailTabs" label="Plugin detail">
+        <template #tab="{ tab }">
           {{ PLUGIN_DETAIL_TAB_TEXT[tab] }}
           <span v-if="tab === 'files'" class="aci-kind-count">{{ rowFiles.length }}</span>
-        </button>
-      </div>
+        </template>
+      </DetailTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden, so
            Monaco keeps its model and the reader's scroll position across a tab
@@ -1558,10 +1496,10 @@ useReportedPageSubject(titleSubject);
            omitting one would drop a relationship assistive technology uses to
            move from a tab to what it controls. -->
       <div
-        v-show="activeTab === 'plugin'"
-        :id="pluginTabPanelId('plugin')"
+        v-show="detailTabs.activeTab === 'plugin'"
+        :id="detailTabs.panelId('plugin')"
         role="tabpanel"
-        :aria-labelledby="pluginTabId('plugin')"
+        :aria-labelledby="detailTabs.tabId('plugin')"
         tabindex="0"
       >
         <!-- The catalog's own declarations first: what the file says about
@@ -1663,10 +1601,10 @@ useReportedPageSubject(titleSubject);
       </div>
 
       <div
-        v-show="activeTab === 'files'"
-        :id="pluginTabPanelId('files')"
+        v-show="detailTabs.activeTab === 'files'"
+        :id="detailTabs.panelId('files')"
         role="tabpanel"
-        :aria-labelledby="pluginTabId('files')"
+        :aria-labelledby="detailTabs.tabId('files')"
         tabindex="0"
       >
         <!-- What the plugin ships, which is what the plugin is: an offering
@@ -1787,12 +1725,21 @@ useReportedPageSubject(titleSubject);
 </template>
 
 <style scoped>
+/* The plugin detail reads top to bottom: what the carrier declares, then the
+   files the plugin ships. It scrolls as a page rather than fitting the
+   viewport, the same trade the other detail routes make. */
+.aci-plugin-detail {
+  display: flex;
+  flex-direction: column;
+}
+
 /* The heading and the comparison share a line, as every detail page's do. */
 .aci-plugin-detail__title {
-  align-items: baseline;
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 0.5rem 0.75rem;
+  margin-block-end: 0.5rem;
 }
 
 /* Whatever closes the heading's line: the comparison of the subject it names. */
@@ -1844,13 +1791,6 @@ useReportedPageSubject(titleSubject);
   border: 0;
   font-size: 1rem;
   margin: 0;
-  padding: 0;
-}
-
-/* The file's own diagnostics, set as plain notes under the facts they qualify. */
-.aci-plugin-detail__diagnostics {
-  list-style: none;
-  margin: 0.5rem 0;
   padding: 0;
 }
 </style>

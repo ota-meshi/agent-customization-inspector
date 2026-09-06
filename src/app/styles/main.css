@@ -755,8 +755,15 @@ button[aria-disabled='true'] {
    forces sideways scrolling at narrow widths and 200% zoom (WCAG 1.4.10). */
 .aci-detail-title {
   font-size: 1.0625rem;
-  margin: 0.375rem 0 0.625rem;
+  margin: 0.25rem 0 0;
   overflow-wrap: anywhere;
+}
+
+/* The comparison pages' heading. Only the spacing is shared: the subject
+   heading above it is set larger, while a comparison is headed by this
+   product's own words at the shell's own size. */
+.aci-compare-title {
+  margin: 0.25rem 0 0.5rem;
 }
 
 /* The no-name badge where a title's subject goes. The badge's own size is a

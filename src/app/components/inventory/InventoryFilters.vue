@@ -31,7 +31,8 @@
 // what it filters (`All sources`, `All tools`), so a visible label beside it in
 // a one-line heading row would be the same word twice; what a control must not
 // be is unnamed to assistive technology (WCAG 3.3.2, 4.1.2).
-import { nextTick, useTemplateRef } from 'vue';
+import { computed, nextTick, useTemplateRef } from 'vue';
+import LiveRegion from '../LiveRegion.vue';
 import { SUPPORTED_TOOL_TEXT, isSupportedTool, type SupportedTool } from '../../../shared/entities';
 import type { SourceKind } from '../../../shared/api-types';
 import { SOURCE_KIND_TEXT } from '../../../shared/api-text';
@@ -87,7 +88,16 @@ function toolFromSelection(value: string): SupportedTool | null {
  * The row-count line, which is where focus goes when the button that had it
  * removes itself.
  */
-const matchSummary = useTemplateRef<HTMLElement>('matchSummary');
+const matchSummary = useTemplateRef<InstanceType<typeof LiveRegion>>('matchSummary');
+
+/**
+ * What the narrowing did, worded here because this component is the only
+ * surface that states it.
+ */
+const matchSummaryText = computed(
+  () =>
+    `Showing ${props.matchCount} of ${props.totalCount} ${props.totalCount === 1 ? props.unit.one : props.unit.many} in this list.`,
+);
 
 /**
  * Clears every filter and then moves focus, because the button the user
@@ -189,17 +199,7 @@ function toSelectValue(value: string | null): string {
          beside these controls already states the kind's own count, and the rows
          are the visible answer. It stays in the document from the first render
          so a change is announced at all (WCAG 4.1.3). -->
-    <p
-      ref="matchSummary"
-      class="aci-live-region"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      tabindex="-1"
-    >
-      Showing {{ matchCount }} of {{ totalCount }} {{ totalCount === 1 ? unit.one : unit.many }} in
-      this list.
-    </p>
+    <LiveRegion ref="matchSummary" :text="matchSummaryText" tabindex="-1" />
   </div>
 </template>
 

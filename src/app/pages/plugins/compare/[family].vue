@@ -1866,7 +1866,7 @@ onBeforeUnmount(() => {
       ><span class="aci-detail-crumbs__subject">Compare</span>
     </p>
 
-    <h2 ref="heading" tabindex="-1">Compare plugins</h2>
+    <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare plugins</h2>
 
     <!-- What is being compared, on the line directly below the heading so the
          two are read together. The heading states the page's purpose, because

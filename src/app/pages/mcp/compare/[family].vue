@@ -720,7 +720,7 @@ onBeforeUnmount(() => {
       ><span class="aci-detail-crumbs__subject">Compare</span>
     </p>
 
-    <h2 ref="heading" tabindex="-1">Compare MCP server declarations</h2>
+    <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare MCP server declarations</h2>
 
     <!-- What is being compared, on the line directly below the heading so the
          two are read together. The heading states the page's purpose, because
@@ -867,10 +867,6 @@ onBeforeUnmount(() => {
 .aci-mcp-compare {
   display: flex;
   flex-direction: column;
-}
-
-.aci-mcp-compare h2 {
-  margin: 0.25rem 0 0.5rem;
 }
 
 /* An authored path has no break opportunities of its own; wrapping keeps the
