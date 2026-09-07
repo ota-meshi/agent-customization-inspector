@@ -28,17 +28,19 @@
 // Like the plugin detail, this surface shows declared values exactly as
 // authored — credentials included, with nothing masked and no control that
 // would uncover a masked value — and it says none of that (FR-027).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
+import SubjectTabPanel from '../../../components/inspection/SubjectTabPanel.vue';
+import SubjectTabStrip from '../../../components/inspection/SubjectTabStrip.vue';
 import RecognitionComparison from '../../../components/plugin-comparison/RecognitionComparison.vue';
 import SourceDiff from '../../../components/comparison/SourceDiff.vue';
 import SourceViewer from '../../../components/inspection/SourceViewer.vue';
-import { nextTabForKey } from '../../../components/tab-navigation';
+import { useSubjectTabs } from '../../../composables/subject-tabs';
 import type { PluginComparisonSide } from '../../../components/plugin-comparison/recognition-comparison';
 import { canonicalDeclaredEntriesJsonText } from '../../../components/declared-entries-json';
 import {
@@ -56,6 +58,7 @@ import {
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
+import { failureTextOf } from '../../../components/failure-text';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import {
   pluginComparisonRouteFor,
@@ -136,7 +139,7 @@ const ABSENCE_NOTE = 'no file in this plugin';
  * above reach for it, and a `const` declared after them would sit in its
  * temporal dead zone for any of them that ran during setup.
  */
-const heading = ref<HTMLHeadingElement | null>(null);
+const heading = useTemplateRef<HTMLHeadingElement>('heading');
 
 /** The inventory link that lands on the plugins tab rather than the default. */
 const inventoryRoute = '/?kind=plugin';
@@ -241,7 +244,7 @@ function switchTo(left: ComparisonSide, right: ComparisonSide): void {
   // naming a file the page is not showing until a reload obeyed it. A name
   // the new pair does not ship falls back to that pair's own first file once
   // its rows settle ({@link comparedFile}).
-  const carriedFile = activeTab.value === 'files' ? comparedFile.value : null;
+  const carriedFile = subjectTabs.activeTab === 'files' ? comparedFile.value : null;
   switchedFile = carriedFile;
   void router.replace(
     pluginComparisonRouteFor(family.value, subjectName.value ?? '', left, right, carriedFile),
@@ -532,35 +535,12 @@ const COMPARE_TAB_TEXT: Readonly<Record<CompareTab, string>> = {
   files: 'Files',
 };
 
-const activeTab = ref<CompareTab>('declaration');
-
-/** The `id` of the panel a tab controls (WCAG 4.1.2). */
-function comparePanelId(tab: CompareTab): string {
-  return `aci-plugin-compare-panel-${tab}`;
-}
-
-/** The `id` of the tab that controls {@link comparePanelId}'s panel. */
-function compareTabId(tab: CompareTab): string {
-  return `aci-plugin-compare-tab-${tab}`;
-}
-
-/**
- * Arrow keys move the selection, matching the WAI-ARIA tabs pattern that
- * every other tab strip in this product follows. Selection follows focus
- * because switching panels loses no work: opening the files panel asks for
- * the compared file's two copies once, and stepping back to the declarations
- * keeps them.
- */
-function onTabKeydown(event: KeyboardEvent, index: number): void {
-  const next = nextTabForKey(event.key, COMPARE_TABS, index);
-  if (next === null) {
-    // A key the pattern does not handle keeps its default behavior.
-    return;
-  }
-  event.preventDefault();
-  activeTab.value = next;
-  document.getElementById(compareTabId(next))?.focus();
-}
+/** The strip and the panels it controls (`subject-tabs.ts` § SubjectTabs). */
+const subjectTabs = useSubjectTabs({
+  tabs: COMPARE_TABS,
+  initialTab: 'declaration',
+  idPrefix: 'plugin-compare',
+});
 
 /**
  * The file of the compared plugins the URL has open, named relative to each
@@ -868,9 +848,10 @@ const manifestStatement = computed<string | null>(() => {
     case 'stale':
       return 'A manifest this link named is no longer in the current scan. A rescan that brings it back will make this comparison resolve again.';
     case 'failed':
-      return comparison.manifestErrorMessage.value === null
-        ? 'This manifest comparison could not be loaded.'
-        : `This manifest comparison could not be loaded. ${comparison.manifestErrorMessage.value}`;
+      return failureTextOf(
+        'This manifest comparison could not be loaded.',
+        comparison.manifestErrorMessage.value,
+      );
     case 'idle':
     case 'ready':
       if (row.leftPath === null || row.rightPath === null) {
@@ -1099,7 +1080,7 @@ watch(
     // The file the link arrived with, read once here rather than watched:
     // choosing a file inside the panel moves that coordinate too, and a
     // decision that watched it would move the reader's tab under them.
-    activeTab.value = selectedFile.value === null ? 'declaration' : 'files';
+    subjectTabs.activeTab = selectedFile.value === null ? 'declaration' : 'files';
   },
   { immediate: true },
 );
@@ -1147,7 +1128,7 @@ watch(
     (): string | null => selectedFileRow.value?.leftPath ?? null,
     (): string | null => selectedFileRow.value?.rightPath ?? null,
     selectedFileIsShared,
-    activeTab,
+    () => subjectTabs.activeTab,
   ],
   ([leftFilePath, rightFilePath, shared, tab]) => {
     const row =
@@ -1354,9 +1335,10 @@ const fileStateStatement = computed<string | null>(() => {
       // the world the request already outran.
       return 'One of these copies is no longer in the current scan. A rescan that brings it back will make this comparison resolve again.';
     case 'failed':
-      return comparison.fileErrorMessage.value === null
-        ? 'This file comparison could not be loaded.'
-        : `This file comparison could not be loaded. ${comparison.fileErrorMessage.value}`;
+      return failureTextOf(
+        'This file comparison could not be loaded.',
+        comparison.fileErrorMessage.value,
+      );
     case 'idle':
       return 'This file comparison could not be loaded.';
     case 'loading':
@@ -1627,9 +1609,7 @@ const stateStatement = computed<string | null>(() => {
     case 'stale':
       return 'No plugin carrier in the current scan sits at one of this link’s paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
     case 'failed':
-      return comparison.errorMessage.value === null
-        ? 'This comparison could not be loaded.'
-        : `This comparison could not be loaded. ${comparison.errorMessage.value}`;
+      return failureTextOf('This comparison could not be loaded.', comparison.errorMessage.value);
     case 'idle':
       return 'This comparison could not be loaded.';
     case 'loading':
@@ -1665,7 +1645,7 @@ const announcement = computed(() => {
     comparison.manifestStatus.value === 'loading'
       ? 'Loading the manifests…'
       : (manifestStatement.value ?? ''),
-    activeTab.value === 'files' || comparison.fileStatus.value !== 'idle'
+    subjectTabs.activeTab === 'files' || comparison.fileStatus.value !== 'idle'
       ? comparison.fileStatus.value === 'loading'
         ? 'Loading this file comparison…'
         : (fileStateStatement.value ?? '')
@@ -1814,7 +1794,7 @@ const titleSubject = computed<string>(() => {
       // files panel is the panel on screen, though — the declarations panel
       // shows no file, so naming the files panel's default there would title
       // the tab with a subject nobody is looking at.
-      const file = activeTab.value === 'files' ? comparedFile.value : null;
+      const file = subjectTabs.activeTab === 'files' ? comparedFile.value : null;
       return file === null ? base : `${base} — ${file}`;
     }
     case 'stale':
@@ -1938,35 +1918,17 @@ onBeforeUnmount(() => {
       <!-- The same strip every other surface uses, down to its classes and
            its roving tabindex: two subjects, and a reader who knows one strip
            knows this one (QR-004, contracts/accessibility-acceptance.md). -->
-      <div class="aci-kind-tabs" role="tablist" aria-label="Plugin comparison">
-        <button
-          v-for="(tab, index) in COMPARE_TABS"
-          :id="compareTabId(tab)"
-          :key="tab"
-          class="aci-kind-tab"
-          type="button"
-          role="tab"
-          :aria-controls="comparePanelId(tab)"
-          :aria-selected="tab === activeTab"
-          :tabindex="tab === activeTab ? 0 : -1"
-          @click="activeTab = tab"
-          @keydown="onTabKeydown($event, index)"
-        >
+      <SubjectTabStrip :tabs="subjectTabs" label="Plugin comparison">
+        <template #tab="{ tab }">
           {{ COMPARE_TAB_TEXT[tab] }}
-          <span v-if="tab === 'files'" class="aci-kind-count">{{ fileRows.length }}</span>
-        </button>
-      </div>
+          <span v-if="tab === 'files'" class="aci-tab-count">{{ fileRows.length }}</span>
+        </template>
+      </SubjectTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
            so the diff behind the strip keeps its scroll and its models across
            a switch. -->
-      <div
-        v-show="activeTab === 'declaration'"
-        :id="comparePanelId('declaration')"
-        role="tabpanel"
-        :aria-labelledby="compareTabId('declaration')"
-        tabindex="0"
-      >
+      <SubjectTabPanel :tabs="subjectTabs" tab="declaration">
         <RecognitionComparison
           :sides="readyView.sides"
           :content-label="diffContentLabel"
@@ -2037,15 +1999,9 @@ onBeforeUnmount(() => {
             </section>
           </template>
         </RecognitionComparison>
-      </div>
+      </SubjectTabPanel>
 
-      <div
-        v-show="activeTab === 'files'"
-        :id="comparePanelId('files')"
-        role="tabpanel"
-        :aria-labelledby="compareTabId('files')"
-        tabindex="0"
-      >
+      <SubjectTabPanel :tabs="subjectTabs" tab="files">
         <!-- Which directory each side of a file comparison comes from, at the
              top of the panel the way the declaration panel heads its two
              carriers: the names below are names inside these two roots. -->
@@ -2128,7 +2084,7 @@ onBeforeUnmount(() => {
             </template>
           </section>
         </template>
-      </div>
+      </SubjectTabPanel>
     </div>
 
     <template v-else-if="status === 'loading'">

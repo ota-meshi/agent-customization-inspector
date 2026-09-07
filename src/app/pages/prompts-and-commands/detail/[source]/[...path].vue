@@ -51,8 +51,8 @@ import {
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
-import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
+import SubjectTabStrip from '../../../../components/inspection/SubjectTabStrip.vue';
+import SubjectTabPanel from '../../../../components/inspection/SubjectTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
 import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
@@ -80,7 +80,7 @@ import { AuthoredName } from '../../../../components/authored-name';
 import { LEADING_PROMPT_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
-import { useDetailTabs } from '../../../../composables/detail-tabs';
+import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { promptComparisonRouteFor } from '../../../../composables/prompt-comparison';
 import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 
@@ -480,9 +480,8 @@ const request = useDetailRequest({
 });
 const { detailState } = request;
 
-/** The strip and the panels it controls (`detail-tabs.ts` § DetailTabs). */
-const detailTabs = useDetailTabs({
-  pageRoot,
+/** The strip and the panels it controls (`subject-tabs.ts` § SubjectTabs). */
+const subjectTabs = useSubjectTabs({
   tabs: PROMPT_DETAIL_TABS,
   initialTab: 'prompt',
   idPrefix: 'prompt',
@@ -522,7 +521,7 @@ watch([openDetail, openSource, openPath], ([detail, source, path]) => {
     return;
   }
   tabDecidedFor = decidingFor;
-  detailTabs.activeTab = presentation.value !== null ? 'prompt' : 'file';
+  subjectTabs.activeTab = presentation.value !== null ? 'prompt' : 'file';
 });
 
 /**
@@ -716,14 +715,14 @@ watch(
            the complete file itself. A real `tablist`, with the roving
            tabindex and arrow keys the WAI-ARIA tabs pattern specifies
            (QR-004, contracts/accessibility-acceptance.md). -->
-      <DetailTabStrip :tabs="detailTabs" label="Prompt and command detail">
+      <SubjectTabStrip :tabs="subjectTabs" label="Prompt and command detail">
         <template #tab="{ tab }">{{ PROMPT_DETAIL_TAB_TEXT[tab] }}</template>
-      </DetailTabStrip>
+      </SubjectTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
            so Monaco keeps its model and the reader's scroll position across a
            tab switch, and both `aria-controls` IDREFs resolve. -->
-      <DetailTabPanel :tabs="detailTabs" tab="prompt">
+      <SubjectTabPanel :tabs="subjectTabs" tab="prompt">
         <!-- A failed extraction leaves this panel with nothing parsed to
              show; its Diagnostic is what says so, and the complete source is
              one tab away (FR-028). -->
@@ -765,9 +764,9 @@ watch(
             content-label="Prompt of"
           />
         </div>
-      </DetailTabPanel>
+      </SubjectTabPanel>
 
-      <DetailTabPanel :tabs="detailTabs" tab="file">
+      <SubjectTabPanel :tabs="subjectTabs" tab="file">
         <!-- What the read produced, and nothing else. The file below is the
              file; a viewer that narrated what a file might contain would be
              telling the reader about their own repository (FR-027). -->
@@ -791,7 +790,7 @@ watch(
           :source-relative-path="openDetail.file.sourceRelativePath"
         />
         <p v-else class="aci-note">This file has no source text to show.</p>
-      </DetailTabPanel>
+      </SubjectTabPanel>
     </template>
   </div>
 </template>

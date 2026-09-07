@@ -21,6 +21,7 @@ import {
   type ShallowRef,
 } from 'vue';
 import { familyGenerationOf, type SourceSelector } from '../components/detail-route';
+import { failureTextOf } from '../components/failure-text';
 import { usePageOwnership } from './page-ownership';
 import type { DetailHeadingFocus } from './detail-heading-focus';
 import { useSessionViewState } from './session-view-state';
@@ -184,8 +185,7 @@ export class DetailRequest {
       if (said === null) {
         return null;
       }
-      const error = this.detailError.value;
-      return error === null ? said : `${said} ${error}`;
+      return failureTextOf(said, this.detailError.value);
     });
   }
 

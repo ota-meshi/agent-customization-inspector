@@ -65,8 +65,8 @@ import DetailFailureNotice from '../../../../components/inspection/DetailFailure
 import LeavesIcon from '~icons/lucide/arrow-right';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
-import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
+import SubjectTabStrip from '../../../../components/inspection/SubjectTabStrip.vue';
+import SubjectTabPanel from '../../../../components/inspection/SubjectTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -93,7 +93,7 @@ import {
 } from '../../../../components/detail-route';
 import { VENDOR_SURFACE_TEXT } from '../../../../../shared/registries/behavior-text';
 import type { VendorSurface } from '../../../../../shared/registries/behavior-types';
-import { useDetailTabs } from '../../../../composables/detail-tabs';
+import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { skillComparisonRouteFor } from '../../../../composables/skill-comparison';
 import { useDetailAddress } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
@@ -666,20 +666,16 @@ const SKILL_DETAIL_TAB_TEXT: Readonly<Record<SkillDetailTab, string>> = {
   files: 'Files',
 };
 
-/**
- * The page's root, for the stale guard and the tab strip's own selection
- * (`detail-tabs.ts` § DetailTabs.select).
- */
+/** The page's root, which keeps the heading-focus guards inside this page. */
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
 
 /**
- * The strip and the panels it controls (`detail-tabs.ts` § DetailTabs).
+ * The strip and the panels it controls (`subject-tabs.ts` § SubjectTabs).
  * Declared before the tab-selection watch below: that watch is immediate, so
  * it calls `select` synchronously during setup, and a `const` declared after
  * it would still be in its temporal dead zone there.
  */
-const detailTabs = useDetailTabs({
-  pageRoot,
+const subjectTabs = useSubjectTabs({
   tabs: SKILL_DETAIL_TABS,
   initialTab: 'skill',
   idPrefix: 'skill',
@@ -768,7 +764,7 @@ watch(
     // complete source is one tab away, and opening on an empty panel would read
     // as a file with nothing in it (FR-028).
     if (!hasPresentation || entryPathValue !== openPathValue) {
-      detailTabs.select('files');
+      subjectTabs.select('files');
       return;
     }
     // The entry point is open and there is a skill to show. Lead with it on
@@ -776,7 +772,7 @@ watch(
     // the entry point from the file list is a file selection, and answering it
     // by leaving the list would undo the reader's own click.
     if (skillArrived) {
-      detailTabs.select('skill');
+      subjectTabs.select('skill');
     }
   },
   { immediate: true },
@@ -1132,7 +1128,7 @@ watch(
            selecting a companion read two sizes stacked and could not tell
            which one the page was about. -->
       <DetailAttributes
-        v-if="detailTabs.activeTab === 'skill'"
+        v-if="subjectTabs.activeTab === 'skill'"
         :file="entryDetail.file"
         :source="openSource"
       >
@@ -1234,19 +1230,19 @@ watch(
            for the strip to be usable at all (QR-004,
            contracts/accessibility-acceptance.md) — which obliges the roving
            tabindex and arrow keys the WAI-ARIA tabs pattern specifies. -->
-      <DetailTabStrip :tabs="detailTabs" label="Skill detail">
+      <SubjectTabStrip :tabs="subjectTabs" label="Skill detail">
         <template #tab="{ tab }">
           {{ SKILL_DETAIL_TAB_TEXT[tab] }}
-          <span v-if="tab === 'files'" class="aci-kind-count">{{ treeFiles.length }}</span>
+          <span v-if="tab === 'files'" class="aci-tab-count">{{ treeFiles.length }}</span>
         </template>
-      </DetailTabStrip>
+      </SubjectTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
            so Monaco keeps its model and the reader's scroll position across a
            tab switch. Every tab therefore names its panel: both IDREFs resolve,
            and omitting one would drop a relationship assistive technology
            uses to move from a tab to what it controls. -->
-      <DetailTabPanel :tabs="detailTabs" tab="skill">
+      <SubjectTabPanel :tabs="subjectTabs" tab="skill">
         <!-- The skill itself: what it declares and what it tells the product to
            do. The `SKILL.md` carries both, and showing only its bytes would
            leave the reader to find the seam — so the two are shown apart,
@@ -1294,9 +1290,9 @@ watch(
             content-label="Instructions of"
           />
         </div>
-      </DetailTabPanel>
+      </SubjectTabPanel>
 
-      <DetailTabPanel :tabs="detailTabs" tab="files">
+      <SubjectTabPanel :tabs="subjectTabs" tab="files">
         <SkipLink target-id="aci-skill-detail-file-contents" />
 
         <div class="aci-skill-detail__layout">
@@ -1383,7 +1379,7 @@ watch(
             </template>
           </div>
         </div>
-      </DetailTabPanel>
+      </SubjectTabPanel>
     </template>
   </div>
 </template>
