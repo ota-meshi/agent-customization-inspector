@@ -1,5 +1,11 @@
 # agent-customization-inspector
 
+## 0.2.1
+
+### Patch Changes
+
+- [#7](https://github.com/ota-meshi/agent-customization-inspector/pull/7) [`e78faff`](https://github.com/ota-meshi/agent-customization-inspector/commit/e78faff3b19da2064f152ac9a44d7b88da4775af) Thanks [@ota-meshi](https://github.com/ota-meshi)! - Remove images from publish files
+
 ## 0.2.0
 
 ### Minor Changes
