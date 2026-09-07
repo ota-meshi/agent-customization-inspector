@@ -1023,67 +1023,18 @@ h2 .aci-carrier-kind {
   padding: 0.75rem 1.25rem 2rem;
 }
 
-/* Detail tabs: the two or three halves a detail page shows one at a time.
-   Colors come from the same system-color tokens as the rest of the shell, so
-   the strip follows the OS light/dark scheme instead of pinning one palette.
-   The selected tab is marked by weight and a border as well as color, so it
-   survives a monochrome or forced-colors rendering (WCAG 2.2 AA, QR-004).
-
-   A detail page's tabs are a fixed handful named by its own module, so the
-   strip is a row that fits. The inventory's entries are not: that list is the
-   closed customization catalog plus the one list that belongs to no kind,
-   which outgrew a row and is a rail of its own (`InventoryRail.vue`). */
-/* The edge the tabs sit on. */
-.aci-kind-tabs {
-  align-items: end;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--aci-line);
-  margin: 0.875rem 0 0.625rem;
-}
-
-/* Underlined rather than outlined: the strip's own rule is the line these sit
-   on, and a tab that draws its own box on three sides makes the row read as a
-   set of buttons above a panel instead of one edge with a marker on it. What
-   marks the selected one is a segment of that edge in the accent, drawn thicker
-   so it survives a forced-colors rendering where the accent does not
-   (WCAG 1.4.11). */
-.aci-kind-tab {
-  background: none;
-  border: 0;
-  border-block-end: 2px solid transparent;
-  border-radius: 0;
-  color: var(--aci-muted);
-  cursor: pointer;
-  font: inherit;
-  /* Covers the strip's own bottom border, so the marker sits on that edge
-     rather than above it. */
-  margin-block-end: -1px;
-  padding: 0.3125rem 0.625rem;
-}
-
-.aci-kind-tab:hover {
-  color: var(--aci-text);
-}
-
-.aci-kind-tab[aria-selected='true'] {
-  border-block-end-color: var(--aci-accent);
-  color: var(--aci-text);
-  font-weight: 600;
-}
-
-.aci-kind-tab:focus-visible {
-  outline: 2px solid var(--aci-accent);
-  outline-offset: -2px;
-}
-
-.aci-kind-count {
+/* The count a tab over a list carries — the files a subject ships, not a
+   kind's rows. Written by the callers into the strip's
+   own slot, so the rule is the sheet's: slotted markup carries the caller's
+   scope rather than the strip's (`SubjectTabStrip.vue`). Selected through the
+   role and the state rather than through the strip's class, because a global
+   rule names no component's class. */
+.aci-tab-count {
   color: var(--aci-muted);
   font-variant-numeric: tabular-nums;
   margin-left: 0.4rem;
 }
 
-.aci-kind-tab[aria-selected='true'] .aci-kind-count {
+[role='tab'][aria-selected='true'] .aci-tab-count {
   color: inherit;
 }

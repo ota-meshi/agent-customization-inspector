@@ -47,8 +47,8 @@ import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
-import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
+import SubjectTabStrip from '../../../../components/inspection/SubjectTabStrip.vue';
+import SubjectTabPanel from '../../../../components/inspection/SubjectTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
 import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
@@ -70,7 +70,7 @@ import {
   originRowNameQuery,
   detailRoutePathOf,
 } from '../../../../components/detail-route';
-import { useDetailTabs } from '../../../../composables/detail-tabs';
+import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
@@ -606,9 +606,8 @@ const request = useDetailRequest({
 });
 const { detailState } = request;
 
-/** The strip and the panels it controls (`detail-tabs.ts` § DetailTabs). */
-const detailTabs = useDetailTabs({
-  pageRoot,
+/** The strip and the panels it controls (`subject-tabs.ts` § SubjectTabs). */
+const subjectTabs = useSubjectTabs({
   tabs: AGENT_DETAIL_TABS,
   initialTab: 'agent',
   idPrefix: 'agent',
@@ -646,7 +645,7 @@ watch([openDetail, openSource, openPath], ([detail, source, path]) => {
     return;
   }
   tabDecidedFor = decidingFor;
-  detailTabs.activeTab = presentationOf(detail) !== null ? 'agent' : 'file';
+  subjectTabs.activeTab = presentationOf(detail) !== null ? 'agent' : 'file';
 });
 
 /**
@@ -853,14 +852,14 @@ watch(
            the complete file itself. A real `tablist`, with the roving tabindex and
            arrow keys the WAI-ARIA tabs pattern specifies (QR-004,
            contracts/accessibility-acceptance.md). -->
-      <DetailTabStrip :tabs="detailTabs" label="Custom agent detail">
+      <SubjectTabStrip :tabs="subjectTabs" label="Custom agent detail">
         <template #tab="{ tab }">{{ AGENT_DETAIL_TAB_TEXT[tab] }}</template>
-      </DetailTabStrip>
+      </SubjectTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
            so Monaco keeps its model and the reader's scroll position across a
            tab switch, and both `aria-controls` IDREFs resolve. -->
-      <DetailTabPanel :tabs="detailTabs" tab="agent">
+      <SubjectTabPanel :tabs="subjectTabs" tab="agent">
         <!-- A failed extraction leaves this panel with nothing parsed to show;
              its Diagnostic is what says so, and the complete source is one tab
              away (FR-028). -->
@@ -908,9 +907,9 @@ watch(
             content-language="markdown"
           />
         </div>
-      </DetailTabPanel>
+      </SubjectTabPanel>
 
-      <DetailTabPanel :tabs="detailTabs" tab="file">
+      <SubjectTabPanel :tabs="subjectTabs" tab="file">
         <!-- What the read produced, and nothing else. The file below is the
              file; a viewer that narrated what a file might contain would be
              telling the reader about their own repository (FR-027). -->
@@ -936,7 +935,7 @@ watch(
           :source-relative-path="openView.detail.file.sourceRelativePath"
         />
         <p v-else class="aci-note">This file has no source text to show.</p>
-      </DetailTabPanel>
+      </SubjectTabPanel>
     </template>
   </div>
 </template>

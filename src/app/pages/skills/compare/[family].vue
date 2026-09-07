@@ -51,11 +51,12 @@ import {
   comparisonSourceQualifierOf,
   comparisonSideLabel,
 } from '../../../components/comparison-side-picker';
+import { failureTextOf } from '../../../components/failure-text';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/skill-comparison/RecognitionComparison.vue';
@@ -1089,9 +1090,7 @@ const stateStatement = computed<string | null>(() => {
             comparison.unreadableSide.value,
           )}`;
     case 'failed':
-      return comparison.errorMessage.value === null
-        ? 'This comparison could not be loaded.'
-        : `This comparison could not be loaded. ${comparison.errorMessage.value}`;
+      return failureTextOf('This comparison could not be loaded.', comparison.errorMessage.value);
     case 'idle':
       return 'This comparison could not be loaded.';
     case 'loading':
@@ -1147,7 +1146,7 @@ function copyLabel(copy: SkillCopy): string {
 }
 
 /** The page heading, focused on entry so a keyboard user starts at the top. */
-const heading = ref<HTMLHeadingElement | null>(null);
+const heading = useTemplateRef<HTMLHeadingElement>('heading');
 
 /** The ready view's own region; what the focus guard below watches. */
 const readyRegion = ref<HTMLElement | null>(null);

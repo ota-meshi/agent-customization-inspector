@@ -41,8 +41,8 @@ import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
-import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
+import SubjectTabStrip from '../../../../components/inspection/SubjectTabStrip.vue';
+import SubjectTabPanel from '../../../../components/inspection/SubjectTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
@@ -67,7 +67,7 @@ import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspe
 import { AuthoredName } from '../../../../components/authored-name';
 import { pluginCarrierDetailRoute } from '../../../../components/plugin-detail-route';
 import { pluginComparisonRouteFor } from '../../../../composables/plugin-comparison';
-import { useDetailTabs } from '../../../../composables/detail-tabs';
+import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
 import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
@@ -1019,10 +1019,7 @@ const PLUGIN_DETAIL_TAB_TEXT: Readonly<Record<PluginDetailTab, string>> = {
   files: 'Files',
 };
 
-/**
- * The page's root, for the tab strip's own selection
- * (`detail-tabs.ts` § DetailTabs.select).
- */
+/** The page's root, which keeps the heading-focus guards inside this page. */
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
 const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
 
@@ -1040,13 +1037,12 @@ const paneElement = ref<HTMLElement | null>(null);
 const reservedPaneHeight = ref(0);
 
 /**
- * The strip and the panels it controls (`detail-tabs.ts` § DetailTabs).
+ * The strip and the panels it controls (`subject-tabs.ts` § SubjectTabs).
  * Declared before the tab-selection watch below: that watch is immediate, so
  * it calls `select` synchronously during setup, and a `const` declared after
  * it would still be in its temporal dead zone there.
  */
-const detailTabs = useDetailTabs({
-  pageRoot,
+const subjectTabs = useSubjectTabs({
   tabs: PLUGIN_DETAIL_TABS,
   initialTab: 'plugin',
   idPrefix: 'plugin',
@@ -1083,7 +1079,7 @@ watch(
       return;
     }
     tabDecidedFor = decidingFor;
-    detailTabs.select(filePath === null ? 'plugin' : 'files');
+    subjectTabs.select(filePath === null ? 'plugin' : 'files');
   },
   { immediate: true },
 );
@@ -1480,19 +1476,19 @@ useReportedPageSubject(titleSubject);
            selected" for the strip to be usable at all (QR-004,
            contracts/accessibility-acceptance.md) — which obliges the roving
            tabindex and arrow keys the WAI-ARIA tabs pattern specifies. -->
-      <DetailTabStrip :tabs="detailTabs" label="Plugin detail">
+      <SubjectTabStrip :tabs="subjectTabs" label="Plugin detail">
         <template #tab="{ tab }">
           {{ PLUGIN_DETAIL_TAB_TEXT[tab] }}
-          <span v-if="tab === 'files'" class="aci-kind-count">{{ rowFiles.length }}</span>
+          <span v-if="tab === 'files'" class="aci-tab-count">{{ rowFiles.length }}</span>
         </template>
-      </DetailTabStrip>
+      </SubjectTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden, so
            Monaco keeps its model and the reader's scroll position across a tab
            switch. Every tab therefore names its panel: both IDREFs resolve, and
            omitting one would drop a relationship assistive technology uses to
            move from a tab to what it controls. -->
-      <DetailTabPanel :tabs="detailTabs" tab="plugin">
+      <SubjectTabPanel :tabs="subjectTabs" tab="plugin">
         <!-- The catalog's own declarations first: what the file says about
              itself, before what it says about the plugin the reader
              followed. -->
@@ -1588,9 +1584,9 @@ useReportedPageSubject(titleSubject);
           files, assets — is shown as the value the file wrote and is never opened. Whether the
           plugin is installed, enabled, or trusted is state this product does not read.
         </p>
-      </DetailTabPanel>
+      </SubjectTabPanel>
 
-      <DetailTabPanel :tabs="detailTabs" tab="files">
+      <SubjectTabPanel :tabs="subjectTabs" tab="files">
         <!-- What the plugin ships, which is what the plugin is: an offering
              shown without the skills, hooks, assets, and its own manifest would
              show the entry and not the customization
@@ -1693,7 +1689,7 @@ useReportedPageSubject(titleSubject);
             </div>
           </div>
         </template>
-      </DetailTabPanel>
+      </SubjectTabPanel>
     </template>
   </div>
 </template>

@@ -37,7 +37,7 @@
 // the comparison state owns: leaving the route closes it, a client-data
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same selection under the new snapshot (FR-030).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
@@ -61,6 +61,7 @@ import {
   pickedSideOf,
   sideValueOf,
 } from '../../../components/comparison-side-picker';
+import { failureTextOf } from '../../../components/failure-text';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
@@ -513,9 +514,7 @@ const stateStatement = computed<string | null>(() => {
     case 'stale':
       return 'No MCP file in the current scan sits at one of this link’s paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
     case 'failed':
-      return comparison.errorMessage.value === null
-        ? 'This comparison could not be loaded.'
-        : `This comparison could not be loaded. ${comparison.errorMessage.value}`;
+      return failureTextOf('This comparison could not be loaded.', comparison.errorMessage.value);
     case 'idle':
       return 'This comparison could not be loaded.';
     case 'loading':
@@ -551,7 +550,7 @@ const retryable = computed(
 );
 
 /** The page heading, focused on entry so a keyboard user starts at the top. */
-const heading = ref<HTMLHeadingElement | null>(null);
+const heading = useTemplateRef<HTMLHeadingElement>('heading');
 
 /** The ready view's own region; what the focus guard below watches. */
 const readyRegion = ref<HTMLElement | null>(null);
