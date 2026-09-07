@@ -747,9 +747,12 @@ button[aria-disabled='true'] {
   max-inline-size: 100%;
 }
 
-/* What closes that line: the comparison of the subject the heading names, or
-   the sentence saying the subject has no pair. */
-.aci-detail-title-row__end {
+/* What closes a detail page's heading line: the comparison of the subject that
+   heading names, or the sentence saying the subject has no pair. The line
+   itself belongs to the component that draws it
+   (`DetailHeader.vue` § .aci-detail-header__line); this is what the callers
+   put into it, so the name is plain and the rule is the sheet's. */
+.aci-detail-title-end {
   margin-inline-start: auto;
 }
 

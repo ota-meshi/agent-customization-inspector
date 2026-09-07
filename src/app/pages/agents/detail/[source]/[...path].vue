@@ -770,7 +770,7 @@ watch(
              (FR-011). -->
         <template v-for="pair in comparePairRoutes" :key="pair.key">
           <NuxtLink
-            class="aci-button aci-button--primary aci-detail-title-row__end"
+            class="aci-button aci-button--primary aci-detail-title-end"
             :to="pair.route"
             :aria-label="`Compare this file: ${pair.name.singleLineText}`"
             >Compare this file <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"

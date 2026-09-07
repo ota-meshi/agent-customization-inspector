@@ -86,8 +86,8 @@ defineExpose({ focusHeading, headingHasFocus });
     /></template>
   </DetailCrumbs>
 
-  <div class="aci-detail-title-row">
-    <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="accessibleText">
+  <div class="aci-detail-header__line">
+    <h2 ref="heading" tabindex="-1" class="aci-detail-header__title" :aria-label="accessibleText">
       <DetailHeadingSubject
         :kind-text="kindText"
         :path-text="pathText"
@@ -107,9 +107,10 @@ defineExpose({ focusHeading, headingHasFocus });
    than pushing the page past the WCAG reference width of 320 CSS pixels, and
    the row gap is what keeps a dropped link off the heading's underside
    (WCAG 1.4.10). What closes the line is the caller's, so its own rule stays
-   in the sheet (`main.css` § .aci-detail-title-row__end): the callers render
-   it into this line's slot, where a rule scoped here would not reach it. */
-.aci-detail-title-row {
+   in the sheet (`main.css` § .aci-detail-title-end): the callers render it
+   into this line's slot, and slotted markup carries the caller's scope rather
+   than this component's, where a rule written here would not reach it. */
+.aci-detail-header__line {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -123,7 +124,7 @@ defineExpose({ focusHeading, headingHasFocus });
    focusable-heading rule's (`main.css`). The authored name or path it carries
    may have no break opportunities of its own, and without the wrap a long one
    forces sideways scrolling at narrow widths and 200% zoom (WCAG 1.4.10). */
-.aci-detail-title {
+.aci-detail-header__title {
   font-size: 1.0625rem;
   margin: 0.25rem 0 0;
   overflow-wrap: anywhere;

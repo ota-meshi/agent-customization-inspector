@@ -628,7 +628,7 @@ watch(
         <NuxtLink
           v-if="comparePairRoute !== null"
           :to="comparePairRoute"
-          class="aci-button aci-button--primary aci-detail-title-row__end"
+          class="aci-button aci-button--primary aci-detail-title-end"
           >Compare this instruction file
           <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
         /></NuxtLink>

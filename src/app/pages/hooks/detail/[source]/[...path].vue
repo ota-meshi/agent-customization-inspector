@@ -612,7 +612,7 @@ watch(
              ({@link openEventCompareRoute}). -->
         <NuxtLink
           v-if="openEventCompareRoute !== null"
-          class="aci-button aci-button--primary aci-detail-title-row__end"
+          class="aci-button aci-button--primary aci-detail-title-end"
           :to="openEventCompareRoute"
           >Compare this event's declarations
           <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
@@ -629,7 +629,7 @@ watch(
              three says so directly below, so the two would stand together. -->
         <span
           v-else-if="openEventName !== null && openDetail !== null && !declarationMissing"
-          class="aci-detail-title-row__end aci-muted"
+          class="aci-detail-title-end aci-muted"
           >This event has one carrier here, so there is nothing to compare</span
         >
       </template>

@@ -1370,7 +1370,7 @@ useReportedPageSubject(titleSubject);
              select (FR-011). -->
         <NuxtLink
           v-if="compareRoute !== null"
-          class="aci-button aci-button--primary aci-detail-title-row__end"
+          class="aci-button aci-button--primary aci-detail-title-end"
           :to="compareRoute"
           >Compare this plugin <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
         /></NuxtLink>
@@ -1384,7 +1384,7 @@ useReportedPageSubject(titleSubject);
              here" would be a claim about a name that resolves nothing. -->
         <span
           v-else-if="pluginName !== null && openDetail !== null"
-          class="aci-detail-title-row__end aci-muted"
+          class="aci-detail-title-end aci-muted"
           >This name has one carrier here, so there is nothing to compare</span
         >
       </template>

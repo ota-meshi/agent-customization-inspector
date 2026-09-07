@@ -51,7 +51,7 @@ test('leads with the customization and states its attributes on one line', async
     const crumbs = page.locator('.aci-detail-crumbs');
     await expect(crumbs, kind).toHaveCount(1);
     await expect(crumbs, kind).toContainText(kind === 'Skill' ? 'Skill' : kind);
-    await expect(page.locator('.aci-detail-title'), kind).toHaveCount(1);
+    await expect(page.locator('.aci-detail-header__title'), kind).toHaveCount(1);
     // One line for the customization's own facts, rather than a paragraph
     // each: what a page states about the customization is taken in at a
     // glance.
@@ -83,7 +83,7 @@ test('keeps the other copies on one line and never repeats the one on screen', a
 
   // The heading already spells the file on screen, so the strip does not
   // (FR-007).
-  const subject = await page.locator('.aci-detail-title').innerText();
+  const subject = await page.locator('.aci-detail-header__title').innerText();
   expect(layout.paths).not.toContain(subject.trim());
 
   // Each entry states which products recognize that file, so the strip says
@@ -117,7 +117,7 @@ test('reaches the neighbouring rows without returning to the list', async ({ pag
   const second = await rows.nth(1).locator('.aci-path').innerText();
   const third = await rows.nth(2).locator('.aci-path').innerText();
   await rows.nth(1).locator('a').first().click();
-  await expect(page.locator('.aci-detail-title')).toHaveText(second);
+  await expect(page.locator('.aci-detail-header__title')).toHaveText(second);
 
   // The moves are named by the rows they open, and they are the list's own
   // neighbours rather than this page's guess at them.
@@ -126,12 +126,12 @@ test('reaches the neighbouring rows without returning to the list', async ({ pag
   // The direction is a visible word as well as an arrow, as `Back to` is.
   await expect(next).toContainText('Next');
   await next.click();
-  await expect(page.locator('.aci-detail-title')).toHaveText(third);
+  await expect(page.locator('.aci-detail-header__title')).toHaveText(third);
 
   const previous = page.getByRole('link', { name: /^Previous .*, in Rule$/u });
   await expect(previous).toContainText('Previous');
   await previous.click();
-  await expect(page.locator('.aci-detail-title')).toHaveText(second);
+  await expect(page.locator('.aci-detail-header__title')).toHaveText(second);
 
   // And the way back names the list it returns to.
   await page.getByRole('link', { name: 'Back to Rule' }).click();
@@ -238,8 +238,8 @@ test('moves to the neighbouring row a declaration kind lists, not its carrier', 
     // carrier that holds it.
     expect(await next.getAttribute('aria-label'), kind).toBe(`Next ${third}, in ${kind}`);
     await next.click();
-    await expect(page.locator(`${root} .aci-detail-title`), kind).toHaveText(third);
+    await expect(page.locator(`${root} .aci-detail-header__title`), kind).toHaveText(third);
     await page.getByRole('link', { name: new RegExp(`^Previous .*, in ${kind}$`, 'u') }).click();
-    await expect(page.locator(`${root} .aci-detail-title`), kind).toHaveText(second);
+    await expect(page.locator(`${root} .aci-detail-header__title`), kind).toHaveText(second);
   }
 });
