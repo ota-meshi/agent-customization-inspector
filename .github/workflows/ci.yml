@@ -232,9 +232,10 @@ jobs:
           # times per run, and `kernel.core_pattern` hands every crash to
           # systemd-coredump under a size limit of 2^63: cores of 6.2 GB and
           # 2.7 GB were open at once against the runner's 12 GB of free space,
-          # which is the ENOSPC this job had been failing with. The crashes cost the
-          # suite nothing on their own, since it passes every test through
-          # them, so what has to stop is the dumping.
+          # which is the ENOSPC this job had been failing with. What this step
+          # stops is the dumping. The crashes themselves cost the suite a case
+          # whenever one lands on a navigation, which the webkit project's one
+          # retry covers (`playwright.config.ts` § webkit).
           #
           # `ulimit -c 0` does not stop it: the kernel ignores RLIMIT_CORE for
           # a core it pipes to a program, and this pattern is a pipe, so the

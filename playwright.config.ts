@@ -38,6 +38,24 @@ export default defineConfig({
     },
     {
       name: 'webkit',
+      // The one project with a retry. WebKit's Linux build crashes on these
+      // runners — its ThreadedCompositor and SkiaGPUWorker threads segfault a
+      // handful of times per run (ci.yml § the browser suite step) — and a
+      // crash that lands on a navigation surfaces as `page.goto: WebKit
+      // encountered an internal error`. That is the browser process failing
+      // rather than anything this product did: the same navigation succeeds
+      // hundreds of times in the same run, and the commit it first failed on
+      // changed one doc comment. Upstream treats it as environmental, closed
+      // it without a fix, and documents no launch option or environment
+      // variable that stops it
+      // (https://github.com/microsoft/playwright/issues/34450).
+      //
+      // One retry, and not a tolerance for flakiness: a case that fails twice
+      // still fails the certification, and a case that passes on the retry is
+      // reported as flaky rather than as a pass, so a product flake is still
+      // read off the run. Chromium and Firefox keep the `retries: 0` above,
+      // neither having this failure mode here.
+      retries: 1,
       use: { ...devices['Desktop Safari'] },
     },
   ],
