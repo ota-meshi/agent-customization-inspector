@@ -87,7 +87,7 @@ to load.
 The `verify:package` check runs in CI and the release gate rather than inside every local build,
 because packaged-artifact assertions belong to that layer. Set
 `package.json.files` exactly to
-`["dist", "docs/images", "README.md", "README.ja.md", "LICENSE"]`; npm's automatic
+`["dist", "README.md", "README.ja.md", "LICENSE"]`; npm's automatic
 `package.json` plus those entries are the complete tarball allowlist. Set `package.json.bin`
 exactly to `{ "agent-customization-inspector": "dist/cli.mjs" }` — the tsdown bundle
 preserves the entry shebang, and the package manager makes the linked bin executable at

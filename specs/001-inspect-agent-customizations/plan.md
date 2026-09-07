@@ -993,8 +993,8 @@ The `verify:package` gate requires exactly the two packaged entry points —
 before `npm pack`; the rest of `dist/` is owned by the clean → `nuxt build` → tsdown
 pipeline that just produced it, so no recursive re-verification duplicates that
 ownership. No install-time build or download occurs. `package.json.files` is exactly
-`["dist", "docs/images", "README.md", "README.ja.md", "LICENSE"]`; npm also includes
-`package.json`, so the tarball allowlist is `dist/` plus those four entries and their
+`["dist", "README.md", "README.ja.md", "LICENSE"]`; npm also includes
+`package.json`, so the tarball allowlist is `dist/` plus those three entries and their
 contents, with no source, fixtures, or planning artifacts. The package is CLI-only:
 `package.json.bin` is exactly `{ "agent-customization-inspector": "dist/cli.mjs" }`, while
 `main`, `module`, and `exports` are absent so no nonexistent library entry point is

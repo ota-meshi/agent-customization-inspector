@@ -690,6 +690,12 @@ Monacoがkeyを取るかどうかを決める`tabFocusMode: true`とCtrl+M toggl
 明記し、このrepositoryにworkaroundは入れておらず、Firefoxでの前向きの脱出はそのengine上のeditorの未解決の
 limitationとして残る。
 
+同じlimitationはFirefoxでだけもう1つのclaimを奪う。detail pageの前向きwalkはそこで止まるため、
+walkが動いているかではなく、editorがmountした時点でその手前にcontrolがいくつあったかを数えることになる —
+開発機で6〜8押下分、certification runnerでは3であり、そこではeditorは2押下目には既にmountしている。
+そのためこの数はFirefoxでは主張しない。editorが載らない唯一のページであるinventoryのwalkが、
+Firefoxを他の2 engineと同じclaimに保つ。
+
 **Manualな側はcriterionの外にある。** 36件の`MANUAL-*` IDは、`3 × 5 × 3 × 8 × 3 = 1,080`個の
 keyed cellそれぞれに対して実行することになる — 合計38,880 cellで、VoiceOver付きmacOS、NVDA付き
 Windows、Orca付きUbuntuを要する。SC-008は代わりにautomated checkと4つのkeyboard workflowを

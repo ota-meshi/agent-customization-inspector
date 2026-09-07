@@ -34,7 +34,6 @@ const PACKED_TOP_LEVEL_NAMES = [
   'README.ja.md',
   'README.md',
   'dist',
-  'docs',
   'package.json',
 ] as const;
 
@@ -85,15 +84,10 @@ describe('packed tarball contents', () => {
   it('packs only the declared top-level names', () => {
     const topLevel = [...new Set(packedPaths.map((path) => path.split('/')[0]!))].toSorted();
     expect(topLevel).toEqual([...PACKED_TOP_LEVEL_NAMES]);
-    // `docs/images` is a subtree entry, so the manifest list and the packed
-    // top-level names are two different statements and each is written out.
-    expect(manifest.files.toSorted()).toEqual([
-      'LICENSE',
-      'README.ja.md',
-      'README.md',
-      'dist',
-      'docs/images',
-    ]);
+    // The manifest list and the packed top-level names are two different
+    // statements — npm adds `package.json` to whatever `files` names — so each
+    // is written out.
+    expect(manifest.files.toSorted()).toEqual(['LICENSE', 'README.ja.md', 'README.md', 'dist']);
   });
 
   it('packs both required entry points', () => {
