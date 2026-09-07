@@ -28,7 +28,8 @@
 // Like the plugin detail, this surface shows declared values exactly as
 // authored — credentials included, with nothing masked and no control that
 // would uncover a masked value — and it says none of that (FR-027).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
@@ -60,7 +61,7 @@ import {
   pluginComparisonRouteFor,
   type PluginComparisonFileRequest,
 } from '../../../composables/plugin-comparison';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import { useSessionViewState } from '../../../composables/session-view-state';
@@ -103,7 +104,6 @@ const router = useRouter();
  * comparing.
  */
 const family = computed<SourceKind | null>(() => comparisonFamilyOf(route.params['family']));
-const pageOwnership = usePageOwnership();
 
 /**
  * The comparison's own content registry, for the viewer this page mounts when
@@ -1825,12 +1825,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing plugins';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus
@@ -1871,7 +1866,7 @@ onBeforeUnmount(() => {
       ><span class="aci-detail-crumbs__subject">Compare</span>
     </p>
 
-    <h2 ref="heading" tabindex="-1">Compare plugins</h2>
+    <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare plugins</h2>
 
     <!-- What is being compared, on the line directly below the heading so the
          two are read together. The heading states the page's purpose, because
@@ -1890,12 +1885,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The pickers: a comparison stays inside the one row that owns it, so
          what a reader chooses is which of that row's carriers stands on each
@@ -2165,15 +2155,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.aci-plugin-compare {
-  display: flex;
-  flex-direction: column;
-}
-
-.aci-plugin-compare > p:first-child {
-  margin: 0;
-}
-
 /* The two roots side by side, stacking on a narrow viewport where two columns
    would crush both (WCAG 1.4.10) — the declaration panel's own arrangement. */
 .aci-plugin-compare__roots {

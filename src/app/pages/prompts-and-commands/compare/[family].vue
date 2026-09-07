@@ -47,6 +47,7 @@ import {
   sideIdentityKeyOf,
   comparisonTitleSides,
 } from '../../../components/detail-route';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import {
   comparisonSideOptions,
   pickedSideOf,
@@ -57,7 +58,7 @@ import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/prompt-comparison/RecognitionComparison.vue';
@@ -68,7 +69,7 @@ import {
 } from '../../../components/prompt-comparison/recognition-comparison';
 import { promptComparisonRouteFor } from '../../../composables/prompt-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -104,7 +105,6 @@ const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
 
 const route = useRoute();
 
-const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -730,12 +730,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing prompt and command files';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus
@@ -776,7 +771,7 @@ onBeforeUnmount(() => {
       ><span class="aci-detail-crumbs__subject">Compare</span>
     </p>
 
-    <h2 ref="heading" tabindex="-1">Compare prompt and command files</h2>
+    <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare prompt and command files</h2>
 
     <!-- What is being compared, on the line directly below the heading so the
          two are read together. The heading states the page's purpose, because
@@ -795,12 +790,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The pickers: a comparison stays inside the one range row that owns
          the pair, so what a reader chooses is which of that row's files
@@ -865,7 +855,7 @@ onBeforeUnmount(() => {
       <div class="aci-compare-sides">
         <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
           <span class="aci-compare-side__caption">{{ side.caption }}</span>
-          <p class="aci-prompt-compare__file-path aci-path aci-authored-text">
+          <p class="aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
           <p class="aci-prompt-compare__file-facts aci-note">
@@ -923,23 +913,4 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-.aci-prompt-compare {
-  display: flex;
-  flex-direction: column;
-}
-
-.aci-prompt-compare > p:first-child {
-  margin: 0;
-}
-
-.aci-prompt-compare h2 {
-  margin: 0.25rem 0 0.5rem;
-}
-
-/* An authored path has no break opportunities of its own; wrapping keeps the
-   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
-.aci-prompt-compare__file-path {
-  overflow-wrap: anywhere;
-}
-</style>
+<style scoped></style>

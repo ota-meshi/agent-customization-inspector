@@ -37,7 +37,8 @@
 // the comparison state owns: leaving the route closes it, a client-data
 // purge clears it, and a commit drops the previous generation's view while
 // this page re-requests the same selection under the new snapshot (FR-030).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
@@ -63,7 +64,7 @@ import {
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
 import { mcpComparisonRouteFor } from '../../../composables/mcp-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -86,7 +87,6 @@ const status = comparison.status;
 
 const route = useRoute();
 
-const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -679,12 +679,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing MCP declarations';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus
@@ -725,7 +720,7 @@ onBeforeUnmount(() => {
       ><span class="aci-detail-crumbs__subject">Compare</span>
     </p>
 
-    <h2 ref="heading" tabindex="-1">Compare MCP server declarations</h2>
+    <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare MCP server declarations</h2>
 
     <!-- What is being compared, on the line directly below the heading so the
          two are read together. The heading states the page's purpose, because
@@ -744,12 +739,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The pickers: a comparison stays inside the one name row that owns
          it, so what a reader chooses is which of that row's carriers stands
@@ -810,7 +800,7 @@ onBeforeUnmount(() => {
       <div class="aci-compare-sides">
         <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
           <span class="aci-compare-side__caption">{{ side.caption }}</span>
-          <p class="aci-mcp-compare__file-path aci-path aci-authored-text">
+          <p class="aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
           <p class="aci-mcp-compare__file-facts aci-note">
@@ -873,23 +863,4 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-.aci-mcp-compare {
-  display: flex;
-  flex-direction: column;
-}
-
-.aci-mcp-compare > p:first-child {
-  margin: 0;
-}
-
-.aci-mcp-compare h2 {
-  margin: 0.25rem 0 0.5rem;
-}
-
-/* An authored path has no break opportunities of its own; wrapping keeps the
-   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
-.aci-mcp-compare__file-path {
-  overflow-wrap: anywhere;
-}
-</style>
+<style scoped></style>

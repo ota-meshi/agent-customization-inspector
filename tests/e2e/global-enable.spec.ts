@@ -309,9 +309,9 @@ test('states the Source family and directory on a Global detail (FR-007)', async
   );
   const main = page.locator('main');
   await expect(main).toContainText('Your personal setup');
-  await expect(main.locator('.aci-settings-detail__root')).toContainText('codex-home');
+  await expect(main.locator('.aci-source-root-note')).toContainText('codex-home');
   // The same two facts on a name-keyed kind's page.
   await page.goto(new URL('/skills/detail/global-claude/skills/deploy/SKILL.md', host.origin).href);
   await expect(main).toContainText('Your personal setup');
-  await expect(main.locator('.aci-skill-detail__root')).toContainText('claude-home');
+  await expect(main.locator('.aci-source-root-note')).toContainText('claude-home');
 });

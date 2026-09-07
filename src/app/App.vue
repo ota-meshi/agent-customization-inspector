@@ -33,6 +33,7 @@ import {
   watch,
   watchEffect,
 } from 'vue';
+import LiveRegion from './components/LiveRegion.vue';
 import { NuxtPage } from '#components';
 import { useRoute, useRouter } from 'vue-router';
 import { connectDevframe, isCallableStatus } from 'devframe/client';
@@ -560,12 +561,8 @@ onBeforeUnmount(() => {
         <ColorSchemeSwitch />
       </div>
     </div>
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ statusAnnouncement }}
-    </p>
-    <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
-      {{ errorAnnouncement }}
-    </p>
+    <LiveRegion :text="statusAnnouncement" />
+    <LiveRegion :text="errorAnnouncement" assertive />
 
     <!-- Above the routed content, not after it: appended below a long
          inventory the error would sit off-screen, reporting a failure nobody

@@ -29,46 +29,50 @@
 // generation all drop the open detail through the same cleanup the skill
 // route uses; only the URL survives a commit, and the page refetches the same
 // path under the new generation.
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
+import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
-import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
-import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
+import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
+import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
+import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
+import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
+import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
-import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
+import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
-import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import { otherCopiesOf } from '../../../../components/inspection/file-strip';
 import { frontmatterYamlText } from '../../../../components/inspection/frontmatter-yaml';
 import type { DeclaredEntryDto, SourceKind } from '../../../../../shared/api-types';
 import { LEADING_INSTRUCTION_FRONTMATTER_KEYS } from '../../../../components/inspection/declaration-order';
 import {
-  familyGenerationOf,
   asSourceSelector,
-  decodeDetailRoutePath,
   detailNeighbours,
   detailRoute,
-  type SourceSelector,
+  detailRoutePathOf,
 } from '../../../../components/detail-route';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
-import { nextTabForKey } from '../../../../components/tab-navigation';
+import { useDetailTabs } from '../../../../composables/detail-tabs';
 import { instructionComparisonRouteFor } from '../../../../composables/instruction-comparison';
-import { usePageOwnership } from '../../../../composables/page-ownership';
+import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
+import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
+import { useDetailRequest } from '../../../../composables/detail-request';
+import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { ApplicabilityRange } from '../../../../components/applicability-range';
 import { useSessionSources } from '../../../../composables/session-sources';
 import { useSessionViewState } from '../../../../composables/session-view-state';
-import { DIAGNOSTIC_REGISTRY } from '../../../../../shared/diagnostics';
 import {
   fileIdentityKey,
   CUSTOMIZATION_KIND_TEXT,
   FILE_ENCODING_TEXT,
   accessiblePresentationLabel,
   applicabilityRangePresentation,
-  escapeControlCharacters,
   isReadableFile,
-  pathPresentationLabel,
   inlinePresentationLabel,
+  pathPresentationLabel,
 } from '../../../../../shared/entities';
 import { SOURCE_SELECTOR_TEXT } from '../../../../../shared/api-text';
 
@@ -76,68 +80,22 @@ const sessionViewState = useSessionViewState();
 
 const route = useRoute();
 
-/**
- * The Source-relative path from the URL's catch-all segments — the file's
- * identity and the whole route identity (FR-030). The router hands the
- * segments over individually and decoded, so joining them with `/` restores
- * the published spelling exactly.
- */
-const openAddress = computed(() => ({
-  // The router splits the address: `[source]` is its own parameter and the
-  // catch-all below it holds the path alone, so nothing here takes a segment
-  // off a joined string (`detail-route.ts` § SourceSelector).
-  source: asSourceSelector(route.params['source']),
-  sourceRelativePath: decodeDetailRoutePath(
-    ((parameter) => (typeof parameter === 'string' ? [parameter] : (parameter ?? [])))(
-      route.params['path'],
-    ),
-  ),
-}));
-
-/**
- * The Source-relative Path this page is about, or the empty string for an
- * address whose leading segment names no Source this product issues. No file
- * has an empty path, so such an address resolves nothing and the page reports
- * what it already reports for a path the current scan does not hold.
- */
-const openPath = computed((): string =>
-  openAddress.value.source === null ? '' : openAddress.value.sourceRelativePath,
+// The address this page's own filename declares (`[source]/[...path].vue`),
+// undone by the module that spells it (`detail-route.ts`). What the resolved
+// halves then name is every detail route's alike (`detail-address.ts`); the
+// unresolved Source stays in reach because the comparison link below needs the
+// token itself rather than the repository the address falls back to.
+const routeSource = computed(() => asSourceSelector(route.params['source']));
+const { openSource, openSourceId, openPath } = useDetailAddress(routeSource, () =>
+  detailRoutePathOf(route.params['path']),
 );
-
-/**
- * The Source this page's address names, the other half of the identity
- * {@link openPath} carries (FR-030). It is what the detail request resolves
- * against and what the open control hands the host, so both answer for the
- * file the address names rather than for whichever Source lists the path
- * first.
- *
- * An address whose leading segment names no Source takes the repository token.
- * Nothing renders under such an address — {@link openPath} is empty, so no
- * detail resolves — so the token is never what a request is made with; it
- * exists so this is a `SourceSelector` rather than a null every caller would
- * branch on.
- */
-const openSource = computed((): SourceSelector => openAddress.value.source ?? 'repository');
+const { pathText, pathIsSpelledOut } = usePathPresentation(openPath);
 
 const entryDetail = sessionViewState.entryDetail;
-const detailState = sessionViewState.fileDetailState;
-/** This route's own failed request, which this page reports and announces. */
-const detailError = sessionViewState.detailErrorMessage;
 const snapshot = sessionViewState.snapshot;
 
 /** The shared per-Source lookups (`session-sources.ts`). */
 const sessionSources = useSessionSources();
-
-/**
- * The addressed Source's own ID, or null when this session carries no such
- * Source — an address naming a token this product issues for a Global Source
- * that is not published now. Every row and file below is scoped by it: a path
- * names a file in each Source that holds it, so an unscoped lookup would state
- * one Source's recognitions under the other's address (FR-030).
- */
-const openSourceId = computed(() =>
-  openAddress.value.source === null ? null : sessionSources.sourceIdFor(openAddress.value.source),
-);
 
 /**
  * The instructions inventory row the URL's identity names, or null when the
@@ -263,22 +221,6 @@ const listNeighbours = computed(() => {
 });
 
 /**
- * The path as the heading shows it, through the one label rule every surface
- * that draws a path uses ({@link pathPresentationLabel}).
- */
-const pathText = computed(() => pathPresentationLabel(openPath.value));
-
-/**
- * Whether {@link pathText} is the spelled-out form rather than the file's own
- * spelling — which a configured fallback basename of whitespace or
- * default-ignorable code points produces. The label then draws this product's
- * characters instead of the reader's, so it is not authored text and does not
- * title the tab. Compared against the escaping rather than tested again, so
- * the two cannot answer differently.
- */
-const pathIsSpelledOut = computed(() => pathText.value !== escapeControlCharacters(openPath.value));
-
-/**
  * What a screen reader announces the heading as. The accessible-name
  * computation collapses whitespace, so two paths differing only in consecutive
  * or edge spaces would announce as one heading; the inline label spells such a
@@ -373,7 +315,7 @@ const comparableIdentities = computed(() => {
  * families is a pair no block holds (`filters.ts` § InstructionRangeGroup).
  */
 const comparePairRoute = computed(() => {
-  const source = openAddress.value.source;
+  const source = routeSource.value;
   const kind = openFamily.value;
   if (
     source === null ||
@@ -495,37 +437,44 @@ const INSTRUCTION_DETAIL_TAB_TEXT: Readonly<Record<InstructionDetailTab, string>
   file: 'File',
 };
 
-const activeTab = ref<InstructionDetailTab>('instructions');
+// Where focus sits: the entry focus, the re-focus when the address names a
+// different file, and the question the guards below ask before moving it
+// (`detail-heading-focus.ts`).
+const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
+const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
+const headingFocus = useDetailHeadingFocus({
+  pageRoot,
+  heading: () => header.value,
+  openPath,
+  openSource,
+  selection: null,
+});
 
-/** The page's root, for the focus guards below. */
-const pageRoot = ref<HTMLElement | null>(null);
+const pageOwnership = usePageOwnership();
 
-/** The `id` of the panel a tab controls (WCAG 4.1.2). */
-function instructionTabPanelId(tab: InstructionDetailTab): string {
-  return `aci-instruction-panel-${tab}`;
-}
+// The effect that keeps the open file the one the URL names
+// (`detail-request.ts`). This kind's subject is its path alone, so nothing is
+// selected inside it; the page's own Source is passed so a same-path file in
+// the other Source cannot answer this request (FR-030).
+const request = useDetailRequest({
+  openPath,
+  openSource,
+  selection: null,
+  ready: () => owner.value !== null,
+  perform: () => {
+    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
+  },
+  headingFocus,
+});
+const { detailState } = request;
 
-/** The `id` of the tab that controls {@link instructionTabPanelId}'s panel. */
-function instructionTabId(tab: InstructionDetailTab): string {
-  return `aci-instruction-tab-${tab}`;
-}
-
-/**
- * Arrow keys move the selection, matching the WAI-ARIA tabs pattern.
- * Selection follows focus because switching panels issues no request and
- * loses no work: both halves are already in hand.
- */
-function onTabKeydown(event: KeyboardEvent, index: number): void {
-  const next = nextTabForKey(event.key, INSTRUCTION_DETAIL_TABS, index);
-  if (next === null) {
-    // A key the pattern does not handle keeps its default behavior; swallowing
-    // it here would break Tab out of the strip.
-    return;
-  }
-  event.preventDefault();
-  activeTab.value = next;
-  document.getElementById(instructionTabId(next))?.focus();
-}
+/** The strip and the panels it controls (`detail-tabs.ts` § DetailTabs). */
+const detailTabs = useDetailTabs({
+  pageRoot,
+  tabs: INSTRUCTION_DETAIL_TABS,
+  initialTab: 'instructions',
+  idPrefix: 'instruction',
+});
 
 /**
  * Opening a file starts on what it declares and instructs — unless its
@@ -561,7 +510,7 @@ watch([openDetail, openSource, openPath], ([detail, source, path]) => {
     return;
   }
   tabDecidedFor = decidingFor;
-  activeTab.value = presentation.value !== null ? 'instructions' : 'file';
+  detailTabs.activeTab = presentation.value !== null ? 'instructions' : 'file';
 });
 
 /**
@@ -570,20 +519,11 @@ watch([openDetail, openSource, openPath], ([detail, source, path]) => {
  * read by both the visible paragraph and the live region, so what a reader
  * hears is the sentence that is on the screen.
  */
-const detailFailure = computed<string | null>(() => {
-  // An idle page holding nothing is this route's recoverable failure state
-  // however it was reached — a failed request carries its message in
-  // `detailError`, while a newer-generation refresh that could not adopt
-  // leaves the message to the shell and this statement stands alone.
-  const statement =
-    openDetail.value === null && detailState.value === 'idle'
-      ? 'This instruction file could not be loaded.'
-      : null;
-  if (statement === null) {
-    return null;
-  }
-  return detailError.value === null ? statement : `${statement} ${detailError.value}`;
-});
+const detailFailure = request.failureOf(() =>
+  openDetail.value === null && detailState.value === 'idle'
+    ? 'This instruction file could not be loaded.'
+    : null,
+);
 
 /**
  * What this page's polite live region announces — the states that change the
@@ -591,86 +531,12 @@ const detailFailure = computed<string | null>(() => {
  * in-flight load, and a request that failed. Each phrase matches the visible
  * copy; ready content is read as focus moves through it.
  */
-const detailAnnouncement = computed(() => {
-  if (detailState.value === 'stale' || owner.value === null) {
-    return 'Nothing in the current scan sits at this link’s path.';
-  }
-  if (detailFailure.value !== null) {
-    return detailFailure.value;
-  }
-  if (detailState.value === 'loading') {
-    return 'Loading this instruction file…';
-  }
-  return '';
+const detailAnnouncement = request.announcementOf({
+  resolved: () => owner.value !== null,
+  missingText: 'Nothing in the current scan sits at this link’s path.',
+  failure: detailFailure,
+  loadingText: 'Loading this instruction file…',
 });
-
-/** The page heading, focused on entry so a keyboard user starts at the top. */
-const heading = ref<HTMLHeadingElement | null>(null);
-
-/** Set as the route is left, so the focus guards yield to the next route. */
-let leaving = false;
-
-/**
- * Requests the file the URL currently names. The route watcher below calls it
- * on every selection, and the failed-load branch calls it again as the retry.
- * The one file is both arguments: this kind has no companion to read from it.
- */
-const pageOwnership = usePageOwnership();
-
-const requestOpen = (): void => {
-  if (owner.value === null) {
-    return;
-  }
-  // The page's own Source, so a same-path file in the other Source cannot
-  // answer this request (FR-030).
-  void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
-};
-
-// One effect owns "which file should be open", so entering the route and a
-// history step between instruction files take the same path. The committed
-// generations are part of what "open" means: adopting a newer one closes the
-// open detail while the path stays identical, so their change is what
-// re-requests the same path under the new snapshot.
-watch(
-  [
-    openPath,
-    (): boolean => owner.value !== null,
-    (): number => familyGenerationOf(snapshot.value ?? null, openSource.value),
-    // The Source is a key beside the path, because it is the other half of the
-    // identity: a step that changes only the Source leaves the path identical
-    // and the file different, and this page instance is reused across it — the
-    // shell keys a page by its route record (`router.options.ts` § pageKey), so
-    // a param-only change mounts nothing new. No surface links one Source's
-    // detail to the other's today, so every such step currently arrives through
-    // the inventory or a fresh load; the key is what keeps that an arrangement
-    // of the surfaces rather than something this page depends on (FR-030).
-    openSource,
-  ],
-  ([path, ownerPresent]) => {
-    if (path === '' || !ownerPresent) {
-      // The URL names nothing this generation holds. Dropping what is open is
-      // the point: the page shows the recoverable state below, and holding
-      // authored content the reader navigated away from would keep it in
-      // memory for nothing.
-      pageOwnership.close();
-      return;
-    }
-    requestOpen();
-  },
-  { immediate: true },
-);
-
-// Focus moves to the heading when the page is entered or the open file
-// changes: following a link in an SPA moves no focus by itself. The Source is
-// watched beside the path because this kind is the one two Sources can both
-// publish: a step between their same-path details changes the file the page
-// shows while the path stays put, and focus has to follow that (WCAG 2.4.3).
-function focusHeading(): void {
-  heading.value?.focus();
-}
-
-onMounted(focusHeading);
-watch([openPath, openSource], () => void nextTick(focusHeading));
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2): the path
@@ -698,23 +564,7 @@ const titleSubject = computed<string | null>(() => {
     ? null
     : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
-
-/**
- * The failed-load retry. Separate from {@link requestOpen} because the button
- * this click comes from vanishes with the failed branch the moment the state
- * returns to loading, and focus would drop to the document body
- * (WCAG 2.4.3); the heading is the landmark that survives the transition.
- */
-const retryOpen = (): void => {
-  focusHeading();
-  requestOpen();
-};
+useReportedPageSubject(titleSubject);
 
 // A generation replacement drops a detail that was on screen — the tabs and
 // the viewer unmount — without moving the URL, so if keyboard focus is inside
@@ -734,12 +584,9 @@ watch(
     if (
       detail === null &&
       previous !== null &&
-      previous.file.sourceRelativePath === openPath.value &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
+      previous.file.sourceRelativePath === openPath.value
     ) {
-      focusHeading();
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -752,95 +599,50 @@ watch(
 watch(
   [detailState, owner],
   ([state, resolved]) => {
-    if (
-      (state === 'stale' || resolved === null) &&
-      !leaving &&
-      pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== heading.value
-    ) {
-      focusHeading();
+    if (state === 'stale' || resolved === null) {
+      headingFocus.requestFocusHeading();
     }
   },
   { flush: 'sync' },
 );
-
-onBeforeUnmount(() => {
-  leaving = true;
-  // The title subject and the open detail are both `usePageOwnership`'s to
-  // drop, after unmount, where the focus guards above are naturally inert
-  // and a replacement page's own report or open stands.
-});
 </script>
 
 <template>
   <div ref="pageRoot" class="aci-instruction-detail aci-route">
-    <!-- The way back and the ranges either side of this file's, drawn in the
-         bar with every other route's moves (`DetailNavigation.vue`). The kind
-         is URL state, so naming it is what makes the move land on the
-         instructions list rather than the kind order's default tab. -->
-    <DetailNavigation
+    <DetailHeader
+      ref="header"
+      :kind-text="CUSTOMIZATION_KIND_TEXT.instructions"
       list-route="/?kind=instructions"
-      :list-text="CUSTOMIZATION_KIND_TEXT.instructions"
-      :previous="listNeighbours.previous"
-      :next="listNeighbours.next"
-    />
+      :neighbours="listNeighbours"
+      :source-family-crumb-text="sourceFamilyCrumbText"
+      :path-text="pathText"
+      :path-is-spelled-out="pathIsSpelledOut"
+      :accessible-text="headingAccessibleText"
+    >
+      <template #title-end>
+        <!-- The comparison this file's range can make (FR-011), at the end of
+             the heading's own line — where every kind whose subject is the
+             heading puts its own (`agents/detail`, `mcp/detail`). On the tabs'
+             row it read as a control on what the tabs select, which is one half
+             of the file rather than the file this comparison is of. -->
+        <NuxtLink
+          v-if="comparePairRoute !== null"
+          :to="comparePairRoute"
+          class="aci-button aci-button--primary aci-detail-title-end"
+          >Compare this instruction file
+          <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+        /></NuxtLink>
+      </template>
+    </DetailHeader>
 
-    <!-- Where the page sits, which is location rather than a way out: the
-         Source family, the kind, and this page's own subject. -->
-    <p class="aci-detail-crumbs">
-      <template v-if="sourceFamilyCrumbText !== null"
-        >{{ sourceFamilyCrumbText }} <span>›</span> </template
-      >{{ CUSTOMIZATION_KIND_TEXT.instructions }} <span>›</span>
-      <span class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span>
-    </p>
-
-    <div class="aci-instruction-detail__title">
-      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <!-- The file's path heads the page — the row's own identity, in the
-           same spelling the inventory lists: escaped for presentation, never
-           a locator anything can open (FR-024, FR-030). A path whose escaped
-           spelling draws nothing is spelled out in full instead — a spelled
-           presentation, not the authored run, so it drops the authored-text
-           treatment (data-model.md § SourceRelativePath) — and a URL with no
-           path segments at all is headed by the kind, so the heading always
-           describes the page (WCAG 2.4.6). -->
-        <template v-if="openPath === ''">{{ CUSTOMIZATION_KIND_TEXT.instructions }}</template>
-        <span v-else class="aci-path" :class="{ 'aci-authored-text': !pathIsSpelledOut }">{{
-          pathText
-        }}</span>
-      </h2>
-      <!-- The comparison this file's range can make (FR-011), at the end of
-           the heading's own line — where every kind whose subject is the
-           heading puts its own (`agents/detail`, `mcp/detail`). On the tabs'
-           row it read as a control on what the tabs select, which is one half
-           of the file rather than the file this comparison is of. -->
-      <NuxtLink
-        v-if="comparePairRoute !== null"
-        :to="comparePairRoute"
-        class="aci-button aci-button--primary aci-instruction-detail__title-end"
-        >Compare this instruction file
-        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-      /></NuxtLink>
-    </div>
-
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read. -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ detailAnnouncement }}
-    </p>
+    <LiveRegion :text="detailAnnouncement" />
 
     <template v-if="detailState === 'loading'">
       <p class="aci-empty">Loading this instruction file…</p>
     </template>
 
     <template v-else-if="detailState === 'stale' || owner === null">
-      <SubjectUnavailable outcome="warning">
-        Nothing in the current scan sits at this link's path. The inventory may have changed since
-        the link was made; a rescan that brings the path back will make it resolve again.
-        <template #exit>
-          <NuxtLink to="/?kind=instructions">Return to the inventory and open it again.</NuxtLink>
-        </template>
-      </SubjectUnavailable>
+      <DetailPathNotFound list-route="/?kind=instructions" />
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -848,12 +650,7 @@ onBeforeUnmount(() => {
          the shell reports what happened to the session, so neither hides or
          repeats the other. -->
     <template v-else-if="openDetail === null">
-      <SubjectUnavailable outcome="error">
-        {{ detailFailure }}
-        <template #exit>
-          <button type="button" @click="retryOpen">Try again</button>
-        </template>
-      </SubjectUnavailable>
+      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
     </template>
 
     <template v-else>
@@ -863,37 +660,16 @@ onBeforeUnmount(() => {
            and the list agree (FR-007); no product is quoted for what it would
            select or load, because existence is what an admission proves
            (FR-009). -->
-      <p class="aci-detail-attributes">
+      <DetailAttributes :file="openDetail.file" :recognitions="recognitions" :source="openSource">
+        <!-- The range this file applies to leads its own facts: it is what
+             puts the file in this kind's list, and the block the comparison
+             pairs inside. -->
         <span
           >Applies to <strong class="aci-path aci-authored-text">{{ rangeText }}</strong></span
         >
-        <span
-          >{{ FILE_ENCODING_TEXT[openDetail.file.encoding]
-          }}<template v-if="openDetail.file.encoding !== 'unknown'">
-            · {{ openDetail.file.sizeBytes }} bytes</template
-          ></span
-        >
-        <RecognitionMarks :recognitions="recognitions" named />
-        <!-- The command that opens the file, at the end of the line that
-             states that file's facts — the one place every kind puts it, so a
-             reader who found it on one detail finds it on the next. Outside
-             the heading so it does not join the heading's accessible name: a
-             reader hearing the page's landmarks should hear the file, not an
-             action on it (WCAG 2.4.6). -->
-        <span class="aci-detail-attributes__end">
-          <OpenFileButton
-            :source-relative-path="openDetail.file.sourceRelativePath"
-            :source="openSource"
-          />
-        </span>
-      </p>
+      </DetailAttributes>
 
-      <!-- Which directory the file was in, where its family holds more than
-           one: an escaped presentation of the admitted root, never a path
-           anything can open (FR-002). -->
-      <p v-if="sourceRootText !== null" class="aci-instruction-detail__root aci-note">
-        <span class="aci-authored-text">{{ sourceRootText }}</span>
-      </p>
+      <SourceRootNote :text="sourceRootText" />
 
       <!-- The other files governing the same range, one line whatever the
            count (`FileStrip.vue`). Nothing here states an order or a winner:
@@ -909,48 +685,18 @@ onBeforeUnmount(() => {
            the complete file itself. A real `tablist`, with the roving
            tabindex and arrow keys the WAI-ARIA tabs pattern specifies
            (QR-004, contracts/accessibility-acceptance.md). -->
-      <div class="aci-kind-tabs" role="tablist" aria-label="Instruction detail">
-        <button
-          v-for="(tab, index) in INSTRUCTION_DETAIL_TABS"
-          :id="instructionTabId(tab)"
-          :key="tab"
-          class="aci-kind-tab"
-          type="button"
-          role="tab"
-          :aria-controls="instructionTabPanelId(tab)"
-          :aria-selected="tab === activeTab"
-          :tabindex="tab === activeTab ? 0 : -1"
-          @click="activeTab = tab"
-          @keydown="onTabKeydown($event, index)"
-        >
-          {{ INSTRUCTION_DETAIL_TAB_TEXT[tab] }}
-        </button>
-      </div>
+      <DetailTabStrip :tabs="detailTabs" label="Instruction detail">
+        <template #tab="{ tab }">{{ INSTRUCTION_DETAIL_TAB_TEXT[tab] }}</template>
+      </DetailTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
            so Monaco keeps its model and the reader's scroll position across a
            tab switch, and both `aria-controls` IDREFs resolve. -->
-      <div
-        v-show="activeTab === 'instructions'"
-        :id="instructionTabPanelId('instructions')"
-        role="tabpanel"
-        :aria-labelledby="instructionTabId('instructions')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="instructions">
         <!-- A failed extraction leaves this panel with nothing parsed to
              show; its Diagnostic is what says so, and the complete source is
              one tab away (FR-028). -->
-        <ul v-if="presentation === null && openDiagnostics.length > 0" class="aci-list" role="list">
-          <li
-            v-for="diagnostic in openDiagnostics"
-            :key="diagnostic.diagnosticId"
-            :class="
-              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-            "
-          >
-            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          </li>
-        </ul>
+        <DetailDiagnostics v-if="presentation === null" :diagnostics="openDiagnostics" />
 
         <div v-if="presentation" class="aci-instruction-detail__declarations">
           <p v-if="presentation.frontmatter.length === 0" class="aci-note">
@@ -986,15 +732,9 @@ onBeforeUnmount(() => {
             content-label="Instructions of"
           />
         </div>
-      </div>
+      </DetailTabPanel>
 
-      <div
-        v-show="activeTab === 'file'"
-        :id="instructionTabPanelId('file')"
-        role="tabpanel"
-        :aria-labelledby="instructionTabId('file')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="file">
         <!-- What the read produced, and nothing else. The file below is the
              file; a viewer that narrated what a file might contain would be
              telling the reader about their own repository (FR-027). -->
@@ -1007,17 +747,7 @@ onBeforeUnmount(() => {
           >
         </p>
 
-        <ul v-if="openDiagnostics.length > 0" class="aci-list" role="list">
-          <li
-            v-for="diagnostic in openDiagnostics"
-            :key="diagnostic.diagnosticId"
-            :class="
-              DIAGNOSTIC_REGISTRY[diagnostic.code].severity === 'error' ? 'aci-error' : 'aci-note'
-            "
-          >
-            {{ DIAGNOSTIC_REGISTRY[diagnostic.code].message }}
-          </li>
-        </ul>
+        <DetailDiagnostics :diagnostics="openDiagnostics" />
 
         <!-- Only the readable variants carry text. An unreadable file has no
              source to show and its diagnostic above says why. -->
@@ -1028,26 +758,12 @@ onBeforeUnmount(() => {
           :source-relative-path="openDetail.file.sourceRelativePath"
         />
         <p v-else class="aci-note">This file has no source text to show.</p>
-      </div>
+      </DetailTabPanel>
     </template>
   </div>
 </template>
 
 <style scoped>
-/* The instruction detail reads top to bottom: what the file is, what it
-   declares, what it instructs, then the complete file. It scrolls as a page
-   rather than fitting the viewport, the same trade the skill detail makes. */
-.aci-instruction-detail {
-  display: flex;
-  flex-direction: column;
-}
-
-/* The heading block is chrome, and every line of it is a line the file does
-   not get, so it is tighter here than the shell's default heading spacing. */
-.aci-instruction-detail > p:first-child {
-  margin: 0;
-}
-
 /* The two halves of the parse, inside the tab that holds them. */
 .aci-instruction-detail__declarations,
 .aci-instruction-detail__instructions {
@@ -1058,30 +774,5 @@ onBeforeUnmount(() => {
 .aci-instruction-detail__instructions > h3 {
   font-size: 0.95rem;
   margin: 0 0 0.35rem;
-}
-
-/* Tighter than the shell's section-heading baseline, because the heading
-   block is chrome; the authored path may have no break opportunities of its
-   own, and without the wrap a long one forces sideways scrolling at narrow
-   widths and 200% zoom (WCAG 1.4.10). */
-/* The path and the link that opens it on one line, wrapping together when the
-   path is long. */
-.aci-instruction-detail__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 0.75rem;
-  margin-block-end: 0.5rem;
-}
-
-/* The comparison closes the heading's line, as it does on every kind whose
-   subject is the heading. */
-.aci-instruction-detail__title-end {
-  margin-inline-start: auto;
-}
-
-.aci-instruction-detail h2 {
-  margin: 0.25rem 0 0;
-  overflow-wrap: anywhere;
 }
 </style>

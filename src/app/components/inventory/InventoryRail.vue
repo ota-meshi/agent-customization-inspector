@@ -37,6 +37,7 @@
 // reader gets before the word does, and it moves every label off the shared
 // left edge the rail is scanned down.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import LiveRegion from '../LiveRegion.vue';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import {
@@ -311,9 +312,7 @@ function onKeydown(event: KeyboardEvent, index: number): void {
          every personal member on each repository rescan; the rail itself keeps
          the two entries apart. Mounted from the first render with nothing in
          it (`index.vue` § the same rule). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ repositoryAnnouncement }}
-    </p>
+    <LiveRegion :text="repositoryAnnouncement" />
     <nav class="aci-inventory-rail__sources" aria-label="Sources">
       <p class="aci-inventory-rail__group">Sources</p>
       <NuxtLink v-if="repositorySource" class="aci-inventory-rail__route" to="/repository">

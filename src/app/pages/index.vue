@@ -21,6 +21,7 @@
 // one RPC connection and the one adopted snapshot, and a second view state
 // would race the first for the same request tokens.
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import LiveRegion from '../components/LiveRegion.vue';
 import type { SourceKind } from '../../shared/api-types';
 import { GLOBAL_MEMBER_TEXT } from '../../shared/api-text';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
@@ -479,9 +480,7 @@ const globalSourcesAnnouncement = computed(() => {
          member again on every change. Mounted from the first render with
          nothing in it, because a live region added together with its text is
          not announced. -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ globalSourcesAnnouncement }}
-    </p>
+    <LiveRegion :text="globalSourcesAnnouncement" />
 
     <!-- The rail carries what decides which rows are on screen — the entry in
          view, each Source family's status beside the way to its own surface —

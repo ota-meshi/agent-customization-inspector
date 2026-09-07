@@ -75,14 +75,14 @@ test.describe('a declaration whose file wrote its name empty', () => {
     // The crumb and the heading both name the subject, so both carry it: a
     // reader who met the badge on the row must not meet a bare name here.
     await expect(page.locator(`.aci-detail-crumbs ${BADGE}`)).toHaveText('Empty name');
-    await expect(page.locator(`.aci-detail-title ${BADGE}`)).toHaveText('Empty name');
+    await expect(page.locator(`.aci-detail-header__title ${BADGE}`)).toHaveText('Empty name');
     // A tab holds no shape, so it holds the words instead.
     await expect(page).toHaveTitle(/empty name — \.mcp\.json — Repository/u);
 
     await page.goto(
       new URL('/mcp/detail/repository/.mcp.json?server=Empty%20name', host.origin).href,
     );
-    await expect(page.locator(`.aci-detail-title ${BADGE}`)).toHaveCount(0);
+    await expect(page.locator(`.aci-detail-header__title ${BADGE}`)).toHaveCount(0);
     await expect(page).toHaveTitle(/Empty name — \.mcp\.json — Repository/u);
   });
 

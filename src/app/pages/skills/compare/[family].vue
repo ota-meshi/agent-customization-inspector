@@ -45,6 +45,7 @@ import {
   querySideOf,
   comparisonTitleSides,
 } from '../../../components/detail-route';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import {
   comparisonOptionLabel,
   comparisonSourceQualifierOf,
@@ -54,7 +55,7 @@ import AuthoredNameText from '../../../components/AuthoredNameText.vue';
 import DetailNavigation from '../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../components/inspection/SubjectUnavailable.vue';
 import { sourceFactsOf, sourceFamilyNameOf } from '../../../components/source-name';
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import RecognitionComparison from '../../../components/skill-comparison/RecognitionComparison.vue';
@@ -62,7 +63,7 @@ import SourceDiff from '../../../components/comparison/SourceDiff.vue';
 import { SkillRecognitionComparison } from '../../../components/skill-comparison/recognition-comparison';
 import { skillComparisonRouteFor } from '../../../composables/skill-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -100,7 +101,6 @@ const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
 
 const route = useRoute();
 
-const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -1322,12 +1322,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing skill files';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount
-  // cannot erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus
@@ -1374,7 +1369,7 @@ onBeforeUnmount(() => {
          the two cards, where the per-side switchers are
          (`main.css` § .aci-compare-pickers). -->
     <div class="aci-skill-compare__head">
-      <h2 ref="heading" tabindex="-1">Compare skill files</h2>
+      <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare skill files</h2>
       <div v-if="fileSwitcherShown" ref="pickersRegion" class="aci-skill-compare__picker">
         <label for="aci-skill-compare-file">Compared file</label>
         <select id="aci-skill-compare-file" v-model="fileSelection">
@@ -1406,12 +1401,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a
-         region that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The switchers: a comparison is one corresponding file across two
          copies of one skill name, so what a reader chooses is which file —
@@ -1479,6 +1469,10 @@ onBeforeUnmount(() => {
       <div class="aci-compare-sides">
         <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
           <span class="aci-compare-side__caption">{{ side.caption }}</span>
+          <!-- The path carries no rule of its own: `aci-path` already wraps it
+               and `aci-authored-text` draws its whitespace (main.css). The name
+               stays because the acceptance tests identify the two compared paths
+               by it. -->
           <p class="aci-skill-compare__file-path aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
@@ -1548,26 +1542,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.aci-skill-compare {
-  display: flex;
-  flex-direction: column;
-}
-
-.aci-skill-compare > p:first-child {
-  margin: 0;
-}
-
-.aci-skill-compare h2 {
-  margin: 0.25rem 0 0.5rem;
-}
-
 .aci-skill-compare__pickers select {
   max-inline-size: 100%;
-}
-
-/* An authored path has no break opportunities of its own; wrapping keeps the
-   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
-.aci-skill-compare__file-path {
-  overflow-wrap: anywhere;
 }
 </style>

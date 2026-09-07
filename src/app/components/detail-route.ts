@@ -179,6 +179,24 @@ export function decodeDetailRoutePath(segments: readonly string[]): string {
 }
 
 /**
+ * The Source-relative Path a detail route's catch-all parameter names.
+ *
+ * The router hands a catch-all over as the segments it split, and a route
+ * matching one segment as that segment alone, so both shapes arrive here and
+ * an absent parameter names the empty path. Each segment is unescaped on its
+ * own before they are joined ({@link decodeDetailRoutePath}), so a value
+ * already joined into one string would take its separators for authored
+ * characters — which is why the parameter is taken as the router gives it
+ * rather than as a path.
+ */
+export function detailRoutePathOf(parameter: string | string[] | undefined): string {
+  if (parameter === undefined) {
+    return '';
+  }
+  return decodeDetailRoutePath(typeof parameter === 'string' ? [parameter] : parameter);
+}
+
+/**
  * The kind each route family's first URL segment addresses, or null for a
  * segment no kind is rooted at. The inverse of {@link DETAIL_ROUTE_SEGMENT},
  * derived from it rather than spelled again: which segment a kind lives under

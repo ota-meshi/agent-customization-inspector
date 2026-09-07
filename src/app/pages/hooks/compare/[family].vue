@@ -40,7 +40,8 @@
 // the comparison state owns: leaving the route closes it, a client-data purge
 // clears it, and a commit drops the previous generation's view while this page
 // re-requests the same selection under the new snapshot (FR-030).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import LiveRegion from '../../../components/LiveRegion.vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../components/AuthoredNameText.vue';
@@ -63,7 +64,7 @@ import {
 } from '../../../components/comparison-side-picker';
 import { hookComparisonRouteFor } from '../../../composables/hook-comparison';
 import { useSessionViewState } from '../../../composables/session-view-state';
-import { usePageOwnership } from '../../../composables/page-ownership';
+import { useReportedPageSubject } from '../../../composables/page-ownership';
 import { AuthoredName } from '../../../components/authored-name';
 import { useSessionSources } from '../../../composables/session-sources';
 import {
@@ -87,7 +88,6 @@ const status = comparison.status;
 
 const route = useRoute();
 
-const pageOwnership = usePageOwnership();
 const router = useRouter();
 
 /**
@@ -643,12 +643,7 @@ const titleSubject = computed<string>(() => {
   }
   return 'Comparing hook declarations';
 });
-watchEffect(() => {
-  // Reported as this page instance's own, so an outgoing page's unmount cannot
-  // erase what this page just titled the tab with
-  // (`SessionViewState.reportPageSubject`).
-  pageOwnership.reportSubject(titleSubject.value);
-});
+useReportedPageSubject(titleSubject);
 
 onBeforeUnmount(() => {
   // Before the close, whose status change would otherwise trip the focus guard
@@ -689,7 +684,7 @@ onBeforeUnmount(() => {
       ><span class="aci-detail-crumbs__subject">Compare</span>
     </p>
 
-    <h2 ref="heading" tabindex="-1">Compare hook declarations</h2>
+    <h2 ref="heading" tabindex="-1" class="aci-compare-title">Compare hook declarations</h2>
 
     <!-- What is being compared, on the line directly below the heading so the
          two are read together. The heading states the page's purpose, because
@@ -708,12 +703,7 @@ onBeforeUnmount(() => {
       </AuthoredNameText>
     </p>
 
-    <!-- Stable rather than inserted with the state it reports, because a region
-         that appears together with its message is not reliably read
-         (WCAG 4.1.3). -->
-    <p class="aci-live-region" role="status" aria-live="polite" aria-atomic="true">
-      {{ announcement }}
-    </p>
+    <LiveRegion :text="announcement" />
 
     <!-- The pickers: a comparison stays inside the one event row that owns it,
          so what a reader chooses is which of that row's carriers stands on each
@@ -798,17 +788,4 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-.aci-hook-compare {
-  display: flex;
-  flex-direction: column;
-}
-
-.aci-hook-compare > p:first-child {
-  margin: 0;
-}
-
-.aci-hook-compare h2 {
-  margin: 0.25rem 0 0.5rem;
-}
-</style>
+<style scoped></style>

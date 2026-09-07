@@ -13,6 +13,7 @@
 // below is what keeps that from showing the wrong file: only the newest
 // request may write to the editor.
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import LiveRegion from '../LiveRegion.vue';
 import { SourceViewerHandle } from '../../composables/monaco';
 import {
   SOURCE_VIEWER_LANGUAGE_GRAMMAR,
@@ -355,11 +356,7 @@ onBeforeUnmount(() => {
         aria-hidden="true"
         >{{ sourceText }}</pre>
     </div>
-    <!-- Stable rather than inserted with the failure it reports, because a
-         region that appears together with its message is not reliably read. -->
-    <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
-      {{ mountError ? MOUNT_ERROR_MESSAGE : '' }}
-    </p>
+    <LiveRegion :text="mountError ? MOUNT_ERROR_MESSAGE : ''" assertive />
     <p v-if="mountError" class="aci-error aci-source-viewer-panel__failure">
       {{ MOUNT_ERROR_MESSAGE }}
       <button type="button" @click="retryMount">Try again</button>

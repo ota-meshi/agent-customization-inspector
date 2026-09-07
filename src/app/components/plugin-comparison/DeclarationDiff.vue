@@ -20,6 +20,7 @@
 // inert text with an actionable failure beside them (research.md § 7); that
 // rendering is the failure path only, with no standing toggle to it.
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import LiveRegion from '../LiveRegion.vue';
 import { SourceDiffHandle } from '../../composables/monaco';
 import { useSessionViewState } from '../../composables/session-view-state';
 import { escapeControlCharacters, inlinePresentationLabel } from '../../../shared/entities';
@@ -204,11 +205,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-show="!mountError" ref="host" class="aci-plugin-declaration-diff" />
-  <!-- Stable rather than inserted with the failure it reports, because a
-       region that appears together with its message is not reliably read. -->
-  <p class="aci-live-region" role="alert" aria-live="assertive" aria-atomic="true">
-    {{ mountError ? MOUNT_ERROR_MESSAGE : '' }}
-  </p>
+  <LiveRegion :text="mountError ? MOUNT_ERROR_MESSAGE : ''" assertive />
   <p v-if="mountError" class="aci-error">
     {{ MOUNT_ERROR_MESSAGE }}
     <button type="button" @click="retryMount">Try again</button>
