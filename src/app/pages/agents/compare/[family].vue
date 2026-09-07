@@ -963,7 +963,7 @@ onBeforeUnmount(() => {
       <div class="aci-compare-sides">
         <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
           <span class="aci-compare-side__caption">{{ side.caption }}</span>
-          <p class="aci-custom-agent-compare__file-path aci-path aci-authored-text">
+          <p class="aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
           <p class="aci-custom-agent-compare__file-facts aci-note">
@@ -1037,11 +1037,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.aci-custom-agent-compare {
-  display: flex;
-  flex-direction: column;
-}
-
 /* The two complete sources side by side, stacking on a narrow viewport
    (WCAG 1.4.10) — the same shape the identities above them take, so a side
    stays under its own caption at either width. */
@@ -1060,11 +1055,5 @@ onBeforeUnmount(() => {
 .aci-custom-agent-compare__sources h4 {
   font-size: 0.95rem;
   margin: 0.4rem 0 0.2rem;
-}
-
-/* An authored path has no break opportunities of its own; wrapping keeps the
-   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
-.aci-custom-agent-compare__file-path {
-  overflow-wrap: anywhere;
 }
 </style>

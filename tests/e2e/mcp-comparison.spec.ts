@@ -222,7 +222,7 @@ test.describe('the MCP declaration comparison', () => {
     // subject that heading names — this server across the carriers that
     // declare it — rather than on a section below it.
     await expect(
-      page.locator('.aci-mcp-detail__title').getByRole('link', {
+      page.locator('.aci-detail-title-row').getByRole('link', {
         name: "Compare this server's declarations",
       }),
     ).toBeVisible();

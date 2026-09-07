@@ -41,12 +41,12 @@ import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
-import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
 import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
+import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
-import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
@@ -979,6 +979,10 @@ const manifestSource = computed(() => {
  * the message to the shell (`SessionViewState`) and this statement stands
  * alone. It is what keeps a held plugin whose file request ended that way from
  * sitting on a loading pane with nothing in flight and no way back.
+ *
+ * Joined here rather than through the shared method (`detail-request.ts`
+ * § DetailRequest.failureOf), because this route owns its request effect and
+ * holds no `DetailRequest` to ask.
  */
 const detailFailure = computed<string | null>(() => {
   const statement =
@@ -1020,7 +1024,7 @@ const PLUGIN_DETAIL_TAB_TEXT: Readonly<Record<PluginDetailTab, string>> = {
  * (`detail-tabs.ts` § DetailTabs.select).
  */
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
 
 /** The pane holding the open file's source; read by the focus guard below. */
 const paneElement = ref<HTMLElement | null>(null);
@@ -1090,7 +1094,26 @@ const headingAccessibleText = computed(
     `${kindText}: ${pluginName.value?.singleLineText ?? inlinePresentationLabel(carrierPath.value)}`,
 );
 
-/** What the live region announces as the request settles. */
+/**
+ * The manifest's own failure, worded once for the two panes that draw it and
+ * the announcement that speaks it. Null while the manifest is in hand.
+ */
+const manifestFailure = computed(() =>
+  manifestError.value === null
+    ? null
+    : `This plugin's manifest could not be loaded. ${manifestError.value}`,
+);
+
+/**
+ * What the live region announces as the request settles.
+ *
+ * Written out rather than taken from the shared shape (`detail-request.ts`
+ * § DetailRequest.announcementOf), because this kind holds two requests whose
+ * failures can stand at once — the selection's and the manifest's — and the
+ * shared shape reports one. Naming both is the point: a region announces what
+ * changed, so with only the first, the second to settle would leave the
+ * sentence identical and never be announced at all.
+ */
 const detailAnnouncement = computed(() => {
   if (detailState.value === 'loading') {
     return 'Loading this plugin…';
@@ -1103,12 +1126,9 @@ const detailAnnouncement = computed(() => {
   // changed: with only the first, the second to settle would leave the sentence
   // identical and never be announced at all — and the panel it failed on may
   // not be the one in view.
-  const failures = [
-    detailFailure.value,
-    manifestError.value === null
-      ? null
-      : `This plugin's manifest could not be loaded. ${manifestError.value}`,
-  ].filter((message) => message !== null);
+  const failures = [detailFailure.value, manifestFailure.value].filter(
+    (message) => message !== null,
+  );
   if (failures.length > 0) {
     return failures.join(' ');
   }
@@ -1130,7 +1150,7 @@ const detailAnnouncement = computed(() => {
 // a change of subject, so it is not among the coordinates watched.
 const headingFocus = useDetailHeadingFocus({
   pageRoot,
-  heading,
+  heading: () => header.value,
   openPath: carrierPath,
   openSource,
   selection: () => openPluginName.value,
@@ -1320,73 +1340,55 @@ useReportedPageSubject(titleSubject);
 
 <template>
   <div ref="pageRoot" class="aci-plugin-detail aci-route">
-    <!-- The way back and the rows either side of this one, drawn in the bar
-         with every other route's moves (`DetailNavigation.vue`). The kind is
-         URL state, so naming it is what makes the move land on the plugin list
-         rather than the kind order's default tab. -->
-    <DetailNavigation
-      :list-route="inventoryRoute"
-      :list-text="CUSTOMIZATION_KIND_TEXT.plugin"
-      :previous="listNeighbours.previous"
-      :next="listNeighbours.next"
-    />
-
-    <!-- Where the page sits, which is location rather than a way out: the
-         Source family, the kind, and this page's own subject. -->
-    <DetailCrumbs
-      :source-family-crumb-text="sourceFamilyCrumbText"
+    <DetailHeader
+      ref="header"
       :kind-text="CUSTOMIZATION_KIND_TEXT.plugin"
+      :list-route="inventoryRoute"
+      :neighbours="listNeighbours"
+      :source-family-crumb-text="sourceFamilyCrumbText"
       :path-text="pathText"
+      :path-is-spelled-out="pathIsSpelledOut"
+      :accessible-text="headingAccessibleText"
     >
-      <template v-if="pluginName !== null" #subject>
+      <template v-if="pluginName !== null" #trail-subject>
         <AuthoredNameText :name="pluginName">
           <span class="aci-detail-crumbs__subject aci-path">{{ pluginName.text }}</span>
         </AuthoredNameText>
       </template>
-    </DetailCrumbs>
 
-    <div class="aci-plugin-detail__title">
-      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <DetailHeadingSubject
-          :kind-text="CUSTOMIZATION_KIND_TEXT.plugin"
-          :path-text="pathText"
-          :path-is-spelled-out="pathIsSpelledOut"
+      <!-- The declared plugin name heads the page where it resolves; the
+           carrier's own path heads the row that resolves none. -->
+      <template v-if="pluginName !== null" #heading-name>
+        <AuthoredNameText :name="pluginName">
+          <span :class="{ 'aci-authored-text': pluginName.isAuthored }">{{ pluginName.text }}</span>
+        </AuthoredNameText>
+      </template>
+      <template #title-end>
+        <!-- This plugin's comparison, at the end of the heading's own line: it
+             acts on the subject that heading names — the declared plugin across
+             the carriers that declare it — rather than on what the tabs below
+             select (FR-011). -->
+        <NuxtLink
+          v-if="compareRoute !== null"
+          class="aci-button aci-button--primary aci-detail-title-row__end"
+          :to="compareRoute"
+          >Compare this plugin <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+        /></NuxtLink>
+        <!-- Why there is no comparison, rather than nothing at all: a missing
+             control reads the same as a forgotten one, and the reason is a fact
+             about the subject — this name resolves one carrier here, so there is
+             no pair to make (FR-011). The skill detail says the same of a name
+             with one copy. -->
+        <!-- Said only where there is a subject to say it of: on a link the scan
+             holds nothing at, and before the carrier has loaded, "one carrier
+             here" would be a claim about a name that resolves nothing. -->
+        <span
+          v-else-if="pluginName !== null && openDetail !== null"
+          class="aci-detail-title-row__end aci-muted"
+          >This name has one carrier here, so there is nothing to compare</span
         >
-          <!-- The declared plugin name heads the page where it resolves; the
-               carrier's own path heads the row that resolves none. -->
-          <template v-if="pluginName !== null" #name>
-            <AuthoredNameText :name="pluginName">
-              <span :class="{ 'aci-authored-text': pluginName.isAuthored }">{{
-                pluginName.text
-              }}</span>
-            </AuthoredNameText>
-          </template>
-        </DetailHeadingSubject>
-      </h2>
-      <!-- This plugin's comparison, at the end of the heading's own line: it
-           acts on the subject that heading names — the declared plugin across
-           the carriers that declare it — rather than on what the tabs below
-           select (FR-011). -->
-      <NuxtLink
-        v-if="compareRoute !== null"
-        class="aci-button aci-button--primary aci-plugin-detail__title-end"
-        :to="compareRoute"
-        >Compare this plugin <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-      /></NuxtLink>
-      <!-- Why there is no comparison, rather than nothing at all: a missing
-           control reads the same as a forgotten one, and the reason is a fact
-           about the subject — this name resolves one carrier here, so there is
-           no pair to make (FR-011). The skill detail says the same of a name
-           with one copy. -->
-      <!-- Said only where there is a subject to say it of: on a link the scan
-           holds nothing at, and before the carrier has loaded, "one carrier
-           here" would be a claim about a name that resolves nothing. -->
-      <span
-        v-else-if="pluginName !== null && openDetail !== null"
-        class="aci-plugin-detail__title-end aci-muted"
-        >This name has one carrier here, so there is nothing to compare</span
-      >
-    </div>
+      </template>
+    </DetailHeader>
 
     <LiveRegion :text="detailAnnouncement" />
 
@@ -1421,12 +1423,7 @@ useReportedPageSubject(titleSubject);
          request in flight, so without this the panels below would wait on a
          file that is never coming. -->
     <template v-else-if="carrierFile === null || detailState === 'idle'">
-      <SubjectUnavailable outcome="error">
-        {{ detailFailure }}
-        <template #exit>
-          <button type="button" @click="retryOpen">Try again</button>
-        </template>
-      </SubjectUnavailable>
+      <DetailFailureNotice :message="detailFailure" @retry="retryOpen()" />
     </template>
 
     <template v-else>
@@ -1495,13 +1492,7 @@ useReportedPageSubject(titleSubject);
            switch. Every tab therefore names its panel: both IDREFs resolve, and
            omitting one would drop a relationship assistive technology uses to
            move from a tab to what it controls. -->
-      <div
-        v-show="detailTabs.activeTab === 'plugin'"
-        :id="detailTabs.panelId('plugin')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('plugin')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="plugin">
         <!-- The catalog's own declarations first: what the file says about
              itself, before what it says about the plugin the reader
              followed. -->
@@ -1558,12 +1549,11 @@ useReportedPageSubject(titleSubject);
                  way back on a panel the reader is not looking at. The file the
                  reader selected has its own request and its own outcome in the
                  files panel; neither reports the other's. -->
-            <SubjectUnavailable v-if="manifestError !== null" outcome="error">
-              This plugin's manifest could not be loaded. {{ manifestError }}
-              <template #exit>
-                <button type="button" @click="retryOpen">Try again</button>
-              </template>
-            </SubjectUnavailable>
+            <DetailFailureNotice
+              v-if="manifestError !== null"
+              :message="manifestFailure"
+              @retry="retryOpen()"
+            />
             <p v-else class="aci-note">Loading this file…</p>
           </template>
           <p v-else class="aci-note">This file has no source text to show.</p>
@@ -1598,15 +1588,9 @@ useReportedPageSubject(titleSubject);
           files, assets — is shown as the value the file wrote and is never opened. Whether the
           plugin is installed, enabled, or trusted is state this product does not read.
         </p>
-      </div>
+      </DetailTabPanel>
 
-      <div
-        v-show="detailTabs.activeTab === 'files'"
-        :id="detailTabs.panelId('files')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('files')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="files">
         <!-- What the plugin ships, which is what the plugin is: an offering
              shown without the skills, hooks, assets, and its own manifest would
              show the entry and not the customization
@@ -1650,12 +1634,7 @@ useReportedPageSubject(titleSubject);
                    describe the plugin, and the reader keeps them while retrying
                    the one file that did not load. -->
               <template v-if="detailState === 'companion-failed'">
-                <SubjectUnavailable outcome="error">
-                  {{ detailFailure }}
-                  <template #exit>
-                    <button type="button" @click="retryOpen">Try again</button>
-                  </template>
-                </SubjectUnavailable>
+                <DetailFailureNotice :message="detailFailure" @retry="retryOpen()" />
               </template>
               <!-- The manifest is served through its own slot, so a failure
                    there settles nowhere this pane watches: a reader who
@@ -1663,12 +1642,7 @@ useReportedPageSubject(titleSubject);
                    that has already ended, with the failure and the retry on a
                    panel they are not looking at (FR-028). -->
               <template v-else-if="openFilePath === manifestFile && manifestError !== null">
-                <SubjectUnavailable outcome="error">
-                  This plugin's manifest could not be loaded. {{ manifestError }}
-                  <template #exit>
-                    <button type="button" @click="retryOpen">Try again</button>
-                  </template>
-                </SubjectUnavailable>
+                <DetailFailureNotice :message="manifestFailure" @retry="retryOpen()" />
               </template>
               <!-- A switch to another file of this plugin is still in flight:
                    the tree and the URL already name the new file, so the pane
@@ -1719,34 +1693,12 @@ useReportedPageSubject(titleSubject);
             </div>
           </div>
         </template>
-      </div>
+      </DetailTabPanel>
     </template>
   </div>
 </template>
 
 <style scoped>
-/* The plugin detail reads top to bottom: what the carrier declares, then the
-   files the plugin ships. It scrolls as a page rather than fitting the
-   viewport, the same trade the other detail routes make. */
-.aci-plugin-detail {
-  display: flex;
-  flex-direction: column;
-}
-
-/* The heading and the comparison share a line, as every detail page's do. */
-.aci-plugin-detail__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 0.75rem;
-  margin-block-end: 0.5rem;
-}
-
-/* Whatever closes the heading's line: the comparison of the subject it names. */
-.aci-plugin-detail__title-end {
-  margin-inline-start: auto;
-}
-
 /* The open file's path with the command that opens it, on one line: the
    command acts on the file the line names, so a reader never has to work out
    what it applies to. They wrap together when the path is long. */

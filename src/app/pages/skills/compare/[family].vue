@@ -1469,6 +1469,10 @@ onBeforeUnmount(() => {
       <div class="aci-compare-sides">
         <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
           <span class="aci-compare-side__caption">{{ side.caption }}</span>
+          <!-- The path carries no rule of its own: `aci-path` already wraps it
+               and `aci-authored-text` draws its whitespace (main.css). The name
+               stays because the acceptance tests identify the two compared paths
+               by it. -->
           <p class="aci-skill-compare__file-path aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
@@ -1538,18 +1542,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.aci-skill-compare {
-  display: flex;
-  flex-direction: column;
-}
-
 .aci-skill-compare__pickers select {
   max-inline-size: 100%;
-}
-
-/* An authored path has no break opportunities of its own; wrapping keeps the
-   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
-.aci-skill-compare__file-path {
-  overflow-wrap: anywhere;
 }
 </style>

@@ -862,7 +862,7 @@ onBeforeUnmount(() => {
       <div class="aci-compare-sides">
         <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
           <span class="aci-compare-side__caption">{{ side.caption }}</span>
-          <p class="aci-instruction-compare__file-path aci-path aci-authored-text">
+          <p class="aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
           <p class="aci-instruction-compare__file-facts aci-note">
@@ -921,17 +921,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.aci-instruction-compare {
-  display: flex;
-  flex-direction: column;
-}
-
-/* An authored path has no break opportunities of its own; wrapping keeps the
-   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
-.aci-instruction-compare__file-path {
-  overflow-wrap: anywhere;
-}
-
 /* The facts line carries a home's escaped root, which has no break
    opportunities of its own either (WCAG 1.4.10). */
 .aci-instruction-compare__file-facts {

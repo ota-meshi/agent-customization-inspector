@@ -12,7 +12,14 @@
 // same thing — a file, a carrier, a policy, a plugin — and `usePageOwnership`
 // already publishes one method per kind (`page-ownership.ts`), so the choice
 // among them is a fact about the kind rather than about requesting.
-import { toValue, watch, type ComputedRef, type MaybeRefOrGetter, type ShallowRef } from 'vue';
+import {
+  computed,
+  toValue,
+  watch,
+  type ComputedRef,
+  type MaybeRefOrGetter,
+  type ShallowRef,
+} from 'vue';
 import { familyGenerationOf, type SourceSelector } from '../components/detail-route';
 import { usePageOwnership } from './page-ownership';
 import type { DetailHeadingFocus } from './detail-heading-focus';
@@ -49,6 +56,33 @@ export interface DetailRequestOptions {
    * before re-requesting (`detail-heading-focus.ts`).
    */
   readonly headingFocus: DetailHeadingFocus;
+}
+
+/** What one route says while its request settles; see {@link DetailRequest.announcementOf}. */
+export interface DetailAnnouncementOptions {
+  /**
+   * Whether the address names a subject this page can show. What answers it
+   * differs by kind, and is not {@link DetailRequestOptions.ready}: a route
+   * addressed by its own path asks the committed inventory, which is knowable
+   * before any request, while a route addressed by a declared name inside a
+   * carrier asks the carrier it fetched, because only the response lists the
+   * names. What the reader is told is the same either way — there is nothing
+   * here, and no further wait produces it.
+   */
+  readonly resolved: MaybeRefOrGetter<boolean>;
+  /** What the route says when it does not — the kind's own wording. */
+  readonly missingText: string;
+  /**
+   * The failure the route words for a request that did not complete, or null
+   * while nothing has failed (the same value its failure branch draws).
+   */
+  readonly failure: MaybeRefOrGetter<string | null>;
+  /**
+   * What the route says while the request is in flight. Read only in that
+   * state, so a kind whose sentence depends on what the address selects can
+   * pass a getter and have it asked at the moment it answers.
+   */
+  readonly loadingText: MaybeRefOrGetter<string>;
 }
 
 /**
@@ -125,6 +159,59 @@ export class DetailRequest {
   public retryOpen(): void {
     this.#options.headingFocus.focusHeading();
     this.#requestOpen();
+  }
+
+  /**
+   * What a route reports and announces when its own request did not complete:
+   * its own statement, with the request's message after it. Null while nothing
+   * has failed.
+   *
+   * The statement is the route's, because what could not be loaded differs by
+   * kind and by what the address selects inside it. Joining is not. A route is
+   * in its recoverable failure state however it was reached, and the two ways
+   * of reaching it carry different amounts: a request that failed puts its
+   * message in {@link detailError}, while a newer-generation refresh that
+   * could not adopt leaves the message to the shell
+   * (`view-state.ts` § SessionViewState.openFileDetail). So the statement
+   * stands alone rather than trailing an empty clause.
+   */
+  public failureOf(statement: MaybeRefOrGetter<string | null>): ComputedRef<string | null> {
+    return computed(() => {
+      const said = toValue(statement);
+      if (said === null) {
+        return null;
+      }
+      const error = this.detailError.value;
+      return error === null ? said : `${said} ${error}`;
+    });
+  }
+
+  /**
+   * What the live region announces as the request settles (WCAG 4.1.3): a
+   * change that alters the page without moving keyboard focus has to reach a
+   * reader who is not looking at it.
+   *
+   * The order is what a reader needs first. An address that names nothing this
+   * page can show is said before anything else — a request the host answered
+   * with `stale-resource`, no current generation holding the file
+   * (`view-state.ts` § FileDetailState), or a subject {@link
+   * DetailAnnouncementOptions.resolved} answers no for — because nothing
+   * further is coming for it. A failure is said next, in the words the failure
+   * branch draws, so hearing it and reading it are the same sentence. Only then is the wait announced. Everything else is silence:
+   * the arrival is the page itself, and a region that also said "ready" would
+   * make the reader hear what they can already see.
+   */
+  public announcementOf(options: DetailAnnouncementOptions): ComputedRef<string> {
+    return computed(() => {
+      if (this.detailState.value === 'stale' || !toValue(options.resolved)) {
+        return options.missingText;
+      }
+      const failure = toValue(options.failure);
+      if (failure !== null) {
+        return failure;
+      }
+      return this.detailState.value === 'loading' ? toValue(options.loadingText) : '';
+    });
   }
 }
 

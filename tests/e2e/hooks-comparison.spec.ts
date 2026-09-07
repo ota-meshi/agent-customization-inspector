@@ -355,7 +355,7 @@ test.describe('the hook declaration comparison', () => {
       // subject that heading names — this event across the carriers that
       // declare it — rather than on a section below it.
       page
-        .locator('.aci-hook-detail__title')
+        .locator('.aci-detail-title-row')
         .getByRole('link', { name: "Compare this event's declarations: SessionStart" }),
     ).toHaveCount(0);
     // Do not wait for Monaco here. The regression boundary is the first reader

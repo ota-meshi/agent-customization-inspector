@@ -800,7 +800,7 @@ onBeforeUnmount(() => {
       <div class="aci-compare-sides">
         <section v-for="side in readyView.sides" :key="side.caption" class="aci-compare-side">
           <span class="aci-compare-side__caption">{{ side.caption }}</span>
-          <p class="aci-mcp-compare__file-path aci-path aci-authored-text">
+          <p class="aci-path aci-authored-text">
             {{ escapeControlCharacters(side.path) }}
           </p>
           <p class="aci-mcp-compare__file-facts aci-note">
@@ -863,15 +863,4 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-.aci-mcp-compare {
-  display: flex;
-  flex-direction: column;
-}
-
-/* An authored path has no break opportunities of its own; wrapping keeps the
-   page from scrolling sideways at narrow widths (WCAG 1.4.10). */
-.aci-mcp-compare__file-path {
-  overflow-wrap: anywhere;
-}
-</style>
+<style scoped></style>

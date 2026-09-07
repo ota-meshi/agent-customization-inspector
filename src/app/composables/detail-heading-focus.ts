@@ -27,6 +27,19 @@ import {
 } from 'vue';
 import type { SourceSelector } from '../components/detail-route';
 
+/**
+ * The heading's own controls, published by whichever component draws it
+ * (`DetailHeader.vue`). Two calls rather than the element, because those are
+ * the whole of what a focus move needs: the element itself would hand every
+ * caller the rest of the DOM through it.
+ */
+export interface DetailHeadingControls {
+  /** Moves focus onto the heading. */
+  focusHeading(): void;
+  /** Whether focus is already on the heading, which a move must not repeat. */
+  headingHasFocus(): boolean;
+}
+
 /** What one detail page hands its heading focus; see the module header. */
 export interface DetailHeadingFocusOptions {
   /**
@@ -35,8 +48,13 @@ export interface DetailHeadingFocusOptions {
    * everything the page draws.
    */
   readonly pageRoot: Readonly<ShallowRef<HTMLElement | null>>;
-  /** The page heading, focused on entry so a keyboard user starts at the top. */
-  readonly heading: Readonly<ShallowRef<HTMLHeadingElement | null>>;
+  /**
+   * The heading, focused on entry so a keyboard user starts at the top, as the
+   * controls over it rather than as the element. A getter because the header
+   * that publishes them is mounted after the page's own setup runs, so there
+   * is nothing to read at the moment this is handed over.
+   */
+  readonly heading: MaybeRefOrGetter<DetailHeadingControls | null>;
   /**
    * The path whose change means the page is about a different subject while
    * staying mounted — the address's own for a kind whose heading is that path
@@ -70,7 +88,7 @@ export class DetailHeadingFocus {
   #pageRoot: Readonly<ShallowRef<HTMLElement | null>>;
 
   /** The heading every move lands on. */
-  #heading: Readonly<ShallowRef<HTMLHeadingElement | null>>;
+  #heading: MaybeRefOrGetter<DetailHeadingControls | null>;
 
   /** Set as the route is left, so a move yields to the next route. */
   #leaving = false;
@@ -106,7 +124,7 @@ export class DetailHeadingFocus {
    * reader happens to be on (`detail-request.ts` § retryOpen).
    */
   public focusHeading(): void {
-    this.#heading.value?.focus();
+    toValue(this.#heading)?.focusHeading();
   }
 
   /**
@@ -120,7 +138,7 @@ export class DetailHeadingFocus {
     if (
       !this.#leaving &&
       this.#pageRoot.value?.contains(document.activeElement) === true &&
-      document.activeElement !== this.#heading.value
+      toValue(this.#heading)?.headingHasFocus() !== true
     ) {
       this.focusHeading();
     }

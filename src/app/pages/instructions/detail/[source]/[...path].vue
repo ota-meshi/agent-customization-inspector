@@ -35,12 +35,12 @@ import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
-import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
+import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
-import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
-import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
+import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
@@ -441,10 +441,10 @@ const INSTRUCTION_DETAIL_TAB_TEXT: Readonly<Record<InstructionDetailTab, string>
 // different file, and the question the guards below ask before moving it
 // (`detail-heading-focus.ts`).
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
 const headingFocus = useDetailHeadingFocus({
   pageRoot,
-  heading,
+  heading: () => header.value,
   openPath,
   openSource,
   selection: null,
@@ -466,7 +466,7 @@ const request = useDetailRequest({
   },
   headingFocus,
 });
-const { detailState, detailError } = request;
+const { detailState } = request;
 
 /** The strip and the panels it controls (`detail-tabs.ts` § DetailTabs). */
 const detailTabs = useDetailTabs({
@@ -519,20 +519,11 @@ watch([openDetail, openSource, openPath], ([detail, source, path]) => {
  * read by both the visible paragraph and the live region, so what a reader
  * hears is the sentence that is on the screen.
  */
-const detailFailure = computed<string | null>(() => {
-  // An idle page holding nothing is this route's recoverable failure state
-  // however it was reached — a failed request carries its message in
-  // `detailError`, while a newer-generation refresh that could not adopt
-  // leaves the message to the shell and this statement stands alone.
-  const statement =
-    openDetail.value === null && detailState.value === 'idle'
-      ? 'This instruction file could not be loaded.'
-      : null;
-  if (statement === null) {
-    return null;
-  }
-  return detailError.value === null ? statement : `${statement} ${detailError.value}`;
-});
+const detailFailure = request.failureOf(() =>
+  openDetail.value === null && detailState.value === 'idle'
+    ? 'This instruction file could not be loaded.'
+    : null,
+);
 
 /**
  * What this page's polite live region announces — the states that change the
@@ -540,17 +531,11 @@ const detailFailure = computed<string | null>(() => {
  * in-flight load, and a request that failed. Each phrase matches the visible
  * copy; ready content is read as focus moves through it.
  */
-const detailAnnouncement = computed(() => {
-  if (detailState.value === 'stale' || owner.value === null) {
-    return 'Nothing in the current scan sits at this link’s path.';
-  }
-  if (detailFailure.value !== null) {
-    return detailFailure.value;
-  }
-  if (detailState.value === 'loading') {
-    return 'Loading this instruction file…';
-  }
-  return '';
+const detailAnnouncement = request.announcementOf({
+  resolved: () => owner.value !== null,
+  missingText: 'Nothing in the current scan sits at this link’s path.',
+  failure: detailFailure,
+  loadingText: 'Loading this instruction file…',
 });
 
 /**
@@ -624,46 +609,31 @@ watch(
 
 <template>
   <div ref="pageRoot" class="aci-instruction-detail aci-route">
-    <!-- The way back and the ranges either side of this file's, drawn in the
-         bar with every other route's moves (`DetailNavigation.vue`). The kind
-         is URL state, so naming it is what makes the move land on the
-         instructions list rather than the kind order's default tab. -->
-    <DetailNavigation
-      list-route="/?kind=instructions"
-      :list-text="CUSTOMIZATION_KIND_TEXT.instructions"
-      :previous="listNeighbours.previous"
-      :next="listNeighbours.next"
-    />
-
-    <!-- Where the page sits, which is location rather than a way out: the
-         Source family, the kind, and this page's own subject. -->
-    <DetailCrumbs
-      :source-family-crumb-text="sourceFamilyCrumbText"
+    <DetailHeader
+      ref="header"
       :kind-text="CUSTOMIZATION_KIND_TEXT.instructions"
+      list-route="/?kind=instructions"
+      :neighbours="listNeighbours"
+      :source-family-crumb-text="sourceFamilyCrumbText"
       :path-text="pathText"
-    />
-
-    <div class="aci-instruction-detail__title">
-      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <DetailHeadingSubject
-          :kind-text="CUSTOMIZATION_KIND_TEXT.instructions"
-          :path-text="pathText"
-          :path-is-spelled-out="pathIsSpelledOut"
-        />
-      </h2>
-      <!-- The comparison this file's range can make (FR-011), at the end of
-           the heading's own line — where every kind whose subject is the
-           heading puts its own (`agents/detail`, `mcp/detail`). On the tabs'
-           row it read as a control on what the tabs select, which is one half
-           of the file rather than the file this comparison is of. -->
-      <NuxtLink
-        v-if="comparePairRoute !== null"
-        :to="comparePairRoute"
-        class="aci-button aci-button--primary aci-instruction-detail__title-end"
-        >Compare this instruction file
-        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-      /></NuxtLink>
-    </div>
+      :path-is-spelled-out="pathIsSpelledOut"
+      :accessible-text="headingAccessibleText"
+    >
+      <template #title-end>
+        <!-- The comparison this file's range can make (FR-011), at the end of
+             the heading's own line — where every kind whose subject is the
+             heading puts its own (`agents/detail`, `mcp/detail`). On the tabs'
+             row it read as a control on what the tabs select, which is one half
+             of the file rather than the file this comparison is of. -->
+        <NuxtLink
+          v-if="comparePairRoute !== null"
+          :to="comparePairRoute"
+          class="aci-button aci-button--primary aci-detail-title-row__end"
+          >Compare this instruction file
+          <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+        /></NuxtLink>
+      </template>
+    </DetailHeader>
 
     <LiveRegion :text="detailAnnouncement" />
 
@@ -672,13 +642,7 @@ watch(
     </template>
 
     <template v-else-if="detailState === 'stale' || owner === null">
-      <SubjectUnavailable outcome="warning">
-        Nothing in the current scan sits at this link's path. The inventory may have changed since
-        the link was made; a rescan that brings the path back will make it resolve again.
-        <template #exit>
-          <NuxtLink to="/?kind=instructions">Return to the inventory and open it again.</NuxtLink>
-        </template>
-      </SubjectUnavailable>
+      <DetailPathNotFound list-route="/?kind=instructions" />
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -686,12 +650,7 @@ watch(
          the shell reports what happened to the session, so neither hides or
          repeats the other. -->
     <template v-else-if="openDetail === null">
-      <SubjectUnavailable outcome="error">
-        {{ detailFailure }}
-        <template #exit>
-          <button type="button" @click="request.retryOpen()">Try again</button>
-        </template>
-      </SubjectUnavailable>
+      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
     </template>
 
     <template v-else>
@@ -733,13 +692,7 @@ watch(
       <!-- Both panels stay in the document and the unselected one is hidden,
            so Monaco keeps its model and the reader's scroll position across a
            tab switch, and both `aria-controls` IDREFs resolve. -->
-      <div
-        v-show="detailTabs.activeTab === 'instructions'"
-        :id="detailTabs.panelId('instructions')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('instructions')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="instructions">
         <!-- A failed extraction leaves this panel with nothing parsed to
              show; its Diagnostic is what says so, and the complete source is
              one tab away (FR-028). -->
@@ -779,15 +732,9 @@ watch(
             content-label="Instructions of"
           />
         </div>
-      </div>
+      </DetailTabPanel>
 
-      <div
-        v-show="detailTabs.activeTab === 'file'"
-        :id="detailTabs.panelId('file')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('file')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="file">
         <!-- What the read produced, and nothing else. The file below is the
              file; a viewer that narrated what a file might contain would be
              telling the reader about their own repository (FR-027). -->
@@ -811,20 +758,12 @@ watch(
           :source-relative-path="openDetail.file.sourceRelativePath"
         />
         <p v-else class="aci-note">This file has no source text to show.</p>
-      </div>
+      </DetailTabPanel>
     </template>
   </div>
 </template>
 
 <style scoped>
-/* The instruction detail reads top to bottom: what the file is, what it
-   declares, what it instructs, then the complete file. It scrolls as a page
-   rather than fitting the viewport, the same trade the skill detail makes. */
-.aci-instruction-detail {
-  display: flex;
-  flex-direction: column;
-}
-
 /* The two halves of the parse, inside the tab that holds them. */
 .aci-instruction-detail__declarations,
 .aci-instruction-detail__instructions {
@@ -835,21 +774,5 @@ watch(
 .aci-instruction-detail__instructions > h3 {
   font-size: 0.95rem;
   margin: 0 0 0.35rem;
-}
-
-/* The path and the link that opens it on one line, wrapping together when the
-   path is long. */
-.aci-instruction-detail__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 0.75rem;
-  margin-block-end: 0.5rem;
-}
-
-/* The comparison closes the heading's line, as it does on every kind whose
-   subject is the heading. */
-.aci-instruction-detail__title-end {
-  margin-inline-start: auto;
 }
 </style>

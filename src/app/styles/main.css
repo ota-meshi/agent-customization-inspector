@@ -759,6 +759,25 @@ button[aria-disabled='true'] {
   overflow-wrap: anywhere;
 }
 
+/* The heading's own line: the subject, and whatever closes it. A utility
+   because every kind's detail draws the same line, and drawn separately the
+   ten would drift. It wraps rather than pushing the page past the WCAG
+   reference width of 320 CSS pixels, and the row gap is what keeps a dropped
+   link off the heading's underside (WCAG 1.4.10). */
+.aci-detail-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin-block-end: 0.5rem;
+}
+
+/* What closes that line: the comparison of the subject the heading names, or
+   the sentence saying the subject has no pair. */
+.aci-detail-title-row__end {
+  margin-inline-start: auto;
+}
+
 /* The comparison pages' heading. Only the spacing is shared: the subject
    heading above it is set larger, while a comparison is headed by this
    product's own words at the shell's own size. */
@@ -1010,8 +1029,17 @@ button[aria-disabled='true'] {
    reaches the shell's edge and starts at the bar's own border. A wrapper
    imposing the inset would be something that page then had to escape, and a
    negative margin equal to a padding declared elsewhere is two numbers that
-   have to agree. */
+   have to agree.
+
+   The contents are a stack of sections, and what separates two of them is the
+   margin each one declares. Left to collapse, the gap is the larger of the two
+   and the smaller declaration is written but does nothing; stacked, both are
+   what they say. The inset above already keeps the parent from collapsing with
+   its first or last child, so this decides the gaps between siblings and
+   nothing else. */
 .aci-route {
+  display: flex;
+  flex-direction: column;
   padding: 0.75rem 1.25rem 2rem;
 }
 

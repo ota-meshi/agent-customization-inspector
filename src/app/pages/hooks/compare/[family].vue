@@ -788,9 +788,4 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-.aci-hook-compare {
-  display: flex;
-  flex-direction: column;
-}
-</style>
+<style scoped></style>

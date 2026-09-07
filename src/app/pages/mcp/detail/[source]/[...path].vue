@@ -30,12 +30,11 @@ import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
-import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
-import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
@@ -477,10 +476,10 @@ const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 // different carrier or declaration, and the question the guards below ask
 // before moving it (`detail-heading-focus.ts`).
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
 const headingFocus = useDetailHeadingFocus({
   pageRoot,
-  heading,
+  heading: () => header.value,
   openPath,
   openSource,
   selection: () => openServerName.value,
@@ -502,7 +501,7 @@ const request = useDetailRequest({
   },
   headingFocus,
 });
-const { detailState, detailError } = request;
+const { detailState } = request;
 
 /**
  * What this route says when its own request failed, or null when none has:
@@ -510,37 +509,27 @@ const { detailState, detailError } = request;
  * read by both the visible paragraph and the live region, so what a reader
  * hears is the sentence that is on the screen.
  */
-const detailFailure = computed<string | null>(() => {
-  const statement =
-    openDetail.value === null && detailState.value === 'idle'
-      ? openServerName.value === null
-        ? 'This MCP carrier could not be loaded.'
-        : 'This MCP server declaration could not be loaded.'
-      : null;
-  if (statement === null) {
-    return null;
-  }
-  return detailError.value === null ? statement : `${statement} ${detailError.value}`;
-});
+const detailFailure = request.failureOf(() =>
+  openDetail.value === null && detailState.value === 'idle'
+    ? openServerName.value === null
+      ? 'This MCP carrier could not be loaded.'
+      : 'This MCP server declaration could not be loaded.'
+    : null,
+);
 
 /**
  * What this page's polite live region announces — the states that change the
  * page without moving keyboard focus (WCAG 4.1.3). Each phrase matches the
  * visible copy; ready content is read as focus moves through it.
  */
-const detailAnnouncement = computed(() => {
-  if (detailState.value === 'stale' || !linkResolved.value) {
-    return 'Nothing in the current scan matches this link.';
-  }
-  if (detailFailure.value !== null) {
-    return detailFailure.value;
-  }
-  if (detailState.value === 'loading') {
-    return openServerName.value === null
+const detailAnnouncement = request.announcementOf({
+  resolved: () => linkResolved.value,
+  missingText: 'Nothing in the current scan matches this link.',
+  failure: detailFailure,
+  loadingText: () =>
+    openServerName.value === null
       ? 'Loading this MCP carrier…'
-      : 'Loading this MCP server declaration…';
-  }
-  return '';
+      : 'Loading this MCP server declaration…',
 });
 
 /**
@@ -609,23 +598,15 @@ watch(
 
 <template>
   <div ref="pageRoot" class="aci-mcp-detail aci-route">
-    <!-- The way back and the rows either side of this one, drawn in the bar
-         with every other route's moves (`DetailNavigation.vue`). The kind is
-         URL state, so naming it is what makes the move land on the MCP list
-         rather than the kind order's default tab. -->
-    <DetailNavigation
-      list-route="/?kind=MCP"
-      :list-text="CUSTOMIZATION_KIND_TEXT.MCP"
-      :previous="listNeighbours.previous"
-      :next="listNeighbours.next"
-    />
-
-    <!-- Where the page sits, which is location rather than a way out: the
-         Source family, the kind, and this page's own subject. -->
-    <DetailCrumbs
-      :source-family-crumb-text="sourceFamilyCrumbText"
+    <DetailHeader
+      ref="header"
       :kind-text="CUSTOMIZATION_KIND_TEXT.MCP"
+      list-route="/?kind=MCP"
+      :neighbours="listNeighbours"
+      :source-family-crumb-text="sourceFamilyCrumbText"
       :path-text="pathText"
+      :path-is-spelled-out="pathIsSpelledOut"
+      :accessible-text="headingAccessibleText"
     >
       <!-- The page's own subject, which is the declared name on a declaration
            view and the carrier's path on the carrier's own. The trail ended at
@@ -633,7 +614,7 @@ watch(
            file while its heading named a server — the only kind whose trail
            and heading disagreed. Which carrier it was declared in is the
            `Declared in` line's, said once. -->
-      <template v-if="serverName !== null" #subject>
+      <template v-if="serverName !== null" #trail-subject>
         <AuthoredNameText :name="serverName">
           <span
             class="aci-detail-crumbs__subject"
@@ -642,53 +623,43 @@ watch(
           >
         </AuthoredNameText>
       </template>
-    </DetailCrumbs>
 
-    <div class="aci-mcp-detail__title">
-      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <DetailHeadingSubject
-          :kind-text="CUSTOMIZATION_KIND_TEXT.MCP"
-          :path-text="pathText"
-          :path-is-spelled-out="pathIsSpelledOut"
+      <!-- The declared server name names a declaration view, where the
+       carrier's own path names the file-unit one. -->
+      <template v-if="serverName !== null" #heading-name>
+        <AuthoredNameText :name="serverName">
+          <span :class="{ 'aci-authored-text': serverName.isAuthored }">{{ serverName.text }}</span>
+        </AuthoredNameText>
+      </template>
+      <template #title-end>
+        <!-- The declaration view's comparison entry (FR-011): present exactly
+             when this name's row holds another readable carrier to stand
+             opposite this one. At the end of the heading's own line, because it
+             acts on the subject that heading names rather than on one of the
+             sections below it. The comparison surface's own pickers take over
+             from there. -->
+        <NuxtLink
+          v-if="openServerCompareRoute !== null"
+          class="aci-button aci-button--primary aci-detail-title-row__end"
+          :to="openServerCompareRoute"
+          >Compare this server's declarations
+          <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+        /></NuxtLink>
+        <!-- Why there is no comparison, rather than nothing at all: a missing
+             control reads the same as a forgotten one, and the reason is a fact
+             about the subject — this name resolves one carrier here, so there is
+             no pair to make (FR-011). The skill detail says the same of a name
+             with one copy. -->
+        <!-- Said only where there is a subject to say it of: on a link the scan
+             holds nothing at, and before the carrier has loaded, "one carrier
+             here" would be a claim about a name that resolves nothing. -->
+        <span
+          v-else-if="openServerName !== null && openDetail !== null"
+          class="aci-detail-title-row__end aci-muted"
+          >This name has one carrier here, so there is nothing to compare</span
         >
-          <!-- The declared server name names a declaration view, where the
-           carrier's own path names the file-unit one. -->
-          <template v-if="serverName !== null" #name>
-            <AuthoredNameText :name="serverName">
-              <span :class="{ 'aci-authored-text': serverName.isAuthored }">{{
-                serverName.text
-              }}</span>
-            </AuthoredNameText>
-          </template>
-        </DetailHeadingSubject>
-      </h2>
-      <!-- The declaration view's comparison entry (FR-011): present exactly
-           when this name's row holds another readable carrier to stand
-           opposite this one. At the end of the heading's own line, because it
-           acts on the subject that heading names rather than on one of the
-           sections below it. The comparison surface's own pickers take over
-           from there. -->
-      <NuxtLink
-        v-if="openServerCompareRoute !== null"
-        class="aci-button aci-button--primary aci-mcp-detail__title-end"
-        :to="openServerCompareRoute"
-        >Compare this server's declarations
-        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-      /></NuxtLink>
-      <!-- Why there is no comparison, rather than nothing at all: a missing
-           control reads the same as a forgotten one, and the reason is a fact
-           about the subject — this name resolves one carrier here, so there is
-           no pair to make (FR-011). The skill detail says the same of a name
-           with one copy. -->
-      <!-- Said only where there is a subject to say it of: on a link the scan
-           holds nothing at, and before the carrier has loaded, "one carrier
-           here" would be a claim about a name that resolves nothing. -->
-      <span
-        v-else-if="openServerName !== null && openDetail !== null"
-        class="aci-mcp-detail__title-end aci-muted"
-        >This name has one carrier here, so there is nothing to compare</span
-      >
-    </div>
+      </template>
+    </DetailHeader>
 
     <LiveRegion :text="detailAnnouncement" />
 
@@ -721,12 +692,7 @@ watch(
     <!-- A failed detail request: the state fell back to idle with nothing
          held. This route reports it, because this route made the request. -->
     <template v-else-if="openDetail === null">
-      <SubjectUnavailable outcome="error">
-        {{ detailFailure }}
-        <template #exit>
-          <button type="button" @click="request.retryOpen()">Try again</button>
-        </template>
-      </SubjectUnavailable>
+      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
     </template>
 
     <template v-else>
@@ -853,14 +819,6 @@ watch(
 </template>
 
 <style scoped>
-/* The MCP detail reads top to bottom: what the carrier is, then one section
-   per declaration. It scrolls as a page rather than fitting the viewport,
-   the same trade the other detail routes make. */
-.aci-mcp-detail {
-  display: flex;
-  flex-direction: column;
-}
-
 .aci-mcp-detail__overview {
   border-bottom: 1px solid var(--aci-line);
   padding-bottom: 0.5rem;
@@ -876,20 +834,5 @@ watch(
 .aci-mcp-detail__server > h3 {
   font-size: 0.95rem;
   margin: 0 0 0.35rem;
-}
-
-/* The heading and the link that opens the file it names on one line, wrapping
-   together when the path is long. */
-.aci-mcp-detail__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 0.75rem;
-  margin-block-end: 0.5rem;
-}
-
-/* Whatever closes the heading's line: the comparison of the subject it names. */
-.aci-mcp-detail__title-end {
-  margin-inline-start: auto;
 }
 </style>

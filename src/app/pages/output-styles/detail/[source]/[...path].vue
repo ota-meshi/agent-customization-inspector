@@ -36,7 +36,6 @@
 import { computed, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
-import { NuxtLink } from '#components';
 import {
   asSourceSelector,
   detailNeighbours,
@@ -48,12 +47,12 @@ import {
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
-import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
+import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
-import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
-import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
+import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
@@ -385,10 +384,10 @@ const OUTPUT_STYLE_DETAIL_TAB_TEXT: Readonly<Record<OutputStyleDetailTab, string
 // different file, and the question the guards below ask before rescuing it
 // (`detail-heading-focus.ts`).
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
 const headingFocus = useDetailHeadingFocus({
   pageRoot,
-  heading,
+  heading: () => header.value,
   openPath,
   openSource,
   selection: null,
@@ -409,7 +408,7 @@ const request = useDetailRequest({
   },
   headingFocus,
 });
-const { detailState, detailError } = request;
+const { detailState } = request;
 
 /** The strip and the panels it controls (`detail-tabs.ts` § DetailTabs). */
 const detailTabs = useDetailTabs({
@@ -473,16 +472,11 @@ const headingAccessibleText = computed(() =>
  * read by both the visible paragraph and the live region, so what a reader
  * hears is the sentence that is on the screen.
  */
-const detailFailure = computed<string | null>(() => {
-  const statement =
-    openDetail.value === null && detailState.value === 'idle'
-      ? 'This file could not be loaded.'
-      : null;
-  if (statement === null) {
-    return null;
-  }
-  return detailError.value === null ? statement : `${statement} ${detailError.value}`;
-});
+const detailFailure = request.failureOf(() =>
+  openDetail.value === null && detailState.value === 'idle'
+    ? 'This file could not be loaded.'
+    : null,
+);
 
 /**
  * What this page's polite live region announces — the states that change the
@@ -490,17 +484,11 @@ const detailFailure = computed<string | null>(() => {
  * in-flight load, and a request that failed. Each phrase matches the visible
  * copy; ready content is read as focus moves through it.
  */
-const detailAnnouncement = computed(() => {
-  if (detailState.value === 'stale' || owner.value.length === 0) {
-    return 'Nothing in the current scan sits at this link’s path.';
-  }
-  if (detailFailure.value !== null) {
-    return detailFailure.value;
-  }
-  if (detailState.value === 'loading') {
-    return 'Loading this file…';
-  }
-  return '';
+const detailAnnouncement = request.announcementOf({
+  resolved: () => owner.value.length > 0,
+  missingText: 'Nothing in the current scan sits at this link’s path.',
+  failure: detailFailure,
+  loadingText: 'Loading this file…',
 });
 
 /**
@@ -569,34 +557,16 @@ watch(
 
 <template>
   <div ref="pageRoot" class="aci-output-style-detail aci-route">
-    <!-- The way back and the rows either side of this one, drawn in the bar
-         with every other route's moves (`DetailNavigation.vue`). The kind is
-         URL state, so naming it is what makes the move land on this kind's
-         list rather than the kind order's default tab. -->
-    <DetailNavigation
-      :list-route="inventoryRoute"
-      :list-text="kindText"
-      :previous="listNeighbours.previous"
-      :next="listNeighbours.next"
-    />
-
-    <!-- Where the page sits, which is location rather than a way out: the
-         Source family, the kind, and this page's own subject. -->
-    <DetailCrumbs
-      :source-family-crumb-text="sourceFamilyCrumbText"
+    <DetailHeader
+      ref="header"
       :kind-text="kindText"
+      :list-route="inventoryRoute"
+      :neighbours="listNeighbours"
+      :source-family-crumb-text="sourceFamilyCrumbText"
       :path-text="pathText"
+      :path-is-spelled-out="pathIsSpelledOut"
+      :accessible-text="headingAccessibleText"
     />
-
-    <div class="aci-output-style-detail__title">
-      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <DetailHeadingSubject
-          :kind-text="kindText"
-          :path-text="pathText"
-          :path-is-spelled-out="pathIsSpelledOut"
-        />
-      </h2>
-    </div>
 
     <LiveRegion :text="detailAnnouncement" />
 
@@ -605,13 +575,7 @@ watch(
     </template>
 
     <template v-else-if="detailState === 'stale' || owner.length === 0">
-      <SubjectUnavailable outcome="warning">
-        Nothing in the current scan sits at this link's path. The inventory may have changed since
-        the link was made; a rescan that brings the path back will make it resolve again.
-        <template #exit>
-          <NuxtLink :to="inventoryRoute">Return to the inventory and open it again.</NuxtLink>
-        </template>
-      </SubjectUnavailable>
+      <DetailPathNotFound :list-route="inventoryRoute" />
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -619,12 +583,7 @@ watch(
          the shell reports what happened to the session, so neither hides or
          repeats the other. -->
     <template v-else-if="openDetail === null">
-      <SubjectUnavailable outcome="error">
-        {{ detailFailure }}
-        <template #exit>
-          <button type="button" @click="request.retryOpen()">Try again</button>
-        </template>
-      </SubjectUnavailable>
+      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
     </template>
 
     <template v-else>
@@ -676,13 +635,7 @@ watch(
       <!-- Both panels stay in the document and the unselected one is hidden,
            so Monaco keeps its model and the reader's scroll position across a
            tab switch, and both `aria-controls` IDREFs resolve. -->
-      <div
-        v-show="detailTabs.activeTab === 'style'"
-        :id="detailTabs.panelId('style')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('style')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="style">
         <!-- A failed extraction leaves this panel with nothing parsed to
              show; its Diagnostic is what says so, and the complete source is
              one tab away (FR-028). -->
@@ -724,15 +677,9 @@ watch(
             content-label="Instructions of"
           />
         </div>
-      </div>
+      </DetailTabPanel>
 
-      <div
-        v-show="detailTabs.activeTab === 'file'"
-        :id="detailTabs.panelId('file')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('file')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="file">
         <!-- What the read produced, and nothing else. The file below is the
              file; a viewer that narrated what a file might contain would be
              telling the reader about their own repository (FR-027). -->
@@ -756,20 +703,12 @@ watch(
           :source-relative-path="openDetail.file.sourceRelativePath"
         />
         <p v-else class="aci-note">This file has no source text to show.</p>
-      </div>
+      </DetailTabPanel>
     </template>
   </div>
 </template>
 
 <style scoped>
-/* The detail reads top to bottom: what the file is, what it declares,
-   what it prompts, then the complete file. It scrolls as a page rather than
-   fitting the viewport, the same trade the instruction detail makes. */
-.aci-output-style-detail {
-  display: flex;
-  flex-direction: column;
-}
-
 /* The two halves of the parse, inside the tab that holds them. */
 .aci-output-style-detail__declarations,
 .aci-output-style-detail__instructions {
@@ -780,15 +719,5 @@ watch(
 .aci-output-style-detail__instructions > h3 {
   font-size: 0.95rem;
   margin: 0 0 0.35rem;
-}
-
-/* The path and the link that opens it on one line, wrapping together when the
-   path is long. */
-.aci-output-style-detail__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 0.75rem;
-  margin-block-end: 0.5rem;
 }
 </style>

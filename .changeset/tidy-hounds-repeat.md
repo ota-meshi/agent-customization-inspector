@@ -1,5 +1,5 @@
 ---
-'agent-customization-inspector': patch
+'agent-customization-inspector': minor
 ---
 
 Read-only source diffs for skills, instructions, prompts and commands, custom agents, and plugins now render through one shared component. Comparison behavior is unchanged.

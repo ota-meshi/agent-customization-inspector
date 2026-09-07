@@ -59,13 +59,15 @@ import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
+import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
 import DetailTabStrip from '../../../../components/inspection/DetailTabStrip.vue';
+import DetailTabPanel from '../../../../components/inspection/DetailTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
-import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
 import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SkipLink from '../../../../components/inspection/SkipLink.vue';
@@ -838,32 +840,6 @@ const entryDiagnostics = computed(() => {
 });
 
 /**
- * What this route says when its own request failed, or null when none has: the
- * failing state's statement, then the failure's own message.
- *
- * One value, read by both the visible paragraph and the live region, so what a
- * reader hears is the sentence that is on the screen. Two expressions building
- * it separately could differ by one edit.
- */
-const detailFailure = computed<string | null>(() => {
-  // The idle branch needs no error to speak: an idle page holding nothing is
-  // this route's recoverable failure state however it was reached — a failed
-  // entry request carries its message in `detailError`, while a
-  // newer-generation refresh that could not adopt leaves the message to the
-  // shell (`SessionViewState.openFileDetail`) and this statement stands alone.
-  const statement =
-    detailState.value === 'companion-failed'
-      ? 'This file could not be loaded.'
-      : entryDetail.value === null && detailState.value === 'idle'
-        ? 'This skill could not be loaded.'
-        : null;
-  if (statement === null) {
-    return null;
-  }
-  return detailError.value === null ? statement : `${statement} ${detailError.value}`;
-});
-
-/**
  * What this page's polite live region announces — the states that change the
  * page without moving keyboard focus, so a reader who cannot see the swap
  * needs them said (WCAG 4.1.3, contracts/accessibility-acceptance.md
@@ -875,6 +851,12 @@ const detailFailure = computed<string | null>(() => {
  * A detail request's failure is announced here because this route owns it: the
  * shell reports what happened to the session, and neither surface repeats the
  * other.
+ *
+ * Written out rather than taken from the shared shape (`detail-request.ts`
+ * § DetailRequest.announcementOf), because this kind waits twice: the skill's
+ * own request settles first and a selected companion is fetched after it, so
+ * there is a second wait to announce that a route with one request has no
+ * state for.
  */
 const detailAnnouncement = computed(() => {
   if (detailState.value === 'stale' || !selectionResolved.value) {
@@ -893,7 +875,7 @@ const detailAnnouncement = computed(() => {
 });
 
 /** The page heading, focused on entry so a keyboard user starts at the top. */
-const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
 
 /** The pane holding the open file's source; read by the focus guard below. */
 const paneElement = ref<HTMLElement | null>(null);
@@ -917,7 +899,7 @@ const reservedPaneHeight = ref(0);
 // it twice (`detail-heading-focus.ts` § openPath).
 const headingFocus = useDetailHeadingFocus({
   pageRoot,
-  heading,
+  heading: () => header.value,
   openPath: computed(() => owner.value?.definition.sourceRelativePath ?? ''),
   openSource,
   selection: null,
@@ -948,7 +930,23 @@ const request = useDetailRequest({
   },
   headingFocus,
 });
-const { detailState, detailError } = request;
+const { detailState } = request;
+
+/**
+ * What this route says when its own request failed, or null when none has: the
+ * failing state's statement, then the failure's own message.
+ *
+ * One value, read by both the visible paragraph and the live region, so what a
+ * reader hears is the sentence that is on the screen. Two expressions building
+ * it separately could differ by one edit.
+ */
+const detailFailure = request.failureOf(() =>
+  detailState.value === 'companion-failed'
+    ? 'This file could not be loaded.'
+    : entryDetail.value === null && detailState.value === 'idle'
+      ? 'This skill could not be loaded.'
+      : null,
+);
 
 // Focus moves to the heading when the *skill* changes, not when a file within
 // it does. Following a link in an SPA moves no focus by itself, so arriving
@@ -1061,39 +1059,26 @@ watch(
 
 <template>
   <div ref="pageRoot" class="aci-skill-detail aci-route">
-    <!-- The way back and the rows either side of this one, drawn in the bar
-         with every other route's moves (`DetailNavigation.vue`). The kind is
-         URL state, so naming it is what makes the move land on the skill list
-         rather than the kind order's default tab. -->
-    <DetailNavigation
-      list-route="/?kind=skill"
-      :list-text="CUSTOMIZATION_KIND_TEXT.skill"
-      :previous="listNeighbours.previous"
-      :next="listNeighbours.next"
-    />
-
-    <!-- Where the page sits, which is location rather than a way out: the
-         Source family, the kind, and this page's own subject. -->
-    <DetailCrumbs
-      :source-family-crumb-text="sourceFamilyCrumbText"
+    <!-- The skill's own directory heads the page and the trail: the directory
+         is the skill (FR-007), and it is the one identity every product
+         reading it shares, where the names they invoke it by differ and are
+         listed below. Escaped for presentation like every path, never a
+         locator anything can open (FR-024, FR-030), and never this product's
+         own spelling — the directory is drawn as authored or not at all. A URL
+         no owner resolves for is headed by the kind, so the heading always
+         describes the page (WCAG 2.4.6), and the trail stops at the kind
+         rather than ending on a step that draws nothing. -->
+    <DetailHeader
+      ref="header"
       :kind-text="CUSTOMIZATION_KIND_TEXT.skill"
+      list-route="/?kind=skill"
+      :neighbours="listNeighbours"
+      :source-family-crumb-text="sourceFamilyCrumbText"
       :path-text="skillDirectoryText"
+      :path-is-spelled-out="false"
+      :accessible-text="headingAccessibleText"
       omits-unresolved-subject
     />
-
-    <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-      <!-- The skill's own directory heads the page: the directory is the
-           skill (FR-007), and it is the one identity every product reading
-           it shares, where the names they invoke it by differ and are listed
-           below. Escaped for presentation like every path, never a locator
-           anything can open (FR-024, FR-030). A URL no owner resolves for is
-           headed by the kind, so the heading always describes the page
-           (WCAG 2.4.6). -->
-      <span v-if="skillDirectoryText !== ''" class="aci-path aci-authored-text">{{
-        skillDirectoryText
-      }}</span>
-      <template v-else>Skill</template>
-    </h2>
 
     <LiveRegion :text="detailAnnouncement" />
 
@@ -1111,13 +1096,7 @@ watch(
          sentence, which would tell the reader a directory holds no such file
          when there is no such directory. -->
     <template v-else-if="detailState === 'stale' || owner === null">
-      <SubjectUnavailable outcome="warning">
-        Nothing in the current scan sits at this link's path. The inventory may have changed since
-        the link was made; a rescan that brings the path back will make it resolve again.
-        <template #exit>
-          <NuxtLink to="/?kind=skill">Return to the inventory and open it again.</NuxtLink>
-        </template>
-      </SubjectUnavailable>
+      <DetailPathNotFound list-route="/?kind=skill" />
     </template>
 
     <template v-else-if="!selectionResolved">
@@ -1137,12 +1116,7 @@ watch(
          for it, and the retry beside it is the way back without re-finding the
          link. -->
     <template v-else-if="entryDetail === null">
-      <SubjectUnavailable outcome="error">
-        {{ detailFailure }}
-        <template #exit>
-          <button type="button" @click="request.retryOpen()">Try again</button>
-        </template>
-      </SubjectUnavailable>
+      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
     </template>
 
     <template v-else-if="entryDetail">
@@ -1272,13 +1246,7 @@ watch(
            tab switch. Every tab therefore names its panel: both IDREFs resolve,
            and omitting one would drop a relationship assistive technology
            uses to move from a tab to what it controls. -->
-      <div
-        v-show="detailTabs.activeTab === 'skill'"
-        :id="detailTabs.panelId('skill')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('skill')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="skill">
         <!-- The skill itself: what it declares and what it tells the product to
            do. The `SKILL.md` carries both, and showing only its bytes would
            leave the reader to find the seam — so the two are shown apart,
@@ -1326,15 +1294,9 @@ watch(
             content-label="Instructions of"
           />
         </div>
-      </div>
+      </DetailTabPanel>
 
-      <div
-        v-show="detailTabs.activeTab === 'files'"
-        :id="detailTabs.panelId('files')"
-        role="tabpanel"
-        :aria-labelledby="detailTabs.tabId('files')"
-        tabindex="0"
-      >
+      <DetailTabPanel :tabs="detailTabs" tab="files">
         <SkipLink target-id="aci-skill-detail-file-contents" />
 
         <div class="aci-skill-detail__layout">
@@ -1367,12 +1329,7 @@ watch(
                describe the skill, and the reader keeps them while retrying the
                one file that did not load. -->
             <template v-if="detailState === 'companion-failed'">
-              <SubjectUnavailable outcome="error">
-                {{ detailFailure }}
-                <template #exit>
-                  <button type="button" @click="request.retryOpen()">Try again</button>
-                </template>
-              </SubjectUnavailable>
+              <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
             </template>
             <!-- A switch to another file of this skill is still in flight: the
                tree and the URL already name the new file, so the pane shows
@@ -1426,19 +1383,12 @@ watch(
             </template>
           </div>
         </div>
-      </div>
+      </DetailTabPanel>
     </template>
   </div>
 </template>
 
 <style scoped>
-/* This heading stands alone rather than in a title row — the skill's subject
-   shares its line with nothing — so it carries the space below that every
-   other kind's row holds (`main.css` § .aci-detail-title). */
-.aci-skill-detail h2 {
-  margin-block-end: 0.5rem;
-}
-
 /* The open file's path with the command that opens it, on one line: the
    command acts on the file the line names, so a reader never has to work out
    what it applies to. They wrap together when the path is long. */
@@ -1452,15 +1402,6 @@ watch(
 
 .aci-skill-detail__file-title > :last-child {
   margin-inline-start: auto;
-}
-
-/* The skill detail reads top to bottom: what the skill is, what it declares,
-   what it instructs, then the files it ships. It scrolls as a page rather than
-   fitting the viewport — fitting was tried, and the skill's own sections left
-   the directory they introduce a few pixels or none at all. */
-.aci-skill-detail {
-  display: flex;
-  flex-direction: column;
 }
 
 /* The definition's own caption line, weighted like a heading within the

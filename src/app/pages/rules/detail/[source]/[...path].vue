@@ -31,7 +31,6 @@
 import { computed, useTemplateRef, watch } from 'vue';
 import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
-import { NuxtLink } from '#components';
 import {
   asSourceSelector,
   detailNeighbours,
@@ -39,10 +38,9 @@ import {
   detailRoutePathOf,
 } from '../../../../components/detail-route';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
-import DetailCrumbs from '../../../../components/inspection/DetailCrumbs.vue';
-import DetailHeadingSubject from '../../../../components/inspection/DetailHeadingSubject.vue';
-import DetailNavigation from '../../../../components/inspection/DetailNavigation.vue';
-import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
+import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
+import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
@@ -177,10 +175,10 @@ const headingAccessibleText = computed(() =>
 // different file, and the question the guards below ask before rescuing it
 // (`detail-heading-focus.ts`).
 const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const heading = useTemplateRef<HTMLHeadingElement>('heading');
+const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
 const headingFocus = useDetailHeadingFocus({
   pageRoot,
-  heading,
+  heading: () => header.value,
   openPath,
   openSource,
   selection: null,
@@ -202,7 +200,7 @@ const request = useDetailRequest({
   },
   headingFocus,
 });
-const { detailState, detailError } = request;
+const { detailState } = request;
 
 /**
  * What this route says when its own request failed, or null when none has:
@@ -210,16 +208,11 @@ const { detailState, detailError } = request;
  * read by both the visible paragraph and the live region, so what a reader
  * hears is the sentence that is on the screen.
  */
-const detailFailure = computed<string | null>(() => {
-  const statement =
-    openDetail.value === null && detailState.value === 'idle'
-      ? 'This rule file could not be loaded.'
-      : null;
-  if (statement === null) {
-    return null;
-  }
-  return detailError.value === null ? statement : `${statement} ${detailError.value}`;
-});
+const detailFailure = request.failureOf(() =>
+  openDetail.value === null && detailState.value === 'idle'
+    ? 'This rule file could not be loaded.'
+    : null,
+);
 
 /**
  * What this page's polite live region announces — the states that change the
@@ -227,17 +220,11 @@ const detailFailure = computed<string | null>(() => {
  * in-flight load, and a request that failed. Each phrase matches the visible
  * copy; ready content is read as focus moves through it.
  */
-const detailAnnouncement = computed(() => {
-  if (detailState.value === 'stale' || owner.value === null) {
-    return 'Nothing in the current scan sits at this link’s path.';
-  }
-  if (detailFailure.value !== null) {
-    return detailFailure.value;
-  }
-  if (detailState.value === 'loading') {
-    return 'Loading this rule file…';
-  }
-  return '';
+const detailAnnouncement = request.announcementOf({
+  resolved: () => owner.value !== null,
+  missingText: 'Nothing in the current scan sits at this link’s path.',
+  failure: detailFailure,
+  loadingText: 'Loading this rule file…',
 });
 
 /**
@@ -306,32 +293,16 @@ watch(
 
 <template>
   <div ref="pageRoot" class="aci-rule-detail aci-route">
-    <!-- The way back and the rows either side of this one, drawn in the bar
-         with every other route's moves (`DetailNavigation.vue`). The kind is
-         URL state, so naming it is what makes the move land on the rule list
-         rather than the kind order's default tab. -->
-    <DetailNavigation
-      :list-route="inventoryRoute"
-      :list-text="kindText"
-      :previous="listNeighbours.previous"
-      :next="listNeighbours.next"
-    />
-
-    <DetailCrumbs
-      :source-family-crumb-text="sourceFamilyCrumbText"
+    <DetailHeader
+      ref="header"
       :kind-text="kindText"
+      :list-route="inventoryRoute"
+      :neighbours="listNeighbours"
+      :source-family-crumb-text="sourceFamilyCrumbText"
       :path-text="pathText"
+      :path-is-spelled-out="pathIsSpelledOut"
+      :accessible-text="headingAccessibleText"
     />
-
-    <div class="aci-rule-detail__title">
-      <h2 ref="heading" tabindex="-1" class="aci-detail-title" :aria-label="headingAccessibleText">
-        <DetailHeadingSubject
-          :kind-text="kindText"
-          :path-text="pathText"
-          :path-is-spelled-out="pathIsSpelledOut"
-        />
-      </h2>
-    </div>
 
     <LiveRegion :text="detailAnnouncement" />
 
@@ -340,13 +311,7 @@ watch(
     </template>
 
     <template v-else-if="detailState === 'stale' || owner === null">
-      <SubjectUnavailable outcome="warning">
-        Nothing in the current scan sits at this link's path. The inventory may have changed since
-        the link was made; a rescan that brings the path back will make it resolve again.
-        <template #exit>
-          <NuxtLink :to="inventoryRoute">Return to the inventory and open it again.</NuxtLink>
-        </template>
-      </SubjectUnavailable>
+      <DetailPathNotFound :list-route="inventoryRoute" />
     </template>
 
     <!-- A failed detail request: the state fell back to idle with nothing
@@ -354,12 +319,7 @@ watch(
          the shell reports what happened to the session, so neither hides or
          repeats the other. -->
     <template v-else-if="openDetail === null">
-      <SubjectUnavailable outcome="error">
-        {{ detailFailure }}
-        <template #exit>
-          <button type="button" @click="request.retryOpen()">Try again</button>
-        </template>
-      </SubjectUnavailable>
+      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
     </template>
 
     <template v-else>
@@ -389,22 +349,4 @@ watch(
   </div>
 </template>
 
-<style scoped>
-/* The rule detail reads top to bottom: what the file is, then the complete
-   file. It scrolls as a page rather than fitting the viewport, the same trade
-   the instruction detail makes. */
-.aci-rule-detail {
-  display: flex;
-  flex-direction: column;
-}
-
-/* The path and the link that opens it on one line, wrapping together when the
-   path is long. */
-.aci-rule-detail__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 0.75rem;
-  margin-block-end: 0.5rem;
-}
-</style>
+<style scoped></style>
