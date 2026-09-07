@@ -1150,8 +1150,8 @@ git diff --check
 Review `pnpm outdated` rather than blindly upgrading: a newer prerelease or an incompatible
 TypeScript/Vite major does not replace the latest compatible versions documented in
 [research.md](research.md). Assert that the tarball contains only npm's `package.json` plus
-the exact `package.json.files` entries `dist`, `docs/images`, `README.md`, `README.ja.md`,
-and `LICENSE`, and that the expanded `dist/**` tree contains the two entry points verified by
+the exact `package.json.files` entries `dist`, `README.md`, `README.ja.md`, and
+`LICENSE`, and that the expanded `dist/**` tree contains the two entry points verified by
 `verify:package` — `dist/public/index.html` and `dist/cli.mjs`;
 the remaining `dist` contents are Nuxt/tsdown build output and are not re-enumerated by a
 product manifest. Inspect the exact `bin` mapping and absence of `main`/`module`/`exports`,

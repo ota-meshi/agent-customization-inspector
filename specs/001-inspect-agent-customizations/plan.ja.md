@@ -788,8 +788,8 @@ CLI bundleが唯一のtsdown entryである。
 clean → `nuxt build` → tsdown pipelineが所有するため、recursiveな再検証でそのownershipを
 重複させない。Install時build/downloadは行わない。
 `package.json.files`は正確に
-`["dist", "docs/images", "README.md", "README.ja.md", "LICENSE"]`とする。npmは`package.json`も含めるため、
-tarball allowlistは`dist/`と上記4 entryおよびその内容だけで、source、fixture、planning artifactを
+`["dist", "README.md", "README.ja.md", "LICENSE"]`とする。npmは`package.json`も含めるため、
+tarball allowlistは`dist/`と上記3 entryおよびその内容だけで、source、fixture、planning artifactを
 含めない。PackageはCLI-onlyとし、`package.json.bin`は正確に
 `{ "agent-customization-inspector": "dist/cli.mjs" }`、`main`、`module`、`exports`は不在とし、存在しないlibrary
 entry pointをadvertiseしない。Package testはbin targetの保持された正確なshebangを検証し、binが指すbuild済み

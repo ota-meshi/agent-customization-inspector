@@ -902,7 +902,7 @@ git diff --check
 
 `pnpm outdated`を見てblind upgradeしない。新しいprereleaseや非互換TypeScript/Vite majorは
 [research.ja.md](research.ja.md)で文書化した最新互換versionを置換しない。Tarballがnpmの`package.json`と
-exact `package.json.files` entryの`dist`、`docs/images`、`README.md`、`README.ja.md`、`LICENSE`だけを含むこと、および展開した
+exact `package.json.files` entryの`dist`、`README.md`、`README.ja.md`、`LICENSE`だけを含むこと、および展開した
 `dist/**` treeが`verify:package`の検証する2つのentry point、すなわち`dist/public/index.html`と`dist/cli.mjs`
 を含むことをassertする。残りの`dist` contentはNuxt/tsdownのbuild outputであり、
 product manifestで再列挙しない。Exact `bin` mappingと

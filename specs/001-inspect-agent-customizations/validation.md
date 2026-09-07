@@ -810,6 +810,13 @@ the first press. The test records the forward-Tab exemption, no workaround is in
 repository, and forward exit on Firefox stands as an open limitation of the editor on that
 engine.
 
+The same limitation costs the case one other claim on Firefox alone. A forward walk of a
+detail page counts how many controls precede the editor at the moment it mounts rather than
+whether the walk moves, because it stops there: 6 to 8 presses' worth on a developer machine
+and 3 on a certification runner, where the editor is mounted by the second press. That count
+is therefore not claimed on Firefox, which the inventory walk — the one page with no editor
+on it — holds to the same claim as the other two engines.
+
 **The manual half is outside the criterion.** The 36 `MANUAL-*` IDs would be executed over
 `3 × 5 × 3 × 8 × 3 = 1,080` keyed cells each — 38,880 cells requiring macOS with VoiceOver,
 Windows with NVDA, and Ubuntu with Orca. SC-008 asserts the automated checks and the four

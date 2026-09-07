@@ -70,7 +70,7 @@ Bundleされたparserはscan path上でin-processに実行し、調査対象data
 
 `verify:package` checkはpackaged artifactへのassertが属する層である
 CIとrelease gateで実行し、全local buildの内側では実行しない。`package.json.files`は正確に
-`["dist", "docs/images", "README.md", "README.ja.md", "LICENSE"]`とする。npmが自動で含める`package.json`と
+`["dist", "README.md", "README.ja.md", "LICENSE"]`とする。npmが自動で含める`package.json`と
 それらのentryがcomplete tarball allowlistである。`package.json.bin`は正確に
 `{ "agent-customization-inspector": "dist/cli.mjs" }`とする。tsdown bundleがentryのshebangを保持し、
 package managerがinstall時にlinkされたbinをexecutableにする。library APIがないため`main`、`module`、`exports`を
