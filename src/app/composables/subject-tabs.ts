@@ -73,9 +73,12 @@ export class SubjectTabs<Tab extends string> {
 
   /**
    * Arrow keys move the selection, matching the WAI-ARIA tabs pattern.
-   * Selection follows focus because switching panels issues no request and
-   * loses no work: both halves are already in hand, so the extra Enter that
-   * manual activation asks for would be friction with nothing behind it.
+   * Selection follows focus because a switch loses no work: both panels stay
+   * mounted, so stepping back restores the held view and scroll position. A
+   * panel may fetch content when first selected — the plugin comparison's
+   * files panel reads its pair then (`plugins/compare` § the file-pair effect)
+   * — and reuses a successful result when the same selection returns. The
+   * extra Enter that manual activation asks for would buy none of that back.
    *
    * `index` is where the event fired, which is the focused tab rather than the
    * selected one; the strip's own `v-for` supplies it.
