@@ -63,11 +63,14 @@ export interface DetailAnnouncementOptions {
   /**
    * Whether the address names a subject this page can show. What answers it
    * differs by kind, and is not {@link DetailRequestOptions.ready}: a route
-   * addressed by its own path asks the committed inventory, which is knowable
-   * before any request, while a route addressed by a declared name inside a
-   * carrier asks the carrier it fetched, because only the response lists the
-   * names. What the reader is told is the same either way — there is nothing
-   * here, and no further wait produces it.
+   * addressed by its own path asks the committed inventory, and so does the
+   * MCP route for a declared name, whose inventory rows are those names. The
+   * hook route asks the carrier it fetched instead, because the host holds the
+   * whole answer there — a parsed carrier that declares no event sits on no
+   * row and still resolves, so reading the rows would report a held carrier as
+   * a path this scan does not have (`hooks/detail` § declarationMissing).
+   * What the reader is told is the same either way: there is nothing here, and
+   * no further wait produces it.
    */
   readonly resolved: MaybeRefOrGetter<boolean>;
   /** What the route says when it does not — the kind's own wording. */

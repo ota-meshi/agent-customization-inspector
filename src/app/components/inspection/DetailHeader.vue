@@ -101,3 +101,31 @@ defineExpose({ focusHeading, headingHasFocus });
     <slot name="title-end" />
   </div>
 </template>
+
+<style scoped>
+/* The heading's own line: the subject, and whatever closes it. It wraps rather
+   than pushing the page past the WCAG reference width of 320 CSS pixels, and
+   the row gap is what keeps a dropped link off the heading's underside
+   (WCAG 1.4.10). What closes the line is the caller's, so its own rule stays
+   in the sheet (`main.css` § .aci-detail-title-row__end): the callers render
+   it into this line's slot, where a rule scoped here would not reach it. */
+.aci-detail-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin-block-end: 0.5rem;
+}
+
+/* The subject the page leads with — what the page is showing, which FR-007
+   fixes as the customization rather than the file carrying it — and where
+   focus lands on arrival (`router.options.ts`). Its width is the shell's
+   focusable-heading rule's (`main.css`). The authored name or path it carries
+   may have no break opportunities of its own, and without the wrap a long one
+   forces sideways scrolling at narrow widths and 200% zoom (WCAG 1.4.10). */
+.aci-detail-title {
+  font-size: 1.0625rem;
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+</style>
