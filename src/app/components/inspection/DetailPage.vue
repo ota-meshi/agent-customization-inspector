@@ -14,7 +14,7 @@
 // What the address names stays the route's and arrives as props: which
 // parameters carry an address and how they are spelled is the route's own
 // shape, declared by the page's file name (`detail-address.ts`).
-import { computed, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useDetailHeadingFocus } from '../../composables/detail-heading-focus';
 import { useSessionViewState } from '../../composables/session-view-state';
 import type { DetailNeighbour, SourceSelector } from '../detail-route';
@@ -135,9 +135,9 @@ defineSlots<{
   missing?(): unknown;
   /**
    * Everything this page shows under its heading, drawn from the subject the
-   * frame has in hand. Bind it under the page's own name for what it holds —
-   * `#default="{ subject: openDetail }"` — and the page's content reads as it
-   * did before the frame took the guard.
+   * frame has in hand, which is never null here. Bind it under the page's own
+   * name for what it holds — `#default="{ subject: openDetail }"` — so the
+   * content below names its subject the way the rest of the page does.
    */
   default(props: { subject: Subject }): unknown;
 }>();
@@ -212,30 +212,47 @@ const headingFocus = useDetailHeadingFocus({
 
 // A committed generation replacing the snapshot drops a subject that was on
 // screen — the tabs, the tree, the viewer — without the address moving, so
-// focus inside that subtree would drop to the document body (WCAG 2.4.3). Only
-// a departing subject moves focus: a request that failed before anything was
-// shown unmounts nothing but the loading line, and the reader may be on the
-// surviving back link — a failure is announced through the region above,
-// never by forcing focus.
+// focus inside that subtree would drop to the document body (WCAG 2.4.3).
 //
-// The address is what tells a departing subject from a departing reader. A
-// page holds its subject only for the address that subject matches, narrowed
-// by Source and path together (FR-030), so the address held is the address
-// this watcher saw last: comparing the two says which of them moved. A history
-// step to another subject is left to the address watcher
-// (`detail-heading-focus.ts`), which focuses after the flush, once the heading
-// names where the reader arrived rather than where they left. Synchronous,
-// because afterwards the focused element is already gone.
+// What is checked is the outcome rather than the cause: the element the reader
+// was on is remembered while it is still in the document, and the rescue is
+// made only if that element is gone and focus did fall to the body. Comparing
+// the address instead would ask whether the reader navigated, and the two
+// halves of that question — the subject and the address it was held for —
+// reach this component as separate props, updated one after the other, so a
+// history step to another subject is seen for one moment as a subject
+// departing at an unchanged address and the heading of the page being left
+// takes focus.
+//
+// So a history step needs no test here: the address watcher focuses the
+// heading after the flush (`detail-heading-focus.ts`), and focus is then no
+// longer on the body. A request that failed before anything was shown needs
+// none either — it unmounts nothing the reader could be inside, so nothing was
+// lost to give back.
+//
+// Waiting for the flush costs nothing the rescue needs: the element is held as
+// a reference, so what happened to the document afterwards is what the check
+// reads. Adopting a generation takes the ordinary path — the content unmounts
+// with the component that drew it, after this component's props are in — and
+// the one teardown that runs ahead of the tree, the central purge, is raised
+// only by a global disable or a channel failure (`client-data.ts`
+// § ClientDataPurge, `view-state.ts`), neither of which leaves this route
+// mounted around a reader.
 watch(
-  [
-    (): Subject | null => props.subject,
-    (): string => props.openPath,
-    (): SourceSelector => props.openSource,
-  ],
-  ([subject, path, source], [departed, heldPath, heldSource]) => {
-    if (subject === null && departed !== null && path === heldPath && source === heldSource) {
-      headingFocus.requestFocusHeading();
+  (): Subject | null => props.subject,
+  (subject, departed) => {
+    if (subject !== null || departed === null) {
+      return;
     }
+    const held = document.activeElement;
+    if (held === null || pageRoot.value?.contains(held) !== true) {
+      return;
+    }
+    void nextTick(() => {
+      if (!held.isConnected && document.activeElement === document.body) {
+        headingFocus.focusHeading();
+      }
+    });
   },
   { flush: 'sync' },
 );
