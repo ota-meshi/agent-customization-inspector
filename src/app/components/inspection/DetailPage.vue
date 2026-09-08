@@ -230,14 +230,16 @@ const headingFocus = useDetailHeadingFocus({
 // none either — it unmounts nothing the reader could be inside, so nothing was
 // lost to give back.
 //
-// Waiting for the flush costs nothing the rescue needs: the element is held as
-// a reference, so what happened to the document afterwards is what the check
-// reads. Adopting a generation takes the ordinary path — the content unmounts
-// with the component that drew it, after this component's props are in — and
-// the one teardown that runs ahead of the tree, the central purge, is raised
-// only by a global disable or a channel failure (`client-data.ts`
-// § ClientDataPurge, `view-state.ts`), neither of which leaves this route
-// mounted around a reader.
+// Waiting for the flush costs nothing once this watcher has captured the
+// element: the reference remains available after the document changes.
+//
+// A generation adoption can instead dispose the content before this component
+// receives `subject === null`. Starting a refresh moves focus to a control
+// outside this page, but the reader can return to the source viewer while the
+// request is in flight. If a newer generation settles then,
+// `closeFileDetail()` disconnects the focused editor before the prop update,
+// so this watcher sees the document body and has no departed element to hold.
+// This prop-level guard does not cover that transition.
 watch(
   (): Subject | null => props.subject,
   (subject, departed) => {
