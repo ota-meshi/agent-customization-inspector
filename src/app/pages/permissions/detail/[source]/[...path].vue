@@ -31,8 +31,7 @@
 // generation all drop the open detail through the same cleanup the other
 // detail routes use; only the URL survives a commit, and the page refetches
 // the same path under the new generation.
-import { computed, useTemplateRef, watch } from 'vue';
-import LiveRegion from '../../../../components/LiveRegion.vue';
+import { computed, useTemplateRef } from 'vue';
 import { useRoute } from 'vue-router';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
 import {
@@ -43,13 +42,11 @@ import {
 } from '../../../../components/detail-route';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
-import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
-import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
-import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
+import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
+import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
-import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
@@ -185,18 +182,9 @@ const headingAccessibleText = computed(() =>
 /** The open policy's own file-scoped diagnostics, or none (FR-028). */
 const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 
-// Where focus sits: the entry focus, the re-focus when the address names a
-// different file, and the question the guards below ask before rescuing it
-// (`detail-heading-focus.ts`).
-const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
-const headingFocus = useDetailHeadingFocus({
-  pageRoot,
-  heading: () => header.value,
-  openPath,
-  openSource,
-  selection: null,
-});
+// Where focus sits: the frame bounds this page and holds its heading focus
+// (`DetailPage.vue`), and the guards below ask that focus to rescue itself.
+const page = useTemplateRef<DetailPageControls>('page');
 
 const pageOwnership = usePageOwnership();
 
@@ -211,7 +199,7 @@ const request = useDetailRequest({
   perform: () => {
     void pageOwnership.openPolicyDetail(openPath.value, openSource.value);
   },
-  headingFocus,
+  focusHeading: () => page.value?.focusHeading(),
 });
 const { detailState } = request;
 
@@ -226,19 +214,6 @@ const detailFailure = request.failureOf(() =>
     ? 'This permission policy could not be loaded.'
     : null,
 );
-
-/**
- * What this page's polite live region announces — the states that change the
- * page without moving keyboard focus (WCAG 4.1.3): the stale state, the
- * in-flight load, and a request that failed. Each phrase matches the visible
- * copy; ready content is read as focus moves through it.
- */
-const detailAnnouncement = request.announcementOf({
-  resolved: () => owner.value !== null,
-  missingText: 'Nothing in the current scan sits at this link’s path.',
-  failure: detailFailure,
-  loadingText: 'Loading this permission policy…',
-});
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2): the path
@@ -265,81 +240,31 @@ const titleSubject = computed<string | null>(() => {
     : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 useReportedPageSubject(titleSubject);
-
-// A generation replacement drops a detail that was on screen — the viewer
-// unmounts — without moving the URL, so if keyboard focus is inside that
-// subtree it would drop to the document body (WCAG 2.4.3). Only an
-// actually-departing detail moves focus: a request that fails before anything
-// was shown unmounts nothing but the loading line, and the reader may be on
-// the surviving back link — an error is announced through the live region,
-// never by forcing focus. The path condition keeps this guard out of a
-// history step to another policy, whose own `openPath` watcher focuses the
-// heading after the flush. Synchronous, because afterwards the focused
-// element is already gone.
-watch(
-  openDetail,
-  (detail, previous) => {
-    if (
-      detail === null &&
-      previous !== null &&
-      previous.file.sourceRelativePath === openPath.value &&
-      previous.file.sourceId === openSourceId.value
-    ) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-// The stale transition replaces the whole body of the page below the heading
-// — the loading line or the detail alike — so its guard watches the state
-// itself and considers the whole page root (WCAG 2.4.3).
-watch(
-  [detailState, owner],
-  ([state, resolved]) => {
-    if (state === 'stale' || resolved === null) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-permission-policy-detail aci-route">
-    <!-- Returns to the tab this page came from: the inventory's kind is URL
-         state, so naming it here is what makes the link land on the
-         permissions list rather than the kind order's default tab. -->
-    <DetailHeader
-      ref="header"
-      :kind-text="kindText"
-      :list-route="inventoryRoute"
-      :neighbours="listNeighbours"
-      :source-family-crumb-text="sourceFamilyCrumbText"
-      :path-text="pathText"
-      :path-is-spelled-out="pathIsSpelledOut"
-      :accessible-text="headingAccessibleText"
-    />
-
-    <LiveRegion :text="detailAnnouncement" />
-
-    <template v-if="detailState === 'loading'">
-      <p class="aci-empty">Loading this permission policy…</p>
-    </template>
-
-    <template v-else-if="detailState === 'stale' || owner === null">
-      <DetailPathNotFound :list-route="inventoryRoute" />
-    </template>
-
-    <!-- A failed detail request: the state fell back to idle with nothing
-         held. This route reports it, because this route made the request —
-         the shell reports what happened to the session, so neither hides or
-         repeats the other. -->
-    <template v-else-if="openDetail === null">
-      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
-    </template>
-
-    <template v-else>
+  <DetailPage
+    ref="page"
+    class="aci-permission-policy-detail"
+    :kind-text="kindText"
+    :list-route="inventoryRoute"
+    :neighbours="listNeighbours"
+    :source-family-crumb-text="sourceFamilyCrumbText"
+    :path-text="pathText"
+    :path-is-spelled-out="pathIsSpelledOut"
+    :accessible-text="headingAccessibleText"
+    :open-path="openPath"
+    :open-source="openSource"
+    :selection="null"
+    :subject-resolved="owner !== null"
+    missing-text="Nothing in the current scan sits at this link's path."
+    :failure-text="detailFailure"
+    loading-text="Loading this permission policy…"
+    :subject="openDetail"
+    @retry="request.retryOpen()"
+  >
+    <!-- eslint-disable-next-line vue/no-template-shadow -- same value, same name, never null -->
+    <template #default="{ subject: openDetail }">
       <!-- What this customization is, on one line: how the file read, which
            products recognize the policy and where they document reading it, and
            the command that opens the file. Restated from the row so the page
@@ -400,7 +325,7 @@ watch(
         </template>
       </template>
     </template>
-  </div>
+  </DetailPage>
 </template>
 
 <style scoped></style>

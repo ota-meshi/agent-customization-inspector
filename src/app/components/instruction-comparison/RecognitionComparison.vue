@@ -171,7 +171,7 @@ function surfacesText(surfaces: readonly VendorSurface[]): string {
              other only inside the source comparison would privilege it
              (FR-007). -->
         <p class="aci-note">
-          Each side is the instructions left once that file’s frontmatter block is removed; the
+          Each side is the instructions left once that file's frontmatter block is removed; the
           block itself is above, and each file whole is in the source comparison below.
         </p>
         <SourceDiff

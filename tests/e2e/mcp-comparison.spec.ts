@@ -175,7 +175,7 @@ test.describe('the MCP declaration comparison', () => {
       ).toString(),
     );
     await expect(page.locator('main')).toContainText(
-      'No declared server name in the current scan matches this link’s.',
+      "No declared server name in the current scan matches this link's.",
     );
 
     await page.goto(

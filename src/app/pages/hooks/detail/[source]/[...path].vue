@@ -24,8 +24,7 @@
 // referenced script is read, and nothing projects trust, review state, or
 // precedence: what the vendor documents stays in its maintained contract
 // (FR-009).
-import { computed, useTemplateRef, watch } from 'vue';
-import LiveRegion from '../../../../components/LiveRegion.vue';
+import { computed, useTemplateRef } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
@@ -33,8 +32,8 @@ import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DetailAttributes from '../../../../components/inspection/DetailAttributes.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
-import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
-import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
+import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
+import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
@@ -53,7 +52,6 @@ import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspe
 import type { SourceKind } from '../../../../../shared/api-types';
 import { hookComparisonRouteFor } from '../../../../composables/hook-comparison';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
-import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
@@ -448,18 +446,9 @@ const declarationsFailed = computed(
  */
 const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 
-// Where focus sits: the entry focus, the re-focus when the address names a
-// different carrier or declaration, and the question the guards below ask
-// before moving it (`detail-heading-focus.ts`).
-const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
-const headingFocus = useDetailHeadingFocus({
-  pageRoot,
-  heading: () => header.value,
-  openPath,
-  openSource,
-  selection: () => openEventName.value,
-});
+// Where focus sits: the frame bounds this page and holds its heading focus
+// (`DetailPage.vue`), and the guards below ask that focus to rescue itself.
+const page = useTemplateRef<DetailPageControls>('page');
 
 const pageOwnership = usePageOwnership();
 
@@ -476,7 +465,7 @@ const request = useDetailRequest({
   perform: () => {
     void pageOwnership.openHookCarrierDetail(openPath.value, openSource.value);
   },
-  headingFocus,
+  focusHeading: () => page.value?.focusHeading(),
 });
 const { detailState } = request;
 
@@ -493,19 +482,6 @@ const detailFailure = request.failureOf(() =>
       : 'This hook declaration could not be loaded.'
     : null,
 );
-
-/**
- * What this page's polite live region announces — the states that change the
- * page without moving keyboard focus (WCAG 4.1.3). Each phrase matches the
- * visible copy; ready content is read as focus moves through it.
- */
-const detailAnnouncement = request.announcementOf({
-  resolved: () => !declarationMissing.value,
-  missingText: 'Nothing in the current scan matches this link.',
-  failure: detailFailure,
-  loadingText: () =>
-    openEventName.value === null ? 'Loading this hook carrier…' : 'Loading this hook declaration…',
-});
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2); the same
@@ -541,108 +517,83 @@ const titleSubject = computed<string | null>(() => {
     : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 useReportedPageSubject(titleSubject);
-
-// A generation replacement drops a detail that was on screen without moving
-// the URL; if keyboard focus was inside that subtree it would fall to the
-// document body (WCAG 2.4.3) — the same guards the other detail routes use.
-watch(
-  openDetail,
-  (detail, previous) => {
-    if (
-      detail === null &&
-      previous !== null &&
-      previous.file.sourceRelativePath === openPath.value &&
-      previous.file.sourceId === openSourceId.value
-    ) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-watch(
-  [detailState, declarationMissing],
-  ([state, missing]) => {
-    if (state === 'stale' || missing) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-hook-detail aci-route">
-    <DetailHeader
-      ref="header"
-      :kind-text="CUSTOMIZATION_KIND_TEXT.hook"
-      list-route="/?kind=hook"
-      :neighbours="listNeighbours"
-      :source-family-crumb-text="sourceFamilyCrumbText"
-      :path-text="pathText"
-      :path-is-spelled-out="pathIsSpelledOut"
-      :accessible-text="headingAccessibleText"
-    >
-      <!-- The page's own subject, which is the declared event on a declaration
+  <DetailPage
+    ref="page"
+    class="aci-hook-detail"
+    :kind-text="CUSTOMIZATION_KIND_TEXT.hook"
+    list-route="/?kind=hook"
+    :neighbours="listNeighbours"
+    :source-family-crumb-text="sourceFamilyCrumbText"
+    :path-text="pathText"
+    :path-is-spelled-out="pathIsSpelledOut"
+    :accessible-text="headingAccessibleText"
+    :open-path="openPath"
+    :open-source="openSource"
+    :selection="openEventName"
+    :subject-resolved="!declarationMissing"
+    missing-text="Nothing in the current scan matches this link."
+    :failure-text="detailFailure"
+    :loading-text="
+      openEventName === null ? 'Loading this hook carrier…' : 'Loading this hook declaration…'
+    "
+    :subject="openDetail"
+    @retry="request.retryOpen()"
+  >
+    <!-- The page's own subject, which is the declared event on a declaration
            view and the carrier's path on the carrier's own — the trail's
            default, taken when no event is named. The trail ended at the
            carrier either way, so a declaration page's last step named a file
            while its heading named an event. Which carrier it was declared in
            is the `Declared in` line's, said once. -->
-      <template v-if="eventName !== null" #trail-subject>
-        <AuthoredNameText :name="eventName">
-          <span
-            class="aci-detail-crumbs__subject"
-            :class="{ 'aci-authored-text': eventName.isAuthored }"
-            >{{ eventName.text }}</span
-          >
-        </AuthoredNameText>
-      </template>
+    <template v-if="eventName !== null" #declared-name-in-trail>
+      <AuthoredNameText :name="eventName">
+        <span
+          class="aci-detail-crumbs__subject"
+          :class="{ 'aci-authored-text': eventName.isAuthored }"
+          >{{ eventName.text }}</span
+        >
+      </AuthoredNameText>
+    </template>
 
-      <!-- The declared event names a declaration view, where the carrier's
+    <!-- The declared event names a declaration view, where the carrier's
        own path names the file-unit one. -->
-      <template v-if="eventName !== null" #heading-name>
-        <AuthoredNameText :name="eventName">
-          <span :class="{ 'aci-authored-text': eventName.isAuthored }">{{ eventName.text }}</span>
-        </AuthoredNameText>
-      </template>
-      <template #title-end>
-        <!-- The addressed event's comparison, at the end of the heading's own
+    <template v-if="eventName !== null" #declared-name-in-heading>
+      <AuthoredNameText :name="eventName">
+        <span :class="{ 'aci-authored-text': eventName.isAuthored }">{{ eventName.text }}</span>
+      </AuthoredNameText>
+    </template>
+    <template #subject-comparison>
+      <!-- The addressed event's comparison, at the end of the heading's own
              line: it acts on the subject that heading names
              ({@link openEventCompareRoute}). -->
-        <NuxtLink
-          v-if="openEventCompareRoute !== null"
-          class="aci-button aci-button--primary aci-detail-title-end"
-          :to="openEventCompareRoute"
-          >Compare this event's declarations
-          <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-        /></NuxtLink>
-        <!-- Why there is no comparison, rather than nothing at all: a missing
+      <NuxtLink
+        v-if="openEventCompareRoute !== null"
+        class="aci-button aci-button--primary aci-detail-title-end"
+        :to="openEventCompareRoute"
+        >Compare this event's declarations
+        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
+      <!-- Why there is no comparison, rather than nothing at all: a missing
              control reads the same as a forgotten one, and the reason is a fact
              about the subject — this name resolves one carrier here, so there is
              no pair to make (FR-011). The skill detail says the same of a name
              with one copy. -->
-        <!-- Said only where there is a subject to say it of: on a link the scan
+      <!-- Said only where there is a subject to say it of: on a link the scan
              holds nothing at, before the carrier has loaded, and on a carrier
              that holds no declaration for this event, "one carrier here" would
              be a claim about a name that resolves nothing — and the last of the
              three says so directly below, so the two would stand together. -->
-        <span
-          v-else-if="openEventName !== null && openDetail !== null && !declarationMissing"
-          class="aci-detail-title-end aci-muted"
-          >This event has one carrier here, so there is nothing to compare</span
-        >
-      </template>
-    </DetailHeader>
-
-    <LiveRegion :text="detailAnnouncement" />
-
-    <template v-if="detailState === 'loading'">
-      <p v-if="openEventName === null" class="aci-empty">Loading this hook carrier…</p>
-      <p v-else class="aci-empty">Loading this hook declaration…</p>
+      <span
+        v-else-if="openEventName !== null && openDetail !== null && !declarationMissing"
+        class="aci-detail-title-end aci-muted"
+        >This event has one carrier here, so there is nothing to compare</span
+      >
     </template>
 
-    <template v-else-if="detailState === 'stale' || declarationMissing">
+    <template #missing>
       <!-- Two dead links, two sentences: a path this scan holds no hook
            recognition at, and a held carrier that currently declares no event
            by this name — which covers a carrier whose declarations could not be
@@ -663,13 +614,8 @@ watch(
       </SubjectUnavailable>
     </template>
 
-    <!-- A failed detail request: the state fell back to idle with nothing
-         held. This route reports it, because this route made the request. -->
-    <template v-else-if="openDetail === null">
-      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
-    </template>
-
-    <template v-else>
+    <!-- eslint-disable-next-line vue/no-template-shadow -- same value, same name, never null -->
+    <template #default="{ subject: openDetail }">
       <div class="aci-hook-detail__overview">
         <!-- What the carrier is to this kind, and which products recognize it
              with the surfaces they document reading it on, restated from the
@@ -800,7 +746,7 @@ watch(
         />
       </section>
     </template>
-  </div>
+  </DetailPage>
 </template>
 
 <style scoped>

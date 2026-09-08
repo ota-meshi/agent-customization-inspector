@@ -23,8 +23,7 @@
 // or probes a declared server, and nothing projects trust, precedence, or a
 // selected winner: what the vendor documents stays in its maintained contract
 // (FR-009).
-import { computed, useTemplateRef, watch } from 'vue';
-import LiveRegion from '../../../../components/LiveRegion.vue';
+import { computed, useTemplateRef } from 'vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
@@ -33,8 +32,8 @@ import DetailAttributes from '../../../../components/inspection/DetailAttributes
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import RecognitionMarks from '../../../../components/inventory/RecognitionMarks.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
-import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
-import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
+import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
+import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { declaredEntriesJsonText } from '../../../../components/declared-entries-json';
@@ -52,7 +51,6 @@ import FileStrip from '../../../../components/inspection/FileStrip.vue';
 import { otherCopiesOf, type FileStripEntry } from '../../../../components/inspection/file-strip';
 import type { SourceKind } from '../../../../../shared/api-types';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
-import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
@@ -472,18 +470,9 @@ const declarationsFailed = computed(
  */
 const openDiagnostics = computed(() => openDetail.value?.diagnostics ?? []);
 
-// Where focus sits: the entry focus, the re-focus when the address names a
-// different carrier or declaration, and the question the guards below ask
-// before moving it (`detail-heading-focus.ts`).
-const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
-const headingFocus = useDetailHeadingFocus({
-  pageRoot,
-  heading: () => header.value,
-  openPath,
-  openSource,
-  selection: () => openServerName.value,
-});
+// Where focus sits: the frame bounds this page and holds its heading focus
+// (`DetailPage.vue`), and the guards below ask that focus to rescue itself.
+const page = useTemplateRef<DetailPageControls>('page');
 
 const pageOwnership = usePageOwnership();
 
@@ -499,7 +488,7 @@ const request = useDetailRequest({
   perform: () => {
     void pageOwnership.openCarrierDetail(openPath.value, openSource.value);
   },
-  headingFocus,
+  focusHeading: () => page.value?.focusHeading(),
 });
 const { detailState } = request;
 
@@ -516,21 +505,6 @@ const detailFailure = request.failureOf(() =>
       : 'This MCP server declaration could not be loaded.'
     : null,
 );
-
-/**
- * What this page's polite live region announces — the states that change the
- * page without moving keyboard focus (WCAG 4.1.3). Each phrase matches the
- * visible copy; ready content is read as focus moves through it.
- */
-const detailAnnouncement = request.announcementOf({
-  resolved: () => linkResolved.value,
-  missingText: 'Nothing in the current scan matches this link.',
-  failure: detailFailure,
-  loadingText: () =>
-    openServerName.value === null
-      ? 'Loading this MCP carrier…'
-      : 'Loading this MCP server declaration…',
-});
 
 /**
  * What the document title says this page is showing (WCAG 2.4.2); the same
@@ -566,109 +540,84 @@ const titleSubject = computed<string | null>(() => {
     : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 useReportedPageSubject(titleSubject);
-
-// A generation replacement drops a detail that was on screen without moving
-// the URL; if keyboard focus was inside that subtree it would fall to the
-// document body (WCAG 2.4.3) — the same guards the other detail routes use.
-watch(
-  openDetail,
-  (detail, previous) => {
-    if (
-      detail === null &&
-      previous !== null &&
-      previous.file.sourceRelativePath === openPath.value &&
-      previous.file.sourceId === openSourceId.value
-    ) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-watch(
-  [detailState, linkResolved],
-  ([state, resolved]) => {
-    if (state === 'stale' || !resolved) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-mcp-detail aci-route">
-    <DetailHeader
-      ref="header"
-      :kind-text="CUSTOMIZATION_KIND_TEXT.MCP"
-      list-route="/?kind=MCP"
-      :neighbours="listNeighbours"
-      :source-family-crumb-text="sourceFamilyCrumbText"
-      :path-text="pathText"
-      :path-is-spelled-out="pathIsSpelledOut"
-      :accessible-text="headingAccessibleText"
-    >
-      <!-- The page's own subject, which is the declared name on a declaration
+  <DetailPage
+    ref="page"
+    class="aci-mcp-detail"
+    :kind-text="CUSTOMIZATION_KIND_TEXT.MCP"
+    list-route="/?kind=MCP"
+    :neighbours="listNeighbours"
+    :source-family-crumb-text="sourceFamilyCrumbText"
+    :path-text="pathText"
+    :path-is-spelled-out="pathIsSpelledOut"
+    :accessible-text="headingAccessibleText"
+    :open-path="openPath"
+    :open-source="openSource"
+    :selection="openServerName"
+    :subject-resolved="linkResolved"
+    missing-text="Nothing in the current scan matches this link."
+    :failure-text="detailFailure"
+    :loading-text="
+      openServerName === null ? 'Loading this MCP carrier…' : 'Loading this MCP server declaration…'
+    "
+    :subject="openDetail"
+    @retry="request.retryOpen()"
+  >
+    <!-- The page's own subject, which is the declared name on a declaration
            view and the carrier's path on the carrier's own. The trail ended at
            the carrier either way, so a declaration page's last step named a
            file while its heading named a server — the only kind whose trail
            and heading disagreed. Which carrier it was declared in is the
            `Declared in` line's, said once. -->
-      <template v-if="serverName !== null" #trail-subject>
-        <AuthoredNameText :name="serverName">
-          <span
-            class="aci-detail-crumbs__subject"
-            :class="{ 'aci-authored-text': serverName.isAuthored }"
-            >{{ serverName.text }}</span
-          >
-        </AuthoredNameText>
-      </template>
+    <template v-if="serverName !== null" #declared-name-in-trail>
+      <AuthoredNameText :name="serverName">
+        <span
+          class="aci-detail-crumbs__subject"
+          :class="{ 'aci-authored-text': serverName.isAuthored }"
+          >{{ serverName.text }}</span
+        >
+      </AuthoredNameText>
+    </template>
 
-      <!-- The declared server name names a declaration view, where the
+    <!-- The declared server name names a declaration view, where the
        carrier's own path names the file-unit one. -->
-      <template v-if="serverName !== null" #heading-name>
-        <AuthoredNameText :name="serverName">
-          <span :class="{ 'aci-authored-text': serverName.isAuthored }">{{ serverName.text }}</span>
-        </AuthoredNameText>
-      </template>
-      <template #title-end>
-        <!-- The declaration view's comparison entry (FR-011): present exactly
+    <template v-if="serverName !== null" #declared-name-in-heading>
+      <AuthoredNameText :name="serverName">
+        <span :class="{ 'aci-authored-text': serverName.isAuthored }">{{ serverName.text }}</span>
+      </AuthoredNameText>
+    </template>
+    <template #subject-comparison>
+      <!-- The declaration view's comparison entry (FR-011): present exactly
              when this name's row holds another readable carrier to stand
              opposite this one. At the end of the heading's own line, because it
              acts on the subject that heading names rather than on one of the
              sections below it. The comparison surface's own pickers take over
              from there. -->
-        <NuxtLink
-          v-if="openServerCompareRoute !== null"
-          class="aci-button aci-button--primary aci-detail-title-end"
-          :to="openServerCompareRoute"
-          >Compare this server's declarations
-          <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-        /></NuxtLink>
-        <!-- Why there is no comparison, rather than nothing at all: a missing
+      <NuxtLink
+        v-if="openServerCompareRoute !== null"
+        class="aci-button aci-button--primary aci-detail-title-end"
+        :to="openServerCompareRoute"
+        >Compare this server's declarations
+        <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
+      <!-- Why there is no comparison, rather than nothing at all: a missing
              control reads the same as a forgotten one, and the reason is a fact
              about the subject — this name resolves one carrier here, so there is
              no pair to make (FR-011). The skill detail says the same of a name
              with one copy. -->
-        <!-- Said only where there is a subject to say it of: on a link the scan
+      <!-- Said only where there is a subject to say it of: on a link the scan
              holds nothing at, and before the carrier has loaded, "one carrier
              here" would be a claim about a name that resolves nothing. -->
-        <span
-          v-else-if="openServerName !== null && openDetail !== null"
-          class="aci-detail-title-end aci-muted"
-          >This name has one carrier here, so there is nothing to compare</span
-        >
-      </template>
-    </DetailHeader>
-
-    <LiveRegion :text="detailAnnouncement" />
-
-    <template v-if="detailState === 'loading'">
-      <p v-if="openServerName === null" class="aci-empty">Loading this MCP carrier…</p>
-      <p v-else class="aci-empty">Loading this MCP server declaration…</p>
+      <span
+        v-else-if="openServerName !== null && openDetail !== null"
+        class="aci-detail-title-end aci-muted"
+        >This name has one carrier here, so there is nothing to compare</span
+      >
     </template>
 
-    <template v-else-if="detailState === 'stale' || !linkResolved">
+    <template #missing>
       <!-- Two dead links, two sentences: a path the scan does not hold, and a
            held carrier that currently publishes no declaration by this name —
            which covers a carrier whose declarations could not be read, whose
@@ -689,13 +638,8 @@ watch(
       </SubjectUnavailable>
     </template>
 
-    <!-- A failed detail request: the state fell back to idle with nothing
-         held. This route reports it, because this route made the request. -->
-    <template v-else-if="openDetail === null">
-      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
-    </template>
-
-    <template v-else>
+    <!-- eslint-disable-next-line vue/no-template-shadow -- same value, same name, never null -->
+    <template #default="{ subject: openDetail }">
       <div class="aci-mcp-detail__overview">
         <!-- Which products recognize the carrier and where they document
              reading it, restated from the inventory entry so the page and the
@@ -815,7 +759,7 @@ watch(
         />
       </section>
     </template>
-  </div>
+  </DetailPage>
 </template>
 
 <style scoped>

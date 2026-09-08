@@ -380,10 +380,10 @@ function toolForSide(side: ComparisonSide | null): SupportedTool | null {
  */
 const pairFault = computed<string | null>(() => {
   if (family.value === null) {
-    return 'This link does not say where its carriers came from. Open a comparison from a plugin row in the inventory, or from a plugin’s detail page.';
+    return "This link does not say where its carriers came from. Open a comparison from a plugin row in the inventory, or from a plugin's detail page.";
   }
   if (!hasSelection.value) {
-    return 'This link names no plugin comparison. Open a comparison from a plugin row in the inventory, or from a plugin’s detail page.';
+    return "This link names no plugin comparison. Open a comparison from a plugin row in the inventory, or from a plugin's detail page.";
   }
   const left = currentLeft.value;
   const right = currentRight.value;
@@ -402,10 +402,10 @@ const pairFault = computed<string | null>(() => {
   ) {
     // A cross-family link included: a pair never spans the repository and a
     // consented home (contracts/http-api.md § Host requirements #5).
-    return 'A file this link names is not from the place this link’s address names. Open a comparison from a plugin row in the inventory.';
+    return "A file this link names is not from the place this link's address names. Open a comparison from a plugin row in the inventory.";
   }
   if (owningRow.value === null) {
-    return 'No plugin name in the current scan matches this link’s. The inventory may have changed since the link was made; open a comparison from a plugin row.';
+    return "No plugin name in the current scan matches this link's. The inventory may have changed since the link was made; open a comparison from a plugin row.";
   }
   const held = new Set(
     owningRow.value.carriers.map((carrier) =>
@@ -857,16 +857,16 @@ const manifestStatement = computed<string | null>(() => {
       if (row.leftPath === null || row.rightPath === null) {
         const only = row.rightPath === null ? 'first' : 'second';
         return manifestPair.value === null
-          ? 'This manifest is not text this product can show. The plugin’s own page states what was found.'
-          : `Only the ${only} plugin declares itself with a manifest this scan holds: it is compared against the other plugin’s stated absence, which is the existence difference rather than an empty file.`;
+          ? "This manifest is not text this product can show. The plugin's own page states what was found."
+          : `Only the ${only} plugin declares itself with a manifest this scan holds: it is compared against the other plugin's stated absence, which is the existence difference rather than an empty file.`;
       }
       if (row.sameFile) {
         return sharedManifest.value === null
-          ? 'This manifest is not text this product can show. The plugin’s own page states what was found.'
+          ? "This manifest is not text this product can show. The plugin's own page states what was found."
           : 'Both carriers resolve to one manifest file, so this is that file rather than two copies of it.';
       }
       return manifestPair.value === null
-        ? 'One of these manifests is not text this product can show, so there is nothing to diff. Each plugin’s own page states what was found.'
+        ? "One of these manifests is not text this product can show, so there is nothing to diff. Each plugin's own page states what was found."
         : null;
   }
   return null;
@@ -1323,7 +1323,7 @@ const fileStateStatement = computed<string | null>(() => {
       : 'This link names a file neither compared plugin ships in the current scan. Choose one of the files above, or open the comparison again from a plugin row.';
   }
   if (!row.comparable) {
-    return 'A copy of this file is not text this product can show, so there is nothing to compare. Each plugin’s own page states what was found.';
+    return "A copy of this file is not text this product can show, so there is nothing to compare. Each plugin's own page states what was found.";
   }
   switch (comparison.fileStatus.value) {
     case 'stale':
@@ -1348,7 +1348,7 @@ const fileStateStatement = computed<string | null>(() => {
         // One file behind both carriers, read through the viewer above: the
         // sentence here is only for bytes no reader shows.
         return sharedFile.value === null
-          ? 'This file is not text this product can show. The plugin’s own page states what was found.'
+          ? "This file is not text this product can show. The plugin's own page states what was found."
           : null;
       }
       if (openFilePair.value !== null) {
@@ -1361,8 +1361,8 @@ const fileStateStatement = computed<string | null>(() => {
       // case by {@link sharedFile} would announce unreadable bytes over a
       // rendered diff, since a one-sided name is never the shared file.
       return row.leftPath === null || row.rightPath === null
-        ? 'This file is not text this product can show. The plugin’s own page states what was found.'
-        : 'One of these copies is not text this product can show, so there is nothing to diff. Each plugin’s own page states what was found.';
+        ? "This file is not text this product can show. The plugin's own page states what was found."
+        : "One of these copies is not text this product can show, so there is nothing to diff. Each plugin's own page states what was found.";
   }
   return null;
 });
@@ -1607,7 +1607,7 @@ const stateStatement = computed<string | null>(() => {
   }
   switch (status.value) {
     case 'stale':
-      return 'No plugin carrier in the current scan sits at one of this link’s paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
+      return "No plugin carrier in the current scan sits at one of this link's paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.";
     case 'failed':
       return failureTextOf('This comparison could not be loaded.', comparison.errorMessage.value);
     case 'idle':

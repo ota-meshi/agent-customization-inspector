@@ -224,12 +224,12 @@ test('reports a pair the model does not express instead of comparing it', async 
   // but no single row holds both.
   await page.goto(compareUrl('.claude/commands/deploy.md', '.claude/commands/release.md'));
   await expect(page.locator('main')).toContainText(
-    'No invocation name in the current scan holds both of this link’s files.',
+    "No invocation name in the current scan holds both of this link's files.",
   );
   // A path the current scan holds no file of this kind at.
   await page.goto(compareUrl('.claude/commands/deploy.md', '.github/prompts/nothing.prompt.md'));
   await expect(page.locator('main')).toContainText(
-    'No invocation name in the current scan holds both of this link’s files.',
+    "No invocation name in the current scan holds both of this link's files.",
   );
   // No pair at all.
   await page.goto(new URL('/prompts-and-commands/compare/repository', host.origin).toString());

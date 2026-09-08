@@ -743,10 +743,10 @@ const rightCopySelection = computed({
  */
 const pairFault = computed<string | null>(() => {
   if (family.value === null) {
-    return 'This link does not say where its copies came from. Open a comparison from a skill’s row in the inventory, or from its detail page.';
+    return "This link does not say where its copies came from. Open a comparison from a skill's row in the inventory, or from its detail page.";
   }
   if (!hasPair.value) {
-    return 'This link names no pair of skill directories. Open a comparison from a skill’s row in the inventory, or from its detail page.';
+    return "This link names no pair of skill directories. Open a comparison from a skill's row in the inventory, or from its detail page.";
   }
   const leftIdentity = currentLeft.value;
   const rightIdentity = currentRight.value;
@@ -765,12 +765,12 @@ const pairFault = computed<string | null>(() => {
   ) {
     // A cross-family link included: a pair never spans the repository and a
     // consented home (contracts/http-api.md § Host requirements #5).
-    return 'A copy this link names is not from the place this link’s address names. Open a comparison from a skill’s row in the inventory.';
+    return "A copy this link names is not from the place this link's address names. Open a comparison from a skill's row in the inventory.";
   }
   const left = leftCopy.value;
   const right = rightCopy.value;
   if (left === null || right === null) {
-    return 'No skill name in the current scan owns both of this link’s directories. The inventory may have changed since the link was made; open a comparison from a skill’s row.';
+    return "No skill name in the current scan owns both of this link's directories. The inventory may have changed since the link was made; open a comparison from a skill's row.";
   }
   // Each side must be the copy's own file or its stated absence
   // ({@link standsAt}): a committed file at the composed path that the copy
@@ -778,7 +778,7 @@ const pairFault = computed<string | null>(() => {
   // contents — is outside the model, so it is reported here exactly as the
   // switchers exclude it, never compared (FR-011).
   if (!standsAt(left, currentFile.value) || !standsAt(right, currentFile.value)) {
-    return 'This link’s compared file is not one of the named copies’ own files. Step the compared-file switcher to a file the copies ship, or open a comparison from a skill’s row.';
+    return "This link's compared file is not one of the named copies' own files. Step the compared-file switcher to a file the copies ship, or open a comparison from a skill's row.";
   }
   return null;
 });
@@ -1074,7 +1074,7 @@ const stateStatement = computed<string | null>(() => {
       // callers, and an arm must say something.
       return 'A comparison needs two distinct files, and this link names the same file twice.';
     case 'stale':
-      return 'Nothing in the current scan sits at this link’s compared file. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
+      return "Nothing in the current scan sits at this link's compared file. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.";
     case 'not-readable':
       // Through the switchers' own name for a side
       // ({@link comparisonSideLabel}): that rule collapses whitespace, so a path

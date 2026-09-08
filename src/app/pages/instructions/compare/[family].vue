@@ -343,10 +343,10 @@ const pickersAvailable = computed(
  */
 const pairFault = computed<string | null>(() => {
   if (family.value === null) {
-    return 'This link does not say where its files came from. Open a comparison from an instruction row in the inventory, or from an instruction file’s detail page.';
+    return "This link does not say where its files came from. Open a comparison from an instruction row in the inventory, or from an instruction file's detail page.";
   }
   if (!hasPair.value) {
-    return 'This link names no pair of instruction files. Open a comparison from an instruction row in the inventory, or from an instruction file’s detail page.';
+    return "This link names no pair of instruction files. Open a comparison from an instruction row in the inventory, or from an instruction file's detail page.";
   }
   const left = currentLeft.value;
   const right = currentRight.value;
@@ -363,7 +363,7 @@ const pairFault = computed<string | null>(() => {
     // ranges or two families, a path that is not an instruction file's, or an
     // identity the current scan does not hold, including a Source it no longer
     // carries — exactly as the skill route reports a pair no name's row owns.
-    return 'No applicability range in the current scan holds both of this link’s files. The inventory may have changed since the link was made; open a comparison from an instruction row.';
+    return "No applicability range in the current scan holds both of this link's files. The inventory may have changed since the link was made; open a comparison from an instruction row.";
   }
   return null;
 });
@@ -560,7 +560,7 @@ const stateStatement = computed<string | null>(() => {
       // must say something.
       return 'A comparison needs two distinct instruction files, and this link names the same file twice.';
     case 'stale':
-      return 'Nothing in the current scan sits at one of this link’s paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
+      return "Nothing in the current scan sits at one of this link's paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.";
     case 'not-readable':
       // Through the pickers' own name for a side
       // ({@link comparisonSideLabel}): that rule collapses whitespace, so a path

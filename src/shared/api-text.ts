@@ -284,7 +284,7 @@ export const GLOBAL_ROOT_ORIGIN_TEXT: Readonly<Record<GlobalRootOrigin, string>>
   /** Caption for a root derived from the home directory and the tool's suffix. */
   'default-home': 'Default location in your home directory',
   /** Caption for a root taken from the tool's own environment variable. */
-  environment: 'From this tool’s environment variable',
+  environment: "From this tool's environment variable",
 };
 
 /**
@@ -296,15 +296,15 @@ export const GLOBAL_ROOT_ORIGIN_TEXT: Readonly<Record<GlobalRootOrigin, string>>
  */
 export const GLOBAL_TOOL_FAILURE_TEXT: Readonly<Record<GlobalToolFailureCode, string>> = {
   /** The environment variable exists but is empty. */
-  'present-empty': 'This tool’s environment variable is set to an empty value.',
+  'present-empty': "This tool's environment variable is set to an empty value.",
   /** The captured root is not absolute. */
-  relative: 'This tool’s environment variable is not an absolute path.',
+  relative: "This tool's environment variable is not an absolute path.",
   /** The captured root cannot be a path. */
-  invalid: 'This tool’s environment variable contains characters a path cannot hold.',
+  invalid: "This tool's environment variable contains characters a path cannot hold.",
   /** The consented directory is missing or unreadable. */
   'root-unreadable': 'That directory does not exist or cannot be read.',
   /** The tool's own scan failed after its root was admitted. */
-  'scan-failed': 'Reading this tool’s directory failed.',
+  'scan-failed': "Reading this tool's directory failed.",
 };
 
 /**

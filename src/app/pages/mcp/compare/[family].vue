@@ -257,10 +257,10 @@ const valueOf = (side: ComparisonSide | null): string => sideValueOf(pickerOptio
  */
 const pairFault = computed<string | null>(() => {
   if (family.value === null) {
-    return 'This link does not say where its declarations came from. Open a comparison from an MCP row in the inventory, or from an MCP server declaration’s detail page.';
+    return "This link does not say where its declarations came from. Open a comparison from an MCP row in the inventory, or from an MCP server declaration's detail page.";
   }
   if (!hasSelection.value) {
-    return 'This link names no MCP comparison. Open a comparison from an MCP row in the inventory, or from an MCP server declaration’s detail page.';
+    return "This link names no MCP comparison. Open a comparison from an MCP row in the inventory, or from an MCP server declaration's detail page.";
   }
   const left = currentLeft.value;
   const right = currentRight.value;
@@ -279,14 +279,14 @@ const pairFault = computed<string | null>(() => {
   ) {
     // A cross-family link included: a pair never spans the repository and a
     // consented home (contracts/http-api.md § Host requirements #5).
-    return 'A file this link names is not from the place this link’s address names. Open a comparison from an MCP row in the inventory.';
+    return "A file this link names is not from the place this link's address names. Open a comparison from an MCP row in the inventory.";
   }
   if (owningRow.value === null) {
     // One statement for every way the name resolves no row — a name no
     // current carrier declares, or an identity the current scan does not
     // hold. Only explicit MCP configuration joins the MCP surfaces
     // (data-model.md § Inventory unit), so a non-carrier path is on no row.
-    return 'No declared server name in the current scan matches this link’s. The inventory may have changed since the link was made; open a comparison from an MCP row.';
+    return "No declared server name in the current scan matches this link's. The inventory may have changed since the link was made; open a comparison from an MCP row.";
   }
   const held = new Set(
     owningRow.value.declarations.map((declaration) =>
@@ -512,7 +512,7 @@ const stateStatement = computed<string | null>(() => {
   }
   switch (status.value) {
     case 'stale':
-      return 'No MCP file in the current scan sits at one of this link’s paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
+      return "No MCP file in the current scan sits at one of this link's paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.";
     case 'failed':
       return failureTextOf('This comparison could not be loaded.', comparison.errorMessage.value);
     case 'idle':

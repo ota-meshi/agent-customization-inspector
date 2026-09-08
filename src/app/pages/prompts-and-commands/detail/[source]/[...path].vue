@@ -36,7 +36,6 @@
 // instruction route uses; only the URL survives a commit, and the page
 // refetches the same path under the new generation.
 import { computed, useTemplateRef, watch } from 'vue';
-import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute } from 'vue-router';
 import { NuxtLink } from '#components';
 import {
@@ -54,13 +53,11 @@ import DetailAttributes from '../../../../components/inspection/DetailAttributes
 import SubjectTabStrip from '../../../../components/inspection/SubjectTabStrip.vue';
 import SubjectTabPanel from '../../../../components/inspection/SubjectTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
-import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
-import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
-import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
+import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
+import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import SourceRootNote from '../../../../components/inspection/SourceRootNote.vue';
 import SourceViewer from '../../../../components/inspection/SourceViewer.vue';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
-import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
@@ -450,18 +447,9 @@ const PROMPT_DETAIL_TAB_TEXT: Readonly<Record<PromptDetailTab, string>> = {
   file: 'File',
 };
 
-// Where focus sits: the entry focus, the re-focus when the address names a
-// different file, and the question the guards below ask before rescuing it
-// (`detail-heading-focus.ts`).
-const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
-const headingFocus = useDetailHeadingFocus({
-  pageRoot,
-  heading: () => header.value,
-  openPath,
-  openSource,
-  selection: null,
-});
+// Where focus sits: the frame bounds this page and holds its heading focus
+// (`DetailPage.vue`), and the guards below ask that focus to rescue itself.
+const page = useTemplateRef<DetailPageControls>('page');
 
 const pageOwnership = usePageOwnership();
 
@@ -476,7 +464,7 @@ const request = useDetailRequest({
   perform: () => {
     void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
   },
-  headingFocus,
+  focusHeading: () => page.value?.focusHeading(),
 });
 const { detailState } = request;
 
@@ -548,19 +536,6 @@ const detailFailure = request.failureOf(() =>
 );
 
 /**
- * What this page's polite live region announces — the states that change the
- * page without moving keyboard focus (WCAG 4.1.3): the stale state, the
- * in-flight load, and a request that failed. Each phrase matches the visible
- * copy; ready content is read as focus moves through it.
- */
-const detailAnnouncement = request.announcementOf({
-  resolved: () => owner.value.length > 0,
-  missingText: 'Nothing in the current scan sits at this link’s path.',
-  failure: detailFailure,
-  loadingText: 'Loading this file…',
-});
-
-/**
  * What the document title says this page is showing (WCAG 2.4.2): the path
  * the heading shows while a file is open, and the state the page is in
  * otherwise, so a reader returning to a tab is never told it shows a file the
@@ -585,91 +560,45 @@ const titleSubject = computed<string | null>(() => {
     : `${openPath.value} — ${SOURCE_SELECTOR_TEXT[openSource.value]}`;
 });
 useReportedPageSubject(titleSubject);
-
-// A generation replacement drops a detail that was on screen — the tabs and
-// the viewer unmount — without moving the URL, so if keyboard focus is inside
-// that subtree it would drop to the document body (WCAG 2.4.3). Only an
-// actually-departing detail moves focus: a request that fails before anything
-// was shown unmounts nothing but the loading line, and the reader may be on
-// the surviving back link — an error is announced through the live region,
-// never by forcing focus. The path condition keeps this guard out of a history
-// step to another file of this kind, whose own `openPath` watcher focuses the
-// heading after the flush. Synchronous, because afterwards the focused element
-// is already gone.
-watch(
-  openDetail,
-  (detail, previous) => {
-    if (
-      detail === null &&
-      previous !== null &&
-      previous.file.sourceRelativePath === openPath.value
-    ) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-// The stale transition replaces the whole body of the page below the heading
-// — the loading line or the detail alike — so its guard watches the state
-// itself and considers the whole page root (WCAG 2.4.3).
-watch(
-  [detailState, owner],
-  ([state, resolved]) => {
-    if (state === 'stale' || resolved.length === 0) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-prompt-detail aci-route">
-    <DetailHeader
-      ref="header"
-      :kind-text="kindText"
-      :list-route="inventoryRoute"
-      :neighbours="listNeighbours"
-      :source-family-crumb-text="sourceFamilyCrumbText"
-      :path-text="pathText"
-      :path-is-spelled-out="pathIsSpelledOut"
-      :accessible-text="headingAccessibleText"
-    >
-      <template #title-end>
-        <!-- The comparison this file's row can make, at the end of the heading's
+  <DetailPage
+    ref="page"
+    class="aci-prompt-detail"
+    :kind-text="kindText"
+    :list-route="inventoryRoute"
+    :neighbours="listNeighbours"
+    :source-family-crumb-text="sourceFamilyCrumbText"
+    :path-text="pathText"
+    :path-is-spelled-out="pathIsSpelledOut"
+    :accessible-text="headingAccessibleText"
+    :open-path="openPath"
+    :open-source="openSource"
+    :selection="null"
+    :subject-resolved="owner.length > 0"
+    missing-text="Nothing in the current scan sits at this link's path."
+    :failure-text="detailFailure"
+    loading-text="Loading this file…"
+    :subject="openDetail"
+    @retry="request.retryOpen()"
+  >
+    <template #subject-comparison>
+      <!-- The comparison this file's row can make, at the end of the heading's
              own line — where every kind whose subject is the heading puts its own
              (`mcp/detail`, `hooks/detail`, `plugins/detail`). On the tabs' row it
              read as a control on what the tabs select, which is one half of the
              file rather than the file this comparison is of (FR-011). -->
-        <NuxtLink
-          v-if="comparePairRoute !== null"
-          :to="comparePairRoute"
-          class="aci-button aci-button--primary aci-detail-title-end"
-          >Compare this file <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-        /></NuxtLink>
-      </template>
-    </DetailHeader>
-
-    <LiveRegion :text="detailAnnouncement" />
-
-    <template v-if="detailState === 'loading'">
-      <p class="aci-empty">Loading this file…</p>
+      <NuxtLink
+        v-if="comparePairRoute !== null"
+        :to="comparePairRoute"
+        class="aci-button aci-button--primary aci-detail-title-end"
+        >Compare this file <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
     </template>
 
-    <template v-else-if="detailState === 'stale' || owner.length === 0">
-      <DetailPathNotFound :list-route="inventoryRoute" />
-    </template>
-
-    <!-- A failed detail request: the state fell back to idle with nothing
-         held. This route reports it, because this route made the request —
-         the shell reports what happened to the session, so neither hides or
-         repeats the other. -->
-    <template v-else-if="openDetail === null">
-      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
-    </template>
-
-    <template v-else>
+    <!-- eslint-disable-next-line vue/no-template-shadow -- same value, same name, never null -->
+    <template #default="{ subject: openDetail }">
       <!-- What this customization is, on one line: how the file read, which
            products recognize it and where they document reading it, and the
            command that opens it. Restated from the row so the page and the list
@@ -792,7 +721,7 @@ watch(
         <p v-else class="aci-note">This file has no source text to show.</p>
       </SubjectTabPanel>
     </template>
-  </div>
+  </DetailPage>
 </template>
 
 <style scoped>

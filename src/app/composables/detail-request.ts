@@ -23,7 +23,6 @@ import {
 import { familyGenerationOf, type SourceSelector } from '../components/detail-route';
 import { failureTextOf } from '../components/failure-text';
 import { usePageOwnership } from './page-ownership';
-import type { DetailHeadingFocus } from './detail-heading-focus';
 import { useSessionViewState } from './session-view-state';
 import type { FileDetailState, SessionViewState } from '../session/view-state';
 
@@ -53,40 +52,13 @@ export interface DetailRequestOptions {
    */
   readonly perform: () => void;
   /**
-   * This page's heading focus, whose move {@link DetailRequest.retryOpen} makes
-   * before re-requesting (`detail-heading-focus.ts`).
+   * Moves focus onto this page's heading, which {@link DetailRequest.retryOpen}
+   * does before re-requesting (`DetailPage.vue`). The move rather than what
+   * makes it, because the frame that holds the focus is mounted after the
+   * page's own setup runs: a page hands over a call that reaches the frame
+   * when there is one, and the only caller is a button the reader pressed.
    */
-  readonly headingFocus: DetailHeadingFocus;
-}
-
-/** What one route says while its request settles; see {@link DetailRequest.announcementOf}. */
-export interface DetailAnnouncementOptions {
-  /**
-   * Whether the address names a subject this page can show. What answers it
-   * differs by kind, and is not {@link DetailRequestOptions.ready}: a route
-   * addressed by its own path asks the committed inventory, and so does the
-   * MCP route for a declared name, whose inventory rows are those names. The
-   * hook route asks the carrier it fetched instead, because the host holds the
-   * whole answer there — a parsed carrier that declares no event sits on no
-   * row and still resolves, so reading the rows would report a held carrier as
-   * a path this scan does not have (`hooks/detail` § declarationMissing).
-   * What the reader is told is the same either way: there is nothing here, and
-   * no further wait produces it.
-   */
-  readonly resolved: MaybeRefOrGetter<boolean>;
-  /** What the route says when it does not — the kind's own wording. */
-  readonly missingText: string;
-  /**
-   * The failure the route words for a request that did not complete, or null
-   * while nothing has failed (the same value its failure branch draws).
-   */
-  readonly failure: MaybeRefOrGetter<string | null>;
-  /**
-   * What the route says while the request is in flight. Read only in that
-   * state, so a kind whose sentence depends on what the address selects can
-   * pass a getter and have it asked at the moment it answers.
-   */
-  readonly loadingText: MaybeRefOrGetter<string>;
+  readonly focusHeading: () => void;
 }
 
 /**
@@ -161,7 +133,7 @@ export class DetailRequest {
    * (WCAG 2.4.3); the heading is the landmark that survives the transition.
    */
   public retryOpen(): void {
-    this.#options.headingFocus.focusHeading();
+    this.#options.focusHeading();
     this.#requestOpen();
   }
 
@@ -186,34 +158,6 @@ export class DetailRequest {
         return null;
       }
       return failureTextOf(said, this.detailError.value);
-    });
-  }
-
-  /**
-   * What the live region announces as the request settles (WCAG 4.1.3): a
-   * change that alters the page without moving keyboard focus has to reach a
-   * reader who is not looking at it.
-   *
-   * The order is what a reader needs first. An address that names nothing this
-   * page can show is said before anything else — a request the host answered
-   * with `stale-resource`, no current generation holding the file
-   * (`view-state.ts` § FileDetailState), or a subject {@link
-   * DetailAnnouncementOptions.resolved} answers no for — because nothing
-   * further is coming for it. A failure is said next, in the words the failure
-   * branch draws, so hearing it and reading it are the same sentence. Only then is the wait announced. Everything else is silence:
-   * the arrival is the page itself, and a region that also said "ready" would
-   * make the reader hear what they can already see.
-   */
-  public announcementOf(options: DetailAnnouncementOptions): ComputedRef<string> {
-    return computed(() => {
-      if (this.detailState.value === 'stale' || !toValue(options.resolved)) {
-        return options.missingText;
-      }
-      const failure = toValue(options.failure);
-      if (failure !== null) {
-        return failure;
-      }
-      return this.detailState.value === 'loading' ? toValue(options.loadingText) : '';
     });
   }
 }

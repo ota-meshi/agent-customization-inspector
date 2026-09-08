@@ -40,6 +40,18 @@ export interface DetailHeadingControls {
   headingHasFocus(): boolean;
 }
 
+/**
+ * The two moves over a route's heading that the frame drawing it publishes
+ * (`DetailPage.vue`), which is how each page asks for them.
+ *
+ * Named rather than taken from the component, because a component with a
+ * generic slot is a function rather than a constructor and `InstanceType`
+ * cannot name it. Picking them off {@link DetailHeadingFocus} is what keeps
+ * the two ends from drifting: the frame exposes exactly these, and a method
+ * renamed there stops compiling here.
+ */
+export type DetailPageControls = Pick<DetailHeadingFocus, 'focusHeading' | 'requestFocusHeading'>;
+
 /** What one detail page hands its heading focus; see the module header. */
 export interface DetailHeadingFocusOptions {
   /**
@@ -149,10 +161,11 @@ export class DetailHeadingFocus {
  * Wires one detail page's heading focus: the entry focus, the re-focus when
  * the address names a different subject, and the guard rescues ask.
  *
- * The two elements are the page's own, bound by `useTemplateRef` where the
- * template names them: a composable that made them would leave the binding
- * resting on the page destructuring them under exactly the names its own
- * template writes, which nothing checks.
+ * Both ends are bound by the component whose template names them — the route's
+ * outermost element by the frame (`DetailPage.vue`), the heading by the header
+ * it draws (`DetailHeader.vue`) — so nothing here rests on a name matching
+ * across two files. What arrives is the element and the two moves over the
+ * heading, never a handle onto either.
  */
 export function useDetailHeadingFocus(options: DetailHeadingFocusOptions): DetailHeadingFocus {
   return new DetailHeadingFocus(options);

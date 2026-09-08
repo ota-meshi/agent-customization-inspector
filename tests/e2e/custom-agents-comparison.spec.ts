@@ -338,14 +338,14 @@ test('reports a pair the model does not express instead of comparing it', async 
   // kind, but `reviewer` is not a row `solo.toml` sits on.
   await page.goto(compareUrl('reviewer', '.codex/agents/reviewer.toml', '.codex/agents/solo.toml'));
   await expect(page.locator('main')).toContainText(
-    'No agent name in the current scan holds both of this link’s files.',
+    "No agent name in the current scan holds both of this link's files.",
   );
   // A path the current scan holds no file of this kind at.
   await page.goto(
     compareUrl('reviewer', '.codex/agents/reviewer.toml', '.claude/agents/nothing.md'),
   );
   await expect(page.locator('main')).toContainText(
-    'No agent name in the current scan holds both of this link’s files.',
+    "No agent name in the current scan holds both of this link's files.",
   );
   // No pair at all.
   await page.goto(new URL('/agents/compare/repository', host.origin).toString());

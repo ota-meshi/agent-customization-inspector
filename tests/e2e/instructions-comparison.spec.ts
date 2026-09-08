@@ -288,14 +288,14 @@ test('reports a pair the model does not express instead of comparing it', async 
   // skill route reports a pair no name's row owns.
   await page.goto(compareUrl('AGENTS.md', 'packages/api/AGENTS.md'));
   await expect(page.locator('main')).toContainText(
-    'No applicability range in the current scan holds both of this link’s files.',
+    "No applicability range in the current scan holds both of this link's files.",
   );
   // A path the current scan holds no instruction file at — the carrier is a
   // configuration input, never an instruction candidate — is a pair no row
   // holds either.
   await page.goto(compareUrl('AGENTS.md', '.codex/config.toml'));
   await expect(page.locator('main')).toContainText(
-    'No applicability range in the current scan holds both of this link’s files.',
+    "No applicability range in the current scan holds both of this link's files.",
   );
   // No pair at all.
   await page.goto(new URL('/instructions/compare/repository', host.origin).toString());

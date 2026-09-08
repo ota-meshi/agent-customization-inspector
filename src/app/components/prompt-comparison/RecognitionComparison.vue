@@ -208,7 +208,7 @@ function surfacesText(definition: PromptSideDefinition): string {
              captioning a command's body "prompt" would name it after the
              half of the kind it is not (entities.ts § CUSTOMIZATION_KIND_TEXT). -->
         <p class="aci-note">
-          Each side is what that file tells the reader’s agent, left once its frontmatter block is
+          Each side is what that file tells the reader's agent, left once its frontmatter block is
           removed — the prompt of a prompt file, the body of a command file; the block itself is
           above, and each file whole is in the source comparison below.
         </p>

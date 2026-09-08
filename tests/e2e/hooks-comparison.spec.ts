@@ -321,7 +321,7 @@ test.describe('the hook declaration comparison', () => {
       ).toString(),
     );
     await expect(page.locator('main')).toContainText(
-      'No declared hook event in the current scan matches this link’s.',
+      "No declared hook event in the current scan matches this link's.",
     );
 
     await page.goto(

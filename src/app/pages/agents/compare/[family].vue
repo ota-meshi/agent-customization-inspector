@@ -378,10 +378,10 @@ const rightSelection = computed({
  */
 const pairFault = computed<string | null>(() => {
   if (family.value === null) {
-    return 'This link does not say where its files came from. Open a comparison from a row in the inventory, or from a custom agent’s detail page.';
+    return "This link does not say where its files came from. Open a comparison from a row in the inventory, or from a custom agent's detail page.";
   }
   if (!hasPair.value) {
-    return 'This link names no pair of custom-agent files. Open a comparison from a row in the inventory, or from a custom agent’s detail page.';
+    return "This link names no pair of custom-agent files. Open a comparison from a row in the inventory, or from a custom agent's detail page.";
   }
   const left = currentLeft.value;
   const right = currentRight.value;
@@ -400,14 +400,14 @@ const pairFault = computed<string | null>(() => {
   ) {
     // A cross-family link included: a pair never spans the repository and a
     // consented home (contracts/http-api.md § Host requirements #5).
-    return 'A file this link names is not from the place this link’s address names. Open a comparison from a custom-agent row in the inventory.';
+    return "A file this link names is not from the place this link's address names. Open a comparison from a custom-agent row in the inventory.";
   }
   if (owningRow.value === null) {
     // One statement for every way the named row does not hold both files — a
     // name no current row is, a path that is not this kind's, an identity the
     // current scan does not hold, or the null-named row, which owns no pair —
     // exactly as the skill route reports a pair no name's row owns.
-    return 'No agent name in the current scan holds both of this link’s files. The inventory may have changed since the link was made; open a comparison from a custom-agent row.';
+    return "No agent name in the current scan holds both of this link's files. The inventory may have changed since the link was made; open a comparison from a custom-agent row.";
   }
   return null;
 });
@@ -646,7 +646,7 @@ const stateStatement = computed<string | null>(() => {
       // must say something.
       return 'A comparison needs two distinct custom-agent files, and this link names the same file twice.';
     case 'stale':
-      return 'Nothing in the current scan sits at one of this link’s paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.';
+      return "Nothing in the current scan sits at one of this link's paths. The inventory may have changed since the link was made; a rescan that brings the file back will make it resolve again.";
     case 'not-readable':
       // Through the pickers' own name for a side
       // ({@link comparisonSideLabel}): that rule collapses whitespace, so a path
