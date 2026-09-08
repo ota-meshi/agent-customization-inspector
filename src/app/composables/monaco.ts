@@ -363,21 +363,23 @@ export class SourceViewerHandle {
   }
 
   /**
-   * Releases the authored text this handle holds, leaving the editor mounted.
+   * Releases the authored text this handle holds, leaving the editor mounted
+   * and the model attached.
    *
-   * What has to go is the document, which Monaco keeps in the model and a
-   * removed DOM would not release (FR-027). The editor is not that, and taking
-   * it down takes the element a reader may be inside with it — focus then
-   * falls to the document body under someone who was reading (WCAG 2.4.3). So
-   * the model is detached and disposed and the editor stays, empty, ready for
-   * the next source (`showSource`) or for the unmount that ends it.
+   * What has to go is the text, which Monaco keeps in the model's buffer and a
+   * removed DOM would not release (FR-027). Emptying the model is what releases
+   * it: `setValue` swaps the buffer, disposes the one it replaced, and clears
+   * the edit history, so no copy of the authored run is left behind
+   * (`monaco-editor` § TextModel._setValueFromTextBuffer).
+   *
+   * Emptying rather than detaching, because detaching is not free to a reader:
+   * `setModel` tears down the input context, and its teardown blurs the
+   * element the reader is in, so focus lands on the document body under
+   * someone who was reading (WCAG 2.4.3). An empty model takes nothing away
+   * from them, and the next source replaces it (`showSource`).
    */
   public dropSource(): void {
-    const model = this.#editor.getModel();
-    // Detached first, for the reason the disposal below is ordered that way:
-    // an attached editor left pointing at a disposed document.
-    this.#editor.setModel(null);
-    model?.dispose();
+    this.#editor.getModel()?.setValue('');
     clearAnnouncedText();
   }
 
