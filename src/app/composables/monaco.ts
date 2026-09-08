@@ -363,6 +363,25 @@ export class SourceViewerHandle {
   }
 
   /**
+   * Releases the authored text this handle holds, leaving the editor mounted.
+   *
+   * What has to go is the document, which Monaco keeps in the model and a
+   * removed DOM would not release (FR-027). The editor is not that, and taking
+   * it down takes the element a reader may be inside with it — focus then
+   * falls to the document body under someone who was reading (WCAG 2.4.3). So
+   * the model is detached and disposed and the editor stays, empty, ready for
+   * the next source (`showSource`) or for the unmount that ends it.
+   */
+  public dropSource(): void {
+    const model = this.#editor.getModel();
+    // Detached first, for the reason the disposal below is ordered that way:
+    // an attached editor left pointing at a disposed document.
+    this.#editor.setModel(null);
+    model?.dispose();
+    clearAnnouncedText();
+  }
+
+  /**
    * Disposes the editor, its current model, and every subscription. Separate
    * disposal is deliberate — Monaco does not dispose a model with its editor,
    * so an editor-only teardown would retain the authored text.

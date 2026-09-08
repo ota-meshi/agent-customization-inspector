@@ -233,13 +233,12 @@ const headingFocus = useDetailHeadingFocus({
 // Waiting for the flush costs nothing once this watcher has captured the
 // element: the reference remains available after the document changes.
 //
-// A generation adoption can instead dispose the content before this component
-// receives `subject === null`. Starting a refresh moves focus to a control
-// outside this page, but the reader can return to the source viewer while the
-// request is in flight. If a newer generation settles then,
-// `closeFileDetail()` disconnects the focused editor before the prop update,
-// so this watcher sees the document body and has no departed element to hold.
-// This prop-level guard does not cover that transition.
+// The element is still the reader's when this runs, whatever dropped the
+// subject. Closing the open detail releases the authored text the components
+// hold without detaching what drew it (`SourceViewer.vue` § dropContent), and
+// what the reader was on goes with the render this watcher runs ahead of. So
+// `document.activeElement` here is where the reader is rather than the
+// document body.
 watch(
   (): Subject | null => props.subject,
   (subject, departed) => {

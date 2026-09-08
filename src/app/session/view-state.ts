@@ -1711,12 +1711,11 @@ export class SessionViewState {
     // sequence's inventory entries, not one render flush later
     // (data-model.md § BrowserState).
     //
-    // Within the block the order matters for focus. The detail page guards
-    // focus with synchronous watchers on this state, and they can only move
-    // focus off an element that is still there. Disposing first detaches the
-    // editor the reader was in, so by the time the watchers run the focused
-    // element is already the document body and there is nothing left to
-    // rescue (WCAG 2.4.3).
+    // Within the block the order matters for focus. A synchronous watcher on
+    // this state can only move focus off an element that is still there, and
+    // an owner drops the content it holds without detaching the element that
+    // drew it (`SourceViewer.vue` § dropContent), so the reader stays where
+    // they are either way (WCAG 2.4.3).
     this.#dropOpenDetails();
     this.entryDetailError.value = null;
     this.fileDetailState.value = 'idle';
