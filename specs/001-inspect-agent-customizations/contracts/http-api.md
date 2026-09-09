@@ -460,14 +460,15 @@ SessionSnapshot
 
 An inventory row's unit is decided by the kind, not by the file. A skill is one
 invocation name as one tool resolves it (data-model.md § Inventory unit): the name that
-tool's own documentation invokes the file by, resolved by the admitting rule. Codex and
-Copilot invoke the authored frontmatter `name` — or the skill directory name when the
-file declares none, declares it empty, or its extraction failed, the directory being the
-path's own fact rather than something a failed parse could be read for (FR-028) — while
-Claude Code's command name is the skill directory whatever the frontmatter declares,
-prefixed root-relative for a nested skill, so `apps/web/.claude/skills/deploy/SKILL.md`
-declaring `name: ship` is `apps/web:deploy` on its Claude Code row and `ship` on its
-Copilot one. `name` is never null or empty. A definition is one
+tool invokes the file by, resolved by the admitting rule. Every product invokes a skill at
+the selected root by the authored frontmatter `name` — or the skill directory name when
+the file declares none, declares it empty, or its extraction failed, the directory being
+the path's own fact rather than something a failed parse could be read for (FR-028) —
+while Claude Code names a nested skill by its directory-qualified command, the
+root-relative prefix and the skill directory, so `apps/web/.claude/skills/deploy/SKILL.md`
+declaring `name: ship` is `apps/web:deploy` on its Claude Code row while
+`.claude/skills/deploy/SKILL.md` declaring the same is `ship` on every product's row.
+`name` is never null or empty. A definition is one
 tool's recognition of one file — the ToolRecognition unit, one per `(file, tool)`, named
 by `definitions[].tool` — so several `SKILL.md` files one tool invokes by one name
 publish one entry listing each recognition as a definition — two files that declare no

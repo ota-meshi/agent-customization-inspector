@@ -140,10 +140,10 @@ test('reaches the neighbouring rows without returning to the list', async ({ pag
 
 test('states each recognition’s own invocation name, one row per product', async ({ page }) => {
   // T1182. `.claude/skills/lander/SKILL.md` declares `name: voyage`, and the
-  // two products that read it resolve different names from it: Claude Code
-  // invokes a skill by its directory, Copilot by the authored name (FR-007).
-  // One file therefore answers to two names, which is why the name is stated
-  // per recognition rather than once for the page.
+  // two products that read it each resolve that name through their own rule
+  // (FR-007). The name is stated per recognition rather than once for the
+  // page, because it is each rule's answer: the name is the box and the
+  // products that resolve it are its rows.
   await page.goto(host.origin);
   await page.getByRole('tab', { name: /^Skill/u }).click();
   await page
@@ -155,24 +155,16 @@ test('states each recognition’s own invocation name, one row per product', asy
     .click();
   await expect(page).toHaveURL(/\/skills\/detail\//u);
 
-  // Two names, because the two products resolve different ones, and one
-  // recognition inside each: the name is the box and the products that resolve
-  // it are its rows.
+  // One name, because both products resolve the same one, and both
+  // recognitions inside it.
   const groups = page.locator('.aci-skill-detail__invocations > li');
-  await expect(groups).toHaveCount(2);
+  await expect(groups).toHaveCount(1);
   await expect(groups.nth(0)).toContainText('Invocation name: voyage');
-  await expect(groups.nth(1)).toContainText('Invocation name: lander');
-  // Each name says whether it can be compared, and the two differ here:
-  // `voyage` names a second readable copy in this family, `lander` names none.
-  // The one that cannot states why rather than leaving a missing control a
-  // reader cannot tell from a forgotten one (FR-011).
+  // The name says whether it can be compared: `voyage` names a second
+  // readable copy in this family, so the control is there (FR-011).
   await expect(
     groups.nth(0).getByRole('link', { name: /^Compare this skill's files/u }),
   ).toBeVisible();
-  await expect(groups.nth(1)).toContainText(
-    'This name has one copy here, so there is nothing to compare',
-  );
-  await expect(groups.nth(1).getByRole('link', { name: /^Compare/u })).toHaveCount(0);
   const rows = page.locator('.aci-skill-detail__recognitions li');
   await expect(rows).toHaveCount(2);
   const stated = await rows.evaluateAll((items) =>

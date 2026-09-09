@@ -74,11 +74,11 @@ export function rowInternalCollisionGate(): (
 }
 
 /**
- * The evidence for a vendor that invokes the authored name: every definition
- * of the row except one whose extraction failed. Such a definition fell back
- * to the skill directory, so counting it would let this product's provisional
- * grouping stand in for a name the tool never resolved (FR-028). Exported for
- * the vendor policies that invoke the authored name.
+ * The evidence for a vendor whose clash is on the authored name: every
+ * definition of the row except one whose extraction failed. Such a definition
+ * fell back to the skill directory, so counting it would let this product's
+ * provisional grouping stand in for a name the tool never resolved (FR-028).
+ * Exported for the vendor policies whose clash is on the authored name.
  */
 export function parsedDefinitions(
   rowDefinitions: readonly SameNameCollisionDefinition[],

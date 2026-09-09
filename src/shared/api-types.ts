@@ -243,15 +243,15 @@ export interface SkillDefinitionDto {
  */
 export interface SkillInventoryEntryDto {
   /**
-   * The name one tool's own documentation invokes these files by (FR-007):
-   * the authored frontmatter `name` for Codex and Copilot — or the skill
-   * directory name when the file declares none or declares it empty — and,
-   * for Claude Code, the skill directory whatever the frontmatter declares,
-   * prefixed for a nested skill with the root-relative `/`-joined path of the
-   * directory holding its `.claude` and a `:` — `apps/web:deploy`. Never null
-   * or empty: being a named directory is what a skill is, so every row has a
-   * name to be listed under. Resolved by the admitting rule at recognition
-   * time (server/inspection/rules/skills/compiled-rule.ts § CompiledStaticSkillRule),
+   * The name one tool invokes these files by (FR-007): the authored
+   * frontmatter `name` — or the skill directory name when the file declares
+   * none or declares it empty — for every product's skill at the selected
+   * root, and for a nested Claude Code skill the directory-qualified command,
+   * the root-relative `/`-joined path of the directory holding its `.claude`,
+   * a `:`, and the skill directory — `apps/web:deploy`. Never null or empty:
+   * being a named directory is what a skill is, so every row has a name to be
+   * listed under. Resolved by the admitting rule at recognition time
+   * (server/inspection/rules/skills/compiled-rule.ts § CompiledStaticSkillRule),
    * which is where a product's own naming lives.
    */
   readonly name: string;

@@ -1261,22 +1261,17 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
         ],
       },
       {
+        // `.claude/skills/lander/SKILL.md` declares `voyage`, and both products
+        // that read a root skill invoke it by that declared name (FR-007), so
+        // the file is two definitions of the one row: Copilot's and Claude
+        // Code's, in the contracted tool order within the file.
         name: 'voyage',
         definitions: [
           definition('copilot', '.claude/skills/lander/SKILL.md'),
+          definition('claude', '.claude/skills/lander/SKILL.md'),
           definition('copilot', '.github/skills/ship/SKILL.md'),
         ],
         sameNameResolutions: [{ tool: 'copilot', resolution: 'surface-dependent' }],
-      },
-      {
-        // The same `.claude/skills/lander/SKILL.md` the `voyage` row above
-        // holds, on its own row because Claude Code invokes it by its skill
-        // directory whatever its frontmatter declares (FR-007). A double that
-        // put the Claude definition under `voyage` would be a row the
-        // projection cannot produce.
-        name: 'lander',
-        definitions: [definition('claude', '.claude/skills/lander/SKILL.md')],
-        sameNameResolutions: [],
       },
       {
         name: 'orbit',
@@ -1312,7 +1307,6 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual([
       'alpha',
       'voyage',
-      'lander',
       'orbit',
     ]);
   });
@@ -1332,9 +1326,10 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
 
     filters.tool.value = 'claude';
     const claudeRows = filters.view.skillRows.value;
-    // Claude's one definition is on its own row, so no tool still faces a
-    // collision and the row states nothing.
-    expect(claudeRows.map((entry) => entry.name)).toEqual(['lander']);
+    // Claude's one definition of `voyage` is all the narrowing leaves, so no
+    // tool still faces a collision and the row states nothing.
+    expect(claudeRows.map((entry) => entry.name)).toEqual(['voyage']);
+    expect(claudeRows[0]!.definitions.map((definition) => definition.tool)).toEqual(['claude']);
     expect(claudeRows[0]!.sameNameResolutions).toEqual([]);
   });
 
@@ -1362,13 +1357,13 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
   it('counts the kind tab from the filtered unified rows', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(unifiedSnapshot());
     const filters = withSelection(snapshot);
-    expect(filters.view.kindCounts.value.get('skill')).toBe(4);
+    expect(filters.view.kindCounts.value.get('skill')).toBe(3);
     filters.tool.value = 'claude';
     expect(filters.view.kindCounts.value.get('skill')).toBe(1);
     filters.searchQuery.value = 'no-such-path';
     expect(filters.view.kindCounts.value.get('skill')).toBe(0);
     // An unmatched filter empties the rows without touching the snapshot.
-    expect(snapshot.value!.skills).toHaveLength(4);
+    expect(snapshot.value!.skills).toHaveLength(3);
   });
 
   it('adopts and filters the unified inventory without ever requesting a detail', async () => {
@@ -1394,7 +1389,7 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     await state.start();
     const filters = withSelection(state.snapshot);
     filters.tool.value = 'claude';
-    expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['lander']);
+    expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['voyage']);
     filters.searchQuery.value = 'alpha';
     filters.tool.value = null;
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual(['alpha']);

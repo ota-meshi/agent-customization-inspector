@@ -3,9 +3,9 @@
 // (contracts/vendors/openai-codex.md § Normative initial-release presentation
 // allowlist).
 //
-// The answer itself is `invocation-name.ts`, shared with the other product
-// documenting the same field: their answer is one rule rather than two that
-// happen to agree.
+// The answer itself is `invocation-name.ts`, shared with every product that
+// resolves a skill by that field: their answer is one rule rather than three
+// that happen to agree.
 //
 // The base this unit extends is `../vendor/codex.ts` rather than `../codex.ts`,
 // which holds this vendor's other kinds: both modules extend that base, and a
@@ -30,8 +30,8 @@ export class CodexCompiledSkillRule extends CodexCompiledRule implements Compile
 
   /**
    * The `name` the file declares, with the skill directory as the fallback —
-   * the shared answer of the products that document that field as the skill's
-   * identity ({@link authoredSkillNameOf}), which Codex is one of.
+   * the shared answer of every product that resolves a skill by that field
+   * ({@link authoredSkillNameOf}), which Codex does for all of its own.
    */
   public invocationNameOf(
     sourceRelativePath: string,

@@ -517,10 +517,11 @@ pageを6つと数えないようにした。
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`7997a3a45f973f12c0686452b75016ab2a498596142680fb756db205c994cf8b`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+`1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
 caseは、2026-09-09に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由（405件、271件、5件pass）、
-browser specはChromium suite全体577件経由であり、このhost上の1回のrunで全件が通った。
+browser specはmanifestが名指す65 specをChromium projectで実行した351件経由であり、このhost上の
+1回のrunで全件が通った。
 `tests/contract/outcome-fixture-manifest.test.ts`は
 同じrunでcanonical digestと66件のfixture digestすべてを再現した。
 
@@ -530,7 +531,17 @@ checked-inのbytesが既に持たない値を名指していた。contract suite
 この行と`tests/fixtures/outcomes/manifest.sha256`を、bytesを動かす同じ変更の中で同じcommandから
 書くことである。
 
-このsetは、その前のsetとは比較できない。source surfaceがMonacoからshikiへ移った際（T1207、T1209）に、
+このsetは、その前のsetとは比較できない。選択されたrootにあるClaude Codeのskill rowが、製品自身のmenuが
+それを列挙する名前 — authoredな`name`、fallbackはskill directory — を取った際（T1212、T1214）に、参照
+fixtureが5件変わったためである。共有のrepositories builderは`.claude/skills/lander`が`voyage` rowに
+加わる理由を書き直し、`claude-skills-list.spec.ts`、`claude-skills-detail.spec.ts`、
+`copilot-skills-list.spec.ts`、`copilot-skills-detail.spec.ts`は、rootの`.claude` fileを、それを読む
+両製品についてauthoredな名前の下に1回だけ列挙する（以前はそれぞれ2回列挙していた）。
+`skills-inventory.spec.ts`はbuilderに束縛され、同じ理由でrowを1つ少なく数える。どのcaseもID、class、
+expected outcomeを保ったので、manifest versionは下の遷移と同じgovernanceのもとで3のままであり、この
+実行のbrowser側はこのhostのChromium projectであった。
+
+その前のsetは、さらにその前のsetとは比較できない。source surfaceがMonacoからshikiへ移った際（T1207、T1209）に、
 参照するbrowser spec 10件が変わったためである。detail specの8件 — `claude-custom-agents-`、
 `claude-settings-`、`codex-config-`、`codex-custom-agents-`、`codex-permissions-`、`codex-skills-`、
 `copilot-custom-agents-`、`copilot-settings-detail` — はeditorのDOMへ到達するのをやめ、代わりに
@@ -539,14 +550,14 @@ source box、そのrunの色、その中にtext以外が無いことを読む。
 どのcaseもID、class、expected outcomeを保ったので、manifest versionは下の遷移と同じgovernanceの
 もとで3のままであり、この実行のbrowser側もこのhostのChromium projectであった。
 
-その前のsetは、さらにその前のsetとは比較できない。Closedなenvironment-failure errno集合を中身に合わせて
+さらにその前のsetは、その1つ前のsetとは比較できない。Closedなenvironment-failure errno集合を中身に合わせて
 改名した際に`tests/contract/host-startup.test.ts`が変わり、そのfixture digestとcanonical manifest
 digestが一緒に動いたためである。spec.ja.md § Release-Evidence Fixtureのガバナンスは、fixture byte
 の変更を新しい比較不能なmeasurement setとする。Manifest versionは3のままである。そのガバナンスが
 incrementを要求するのはcase、required-class、expected-outcomeの変更であり、これはそのいずれでもない
 — 同じ4基準にまたがる同じ99 case IDで、required classごとに非ゼロの件数を持つ。
 
-さらにその前のsetがinterface rework後のsetと比較できなかったのは、それ自身の理由による。参照fixtureが5件
+それらより前のsetがinterface rework後のsetと比較できなかったのは、それ自身の理由による。参照fixtureが5件
 変わり、いずれもrailの`Source diagnostics`項目の削除によるものである。instructions inventoryの3 spec —
 `claude-`、`codex-`、`copilot-` — はその項目を開いて空listを読むassertionを落とし、Codexのものは
 tabを5件ではなく4件と数えるようになった。`inspection-safety.spec.ts`は`Partial`ではなく

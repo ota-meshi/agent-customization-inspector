@@ -335,11 +335,10 @@ describe('Claude skill recognition (T127)', () => {
     expect(recognitions[0]).toMatchObject({
       sourceRelativePath: '.claude/skills/greet/SKILL.md',
       tool: 'claude',
-      // The value the grouped inventory row is keyed by (FR-007): Claude
-      // Code's command name, which is the skill directory whatever the file
-      // declares — `authored-name` is the label the detail lists among the
-      // declarations, not a command anything answers to.
-      details: { kind: 'skill', invocationName: 'greet' },
+      // The value the grouped inventory row is keyed by (FR-007): the name
+      // Claude Code lists a root skill under, which is the declared `name` —
+      // the directory is the fallback for a file declaring none.
+      details: { kind: 'skill', invocationName: 'authored-name' },
       parseStatus: 'parsed',
       diagnosticIds: [],
     });
@@ -365,10 +364,11 @@ describe('Claude skill recognition (T127)', () => {
     expect(JSON.stringify(recognition)).not.toContain('sourceText');
   });
 
-  it('keeps its command name when the file declares nothing', async () => {
-    // Claude Code derives the command from the path, so a file declaring no
-    // name changes nothing about the identity its row is keyed by, and the
-    // empty declarations beside it are what report the absence (FR-007).
+  it('falls back to the skill directory when the file declares nothing', async () => {
+    // Claude Code still lists a skill whose file declares no usable name, and
+    // being a named directory is what a skill is — so the directory names the
+    // row, and the empty declarations beside it are what report the absence
+    // (FR-007).
     for (const source of ['', '# no frontmatter\n', '---\ndescription: x\n---\n']) {
       const [recognition] = await recognizeClaude(
         '.claude/skills/greet/SKILL.md',

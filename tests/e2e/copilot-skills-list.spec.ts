@@ -63,19 +63,18 @@ test('lists each recognition exactly once as a definition with the exact matrix'
   page,
 }) => {
   await page.goto(host.origin);
-  // Four rows for four admitted files: the two files Copilot invokes as
-  // `voyage` share one grouped row, `.claude/skills/lander` is also Claude
-  // Code's own `lander` row because Claude invokes the skill directory
-  // whatever the frontmatter declares, and the nested `.claude` layer is a
-  // row named by its prefixed skill directory (FR-007, T1081).
-  await expect(page.locator('.aci-item')).toHaveCount(4);
+  // Three rows for four admitted files: the two files Copilot invokes as
+  // `voyage` share one grouped row, which Claude Code's recognition of
+  // `.claude/skills/lander` joins because every product invokes a root skill
+  // by its declared name, and the nested `.claude` layer is a row named by
+  // its directory-qualified command (FR-007, T1081).
+  await expect(page.locator('.aci-item')).toHaveCount(3);
 
-  // Rows in name order: `lander`, `orbit`, `packages/api:lander-nested`, then
-  // the grouped `voyage`. One path line per file within a row; the
-  // definitions beneath it link once per recognizing product to their own
+  // Rows in name order: `orbit`, `packages/api:lander-nested`, then the
+  // grouped `voyage`. One path line per file within a row; the definitions
+  // beneath it link once per recognizing product to their own
   // `/skills/<source-relative path>` routes.
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
-    '.claude/skills/lander/SKILL.md',
     '.agents/skills/orbit/SKILL.md',
     'packages/api/.claude/skills/lander-nested/SKILL.md',
     '.claude/skills/lander/SKILL.md',
@@ -86,8 +85,7 @@ test('lists each recognition exactly once as a definition with the exact matrix'
   // holds it: a definition is one `(file, tool)` recognition carrying exactly
   // its own tool's link. `toHaveText` is exact, so an extra definition would
   // fail rather than pass unnoticed. The shared `.claude/skills/lander` file
-  // is asserted once per row, which is where the two products' different
-  // names put its two recognitions.
+  // carries both products' recognitions under the one name.
   const expectTools = async (row: string, path: string, tools: readonly string[]) => {
     const group = page
       .locator('.aci-item', {
@@ -101,8 +99,6 @@ test('lists each recognition exactly once as a definition with the exact matrix'
   ]);
   await expectTools('voyage', '.claude/skills/lander/SKILL.md', [
     'GitHub Copilot VS Code, CLI, Cloud agent',
-  ]);
-  await expectTools('lander', '.claude/skills/lander/SKILL.md', [
     'Claude Code CLI and IDE clients',
   ]);
   await expectTools('orbit', '.agents/skills/orbit/SKILL.md', [
@@ -120,7 +116,7 @@ test('shows no nested-context, extra-depth, configured-root, or authored-content
   page,
 }) => {
   await page.goto(host.origin);
-  await expect(page.locator('.aci-item')).toHaveCount(4);
+  await expect(page.locator('.aci-item')).toHaveCount(3);
   const text = await page.locator('main').innerText();
   // The nested `.github` and `.agents` contexts belong to runtime contexts
   // this product does not select, so neither is listed at all.
@@ -164,11 +160,13 @@ test('groups the shared declared name and states the surface-dependent Copilot r
 
 test('filters the matrix apart with the tool filter', async ({ page }) => {
   await page.goto(host.origin);
-  await expect(page.locator('.aci-item')).toHaveCount(4);
+  await expect(page.locator('.aci-item')).toHaveCount(3);
 
   // Copilot recognizes every root file, under the two authored names; the
-  // sharing vendors keep exactly their own — Claude both `.claude` depths
-  // under its own command names, Codex the root `.agents` one.
+  // sharing vendors keep exactly their own — Claude the root `.claude` file
+  // under its authored name and the nested depth under its directory-qualified
+  // command, Codex the root `.agents` one. Rows stay in name order, so the
+  // nested `packages/api:lander-nested` precedes `voyage`.
   await page.getByLabel('Tool').selectOption('copilot');
   await expect(page.locator('.aci-item')).toHaveCount(2);
   await page.getByLabel('Tool').selectOption('codex');
@@ -177,11 +175,11 @@ test('filters the matrix apart with the tool filter', async ({ page }) => {
   await page.getByLabel('Tool').selectOption('claude');
   await expect(page.locator('.aci-item')).toHaveCount(2);
   await expect(page.locator('.aci-item .aci-path')).toHaveText([
-    '.claude/skills/lander/SKILL.md',
     'packages/api/.claude/skills/lander-nested/SKILL.md',
+    '.claude/skills/lander/SKILL.md',
   ]);
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await expect(page.locator('.aci-item')).toHaveCount(4);
+  await expect(page.locator('.aci-item')).toHaveCount(3);
 });
 
 test('opens a Copilot definition by its stable identity into the detail route', async ({

@@ -1243,7 +1243,7 @@ shipped kinds do not agree on one:
 
 | Kind | The unit one row shows |
 |---|---|
-| `skill` | One invocation name as one tool resolves it (FR-007): the name that tool's own documentation invokes the file by, which the admitting rule answers — the authored frontmatter `name` for Codex and Copilot, or the skill directory name when the file declares none; the skill directory whatever the frontmatter declares for Claude Code, prefixed root-relative when nested. A definition is one recognition — one per `(file, tool)` — so several files one tool invokes by one name are one entry listing each recognition as a definition, and one file whose tools invoke it by different names defines on each name's entry. Being a recognition, a definition states the surfaces of the documented behaviors its admitting rules rest on, exactly as a path-identified row's recognitions do (FR-009) |
+| `skill` | One invocation name as one tool resolves it (FR-007): the name that tool invokes the file by, which the admitting rule answers — the authored frontmatter `name` for every product's skill at the selected root, or the skill directory name when the file declares none; the directory-qualified command for a nested Claude Code skill, the root-relative prefix and the skill directory. A definition is one recognition — one per `(file, tool)` — so several files one tool invokes by one name are one entry listing each recognition as a definition, and one file whose tools invoke it by different names defines on each name's entry. Being a recognition, a definition states the surfaces of the documented behaviors its admitting rules rest on, exactly as a path-identified row's recognitions do (FR-009) |
 | `MCP` | One declared server name: every `[mcp_servers.*]`-style declaration resolving that name — one per `(carrier, tool)` — is listed inside the name's row, so one `.codex/config.toml` contributes one declaration per server it declares, and a second carrier declaring the same name joins that name's row. A declaration's home is an explicit carrier and nothing else: a file of any other kind that spells MCP-looking configuration — a skill's or an agent's frontmatter, a settings file's inline map — is that kind's ordinary content, visible in its own detail, and joins no MCP row. Each declaration names its own file. The one row whose name is null closes the list with the carriers currently publishing no named declaration — an unreadable declaration block, whose rows are unknown, or a carrier declaring none |
 | `instructions` | One applicability range of one Source: the glob the governing files' own paths derive, listing each file it governs with that file's recognitions — each one product and the surfaces of the documented behaviors its admitting rules rest on, because a tool alone cannot say where a product reads the file from. The Source is half the row's identity, so the repository's `**` and a consented home's `**` are two rows; the list shows them under one heading for that range, grouped into one block per Source family — the selected repository, and the reader's own configuration directories. A comparison is a pair of one block's files, so it may pair two consented homes and never spans two families (FR-011, FR-030). A block names its family only where the session carries more than one Source, and a file names the directory it was in only where its family holds more than one: with one, either would repeat the page's only answer |
 | `rule` | The file itself: a rule file is modular instructions a product loads into context, and it declares no name a row could be keyed by nor governs a range it could be grouped under, so its Source-relative Path is the row's identity, and two products recognizing one file are two recognitions on one row, each naming its product and the surfaces of the documented behaviors its admitting rules rest on |
@@ -1308,23 +1308,26 @@ row whose `applicabilityRange` is null, sorted after every ranged row. A range
 states what a file governs. It is never a claim that a product loaded the file: an
 admission is not an activation (FR-009).
 
-A skill row's name is the name one tool's own documentation invokes the file by (FR-007),
-answered by the rule that admitted it because how a name follows from a path and a
-declaration is that vendor's own contract. Codex and Copilot invoke the authored
+A skill row's name is the name one tool invokes the file by (FR-007), answered by the rule
+that admitted it because how a name follows from a path and a declaration is that
+vendor's own contract. Every product invokes a skill at the selected root by the authored
 frontmatter `name` — or the skill directory name when the file declares none or declares
 it empty, because being a named directory is what a skill is, so every row has a name and
-two such files in same-named directories share one. Claude Code invokes the skill
-directory whatever the frontmatter declares, treating the authored `name` as only a
-display label (skills page § How a skill gets its command name), and a nested skill's
-command is prefixed
-with the `/`-joined root-relative path of the directory holding its `.claude` and a `:`.
-So `apps/web/.claude/skills/deploy/SKILL.md` declaring `name: ship` is `apps/web:deploy`
-on its Claude Code row and `ship` on its Copilot one. A row headed by a name the tool
-listed in it does not answer to would name something the reader cannot invoke, which is
-why the row and the invocation name are one fact rather than two. The nested form is
-always prefixed: the vendor qualifies on a name clash against layers this product never
-reads, relative to a session working directory it never observes, so the root-relative
-qualified spelling is the one stable name a static inventory can stand behind. A name is
+two such files in same-named directories share one. Claude Code names a nested skill by
+its directory-qualified command: the `/`-joined root-relative path of the directory
+holding its `.claude`, a `:`, and the skill directory, with the declared name unread. So
+`apps/web/.claude/skills/deploy/SKILL.md` declaring `name: ship` is `apps/web:deploy` on
+its Claude Code row, while `.claude/skills/deploy/SKILL.md` declaring the same is `ship`
+on every product's row. The declared name is the one Claude Code's menus list and
+complete a root skill under, and the directory is the internal identifier its qualified
+nested command is built from; the skills page (§ How a skill gets its command name)
+describes that identifier when it says the `name` field sets only the display label. A
+row headed by a name the tool listed in it does not answer to would name something the
+reader cannot invoke, which is why the row and the invocation name are one fact rather
+than two. The nested form is always prefixed: the vendor qualifies on a name clash
+against layers this product never reads, relative to a session working directory it never
+observes, so the root-relative qualified spelling is the one stable name a static
+inventory can stand behind. A name is
 rendered with the same control-character escaping as a Source-relative Path
 (§ SourceRelativePath): a nested Claude row's prefix is path segments, so a name is a
 lookup and selection identity and must read as what it is.
@@ -1336,7 +1339,8 @@ parse fact and the file's `files[]` entry lists once as its file-confined outcom
 the authored name unknown rather than absent, so a tool that invokes it falls back to the
 skill directory — the path's own fact, not a reading of the failed parse. The row that
 names is provisional grouping, and the definition evidences no same-name collision for
-that tool. Claude Code's path-derived command name stands either way.
+that tool. Claude Code's directory clash stands either way, because the clash it detects
+is between skill directories whatever the frontmatter declares.
 
 A grouped entry never implies a winner the Inspector has not recorded. Each entry states how
 a product resolves a name it recognizes on two or more of that entry's definitions, because
@@ -1372,11 +1376,11 @@ production construction site is the recognizer, while the recognize seam
 
 A recognition record's details are discriminated by `kind`, because what identifies a
 recognition differs by kind and does not fit one shared optional field: a skill declares a
-single `name`, while an MCP carrier declares one per server. A skill's details carry that
-declared name — the display label and the identity every row's name is built from, which a
-nested Claude Code recognition's row prefixes root-relative (FR-007, FR-027) — absent,
-never empty, when the file declares none; a row whose file declares none, or declares it
-empty, is named by its skill directory instead. An instruction recognition's details
+single `name`, while an MCP carrier declares one per server. A skill's details carry the
+invocation name the admitting rule resolved — the declared `name` for a skill at the
+selected root, the directory-qualified command for a nested Claude Code one (FR-007,
+FR-027) — never empty: a row whose file declares none, or declares it empty, is named by
+its skill directory instead. An instruction recognition's details
 carry the same one parse — the declared keys in authored order and the body the block
 was removed from — and deliberately no name: what identifies the recognition is the file
 it was found in, so the Source-relative Path it already carries is the whole identity.

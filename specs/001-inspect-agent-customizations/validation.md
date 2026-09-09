@@ -623,13 +623,13 @@ picker's own comment no longer counts six pages where there are seven.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `7997a3a45f973f12c0686452b75016ab2a498596142680fb756db205c994cf8b`, recorded in
+SHA-256 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-09 by
 running every suite each case names in `verifiedBy`: the vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security` (405, 271, and 5 passing), and the
-browser specs through the whole Chromium suite, 577 tests, all passing, in one run on this
-host. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
-all 66 fixture digests in the same run.
+browser specs through the Chromium project over the 65 specs the manifest names, 351 tests,
+all passing, in one run on this host. `tests/contract/outcome-fixture-manifest.test.ts`
+reproduced the canonical digest and all 66 fixture digests in the same run.
 
 The digest is read from the manifest rather than carried forward: an earlier record named a
 value the checked-in bytes no longer had, and the contract suite could not have caught it
@@ -638,7 +638,19 @@ because it compares the manifest against its own companion file and reaches no r
 `tests/fixtures/outcomes/manifest.sha256` are written from the same command in the change that
 moves the bytes.
 
-The set is non-comparable with the one before it: ten referenced browser specs changed when
+The set is non-comparable with the one before it: five referenced fixtures changed when a Claude
+Code skill row at the selected root took the name the product's own menus list it under — the
+authored `name`, the skill directory as the fallback (T1212, T1214). The shared repositories
+builder restates why `.claude/skills/lander` joins the `voyage` row, and
+`claude-skills-list.spec.ts`, `claude-skills-detail.spec.ts`, `copilot-skills-list.spec.ts`, and
+`copilot-skills-detail.spec.ts` list a root `.claude` file once, under its authored name, for
+both products that read it, where each listed it twice; `skills-inventory.spec.ts` binds to the
+builder and counts one row fewer for the same reason. Every case kept its ID, classes, and
+expected outcome, so the manifest version stays at 3 under the same governance as the
+transitions below, and the browser half of this execution was the Chromium project on this
+host.
+
+The set before it was non-comparable with the one before that: ten referenced browser specs changed when
 the source surfaces moved from Monaco to shiki (T1207, T1209). The eight detail specs —
 `claude-custom-agents-`, `claude-settings-`, `codex-config-`, `codex-custom-agents-`,
 `codex-permissions-`, `codex-skills-`, `copilot-custom-agents-`, and `copilot-settings-detail` —
@@ -649,7 +661,7 @@ is for. Every case kept its ID, classes, and expected outcome, so the manifest v
 3 under the same governance as the transitions below, and the browser half of this execution
 was again the Chromium project on this host.
 
-The set before it was non-comparable with the one before that: `tests/contract/host-startup.test.ts` changed
+The one before that was non-comparable with the one before it: `tests/contract/host-startup.test.ts` changed
 when the closed environment-failure errno set was renamed for what it holds, which moved that
 fixture's digest and the canonical manifest digest with it. spec.md § Release-Evidence Fixture
 Governance makes a fixture-byte change a new, non-comparable measurement set; the manifest
@@ -657,7 +669,7 @@ version stays at 3, because that governance requires an increment for a case, re
 expected-outcome change and this is none of them — the same 99 case IDs across the same four
 criteria, each with a nonzero count for every required class.
 
-The one before that was non-comparable with the set recorded after the interface rework for its
+The set before those was non-comparable with the set recorded after the interface rework for its
 own reason: five referenced fixtures changed, all of them for the removal of the rail's
 `Source diagnostics` entry. The
 three instructions inventory specs — `claude-`, `codex-`, and `copilot-` — dropped the

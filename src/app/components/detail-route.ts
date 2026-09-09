@@ -44,9 +44,9 @@ export type { SourceSelector };
  * of the file that declares it — the identity its inventory row is named by —
  * an MCP or hook carrier's own page is the carrier's, and a settings or
  * configuration file's page is that file's, its row unit being the file. A skill is here
- * too: its row unit is one invocation name, and two products that invoke one
- * `SKILL.md` differently put it on two rows, but both read the same bytes, the
- * same frontmatter, and the same companion directory, so the page is the
+ * too: its row unit is one invocation name, resolved by each recognizing
+ * product's own rule, but every product reads the same bytes, the same
+ * frontmatter, and the same companion directory, so the page is the
  * `SKILL.md`'s and the names are what the page states (FR-007).
  */
 export type PathAddressedDetailKind = Extract<

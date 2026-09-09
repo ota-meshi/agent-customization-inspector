@@ -223,11 +223,13 @@ Environment validation、consent、canonicalization、およびabsentな`CLAUDE_
 authored `sourceText`を提供するため、すべてのauthored valueは既に同じ画面に自身の綴りで存在しており、
 caption付きの複製は1つの事実の2つ目の綴りになる。Recognitionが読み出すのはfile自身の宣言であり、fileが書いたkeyで公開する
 （data-model.ja.md § Skillの表示）。そのうちinventory rowがgroupingに使うのは、そのkindのidentity
-— `skill`ならそのfile自身に記述された名前 — fileが記述しない場合はそのskill directory名 —
-であり、nestedなskillのClaude Code recognitionは
-これに`.claude`を保持するdirectoryのroot相対pathを前置する（data-model.ja.md § 一覧の単位）。
-Rowの最終セグメントは、vendorのdirectory由来command segmentではなく意図的にauthoredな名前で
-あり、これにより1つのskillは3つのtoolを横断して1つのidentityの下で比較できる — である。
+— 選択されたrootにある`skill`ならそのfile自身に記述された名前、fileが記述しない場合はその
+skill directory名。Claude Codeだけが到達するnestedなskillなら、vendorが`.claude`を保持する
+directoryのroot相対pathとskill directoryから組み立てるdirectory-qualifiedなcommandであり、
+authoredな名前は読まない（data-model.ja.md § 一覧の単位） — である。Rootのrowの見出しが
+authoredな名前なのは、それがClaude Code自身のmenuがそのskillを列挙し補完する名前だからである:
+skills pageはそれを表示label、directoryをcommandと呼ぶが、そのdirectoryはqualifiedなnested
+commandを組み立てる内部identifierであり、nestedなrowがそれを保つ理由でもある。
 したがって本表が固定するのは、eligibleな
 relationship kindとadmit済みsource formだけである。
 

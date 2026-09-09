@@ -37,7 +37,7 @@ the task would have built.
 | FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
 | FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
@@ -9464,6 +9464,69 @@ comparison pages still do until T1209 lands.
   Fixture Governance). Until it lands, `tests/contract/outcome-fixture-manifest.test.ts`
   reports the drift, which is the freeze doing its work.
 
+## Phase 115: Skill Rows Named as Claude Code Lists Them
+
+**Purpose**: Head a Claude Code skill row at the selected root by the name the product's own
+menus list it under — the authored `name`, the skill directory as the fallback — so one root
+file reads as one row across every product that reads it, while a nested skill keeps the
+directory-qualified command Claude Code builds for it (FR-007, spec.md § Clarifications
+Session 2026-09-09).
+
+**Independent Test**: Run `pnpm run test:unit` and `npx playwright test --project=chromium
+tests/e2e/claude-skills-list.spec.ts tests/e2e/skills-inventory.spec.ts`; open the fixture's
+inventory and find `.claude/skills/lander/SKILL.md` on the `voyage` row alone, badged for
+both Claude Code and GitHub Copilot.
+
+**Visible Checkpoint**: No skill row is headed by a `.claude/skills/` directory whose file
+declares a `name`; `packages/api:deploy` still heads the nested row.
+
+### The rule's answer
+
+- [X] T1212 [US1] Make `src/server/inspection/rules/skills/claude.ts` answer a root skill's
+  name through the shared authored-name rule in
+  `src/server/inspection/rules/skills/invocation-name.ts` and a nested skill's through the
+  directory-qualified command alone, recording at the derivation why the skills page's
+  "display label" wording is not followed — measured against Claude Code 2.1.186 and the
+  desktop app's 2.1.260, the declared name is what the slash menu and the desktop app's
+  command list carry — and restate the naming split in
+  `src/server/inspection/rules/skills/compiled-rule.ts`,
+  `src/shared/registries/skill-directory.ts`, `src/shared/skill-collision.ts`,
+  `src/shared/registries/claude/skill-collision.ts`,
+  `src/server/inspection/recognizers/candidate.ts`, `src/server/session/session.ts`,
+  `src/shared/api-types.ts`, and `src/app/components/inventory/rows/SkillRow.vue`. Re-pin the
+  resolved names in `tests/unit/inspection/claude-metadata.test.ts`,
+  `tests/unit/inspection/copilot-metadata.test.ts`, `tests/unit/inspection/recognizers.test.ts`,
+  `tests/unit/app/inventory.test.ts`, `tests/unit/app/recognition-details.test.ts`, and
+  `tests/integration/repository-scan.test.ts` (FR-007, FR-028).
+
+### The record
+
+- [X] T1213 [US1] Record the decision and its measurement in
+  `specs/001-inspect-agent-customizations/spec.md` and
+  `specs/001-inspect-agent-customizations/spec.ja.md` (§ Clarifications Session 2026-09-09,
+  FR-007), and restate the row unit in `specs/001-inspect-agent-customizations/data-model.md`,
+  `specs/001-inspect-agent-customizations/data-model.ja.md`,
+  `specs/001-inspect-agent-customizations/contracts/http-api.md`,
+  `specs/001-inspect-agent-customizations/contracts/http-api.ja.md`,
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.md`, and
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.ja.md`; add the
+  `.changeset/` entry a row-naming change owes its users.
+
+### The browser suites and the release evidence
+
+- [X] T1214 [US1] Restate the rows in `tests/e2e/claude-skills-list.spec.ts`,
+  `tests/e2e/claude-skills-detail.spec.ts`, `tests/e2e/copilot-skills-list.spec.ts`,
+  `tests/e2e/copilot-skills-detail.spec.ts`, `tests/e2e/skills-inventory.spec.ts`, and
+  `tests/e2e/detail-navigation.spec.ts`, and drop from `tests/e2e/inventory-return.spec.ts` and
+  `tests/e2e/skills-comparison.spec.ts` the cases whose premise — one root file on two rows —
+  no rule produces any more. Re-record, in `tests/fixtures/outcomes/manifest.json` and
+  `tests/fixtures/outcomes/manifest.sha256`, the digest of every referenced suite this phase
+  changed and of `tests/fixtures/repositories/build-fixtures.ts`, re-execute the
+  SC-003/SC-004/SC-005/SC-007 cases against the new bytes, and record the run in
+  `specs/001-inspect-agent-customizations/validation.md` and
+  `specs/001-inspect-agent-customizations/validation.ja.md` (spec.md § Release-Evidence
+  Fixture Governance).
+
 ## Story Coverage Matrix
 
 | Phase | Primary story coverage | Cumulative milestone |
@@ -9585,6 +9648,7 @@ comparison pages still do until T1209 lands.
 | 111 Convergence | shared prerequisite | The release evidence and the user documentation describe the tree the rework produced, and the task-set gates cover the tasks it added. |
 | 112 Convergence | shared prerequisite | The validation record reads as one account of this tree, and the story-label rule matches the phases that exist. |
 | 113 Convergence | shared prerequisite | The two records that name an artifact by its identity — the outcome manifest's digest and the readme's screenshots — name the artifact this tree holds. |
+| 115 Skill Rows Named as Claude Code Lists Them | US1 | A root skill's row is headed by the name Claude Code's own menus list it under, so one root file is one row across every product that reads it, and a nested skill keeps its directory-qualified command. |
 
 ## Dependencies and Execution Order
 
@@ -9817,13 +9881,15 @@ frontmatter list and the complete `sourceText` (T090).
 - [X] T1081 [US1] Key each skill inventory row by the name the recognizing tool invokes it by
   (spec.md § Clarifications Session 2026-08-08 and Session 2026-08-23; FR-007): the name is the one
   that tool's own documentation invokes the file by, answered by the rule that admitted it because
-  how a name follows from a path and a declaration is that vendor's own contract — Codex and Copilot
-  invoke the authored frontmatter `name`, Claude Code the skill directory whatever the frontmatter
-  declares, prefixed for a nested skill with the root-relative `/`-joined path of the directory
-  holding its `.claude` and a `:`, so `apps/web/.claude/skills/deploy/SKILL.md` declaring
-  `name: ship` is `apps/web:deploy` on its Claude Code row and `ship` on its Copilot one. The prefix
-  is always applied, because the vendor's clash-conditional prefix is relative to a session working
-  directory this product never observes. A file that declares no name — or declares it empty — is
+  how a name follows from a path and a declaration is that vendor's own contract — every product
+  invokes a root skill by the authored frontmatter `name`, and Claude Code names a nested skill by
+  its directory-qualified command, the root-relative `/`-joined path of the directory holding its
+  `.claude`, a `:`, and the skill directory, so `apps/web/.claude/skills/deploy/SKILL.md` declaring
+  `name: ship` is `apps/web:deploy` on its Claude Code row while `.claude/skills/deploy/SKILL.md`
+  declaring the same is `ship` on every row *(amended 2026-09-09: Claude Code's root answer is the
+  declared name, the one its menus list; see Phase 115)*. The prefix is always applied, because the
+  vendor's clash-conditional prefix is relative to a session working directory this product never
+  observes. A file that declares no name — or declares it empty — is
   invoked by its skill directory, so `name` is never null and the nameless per-file row does not
   exist: two such files in same-named directories share a row like any other files one tool invokes
   by one name. Compile each vendor's skill rule into a unit that answers it

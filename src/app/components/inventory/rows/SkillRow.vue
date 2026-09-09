@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // A skill row (T071/T1077). The row's unit is one invocation name as one tool
-// resolves it, not one file (data-model.md § Inventory unit): Codex and
-// Copilot invoke the authored `name`, Claude Code the skill directory —
-// root-relative-prefixed when nested, `apps/web:deploy` — and two files one
+// resolves it, not one file (data-model.md § Inventory unit): every product
+// invokes a root skill by the authored `name`, Claude Code a nested one by
+// its directory-qualified command, `apps/web:deploy` — and two files one
 // tool invokes by one name share the row. Each recognition reaching the name
 // — one definition per `(file, tool)` — is listed beneath it.
 //
@@ -10,9 +10,9 @@
 // The snapshot carries no `sourceText`, and complete authored content is served
 // only by the detail route, one file at a time (FR-027), so there is nothing
 // here to put a repository secret into a list. The one name value present is
-// the row's resolved name — authored only when the file declared one, the
-// skill directory otherwise — which is presentation identity rather than
-// content (FR-007).
+// the row's resolved name — authored where the tool invokes what the file
+// declared, the skill directory otherwise — which is presentation identity
+// rather than content (FR-007).
 //
 // The path is the link, as it is on every other row whose subject is a file:
 // the detail route is the file's identity, and the two products reading one
@@ -233,9 +233,10 @@ function affectedCompanions(
              § Skill presentation). It is escaped for presentation
              (data-model.md § SourceRelativePath) so a path spanning lines
              cannot read as two files. The accessible name adds the row's own
-             name, because two rows can list one file — the products invoke it
-             by different names — and two links with one accessible name and
-             one destination would be the same control twice (WCAG 2.4.6;
+             name, because a row's link names its row: the row unit is a name
+             rather than the file, as it is for prompts and agents, where one
+             file does sit on two rows, and two links with one accessible name
+             and one destination would be the same control twice (WCAG 2.4.6;
              label-in-name keeps the visible path as the prefix). Both halves
              go through the whitespace-safe label, because the accessible-name
              computation collapses whitespace and two spellings differing only

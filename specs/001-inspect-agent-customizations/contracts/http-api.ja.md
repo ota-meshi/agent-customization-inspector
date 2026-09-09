@@ -409,14 +409,15 @@ SessionSnapshot
 ```
 
 一覧rowの単位はfileではなくkindが決める。Skillは1つのtoolが解決した1つのinvocation
-nameである（data-model.md § 一覧の単位）: そのtool自身の文書がこのfileを呼び出す名前で、
-admitしたruleが解決する。CodexとCopilotはauthoredなfrontmatter `name`を呼び出す —
-fileが宣言しないか空で宣言する場合、またはextractionが失敗した場合はskill directory名。
-directoryはpath自身の事実であり、失敗したparseから読み出した値ではない（FR-028）。一方
-Claude Codeのcommand名はfrontmatterの宣言に依らずskill directoryであり、nestedなskillには
-root相対のprefixを前置する。したがって`name: ship`を宣言する
-`apps/web/.claude/skills/deploy/SKILL.md`は、Claude Code rowでは`apps/web:deploy`、
-Copilot rowでは`ship`である。`name`がnullや空になることはない。
+nameである（data-model.md § 一覧の単位）: そのtoolがこのfileを呼び出す名前で、
+admitしたruleが解決する。すべての製品は、選択されたrootにあるskillをauthoredなfrontmatter
+`name`で呼び出す — fileが宣言しないか空で宣言する場合、またはextractionが失敗した場合は
+skill directory名。directoryはpath自身の事実であり、失敗したparseから読み出した値ではない
+（FR-028）。一方Claude Codeはnestedなskillをそのdirectory-qualifiedなcommand — root相対の
+prefixとskill directory — で名付ける。したがって`name: ship`を宣言する
+`apps/web/.claude/skills/deploy/SKILL.md`はClaude Code rowでは`apps/web:deploy`であり、
+同じ宣言を持つ`.claude/skills/deploy/SKILL.md`はすべての製品のrowで`ship`である。`name`が
+nullや空になることはない。
 1つのtoolが1つの名前で呼び出す複数の
 `SKILL.md`は、複数の定義を持つ1つのentryとして公開される — 名前を宣言せず同名のskill
 directoryに置かれた2つのfileもその一例である。定義は1つのtoolによる1つのfileのrecognition

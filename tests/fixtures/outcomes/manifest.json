@@ -14,7 +14,7 @@
     "repositories": {
       "kind": "deterministic-builder",
       "path": "tests/fixtures/repositories/build-fixtures.ts",
-      "sha256": "f30e427e19e2505614d35298c6b710a10af79b1468e48ed51abe19dcd370539b"
+      "sha256": "d9dbd464a62b52ce6281d1aef69afded40fb92454af6d3363522e72eb062ef3e"
     },
     "secrets": {
       "kind": "deterministic-builder",
@@ -119,12 +119,12 @@
     "tests/e2e/claude-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-detail.spec.ts",
-      "sha256": "6412cb8547768886563d63c5fd875a2d1a9f50328cb35ec0c2a7e30e61ddbe52"
+      "sha256": "25447c6133dae378aa7c35767610dd52bb611d14d43e2cf90004ab61cb2f38ac"
     },
     "tests/e2e/claude-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-skills-list.spec.ts",
-      "sha256": "3edccc34b6604b6409602e00fb3e6c28561ec094e1572c7e6948dba1698132cf"
+      "sha256": "ee05a150703fd0c54948ea2554bfa9f0199ccc9ec6a61ae2d2271a67404036f2"
     },
     "tests/e2e/codex-config-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -274,12 +274,12 @@
     "tests/e2e/copilot-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-skills-detail.spec.ts",
-      "sha256": "2887fbee1a3daf7a8c14e22e77c5dac1fb2a5c62d166f2dc9f2d52d53a21a6f1"
+      "sha256": "0684fcd88d705d0a4c180779859f93d2638f0fd950553c0402f3174d56bdb3dd"
     },
     "tests/e2e/copilot-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-skills-list.spec.ts",
-      "sha256": "5055c677f9e2af9c8e92a42549987d6673dc94042452c703ce6464d49b30d0e8"
+      "sha256": "db73f1e8a9513a6a125037d458b2d7f15eedacd47d998d2b6df20c906a793ea8"
     },
     "tests/e2e/copilot-vscode-mcp-detail.spec.ts": {
       "kind": "inline-fixture-suite",

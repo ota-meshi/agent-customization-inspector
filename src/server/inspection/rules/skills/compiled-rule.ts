@@ -4,10 +4,11 @@
 //
 // The kind's own contract rather than a member of every compiled rule: how a
 // name follows from a path and a declaration is a fact about a skill alone
-// (AGENTS.md § Class and interface policy). Two products document the
-// frontmatter field as the skill's identity and share that answer
-// (`invocation-name.ts`); the third invokes the directory whatever the file
-// declares, and its module is beside this one.
+// (AGENTS.md § Class and interface policy). Every product resolves a root
+// skill by the frontmatter field and shares that answer
+// (`invocation-name.ts`); Claude Code alone reaches nested skills, and names
+// those by their directory-qualified command in its own module beside this
+// one.
 import type { DeclaredEntryDto } from '../../../../shared/api-types';
 import type { CompiledInspectionRule } from '../registry';
 
@@ -20,10 +21,11 @@ import type { CompiledInspectionRule } from '../registry';
  * The skill sibling of {@link CompiledStaticPromptRule}, and its own unit for
  * the same reason: how a name follows from a path and a declaration is the
  * admitting vendor's own contract, so an instruction or rule-file rule must
- * not be asked for it. The products answer differently — Codex and Copilot
- * invoke the `name` the file declares, while Claude Code derives its command
- * from the skill directory and treats the declared name as a display label —
- * which is what makes the derivation the rule's rather than the parser's.
+ * not be asked for it. The products' answers are not one rule — every product
+ * resolves a root skill by the `name` the file declares, while Claude Code
+ * names a nested skill by its directory-qualified command and reads no
+ * declaration for it — which is what makes the derivation the rule's rather
+ * than the parser's.
  */
 export interface CompiledStaticSkillRule extends CompiledInspectionRule {
   /** The recognized kind; this unit compiles `skill` records alone. */
@@ -34,10 +36,10 @@ export interface CompiledStaticSkillRule extends CompiledInspectionRule {
    * name falls back to the skill directory, and being a named directory is
    * what a skill is (FR-007).
    *
-   * Both inputs, because the products differ on which one answers: Codex and
-   * Copilot read the declared `name`, while Claude Code reads none at all and
-   * derives its command from the path. A unit that took one input would leave
-   * the other vendor's answer unreachable.
+   * Both inputs, because the answers differ on which one decides: a root
+   * skill's name is read from the declared `name`, while Claude Code's nested
+   * command is derived from the path alone. A unit that took one input would
+   * leave the other answer unreachable.
    *
    * `declared` is the file's frontmatter as the one scan-time parse resolved
    * it, empty for a failed extraction — which lands a declared-name product's

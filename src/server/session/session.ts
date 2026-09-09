@@ -332,15 +332,16 @@ function memberComparator(
  * unit): one entry per invocation name as one tool resolves it, each listing
  * every `SKILL.md` a recognizing tool invokes under it.
  *
- * The name is the one the recognizing tool's own documentation invokes the
- * file by, resolved by the admitting rule at recognition time (FR-007,
- * rules/skills/compiled-rule.ts § CompiledStaticSkillRule): Codex and Copilot invoke the
- * authored name — or the skill directory name when the file declares none or
- * declares it empty, so every row has a name to be listed under — while
- * Claude Code derives its command from the skill directory whatever the
- * frontmatter declares, root-relative-prefixed when nested. So one file's
- * recognitions land on two entries whenever the tools invoke it differently,
- * each entry listing only the tools that reach it under that entry's name.
+ * The name is the one the recognizing tool invokes the file by, resolved by
+ * the admitting rule at recognition time (FR-007,
+ * rules/skills/compiled-rule.ts § CompiledStaticSkillRule): every product
+ * invokes a root skill by its authored name — or the skill directory name
+ * when the file declares none or declares it empty, so every row has a name
+ * to be listed under — while Claude Code names a nested skill by its
+ * directory-qualified command. The grouping is by what each rule resolved, so
+ * one file's recognitions land on two entries whenever the tools invoke it
+ * differently, each entry listing only the tools that reach it under that
+ * entry's name.
  *
  * A recognition names its file by Source-relative Path, so the projection
  * needs no filesystem access and two snapshots of one generation publish the

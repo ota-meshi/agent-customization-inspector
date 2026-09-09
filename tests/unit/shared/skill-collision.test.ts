@@ -56,8 +56,9 @@ describe("Claude Code's clash", () => {
     const foo = definition('claude', '.claude/skills/foo/SKILL.md');
     const bar = definition('claude', '.claude/skills/bar/SKILL.md');
     const gate = SKILL_COLLISION_POLICY.claude.collisionGate([foo, bar]);
-    // Two rows sharing only an authored label are two commands with no clash
-    // (FR-007), however many definitions a row holds.
+    // Two directories sharing only an authored name are two commands to Claude
+    // Code, with no clash its rule answers (FR-007), however many definitions
+    // the row they share holds.
     expect(gate([foo, bar])).toBe(false);
   });
 
@@ -87,10 +88,10 @@ describe('collision evidence per vendor policy (FR-007/FR-028)', () => {
     parseStatus: 'parsed',
   } as const;
 
-  it('keeps a failed extraction as evidence for the path-derived Claude clash', () => {
-    // The unqualified command is the skill directory — the path's own fact —
-    // so a broken frontmatter changes nothing about the collision Claude's
-    // documented rule answers.
+  it('keeps a failed extraction as evidence for the directory-based Claude clash', () => {
+    // The clash Claude Code detects is between skill directories — the path's
+    // own fact — so a broken frontmatter changes nothing about the collision
+    // Claude's documented rule answers.
     expect(SKILL_COLLISION_POLICY.claude.collisionEvidence([failed, parsed])).toEqual([
       failed,
       parsed,

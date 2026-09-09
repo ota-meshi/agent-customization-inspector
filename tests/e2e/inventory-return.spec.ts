@@ -38,11 +38,6 @@ function scrollOffset(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(() => Math.round(window.scrollY));
 }
 
-/** The accessible name of the focused element, or null when it carries none. */
-function focusedAccessibleName(page: import('@playwright/test').Page): Promise<string | null> {
-  return page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? null);
-}
-
 /** The route the focused element links to, or null when nothing focused links anywhere. */
 function focusedHref(page: import('@playwright/test').Page): Promise<string | null> {
   return page.evaluate(() => document.activeElement?.getAttribute('href') ?? null);
@@ -155,37 +150,6 @@ test('keeps a row’s comparison link the same under a narrowing, and returns to
   await waitForInventory(page);
   await expect(page.getByRole('searchbox', { name: 'Search names and paths' })).toHaveValue('');
   expect(await focusedHref(page)).toBe(unnarrowedHref);
-});
-
-test('returns to the row the reader left when two rows link one file', async ({ page }) => {
-  // `.claude/skills/lander/SKILL.md` sits on two rows: Claude invokes that skill
-  // by its directory name and Copilot by the `name` its frontmatter declares, so
-  // both rows link the same detail route (T200). The href alone therefore does
-  // not say which row was followed — the accessible name does, because each
-  // row's link names its own row (WCAG 2.4.6) — and a narrowing that leaves one
-  // of the two rows makes the difference visible: the followed link is first
-  // among that route's links while the unnarrowed list puts the other row's
-  // link first.
-  const name = 'voyage in .claude/skills/lander/SKILL.md';
-  await page.goto(host.origin);
-  await page.getByLabel('Tool', { exact: true }).selectOption('copilot');
-  // The narrowing leaves the Copilot row alone, so this route has one link in
-  // the list the reader follows it from and two in the list they come back to.
-  await expect(
-    page.getByRole('link', { name: 'lander in .claude/skills/lander/SKILL.md' }),
-  ).toHaveCount(0);
-  const link = page.getByRole('link', { name });
-  await link.scrollIntoViewIfNeeded();
-  await link.click();
-  await expect(page.getByRole('link', { name: /Back to /u })).toBeVisible();
-
-  await page.getByRole('link', { name: /Back to /u }).click();
-  await waitForInventory(page);
-  await expect(
-    page.getByRole('link', { name: 'lander in .claude/skills/lander/SKILL.md' }),
-  ).toHaveCount(1);
-  // The row the reader left, not the other row that links the same file.
-  expect(await focusedAccessibleName(page)).toBe(name);
 });
 
 test('lets the reader type a whole search from a detail page', async ({ page }) => {

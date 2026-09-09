@@ -176,21 +176,19 @@ test('opens a shared .claude file once, naming what each product invokes it by',
 }) => {
   // One physical file, two recognitions, one route: both products read the
   // same bytes, so a per-product address would give one document two URLs.
-  // What differs is the name — Copilot invokes the authored `lander-skill`,
-  // Claude Code the skill directory — and the page states both rather than
+  // Both invoke a root skill by the authored `lander-skill`, and the page
+  // states each product's recognition under that one name rather than
   // merging them into a product-neutral record (FR-007).
   await openSkillAt(page, '.claude/skills/lander/SKILL.md');
   await expect(page.locator('.aci-skill-detail h2')).toHaveText('.claude/skills/lander/');
-  expect(await statedInvocations(page, 2)).toEqual([
+  expect(await statedInvocations(page, 1)).toEqual([
     {
       name: 'lander-skill',
       comparable: false,
-      recognitions: [{ product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' }],
-    },
-    {
-      name: 'lander',
-      comparable: false,
-      recognitions: [{ product: 'Claude Code', surfaces: 'CLI and IDE clients' }],
+      recognitions: [
+        { product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' },
+        { product: 'Claude Code', surfaces: 'CLI and IDE clients' },
+      ],
     },
   ]);
 });
