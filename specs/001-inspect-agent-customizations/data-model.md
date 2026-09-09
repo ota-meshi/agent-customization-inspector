@@ -1905,8 +1905,9 @@ This state is not authoritative and is never persisted.
   holds — complete authored `sourceText`, or, on a comparison whose sides are declarations
   rather than files, the canonical serialization of one declaration's parsed values, which
   carries the declared values in full and is purged under the same rules. The owning
-  component's rows are released and its element emptied on route close, selection
-  replacement, file removal, source disable, or the owning sequence's generation change.
+  component drops it as state on route close, selection replacement, file removal, source
+  disable, or the owning sequence's generation change, and the render that follows — before
+  the next paint — is what takes the rows out of the document.
 - There is no sensitive-content state of any kind: no acknowledged flag, no notice, and no
   confirmation step in front of a `FileDetail` request or a comparison (FR-027). The session
   is loopback-bound and the files are the viewer's own, so a confirmation would guard nothing

@@ -8062,8 +8062,9 @@ T1209が入るまでそれらをfetchし続ける。
   2つのfileはもはや比較ではないからである —、各側にそれ自身のfileの行番号を付け、追加行と削除行は
   行番号の桁の `+` と `-` で印して差が色だけに載らないようにし（WCAG 1.4.1）、番号と印は選択とcopyの
   外に置き、両側の間に線を引かず、overviewの帯も置かず、行と語の色は `src/app/styles/main.css` の
-  4つの `light-dark()` token（`--aci-diff-added`、`--aci-diff-removed`、および `--aci-text` に対して
-  実測した語単位の `-strong` の対）とする。whitespaceを含むliteralな比較（FR-011）、編集・merge・
+  4つの `light-dark()` token（`--aci-diff-added`、`--aci-diff-removed`、およびそれぞれの行色を
+  一段強めた語単位の `-strong` の対。その上の語はthemeの既定text colourで描く。theme自身の
+  text colourに対して実測）とする。whitespaceを含むliteralな比較（FR-011）、編集・merge・
   revertするcontrolの不在（FR-012）、fileまたはその部分として名付けられた各側（FR-025）、Monacoの
   accessible diff viewerに代わる差分のaccessibleな読み上げ（SC-008）。
   `tests/unit/app/source-diff.test.ts`、比較のbrowser suite、`tests/e2e/source-type.spec.ts` を

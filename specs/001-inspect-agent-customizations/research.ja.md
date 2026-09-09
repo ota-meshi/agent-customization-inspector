@@ -676,7 +676,8 @@ security boundaryとして扱わない。
 ## 7. Source/metadata比較UI
 
 **決定**: authoredなsourceはshikiで着色する — tokenizerだけを、そのJavaScript正規表現engineの上で、
-fileを表示する最初のrouteと共にloadする — そしてbrowser自身のtextとしてrenderする: 1つの`pre`が
+fileを表示する最初のrouteと共に、またはそのrouteへのlinkがprefetchされればそれより先にfetchし、
+最初のfileを表示したときに構築する — そしてbrowser自身のtextとしてrenderする: 1つの`pre`が
 行ごとに、grammarが認識したrunをtext nodeとして持ち、各runのdual-theme colour variableから
 styleし、行番号は選択もcopyもされないgenerated contentとして描く。editorもworkerもWebAssemblyも、
 textから生成されたHTMLも出荷しない。すべてのassetはViteがpackaged SPAへemitし、同じlocal hostが
@@ -695,18 +696,19 @@ highlighterは、通知も再試行もなく、textを未着色のまま画面�
 `sourceText`が保持するとおり行ごとに表示し、tokenizerが分割する位置 — `\n`または`\r\n` — で
 分割するため、行の内容と行数はfileのものと正確に一致する。authored textをrenderするすべてのsurfaceは
 content ownerであり、comparisonまたはsessionのstateがroute close、selection replacement、source
-disable、generation replacement、中央purge時に同期的にdropする — 要素を空にし、rowを解放する
-（FR-027）。表示のinert性はtext node、Vue text binding、linkの不在によって成立する: 何も解決・open・
+disable、generation replacement、中央purge時にstateとしてdropし、次のpaintより前のrenderが
+rowをdocumentから取り除く（FR-027）。表示のinert性はtext node、Vue text binding、linkの不在によって成立する: 何も解決・open・
 実行されず、clientはexternal worker、blob worker、evaluated stringをloadしない。devframe hostが
 Nuxt outputを直接配信するため（§ 8）、product-assembledなCSP-hash manifestは存在しない。
 comparisonは並んだ2つの`pre`であり、比較するtextごとに1つ、それぞれがcomparisonのrowごとに1つの
 blockを持つ（`source-diff-rows.ts`）: 行は行に対するMyersのdiff（`diff` § diffArrays）で対応付け、
 whitespaceを含めて書かれたとおり丸ごと比較し、product独自の行数やcomputation-timeのcutoffは
 設けない。置き換えられた行の並びはその置き換えと行ごとに向かい合い、片側にしかない行は空白と
-向かい合い、変更行のうち相手側が持たない文字は語単位（`diff` § diffWordsWithSpace）でrun自身の色を
-またいで印付ける。行番号の桁の`+`または`-`が、色では担えない場面 — forced colours下、そして2つの
-row colourを見分けない読み手 — で差を担い（WCAG 1.4.1）、rowと語の色は4つの`light-dark()` token
-（`main.css` § --aci-diff-added）である。両sideは決して1列に畳まれない: 1列で示されたcomparisonは
+向かい合い、変更行のうち相手側が持たない文字は語単位（`diff` § diffWordsWithSpace）で、行の色を一段強めた
+帯の上に、run自身の色ではなくthemeの既定text colourで描いて印付ける（帯が保つcontrast比を
+1つにするため）。行番号の桁の`+`または`-`が、色では担えない場面 —
+forced colours下、そして2つのrow colourを見分けない読み手 — で行の差を担い（WCAG 1.4.1）、
+rowと語の色は4つの`light-dark()` token（`main.css` § --aci-diff-added）である。両sideは決して1列に畳まれない: 1列で示されたcomparisonは
 比較することをやめているので、2列に要る幅を下回ればframeが対をその内側で横にscrollさせる
 （WCAG 1.4.10）。各sideは長い行のために自分で横にscrollし、frameは両者を一緒に下へscrollさせる。
 それがrowを向かい合わせに保ち、同期させるものは何もない。どちらのsideも編集・merge・revertする
@@ -774,9 +776,8 @@ inert renderingによってcontent自体の実行、load、navigateを防ぐ。
 
 **検討した代案**:
 
-- 0.3.0までこのproductのviewerとdiffを出荷していたMonaco（`monaco-editor`）は、その大きさと
-  持ち込むsurfaceのために退役した: read-onlyなeditorとは、読むだけのtextの周りでinertに保たれた
-  editorのruntime、worker、icon font、key handlingである。
+- Monaco（`monaco-editor`）は、その大きさと持ち込むsurfaceのために採らない: read-onlyなeditorとは、
+  読むだけのtextの周りでinertに保たれたeditorのruntime、worker、icon font、key handlingである。
 - shikiのweb bundle — 選抜された57言語のsubset — は、`.codex/config.toml`がそうであるTOMLを
   含まないため不採用。ここで書く言語listは、その外のfileをすべてplain textにし、維持する表を
   もう1つ増やすため不採用 — したがって同梱setを丸ごと、grammarごとに1つのlazyにfetchされる

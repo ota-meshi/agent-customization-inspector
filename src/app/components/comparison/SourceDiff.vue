@@ -33,10 +33,10 @@
 // script, an `mcp_servers` entry — is text on both sides like every other
 // line: highlighting is tokenizing rather than rendering, so nothing is
 // resolved, opened, imported, connected to, or run (FR-019, FR-033).
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import type { ThemedToken } from 'shiki/core';
 import { resolveSourceLanguage } from '../../composables/source-languages';
-import { highlightSource } from '../../composables/syntax-highlighting';
+import { highlightSource, SOURCE_THEME_FOREGROUND } from '../../composables/syntax-highlighting';
 import { inlinePresentationLabel } from '../../../shared/entities';
 import {
   SOURCE_VIEWER_LANGUAGE_GRAMMAR,
@@ -86,9 +86,6 @@ const props = defineProps<{
   readonly registerContentOwner: (dispose: () => void) => () => void;
 }>();
 
-/** The two `pre`s, in side order, so the purge can empty them synchronously. */
-const sideElements = ref<HTMLPreElement[]>([]);
-
 /** The current pair, split and aligned — or null after the purge. */
 const comparison = shallowRef<LineComparison | null>(null);
 
@@ -112,25 +109,25 @@ let unmounted = false;
 
 // The rows this component renders hold the pair's authored source — both
 // files', or the present side's beside an absent side's empty operand — so
-// it is an owner the comparison state must clear synchronously: on the
-// central purge (FR-027) and before a greater generation is adopted
-// (data-model.md § BrowserState). The registration is unconditional — the
-// caller always passes its pair's registry — because a mount that skipped it
-// would hold authored content the central purge cannot clear.
+// it is an owner the comparison state drops with the pair: on the central
+// purge (FR-027) and before a greater generation is adopted (data-model.md
+// § BrowserState). The drop is a change of state and nothing else: the rows
+// are Vue's, and the flush that follows — before the next paint — is what
+// takes them out of the document, or replaces them with the next pair's when
+// one was adopted in the same tick, as the plugin comparison does with a file
+// it already holds. Reaching into the elements ahead of that flush would
+// leave Vue's own tree pointing at rows no longer in the document, and the
+// next pair would be patched into them and never show. The registration is
+// unconditional — the caller always passes its pair's registry — because a
+// mount that skipped it would hold authored content the central purge cannot
+// clear.
 const unregisterContentOwner = props.registerContentOwner(() => {
   // Supersede any tokenizing still in flight: one resolving after this would
-  // otherwise write the dropped pair back as runs during the one flush
-  // before this component unmounts.
+  // otherwise write the dropped pair back as runs.
   requestedPair += 1;
   comparison.value = null;
   originalRuns.value = null;
   modifiedRuns.value = null;
-  // The rows are DOM text nodes bound to the state above, so they survive
-  // until Vue patches this component — one flush later, when everything else
-  // is already gone. Emptying the elements is what takes the text out now.
-  for (const element of sideElements.value) {
-    element.replaceChildren();
-  }
 });
 
 /**
@@ -258,11 +255,17 @@ onBeforeUnmount(() => {
     role="group"
     :aria-label="`Comparison of ${inlinePresentationLabel(originalPath)} and ${inlinePresentationLabel(modifiedPath)}`"
   >
-    <div class="aci-source-diff" :style="{ '--aci-source-diff-digits': digits }">
+    <div
+      class="aci-source-diff"
+      :style="{
+        '--aci-source-diff-digits': digits,
+        '--aci-source-diff-word-light': SOURCE_THEME_FOREGROUND.light,
+        '--aci-source-diff-word-dark': SOURCE_THEME_FOREGROUND.dark,
+      }"
+    >
       <pre
         v-for="side in sides"
         :key="side.side"
-        ref="sideElements"
         class="aci-source-diff__side"
         tabindex="0"
         role="group"
@@ -389,8 +392,29 @@ onBeforeUnmount(() => {
   counter-increment: none;
 }
 
-/* The words of a changed line the other side lacks, one step past the row's
-   own colour. */
+/* The words of a changed line the other side lacks, on a band of the row's
+   colour taken one step stronger — the form every comparison a reader already
+   knows marks its words in, so it needs no explaining — and drawn in the
+   theme's default text colour rather than each token's own. Two colour
+   languages cannot share one character: the band says "this changed" and the
+   token colour says "this is a keyword", and a band that carries every token
+   colour has one contrast ratio to keep per colour, which is what would keep
+   the dark band under its row (`main.css` § --aci-diff-added). One colour on
+   the band leaves one ratio, so the band can be as strong as its job needs.
+   The reader sees the band, so one colour inside it reads as part of the
+   marking, the way selected text does; the theme's own default rather than
+   `--aci-text`, so a band's text is the colour of the uncoloured runs beside
+   it rather than a second white. Weight and slant stay the token's: a bold
+   heading word stays bold. The pair is the themes' own
+   (`SOURCE_THEME_FOREGROUND`), written onto the pair's box by the template
+   and chosen between by the same `light-dark()` that chooses a run's colour;
+   the scoping attribute alone outranks the run rule (`main.css`
+   § .aci-source-run), which is what keeping a run's colour in the stylesheet
+   rather than inline buys (`syntax-highlighting.ts` § highlightSource). */
+.aci-source-diff__run--changed {
+  color: light-dark(var(--aci-source-diff-word-light), var(--aci-source-diff-word-dark));
+}
+
 .aci-source-diff__line--added .aci-source-diff__run--changed {
   background: var(--aci-diff-added-strong);
 }

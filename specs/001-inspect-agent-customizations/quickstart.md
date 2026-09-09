@@ -656,8 +656,9 @@ Verify:
    detail state and releases every associated rendered source.
 6. Keyboard and screen-reader users can enter, navigate, and leave the source diff through
    its named sides and frame without a focus trap.
-7. The packed app loads its editor worker from a same-origin static asset with no
-   external request or `blob:` worker.
+7. The packed app loads its colouring — the highlighter and each grammar a shown file
+   fetches — from same-origin static assets, with no external request, no `blob:` worker,
+   and no WebAssembly.
 8. Direct loads of `/`, `/global-consent`, every kind's `compare`-led comparison route
    (`/skills/compare/<family>`, `/instructions/compare/<family>`, `/mcp/compare/<family>`,
    `/prompts-and-commands/compare/<family>`, `/agents/compare/<family>`,

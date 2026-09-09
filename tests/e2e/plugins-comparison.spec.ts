@@ -244,6 +244,17 @@ test.describe('the plugin comparison surface', () => {
     await expect(fileDiff).toBeVisible();
     await expect(fileDiff).toContainText('Walk the checklist');
     await expect(fileDiff).toContainText('then note the reviewer');
+    // A file that is a plugin's own manifest is a document the declaration
+    // pane already holds, so the pair is adopted without a request, in the
+    // same tick as the previous pair is dropped — and the side renders it all
+    // the same. A drop that reached into the elements ahead of Vue's flush
+    // left this side blank, because the adopted pair was patched into rows no
+    // longer in the document (`SourceDiff.vue` § registerContentOwner).
+    await switcher.selectOption('.codex-plugin/plugin.json');
+    await expect(panel).toContainText('Only the first plugin ships this file');
+    await expect(fileDiff).toContainText('"name": "review-assistant"');
+    await switcher.selectOption('skills/checklist/SKILL.md');
+    await expect(fileDiff).toContainText('Walk the checklist');
     // The declarations keep their own tab, and stepping back to it finds the
     // comparison the page opened on.
     await page.getByRole('tab', { name: /^Declaration/u }).click();

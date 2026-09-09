@@ -535,8 +535,8 @@ pnpm exec playwright test tests/e2e/repository-complete-comparison.spec.ts
    全rendered sourceを解放する。
 6. Keyboard/screen-reader userが名付けられたsideとframeを通じて、focus trapなしでsource
    diffへ入り、navigateし、抜けられる。
-7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
-   発生させない。
+7. Packed appが着色 — highlighterと、表示したfileがfetchする各grammar — をsame-origin static
+   assetからloadし、external requestも`blob:` workerもWebAssemblyも発生させない。
 8. `/`、`/global-consent`、各kindの`compare`先頭のcomparison route（`/skills/compare/<family>`、
    `/instructions/compare/<family>`、`/mcp/compare/<family>`、
    `/prompts-and-commands/compare/<family>`、`/agents/compare/<family>`、

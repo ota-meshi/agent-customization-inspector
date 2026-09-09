@@ -10,10 +10,11 @@
 // `<span>`s it styles from each run's own colour variables; no HTML is
 // generated or parsed on the way (FR-027).
 //
-// The highlighter ships in the chunk of the first route that shows a file —
-// every detail route does — and is constructed on the first file shown; the
-// inventory, which shows none, downloads nothing of it. Grammars are lazier:
-// shiki's
+// The highlighter ships in a chunk of its own that every route showing a file
+// depends on, so the browser fetches it with the first such route — or ahead
+// of it, when the inventory's links to detail routes are prefetched — and
+// constructs it on the first file shown; nothing runs until then. Grammars are
+// lazier: shiki's
 // registration table (`shiki/langs`) holds one dynamic import per bundled
 // language, and the chunk it names is fetched the first time a file of that
 // language is shown — so a repository whose skills ship only Markdown pays for
@@ -31,13 +32,13 @@
 //
 // The themes are VS Code's Default Light+ and Dark+, one per colour scheme —
 // the themes a reader's own editor most plausibly shows their file in, so it
-// is coloured as they know it — applied as dual-theme CSS variables (`--shiki-light`,
-// `--shiki-dark`) rather than as one resolved colour: which of the two shows
-// is then the stylesheet's decision, made from the same root class
-// `color-scheme.ts` writes for every other colour on the page, and no theme is
-// set from script when the scheme changes. Under forced colours the platform
-// overrides every text colour (WCAG 1.4.11), so the runs stand there as
-// uncoloured text.
+// is coloured as they know it — applied as dual-theme CSS variables
+// (`--shiki-light`, `--shiki-dark`) rather than as one resolved colour: the
+// stylesheet composes them into a `light-dark()` resolved against the root's
+// `color-scheme`, as every other colour on the page is (`main.css`
+// § .aci-source-run), and no theme is set from script when the scheme
+// changes. Under forced colours the platform overrides every text colour
+// (WCAG 1.4.11), so the runs stand there as uncoloured text.
 //
 // The pair leaves two of TOML's scopes in the surrounding colour — a table
 // header (`entity.name.section`) and a date (`constant.other.date`) — exactly
@@ -46,7 +47,12 @@
 // reader's editor shows was preferred to changing hue for two scopes. The
 // grammar classifies them correctly, so neither a theme rule nor a grammar of
 // this product's own is the fix for what is a theme's choice.
-import { createHighlighterCore, type HighlighterCore, type ThemedToken } from 'shiki/core';
+import {
+  createHighlighterCore,
+  normalizeTheme,
+  type HighlighterCore,
+  type ThemedToken,
+} from 'shiki/core';
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 import darkPlus from '@shikijs/themes/dark-plus';
 import lightPlus from '@shikijs/themes/light-plus';
@@ -88,6 +94,22 @@ function loadHighlighter(): Promise<HighlighterCore> {
 }
 
 /**
+ * The colour each theme gives text it colours no further — its
+ * `editor.foreground` — as the pair the comparison draws a changed line's
+ * words in: inside a word band the token colours yield to this one colour, so
+ * the band has one contrast ratio to keep rather than one per token
+ * (`SourceDiff.vue` § .aci-source-diff__run--changed). Read through the same
+ * normalization the highlighter applies to the themes it loads, so it is the
+ * value `getTheme().fg` reports and cannot drift from what the runs beside the
+ * band are coloured by — but without the highlighter, which a band's colour
+ * has no reason to wait for.
+ */
+export const SOURCE_THEME_FOREGROUND: { readonly light: string; readonly dark: string } = {
+  light: normalizeTheme(lightPlus).fg,
+  dark: normalizeTheme(darkPlus).fg,
+};
+
+/**
  * Tokenizes `sourceText` in the language `languageId` names — a bundled
  * language's id, or `PLAIN_TEXT` — fetching that language's grammar on first
  * use, and returns one array of coloured runs per line.
@@ -97,7 +119,11 @@ function loadHighlighter(): Promise<HighlighterCore> {
  * a run — the exact `sourceText` is what the detail response carries, and this
  * is a rendering of it (FR-027). Each run's `htmlStyle` carries the dual-theme
  * variables and nothing else (`defaultColor: false`), so a surface applies
- * exactly those and leaves the choice between them to its stylesheet.
+ * exactly those and leaves the choice between them to its stylesheet. shiki's
+ * own `defaultColor: 'light-dark()'` writes the resolved colour inline beside
+ * them, where a stylesheet rule could replace it only with `!important` — and
+ * the comparison replaces it, on the words of a changed line
+ * (`SourceDiff.vue` § .aci-source-diff__run--changed).
  *
  * A rejection — the highlighter or the grammar chunk did not arrive, or shiki
  * knows no language by that name — is the caller's to render: the text is

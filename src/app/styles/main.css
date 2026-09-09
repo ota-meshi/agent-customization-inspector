@@ -82,16 +82,31 @@
   /* What a comparison paints under a line only one side has, and under the
      words of a changed line the other side lacks. Never the only carrier of
      the difference: the row's number column marks it with `+` or `-`, so the
-     colour is an aid and the mark is the fact (WCAG 1.4.1). The word-level
-     pair is the row's colour taken one step further, chosen so `--aci-text`
-     keeps AA contrast on it — measured 2026-09-09: 10.6:1 and 10.4:1 in
-     light, 5.4:1 and 7.9:1 in dark — and stands 1.5 to 2.2 steps off the row
-     colour it sits on. Syntax colour over these is the theme's own reading
-     and is not held to that ratio. */
-  --aci-diff-added: light-dark(#e6f4e9, #14301d);
+     colour is an aid and the mark is the fact (WCAG 1.4.1), and under forced
+     colours the mark is what remains. What sits on a row is the theme's text
+     in the theme's own colours, so the rows are measured against the theme's
+     darkest colours (2026-09-09, over the colours the grammars emit for the
+     formats shown here): every Dark+ colour keeps AA on both dark rows — the
+     tightest is the comment green `#6A9955`, 4.6:1 on each, which is why the
+     added row is one step darker than the eye would ask for. Light+ has no
+     such room — its number green `#098658` is 4.6:1 on white itself, a margin
+     of 0.1, and any colour laid under it breaks AA — so on the light rows the
+     theme's default text keeps 12:1 and up while its darkest syntax colours
+     sit at 3.9:1 to 4.1:1, which contracts/accessibility-acceptance.md
+     § 1.4.3 records as the theme's own limit rather than the comparison's.
+     The word bands are the row's colour taken one step stronger, and the
+     words on them are drawn in the theme's default text colour alone
+     (`SourceDiff.vue` § .aci-source-diff__run--changed), which leaves each
+     band one ratio to keep: 5.5:1 and 6.0:1 in dark, 15.8:1 and 14.7:1 in
+     light. A band that carried every token's own colour could not be
+     stronger than its row in dark — the comment green keeps 4.5:1 only under
+     a luminance of 0.020, the rows sit at 0.018, and a band lighter by any
+     visible step (0.029 gives 4.0:1, 0.039 gives 3.5:1) breaks it — which is
+     why the band drops the token colours rather than the step. */
+  --aci-diff-added: light-dark(#e6f4e9, #12291a);
   --aci-diff-removed: light-dark(#fbe9e7, #3a1c19);
-  --aci-diff-added-strong: light-dark(#9fd4aa, #2a6b3d);
-  --aci-diff-removed-strong: light-dark(#f2b8b1, #76322b);
+  --aci-diff-added-strong: light-dark(#c9e7d1, #245a34);
+  --aci-diff-removed-strong: light-dark(#f6cfc9, #822d26);
 
   --aci-accent: light-dark(#2d4ea2, #7a9bf0);
   /* The fill under a selected item. It is not what identifies the selection —
@@ -473,22 +488,25 @@ h2 {
 
 /* One run of tokenized source text, coloured from the variables shiki wrote on
    it (`syntax-highlighting.ts`): each run states both themes' values and
-   paints neither, and the scheme the page is drawn in — the root class
-   `color-scheme.ts` writes — decides which shows. A utility rather than either
-   surface's own class because both surfaces that render runs, the viewer and
-   the comparison, apply it. Under forced colours the platform overrides the
-   colour (WCAG 1.4.11), and the run stands as text. A run without a variable
-   is one the theme leaves in the surrounding colour, which the fallbacks give
-   it. */
+   paints neither, and `light-dark()` picks one against the root's
+   `color-scheme` — the declaration every token above resolves against, moved
+   by the class `color-scheme.ts` writes. The three properties that are not
+   colours have no such function, so that class switches them below. A utility
+   rather than either surface's own class because both surfaces that render
+   runs, the viewer and the comparison, apply it. Under forced colours the
+   platform overrides the colour (WCAG 1.4.11), and the run stands as text. A
+   run without a variable is one the theme leaves in the surrounding colour —
+   plain text carries none — which the fallbacks give it: `currentColor` in
+   `color` is the inherited colour, in all three certified revisions (measured
+   2026-09-09 through `playwright`). */
 .aci-source-run {
-  color: var(--shiki-light, inherit);
+  color: light-dark(var(--shiki-light, currentColor), var(--shiki-dark, currentColor));
   font-style: var(--shiki-light-font-style, inherit);
   font-weight: var(--shiki-light-font-weight, inherit);
   text-decoration: var(--shiki-light-text-decoration, none);
 }
 
 :root.dark .aci-source-run {
-  color: var(--shiki-dark, inherit);
   font-style: var(--shiki-dark-font-style, inherit);
   font-weight: var(--shiki-dark-font-weight, inherit);
   text-decoration: var(--shiki-dark-text-decoration, none);

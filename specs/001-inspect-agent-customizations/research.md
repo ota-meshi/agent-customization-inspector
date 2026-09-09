@@ -847,7 +847,8 @@ boundary.
 ## 7. Source and metadata comparison UI
 
 **Decision**: Colour authored source with shiki — the tokenizer alone, on its JavaScript
-regular-expression engine, loaded with the first route that shows a file — and render it as
+regular-expression engine, fetched with the first route that shows a file or ahead of it when
+that route's link is prefetched, and constructed on the first file shown — and render it as
 the browser's own text: a `pre` holding, per line, the runs the grammar recognized as text
 nodes styled from each run's dual-theme colour variables, with line numbers drawn as generated
 content so they are neither selected nor copied. No editor, no worker, no WebAssembly, and no
@@ -868,8 +869,8 @@ is a verdict this product does not make, and a grammar or highlighter that does 
 leaves the text on screen uncoloured with no notice and no retry — the file is already there.
 The text is shown line for line as `sourceText` holds it, split where the tokenizer splits, at
 `\n` or `\r\n`, with line contents and line count exactly the file's. Every surface that
-renders authored text is a content owner the comparison or session state drops synchronously —
-the element emptied and the rows released — on route close, selection replacement, source
+renders authored text is a content owner the comparison or session state drops — as state,
+which the render before the next paint takes out of the document — on route close, selection replacement, source
 disable, generation replacement, and the central purge (FR-027). Display inertness rests on
 text nodes, Vue text bindings, and the absence of links: nothing is resolved, opened, or run,
 and the client loads no external worker, blob worker, or evaluated string; with the devframe
@@ -880,10 +881,12 @@ the comparison (`source-diff-rows.ts`): the lines are aligned by Myers' diff ove
 product-defined line or computation-time cutoff; a replaced run of lines stands opposite its
 replacement line by line, a line only one side has stands opposite a blank, and the characters
 of a changed line the other side lacks are marked at word granularity (`diff`
-§ diffWordsWithSpace) across the runs' own colours. A `+` or `-` in the number column carries
-the difference where colour cannot — under forced colours, and to a reader who does not tell
-the two row colours apart (WCAG 1.4.1) — and the row and word colours are four `light-dark()`
-tokens (`main.css` § --aci-diff-added). The two sides never collapse to one column: a
+§ diffWordsWithSpace) on a band of the row's colour taken one step stronger, drawn in the
+theme's default text colour rather than the runs' own so the band has one contrast ratio to
+keep. A `+` or `-` in the number column carries the line's difference where colour cannot
+— under forced colours, and to a reader who does not tell the two row colours apart
+(WCAG 1.4.1) — and the row and word colours are four `light-dark()` tokens (`main.css`
+§ --aci-diff-added). The two sides never collapse to one column: a
 comparison shown as one column has stopped comparing, so below the width two columns need the
 frame scrolls the pair sideways inside itself (WCAG 1.4.10). Each side scrolls sideways on its
 own for its long lines; the frame scrolls both down together, which keeps the rows opposite
@@ -968,9 +971,9 @@ executing, loading, or navigating.
 
 **Alternatives considered**:
 
-- Monaco (`monaco-editor`), which shipped this product's viewer and its diff through 0.3.0,
-  was retired for the size and the surface it brought: a read-only editor is an editor's
-  runtime, worker, icon font, and key handling kept inert around text a reader only reads.
+- Monaco (`monaco-editor`) is rejected for the size and the surface it brings: a read-only
+  editor is an editor's runtime, worker, icon font, and key handling kept inert around text a
+  reader only reads.
 - shiki's web bundle, a curated 57-language subset, was rejected because it omits TOML, which
   `.codex/config.toml` is; a language list authored here was rejected because it would leave
   every file outside it plain text and be one more table to maintain — so the whole bundled

@@ -1459,8 +1459,9 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
 - `EditorModelState`: viewerまたはcomparisonのsideが保持するgeneration-scopedなrendered source —
   完全なauthored `sourceText`、またはsideがfileではなくdeclarationであるcomparisonでは、宣言済み値を
   完全に運び同じruleでpurgeされる、1つのdeclarationのparsed値のcanonical serialization。
-  所有componentのrowはroute close、selection replacement、file removal、source disable、
-  所属sequenceのgeneration変更時に解放され、その要素は空にされる。
+  所有componentはroute close、selection replacement、file removal、source disable、
+  所属sequenceのgeneration変更時にそれをstateとしてdropし、その後の — 次のpaintより前の —
+  renderがrowをdocumentから取り除く。
 - Sensitive-contentに関するstateは一切存在しない。acknowledged flagも、注意書きも、`FileDetail` requestや
   comparisonの前に立つ確認stepも持たない（FR-027）。sessionはloopback-boundでfileはユーザー自身のものであり、
   確認は何も守らない一方ですべてのfileを読むのに2回の操作を要求し、常設の注意書きは読み手自身のrepositoryに

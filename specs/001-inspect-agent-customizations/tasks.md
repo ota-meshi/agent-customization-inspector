@@ -9430,7 +9430,8 @@ comparison pages still do until T1209 lands.
   (WCAG 1.4.1), the numbers and marks outside selection and copy, no rule between the sides and
   no overview strip, and the row and word colours as four `light-dark()` tokens in
   `src/app/styles/main.css` (`--aci-diff-added`, `--aci-diff-removed`, and their `-strong`
-  word-level pair, measured against `--aci-text`). A literal comparison, whitespace included
+  word-level pair, each the row's colour one step stronger, the words on it drawn in the
+  theme's default text colour, measured against the themes' own text colours). A literal comparison, whitespace included
   (FR-011), with no control that edits, merges, or reverts (FR-012), each side named as the
   file or the part of it (FR-025), and an accessible reading of the differences in place of
   Monaco's accessible diff viewer (SC-008). Update `tests/unit/app/source-diff.test.ts`, the

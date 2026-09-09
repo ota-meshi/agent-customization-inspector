@@ -19,7 +19,7 @@
 // The tokenizing is asynchronous, so a selection can change while it is
 // still arriving. The generation counter below is what keeps that from
 // showing the wrong file: only the newest request may write the runs.
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 import type { ThemedToken } from 'shiki/core';
 import { resolveSourceLanguage } from '../../composables/source-languages';
 import { highlightSource } from '../../composables/syntax-highlighting';
@@ -107,9 +107,6 @@ const props = defineProps<{
   readonly contentLanguage?: SourceViewerLanguage | undefined;
 }>();
 
-/** The `<pre>` holding the text, so the purge can empty it synchronously. */
-const host = ref<HTMLPreElement | null>(null);
-
 /**
  * The tokenized lines of the current source — one array of coloured runs per
  * line — or null while they have not arrived: before the highlighter answers,
@@ -120,9 +117,9 @@ const lines = shallowRef<ReadonlyArray<ReadonlyArray<ThemedToken>> | null>(null)
 
 /**
  * Set by the purge. The text is in the DOM as text nodes bound to the props,
- * so the purge clears the element and this stops the next render from
- * writing it back before the component unmounts (FR-027, data-model.md
- * § BrowserState).
+ * which stay what they were until the page moves on, so this is what keeps
+ * the flush after the purge from rendering the props' text again (FR-027,
+ * data-model.md § BrowserState).
  */
 const purged = shallowRef(false);
 
@@ -145,10 +142,14 @@ let requestedSource = 0;
 let unmounted = false;
 
 // The text this component renders is authored source, so it is an owner the
-// view state must clear synchronously — on the central purge (FR-027) and
-// before a greater generation is adopted (data-model.md § BrowserState): the
-// reactive unmount that follows either is one render flush later, a window
-// in which everything else is already gone. The registration is
+// view state drops with the detail — on the central purge (FR-027) and before
+// a greater generation is adopted (data-model.md § BrowserState). The drop is
+// a change of state and nothing else: the text nodes are Vue's, and the flush
+// that follows — before the next paint — is what takes them out of the
+// document, or replaces them with the next source's when one was adopted in
+// the same tick. Reaching into the element ahead of that flush would leave
+// Vue's own tree pointing at nodes no longer in the document, and the next
+// source would be patched into them and never show. The registration is
 // unconditional — the shell always provides the session
 // (`useSessionViewState`) — because a mount that skipped it would hold
 // authored content the central purge cannot clear.
@@ -156,17 +157,10 @@ const sessionViewState = useSessionViewState();
 /** Drops this viewer's authored text; see the registrations below. */
 const dropContent = (): void => {
   // Supersede any tokenizing still in flight: one resolving after this would
-  // otherwise write the dropped source back as runs during the one flush
-  // before this component unmounts.
+  // otherwise write the dropped source back as runs.
   requestedSource += 1;
   lines.value = null;
-  // The runs and the placeholder are both DOM text nodes bound to the props,
-  // so either survives until Vue patches this component away — one flush
-  // later, when everything else is already gone. Emptying the element is
-  // what takes the text out now; the flag keeps the next render from
-  // writing it back.
   purged.value = true;
-  host.value?.replaceChildren();
 };
 // The caller's registry when it named one, the session's otherwise — never
 // both; see the prop's own doc for why joining both breaks the drop.
@@ -278,7 +272,6 @@ onBeforeUnmount(() => {
          because the element renders whitespace as written: a newline between
          two tags here would be a newline in the file. -->
     <pre
-      ref="host"
       class="aci-source-viewer"
       :class="{ 'aci-source-viewer--pending': lines === null }"
       :style="{ '--aci-source-viewer-digits': String(lineCount).length }"
