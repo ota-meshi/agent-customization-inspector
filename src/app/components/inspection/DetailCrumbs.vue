@@ -7,20 +7,23 @@
 // pages are headed by a path and draw it here; a page whose URL selects a
 // declared name inside a carrier — a hook event, an MCP server, a plugin —
 // names that instead, and falls back to the path until the name resolves,
-// which is what a `v-if` on the slot template expresses: with no slot the
-// path below stands.
+// which is what the slot's own fallback content expresses.
 //
-// A kind whose subject resolves separately from its address asks for the
-// separator to stand with it ({@link
-// DetailCrumbsProps.omitsUnresolvedSubject}). The condition asks whether a
-// slot was passed rather than what it drew, because a slot that renders only
-// a false `v-if` falls back to the content below (`runtime-core`
-// § renderSlot), so an empty subject cannot be expressed by the caller.
+// The trail ends at the kind where the subject draws nothing, and no kind is
+// exempt: every one of them takes its path from the same address, which is
+// empty whenever the leading segment names no Source (`detail-address.ts`
+// § DetailAddress.openPath). Whether the subject drew anything is settled in
+// the style below, because it is the one thing this component cannot ask: it
+// holds a slot, and a slot forwarded unconditionally is one every wrapper
+// between here and the page reports as passed, so slot presence answers about
+// the nearest wrapper rather than about the page.
 //
-// `.aci-detail-crumbs` and its subject are styled in the global sheet rather
-// than here, because the comparison pages draw the same trail with a subject
-// of their own (AGENTS.md § Stylesheet scope policy: a rule whose subject
-// more than one component renders belongs to the sheet).
+// The trail's own look — `.aci-detail-crumbs` and the subject's colour — is in
+// the global sheet instead, because the comparison pages draw the same trail
+// with a subject of their own (AGENTS.md § Stylesheet scope policy: a rule
+// whose subject more than one component renders belongs to the sheet). What
+// stays here is what only this component renders: the separator, and the
+// subject it draws where the page names none.
 defineProps<{
   /**
    * The family of place the open file came from, leading the trail, or null
@@ -35,29 +38,42 @@ defineProps<{
    * empty where the address resolves nothing.
    */
   pathText: string;
-  /**
-   * Whether an unresolved subject ends the trail at the kind, taking the
-   * separator with it. Passed by a kind whose subject is not the path its
-   * address names — a skill's directory resolves through the inventory row,
-   * so a link this scan holds nothing at has no third step, and a separator
-   * with nothing after it reads as a step that failed to render. Omitted, the
-   * trail always draws both, which is what a kind addressed by its own file
-   * does: its subject is the path, so it is there whenever the page is.
-   */
-  omitsUnresolvedSubject?: boolean;
 }>();
 </script>
 
 <template>
   <p class="aci-detail-crumbs">
     <template v-if="sourceFamilyCrumbText !== null"
-      >{{ sourceFamilyCrumbText }} <span>›</span> </template
+      >{{ sourceFamilyCrumbText }} <span class="aci-detail-crumbs__separator">›</span> </template
     >{{ kindText }}
-    <template v-if="!omitsUnresolvedSubject || $slots.subject !== undefined || pathText !== ''"
-      ><span>›</span>
-      <slot name="subject"
-        ><span class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span></slot
-      ></template
+    <span class="aci-detail-crumbs__separator">›</span>
+    <slot name="subject"
+      ><span class="aci-detail-crumbs__subject aci-path">{{ pathText }}</span></slot
     >
   </p>
 </template>
+
+<style scoped>
+/* The last step goes when its subject draws nothing, which is the state an
+   address that names no Source leaves every kind in: the fallback above draws
+   the path, and there is no path. A separator with nothing after it reads as a
+   step that failed to draw rather than as a trail that ends at the kind, and
+   the page below already states that the link is not in this scan — a trail
+   that looks broken tells a reader nothing the page has not said. Both go, so
+   the flex gap that would hold their places goes with them.
+
+   Written as a style rather than as a condition on the markup because what
+   settles it is what the subject drew, which is the one thing this component
+   cannot ask: it holds a slot, and a slot forwarded unconditionally is one
+   every wrapper between here and the page reports as passed.
+
+   Scoping is what keeps the question about the page's own subject. The subject
+   the second rule hides is the fallback written in the template above, which
+   only this component renders, so a subject the page passed is never matched
+   however it is drawn — and the first rule's `:has()` argument is left
+   unscoped, so the separator answers to that subject wherever it came from. */
+.aci-detail-crumbs__separator:has(+ .aci-detail-crumbs__subject:empty),
+.aci-detail-crumbs__subject:empty {
+  display: none;
+}
+</style>

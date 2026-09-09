@@ -35,7 +35,6 @@
 // the plugin is installed, enabled, trusted, or loaded — all four are User
 // state this product never reads (FR-009).
 import { computed, ref, useTemplateRef, watch } from 'vue';
-import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
 import LeavesIcon from '~icons/lucide/arrow-right';
@@ -45,7 +44,8 @@ import SubjectTabStrip from '../../../../components/inspection/SubjectTabStrip.v
 import SubjectTabPanel from '../../../../components/inspection/SubjectTabPanel.vue';
 import DetailDiagnostics from '../../../../components/inspection/DetailDiagnostics.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
-import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
+import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
@@ -69,7 +69,6 @@ import { pluginCarrierDetailRoute } from '../../../../components/plugin-detail-r
 import { pluginComparisonRouteFor } from '../../../../composables/plugin-comparison';
 import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { useDetailAddress, usePathPresentation } from '../../../../composables/detail-address';
-import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
 import { useSessionSources } from '../../../../composables/session-sources';
@@ -1019,9 +1018,9 @@ const PLUGIN_DETAIL_TAB_TEXT: Readonly<Record<PluginDetailTab, string>> = {
   files: 'Files',
 };
 
-/** The page's root, which keeps the heading-focus guards inside this page. */
-const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
-const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
+// Where focus sits: the frame bounds this page and holds its heading focus
+// (`DetailPage.vue`), and the guards below ask that focus to rescue itself.
+const page = useTemplateRef<DetailPageControls>('page');
 
 /** The pane holding the open file's source; read by the focus guard below. */
 const paneElement = ref<HTMLElement | null>(null);
@@ -1101,56 +1100,45 @@ const manifestFailure = computed(() =>
 );
 
 /**
- * What the live region announces as the request settles.
+ * What this page draws its content from: the carrier it read, and nothing at
+ * all once the request has settled holding none.
  *
- * Written out rather than taken from the shared shape (`detail-request.ts`
- * § DetailRequest.announcementOf), because this kind holds two requests whose
- * failures can stand at once — the selection's and the manifest's — and the
- * shared shape reports one. Naming both is the point: a region announces what
- * changed, so with only the first, the second to settle would leave the
- * sentence identical and never be announced at all.
+ * Idle counts as nothing even where a carrier is still held, because an idle
+ * page has no request in flight: without it the panels below would wait on a
+ * file that is never coming, and the frame's failure notice is the way back
+ * (`DetailPage.vue` § subject).
  */
-const detailAnnouncement = computed(() => {
-  if (detailState.value === 'loading') {
-    return 'Loading this plugin…';
-  }
-  if (detailState.value === 'stale' || !linkResolved.value) {
-    return 'This plugin is not in the current scan.';
-  }
-  // The selection and the manifest are two requests, and either can fail while
-  // the other is in hand. Both are named, because a live region announces what
-  // changed: with only the first, the second to settle would leave the sentence
-  // identical and never be announced at all — and the panel it failed on may
-  // not be the one in view.
+const drawnCarrier = computed(() => (detailState.value === 'idle' ? null : carrierFile.value));
+
+/**
+ * The failure this page's live region words, which is both of them where both
+ * stand. The selection and the manifest are two requests, and either can fail
+ * while the other is in hand; naming only the first would leave the sentence
+ * identical when the second settled, so that one would never be announced at
+ * all — and the panel it failed on may not be the one in view.
+ */
+const announcedFailure = computed<string | null>(() => {
   const failures = [detailFailure.value, manifestFailure.value].filter(
     (message) => message !== null,
   );
-  if (failures.length > 0) {
-    return failures.join(' ');
-  }
-  if (openDetail.value === null) {
-    return '';
-  }
-  // The same test the panes render from: a file is in hand or it is not.
-  // Reading it from the *source* instead would announce a manifest whose bytes
-  // no reader shows as forever loading, and a plugin whose selected file is
-  // still in flight as ready.
-  return openFilePath.value !== null && openFile.value === null
-    ? 'Loading this file…'
-    : `${kindText} ready.`;
+  return failures.length === 0 ? null : failures.join(' ');
 });
 
-// Where focus sits: the entry focus, the re-focus when the address names a
-// different plugin, and the question the guards below ask before moving it
-// (`detail-heading-focus.ts`). Selecting another of the plugin's files is not
-// a change of subject, so it is not among the coordinates watched.
-const headingFocus = useDetailHeadingFocus({
-  pageRoot,
-  heading: () => header.value,
-  openPath: carrierPath,
-  openSource,
-  selection: () => openPluginName.value,
-});
+/**
+ * What this page is still waiting on once its own request is ready: the
+ * selected file, and null when nothing is outstanding
+ * (`DetailPage.vue` § furtherLoadingText).
+ *
+ * The same test the panes render from: a file is in hand or it is not. Reading
+ * it from the *source* instead would announce a manifest whose bytes no reader
+ * shows as forever loading, and a plugin whose selected file is still in
+ * flight as one that has arrived.
+ */
+const selectedFileLoadingText = computed<string | null>(() =>
+  openDetail.value !== null && openFilePath.value !== null && openFile.value === null
+    ? 'Loading this file…'
+    : null,
+);
 
 const pageOwnership = usePageOwnership();
 
@@ -1190,7 +1178,7 @@ const requestOpen = (): void => {
  * the top of the document (WCAG 2.4.3).
  */
 const retryOpen = (): void => {
-  headingFocus.focusHeading();
+  page.value?.focusHeading();
   requestOpen();
 };
 
@@ -1250,42 +1238,7 @@ watch(
       reservedPaneHeight.value = paneElement.value?.offsetHeight ?? 0;
     }
     if (file === null && paneElement.value?.contains(document.activeElement) === true) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-// A generation replacement drops the whole detail while the URL stays:
-// adopting a newer commit closes the open plugin and the route re-requests it
-// (`SessionViewState`). The unmount takes the tab strip, the tree, and both
-// panels with it — parts the pane guard above does not cover — and neither of
-// the other guards fires, because the state is not `stale` and neither the
-// carrier nor the plugin changed. The subject condition keeps this out of a
-// step to another plugin, whose own watcher above focuses the heading.
-watch(
-  openDetail,
-  (detail, previous) => {
-    if (
-      detail === null &&
-      previous !== null &&
-      previous.file.sourceRelativePath === carrierPath.value &&
-      previous.file.sourceId === openSourceId.value
-    ) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-// The dead-link and stale transitions replace the whole body of the page — the
-// tree the reader may be navigating included — so their guard watches those
-// states themselves and considers the whole page root (WCAG 2.4.3).
-watch(
-  [detailState, linkResolved],
-  ([state, resolved]) => {
-    if (state === 'stale' || !resolved) {
-      headingFocus.requestFocusHeading();
+      page.value?.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1335,64 +1288,67 @@ useReportedPageSubject(titleSubject);
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-plugin-detail aci-route">
-    <DetailHeader
-      ref="header"
-      :kind-text="CUSTOMIZATION_KIND_TEXT.plugin"
-      :list-route="inventoryRoute"
-      :neighbours="listNeighbours"
-      :source-family-crumb-text="sourceFamilyCrumbText"
-      :path-text="pathText"
-      :path-is-spelled-out="pathIsSpelledOut"
-      :accessible-text="headingAccessibleText"
-    >
-      <template v-if="pluginName !== null" #trail-subject>
-        <AuthoredNameText :name="pluginName">
-          <span class="aci-detail-crumbs__subject aci-path">{{ pluginName.text }}</span>
-        </AuthoredNameText>
-      </template>
+  <DetailPage
+    ref="page"
+    class="aci-plugin-detail"
+    :kind-text="CUSTOMIZATION_KIND_TEXT.plugin"
+    :list-route="inventoryRoute"
+    :neighbours="listNeighbours"
+    :source-family-crumb-text="sourceFamilyCrumbText"
+    :path-text="pathText"
+    :path-is-spelled-out="pathIsSpelledOut"
+    :accessible-text="headingAccessibleText"
+    :open-path="carrierPath"
+    :open-source="openSource"
+    :selection="openPluginName"
+    :subject-resolved="linkResolved"
+    missing-text="This plugin is not in the current scan."
+    :failure-text="announcedFailure"
+    loading-text="Loading this plugin…"
+    :further-loading-text="selectedFileLoadingText"
+    :subject="drawnCarrier"
+    @retry="retryOpen()"
+  >
+    <template v-if="pluginName !== null" #declared-name-in-trail>
+      <AuthoredNameText :name="pluginName">
+        <span class="aci-detail-crumbs__subject aci-path">{{ pluginName.text }}</span>
+      </AuthoredNameText>
+    </template>
 
-      <!-- The declared plugin name heads the page where it resolves; the
+    <!-- The declared plugin name heads the page where it resolves; the
            carrier's own path heads the row that resolves none. -->
-      <template v-if="pluginName !== null" #heading-name>
-        <AuthoredNameText :name="pluginName">
-          <span :class="{ 'aci-authored-text': pluginName.isAuthored }">{{ pluginName.text }}</span>
-        </AuthoredNameText>
-      </template>
-      <template #title-end>
-        <!-- This plugin's comparison, at the end of the heading's own line: it
+    <template v-if="pluginName !== null" #declared-name-in-heading>
+      <AuthoredNameText :name="pluginName">
+        <span :class="{ 'aci-authored-text': pluginName.isAuthored }">{{ pluginName.text }}</span>
+      </AuthoredNameText>
+    </template>
+    <template #subject-comparison>
+      <!-- This plugin's comparison, at the end of the heading's own line: it
              acts on the subject that heading names — the declared plugin across
              the carriers that declare it — rather than on what the tabs below
              select (FR-011). -->
-        <NuxtLink
-          v-if="compareRoute !== null"
-          class="aci-button aci-button--primary aci-detail-title-end"
-          :to="compareRoute"
-          >Compare this plugin <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
-        /></NuxtLink>
-        <!-- Why there is no comparison, rather than nothing at all: a missing
+      <NuxtLink
+        v-if="compareRoute !== null"
+        class="aci-button aci-button--primary aci-detail-title-end"
+        :to="compareRoute"
+        >Compare this plugin <LeavesIcon class="aci-detail-compare__mark" aria-hidden="true"
+      /></NuxtLink>
+      <!-- Why there is no comparison, rather than nothing at all: a missing
              control reads the same as a forgotten one, and the reason is a fact
              about the subject — this name resolves one carrier here, so there is
              no pair to make (FR-011). The skill detail says the same of a name
              with one copy. -->
-        <!-- Said only where there is a subject to say it of: on a link the scan
+      <!-- Said only where there is a subject to say it of: on a link the scan
              holds nothing at, and before the carrier has loaded, "one carrier
              here" would be a claim about a name that resolves nothing. -->
-        <span
-          v-else-if="pluginName !== null && openDetail !== null"
-          class="aci-detail-title-end aci-muted"
-          >This name has one carrier here, so there is nothing to compare</span
-        >
-      </template>
-    </DetailHeader>
-
-    <LiveRegion :text="detailAnnouncement" />
-
-    <template v-if="detailState === 'loading'">
-      <p class="aci-empty">Loading this plugin…</p>
+      <span
+        v-else-if="pluginName !== null && openDetail !== null"
+        class="aci-detail-title-end aci-muted"
+        >This name has one carrier here, so there is nothing to compare</span
+      >
     </template>
 
-    <template v-else-if="detailState === 'stale' || !linkResolved">
+    <template #missing>
       <!-- Two dead links, two sentences: a path the scan does not hold, and a
            held carrier that declares no plugin by this name or ships no file at
            the one selected — which covers a carrier whose declarations could
@@ -1411,18 +1367,8 @@ useReportedPageSubject(titleSubject);
       </SubjectUnavailable>
     </template>
 
-    <!-- A failed request: this route reports it, because this route made it —
-         the shell reports what happened to the session, so neither hides or
-         repeats the other. The retry beside it is the way back without
-         re-finding the link. It covers a request that ended holding nothing and
-         one that ended while the declarations were held: an idle page has no
-         request in flight, so without this the panels below would wait on a
-         file that is never coming. -->
-    <template v-else-if="carrierFile === null || detailState === 'idle'">
-      <DetailFailureNotice :message="detailFailure" @retry="retryOpen()" />
-    </template>
-
-    <template v-else>
+    <!-- eslint-disable-next-line vue/no-template-shadow -- same value, same name, never null -->
+    <template #default="{ subject: carrierFile }">
       <!-- What this carrier is, on one line: what it is to the plugin, how the
            file read, and which products recognize it with the surfaces they
            document reading it on. A line rather than a definition grid, which
@@ -1691,7 +1637,7 @@ useReportedPageSubject(titleSubject);
         </template>
       </SubjectTabPanel>
     </template>
-  </div>
+  </DetailPage>
 </template>
 
 <style scoped>

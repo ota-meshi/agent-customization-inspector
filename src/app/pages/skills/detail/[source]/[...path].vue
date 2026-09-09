@@ -53,14 +53,14 @@
 // so the link survives the rescan, and only a path the new generation does
 // not hold is reported as dead.
 import { computed, ref, useTemplateRef, watch } from 'vue';
-import LiveRegion from '../../../../components/LiveRegion.vue';
 import { useRoute, type RouteLocationRaw } from 'vue-router';
 import { NuxtLink } from '#components';
 import AuthoredNameText from '../../../../components/AuthoredNameText.vue';
 import DirectoryFileTree from '../../../../components/inspection/DirectoryFileTree.vue';
 import SubjectUnavailable from '../../../../components/inspection/SubjectUnavailable.vue';
 import DetailPathNotFound from '../../../../components/inspection/DetailPathNotFound.vue';
-import DetailHeader from '../../../../components/inspection/DetailHeader.vue';
+import type { DetailPageControls } from '../../../../composables/detail-heading-focus';
+import DetailPage from '../../../../components/inspection/DetailPage.vue';
 import DetailFailureNotice from '../../../../components/inspection/DetailFailureNotice.vue';
 import LeavesIcon from '~icons/lucide/arrow-right';
 import OpenFileButton from '../../../../components/inspection/OpenFileButton.vue';
@@ -96,7 +96,6 @@ import type { VendorSurface } from '../../../../../shared/registries/behavior-ty
 import { useSubjectTabs } from '../../../../composables/subject-tabs';
 import { skillComparisonRouteFor } from '../../../../composables/skill-comparison';
 import { useDetailAddress } from '../../../../composables/detail-address';
-import { useDetailHeadingFocus } from '../../../../composables/detail-heading-focus';
 import { useDetailRequest } from '../../../../composables/detail-request';
 import { usePageOwnership, useReportedPageSubject } from '../../../../composables/page-ownership';
 import { useOpenSourceFacts } from '../../../../composables/source-facts';
@@ -666,8 +665,9 @@ const SKILL_DETAIL_TAB_TEXT: Readonly<Record<SkillDetailTab, string>> = {
   files: 'Files',
 };
 
-/** The page's root, which keeps the heading-focus guards inside this page. */
-const pageRoot = useTemplateRef<HTMLElement>('pageRoot');
+// Where focus sits: the frame bounds this page and holds its heading focus
+// (`DetailPage.vue`), and the guards below ask that focus to rescue itself.
+const page = useTemplateRef<DetailPageControls>('page');
 
 /**
  * The strip and the panels it controls (`subject-tabs.ts` § SubjectTabs).
@@ -835,44 +835,6 @@ const entryDiagnostics = computed(() => {
     : [];
 });
 
-/**
- * What this page's polite live region announces — the states that change the
- * page without moving keyboard focus, so a reader who cannot see the swap
- * needs them said (WCAG 4.1.3, contracts/accessibility-acceptance.md
- * § 4.1.3): the stale state, a file selection loading while focus stays in
- * the tree, a companion that failed to load, and an entry that failed to load.
- * Each phrase matches the visible copy. Ready content is read as focus moves
- * through it, so it is not repeated here.
- *
- * A detail request's failure is announced here because this route owns it: the
- * shell reports what happened to the session, and neither surface repeats the
- * other.
- *
- * Written out rather than taken from the shared shape (`detail-request.ts`
- * § DetailRequest.announcementOf), because this kind waits twice: the skill's
- * own request settles first and a selected companion is fetched after it, so
- * there is a second wait to announce that a route with one request has no
- * state for.
- */
-const detailAnnouncement = computed(() => {
-  if (detailState.value === 'stale' || !selectionResolved.value) {
-    return 'Nothing in the current scan sits at this link\u2019s path.';
-  }
-  if (detailFailure.value !== null) {
-    return detailFailure.value;
-  }
-  if (detailState.value === 'loading') {
-    return 'Loading this skill…';
-  }
-  if (detailState.value === 'ready' && openFile.value === null) {
-    return 'Loading this file…';
-  }
-  return '';
-});
-
-/** The page heading, focused on entry so a keyboard user starts at the top. */
-const header = useTemplateRef<InstanceType<typeof DetailHeader>>('header');
-
 /** The pane holding the open file's source; read by the focus guard below. */
 const paneElement = ref<HTMLElement | null>(null);
 
@@ -886,20 +848,14 @@ const paneElement = ref<HTMLElement | null>(null);
  */
 const reservedPaneHeight = ref(0);
 
-// Where focus sits: the entry focus, the re-focus when the address names a
-// different skill, and the question the guards below ask before moving it
-// (`detail-heading-focus.ts`). The coordinate is the skill the address
-// resolved to rather than the address itself, because this page is headed by
-// the skill's directory and falls back to the kind's own word: two addresses
-// this scan holds no skill at are one heading, and moving focus would announce
-// it twice (`detail-heading-focus.ts` § openPath).
-const headingFocus = useDetailHeadingFocus({
-  pageRoot,
-  heading: () => header.value,
-  openPath: computed(() => owner.value?.definition.sourceRelativePath ?? ''),
-  openSource,
-  selection: null,
-});
+/**
+ * The path the heading names: what the address resolved to rather than the
+ * address itself, because this page is headed by the skill's directory and
+ * falls back to the kind's own word — two addresses this scan holds no skill
+ * at are one heading, and moving focus would announce it twice
+ * (`detail-heading-focus.ts` § DetailHeadingFocusOptions.openPath).
+ */
+const headingPath = computed(() => owner.value?.definition.sourceRelativePath ?? '');
 
 const pageOwnership = usePageOwnership();
 
@@ -912,7 +868,7 @@ const request = useDetailRequest({
   openPath,
   openSource,
   selection: () => owner.value?.definition.sourceRelativePath ?? null,
-  ready: () => owner.value !== null && selectionResolved.value,
+  ready: () => selectionResolved.value,
   perform: () => {
     const resolved = owner.value;
     if (resolved === null) {
@@ -924,7 +880,7 @@ const request = useDetailRequest({
       openSource.value,
     );
   },
-  headingFocus,
+  focusHeading: () => page.value?.focusHeading(),
 });
 const { detailState } = request;
 
@@ -942,6 +898,29 @@ const detailFailure = request.failureOf(() =>
     : entryDetail.value === null && detailState.value === 'idle'
       ? 'This skill could not be loaded.'
       : null,
+);
+
+/**
+ * Whether the address names no skill this scan holds, as against a skill it
+ * holds whose directory has no file at the path the link selects.
+ *
+ * Two links can fail at two steps, and each step is drawn and said in its own
+ * words: read once here, by the surface below and by the live region alike, so
+ * a reader who cannot see the page is told what a reader who can sees. One
+ * sentence for both said the skill's own path resolved nothing where it had
+ * resolved and only the selection had not.
+ */
+const skillPathMissing = computed(() => detailState.value === 'stale' || owner.value === null);
+
+/**
+ * What the live region says of whichever step failed — the first sentence of
+ * the paragraph the surface draws, which is the form every kind's follows
+ * (`DetailPage.vue` § missingText).
+ */
+const missingText = computed(() =>
+  skillPathMissing.value
+    ? "Nothing in the current scan sits at this link's path."
+    : "This skill's directory holds no file at the path this link selects.",
 );
 
 // Focus moves to the heading when the *skill* changes, not when a file within
@@ -1010,43 +989,7 @@ watch(
       reservedPaneHeight.value = paneElement.value?.offsetHeight ?? 0;
     }
     if (file === null && paneElement.value?.contains(document.activeElement) === true) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-// A generation replacement drops the whole detail while the selection stays:
-// `SessionViewState.#refreshOnce` closes the open skill when it adopts a newer
-// commit, and the route re-requests the same path afterwards. The unmount that
-// follows takes the tree, the tab buttons, and the Skill tab with it — parts
-// the pane guard above does not cover — and neither of the other guards fires,
-// because the state is not `stale` and the skill's path has not changed. The
-// skill-change condition keeps this guard out of a navigation to a different
-// skill, whose own watcher focuses the heading after the flush so the new
-// name is what gets announced (WCAG 2.4.3).
-watch(
-  entryDetail,
-  (detail, previous) => {
-    if (
-      detail === null &&
-      previous !== null &&
-      previous.file.sourceRelativePath === owner.value?.definition.sourceRelativePath
-    ) {
-      headingFocus.requestFocusHeading();
-    }
-  },
-  { flush: 'sync' },
-);
-
-// The stale transition replaces the whole body of the page — the tree the
-// reader may be navigating included — not just the pane, so its guard watches
-// the state itself and considers the whole page root (WCAG 2.4.3).
-watch(
-  [detailState, owner],
-  ([state, resolved]) => {
-    if (state === 'stale' || resolved === null) {
-      headingFocus.requestFocusHeading();
+      page.value?.requestFocusHeading();
     }
   },
   { flush: 'sync' },
@@ -1054,49 +997,39 @@ watch(
 </script>
 
 <template>
-  <div ref="pageRoot" class="aci-skill-detail aci-route">
-    <!-- The skill's own directory heads the page and the trail: the directory
-         is the skill (FR-007), and it is the one identity every product
-         reading it shares, where the names they invoke it by differ and are
-         listed below. Escaped for presentation like every path, never a
-         locator anything can open (FR-024, FR-030), and never this product's
-         own spelling — the directory is drawn as authored or not at all. A URL
-         no owner resolves for is headed by the kind, so the heading always
-         describes the page (WCAG 2.4.6), and the trail stops at the kind
-         rather than ending on a step that draws nothing. -->
-    <DetailHeader
-      ref="header"
-      :kind-text="CUSTOMIZATION_KIND_TEXT.skill"
-      list-route="/?kind=skill"
-      :neighbours="listNeighbours"
-      :source-family-crumb-text="sourceFamilyCrumbText"
-      :path-text="skillDirectoryText"
-      :path-is-spelled-out="false"
-      :accessible-text="headingAccessibleText"
-      omits-unresolved-subject
-    />
-
-    <LiveRegion :text="detailAnnouncement" />
-
-    <template v-if="detailState === 'loading'">
-      <p class="aci-empty">Loading this skill…</p>
-    </template>
-
-    <!-- Two dead links, two sentences. The address names the skill and the
-         `file` query names one file inside it, so a link can fail at either
-         step, and one sentence for both said the skill's own path resolved
-         nothing when it had resolved and only the selection had not. The
-         skill's own step is checked first and by the inventory rather than by
-         the request's state: a path this scan lists no skill at reaches no
-         request to go stale, and it must not fall through to the selection
-         sentence, which would tell the reader a directory holds no such file
-         when there is no such directory. -->
-    <template v-else-if="detailState === 'stale' || owner === null">
-      <DetailPathNotFound list-route="/?kind=skill" />
-    </template>
-
-    <template v-else-if="!selectionResolved">
-      <SubjectUnavailable outcome="warning">
+  <DetailPage
+    ref="page"
+    class="aci-skill-detail"
+    :kind-text="CUSTOMIZATION_KIND_TEXT.skill"
+    list-route="/?kind=skill"
+    :neighbours="listNeighbours"
+    :source-family-crumb-text="sourceFamilyCrumbText"
+    :path-text="skillDirectoryText"
+    :path-is-spelled-out="false"
+    :accessible-text="headingAccessibleText"
+    :open-path="headingPath"
+    :open-source="openSource"
+    :selection="null"
+    :subject-resolved="selectionResolved"
+    :missing-text="missingText"
+    :failure-text="detailFailure"
+    loading-text="Loading this skill…"
+    :further-loading-text="openFile === null ? 'Loading this file…' : null"
+    :subject="entryDetail"
+    @retry="request.retryOpen()"
+  >
+    <template #missing>
+      <!-- Two dead links, two sentences. The address names the skill and the
+           `file` query names one file inside it, so a link can fail at either
+           step, and one sentence for both said the skill's own path resolved
+           nothing when it had resolved and only the selection had not. The
+           skill's own step is checked first and by the inventory rather than by
+           the request's state: a path this scan lists no skill at reaches no
+           request to go stale, and it must not fall through to the selection
+           sentence, which would tell the reader a directory holds no such file
+           when there is no such directory. -->
+      <DetailPathNotFound v-if="skillPathMissing" list-route="/?kind=skill" />
+      <SubjectUnavailable v-else outcome="warning">
         This skill's directory holds no file at the path this link selects. The skill may have
         changed since the link was made; its own files are on the files tab.
         <template #exit>
@@ -1105,17 +1038,8 @@ watch(
       </SubjectUnavailable>
     </template>
 
-    <!-- A failed detail request: the state fell back to idle with nothing
-         held. This route reports it, because this route made the request — the
-         shell reports what happened to the session, so neither hides or repeats
-         the other. The real message is shown rather than a phrase standing in
-         for it, and the retry beside it is the way back without re-finding the
-         link. -->
-    <template v-else-if="entryDetail === null">
-      <DetailFailureNotice :message="detailFailure" @retry="request.retryOpen()" />
-    </template>
-
-    <template v-else-if="entryDetail">
+    <!-- eslint-disable-next-line vue/no-template-shadow -- same value, same name, never null -->
+    <template #default="{ subject: entryDetail }">
       <!-- The entry file's own facts, on the line under the heading: which
            file carries the skill, how it read, its size, and how many further
            files its directory ships. The products are not here — what each of
@@ -1381,7 +1305,7 @@ watch(
         </div>
       </SubjectTabPanel>
     </template>
-  </div>
+  </DetailPage>
 </template>
 
 <style scoped>

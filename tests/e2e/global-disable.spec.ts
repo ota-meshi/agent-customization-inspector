@@ -137,7 +137,7 @@ test('restores nothing that was purged: an old Global link resolves to no scan',
   await page.getByRole('button', { name: 'Disable personal inspection' }).click();
   await expect(page.getByRole('button', { name: 'Work out the directories' })).toBeVisible();
   await page.goto(new URL('/skills/detail/global-claude/skills/deploy/SKILL.md', host.origin).href);
-  await expect(main).toContainText('Nothing in the current scan sits at this link’s path.');
+  await expect(main).toContainText("Nothing in the current scan sits at this link's path.");
   await expect(main).not.toContainText('The personal deploy skill.');
 });
 

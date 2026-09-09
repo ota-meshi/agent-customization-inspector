@@ -117,7 +117,7 @@ test('names the four proposed directories, their origin, and their state', async
     await expect(main).toContainText(home);
   }
   // Where each came from, and that consent may admit it.
-  await expect(main).toContainText('From this tool’s environment variable');
+  await expect(main).toContainText("From this tool's environment variable");
   await expect(main).toContainText('An absolute path, so this tool can be inspected');
   // And the label is stated for what it is, not as something to open.
   await expect(main).toContainText('grants no read access');

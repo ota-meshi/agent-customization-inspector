@@ -37,12 +37,15 @@ defineProps<{
   pathIsSpelledOut: boolean;
   /** What a screen reader announces the heading as (WCAG 2.4.6). */
   accessibleText: string;
-  /**
-   * Whether an unresolved trail subject ends the trail at the kind
-   * (`DetailCrumbs.vue`). Passed by a kind whose subject is not the path its
-   * address names.
-   */
-  omitsUnresolvedSubject?: boolean;
+}>();
+
+defineSlots<{
+  /** What the trail's last step names, where the page names it (`DetailCrumbs.vue`). */
+  'trail-subject'?(): unknown;
+  /** What the heading names, where the page names it (`DetailHeadingSubject.vue`). */
+  'heading-name'?(): unknown;
+  /** What closes the heading's own line, after the subject it names. */
+  'title-end'?(): unknown;
 }>();
 
 /** The heading, declared here and reached only through the two calls below. */
@@ -79,11 +82,8 @@ defineExpose({ focusHeading, headingHasFocus });
     :source-family-crumb-text="sourceFamilyCrumbText"
     :kind-text="kindText"
     :path-text="pathText"
-    :omits-unresolved-subject="omitsUnresolvedSubject"
   >
-    <template v-if="$slots['trail-subject'] !== undefined" #subject
-      ><slot name="trail-subject"
-    /></template>
+    <template #subject><slot name="trail-subject" /></template>
   </DetailCrumbs>
 
   <div class="aci-detail-header__line">
@@ -93,9 +93,7 @@ defineExpose({ focusHeading, headingHasFocus });
         :path-text="pathText"
         :path-is-spelled-out="pathIsSpelledOut"
       >
-        <template v-if="$slots['heading-name'] !== undefined" #name
-          ><slot name="heading-name"
-        /></template>
+        <template #name><slot name="heading-name" /></template>
       </DetailHeadingSubject>
     </h2>
     <slot name="title-end" />

@@ -363,6 +363,27 @@ export class SourceViewerHandle {
   }
 
   /**
+   * Releases the authored text this handle holds, leaving the editor mounted
+   * and the model attached.
+   *
+   * What has to go is the text, which Monaco keeps in the model's buffer and a
+   * removed DOM would not release (FR-027). Emptying the model is what releases
+   * it: `setValue` swaps the buffer, disposes the one it replaced, and clears
+   * the edit history, so no copy of the authored run is left behind
+   * (`monaco-editor` § TextModel._setValueFromTextBuffer).
+   *
+   * Emptying rather than detaching, because detaching is not free to a reader:
+   * `setModel` tears down the input context, and its teardown blurs the
+   * element the reader is in, so focus lands on the document body under
+   * someone who was reading (WCAG 2.4.3). An empty model takes nothing away
+   * from them, and the next source replaces it (`showSource`).
+   */
+  public dropSource(): void {
+    this.#editor.getModel()?.setValue('');
+    clearAnnouncedText();
+  }
+
+  /**
    * Disposes the editor, its current model, and every subscription. Separate
    * disposal is deliberate — Monaco does not dispose a model with its editor,
    * so an editor-only teardown would retain the authored text.
