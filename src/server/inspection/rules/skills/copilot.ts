@@ -3,10 +3,10 @@
 // (contracts/vendors/github-copilot.md § Normative initial-release
 // presentation allowlist).
 //
-// The answer itself is `invocation-name.ts`, shared with the other product
-// documenting the same field: it is what makes one `SKILL.md` declaring
-// `name: voyage` this product's `voyage` and another product's directory name,
-// each product asked its own rule about the same file.
+// The answer itself is `invocation-name.ts`, shared with every product that
+// resolves a skill by that field: one `SKILL.md` at the root declaring
+// `name: voyage` is `voyage` for each product that reads it, each asked its
+// own rule about the same file.
 //
 // The base this unit extends is `../vendor/copilot.ts` rather than
 // `../copilot.ts`, which holds this vendor's other kinds: both modules extend
@@ -35,11 +35,11 @@ export class CopilotCompiledSkillRule
 
   /**
    * The `name` the file declares, with the skill directory as the fallback —
-   * the shared answer of the products that document that field as the skill's
-   * identity ({@link authoredSkillNameOf}), which Copilot is one of. It is
-   * what makes a `.claude/skills/lander/SKILL.md` declaring `name: voyage`
-   * Copilot's `voyage` and Claude Code's `lander`: each product is asked its
-   * own rule about the same file.
+   * the shared answer of every product that resolves a skill by that field
+   * ({@link authoredSkillNameOf}), which Copilot does for all of its own. A
+   * `.claude/skills/lander/SKILL.md` declaring `name: voyage` is therefore
+   * Copilot's `voyage` and Claude Code's `voyage` too: each product is asked
+   * its own rule about the same file, and at the root the two rules agree.
    */
   public invocationNameOf(
     sourceRelativePath: string,

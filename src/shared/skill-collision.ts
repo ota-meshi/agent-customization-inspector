@@ -59,9 +59,9 @@ export function skillCollisionGates(
  * rule answers (FR-007) — the row half of {@link skillCollisionGates}, shared
  * so the server's statements and the client's filtered restatement apply one
  * rule. Which definitions are evidence is the tool's own policy
- * (`collisionEvidencePaths`): a tool invoking the authored name excludes
+ * (`collisionEvidence`): a tool whose clash is on the authored name excludes
  * failed extractions, whose name it never resolved (FR-028), while Claude
- * Code's path-derived clash stands either way. The gate exists for every tool
+ * Code's clash is between skill directories and stands either way. The gate exists for every tool
  * a definition names, because the caller built one per recognizing tool of the
  * same view; `Map.get` is merely typed for absence.
  */

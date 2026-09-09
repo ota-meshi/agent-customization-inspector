@@ -34,7 +34,7 @@ dispositionである。
 | FR-004 | T066, T112, T136, T163, T213, T1084–T1090, T234–T235, T257–T258, T289, T311–T312, T330, T341–T342, T361–T362, T384, T409, T426–T427, T447, T464–T465, T493, T514, T534–T535, T553–T554, T586–T587, T609–T610, T630–T631, T665, T686–T687, T706–T707, T726–T727, T760–T761, T783–T784, T806–T807, T841, T851, T866, T885–T886, T895, T902, T919, T1029, T1041–T1042, T1053, T1091–T1096 |
 | FR-005 | T017, T028, T178–T190, T268–T275, T388–T396, T913, T920, T1073, T1078 |
 | FR-006 | T178–T190, T268–T275, T388–T396, T402–T410, T1100–T1120, T440–T448, T475–T481, T486–T494, T507–T516, T565–T572, T577–T588, T643–T653, T658–T666, T679–T688, T739–T746, T751–T762, T818–T828, T833–T843, T899–T907, T919, T1091–T1096, T1148, T1154, T1178 |
-| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185 |
+| FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185, T1212–T1214 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
 | FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
@@ -8095,6 +8095,64 @@ T1209が入るまでそれらをfetchし続ける。
   `tests/contract/outcome-fixture-manifest.test.ts` はdriftを報告し、それはfreezeが働いている
   ということである。
 
+## フェーズ 115: Claude Code が列挙する名前での skill row
+
+**目的**: 選択された root にある Claude Code の skill row の見出しを、製品自身の menu がそれを列挙する名前
+— authored な `name`、fallback は skill directory — にし、1 つの root の file がそれを読むすべての製品を横断して
+1 つの row として読めるようにする。nested な skill は Claude Code がそれに対して組み立てる directory-qualified な
+command を保つ（FR-007、spec.md § Clarifications Session 2026-09-09）。
+
+**独立テスト**: `pnpm run test:unit` と `npx playwright test --project=chromium
+tests/e2e/claude-skills-list.spec.ts tests/e2e/skills-inventory.spec.ts` を実行する。fixture の
+inventory を開き、`.claude/skills/lander/SKILL.md` が `voyage` row だけにあり、Claude Code と GitHub Copilot の
+両方の badge を持つことを確かめる。
+
+**可視チェックポイント**: file が `name` を宣言する `.claude/skills/` directory を見出しに持つ skill row は存在せず、
+`packages/api:deploy` は引き続き nested な row の見出しである。
+
+### rule の答え
+
+- [X] T1212 [US1] `src/server/inspection/rules/skills/claude.ts` が、root の skill の名前には
+  `src/server/inspection/rules/skills/invocation-name.ts` の共有 authored-name rule で、nested な skill の名前には
+  directory-qualified な command だけで答えるようにし、skills page の「display label」という文言に従わない理由 —
+  Claude Code 2.1.186 と desktop app の 2.1.260 に対して実測すると、slash menu と desktop app の command 一覧が運ぶのは
+  宣言された名前である — を導出の場所に記録する。命名の分岐を
+  `src/server/inspection/rules/skills/compiled-rule.ts`、
+  `src/shared/registries/skill-directory.ts`、`src/shared/skill-collision.ts`、
+  `src/shared/registries/claude/skill-collision.ts`、
+  `src/server/inspection/recognizers/candidate.ts`、`src/server/session/session.ts`、
+  `src/shared/api-types.ts`、`src/app/components/inventory/rows/SkillRow.vue` で言い直す。解決される名前を
+  `tests/unit/inspection/claude-metadata.test.ts`、
+  `tests/unit/inspection/copilot-metadata.test.ts`、`tests/unit/inspection/recognizers.test.ts`、
+  `tests/unit/app/inventory.test.ts`、`tests/unit/app/recognition-details.test.ts`、
+  `tests/integration/repository-scan.test.ts` で pin し直す（FR-007、FR-028）。
+
+### 記録
+
+- [X] T1213 [US1] 決定とその実測を `specs/001-inspect-agent-customizations/spec.md` と
+  `specs/001-inspect-agent-customizations/spec.ja.md` に記録し（§ Clarifications Session 2026-09-09、FR-007）、
+  row の単位を `specs/001-inspect-agent-customizations/data-model.md`、
+  `specs/001-inspect-agent-customizations/data-model.ja.md`、
+  `specs/001-inspect-agent-customizations/contracts/http-api.md`、
+  `specs/001-inspect-agent-customizations/contracts/http-api.ja.md`、
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.md`、
+  `specs/001-inspect-agent-customizations/contracts/vendors/claude-code.ja.md` で言い直す。row の命名の変更が
+  ユーザーに対して負う `.changeset/` entry を追加する。
+
+### browser suite と release evidence
+
+- [X] T1214 [US1] `tests/e2e/claude-skills-list.spec.ts`、`tests/e2e/claude-skills-detail.spec.ts`、
+  `tests/e2e/copilot-skills-list.spec.ts`、`tests/e2e/copilot-skills-detail.spec.ts`、
+  `tests/e2e/skills-inventory.spec.ts`、`tests/e2e/detail-navigation.spec.ts` の row を言い直し、
+  `tests/e2e/inventory-return.spec.ts` と `tests/e2e/skills-comparison.spec.ts` から、その前提 — 1 つの root の
+  file が 2 つの row に載ること — をもはやどの rule も生まない case を削除する。このフェーズが変更した、manifest が参照する
+  suite すべてと `tests/fixtures/repositories/build-fixtures.ts` の digest を
+  `tests/fixtures/outcomes/manifest.json` と `tests/fixtures/outcomes/manifest.sha256` に再記録し、
+  SC-003/SC-004/SC-005/SC-007 の case を新しい byte に対して再実行して、その実行を
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（spec.md § Release-Evidence
+  Fixture Governance）。
+
 ## ストーリーカバレッジマトリクス
 
 | フェーズ | 主要ストーリー範囲 | 累積マイルストーン |
@@ -8216,6 +8274,7 @@ T1209が入るまでそれらをfetchし続ける。
 | 111 収束 | 共通の前提 | release evidenceとユーザー向けドキュメントが、作り直しの結果であるtreeを記述し、task-set gateがそのtreeで追加されたtaskを覆う。 |
 | 112 収束 | 共通の前提 | validation recordがこのtreeについての1つの記述として読め、story labelのruleが存在するphaseと一致する。 |
 | 113 収束 | 共通の前提 | artifactをそのidentityで名指す2つの記録 — outcome manifestのdigestと readmeのscreenshot — が、このtreeが持つartifactを名指す。 |
+| 115 Claude Code が列挙する名前での skill row | US1 | root の skill の row は Claude Code 自身の menu がそれを列挙する名前を見出しに持ち、1 つの root の file はそれを読むすべての製品を横断して 1 つの row になり、nested な skill は directory-qualified な command を保つ。 |
 
 ## 依存関係と実行順序
 
@@ -8433,11 +8492,13 @@ authored な `name`、Claude Code は skill directory で、nested なら root �
   directory の 2 つの skill が同じ名前を持ちうるからである。
 - [X] T1081 [US1] 各 skill inventory row を、認識した tool が呼び出す名前で key する（spec.md § Clarifications Session
   2026-08-08 と Session 2026-08-23、FR-007）: その名前は tool 自身の文書がその file を呼び出す名前であり、名前が path
-  と宣言からどう導かれるかは その vendor 自身の contract であるため、admit した rule が答える — Codex と Copilot は authored な
-  frontmatter `name` を、Claude Code は frontmatter の宣言に依らず skill directory を呼び出し、nested な skill の
-  command には `.claude` を保持する directory の root 相対 `/`-joined path と `:` を前置する。したがって `name: ship`
-  を宣言する `apps/web/.claude/skills/deploy/SKILL.md` は、Claude Code row では `apps/web:deploy`、Copilot row
-  では `ship` である。prefix は常に付ける。vendor の衝突条件付き prefix は、この製品が決して観測しない session working directory
+  と宣言からどう導かれるかは その vendor 自身の contract であるため、admit した rule が答える — すべての製品は root の
+  skill を authored な frontmatter `name` で呼び出し、Claude Code は nested な skill をその directory-qualified な
+  command、すなわち `.claude` を保持する directory の root 相対 `/`-joined path、`:`、skill directory で名付ける。
+  したがって `name: ship` を宣言する `apps/web/.claude/skills/deploy/SKILL.md` は Claude Code row では
+  `apps/web:deploy` であり、同じ宣言を持つ `.claude/skills/deploy/SKILL.md` はすべての row で `ship` である
+  *(2026-09-09 修正: Claude Code の root での答えは宣言された名前、すなわちその menu が列挙する名前である。フェーズ 115
+  参照)*。prefix は常に付ける。vendor の衝突条件付き prefix は、この製品が決して観測しない session working directory
   相対だからである。名前を宣言しない — または空で宣言する — file はその skill directory で呼び出されるため、`name` が null に
   なることはなく、nameless な per-file row は存在しない: 同名 directory に置かれたそうした 2 つの file は、1 つの tool が 1
   つの名前で呼び出す他の file と同様に row を共有する。各 vendor の skill rule をそれに答える unit へ compile

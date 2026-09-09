@@ -275,11 +275,11 @@ describe('Copilot skill invocation name', () => {
     // ran once and both recognitions publish it.
     expect(copilot!.details.frontmatter).toBe(claude!.details.frontmatter);
     expect(copilot!.details.bodyText).toBe(claude!.details.bodyText);
-    // The one thing the two recognitions do not share, because each product is
-    // asked its own rule about the same file: Copilot invokes the declared
-    // `name`, Claude Code the skill directory (FR-007). One parse, two names.
+    // Each product is asked its own rule about the same file, and at the root
+    // the two rules agree: both invoke the declared `name` (FR-007). One
+    // parse, one name, resolved twice.
     expect(copilot!.details.invocationName).toBe('lander-skill');
-    expect(claude!.details.invocationName).toBe('lander');
+    expect(claude!.details.invocationName).toBe('lander-skill');
   });
 
   it('recognizes nothing for a context Copilot’s own rule did not admit', async () => {

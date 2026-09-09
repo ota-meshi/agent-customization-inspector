@@ -460,14 +460,15 @@ SessionSnapshot
 
 An inventory row's unit is decided by the kind, not by the file. A skill is one
 invocation name as one tool resolves it (data-model.md § Inventory unit): the name that
-tool's own documentation invokes the file by, resolved by the admitting rule. Codex and
-Copilot invoke the authored frontmatter `name` — or the skill directory name when the
-file declares none, declares it empty, or its extraction failed, the directory being the
-path's own fact rather than something a failed parse could be read for (FR-028) — while
-Claude Code's command name is the skill directory whatever the frontmatter declares,
-prefixed root-relative for a nested skill, so `apps/web/.claude/skills/deploy/SKILL.md`
-declaring `name: ship` is `apps/web:deploy` on its Claude Code row and `ship` on its
-Copilot one. `name` is never null or empty. A definition is one
+tool invokes the file by, resolved by the admitting rule. Every product invokes a skill at
+the selected root by the authored frontmatter `name` — or the skill directory name when
+the file declares none, declares it empty, or its extraction failed, the directory being
+the path's own fact rather than something a failed parse could be read for (FR-028) —
+while Claude Code names a nested skill by its directory-qualified command, the
+root-relative prefix and the skill directory, so `apps/web/.claude/skills/deploy/SKILL.md`
+declaring `name: ship` is `apps/web:deploy` on its Claude Code row while
+`.claude/skills/deploy/SKILL.md` declaring the same is `ship` on every product's row.
+`name` is never null or empty. A definition is one
 tool's recognition of one file — the ToolRecognition unit, one per `(file, tool)`, named
 by `definitions[].tool` — so several `SKILL.md` files one tool invokes by one name
 publish one entry listing each recognition as a definition — two files that declare no
@@ -554,12 +555,14 @@ A product contributes a statement only when it faces that collision: an entry wi
 definition has nothing to resolve, and a product that recognizes only one of several has
 nothing to choose between — the other definitions are not its files, and a rule quoted
 there would answer a question it is not being asked. The collision must also be one the
-quoted rule answers, and Claude Code's rule answers the clash of unqualified commands,
-which come from skill directories: its statement attaches to every entry holding a Claude
-definition whose skill directory name is shared with another Claude-recognized skill of
-the same generation. A definition whose extraction failed is no collision evidence for a
-tool that invokes the authored name: that name is unknown, so its row membership is this
-product's provisional grouping rather than a name the tool resolved (FR-028). A product
+quoted rule answers, and Claude Code's rule answers the clash of skill directories — the
+internal command identifiers it detects a clash between, whatever the frontmatter
+declares: its statement attaches to every entry holding a Claude definition whose skill
+directory name is shared with another Claude-recognized skill of the same generation. A
+definition whose extraction failed is no collision evidence for a tool whose clash is on
+the authored name — Codex and Copilot: that name is unknown, so its row membership is this
+product's provisional grouping rather than a name the tool resolved (FR-028). It stays
+evidence for Claude Code, whose clash is between directories the path itself names. A product
 whose skill strategy is not
 in the shipped registry contributes none either — it recognizes no skill, so no entry can
 reach it. The statements differ by product, and none is completely documented.

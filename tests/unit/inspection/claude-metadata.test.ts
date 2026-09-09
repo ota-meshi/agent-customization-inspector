@@ -130,11 +130,11 @@ describe('Claude skill declared name', () => {
       const recognition = await recognize(testCase.sourceText);
       expect(recognition.parseStatus).toBe('parsed');
       expect(declaredNameOf(recognition)).toBe(testCase.name);
-      // What Claude Code invokes is the skill directory whatever that
-      // declaration says, so the identity its row is keyed by is the same for
-      // every one of these files (FR-007).
+      // Claude Code lists a root skill under its declared `name`, so the rule
+      // that admitted the file answers with it — falling back to the skill
+      // directory, `greet` here, for a file declaring none (FR-007).
       expect(recognition.details.kind === 'skill' && recognition.details.invocationName).toBe(
-        'greet',
+        testCase.name ?? 'greet',
       );
     },
   );
@@ -383,8 +383,12 @@ describe('Claude skill declared name', () => {
         throw new Error('expected a skill recognition');
       }
       expect(declaredNameOf(recognition)).toBeNull();
-      // Claude Code's command name is the path's own fact, so it stands
-      // whether or not the frontmatter parsed (FR-028).
+      // The name falls back to the skill directory rather than being guessed
+      // out of a parse that produced nothing — the same string the rule's own
+      // fallback gives a file declaring none, so the row it lands on is
+      // provisional grouping. Claude Code's clash is between skill
+      // directories, so unlike a Codex or Copilot definition this one stays
+      // collision evidence either way (FR-028, src/shared/skill-collision.ts).
       expect(recognition.details.invocationName).toBe('greet');
       // All-or-nothing: a failed extraction publishes no partial declarations
       // and no instructions either — not just no name (FR-028).

@@ -408,10 +408,10 @@ const invocationNames = computed((): readonly SkillInvocation[] => {
   const byTool = new Map<SupportedTool, SkillInvocation>();
   for (const entry of snapshot.value?.skills ?? []) {
     for (const definition of entry.definitions) {
-      // Both halves of the identity (FR-030): the gather spans rows — the
-      // products invoke one file by different names — but never Sources, or a
-      // same-path skill in another member would add its names and
-      // recognitions to this page.
+      // Both halves of the identity (FR-030): the gather spans rows — a name
+      // is each recognizing rule's own answer, so it is read off every row
+      // that lists the file — but never Sources, or a same-path skill in
+      // another member would add its names and recognitions to this page.
       if (
         definition.sourceRelativePath === definitionPath &&
         definition.sourceId === openSourceId.value
@@ -463,9 +463,9 @@ class SkillInvocationGroup {
   /**
    * The other files this name resolves, so the next copy is one move rather
    * than a return to the list (FR-007). Inside the group for the reason the
-   * comparison link is: a copy is a copy *of this name*, and one file that
-   * answers to two names has a different set under each — stated once for the
-   * page, the strip could not say which name a copy was a copy under.
+   * comparison link is: a copy is a copy *of this name*, so the strip states
+   * which name a copy is a copy under — stated once for the page, it could
+   * not, wherever the page lists more than one name.
    */
   public readonly otherCopies: readonly FileStripEntry[];
 
@@ -488,8 +488,9 @@ class SkillInvocationGroup {
 /**
  * The names this skill answers to, each with the recognitions that resolve it.
  * One group where every product agrees, and one per name where they do not:
- * FR-007 has Claude Code invoking the directory while Copilot invokes the
- * authored `name`, so one file answers to two.
+ * the name is each admitting rule's own answer (FR-007), so the grouping is
+ * by what was resolved rather than by the assumption that every product
+ * resolved the same thing.
  */
 const invocationGroups = computed((): readonly SkillInvocationGroup[] =>
   [...Map.groupBy(invocationNames.value, (invocation) => invocation.name.authored).entries()].map(
@@ -509,9 +510,8 @@ const invocationGroups = computed((): readonly SkillInvocationGroup[] =>
  * screen included, which the strip's own filter removes
  * ({@link otherCopiesOf}).
  *
- * One name at a time, because each group states its own: a file two products
- * invoke by two names is a copy of each, and the two names rarely resolve the
- * same set.
+ * One name at a time, because each group states its own: a copy is a copy of
+ * a name, and two names on one page would rarely resolve the same set.
  */
 function copiesOfName(name: string): readonly FileStripEntry[] {
   const byFile = new Map<string, FileStripEntry>();
@@ -1043,9 +1043,9 @@ watch(
       <!-- The entry file's own facts, on the line under the heading: which
            file carries the skill, how it read, its size, and how many further
            files its directory ships. The products are not here — what each of
-           them invokes this skill by is that recognition's own fact and one
-           file can answer to two names (FR-007), so they are a row apiece
-           below rather than a set of marks on this line. -->
+           them invokes this skill by is that recognition's own fact (FR-007),
+           so they are a row apiece below rather than a set of marks on this
+           line. -->
       <!-- Only while the skill itself is in view. The files tab states the
            selected file's own path and facts on the viewer's line above it,
            and this line states the `SKILL.md`'s: with both on screen a reader
@@ -1069,11 +1069,10 @@ watch(
            behaviors its admitting rules rest on (FR-009), and the name that
            product invokes this skill by. The three are never folded into one
            line, whether or not the names agree today: an invocation name
-           belongs to the recognition rather than to the file — FR-007 has
-           Claude Code invoking the directory while Copilot invokes the
-           authored `name`, so one file answers to two names — and a shape that
-           changes with the data would leave a reader asking why this page
-           looks different. Naming a surface is never a claim that it loaded
+           belongs to the recognition rather than to the file — it is each
+           admitting rule's own answer (FR-007) — and a shape that changes
+           with the data would leave a reader asking why this page looks
+           different. Naming a surface is never a claim that it loaded
            the skill. Selecting a companion never changes this list: a
            companion is a file of the skill, not a skill of its own. -->
       <div class="aci-skill-detail__overview">

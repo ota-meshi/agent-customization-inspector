@@ -244,12 +244,15 @@ serves the complete authored `sourceText`, so every authored value is already on
 screen in its own spelling, and a captioned copy would be one fact in two spellings. The
 values a recognition reads out are the file's own declarations, by the keys the file wrote
 (data-model.md § Skill presentation); the one an inventory row is grouped by is its kind's
-identity — for a `skill`, the name authored in its own file — or its skill directory name
-when the file authors none — which a Claude Code
-recognition of a nested skill prefixes with the root-relative path of the directory
-holding its `.claude` (data-model.md § Inventory unit). The row's last segment is
-deliberately the authored name rather than the vendor's directory-derived command segment,
-so one skill compares across the three tools under one identity. The table therefore fixes
+identity — for a `skill` at the selected root, the name authored in its own file, or its
+skill directory name when the file authors none; for a nested skill, which Claude Code
+alone reaches, the directory-qualified command the vendor builds from the root-relative
+path of the directory holding its `.claude` and the skill directory, with the authored
+name unread (data-model.md § Inventory unit). The authored name heads a root row because
+it is the name Claude Code's own menus list and complete the skill under: the skills page
+calls it the display label and the directory the command, and that directory is the
+internal identifier the qualified nested command is built from, which is why the nested
+row keeps it. The table therefore fixes
 eligible relationship kinds and admitted source forms only.
 
 The final column is normative source-form applicability, not commentary. Effective

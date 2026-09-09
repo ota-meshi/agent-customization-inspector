@@ -715,31 +715,30 @@ describe('the inventory unit is the kind, not the file (T1078)', () => {
     await scanOnce(context);
 
     const snapshot = context.session.snapshot();
-    // A row is one invocation name as one tool resolves it (FR-007), so
-    // Claude Code's reading of `.claude/skills/deploy/SKILL.md` is its own
-    // row: Claude derives the command from the skill directory and never from
-    // the authored `name`, so `release` is not a command it answers to.
+    // A row is one invocation name as one tool resolves it (FR-007), and every
+    // product resolves a root skill by its authored `name`, so Claude Code's
+    // reading of `.claude/skills/deploy/SKILL.md` is one more definition of
+    // `release` — the one row, listing four recognitions of three files.
     expect(
       snapshot.skills.map((entry) => [
         entry.name,
         entry.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
       ]),
     ).toEqual([
-      ['deploy', [['.claude/skills/deploy/SKILL.md', 'claude']]],
       [
         'release',
         [
           ['.agents/skills/ship/SKILL.md', 'copilot'],
           ['.agents/skills/ship/SKILL.md', 'codex'],
           ['.claude/skills/deploy/SKILL.md', 'copilot'],
+          ['.claude/skills/deploy/SKILL.md', 'claude'],
         ],
       ],
     ]);
-    const [deployRow, releaseRow] = snapshot.skills;
+    const [releaseRow] = snapshot.skills;
     // Claude's clash is between skill directories anywhere in the generation,
     // and this one is the only `deploy` directory Claude reads, so it states
-    // nothing either.
-    expect(deployRow!.sameNameResolutions).toEqual([]);
+    // nothing; Codex reads one file and states nothing either.
     expect(releaseRow!.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
@@ -1247,25 +1246,22 @@ describe('the Copilot recognition matrix (T156)', () => {
     await scanOnce(context);
     const snapshot = context.session.snapshot();
 
+    // Claude Code reads the same `lander` file and, at the root, invokes it by
+    // the same declared `name`, so its recognition is one more definition of
+    // `voyage`. It recognizes one of the three, so no Claude statement is made
+    // for the row (FR-007).
     const row = snapshot.skills.find((entry) => entry.name === 'voyage');
     expect(
       row?.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
     ).toEqual([
       ['.claude/skills/lander/SKILL.md', 'copilot'],
+      ['.claude/skills/lander/SKILL.md', 'claude'],
       ['.github/skills/ship/SKILL.md', 'copilot'],
     ]);
     expect(row?.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
-
-    // Claude Code reads the same `lander` file, but invokes it by its skill
-    // directory whatever the frontmatter declares, so its recognition is its
-    // own row and no `voyage` statement is made for it (FR-007).
-    const claudeRow = snapshot.skills.find((entry) => entry.name === 'lander');
-    expect(
-      claudeRow?.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
-    ).toEqual([['.claude/skills/lander/SKILL.md', 'claude']]);
-    expect(claudeRow?.sameNameResolutions).toEqual([]);
+    expect(snapshot.skills.some((entry) => entry.name === 'lander')).toBe(false);
   });
 });
 
@@ -1632,22 +1628,19 @@ describe('the unified skill inventory (T180)', () => {
     // `voyage` is declared by a `.claude` file and a `.github` file, and it is
     // the name Copilot invokes both by — so Copilot alone faces the collision,
     // and its three surfaces make the statement `surface-dependent`, never a
-    // winner. Claude Code reads the `.claude` file too but invokes it by its
-    // skill directory, so its recognition heads a `lander` row of its own
-    // (FR-007).
+    // winner. Claude Code reads the `.claude` file too and invokes it by the
+    // same declared name, so its recognition is a third definition of the row
+    // and, being its only one, states nothing (FR-007).
     const voyage = byName.get('voyage')!;
     expect(voyage.definitions.map((definition) => definition.tool).sort()).toEqual([
+      'claude',
       'copilot',
       'copilot',
     ]);
     expect(voyage.sameNameResolutions).toEqual([
       { tool: 'copilot', resolution: 'surface-dependent' },
     ]);
-    const lander = byName.get('lander')!;
-    expect(
-      lander.definitions.map((definition) => [definition.sourceRelativePath, definition.tool]),
-    ).toEqual([['.claude/skills/lander/SKILL.md', 'claude']]);
-    expect(lander.sameNameResolutions).toEqual([]);
+    expect(byName.has('lander')).toBe(false);
 
     // `dup` exists at two depths under `.claude`. The nested declaration is
     // its own context-prefixed row, and Claude's directory-name collision

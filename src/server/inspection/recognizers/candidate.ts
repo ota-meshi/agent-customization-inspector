@@ -205,7 +205,9 @@ export type RecognitionDetails =
        * declares it empty — falls back to the skill directory, and being a
        * named directory is what a skill is. That fallback is also what a
        * `failed` extraction resolves to for such a tool, which makes the row
-       * provisional grouping rather than collision evidence (FR-028).
+       * provisional grouping rather than evidence of a clash on the authored
+       * name — Codex's and Copilot's; Claude Code's clash is between skill
+       * directories and reads the definition as evidence either way (FR-028).
        */
       readonly invocationName: string;
       /**
@@ -611,18 +613,20 @@ export class ToolRecognition {
     if (admission === undefined || admission.compiled.kind !== 'skill') {
       throw new TypeError('a skill recognition has no rule that can answer its name');
     }
-    // The one parse the kind's own name may come out of: Codex and Copilot
-    // invoke the `name` a skill declares, so the rule is asked with the
-    // declarations beside the path.
+    // The one parse the kind's own name may come out of: every product
+    // resolves a root skill by the `name` it declares, so the rule is asked
+    // with the declarations beside the path.
     //
-    // A failed extraction hands the rule an empty list, so those products'
-    // name falls back to the skill directory — the same string their own
-    // fallback produces for a file that declares none, reached for a different
-    // reason. The extraction Diagnostic this recognition carries is what
+    // A failed extraction hands the rule an empty list, so such a name falls
+    // back to the skill directory — the same string the rule's own fallback
+    // produces for a file that declares none, reached for a different reason.
+    // The extraction Diagnostic this recognition carries is what
     // distinguishes them, and it is why the same-name machinery treats such a
-    // row as provisional grouping rather than as collision evidence (FR-028,
-    // shared/skill-collision.ts). Claude Code reads no declaration at all, so
-    // its command name is unaffected either way.
+    // row as provisional grouping rather than as evidence of a clash on the
+    // authored name — Codex's and Copilot's (FR-028, shared/skill-collision.ts).
+    // Claude Code's clash is between skill directories, so its failed
+    // definition stays evidence, and its nested command reads no declaration
+    // at all, so that name is unaffected either way.
     const frontmatter = extraction.extracted?.frontmatterEntries ?? [];
     return ToolRecognition.#assemble(
       sourceRelativePath,

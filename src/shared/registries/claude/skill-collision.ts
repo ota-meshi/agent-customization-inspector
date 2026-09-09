@@ -37,11 +37,11 @@ class ClaudeSkillCollisionPolicy extends SkillCollisionPolicy {
 
   /**
    * Every definition's path evidences Claude's clash, failed extraction or
-   * not: the unqualified command is the skill directory — the path's own
-   * fact — so the parse state changes nothing about the collision the
-   * documented rule answers (FR-007; contracts/http-api.md § get-session
-   * `skills[]` — "Claude Code's path-derived command name stands either
-   * way").
+   * not: the clash Claude Code detects is between skill directories — its
+   * internal command identifiers, the path's own fact, whatever the
+   * frontmatter declares — so the parse state changes nothing about the
+   * collision the documented rule answers (FR-007; data-model.md § Inventory
+   * unit — "Claude Code's directory clash stands either way").
    */
   public override collisionEvidence(
     rowDefinitions: readonly SameNameCollisionDefinition[],

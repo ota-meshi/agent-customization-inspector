@@ -86,13 +86,16 @@ export type SkillComparisonViewStatus =
  * express — two files of different names, one file twice, a cross-kind pair —
  * cannot be written.
  *
- * The row is named rather than derived from the two paths, because two files
- * can sit together on two rows: the products invoke a skill by different
- * facts, so `.claude/skills/alpha/SKILL.md` declaring `name: beta` beside
- * `.claude/skills/beta/SKILL.md` declaring `name: alpha` is on the `alpha` row
- * and the `beta` row alike. A derived row would be whichever of them sorts
- * first, which drops a third copy of the row the reader opened from out of the
- * compare page's switchers.
+ * The row is named rather than derived from the two paths, because a row is
+ * one name as one tool resolves it and the resolution is each vendor's own
+ * rule (data-model.md § ComparisonSelection). Every shipped skill rule that
+ * reads one file resolves the same string today — a root skill's declared
+ * `name` through the one shared answer — but that is a coincidence of the
+ * shipped rules, not a property of the model: deriving the row would assume
+ * it, and a vendor's rule changing would then move a comparison with no
+ * surface saying so. Named, the route survives such a change — a file two
+ * rules resolve differently is a definition of both rows, and the row the
+ * reader opened from stays the row compared.
  *
  * A module function beside the state class so every surface that builds the
  * link — the inventory row's and detail page's entry links, and the compare

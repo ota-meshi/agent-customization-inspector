@@ -641,10 +641,11 @@ export interface AllToolSkillFixture {
  * (Codex+Copilot) — among them a same-name pair, a secret bearer, an empty
  * file, a NUL-carrying candidate, and the injection target — root `.claude`
  * skills (Claude+Copilot), and nested `.claude` skills (Claude alone, through
- * its documented lazy descendant discovery). Duplicate declared names exist
- * at three scopes: a Codex pair inside one directory (`alpha`), a Claude
- * directory name at two depths (`dup`), and a Copilot-vs-Copilot collision
- * across two of its directories (`voyage`).
+ * its documented lazy descendant discovery). Duplicate names exist at three
+ * scopes: a Codex pair inside one directory (`alpha`), a Claude directory
+ * name at two depths (`dup`), and a Copilot-vs-Copilot collision across two
+ * of its directories (`voyage`) — a row Claude Code also defines on, through
+ * the `.claude` file, without facing a clash of its own.
  *
  * Deterministic failures: the NUL-carrying `.agents` candidate publishes as
  * `binary` with its diagnostic, and the capability-gated broken link as

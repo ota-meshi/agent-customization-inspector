@@ -44,9 +44,9 @@ export type { SourceSelector };
  * of the file that declares it — the identity its inventory row is named by —
  * an MCP or hook carrier's own page is the carrier's, and a settings or
  * configuration file's page is that file's, its row unit being the file. A skill is here
- * too: its row unit is one invocation name, and two products that invoke one
- * `SKILL.md` differently put it on two rows, but both read the same bytes, the
- * same frontmatter, and the same companion directory, so the page is the
+ * too: its row unit is one invocation name, resolved by each recognizing
+ * product's own rule, but every product reads the same bytes, the same
+ * frontmatter, and the same companion directory, so the page is the
  * `SKILL.md`'s and the names are what the page states (FR-007).
  */
 export type PathAddressedDetailKind = Extract<
@@ -497,8 +497,11 @@ export function selectedFileOf(parameter: unknown): string | null {
  * followed, for the kinds whose row unit is a name.
  *
  * One file can be listed under more than one name — FR-007 has Claude Code
- * invoking a skill's directory while Copilot invokes the authored `name`, and
- * the same file is then a definition of both rows (spec.md § Clarifications).
+ * defining a custom agent under its declared `name` while Copilot defines it
+ * under its file name, and the same file is then a definition of both rows
+ * (spec.md § Clarifications). Every name-keyed kind carries the coordinate,
+ * whether or not a shipped rule of that kind produces two names today, so
+ * one link shape serves them all.
  * The page stays the file's, addressed by `(source, path)`; this says nothing
  * about what the page shows and only records where it was opened from, so the
  * moves to the previous and next row step the list the reader was actually

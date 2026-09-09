@@ -950,7 +950,7 @@ substituteしない。
 
 | Kind | 1 rowが示す単位 |
 |---|---|
-| `skill` | 1つのtoolが解決した1つのinvocation name（FR-007）: そのtool自身の文書がこのfileを呼び出す名前で、admitしたruleが答える — CodexとCopilotはauthoredなfrontmatter `name`、fileが宣言しない場合はskill directory名。Claude Codeはfrontmatterの宣言に依らずskill directoryで、nestedならroot相対のprefixを前置する。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つのtoolが1つの名前で呼び出す複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前で呼び出される1つのfileは各名前のentryで定義される。definitionはrecognitionであるため、pathで識別されるrowのrecognitionとまったく同じく、admitしたruleが依拠するdocumented behaviorのsurfaceを述べる（FR-009） |
+| `skill` | 1つのtoolが解決した1つのinvocation name（FR-007）: そのtoolがこのfileを呼び出す名前で、admitしたruleが答える — 選択されたrootにあるskillはすべての製品についてauthoredなfrontmatter `name`、fileが宣言しない場合はskill directory名。nestedなClaude Code skillはdirectory-qualifiedなcommand、すなわちroot相対のprefixとskill directory。定義は1つのrecognition — `(file, tool)`につき1つ — であるため、1つのtoolが1つの名前で呼び出す複数fileは1 entryが各recognitionを定義として列挙し、toolごとに異なる名前で呼び出される1つのfileは各名前のentryで定義される。definitionはrecognitionであるため、pathで識別されるrowのrecognitionとまったく同じく、admitしたruleが依拠するdocumented behaviorのsurfaceを述べる（FR-009） |
 | `MCP` | 宣言されたserver名1つ: その名前を解決するすべての`[mcp_servers.*]`型宣言 — `(carrier, tool)`ごとに1つ — がその名前のrowの中に列挙される。したがって1つの`.codex/config.toml`は宣言したserverごとに宣言を1つ寄与し、同じ名前を宣言する第2のcarrierはその名前のrowに合流する。宣言の住処は明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、そのfile自身のdetailに見えるだけで、MCP rowには合流しない。各宣言は自身のfileを名指す。nameがnullである1つのrowがlistを閉じ、現在named宣言を公開していないcarrier — rowが不明である読めない宣言block、または何も宣言しないcarrier — を保持する |
 | `instructions` | 1つのSourceの1つの適用範囲: 担当するfile自身のpathが導出するglobであり、担当する各fileをそのfileのrecognitionとともに列挙する — 各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceである。toolだけでは、productがそのfileをどこから読むのかを言えないためである。Sourceは行のidentityの半分であるため、repositoryの`**`とconsentされたhomeの`**`は2つの行である。一覧はその範囲の1つの見出しの下に両者を示し、Source familyごとに1つのblockへまとめる。familyとは、選択されたrepositoryと、読み手自身の設定ディレクトリである。comparisonは1つのblockのfileの組であり、consentされた2つのhomeを組にすることはあっても、2つのfamilyにまたがることはない（FR-011、FR-030）。blockが自身のfamilyを名乗るのはsessionが複数のSourceを保持する場合だけであり、fileがどのディレクトリにあったかを名乗るのはそのfamilyが複数のSourceを保持する場合だけである。1つの場合、どちらもpageの唯一の答えを繰り返すことになる |
 | `rule` | File自身: rule fileはproductがcontextへ読み込むmodularなinstructionであり、rowのkeyにできる名前も、groupingできる範囲も持たないため、そのSource相対Pathがrowの同一性である。1つのfileを2つのproductが認識する場合は1 rowに2つのrecognitionが並び、各recognitionは1つのproductと、そのfileをadmitしたruleが依拠するdocumented behaviorのsurfaceを名指す |
@@ -1008,17 +1008,20 @@ nullである1つのrowを共有し、すべての範囲付きrowの後にsort�
 範囲はfileが担当する対象を述べる。
 製品がそのfileをloadしたという主張では決してない: admissionはactivationではない（FR-009）。
 
-Skill rowの名前は1つのtool自身の文書がこのfileを呼び出す名前である（FR-007）。名前がpathと
-宣言からどう導かれるかはそのvendor自身のcontractであるため、admitしたruleが答える。Codexと
-Copilotはauthoredなfrontmatter `name`を呼び出す —
+Skill rowの名前は1つのtoolがこのfileを呼び出す名前である（FR-007）。名前がpathと
+宣言からどう導かれるかはそのvendor自身のcontractであるため、admitしたruleが答える。すべての
+製品は、選択されたrootにあるskillをauthoredなfrontmatter `name`で呼び出す —
 fileが宣言しないか空で宣言する場合はskill directory名。名前付きdirectoryであることが
 skillであり、これによりすべてのrowが名前を持ち、同名directoryに置かれたそうした2つの
-fileは1つのrowを共有する。Claude Codeはfrontmatterの宣言に依らずskill directoryを呼び出し、
-authoredな`name`は表示labelだけとして扱う（skills page § How a skill gets its command
-name）。nestedなskillのcommandには`.claude`を保持するdirectoryの
-root相対`/`-joined pathと`:`が前置される。したがって`name: ship`を宣言する
-`apps/web/.claude/skills/deploy/SKILL.md`は、Claude Code rowでは`apps/web:deploy`、
-Copilot rowでは`ship`である。そこに列挙されたtoolが応じない名前を見出しに持つrowは、読み手が
+fileは1つのrowを共有する。Claude Codeはnestedなskillをそのdirectory-qualifiedなcommand —
+`.claude`を保持するdirectoryのroot相対`/`-joined path、`:`、skill directoryであり、宣言された
+名前は読まない — で名付ける。したがって`name: ship`を宣言する
+`apps/web/.claude/skills/deploy/SKILL.md`はClaude Code rowでは`apps/web:deploy`であり、
+同じ宣言を持つ`.claude/skills/deploy/SKILL.md`はすべての製品のrowで`ship`である。宣言された
+名前はClaude Codeのmenuがrootのskillを列挙し補完する名前であり、directoryはqualifiedな
+nested commandを組み立てる内部identifierである。skills page（§ How a skill gets its
+command name）が`name` fieldは表示labelだけを決めると言うのは、このidentifierについての
+記述である。そこに列挙されたtoolが応じない名前を見出しに持つrowは、読み手が
 呼び出せないものを名指すことになる。だからrowと invocation nameは2つではなく1つの事実である。
 Nested形には常にprefixが付く:
 vendorは、この製品が決して読まない層に対する名前衝突時に、決して観測しないsession working
@@ -1033,8 +1036,10 @@ referenceである（FR-028）。extractionは`(file, kind)`ごとに1回なの�
 file-confinedな結果としてそれを1回だけ列挙する。extractionの
 失敗はauthoredな名前を不在ではなく不明のまま残すため、それを呼び出すtoolはskill directoryへ
 フォールバックする — 失敗したparseの読みではなくpath自身の事実である。そこで名付けられたrowは
-暫定的なgroupingであり、その定義はそのtoolのsame-name衝突の証拠にならない。Claude Codeの
-path由来command名はどちらでも成立する。
+暫定的なgroupingであり、その定義はauthoredな名前で衝突するtool — CodexとCopilot — の
+same-name衝突の証拠にならない。Claude Codeのdirectory衝突はどちらでも成立する。Claude Codeが
+検出する衝突は、frontmatterの宣言に依らずskill directory間のものだからである: 解析に失敗した
+rootの`foo`と正常にparseされたnestedの`foo`はその衝突であり、両方のrowにその記述が付く。
 
 GroupingされたentryがInspectorの記録していない優劣を暗示することはない。各entryは、そのentryの定義の
 うち2つ以上をproductが認識する名前について、そのproductがどう解決するかを述べる。記録された記述が異なる
@@ -1063,9 +1068,10 @@ skillまたはinstruction file — のparseである。コード上は、recogni
 
 Recognition recordのdetailsは`kind`で判別する。Recognitionを識別する情報はkindごとに異なり、1つの共有
 optional fieldには収まらないからである: skillは単一の`name`を宣言するが、MCP carrierはserverごとに1つ
-宣言する。Skillのdetailsはその宣言済み名を運ぶ。これは表示labelであり、すべてのrowの名前の
-元となるidentityである（FR-007、FR-027）。Fileが宣言していない場合、名前はemptyではなく
-absentとする。Fileが宣言しないか空で宣言するrowは、代わりにそのskill directory名で名付けられる。
+宣言する。Skillのdetailsは、admitしたruleが解決したinvocation name — 選択されたrootにあるskillでは
+宣言された`name`、nestedなClaude Code skillではdirectory-qualifiedなcommand — を運び、
+emptyになることはない（FR-007、FR-027）: Fileが宣言しないか空で宣言するrowは、代わりにその
+skill directory名で名付けられる。
 Instruction recognitionのdetailsは同じ1回のparse — 書かれた順の宣言済みkeyとblockを
 除いたbody — を運び、名前は意図的に持たない: recognitionを識別するのはそれが見つかったfile
 であるため、recognitionが既に運ぶSource-relative Pathがidentityの全体である。これは
@@ -1220,8 +1226,11 @@ snapshotに対して解決するため、bookmarkされたlinkのpathは、再�
 scanに対して解決し、originはdevframeのport選択に属し、固定defaultが塞がっているときだけ移る
 （quickstart.md）ため、portの移動が変えるのはbookmarkの指す先であって、そのpathが名指すfileではない。
 現在のscanが保持しないpathはdead linkとして報告される。
-authoredな`name`がdirectoryと異なるrootの`.claude` skillは、Copilotにはauthoredな名前で、
-Claude Codeにはdirectory由来のcommandで呼び出され、pageはその両方を製品と対にして述べる。
+authoredな`name`がdirectoryと異なるrootの`.claude` skillは、CopilotにもClaude Codeにも、それぞれ
+自身のruleを通してauthoredな名前で呼び出され、pageはその1つの名前を1回述べ、その下に両製品の
+recognitionを置く。名前はfileに対して1回ではなくrecognitionごとに述べるため、2つのruleが異なる
+名前に解決するfile — nestedなClaude Code skillはdirectory-qualifiedなcommandである — はそれぞれの
+名前の下で述べられる。
 公開値はprojectionのものであり、
 clientはvendor namingを再導出せず公開値を描画する。
 その下に2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを1つのYAML documentとしてread-only viewerで提示し —
@@ -1239,7 +1248,7 @@ shippedな全vendorが同じ固定YAML semanticsを読む — toolごとのcopy�
 
 | Field | Type | Rule |
 |---|---|---|
-| `invocationName` | string | このrecognition自身のtoolがそのfileを呼び出す名前で、admitしたruleが答える（§ 一覧の単位、FR-007）。空にはならない: authoredなidentityを呼び出すruleは、Parserが解決した`name` scalar（§ Field reading）を読み、fileが宣言しない場合、空で宣言する場合、scalar以外へ解決する場合 — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる — 、およびextractionが失敗した場合はskill directoryへフォールバックする。Claude Codeのruleは宣言を一切読まず、skill directoryを取り、nestedならroot相対のprefixを前置する。authoredな`name`自体はここには持たない: それは下の`frontmatter` entryの1つであり、保持すれば事実とそこから導出した値の二重公開になる |
+| `invocationName` | string | このrecognition自身のtoolがそのfileを呼び出す名前で、admitしたruleが答える（§ 一覧の単位、FR-007）。空にはならない: authoredなidentityを呼び出すruleは、Parserが解決した`name` scalar（§ Field reading）を読み、fileが宣言しない場合、空で宣言する場合、scalar以外へ解決する場合 — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる — 、およびextractionが失敗した場合はskill directoryへフォールバックする。選択されたrootにあるskillについてはすべての製品のruleがこのように答え、Claude Codeのruleはnestedなskillについては宣言を読まず、代わりにdirectory-qualifiedなcommandを取る。authoredな`name`自体はここには持たない: それは下の`frontmatter` entryの1つであり、保持すれば事実とそこから導出した値の二重公開になる |
 | `frontmatter` | ordered entry[] | Fileが宣言するすべてのkeyを、fileが書いたkey — 維持管理上のcatalogのものではない — でauthored順に持つ。Frontmatter blockの無いdocument、mappingではなくlistや裸のscalarとして書かれたblock — そうしたblockはkeyを宣言せず、listを読めば得られるindex位置はfileが書いたkeyではない — 、`failed` extractionでは空 |
 | `bodyText` | string | 同じdocumentからfrontmatter blockを取り除いたもの。`failed` extractionでは空 |
 
@@ -1419,10 +1428,13 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   （spec.md § Clarifications Session 2026-08-14）。Skill routeは、所有する行のinvocation name、比較する2つのcopyのentry fileの
   `sourceRelativePath` identity、copy相対の比較対象ファイルを名指し、所属sequenceのcurrentな
   commit済みgenerationに対して、0件、対応するreadableなfileを2つ、またはreadableなfile 1つと
-  明示された不在へ解決される。行を2つのidentityから導出せず名指すのは、2つのfileが複数の行に
-  同居しうるためである — 製品はskillを異なる事実で呼び出すため、他方のdirectory名を自身の`name`
-  として宣言するfileは両方を両方の行に載せる — 。導出した行はgenerationが先に公開した方になり、
-  読み手が開いた行の3つ目のcopyをroute自身のswitcherから取り落とす。Instruction routeは、先頭に立つSource familyと、side
+  明示された不在へ解決される。行を2つのidentityから導出せず名指すのは、行が「1つのtoolが解決した
+  1つの名前」であり、その解決が各vendor自身のruleだからである（§ 一覧の単位）: 行を導出することは、
+  fileを読むすべてのruleが同じ文字列に解決すると仮定することであり、それは出荷済みruleのたまたまの
+  一致であってmodelの性質ではなく、あるvendorのruleが変われば、どのsurfaceも何も言わないまま比較が
+  動いてしまう。名指しておけばrouteはその変化に耐える — 2つのruleが異なる名前に解決するfileは両方の
+  行の定義であり、読み手が開いた行が比較される行のままで、その3つ目のcopyはroute自身のswitcherに
+  残る。導出した行はgenerationが先に公開した方になり、それを取り落とす。Instruction routeは、先頭に立つSource familyと、side
   ごとのSourceと`sourceRelativePath` identityを名指す（FR-030）。ペアの所有者は、1つのapplicability
   rangeがそのfamilyに対して保持するblockである — skillの前例の行がここではblockになり、fileはちょうど
   1つのrangeを統治するため、そのrangeは2つのidentityから導出される — 。したがってペアはconsentされた

@@ -409,14 +409,15 @@ SessionSnapshot
 ```
 
 一覧rowの単位はfileではなくkindが決める。Skillは1つのtoolが解決した1つのinvocation
-nameである（data-model.md § 一覧の単位）: そのtool自身の文書がこのfileを呼び出す名前で、
-admitしたruleが解決する。CodexとCopilotはauthoredなfrontmatter `name`を呼び出す —
-fileが宣言しないか空で宣言する場合、またはextractionが失敗した場合はskill directory名。
-directoryはpath自身の事実であり、失敗したparseから読み出した値ではない（FR-028）。一方
-Claude Codeのcommand名はfrontmatterの宣言に依らずskill directoryであり、nestedなskillには
-root相対のprefixを前置する。したがって`name: ship`を宣言する
-`apps/web/.claude/skills/deploy/SKILL.md`は、Claude Code rowでは`apps/web:deploy`、
-Copilot rowでは`ship`である。`name`がnullや空になることはない。
+nameである（data-model.md § 一覧の単位）: そのtoolがこのfileを呼び出す名前で、
+admitしたruleが解決する。すべての製品は、選択されたrootにあるskillをauthoredなfrontmatter
+`name`で呼び出す — fileが宣言しないか空で宣言する場合、またはextractionが失敗した場合は
+skill directory名。directoryはpath自身の事実であり、失敗したparseから読み出した値ではない
+（FR-028）。一方Claude Codeはnestedなskillをそのdirectory-qualifiedなcommand — root相対の
+prefixとskill directory — で名付ける。したがって`name: ship`を宣言する
+`apps/web/.claude/skills/deploy/SKILL.md`はClaude Code rowでは`apps/web:deploy`であり、
+同じ宣言を持つ`.claude/skills/deploy/SKILL.md`はすべての製品のrowで`ship`である。`name`が
+nullや空になることはない。
 1つのtoolが1つの名前で呼び出す複数の
 `SKILL.md`は、複数の定義を持つ1つのentryとして公開される — 名前を宣言せず同名のskill
 directoryに置かれた2つのfileもその一例である。定義は1つのtoolによる1つのfileのrecognition
@@ -460,11 +461,13 @@ candidateである。付随fileを名指すのは所属するskillの
 持つのはその衝突に直面するproductだけとする: 定義が1つのentryには解決すべきものが無く、複数のうち
 1つしか認識しないproductには選ぶ対象が無い。他の定義はそのproductのfileではなく、そこにruleを引いても
 問われていない問いに答えることになるからである。衝突は引用するruleが答えるものでもなければならず、
-Claude Codeのruleはskill directoryに由来するunqualifiedなcommandの衝突に答える: その記述は、
-Claude定義のskill directory名を同一generationの別のClaude認識skillと共有するすべてのentryに付く。
-extractionが失敗した定義は、authoredな名前を呼び出すtoolにとって衝突の証拠にならない: その名前は
-不明であり、rowへの所属はtoolが解決した名前ではなくこのproductの暫定的なgroupingだからである
-（FR-028）。Skill strategyが出荷レジストリに無いproductも持たない。
+Claude Codeのruleはskill directory — frontmatterの宣言に依らずClaude Codeが衝突を検出する内部の
+command identifier — の衝突に答える: その記述は、Claude定義のskill directory名を同一generationの
+別のClaude認識skillと共有するすべてのentryに付く。extractionが失敗した定義は、authoredな名前で
+衝突するtool — CodexとCopilot — にとって衝突の証拠にならない: その名前は不明であり、rowへの所属は
+toolが解決した名前ではなくこのproductの暫定的なgroupingだからである（FR-028）。Claude Codeにとっては
+証拠のままである。その衝突はpath自身が名指すdirectory間のものだからである。Skill strategyが
+出荷レジストリに無いproductも持たない。
 そのproductはskillを認識しないため、どのentryもそこへ到達しない。記述はproductごとに異なり、
 どれも完全には文書化されていない。
 

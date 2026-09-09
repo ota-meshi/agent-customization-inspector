@@ -76,17 +76,21 @@ function definition(tool: SupportedTool, path: string): SkillDefinitionDto {
 }
 
 /**
- * The rows one shared file produces: `.claude/skills/lander/SKILL.md` declares
- * `name: voyage` and is admitted by Copilot and Claude, which invoke it by
- * different names — Copilot by the authored identity, Claude Code by the skill
- * directory — so the one file is listed under each (FR-007). Keeping them
- * apart is exactly what must survive to the detail route. Rows in the order
- * the server publishes them, which is by name.
+ * The row one shared file produces: `.claude/skills/lander/SKILL.md` declares
+ * `name: voyage` and is admitted by Copilot and Claude, which both invoke a
+ * root skill by the authored identity, so the one file is two definitions of
+ * the one row — each still its own recognition (FR-007). Keeping the
+ * definitions apart is exactly what must survive to the detail route.
+ * Definitions in the order the server publishes them, which is the contracted
+ * tool order within one file.
  */
 function sharedFileRows(): readonly SkillInventoryEntryDto[] {
   return [
-    { name: 'lander', definitions: [definition('claude', SHARED_PATH)], sameNameResolutions: [] },
-    { name: 'voyage', definitions: [definition('copilot', SHARED_PATH)], sameNameResolutions: [] },
+    {
+      name: 'voyage',
+      definitions: [definition('copilot', SHARED_PATH), definition('claude', SHARED_PATH)],
+      sameNameResolutions: [],
+    },
   ];
 }
 
@@ -139,28 +143,25 @@ function withSelection(snapshot: Ref<SessionSnapshot | null>) {
 }
 
 describe('a shared file’s recognitions stay separate definitions', () => {
-  it('lists the one file under each name a tool invokes it by', () => {
+  it('lists the one file once under the name both tools invoke it by', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(
       snapshotWith([file(SHARED_PATH)], sharedFileRows()),
     );
     const { view } = withSelection(snapshot);
     expect(view.availableTools.value).toEqual(['copilot', 'claude']);
-    // One file, two names: the skill directory for Claude Code, the authored
-    // identity for Copilot. The view passes each row through unchanged — a
-    // merged row would be headed by a name one of the vendors does not answer
-    // to (FR-007).
+    // One file, one name, two definitions: each product resolved the authored
+    // identity through its own rule. The view passes the row through
+    // unchanged — collapsing the definitions would lose which product
+    // recognizes the file (FR-007).
     expect(
       view.skillRows.value.map((row) => [row.name, row.definitions.map(({ tool }) => tool)]),
-    ).toEqual([
-      ['lander', ['claude']],
-      ['voyage', ['copilot']],
-    ]);
+    ).toEqual([['voyage', ['copilot', 'claude']]]);
   });
 
-  it('routes both rows’ definitions to the one file’s detail URL', () => {
+  it('routes both definitions to the one file’s detail URL', () => {
     // The URL is the file's identity and nothing else (FR-030): two products
     // reading one `SKILL.md` read the same bytes, the same frontmatter, and
-    // the same companion directory, so the two rows' definitions of it
+    // the same companion directory, so the row's two definitions of it
     // address one document rather than two.
     const routes = sharedFileRows()
       .flatMap((row) => row.definitions)
@@ -172,7 +173,7 @@ describe('a shared file’s recognitions stay separate definitions', () => {
     expect(new Set(routes).size).toBe(1);
   });
 
-  it('narrows the shared file to exactly the addressed tool’s row', () => {
+  it('narrows the shared file to exactly the addressed tool’s definition', () => {
     const snapshot = shallowRef<SessionSnapshot | null>(
       snapshotWith([file(SHARED_PATH)], sharedFileRows()),
     );
@@ -181,7 +182,7 @@ describe('a shared file’s recognitions stay separate definitions', () => {
     expect(view.skillRows.value.map((row) => row.name)).toEqual(['voyage']);
     expect(view.skillRows.value[0]?.definitions.map((one) => one.tool)).toEqual(['copilot']);
     tool.value = 'claude';
-    expect(view.skillRows.value.map((row) => row.name)).toEqual(['lander']);
+    expect(view.skillRows.value.map((row) => row.name)).toEqual(['voyage']);
     expect(view.skillRows.value[0]?.definitions.map((one) => one.tool)).toEqual(['claude']);
   });
 

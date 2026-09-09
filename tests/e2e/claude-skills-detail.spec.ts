@@ -275,22 +275,20 @@ test('shows the addressed definition and nothing about a runtime it cannot see',
 }) => {
   await openSkill(page, '.claude/skills/greet/SKILL.md');
   // One line per recognizing product, in the contracted tool order, each
-  // with the surfaces its admissions rest on and the name it invokes the
-  // skill by — `claude-greet` for Copilot, which reads the authored `name`,
-  // and the skill directory for Claude Code. Naming a surface says where the
-  // product documents reading the file, never that it loaded it: that depends
-  // on a runtime this tool never observes, and a sentence about it would take
-  // the room the files below need (FR-009).
-  expect(await statedInvocations(page, 2)).toEqual([
+  // with the surfaces its admissions rest on, under the name both invoke the
+  // skill by — the authored `claude-greet`, which each product's own rule
+  // resolves for a root skill. Naming a surface says where the product
+  // documents reading the file, never that it loaded it: that depends on a
+  // runtime this tool never observes, and a sentence about it would take the
+  // room the files below need (FR-009).
+  expect(await statedInvocations(page, 1)).toEqual([
     {
       name: 'claude-greet',
       comparable: false,
-      recognitions: [{ product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' }],
-    },
-    {
-      name: 'greet',
-      comparable: false,
-      recognitions: [{ product: 'Claude Code', surfaces: 'CLI and IDE clients' }],
+      recognitions: [
+        { product: 'GitHub Copilot', surfaces: 'VS Code, CLI, Cloud agent' },
+        { product: 'Claude Code', surfaces: 'CLI and IDE clients' },
+      ],
     },
   ]);
   const detail = (await page.locator('.aci-skill-detail').textContent()) ?? '';
