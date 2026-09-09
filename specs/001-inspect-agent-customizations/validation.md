@@ -829,15 +829,26 @@ is therefore not claimed on Firefox, which the inventory walk — the one page w
 on it — holds to the same claim as the other two engines.
 
 Re-measured on 2026-09-09, after the detail page's source box became the browser's own `pre`
-with `tabindex="0"` and no key handling of its own (T1207): `AUTO-2.1.2` asserts a bounded
-forward-Tab exit on all three engines, and the detail walk's count is claimed on Firefox with
-the others. The pinned Firefox revision leaves the box on the first Tab, so the forward-exit
-limitation above belonged to the editor that no longer renders there; the comparison pages,
-whose diff stays Monaco's until T1209, are outside this case's walk. Run on the pinned Firefox
+with `tabindex="0"` and no key handling of its own (T1207): the box holds nothing, so the
+forward-exit limitation above belonged to the editor that no longer renders there, and the
+detail walk's count is claimed on Firefox with the others. The comparison pages, whose diff
+stays Monaco's until T1209, are outside this case's walk. Run on the pinned Firefox
 and WebKit revisions through `playwright test --project=firefox --project=webkit
 tests/e2e/accessibility.spec.ts` (69 passed) and on Chromium through the same file. Run
 again on all three engines after the comparison became two `pre`s (T1209), with the same
 result: 105 passed.
+
+The exit is asserted backward, on all three engines, because the box is the last focusable
+element the detail renders: a forward press leaves the document, and the engines report that
+differently. Chromium answers `body` with `document.hasFocus()` false; Firefox keeps
+`document.activeElement` on the box, which a forward assertion reads as a trap — and did,
+exhausting ten presses on the certification runner. Appending any focusable after the box
+moves focus off it on the first forward press on both engines, so what a forward press meets
+there is the end of the document rather than anything the box holds. Backward navigation
+always has a control to reach, which is what makes it one claim on every engine rather than a
+per-engine split. Measured and run three times on each pinned revision through `playwright
+test --project=<engine> tests/e2e/accessibility.spec.ts -g 'AUTO-2.1.2 focus enters and
+leaves'`.
 
 **The manual half is outside the criterion.** The 36 `MANUAL-*` IDs would be executed over
 `3 × 5 × 3 × 8 × 3 = 1,080` keyed cells each — 38,880 cells requiring macOS with VoiceOver,

@@ -706,13 +706,23 @@ walkが動いているかではなく、editorがmountした時点でその手�
 Firefoxを他の2 engineと同じclaimに保つ。
 
 2026-09-09に再測定した。detail pageのsource boxが、独自のkey handlingを持たない `tabindex="0"` の
-browser自身の `pre` になった後である（T1207）。`AUTO-2.1.2` は3 engineすべてで上限付きの前向きTab
-脱出をassertし、detail walkの数もFirefoxで他のengineと同様に主張する。pinされたFirefox revisionは
-最初のTabでboxから出るので、上記の前向き脱出のlimitationは、そこにもう描画されないeditorのものだった。
-比較pageのdiffはT1209までMonacoのままだが、このcaseのwalkの外にある。pinされたFirefoxとWebKitの
+browser自身の `pre` になった後である（T1207）。boxは何も掴んでいないので、上記の前向き脱出の
+limitationは、そこにもう描画されないeditorのものだった。detail walkの数もFirefoxで他のengineと
+同様に主張する。比較pageのdiffはT1209までMonacoのままだが、このcaseのwalkの外にある。
+pinされたFirefoxとWebKitの
 revisionで `playwright test --project=firefox --project=webkit tests/e2e/accessibility.spec.ts`
 を実行し（69件pass）、Chromiumでも同じfileを実行した。comparisonが2つの `pre` になった後
 （T1209）にも3 engineすべてで再実行し、同じ結果だった: 105件pass。
+
+脱出は3 engineすべてで後ろ向きにassertする。boxはdetailが描く最後のfocusable elementなので、
+前向きの押下はdocumentの外へ出てしまい、その報告がengineで異なるためである。Chromiumは
+`body` を返し `document.hasFocus()` はfalseになる。Firefoxは `document.activeElement` をboxのまま
+保つので、前向きのassertionはこれをtrapと読む — 実際にcertification runnerで10押下を使い切った。
+boxの後ろにfocusableを1つでも足すと、どちらのengineも最初の前向き押下でboxから出るため、そこで
+前向きの押下が出会うのはboxが掴んでいる何かではなくdocumentの終端である。後ろ向きの移動は必ず
+到達できるcontrolを持つので、engineごとに分けない1つのclaimになる。pinされた各revisionで
+`playwright test --project=<engine> tests/e2e/accessibility.spec.ts -g 'AUTO-2.1.2 focus enters
+and leaves'` を3回ずつ実行して測定した。
 
 **Manualな側はcriterionの外にある。** 36件の`MANUAL-*` IDは、`3 × 5 × 3 × 8 × 3 = 1,080`個の
 keyed cellそれぞれに対して実行することになる — 合計38,880 cellで、VoiceOver付きmacOS、NVDA付き

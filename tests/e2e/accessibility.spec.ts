@@ -446,15 +446,26 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({ pa
     entered = await inSourceBox();
   }
   expect(entered, 'focus never entered the source box').toBe(true);
-  // Leaving it again is certified on every engine by a bounded forward-Tab
-  // walk: the box is one `pre` with `tabindex="0"` that installs no key
-  // handling of its own, so the next Tab is the platform's. The count is in
-  // the message because it is what tells a trap from a walk that merely
-  // needed more presses: a bound raised and still exhausted is the box
-  // holding focus, not the box being deep.
+  // Leaving it again is certified on every engine by a bounded Shift+Tab walk:
+  // the box is one `pre` with `tabindex="0"` that installs no key handling of
+  // its own, so the next press is the platform's.
+  //
+  // Backward rather than forward, because the box is the last focusable element
+  // this detail renders, so a forward press leaves the document — and the
+  // engines report that differently: Chromium answers `body` with
+  // `document.hasFocus()` false, while Firefox keeps `document.activeElement` on
+  // the box, which reads here as a trap. Appending any focusable after the box
+  // moves focus off it on the first forward press on both, so what a forward
+  // press meets there is the end of the document rather than anything the box
+  // holds. Backward navigation always has a control to reach, so it is one
+  // claim on every engine rather than a per-engine split.
+  //
+  // The count is in the message because it is what tells a trap from a walk
+  // that merely needed more presses: a bound raised and still exhausted is the
+  // box holding focus, not the box being deep.
   let leavePresses = 0;
   for (; leavePresses < 10 && (await inSourceBox()); leavePresses += 1) {
-    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
   }
   expect(
     await inSourceBox(),
