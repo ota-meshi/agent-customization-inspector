@@ -1603,9 +1603,12 @@ root's scan, and the origin is devframe's port selection, fixed-default unless o
 path names — and a path the current scan does not hold is
 reported as a dead link. A root
 `.claude` skill whose authored `name` differs from its directory is invoked by Copilot
-under the authored name and by Claude Code under the directory-derived command, and the
-page names both against their products. The published values are the projection's, so the
-client renders vendor naming rather than re-deriving it. Then two tabs — the skill itself and its files. The skill
+and by Claude Code alike under the authored name, each through its own rule, and the
+page states that one name once with both products' recognitions under it; a name is
+stated per recognition rather than once for the file, so a file two rules resolve
+differently — a nested Claude Code skill is a directory-qualified command — is stated
+under each. The published values are the projection's, so the client renders vendor
+naming rather than re-deriving it. Then two tabs — the skill itself and its files. The skill
 tab presents every key the frontmatter declares as one YAML document through the
 read-only viewer — led by the keys the vendors document for a skill, in the order Claude
 Code's own frontmatter reference publishes them, and every other key in the file's own

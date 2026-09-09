@@ -1226,8 +1226,11 @@ snapshotに対して解決するため、bookmarkされたlinkのpathは、再�
 scanに対して解決し、originはdevframeのport選択に属し、固定defaultが塞がっているときだけ移る
 （quickstart.md）ため、portの移動が変えるのはbookmarkの指す先であって、そのpathが名指すfileではない。
 現在のscanが保持しないpathはdead linkとして報告される。
-authoredな`name`がdirectoryと異なるrootの`.claude` skillは、Copilotにはauthoredな名前で、
-Claude Codeにはdirectory由来のcommandで呼び出され、pageはその両方を製品と対にして述べる。
+authoredな`name`がdirectoryと異なるrootの`.claude` skillは、CopilotにもClaude Codeにも、それぞれ
+自身のruleを通してauthoredな名前で呼び出され、pageはその1つの名前を1回述べ、その下に両製品の
+recognitionを置く。名前はfileに対して1回ではなくrecognitionごとに述べるため、2つのruleが異なる
+名前に解決するfile — nestedなClaude Code skillはdirectory-qualifiedなcommandである — はそれぞれの
+名前の下で述べられる。
 公開値はprojectionのものであり、
 clientはvendor namingを再導出せず公開値を描画する。
 その下に2つのtab — skill自身と、そのfile — を置く。Skill tabはfrontmatterが宣言する全keyを1つのYAML documentとしてread-only viewerで提示し —
