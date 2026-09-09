@@ -1131,8 +1131,11 @@ watch(
                  count (`FileStrip.vue`). Inside the group for the reason the
                  comparison link above is: a copy is a copy of this name, and a
                  file answering to two names has a different set under each.
-                 Nothing here states an order or a winner: which copy a session
-                 loads turns on runtime this tool does not observe (FR-009).
+                 Drawn as the box's last row (`FileStrip.vue` § boxRow), so it
+                 keeps the inset and the hairline the recognition rows above it
+                 have. Nothing here states an order or a winner: which copy a
+                 session loads turns on runtime this tool does not observe
+                 (FR-009).
                  The landmark carries the name as well, because a page listing
                  two names would otherwise hold two landmarks called the same
                  thing (WCAG 2.4.1; label-in-name keeps the visible phrase as
@@ -1140,6 +1143,7 @@ watch(
             <FileStrip
               :open-source-id="openSourceId"
               :entries="group.otherCopies"
+              box-row
               label="Other copies of this skill"
               :accessible-label="`Other copies of this skill: ${group.name.singleLineText}`"
             />

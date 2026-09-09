@@ -81,6 +81,23 @@ test('keeps the other copies on one line and never repeats the one on screen', a
   expect(layout.tops).toBe(1);
   expect(layout.scrolls).toBe(true);
 
+  // The label sits in the line: its text is centred on the same axis as the
+  // text of the entry beside it, rather than at the top of a box stretched to
+  // the entry's height (FileStrip.vue § .aci-file-strip__label).
+  const centres = await strip.evaluate((element) => {
+    const centreOf = (node: Element): number => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const box = range.getBoundingClientRect();
+      return box.top + box.height / 2;
+    };
+    const label = element.querySelector('.aci-file-strip__label');
+    const link = element.querySelector('.aci-file-strip__item a');
+    return label && link ? Math.abs(centreOf(label) - centreOf(link)) : null;
+  });
+  expect(centres).not.toBeNull();
+  expect(centres!).toBeLessThanOrEqual(1);
+
   // The heading already spells the file on screen, so the strip does not
   // (FR-007).
   const subject = await page.locator('.aci-detail-header__title').innerText();
@@ -184,6 +201,22 @@ test('states each recognition’s own invocation name, one row per product', asy
   for (const row of stated) {
     expect(row.surfaces, row.product).not.toBe('');
   }
+
+  // The other copies of the name are the box's last row (FileStrip.vue
+  // § boxRow): inset like the recognition rows above, so the label lines up
+  // with the product column, and parted from them by the same hairline.
+  const strip = groups.nth(0).locator('.aci-file-strip');
+  await expect(strip).toHaveCount(1);
+  const alignment = await strip.evaluate((element) => ({
+    labelLeft: element.querySelector('.aci-file-strip__label')?.getBoundingClientRect().left,
+    productLeft: element
+      .closest('li')
+      ?.querySelector('.aci-skill-detail__invocation-product')
+      ?.getBoundingClientRect().left,
+    hairline: getComputedStyle(element).borderBlockStartWidth,
+  }));
+  expect(alignment.labelLeft).toBe(alignment.productLeft);
+  expect(alignment.hairline).toBe('1px');
 
   // The head's line is the entry file's own facts, and states no product: a
   // product's name is that recognition's row above.

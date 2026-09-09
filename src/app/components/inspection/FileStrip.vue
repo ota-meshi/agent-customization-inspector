@@ -53,6 +53,17 @@ defineProps<{
    * before the page's own Source resolves, where every entry states its home.
    */
   openSourceId: string | null;
+  /**
+   * Whether the strip is the last row of a bordered box rather than a line of
+   * the page's own stack. The strip carries its own outer margins, which is
+   * right where it sits in that stack between the attributes and the tabs —
+   * every kind but one draws it there, and this is the default. The skill
+   * detail draws one strip inside each invocation name's box, under that
+   * name's recognition rows, because a copy is a copy of the name; there the
+   * spacing and the rule are the box's rows', so a box row drops the margins
+   * and takes the rows' inset and hairline instead.
+   */
+  boxRow?: boolean;
 }>();
 </script>
 
@@ -60,7 +71,12 @@ defineProps<{
   <!-- A navigation landmark rather than a plain list: the entries go to other
        pages, and a reader stepping the page's landmarks should meet them as a
        way out rather than as more of this file's own facts (WCAG 2.4.1). -->
-  <nav v-if="entries.length > 0" class="aci-file-strip" :aria-label="accessibleLabel ?? label">
+  <nav
+    v-if="entries.length > 0"
+    class="aci-file-strip"
+    :class="{ 'aci-file-strip--box-row': boxRow }"
+    :aria-label="accessibleLabel ?? label"
+  >
     <span class="aci-file-strip__label">{{ label }}</span>
     <span v-for="entry in entries" :key="entry.key" class="aci-file-strip__item">
       <SourceHomeBadge v-if="entry.sourceId !== openSourceId" :source-id="entry.sourceId" />
@@ -102,10 +118,29 @@ defineProps<{
   padding-block-end: 0.1875rem;
 }
 
+/* The strip as the last row of a bordered box ({@link boxRow}). Spacing and
+   rule are then the box's rows': the outer margins the page stack asks for
+   go, and the strip takes the rows' 0.625rem inset — so the label lines up
+   with the rows above it — and the hairline that parts rows inside a box
+   `--aci-line` has already identified (main.css § --aci-hairline). The
+   block-end padding is the row's 0.25rem plus the 0.1875rem scrollbar
+   groove above, so the content sits 0.25rem from each edge and the
+   scrollbar keeps its groove below. */
+.aci-file-strip--box-row {
+  border-block-start: 1px solid var(--aci-hairline);
+  margin-block: 0;
+  padding-block: 0.25rem 0.4375rem;
+  padding-inline: 0.625rem;
+}
+
 /* What the set is, said once at the head of the line rather than on each
    entry. It scrolls away with them, because it names what the reader is
-   scrolling through. */
+   scrolling through. It sits in the line rather than above it: the flex
+   default, `stretch`, would draw the label's box as tall as the tallest entry
+   and put its text at the top of that box, 5px above the text the entries
+   centre in theirs, so the two texts on one line would not line up. */
 .aci-file-strip__label {
+  align-self: center;
   color: var(--aci-muted);
   flex: none;
   font-size: 0.6875rem;
