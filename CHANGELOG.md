@@ -1,5 +1,11 @@
 # agent-customization-inspector
 
+## 0.5.1
+
+### Patch Changes
+
+- [#15](https://github.com/ota-meshi/agent-customization-inspector/pull/15) [`4a92fc5`](https://github.com/ota-meshi/agent-customization-inspector/commit/4a92fc53f92c68272c5e69f3c88270998c82fc32) Thanks [@ota-meshi](https://github.com/ota-meshi)! - The skill detail's "Other copies of this skill" strip is now the last row of its invocation name's box — inset like the recognition rows above it and parted from them by the same hairline — instead of sitting against the box's border. On every detail page, the strip's label is now centred on the line with the entries beside it rather than sitting above their text.
+
 ## 0.5.0
 
 ### Minor Changes
