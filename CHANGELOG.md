@@ -1,5 +1,19 @@
 # agent-customization-inspector
 
+## 0.3.0
+
+### Minor Changes
+
+- [#9](https://github.com/ota-meshi/agent-customization-inspector/pull/9) [`2ae92aa`](https://github.com/ota-meshi/agent-customization-inspector/commit/2ae92aa44ef258f0aba4d7a4ac1d3bdeee1073e2) Thanks [@ota-meshi](https://github.com/ota-meshi)! - Every customization detail page is now drawn inside one frame that holds the page's own outermost element, the header above its content, the region a screen reader hears its state through, and where keyboard focus lands on arrival. Nothing looks, sounds, or answers the keyboard differently from the previous release.
+
+- [#9](https://github.com/ota-meshi/agent-customization-inspector/pull/9) [`2ae92aa`](https://github.com/ota-meshi/agent-customization-inspector/commit/2ae92aa44ef258f0aba4d7a4ac1d3bdeee1073e2) Thanks [@ota-meshi](https://github.com/ota-meshi)! - A plugin detail page no longer announces "Plugin ready." when it finishes loading. Every kind is silent on arrival, as the other ten already were: focus is already on the page's heading, which has named the subject, and the session has already been announced as ready — a second "ready" says only that something changed, not what it changed into.
+  
+  A skill detail page reached by a link whose file its directory no longer holds now announces that, rather than announcing that nothing sits at the link's path. The screen has drawn those as two different states all along; a reader who cannot see it was told the skill itself was gone.
+
+- [#9](https://github.com/ota-meshi/agent-customization-inspector/pull/9) [`2ae92aa`](https://github.com/ota-meshi/agent-customization-inspector/commit/2ae92aa44ef258f0aba4d7a4ac1d3bdeee1073e2) Thanks [@ota-meshi](https://github.com/ota-meshi)! - Every sentence this product shows now spells its apostrophe the same way, wherever the sentence is written. A page's own words and the words its live region speaks were the same sentence in two spellings, so the same statement reached a reader who could see the page and a reader who could not as two different strings.
+
+- [#9](https://github.com/ota-meshi/agent-customization-inspector/pull/9) [`2ae92aa`](https://github.com/ota-meshi/agent-customization-inspector/commit/2ae92aa44ef258f0aba4d7a4ac1d3bdeee1073e2) Thanks [@ota-meshi](https://github.com/ota-meshi)! - A detail page's trail ends at the kind whenever it has nothing to name after it — a link this scan holds no file at, a skill whose directory it holds no row for — instead of closing on a separator with nothing behind it. Every kind reads that way; only skills did before, and the page itself already says the link is not in this scan.
+
 ## 0.2.1
 
 ### Patch Changes
