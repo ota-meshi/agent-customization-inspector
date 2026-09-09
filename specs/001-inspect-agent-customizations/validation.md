@@ -623,13 +623,13 @@ picker's own comment no longer counts six pages where there are seven.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `5fe2e9e6b4978e1201d4bb44efaaaa82df86089c35a64d416659c756a237d8d5`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-05 by
+SHA-256 `7997a3a45f973f12c0686452b75016ab2a498596142680fb756db205c994cf8b`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-09 by
 running every suite each case names in `verifiedBy`: the vitest suites through
-`pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
-whole Chromium suite, 577 tests, all passing in the one run the release-gate table above
-records. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
-all 66 fixture digests in the same session.
+`pnpm run test:contract`/`test:integration`/`test:security` (405, 271, and 5 passing), and the
+browser specs through the whole Chromium suite, 577 tests, all passing, in one run on this
+host. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
+all 66 fixture digests in the same run.
 
 The digest is read from the manifest rather than carried forward: an earlier record named a
 value the checked-in bytes no longer had, and the contract suite could not have caught it
@@ -638,7 +638,18 @@ because it compares the manifest against its own companion file and reaches no r
 `tests/fixtures/outcomes/manifest.sha256` are written from the same command in the change that
 moves the bytes.
 
-The set is non-comparable with the one before it: `tests/contract/host-startup.test.ts` changed
+The set is non-comparable with the one before it: ten referenced browser specs changed when
+the source surfaces moved from Monaco to shiki (T1207, T1209). The eight detail specs —
+`claude-custom-agents-`, `claude-settings-`, `codex-config-`, `codex-custom-agents-`,
+`codex-permissions-`, `codex-skills-`, `copilot-custom-agents-`, and `copilot-settings-detail` —
+stopped reaching the editor's DOM and read the source box, its runs' colours, and the absence
+of anything but text inside it instead; `comparison.spec.ts` dropped the editor's selector from
+its scan of the product's own copy; and `output-styles-detail.spec.ts` restated what its wait
+is for. Every case kept its ID, classes, and expected outcome, so the manifest version stays at
+3 under the same governance as the transitions below, and the browser half of this execution
+was again the Chromium project on this host.
+
+The set before it was non-comparable with the one before that: `tests/contract/host-startup.test.ts` changed
 when the closed environment-failure errno set was renamed for what it holds, which moved that
 fixture's digest and the canonical manifest digest with it. spec.md § Release-Evidence Fixture
 Governance makes a fixture-byte change a new, non-comparable measurement set; the manifest
@@ -646,8 +657,8 @@ version stays at 3, because that governance requires an increment for a case, re
 expected-outcome change and this is none of them — the same 99 case IDs across the same four
 criteria, each with a nonzero count for every required class.
 
-The set before it was non-comparable with the one recorded after the interface rework for its own
-reason: five referenced fixtures changed, all of them for the removal of the rail's
+The one before that was non-comparable with the set recorded after the interface rework for its
+own reason: five referenced fixtures changed, all of them for the removal of the rail's
 `Source diagnostics` entry. The
 three instructions inventory specs — `claude-`, `codex-`, and `copilot-` — dropped the
 assertions that opened that entry and read an empty list, and the Codex one now counts four

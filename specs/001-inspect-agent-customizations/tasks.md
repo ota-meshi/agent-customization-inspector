@@ -9451,7 +9451,7 @@ comparison pages still do until T1209 lands.
 
 ### The release evidence
 
-- [ ] T1211 Re-record, in `tests/fixtures/outcomes/manifest.json` and
+- [X] T1211 Re-record, in `tests/fixtures/outcomes/manifest.json` and
   `tests/fixtures/outcomes/manifest.sha256`, the digest of every browser suite the manifest
   references that this phase changed, re-execute the SC-003/SC-004/SC-005/SC-007 cases
   against the new bytes, and record the run in

@@ -517,12 +517,12 @@ pageを6つと数えないようにした。
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`5fe2e9e6b4978e1201d4bb44efaaaa82df86089c35a64d416659c756a237d8d5`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
-caseは、2026-09-05に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
-suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser specはChromium
-suite全体577件経由であり、上のrelease gate表が記録する1回のrunで全件が通った。
+`7997a3a45f973f12c0686452b75016ab2a498596142680fb756db205c994cf8b`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+caseは、2026-09-09に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
+suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由（405件、271件、5件pass）、
+browser specはChromium suite全体577件経由であり、このhost上の1回のrunで全件が通った。
 `tests/contract/outcome-fixture-manifest.test.ts`は
-同じsessionでcanonical digestと66件のfixture digestすべてを再現した。
+同じrunでcanonical digestと66件のfixture digestすべてを再現した。
 
 このdigestはmanifestから読み取ったものであり、以前の値を持ち越したものではない。以前の記録は
 checked-inのbytesが既に持たない値を名指していた。contract suiteはmanifestを自身のcompanion file
@@ -530,14 +530,23 @@ checked-inのbytesが既に持たない値を名指していた。contract suite
 この行と`tests/fixtures/outcomes/manifest.sha256`を、bytesを動かす同じ変更の中で同じcommandから
 書くことである。
 
-このsetは、その前のsetとは比較できない。Closedなenvironment-failure errno集合を中身に合わせて
+このsetは、その前のsetとは比較できない。source surfaceがMonacoからshikiへ移った際（T1207、T1209）に、
+参照するbrowser spec 10件が変わったためである。detail specの8件 — `claude-custom-agents-`、
+`claude-settings-`、`codex-config-`、`codex-custom-agents-`、`codex-permissions-`、`codex-skills-`、
+`copilot-custom-agents-`、`copilot-settings-detail` — はeditorのDOMへ到達するのをやめ、代わりに
+source box、そのrunの色、その中にtext以外が無いことを読む。`comparison.spec.ts`はproduct自身の
+文言の走査からeditorのselectorを落とし、`output-styles-detail.spec.ts`は待つ理由を書き直した。
+どのcaseもID、class、expected outcomeを保ったので、manifest versionは下の遷移と同じgovernanceの
+もとで3のままであり、この実行のbrowser側もこのhostのChromium projectであった。
+
+その前のsetは、さらにその前のsetとは比較できない。Closedなenvironment-failure errno集合を中身に合わせて
 改名した際に`tests/contract/host-startup.test.ts`が変わり、そのfixture digestとcanonical manifest
 digestが一緒に動いたためである。spec.ja.md § Release-Evidence Fixtureのガバナンスは、fixture byte
 の変更を新しい比較不能なmeasurement setとする。Manifest versionは3のままである。そのガバナンスが
 incrementを要求するのはcase、required-class、expected-outcomeの変更であり、これはそのいずれでもない
 — 同じ4基準にまたがる同じ99 case IDで、required classごとに非ゼロの件数を持つ。
 
-その前のsetがinterface rework後のsetと比較できなかったのは、それ自身の理由による。参照fixtureが5件
+さらにその前のsetがinterface rework後のsetと比較できなかったのは、それ自身の理由による。参照fixtureが5件
 変わり、いずれもrailの`Source diagnostics`項目の削除によるものである。instructions inventoryの3 spec —
 `claude-`、`codex-`、`copilot-` — はその項目を開いて空listを読むassertionを落とし、Codexのものは
 tabを5件ではなく4件と数えるようになった。`inspection-safety.spec.ts`は`Partial`ではなく

@@ -8083,7 +8083,7 @@ T1209が入るまでそれらをfetchし続ける。
 
 ### リリースエビデンス
 
-- [ ] T1211 このフェーズが変更した、manifestが参照するbrowser suiteすべてのdigestを
+- [X] T1211 このフェーズが変更した、manifestが参照するbrowser suiteすべてのdigestを
   `tests/fixtures/outcomes/manifest.json` と `tests/fixtures/outcomes/manifest.sha256` に
   再記録し、SC-003/SC-004/SC-005/SC-007のcaseを新しいbyteに対して再実行して、その実行を
   `specs/001-inspect-agent-customizations/validation.md` と
