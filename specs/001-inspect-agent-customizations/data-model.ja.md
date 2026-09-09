@@ -1036,9 +1036,10 @@ referenceである（FR-028）。extractionは`(file, kind)`ごとに1回なの�
 file-confinedな結果としてそれを1回だけ列挙する。extractionの
 失敗はauthoredな名前を不在ではなく不明のまま残すため、それを呼び出すtoolはskill directoryへ
 フォールバックする — 失敗したparseの読みではなくpath自身の事実である。そこで名付けられたrowは
-暫定的なgroupingであり、その定義はそのtoolのsame-name衝突の証拠にならない。Claude Codeの
-directory衝突はどちらでも成立する。Claude Codeが検出する衝突は、frontmatterの宣言に依らず
-skill directory間のものだからである。
+暫定的なgroupingであり、その定義はauthoredな名前で衝突するtool — CodexとCopilot — の
+same-name衝突の証拠にならない。Claude Codeのdirectory衝突はどちらでも成立する。Claude Codeが
+検出する衝突は、frontmatterの宣言に依らずskill directory間のものだからである: 解析に失敗した
+rootの`foo`と正常にparseされたnestedの`foo`はその衝突であり、両方のrowにその記述が付く。
 
 GroupingされたentryがInspectorの記録していない優劣を暗示することはない。各entryは、そのentryの定義の
 うち2つ以上をproductが認識する名前について、そのproductがどう解決するかを述べる。記録された記述が異なる
@@ -1244,7 +1245,7 @@ shippedな全vendorが同じ固定YAML semanticsを読む — toolごとのcopy�
 
 | Field | Type | Rule |
 |---|---|---|
-| `invocationName` | string | このrecognition自身のtoolがそのfileを呼び出す名前で、admitしたruleが答える（§ 一覧の単位、FR-007）。空にはならない: authoredなidentityを呼び出すruleは、Parserが解決した`name` scalar（§ Field reading）を読み、fileが宣言しない場合、空で宣言する場合、scalar以外へ解決する場合 — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる — 、およびextractionが失敗した場合はskill directoryへフォールバックする。Claude Codeのruleは宣言を一切読まず、skill directoryを取り、nestedならroot相対のprefixを前置する。authoredな`name`自体はここには持たない: それは下の`frontmatter` entryの1つであり、保持すれば事実とそこから導出した値の二重公開になる |
+| `invocationName` | string | このrecognition自身のtoolがそのfileを呼び出す名前で、admitしたruleが答える（§ 一覧の単位、FR-007）。空にはならない: authoredなidentityを呼び出すruleは、Parserが解決した`name` scalar（§ Field reading）を読み、fileが宣言しない場合、空で宣言する場合、scalar以外へ解決する場合 — fileが名前として書いていないlistの先頭itemでskillを名指すのは、fileが宣言していないidentityになる — 、およびextractionが失敗した場合はskill directoryへフォールバックする。選択されたrootにあるskillについてはすべての製品のruleがこのように答え、Claude Codeのruleはnestedなskillについては宣言を読まず、代わりにdirectory-qualifiedなcommandを取る。authoredな`name`自体はここには持たない: それは下の`frontmatter` entryの1つであり、保持すれば事実とそこから導出した値の二重公開になる |
 | `frontmatter` | ordered entry[] | Fileが宣言するすべてのkeyを、fileが書いたkey — 維持管理上のcatalogのものではない — でauthored順に持つ。Frontmatter blockの無いdocument、mappingではなくlistや裸のscalarとして書かれたblock — そうしたblockはkeyを宣言せず、listを読めば得られるindex位置はfileが書いたkeyではない — 、`failed` extractionでは空 |
 | `bodyText` | string | 同じdocumentからfrontmatter blockを取り除いたもの。`failed` extractionでは空 |
 

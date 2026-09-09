@@ -385,9 +385,10 @@ describe('Claude skill declared name', () => {
       expect(declaredNameOf(recognition)).toBeNull();
       // The name falls back to the skill directory rather than being guessed
       // out of a parse that produced nothing — the same string the rule's own
-      // fallback gives a file declaring none, which is why the row it lands
-      // on is provisional grouping rather than same-name collision evidence
-      // (FR-028, src/shared/skill-collision.ts).
+      // fallback gives a file declaring none, so the row it lands on is
+      // provisional grouping. Claude Code's clash is between skill
+      // directories, so unlike a Codex or Copilot definition this one stays
+      // collision evidence either way (FR-028, src/shared/skill-collision.ts).
       expect(recognition.details.invocationName).toBe('greet');
       // All-or-nothing: a failed extraction publishes no partial declarations
       // and no instructions either — not just no name (FR-028).

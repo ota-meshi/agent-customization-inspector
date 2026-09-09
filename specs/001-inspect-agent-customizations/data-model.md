@@ -1338,9 +1338,11 @@ means one failure record, which every failed definition of the file names as its
 parse fact and the file's `files[]` entry lists once as its file-confined outcome. A failed extraction leaves
 the authored name unknown rather than absent, so a tool that invokes it falls back to the
 skill directory — the path's own fact, not a reading of the failed parse. The row that
-names is provisional grouping, and the definition evidences no same-name collision for
-that tool. Claude Code's directory clash stands either way, because the clash it detects
-is between skill directories whatever the frontmatter declares.
+names is provisional grouping, and the definition evidences no same-name collision for a
+tool whose clash is on the authored name — Codex and Copilot. Claude Code's directory
+clash stands either way, because the clash it detects is between skill directories
+whatever the frontmatter declares: a failed root `foo` and a parsed nested `foo` are that
+clash, and both rows carry its statement.
 
 A grouped entry never implies a winner the Inspector has not recorded. Each entry states how
 a product resolves a name it recognizes on two or more of that entry's definitions, because
@@ -1623,7 +1625,7 @@ copy exists on the wire, and the internal `ToolRecognition.details` carries, for
 
 | Field | Type | Rules |
 |---|---|---|
-| `invocationName` | string | The name this recognition's own tool invokes the file by, answered by the admitting rule (§ Inventory unit, FR-007). Never empty: a rule that invokes the authored identity reads the `name` scalar as the parser resolved it (§ Field reading) and falls back to the skill directory when the file declares none, declares it empty, resolves it to anything but a scalar — naming a skill after the first item of a list it wrote would be an identity the file never declared — or when extraction failed; Claude Code's rule reads no declaration at all and takes the skill directory, root-relative-prefixed when nested. The authored `name` itself is not held here: it is one of the `frontmatter` entries below, so keeping it would publish a fact and something derived from it |
+| `invocationName` | string | The name this recognition's own tool invokes the file by, answered by the admitting rule (§ Inventory unit, FR-007). Never empty: a rule that invokes the authored identity reads the `name` scalar as the parser resolved it (§ Field reading) and falls back to the skill directory when the file declares none, declares it empty, resolves it to anything but a scalar — naming a skill after the first item of a list it wrote would be an identity the file never declared — or when extraction failed; every product's rule answers this way for a skill at the selected root, and Claude Code's rule reads no declaration for a nested skill, taking the directory-qualified command instead. The authored `name` itself is not held here: it is one of the `frontmatter` entries below, so keeping it would publish a fact and something derived from it |
 | `frontmatter` | ordered entry[] | Every key the file declares, in authored order, keyed by the key the file wrote — never a maintained catalog's. Empty for a document with no frontmatter block, for a block written as a list or a bare scalar rather than a mapping — such a block declares no keys, and the index positions a list would be read by are not keys the file wrote — and for a `failed` extraction |
 | `bodyText` | string | The same document with its frontmatter block removed. Empty for a `failed` extraction |
 

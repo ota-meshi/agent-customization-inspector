@@ -555,12 +555,14 @@ A product contributes a statement only when it faces that collision: an entry wi
 definition has nothing to resolve, and a product that recognizes only one of several has
 nothing to choose between — the other definitions are not its files, and a rule quoted
 there would answer a question it is not being asked. The collision must also be one the
-quoted rule answers, and Claude Code's rule answers the clash of unqualified commands,
-which come from skill directories: its statement attaches to every entry holding a Claude
-definition whose skill directory name is shared with another Claude-recognized skill of
-the same generation. A definition whose extraction failed is no collision evidence for a
-tool that invokes the authored name: that name is unknown, so its row membership is this
-product's provisional grouping rather than a name the tool resolved (FR-028). A product
+quoted rule answers, and Claude Code's rule answers the clash of skill directories — the
+internal command identifiers it detects a clash between, whatever the frontmatter
+declares: its statement attaches to every entry holding a Claude definition whose skill
+directory name is shared with another Claude-recognized skill of the same generation. A
+definition whose extraction failed is no collision evidence for a tool whose clash is on
+the authored name — Codex and Copilot: that name is unknown, so its row membership is this
+product's provisional grouping rather than a name the tool resolved (FR-028). It stays
+evidence for Claude Code, whose clash is between directories the path itself names. A product
 whose skill strategy is not
 in the shipped registry contributes none either — it recognizes no skill, so no entry can
 reach it. The statements differ by product, and none is completely documented.

@@ -393,10 +393,12 @@ function projectSkillInventory(
     // definitions carries the same list; the parse state is the
     // recognition's own, and the extraction-failure reference each failed
     // definition republishes is the kind's one shared record — the parse ran
-    // once (FR-028). A failed extraction leaves an authored-name tool's name
-    // unknown — not absent — so its definition lands on the
-    // directory-derived provisional row, which the same-name machinery reads
-    // as grouping rather than as collision evidence (skill-collision.ts).
+    // once (FR-028). A failed extraction leaves the authored name unknown —
+    // not absent — so its definition lands on the directory-derived
+    // provisional row, which the same-name machinery reads as grouping
+    // rather than as evidence of a clash on that name — Codex's and
+    // Copilot's — while Claude Code's clash is between directories and reads
+    // the definition as evidence either way (skill-collision.ts).
     entry.definitions.push({
       sourceId: recognition.sourceId,
       sourceRelativePath: path,

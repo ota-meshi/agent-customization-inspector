@@ -497,8 +497,11 @@ export function selectedFileOf(parameter: unknown): string | null {
  * followed, for the kinds whose row unit is a name.
  *
  * One file can be listed under more than one name — FR-007 has Claude Code
- * invoking a skill's directory while Copilot invokes the authored `name`, and
- * the same file is then a definition of both rows (spec.md § Clarifications).
+ * defining a custom agent under its declared `name` while Copilot defines it
+ * under its file name, and the same file is then a definition of both rows
+ * (spec.md § Clarifications). Every name-keyed kind carries the coordinate,
+ * whether or not a shipped rule of that kind produces two names today, so
+ * one link shape serves them all.
  * The page stays the file's, addressed by `(source, path)`; this says nothing
  * about what the page shows and only records where it was opened from, so the
  * moves to the previous and next row step the list the reader was actually

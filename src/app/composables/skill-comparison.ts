@@ -86,15 +86,14 @@ export type SkillComparisonViewStatus =
  * express — two files of different names, one file twice, a cross-kind pair —
  * cannot be written.
  *
- * The row is named rather than derived from the two paths, because the route
- * is the one every name-keyed kind's comparison uses: a row is the unit the
- * reader opened from, and for the kinds whose products resolve different
- * names for one file — a custom agent, a prompt — two files can sit together
- * on two rows, where a derived row would be whichever of them sorts first and
- * would drop a third copy of the opened row out of the compare page's
- * switchers. Every shipped skill rule resolves one name per file, so a skill
- * pair names one row; it carries the name for the family's shape, not for a
- * clash of its own.
+ * The row is named rather than derived from the two paths. Every shipped
+ * skill rule resolves one name per file — a root skill's declared `name`, a
+ * nested Claude Code skill's directory-qualified command — so no skill pair
+ * sits on two rows today, and the owning row could be derived from the paths
+ * the way the prompt and instruction comparisons derive theirs
+ * (`prompt-comparison.ts`); only the custom-agent comparison has the two-row
+ * case a carried name settles. The coordinate is this route's contract, and
+ * deriving the row is the change that would remove it.
  *
  * A module function beside the state class so every surface that builds the
  * link — the inventory row's and detail page's entry links, and the compare

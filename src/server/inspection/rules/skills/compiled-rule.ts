@@ -48,7 +48,9 @@ export interface CompiledStaticSkillRule extends CompiledInspectionRule {
    * distinguishes the two is the extraction Diagnostic the recognition
    * carries, which every surface showing the definition shows beside it, and
    * which is why such a row is provisional grouping rather than evidence of a
-   * same-name collision (FR-028, shared/skill-collision.ts).
+   * clash on the authored name — Codex's and Copilot's. Claude Code's clash is
+   * between skill directories, the path's own fact, so its failed definition
+   * stays evidence either way (FR-028, shared/skill-collision.ts).
    *
    * Never a claim that the skill is reachable: which locations a session
    * searches, and which of two same-name skills it would load, is runtime this
