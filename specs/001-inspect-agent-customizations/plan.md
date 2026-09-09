@@ -1301,19 +1301,21 @@ configuration.
   that answer, and an explicit refresh is what shows a scan that started elsewhere. Nothing
   updates by itself, so there is no pause/resume control and nothing to pause
   (contracts/accessibility-acceptance.md § 2.2.2).
-  The editor is client-only and lazy-loaded on file/compare routes. Nuxt/Vite emits the
-  explicitly imported editor worker as a same-origin static asset, plus one lazily fetched
-  grammar chunk per basic language; language-service workers, CDN assets, external workers,
-  and blob workers are not allowed. Editor/model
-  instances and subscriptions are disposed independently on route close, selection
-  replacement, source disable, and generation replacement. The accessible diff viewer,
-  meaningful ARIA labels, keyboard navigation, and inline narrow-screen view remain
-  enabled and are verified through the automated and keyboard evidence SC-008 counts; the
-  `MANUAL-*` screen-reader matrix names environments no run available to this release has
-  and stays an unexecuted residual
-  (contracts/accessibility-acceptance.md § Manual check matrix (not executed for this release)). If the browser or
-  editor cannot compute the diff with available environment capacity, an actionable
-  diagnostic leaves the complete authored side-by-side source visible.
+  Source colouring is client-only and lazy-loaded on file/compare routes. Nuxt/Vite emits
+  the highlighter as one same-origin chunk, fetched with the first such route or ahead of it
+  when the inventory's links there are prefetched, plus one lazily fetched grammar chunk per
+  language; there is no worker, no WebAssembly asset, no CDN asset, and no blob URL. A
+  surface's runs are Vue state, dropped on route close, selection replacement, source
+  disable, and generation replacement, and the render before the next paint takes them out
+  of the document. A comparison keeps its two sides opposite each other at every width —
+  where the page is narrower than the pair, the frame scrolls sideways rather than the page
+  — and its accessible names and keyboard operability are verified through the automated
+  and keyboard evidence SC-008 counts; the `MANUAL-*` screen-reader matrix names
+  environments no run available to this release has and stays an unexecuted residual
+  (contracts/accessibility-acceptance.md § Manual check matrix (not executed for this release)).
+  The alignment needs only the lines, so a comparison is on screen the moment its pair is; a
+  grammar that does not arrive leaves that side as uncoloured text, its differences marked
+  all the same.
   `src/app/session/client-data.ts` owns the shared central client-data purge
   implementation, and `src/app/session/view-state.ts` owns the reactive values `App.vue`
   renders over the loopback session API channel. It installs no listener at all: there is no

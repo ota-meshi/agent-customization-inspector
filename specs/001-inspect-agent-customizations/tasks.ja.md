@@ -8031,8 +8031,8 @@ T1209が入るまでそれらをfetchし続ける。
 - [X] T1207 `src/app/components/inspection/SourceViewer.vue` を書き直し、runを1つの `pre` の中の
   `<span>` 内のtext nodeとして描画する — `v-html` は使わない —。copyされないCSS counterの行番号、
   runが届くまで同じ列に立つplaceholderのtext、通知も再試行もなく未着色のtextをその場に残す
-  tokenizingの失敗、要素を同期的に空にするpurge、そして `role="group"` によってfileとその示す部分
-  として名付けられたbox（FR-025、FR-027）。MonacoのDOM — `.monaco-editor`、そのtoken class、
+  tokenizingの失敗、runをstateとして捨てるpurge — 次のpaintの前のrenderがそれを要素から取り除く —、
+  そして `role="group"` によってfileとその示す部分として名付けられたbox（FR-025、FR-027）。MonacoのDOM — `.monaco-editor`、そのtoken class、
   squiggle — に到達していたbrowser suiteを、box、そのrunの色variable、
   `tests/e2e/source-viewer.ts` § sourceBoxDecorations へ更新し、`tests/e2e/accessibility.spec.ts`
   は、boxが独自のkey handlingを持たない `tabindex="0"` の `pre` であることから、すべてのengineで

@@ -9395,8 +9395,9 @@ comparison pages still do until T1209 lands.
   text nodes inside `<span>`s in one `pre` — no `v-html` — with CSS-counter line numbers that
   are not copied, the placeholder text standing in the same column until the runs arrive, a
   tokenizing failure leaving the uncoloured text in place with no notice and no retry, the
-  purge emptying the element synchronously, and the box named through `role="group"` as the
-  file and the part of it shown (FR-025, FR-027). Update the browser suites that reached
+  purge dropping the runs as state — which the render before the next paint takes out of
+  the element — and the box named through `role="group"` as the file and the part of it
+  shown (FR-025, FR-027). Update the browser suites that reached
   Monaco's DOM — `.monaco-editor`, its token classes, and its squiggles — to the box, its runs'
   colour variables, and `tests/e2e/source-viewer.ts` § sourceBoxDecorations, and
   `tests/e2e/accessibility.spec.ts` to a forward-Tab exit on every engine, since the box is a

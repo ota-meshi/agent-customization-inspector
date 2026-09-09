@@ -1018,16 +1018,18 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Source family内に留まるため、RepositoryとGlobalを跨ぐpairは存在しない。RepositoryとGlobalのscan/status informationは読み手自身の操作でだけ更新する。scan commandはそのscanが
   終端に達してから応答し、pageはその応答で再取得する。他所で始まったscanを見せるのは明示refreshである。
   自動で更新されるものが無いので、pause/resume controlも、pauseする対象も存在しない
-  （contracts/accessibility-acceptance.ja.md § 2.2.2）。Editorはclient-onlyとし、file/compare routeで
-  lazy-loadする。Nuxt/Viteは明示的にimportしたeditor workerをsame-origin static assetとして出力し、
-  basic languageごとのgrammar chunkはlazyに取得する。Language-service worker、CDN asset、
-  external worker、blob workerを許可しない。Editor/model
-  instanceとsubscriptionはroute close、selection replacement、source disable、generation replacement時に
-  個別にdisposeする。Accessible diff viewer、意味のあるARIA label、keyboard navigation、narrow-screen
-  inline viewを有効に保ち、SC-008が数えるautomatedとkeyboardのevidenceで検証する。`MANUAL-*`の
+  （contracts/accessibility-acceptance.ja.md § 2.2.2）。Source colouringはclient-onlyとし、file/compare routeで
+  lazy-loadする。Nuxt/Viteはhighlighterを1つのsame-origin chunkとして出力し、最初のそのようなroute
+  で — inventoryのそこへのlinkがprefetchされるならその前に — 取得し、languageごとのgrammar chunkは
+  lazyに取得する。worker、WebAssembly asset、CDN asset、blob URLは無い。surfaceのrunはVueのstateで
+  あり、route close、selection replacement、source disable、generation replacement時に捨てられ、
+  次のpaintの前のrenderがそれをdocumentから取り除く。comparisonはどの幅でも2つのsideを向かい合わせに
+  保ち — pageがpairより狭いときはpageではなくframeが横にscrollする —、そのaccessible nameと
+  keyboard operabilityはSC-008が数えるautomatedとkeyboardのevidenceで検証する。`MANUAL-*`の
   screen-reader matrixは、このreleaseで実行できるrunが持たない環境を名指しており、未実行のresidualの
-  ままである（contracts/accessibility-acceptance.ja.md § Manual checkのmatrix（このreleaseでは未実行））。Browserまたはeditorが利用可能なenvironment
-  capacityでdiffを計算できない場合も、記述された完全なside-by-side sourceを表示し、actionable diagnosticを示す。
+  ままである（contracts/accessibility-acceptance.ja.md § Manual checkのmatrix（このreleaseでは未実行））。
+  alignmentに必要なのは行だけなので、comparisonはpairが揃った時点で画面にある。grammarが届かない
+  sideは未着色のtextのまま残り、その差分は変わらず印付けられる。
   `src/app/session/client-data.ts`はshared central client-data purge実装を所有し、
   `src/app/session/view-state.ts`はloopback session API channel上で`App.vue`が描画するreactive valueを所有する。
   listenerは一切設置しない: liveness probeも、product定義のpolling interval、request timeout、retry timer、
