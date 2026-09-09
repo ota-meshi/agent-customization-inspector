@@ -1856,12 +1856,15 @@ This state is not authoritative and is never persisted.
   `sourceRelativePath` identities, and the copy-relative compared file, resolved
   against the owning sequence's current committed generation into zero files, two
   readable corresponding files, or one readable file beside its stated absent
-  counterpart. The row is named rather than derived from the two identities, because
-  two files can sit together on more than one row — the products invoke a skill by
-  different facts, so a file declaring another's directory name as its own `name`
-  puts both on both rows — and a derived row would be whichever the generation
-  published first, dropping a third copy of the row the reader opened from out of the
-  route's own switchers. The instruction route names the
+  counterpart. The row is named rather than derived from the two identities, because a
+  row is one name as one tool resolves it and the resolution is each vendor's own rule
+  (§ Inventory unit): deriving the row would assume that every rule reading a file
+  resolves the same string, which is a coincidence of the shipped rules rather than a
+  property of the model, and a vendor's rule changing would then move a comparison
+  with no surface saying so. Named, the route survives such a change — a file two
+  rules resolve differently is a definition of both rows, and the row the reader
+  opened from stays the row compared, its third copy kept in the route's own switchers
+  where a derived row, whichever the generation published first, would drop it. The instruction route names the
   Source family it leads with and, per side, a Source and a `sourceRelativePath`
   identity (FR-030). The pair's owner is the block one applicability range holds for
   that family — the block the skill precedent's row becomes here, its range derived

@@ -322,16 +322,15 @@ const committedPaths = computed(
 /**
  * The one inventory row owning the pair: the row the URL names, holding both
  * identities as entry files of its definitions. The name is read from the URL
- * rather than derived from the two paths. Every shipped skill rule resolves
- * one name per file — a root skill's declared `name`, a nested Claude Code
- * skill's directory-qualified command — so no pair sits on two rows today and
- * the row could be derived, as the prompt comparison derives its own
- * (`prompt-comparison.ts`); the coordinate is this route's contract
- * (`skill-comparison.ts`), and deriving the row is the change that would
- * remove it. Null when no such row exists, which the template reports
- * instead of comparing: a pair of two different names, one copy twice, or an
- * identity the current scan does not hold is not a comparison this model
- * expresses.
+ * rather than derived from the two paths, because a row is one name as one
+ * tool resolves it and the resolution is each vendor's own rule: that every
+ * shipped rule reading one file resolves the same string today is a
+ * coincidence of the rules, not a property of the model, and a derived row
+ * would move with the next vendor change while nothing on screen said so
+ * (`skill-comparison.ts`, data-model.md § ComparisonSelection). Null when no
+ * such row exists, which the template reports instead of comparing: a pair
+ * of two different names, one copy twice, or an identity the current scan
+ * does not hold is not a comparison this model expresses.
  */
 const owningRow = computed<SkillInventoryEntryDto | null>(() => {
   const left = currentLeft.value;

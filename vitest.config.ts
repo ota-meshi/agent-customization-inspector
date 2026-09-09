@@ -13,16 +13,25 @@ import { defineConfig } from 'vitest/config';
 /**
  * The bound for a case that does real filesystem work: every case under
  * `tests/integration/` builds a fixture tree on disk and scans it, some of them
- * twice. Both projects that run those files carry it, so one file's bound does
+ * twice, and the launcher probe's unit cases stage a linked tree of their own.
+ * Every project that runs one of those files carries it, so a file's bound does
  * not depend on which project ran it.
  *
  * Vitest's own default is 5 s, and the Windows runners are where it runs out.
  * `repository-scan.test.ts`'s 118 cases measure 2.2 s and 2.6 s on Ubuntu,
  * 3.9 s and 4.3 s on macOS, and 9.3 s on one Windows runner — while the other
  * Windows runner took 36.8 s over the same commit, and the one case there that
- * crossed 5 s failed. A runner four times slower than its sibling is what the
- * certification matrix has to survive, so the bound is set where that fits
- * rather than where the fast machines land.
+ * crossed 5 s failed. `file-opener.test.ts`'s 44 cases took 3.3 s on one
+ * Windows runner and 8.6 s on the other, over one commit again, and there the
+ * staged-link case crossed it. A runner several times slower than its sibling
+ * is what the certification matrix has to survive, so the bound is set where
+ * that fits rather than where the fast machines land.
+ *
+ * What a crossing costs is not one case. Vitest reports the timeout and moves
+ * on, but the aborted case's own work keeps running: the launcher probe that
+ * timed out went on calling the shared `which` double, and its candidates were
+ * still arriving while the next case read that double — which failed the next
+ * case on a call it never made.
  */
 const FILESYSTEM_SUITE_TIMEOUT_MS = 20_000;
 
@@ -42,6 +51,7 @@ export default defineConfig({
           // each declare `@vitest-environment happy-dom` for themselves.
           environment: 'node',
           include: ['tests/unit/**/*.test.ts'],
+          testTimeout: FILESYSTEM_SUITE_TIMEOUT_MS,
         },
       },
       {

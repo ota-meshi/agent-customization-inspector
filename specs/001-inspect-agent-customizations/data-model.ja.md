@@ -1425,10 +1425,13 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   （spec.md § Clarifications Session 2026-08-14）。Skill routeは、所有する行のinvocation name、比較する2つのcopyのentry fileの
   `sourceRelativePath` identity、copy相対の比較対象ファイルを名指し、所属sequenceのcurrentな
   commit済みgenerationに対して、0件、対応するreadableなfileを2つ、またはreadableなfile 1つと
-  明示された不在へ解決される。行を2つのidentityから導出せず名指すのは、2つのfileが複数の行に
-  同居しうるためである — 製品はskillを異なる事実で呼び出すため、他方のdirectory名を自身の`name`
-  として宣言するfileは両方を両方の行に載せる — 。導出した行はgenerationが先に公開した方になり、
-  読み手が開いた行の3つ目のcopyをroute自身のswitcherから取り落とす。Instruction routeは、先頭に立つSource familyと、side
+  明示された不在へ解決される。行を2つのidentityから導出せず名指すのは、行が「1つのtoolが解決した
+  1つの名前」であり、その解決が各vendor自身のruleだからである（§ 一覧の単位）: 行を導出することは、
+  fileを読むすべてのruleが同じ文字列に解決すると仮定することであり、それは出荷済みruleのたまたまの
+  一致であってmodelの性質ではなく、あるvendorのruleが変われば、どのsurfaceも何も言わないまま比較が
+  動いてしまう。名指しておけばrouteはその変化に耐える — 2つのruleが異なる名前に解決するfileは両方の
+  行の定義であり、読み手が開いた行が比較される行のままで、その3つ目のcopyはroute自身のswitcherに
+  残る。導出した行はgenerationが先に公開した方になり、それを取り落とす。Instruction routeは、先頭に立つSource familyと、side
   ごとのSourceと`sourceRelativePath` identityを名指す（FR-030）。ペアの所有者は、1つのapplicability
   rangeがそのfamilyに対して保持するblockである — skillの前例の行がここではblockになり、fileはちょうど
   1つのrangeを統治するため、そのrangeは2つのidentityから導出される — 。したがってペアはconsentされた
