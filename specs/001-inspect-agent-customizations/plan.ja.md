@@ -20,9 +20,9 @@ serializable contractを`src/shared/`に置き、1つの公開`dist/`にまと�
 workspace内で動作する。調査対象のカスタマイズファイルをadversaryとしてmodel化せず、調査対象sourceへの
 filesystem I/Oはすべて`src/server/inspection/` directory配下だけに置く。そこでは固定inspection path allowlistに対する
 通常の再帰的`node:fs/promises` walkを行い、使用できないentryにはfile別diagnosticを付ける。Browserは記述された完全な
-sourceをread-only Monaco editorで表示し、source比較にはMonaco diff editorを使う。Tool recognitionは
+sourceをそれ自身の着色されたtextとして表示し、2つのsourceの比較は同じrenderingで並べて行う。Tool recognitionは
 toolごとに比較し、宣言済みmetadataは1回だけ比較する — sideごとに1つのcanonical documentへ
-serializeし、それをdiff editorがsourceの傍らにmountする。kind/fieldで対応付けてVue
+serializeし、それをcomparisonがsourceの傍らに示す。kind/fieldで対応付けてVue
 componentで描画するのではない。その背後のparseは、Markdown系kindについては`(file, kind)`
 ごと、custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
 rule自身の読み取りである。
@@ -111,8 +111,8 @@ Vue 3.5.39とする。6つのNode/OS floor jobはcompatibleな全minor/patch rel
 **主要依存関係**: Nuxt 4.4.8、Vue Router 5.2.0、tsdown 0.22.8、Vite 7.3.6
 （Nuxtと互換性のある最新release）、`devframe` 0.7.5（pre-1.0 local-tool host framework）、
 `gunshi` 0.37.0、`open` 11.0.1、`yaml` 2.9.0、
-`strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`monaco-editor` 0.55.1、
-`@ota-meshi/site-kit-monarch-syntaxes` 0.7.3（Monacoが持たないTOML Monarch grammar）。いずれも`package.json`には
+`strip-json-comments` 5.0.3、`smol-toml` 1.7.0、`h3` 2.0.1-rc.22、`shiki` 4.4.3、
+`@shikijs/themes` 4.4.3、`diff` 9.0.0。いずれも`package.json`には
 caret rangeで宣言し、commit済みlockfileがこれらのexactなresolved versionとintegrityをpinする。
 `h3`のresolved versionはdevframe自身のh3と一致するため、hostの`/skills/**` shell fallbackと
 devframeは1つのH3 module instanceに解決される（research.md § 3）。devframeの残りのtransitive tree
@@ -315,9 +315,9 @@ Authorized browserはheartbeat interval、request timeout、retry delay、memory
 greater content epoch、non-null disable fenceでpurgeする — ordinaryなrequest rejectionでは決してpurgeしない。host喪失はloopback socketのcloseとしてdevframeが問い合わせなしにpageへ報告するため、
 process lossはpollingせずに検出される。Page-lifecycle eventはtriggerに含めない: FR-027はfailureまたは同等のterminal reset後にpurgeするもので、
 tab切り替えもページからの離脱もそのどちらでもないため、clientはvisibility/unload listenerを設置しない。
-Monacoには記述された完全なsourceを渡す。Browserまたはeditor runtimeがdiffを計算できない場合、UIは完全な
-read-only side-by-side sourceを利用可能なまま保ち、どちらのartifactもvalid/invalidと扱わずactionableなcomparison
-failureを報告する。HTTP deliveryはAPI DTOをtruncateしない。
+着色には記述された完全なsourceを渡し、届かなかったgrammarはtextを未着色のまま画面に残す。comparisonの
+対応付けは行だけを要するため、完全なside-by-side sourceはどの色よりも先に画面にあり、どちらのartifactも
+valid/invalidと扱わない。HTTP deliveryはAPI DTOをtruncateしない。
 
 Typed derivationはvendor自身のreaderであり、自らseedを開く場合はwalkの前に、seedがwalkの受理したfileである場合はwalkの後に走る: そのvendor contractが固定したseedを読み、そのcontractの
 declaration fieldが持つ値を取り、出荷済みderived ruleのidentityのもとで同じwalkのplanへ展開する — 値はwalkが
@@ -428,8 +428,8 @@ ordinary-error clauseに一致する。1 fileに限定されるfailureはそのf
 failed requestの実errorとともにattemptをfailさせ（RPC handlerのfailureはdevframeがserializeするままdevframe
 channelを渡る）、sanitized envelope、generic error entity、log-content ruleは設計に残らない。Quickstartは全stable behavior/rule/strategy/source ID、official-source drift review、typed segment array
 selector grammarとそのcontract-gate rejection、lintと残りのtest、
-その他の必須品質gate、4つのend-to-end storyを扱う。Monacoはclient-only、
-same-origin、model lifetime scopeとし、固有diff engineでdependency重複を避け、exact authored metadata比較を
+その他の必須品質gate、4つのend-to-end storyを扱う。着色とcomparisonはclient-only、
+same-originで、renderするcontentにscopeし、exact authored metadata比較を
 明示的に保つ。Product-owned browser launcherは、productのchild processをstartup openingに限定する —
 macOSでは固定のprocess一覧probeと、OSの`osascript` automation hostで実行する固定のtab再利用script、
 それ以外ではmaintainされた`open` packageの固定startup OS helper。spawnされるどのprocessも
@@ -500,8 +500,8 @@ src/
 │   ├── composables/
 │   │   ├── skill-comparison.ts
 │   │   ├── filters.ts
-│   │   ├── monaco.ts
-│   │   └── monaco-languages.ts
+│   │   ├── source-languages.ts
+│   │   └── syntax-highlighting.ts
 │   ├── session/
 │   │   ├── api-client.ts
 │   │   ├── client-data.ts
@@ -769,7 +769,7 @@ buildまたはpackage quality gateを配置しない。
 runnableとみなさない。
 Production `dependencies`はcaret宣言のdirect set `devframe`、`env-editor`、`gunshi`、`h3`、`open`、
 `smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`とし、`tests/package/production-graph.test.ts`が`pnpm-lock.yaml`から直接assertする。
-devframe、`open`、`which`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、Monaco、Playwright、その他
+devframe、`open`、`which`のtransitiveはlockfileが所有する。Nuxt/Vue/Vite/tsdown、shiki、`diff`、Playwright、その他
 build/test toolingはdevelopment-onlyとする。
 
 Cross-platform CIはmacOS、Linux、Windowsで同じpure Node.js inspection-filesystem integration suiteを
@@ -1003,15 +1003,13 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   selection replacement、generation replacementは対象scopeのmodelだけをdisposeし、それ自体は中央purgeではない。
   Global disableは異なり、actionがrequest送信前に中央purgeを
   invokeし、より大きい`globalContentEpoch`またはnon-null disable fenceの観測時にもrender前に同じpurgeを繰り返す。
-  AcknowledgementはAPIへ送信も永続化もしない。そもそも存在しないからである。Vue componentと
-  `monaco-editor`のESM buildで
-  表示し、`v-html`を使用しない。Single-file source modelとsource comparisonの両側をread-onlyとし、
-  opaqueなin-memory URIを使い、`readOnly`、`domReadOnly`、`originalEditable: false`、`links: false`、
-  `renderMarginRevertIcon: false`を設定し、環境変数参照を解決せず記述された完全なtextを保持する。`accessibilitySupport`は`auto`、
-  `accessibilityVerbose`はenabledとし、各viewに`ariaLabel`を付ける。
-  Literal source comparisonはMonaco diff editorが所有する。Tool recognitionはtoolごとに
+  AcknowledgementはAPIへ送信も永続化もしない。そもそも存在しないからである。Vue componentで、shikiのrunで着色した
+  text nodeとして表示し、`v-html`を使用しない。Single-file viewとsource comparisonの両側はbrowser自身の
+  textであり、環境変数参照を解決せず記述された完全なtextを保持し、編集・merge・revertするcontrolを持たず、
+  assistive technology向けに、示すfileまたはその部分として名付けられる。
+  Literal source comparisonはcomparisonが所有する。Tool recognitionはtoolごとに
   比較し、fileの宣言済みmetadataは1回だけ比較する — sideごとに1つのcanonical documentへ
-  serializeし、それをdiff editorがsourceの傍らにmountする。kind/fieldで対応付けてVue
+  serializeし、それをcomparisonがsourceの傍らに示す。kind/fieldで対応付けてVue
   componentで描画するのではない。その背後のparseは、Markdown系kindについては`(file, kind)`
   ごと、custom-agent kindについては`(file, tool)`ごとに1回であり、後者の分割はadmitした
   rule自身の読み取りである。Repository comparison acceptanceでは最初に同じRepository Source内のreadableなcurrent-generation distinctなカスタマイズファイル
@@ -1020,16 +1018,18 @@ lifecycleとnetwork enforcementはpackage manager自身の設定が所有する�
   Source family内に留まるため、RepositoryとGlobalを跨ぐpairは存在しない。RepositoryとGlobalのscan/status informationは読み手自身の操作でだけ更新する。scan commandはそのscanが
   終端に達してから応答し、pageはその応答で再取得する。他所で始まったscanを見せるのは明示refreshである。
   自動で更新されるものが無いので、pause/resume controlも、pauseする対象も存在しない
-  （contracts/accessibility-acceptance.ja.md § 2.2.2）。Editorはclient-onlyとし、file/compare routeで
-  lazy-loadする。Nuxt/Viteは明示的にimportしたeditor workerをsame-origin static assetとして出力し、
-  basic languageごとのgrammar chunkはlazyに取得する。Language-service worker、CDN asset、
-  external worker、blob workerを許可しない。Editor/model
-  instanceとsubscriptionはroute close、selection replacement、source disable、generation replacement時に
-  個別にdisposeする。Accessible diff viewer、意味のあるARIA label、keyboard navigation、narrow-screen
-  inline viewを有効に保ち、SC-008が数えるautomatedとkeyboardのevidenceで検証する。`MANUAL-*`の
+  （contracts/accessibility-acceptance.ja.md § 2.2.2）。Source colouringはclient-onlyとし、file/compare routeで
+  lazy-loadする。Nuxt/Viteはhighlighterを1つのsame-origin chunkとして出力し、最初のそのようなroute
+  で — inventoryのそこへのlinkがprefetchされるならその前に — 取得し、languageごとのgrammar chunkは
+  lazyに取得する。worker、WebAssembly asset、CDN asset、blob URLは無い。surfaceのrunはVueのstateで
+  あり、route close、selection replacement、source disable、generation replacement時に捨てられ、
+  次のpaintの前のrenderがそれをdocumentから取り除く。comparisonはどの幅でも2つのsideを向かい合わせに
+  保ち — pageがpairより狭いときはpageではなくframeが横にscrollする —、そのaccessible nameと
+  keyboard operabilityはSC-008が数えるautomatedとkeyboardのevidenceで検証する。`MANUAL-*`の
   screen-reader matrixは、このreleaseで実行できるrunが持たない環境を名指しており、未実行のresidualの
-  ままである（contracts/accessibility-acceptance.ja.md § Manual checkのmatrix（このreleaseでは未実行））。Browserまたはeditorが利用可能なenvironment
-  capacityでdiffを計算できない場合も、記述された完全なside-by-side sourceを表示し、actionable diagnosticを示す。
+  ままである（contracts/accessibility-acceptance.ja.md § Manual checkのmatrix（このreleaseでは未実行））。
+  alignmentに必要なのは行だけなので、comparisonはpairが揃った時点で画面にある。grammarが届かない
+  sideは未着色のtextのまま残り、その差分は変わらず印付けられる。
   `src/app/session/client-data.ts`はshared central client-data purge実装を所有し、
   `src/app/session/view-state.ts`はloopback session API channel上で`App.vue`が描画するreactive valueを所有する。
   listenerは一切設置しない: liveness probeも、product定義のpolling interval、request timeout、retry timer、

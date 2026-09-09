@@ -6,7 +6,7 @@
 // 2026-08-14), and this kind's comparison unit is the inventory's own row
 // unit — one declared lifecycle event (data-model.md § Inventory unit). The
 // two sides are that event's declarations in two of its row's carriers, each
-// serialized to one canonical JSON document and diffed in Monaco
+// serialized to one canonical JSON document and compared side by side
 // (research.md § 7) — never the carriers' own source, which a hook carrier
 // shows nowhere (FR-007). The pair is row-owned, like every comparison
 // surface's: the compare route accepts only two carriers the named event's
@@ -34,8 +34,8 @@
 // is no compare API, because a comparison is a read of committed details, not
 // a new resource. The view is generation-scoped (FR-030), and the central
 // client-data purge (FR-027) clears it the same way — including the two
-// Monaco models holding the serialized declarations, whose disposers the
-// mounting component registers here.
+// rendered pair holding the serialized declarations, whose disposer the
+// rendering component registers here.
 //
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
@@ -197,7 +197,7 @@ export class HookComparisonState {
 
   /**
    * Disposers of component-owned holders of the open comparison's content —
-   * the two Monaco models carrying the serialized declarations. Run
+   * the rendered pair carrying the serialized declarations. Run
    * synchronously by every drop path, because the contract orders dispose
    * before replace (data-model.md § BrowserState), exactly as the MCP
    * comparison's registry documents.

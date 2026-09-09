@@ -2,7 +2,7 @@
 // Launches the packaged CLI against a repository that keeps one marketplace in
 // two catalogs — the shape a team publishing to two products has — whose
 // entries have drifted, and verifies what the comparison publishes: the two
-// declarations as one JSON document per side diffed in Monaco, the files the
+// declarations as one JSON document per side compared side by side, the files the
 // two copies ship compared by the name they share, every value exactly as
 // written, no runtime claim about either side, and no control that edits,
 // merges, or reverts one.
@@ -174,10 +174,11 @@ test.describe('the plugin comparison surface', () => {
     const codex = rows.filter({ hasText: 'OpenAI Codex' });
     await expect(codex.locator('td').nth(0)).toContainText('Recognized');
 
-    // The Monaco diff holds both declarations: the values as JSON, the
+    // The diff holds both declarations: the values as JSON, the
     // credential whole and unmarked, the environment reference as its own
     // characters, and the two versions that drifted (FR-025, FR-026).
-    const diff = page.locator('.aci-plugin-declaration-diff');
+    // The entries' diff leads the declaration panel; the manifests' follows it.
+    const diff = page.locator('#aci-plugin-compare-panel-declaration .aci-source-diff').first();
     await expect(diff).toBeVisible();
     await expect(diff).toContainText(FIXTURE_CREDENTIAL);
     await expect(diff).toContainText(FIXTURE_ENVIRONMENT_REFERENCE);
@@ -198,7 +199,7 @@ test.describe('the plugin comparison surface', () => {
     await expect(declarationPanel).toContainText(
       'plugins/review-assistant/.claude-plugin/plugin.json',
     );
-    await expect(declarationPanel.locator('.aci-source-diff')).toBeVisible();
+    await expect(declarationPanel.locator('.aci-source-diff').last()).toBeVisible();
 
     // Runtime is stated as outside this repository, never as a fact about
     // either side (FR-009).
@@ -243,10 +244,23 @@ test.describe('the plugin comparison surface', () => {
     await expect(fileDiff).toBeVisible();
     await expect(fileDiff).toContainText('Walk the checklist');
     await expect(fileDiff).toContainText('then note the reviewer');
+    // A file that is a plugin's own manifest is a document the declaration
+    // pane already holds, so the pair is adopted without a request, in the
+    // same tick as the previous pair is dropped — and the side renders it all
+    // the same. A drop that reached into the elements ahead of Vue's flush
+    // left this side blank, because the adopted pair was patched into rows no
+    // longer in the document (`SourceDiff.vue` § registerContentOwner).
+    await switcher.selectOption('.codex-plugin/plugin.json');
+    await expect(panel).toContainText('Only the first plugin ships this file');
+    await expect(fileDiff).toContainText('"name": "review-assistant"');
+    await switcher.selectOption('skills/checklist/SKILL.md');
+    await expect(fileDiff).toContainText('Walk the checklist');
     // The declarations keep their own tab, and stepping back to it finds the
     // comparison the page opened on.
     await page.getByRole('tab', { name: /^Declaration/u }).click();
-    await expect(page.locator('.aci-plugin-declaration-diff')).toBeVisible();
+    await expect(
+      page.locator('#aci-plugin-compare-panel-declaration .aci-source-diff').first(),
+    ).toBeVisible();
 
     // A file only one copy ships is compared against that copy's stated
     // absence: the existence difference is part of the comparison, and the
@@ -321,6 +335,8 @@ test.describe('the plugin comparison surface', () => {
       ).href,
     );
     await expect(page.locator('body')).toContainText('names the same file twice');
-    await expect(page.locator('.aci-plugin-declaration-diff')).toHaveCount(0);
+    await expect(
+      page.locator('#aci-plugin-compare-panel-declaration .aci-source-diff'),
+    ).toHaveCount(0);
   });
 });

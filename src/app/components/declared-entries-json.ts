@@ -5,7 +5,7 @@
 // of such a carrier can paste it as their own entry's body, while a TOML
 // carrier's reader copies values rather than syntax. Two surfaces
 // consume it: the comparison serializes both sides into this one spelling
-// and diffs the serializations in Monaco — the two carriers of one name
+// and compares the serializations side by side — the two carriers of one name
 // need not share a syntax, a `.codex/config.toml` declares in TOML while a
 // `.mcp.json` declares in JSON, and no carrier shows its bytes (FR-007) —
 // and the MCP detail renders each declaration's fields as the same
@@ -129,7 +129,7 @@ export function declaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): st
 
 /**
  * Serializes one declared lifecycle event to the JSON document the hook
- * comparison mounts as one Monaco side (FR-011): the event key its carrier
+ * comparison shows as one side (FR-011): the event key its carrier
  * wrote with the groups under it, every nested mapping's keys sorted so both
  * sides align line by line.
  *
@@ -150,7 +150,7 @@ export function canonicalHookEventJsonText(event: HookEventDeclarationDto): stri
 
 /**
  * Serializes one server declaration's fields to the JSON document the
- * comparison mounts as one Monaco side (FR-011): the common declaration
+ * comparison shows as one side (FR-011): the common declaration
  * keys first in the fixed reading order, every other key — and every nested
  * mapping's keys — sorted, so both sides align line by line.
  */

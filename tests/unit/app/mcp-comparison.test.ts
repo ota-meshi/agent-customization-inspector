@@ -11,7 +11,7 @@
 // compare route rejects a same-file link before opening, and a named row's
 // carriers are always parsed and readable
 // (api-types.ts § McpDeclarationDto.parseStatus). Each side is serialized to one canonical JSON
-// document for Monaco to diff (research.md § 7), with no value masked,
+// document for the comparison to diff (research.md § 7), with no value masked,
 // shortened, or substituted; the detail's serialization of the same fields
 // keeps the authored order (FR-007).
 import { describe, expect, it } from 'vitest';
@@ -304,8 +304,8 @@ describe('MCP comparison view (T397)', () => {
   });
 
   it('runs registered content-owner disposers on close, like the sibling surfaces', async () => {
-    // The Monaco models holding the serialized declarations are owned by the
-    // component that mounted them; the state's contract is that every drop
+    // The rendered pair holding the serialized declarations is owned by the
+    // component that rendered it; the state's contract is that every drop
     // path disposes them synchronously (data-model.md § BrowserState).
     const scripted = scriptedChannel({
       sessions: [dataResult(snapshotWith())],

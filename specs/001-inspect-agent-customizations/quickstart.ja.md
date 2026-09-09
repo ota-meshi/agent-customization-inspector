@@ -522,21 +522,21 @@ pnpm exec playwright test tests/e2e/repository-complete-comparison.spec.ts
    対して表示する。readableなsource textなしに存在する対応物 — binaryを含む — は不在ではなく、そのペアを選ぶと
    ファイル名を挙げたnot-readableの結果を報告する。どちらのcopyでもreadableでないファイルは決して提供しない。
    Cross-Source comparisonは次のworkflowでGlobal enable後にだけ検証する。
-2. Read-only Monaco source modelがmasking/環境置換なしで記述された完全なtextを保持し、link/editingを無効にし、
-   filesystem pathではなくopaqueなin-memory URIを使う。
-3. Monacoがsemantic ranking、merge、lint、validation、format、convert、fix suggestionなしでliteral
+2. Read-only source viewがmasking/環境置換なしで記述された完全なtextを保持し、linkもeditingも持たない
+   browser自身のtextとして、自身のfilesystem pathを名指さずに表示する。
+3. comparisonがsemantic ranking、merge、lint、validation、format、convert、fix suggestionなしでliteral
    source差を表示する。宣言済みmetadataはsideごとに1つのcanonical serialized documentとして比較し、
-   各surfaceがVueで描画するtypedなrecognition rowの横でMonacoがdiffする。このserializationはFR-012が
+   各surfaceがVueで描画するtypedなrecognition rowの横に並べて示す。このserializationはFR-012が
    定めるparseの提示であり — 異なるsyntaxで書かれた2つのsideを共に読める唯一のspellingである —
    どちらのfileの変換でもない。
-4. Monacoとbrowserのcapacityはbrowser engineと実行環境から継承する。Recoverableなeditor computation failureは
-   記述された完全なread-only side-by-side sourceを削除せず、actionable diagnosticを示す。
+4. 着色とcomparisonのcapacityはbrowser engineと実行環境から継承する。届かなかったgrammarは、
+   記述された完全なread-only side-by-side sourceを未着色のまま画面に残す。
 5. Rescan、removal、Global disable、route closeがstale selectionと表示済みdetail stateをclearし、関連する
-   全editor/model instanceをdisposeする。
-6. Keyboard/screen-reader userがlabel付きcontrolとaccessible diff viewerを使い、focus trapなしでsource
+   全rendered sourceを解放する。
+6. Keyboard/screen-reader userが名付けられたsideとframeを通じて、focus trapなしでsource
    diffへ入り、navigateし、抜けられる。
-7. Packed appがeditor workerをsame-origin static assetからloadし、external requestも`blob:` workerも
-   発生させない。
+7. Packed appが着色 — highlighterと、表示したfileがfetchする各grammar — をsame-origin static
+   assetからloadし、external requestも`blob:` workerもWebAssemblyも発生させない。
 8. `/`、`/global-consent`、各kindの`compare`先頭のcomparison route（`/skills/compare/<family>`、
    `/instructions/compare/<family>`、`/mcp/compare/<family>`、
    `/prompts-and-commands/compare/<family>`、`/agents/compare/<family>`、

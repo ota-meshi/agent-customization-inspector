@@ -965,7 +965,7 @@ const pendingDiffersFromRoute = computed(() => {
  * first branch condition on every render, the view re-derives to null on
  * the first render after leaving 'ready' — the same flush that takes the
  * rendered content out of the DOM. The externally reachable holders of
- * authored text — the Monaco models and the fallback DOM — keep their
+ * authored text — the rendered pair's rows — keep their
  * synchronous disposal through the purge's owner registry; this cache is
  * reachable only through the read that re-derives it.
  */
@@ -1508,8 +1508,6 @@ onBeforeUnmount(() => {
             <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
             <SourceDiff
               v-bind="readyView.diff"
-              absence-note="no file in this skill directory"
-              mount-error-message="The comparison viewer could not be loaded. Each side is shown below in full."
               :register-content-owner="registerComparisonContentOwner"
             />
           </div>

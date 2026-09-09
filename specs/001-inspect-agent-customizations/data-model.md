@@ -185,8 +185,8 @@ serialization/encoding or delivery failure after the handler returns never rolls
 duplicates the committed job/state, records no second failure,
 and never converts a truncated body into a partial DTO; the request reports its ordinary
 error and the client recovers from a fresh
-session snapshot, exactly as for a transport failure. Monaco and the browser likewise use their
-environment-provided capabilities; comparison failure leaves every present side's
+session snapshot, exactly as for a transport failure. The colouring and the comparison likewise use the
+browser's own capabilities; a grammar that does not arrive leaves every present side's
 complete authored source view available — both files', or the one present file's beside
 its stated absence.
 
@@ -1485,7 +1485,7 @@ and is reported ordinarily as the failed request's error when a session API boun
 
 Recognitions are ordered by the closed tool order `copilot`, `claude`, `codex`, then the
 closed kind order, never by opaque ID. Cross-file declaration comparison is
-one canonical serialized document per side, diffed in Monaco (research.md § 7): a
+one canonical serialized document per side, compared side by side (research.md § 7): a
 frontmatter declaration is its file's one parse for the recognized Markdown kind, so a
 tool is not a coordinate of it — tool recognition is compared per tool in typed rows
 beside the diff — and each side serializes to YAML, each comparison leading with the keys
@@ -1496,7 +1496,7 @@ product ranks it: that kind's row name stays the admitting rule's answer rather 
 declared key. The MCP kind's declarations are each recognizing tool's own reading
 (§ Field reading), and their comparison surface is the declared server name's own — one
 name's declaration in each of two carriers of its row, serialized to one canonical JSON
-document per side and diffed in Monaco, loaded through two ordinary
+document per side and compared side by side, loaded through two ordinary
 `get-mcp-carrier-detail` reads (§ BrowserState · ComparisonSelection) — while each
 detail renders its declaration content as the same serialized document in the file's own
 key order (FR-007).
@@ -1868,7 +1868,7 @@ This state is not authoritative and is never persisted.
   `sourceRelativePath` identities that name's row of the current generation holds; a
   selection outside the named row, a name no current row is included, is reported
   rather than compared. Its pair is loaded through two ordinary
-  `get-mcp-carrier-detail` reads, and what Monaco diffs is each side's declaration for
+  `get-mcp-carrier-detail` reads, and what the comparison diffs is each side's declaration for
   the named server serialized to one canonical JSON document (research.md § 7): the
   carriers need not share a syntax and no carrier shows its bytes (FR-007), so the
   serialization is the one spelling both sides can be read in. The prompt-and-command
@@ -1890,23 +1890,24 @@ This state is not authoritative and is never persisted.
   the named row, an event no current row is included, is reported rather than compared.
   Nothing a client decides at runtime is nameable, because no row holds such a value
   (FR-009). Its pair is loaded through two ordinary `get-hook-carrier-detail` reads, and
-  what Monaco diffs is each side's declaration of the named event serialized to one
+  what the comparison diffs is each side's declaration of the named event serialized to one
   canonical JSON document with every nested mapping's keys sorted (research.md § 7): one
   event can be declared by a TOML configuration layer and by a JSON settings document,
   and no carrier shows its bytes (FR-007), so the serialization is the one spelling both
   sides can be read in. A cross-source comparison always
   compares each source's last committed state. A file pair is loaded through two ordinary
   `FileDetail` requests and a one-sided skill comparison through one — the absence needs
-  no request — and Monaco compares the complete `sourceText` values, the absent side
+  no request — and the comparison compares the complete `sourceText` values, the absent side
   empty, which renders the present content, line by line, as the difference it is.
   Literal differences, including credential-like strings and environment references,
   remain visible.
-- `EditorModelState`: generation-scoped Monaco models with opaque in-memory URIs and
-  complete authored `sourceText` — or, on a comparison whose sides are declarations
-  rather than files, the canonical serialization of one declaration's parsed values,
-  which carries the declared values in full and is purged under the same rules. The owning editor, subscriptions, and every model are disposed
-  independently on route close, selection replacement, file removal, source disable, or
-  the owning sequence's generation change.
+- `EditorModelState`: the generation-scoped rendered source a viewer or a comparison side
+  holds — complete authored `sourceText`, or, on a comparison whose sides are declarations
+  rather than files, the canonical serialization of one declaration's parsed values, which
+  carries the declared values in full and is purged under the same rules. The owning
+  component drops it as state on route close, selection replacement, file removal, source
+  disable, or the owning sequence's generation change, and the render that follows — before
+  the next paint — is what takes the rows out of the document.
 - There is no sensitive-content state of any kind: no acknowledged flag, no notice, and no
   confirmation step in front of a `FileDetail` request or a comparison (FR-027). The session
   is loopback-bound and the files are the viewer's own, so a confirmation would guard nothing
@@ -1962,8 +1963,8 @@ This state is not authoritative and is never persisted.
   does not treat as exposure. A transport-reported channel loss or unsupported
   protocol on the current RPC, or a session-ID mismatch, synchronously invokes one central
   purge before rendering the session-ended view — an ordinary handler, serialization, or
-  delivery failure is that request's error alone and purges nothing: dispose every Monaco
-  editor/model/worker and subscription, clear comparison and filter state, drop all
+  delivery failure is that request's error alone and purges nothing: release every rendered
+  source and subscription, clear comparison and filter state, drop all
   source/detail/metadata/diagnostic DTOs, abort pending requests, and increment
   the epoch so every response captured under the prior epoch is ignored. The DOM those
   DTOs rendered is removed by the framework's own flush, which is a microtask and therefore

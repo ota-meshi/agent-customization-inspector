@@ -517,12 +517,12 @@ pageを6つと数えないようにした。
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 3**、canonical SHA-256
-`5fe2e9e6b4978e1201d4bb44efaaaa82df86089c35a64d416659c756a237d8d5`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
-caseは、2026-09-05に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
-suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由、browser specはChromium
-suite全体577件経由であり、上のrelease gate表が記録する1回のrunで全件が通った。
+`7997a3a45f973f12c0686452b75016ab2a498596142680fb756db205c994cf8b`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。その99
+caseは、2026-09-09に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
+suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由（405件、271件、5件pass）、
+browser specはChromium suite全体577件経由であり、このhost上の1回のrunで全件が通った。
 `tests/contract/outcome-fixture-manifest.test.ts`は
-同じsessionでcanonical digestと66件のfixture digestすべてを再現した。
+同じrunでcanonical digestと66件のfixture digestすべてを再現した。
 
 このdigestはmanifestから読み取ったものであり、以前の値を持ち越したものではない。以前の記録は
 checked-inのbytesが既に持たない値を名指していた。contract suiteはmanifestを自身のcompanion file
@@ -530,14 +530,23 @@ checked-inのbytesが既に持たない値を名指していた。contract suite
 この行と`tests/fixtures/outcomes/manifest.sha256`を、bytesを動かす同じ変更の中で同じcommandから
 書くことである。
 
-このsetは、その前のsetとは比較できない。Closedなenvironment-failure errno集合を中身に合わせて
+このsetは、その前のsetとは比較できない。source surfaceがMonacoからshikiへ移った際（T1207、T1209）に、
+参照するbrowser spec 10件が変わったためである。detail specの8件 — `claude-custom-agents-`、
+`claude-settings-`、`codex-config-`、`codex-custom-agents-`、`codex-permissions-`、`codex-skills-`、
+`copilot-custom-agents-`、`copilot-settings-detail` — はeditorのDOMへ到達するのをやめ、代わりに
+source box、そのrunの色、その中にtext以外が無いことを読む。`comparison.spec.ts`はproduct自身の
+文言の走査からeditorのselectorを落とし、`output-styles-detail.spec.ts`は待つ理由を書き直した。
+どのcaseもID、class、expected outcomeを保ったので、manifest versionは下の遷移と同じgovernanceの
+もとで3のままであり、この実行のbrowser側もこのhostのChromium projectであった。
+
+その前のsetは、さらにその前のsetとは比較できない。Closedなenvironment-failure errno集合を中身に合わせて
 改名した際に`tests/contract/host-startup.test.ts`が変わり、そのfixture digestとcanonical manifest
 digestが一緒に動いたためである。spec.ja.md § Release-Evidence Fixtureのガバナンスは、fixture byte
 の変更を新しい比較不能なmeasurement setとする。Manifest versionは3のままである。そのガバナンスが
 incrementを要求するのはcase、required-class、expected-outcomeの変更であり、これはそのいずれでもない
 — 同じ4基準にまたがる同じ99 case IDで、required classごとに非ゼロの件数を持つ。
 
-その前のsetがinterface rework後のsetと比較できなかったのは、それ自身の理由による。参照fixtureが5件
+さらにその前のsetがinterface rework後のsetと比較できなかったのは、それ自身の理由による。参照fixtureが5件
 変わり、いずれもrailの`Source diagnostics`項目の削除によるものである。instructions inventoryの3 spec —
 `claude-`、`codex-`、`copilot-` — はその項目を開いて空listを読むassertionを落とし、Codexのものは
 tabを5件ではなく4件と数えるようになった。`inspection-safety.spec.ts`は`Partial`ではなく
@@ -677,24 +686,43 @@ checked inしていない。
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2` pass（chromium・firefox・webkit）; `MANUAL-4.1.2` 未実行 |
 | 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3` pass（chromium・firefox・webkit）; `MANUAL-4.1.3` 未実行 |
 
-**`AUTO-2.1.2`は3 browserすべてでeditorからの脱出を認証する。** ChromiumとWebKitでは上限付きの前向き
-Tab脱出をassertする。pinされたFirefox revisionでは、TabはMonacoの入力textareaから出ない。一方
-Shift+Tabは最初の押下で出るので、その後ろ向きの脱出をFirefoxで明示的にassertする。2026-09-04に`window`の
-capture phaseの`keydown`
-listenerで測定した。どの押下もページに`defaultPrevented`がfalseのまま届き、`focusin`は続かず、
-`document.activeElement`は`textarea.inputarea`のままである — Monacoはkeyを消費していないので、
-Monacoがkeyを取るかどうかを決める`tabFocusMode: true`とCtrl+M toggleは何も変えない。Firefoxの
-前向きのsequential focus navigationは、Monacoがそのengineでだけ0×0で描くtextarea（text-area edit contextの
-`canUseZeroSizeTextarea = isFirefox`。他のengineでは1px）から動かない。入力elementが
-`div.native-edit-context`であるChromiumと、WebKitは最初の押下でfocusを解放する。Testは前向きTabの免除を
-明記し、このrepositoryにworkaroundは入れておらず、Firefoxでの前向きの脱出はそのengine上のeditorの未解決の
-limitationとして残る。
+**2026-09-04に、`AUTO-2.1.2`は当時detailが描いていたeditorからの脱出を3 browserすべてで認証した。**
+ChromiumとWebKitでは上限付きの前向きTab脱出をassertした。pinされたFirefox revisionでは、Tabは
+Monacoの入力textareaから出なかった。一方Shift+Tabは最初の押下で出たので、その後ろ向きの脱出を
+Firefoxで明示的にassertした。`window`のcapture phaseの`keydown` listenerで測定した。どの押下も
+ページに`defaultPrevented`がfalseのまま届き、`focusin`は続かず、`document.activeElement`は
+`textarea.inputarea`のままだった — Monacoはkeyを消費していなかったので、Monacoがkeyを取るかどうかを
+決める`tabFocusMode: true`とCtrl+M toggleは何も変えなかった。Firefoxの前向きのsequential focus
+navigationは、Monacoがそのengineでだけ0×0で描いていたtextarea（text-area edit contextの
+`canUseZeroSizeTextarea = isFirefox`。他のengineでは1px）から動かなかった。入力elementが
+`div.native-edit-context`だったChromiumと、WebKitは最初の押下でfocusを解放した。Testは前向きTabの
+免除を明記し、このrepositoryにworkaroundは入れず、Firefoxでの前向きの脱出はそのengine上のeditorの
+未解決のlimitationとして残っていた。
 
-同じlimitationはFirefoxでだけもう1つのclaimを奪う。detail pageの前向きwalkはそこで止まるため、
-walkが動いているかではなく、editorがmountした時点でその手前にcontrolがいくつあったかを数えることになる —
-開発機で6〜8押下分、certification runnerでは3であり、そこではeditorは2押下目には既にmountしている。
-そのためこの数はFirefoxでは主張しない。editorが載らない唯一のページであるinventoryのwalkが、
-Firefoxを他の2 engineと同じclaimに保つ。
+同じlimitationはFirefoxでだけもう1つのclaimを奪っていた。detail pageの前向きwalkはそこで止まるため、
+walkが動いているかではなく、editorがmountした時点でその手前にcontrolがいくつあったかを数えることに
+なっていた — 開発機で6〜8押下分、certification runnerでは3であり、そこではeditorは2押下目には既に
+mountしていた。そのためこの数はFirefoxでは主張しなかった。editorが載らない唯一のページである
+inventoryのwalkが、Firefoxを他の2 engineと同じclaimに保っていた。
+
+2026-09-09に再測定した。detail pageのsource boxが、独自のkey handlingを持たない `tabindex="0"` の
+browser自身の `pre` になった後である（T1207）。boxは何も掴んでいないので、上記の前向き脱出の
+limitationは、そこにもう描画されないeditorのものだった。detail walkの数もFirefoxで他のengineと
+同様に主張する。比較pageのdiffはT1209までMonacoのままだが、このcaseのwalkの外にある。
+pinされたFirefoxとWebKitの
+revisionで `playwright test --project=firefox --project=webkit tests/e2e/accessibility.spec.ts`
+を実行し（69件pass）、Chromiumでも同じfileを実行した。comparisonが2つの `pre` になった後
+（T1209）にも3 engineすべてで再実行し、同じ結果だった: 105件pass。
+
+脱出は3 engineすべてで後ろ向きにassertする。boxはdetailが描く最後のfocusable elementなので、
+前向きの押下はdocumentの外へ出てしまい、その報告がengineで異なるためである。Chromiumは
+`body` を返し `document.hasFocus()` はfalseになる。Firefoxは `document.activeElement` をboxのまま
+保つので、前向きのassertionはこれをtrapと読む — 実際にcertification runnerで10押下を使い切った。
+boxの後ろにfocusableを1つでも足すと、どちらのengineも最初の前向き押下でboxから出るため、そこで
+前向きの押下が出会うのはboxが掴んでいる何かではなくdocumentの終端である。後ろ向きの移動は必ず
+到達できるcontrolを持つので、engineごとに分けない1つのclaimになる。pinされた各revisionで
+`playwright test --project=<engine> tests/e2e/accessibility.spec.ts -g 'AUTO-2.1.2 focus enters
+and leaves'` を3回ずつ実行して測定した。
 
 **Manualな側はcriterionの外にある。** 36件の`MANUAL-*` IDは、`3 × 5 × 3 × 8 × 3 = 1,080`個の
 keyed cellそれぞれに対して実行することになる — 合計38,880 cellで、VoiceOver付きmacOS、NVDA付き

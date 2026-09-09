@@ -218,7 +218,7 @@ policy).
 | Frontmatter           |                                                          `vfile-matter` 5.0.1, `vfile` 6.0.3 | Frontmatter delimiter handling. Deciding where a frontmatter block begins and ends means re-deciding BOM handling, line endings, and the closing-fence forms, so it is a parser rather than a regular expression. This one parses the block with the `yaml` engine already listed here; a package carrying its own `js-yaml` would give one document two meanings, because js-yaml 3 is YAML 1.1 and `yaml` is YAML 1.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | File opening          |                                                            `which` 6.0.1, `env-editor` 1.3.0 | The detail surfaces' open control (FR-022). `which` resolves the editor command a launch would run, so what the host offers and what it can start are one fact rather than two that can disagree; `env-editor` supplies where an installation puts that command when it is not on `PATH`, keeping those locations a maintained third-party fact instead of a table this repository would have to follow each editor's packaging with. `which` stays on 6.x because 7.0.0 declares `^24.15.0`, which excludes part of this project's own supported Node range; the launch itself reuses `open`, already listed above. A package that finds installed applications generally (`locate-app`) is rejected: it is CommonJS-only and pulls a prompt-engineering package and `crypto-js` into a production closure this project audits                                                             |
 | Icons                 | `unplugin-icons` 23.0.1, `@iconify-json/lucide` 1.2.124, `@iconify-json/simple-icons` 1.2.93 | Build-time icon compilation: each `~icons/<collection>/<name>` import becomes a component carrying that icon's own SVG, so the page fetches nothing and no icon runtime ships — the arrangement FR-022 requires, and the reason Iconify's API-backed runtime (`@nuxt/icon`, `@iconify/vue`) is rejected. Both collections ship their icon data with no license file of their own, so this repository carries each set's upstream text under `licenses/` for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                                                                                            |
-| Source view/diff      |                         `monaco-editor` 0.55.1, `@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | Current stable read-only source and diff editor; its own diff engine avoids a duplicate client dependency. Monaco ships no TOML grammar and `.codex/config.toml` is a customization format this product opens, so the `toml` id is registered from the syntaxes package: a Monarch grammar and a language configuration — what a basic language is — with no language service and no worker behind them. That package ships no license file of its own, so this repository carries its upstream text under `licenses/` for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                             |
+| Source view/diff      |                                                `shiki` 4.4.3, `@shikijs/themes` 4.4.3, `diff` 9.0.0 | Tokenizer-only colouring on shiki's JavaScript regular-expression engine — no editor runtime, worker, or WebAssembly — with its bundled grammars fetched one chunk per language and the two themes imported statically; `diff` is Myers' line and word alignment for the comparison, computed on the page with no product-defined ceiling. Every one of them ships its own license file for the notice document to read (FR-043)                                                                                                                                                                                                                                                                                                                             |
 | Colour-scheme control |                                                                     `shine-and-bright` 0.3.0 | The switch the reader chooses the page's colour scheme with, drawn by the stylesheet that package ships: the component renders the markup those class names select and sets the package's own custom properties, so the sliding knob and the sun-to-moon transition are the package's rather than this repository's. A devDependency whose CSS the client bundle carries, like the icon and grammar packages above; it ships its own license file, so the notice document reads that text where those carry theirs under `licenses/` (FR-043). With forced colours active every `box-shadow` is dropped, which takes the sun and the moon with it while the button's and the knob's borders repaint and the knob still slides — measured 2026-08-25, and the control's accessible name is what states its purpose there (WCAG 1.4.11)                                                       |
 | Lint                  | ESLint 10.7.0, `@nuxt/eslint` 1.16.0, `@stylistic/eslint-plugin` 5.10.0, `@typescript-eslint/parser` 8.64.0 | Current compatible stable releases; `@stylistic` supplies the stylistic rules (e.g. `quotes`) ESLint 10 dropped from core. The parser is declared directly because this repository's own rule under `eslint-rules/` is tested through ESLint's `RuleTester`, which is handed a parser by the test rather than by a config: a transitive resolution reached through `@nuxt/eslint` is a version nothing here controls, and a test that imports one is asking for a package it does not declare. Nothing about the release changes with it — a devDependency the published payload never imports, no runtime behavior, no public contract, and no migration, on the same terms as every other tool in this table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Unit/integration      |                                         Vitest and coverage-v8 4.1.10, Nuxt Test Utils 4.0.3 | Exact matching Vitest/coverage versions; Nuxt-supported test harness                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -349,7 +349,7 @@ Primary version evidence is the npm registry for
 [Vite](https://www.npmjs.com/package/vite), [pnpm](https://www.npmjs.com/package/pnpm),
 [devframe 0.7.5 registry metadata](https://registry.npmjs.org/devframe/0.7.5),
 [Gunshi 0.37.0 registry metadata](https://registry.npmjs.org/gunshi/0.37.0),
-[Monaco Editor](https://www.npmjs.com/package/monaco-editor),
+[shiki](https://www.npmjs.com/package/shiki), [diff](https://www.npmjs.com/package/diff),
 [Vitest](https://www.npmjs.com/package/vitest), and
 [Playwright](https://www.npmjs.com/package/@playwright/test). Node's official
 [release status](https://nodejs.org/en/about/previous-releases) establishes which line is the
@@ -357,9 +357,9 @@ active LTS the development/build baseline resolves to; the
 [Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)
 establishes the second engine floor. GitHub's official
 [runner-image labels](https://github.com/actions/runner-images#available-images) establish the
-three OS targets. Monaco's official
-[v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)
-establishes the selected stable editor version.
+three OS targets. shiki's official
+[regex engines guide](https://shiki.style/guide/regex-engines) establishes that every bundled
+grammar runs on its JavaScript engine.
 Gunshi's official [setup requirements](https://gunshi.dev/guide/introduction/setup) and
 [declarative/strict CLI guide](https://gunshi.dev/guide/essentials/declarative) establish
 the Node/TypeScript compatibility and closed unknown-option behavior used here.
@@ -372,7 +372,7 @@ so both resolve one module instance): the CLI and parser packages are
 npm-graph leaves, h3 is already in devframe's transitive host tree recorded above,
 devframe contributes that tree, and `open` brings the small helper-detection tree
 (`default-browser`, `is-wsl`, and their leaves) the lockfile pins with it.
-Nuxt/Vue/Vite/tsdown, Monaco, and test tooling are build-
+Nuxt/Vue/Vite/tsdown, shiki, `diff`, and test tooling are build-
 or development-only because their required output is assembled into the closed product
 assets. The lockfile and an isolated installed production closure are both audited.
 
@@ -846,64 +846,58 @@ boundary.
 
 ## 7. Source and metadata comparison UI
 
-**Decision**: Client-only lazy-load the ESM build of `monaco-editor` on file/compare routes
-for read-only single-file source views and literal source comparison. Import only the editor
-worker and every basic-language contribution; let Nuxt/Vite emit same-origin assets
-and do not ship any language-service worker. The full basic-language set rather than a
-chosen few, because which languages a reader meets is decided by whatever a customization's
-own directory contains (contracts/inspection-path-allowlist.md § Bounded companion census),
-and each contribution registers a lazy loader whose grammar chunk is fetched only when a
-file of that language is opened. A basic language colours text and nothing more; the
-language services' worker-backed features — diagnostics above all, plus completion,
-hover, formatting, symbols — are excluded, because validating what it is given and
-marking an inspected customization as invalid is a verdict this product does not make.
-JSON has no basic-language grammar, so one is built in the registration module: the
-`json` id registers with the extension claims the JSON service's contribution makes, and
-the one feature wired to it is the service's own local tokenizer — a module with no
-worker behind it. The contribution itself is never imported, because its lazily loaded
-mode carries the service's worker into the emitted bundle, and shipping a
-language-service worker is what the package gate forbids. The real `json` colouring
-therefore ships with no validation and no worker, and `.jsonc` maps to the same
-tokenizer, whose comment support is its own. TOML, which Monaco ships nothing for, takes its grammar from
-`@ota-meshi/site-kit-monarch-syntaxes`: a Monarch grammar and a language configuration with no
-service behind them, registered onto a `toml` id through the same lazy factory every basic
-language uses, so the chunk carrying them is fetched on the first `.toml` file opened. The
-package's own `setupTomlLanguage` is not what registers it — its parameter is the whole
-`monaco-editor` entry point, whose type includes the language services this bundle excludes,
-so calling it would mean asserting a shape this application deliberately does not have. The
-`.jsonc` mapping is internal, the model URI
-stays opaque, and the text is displayed exactly as authored either way. Models use opaque in-memory URIs, hold
-complete authored source text, and are disposed separately from their editor and
-subscriptions on route close, selection replacement, source disable, or generation
-replacement. A Monaco text model stores one end-of-line sequence per document, so a file
-whose lines mix endings is rendered — and copied from the editor — with its majority
-ending, with line contents and line count unchanged; the exact `sourceText` is what the
-detail response carries and what comparison consumes, and is unaffected. Configure
-`readOnly`, `domReadOnly`, `originalEditable: false`, `links: false`, and
-`renderMarginRevertIcon: false`; keep `accessibilitySupport: 'auto'`, enable
-`accessibilityVerbose`, and give every source side an `ariaLabel`. Turn off
-`unicodeHighlight` — `nonBasicASCII`, `invisibleCharacters`, and
-`ambiguousCharacters` — because those defaults decorate and hover a warning over
-characters of the reader's own file, which is the linting FR-032 forbids this surface
-from doing; where a character's spelling does matter the product states it itself, in
-path presentation (data-model.md § SourceRelativePath). Monaco announces through one
-element the editor composable module owns and every mount shares, rather than the
-default under `document.body`,
-which outlives every editor, and teardown empties that element's live regions: Monaco's
-aria module holds them in module-level variables, so detaching them would leave the last
-announced line of authored source reachable (FR-027). Where the editor module cannot
-load at all, the same source renders as an inert `pre`, which is focusable so its
-scrollable box is reachable without a pointer. With the devframe host
-serving the Nuxt output directly (§ 8) there is no product-assembled CSP-hash manifest;
-display inertness rests on the read-only editor configuration, Vue text bindings, and
-disabled links, and the client still loads no external worker, blob worker, or evaluated
-string. Diff
-highlighting uses Monaco and browser capacity without a product-defined line or computation-
-time cutoff. If Monaco or the browser reports a recoverable failure, retain the complete
-read-only side-by-side source and a diagnostic. Tool recognition is compared per tool,
+**Decision**: Colour authored source with shiki — the tokenizer alone, on its JavaScript
+regular-expression engine, fetched with the first route that shows a file or ahead of it when
+that route's link is prefetched, and constructed on the first file shown — and render it as
+the browser's own text: a `pre` holding, per line, the runs the grammar recognized as text
+nodes styled from each run's dual-theme colour variables, with line numbers drawn as generated
+content so they are neither selected nor copied. No editor, no worker, no WebAssembly, and no
+HTML generated from text ships; every asset is emitted by Vite into the packaged SPA and served
+by the same local host. Grammars are shiki's bundled set, one lazily fetched chunk per language,
+taken from its own registration table rather than a chosen few, because which languages a
+reader meets is decided by whatever a customization's own directory contains
+(contracts/inspection-path-allowlist.md § Bounded companion census); a file's language is the
+bundled language whose id or alias its extension spells (`source-languages.ts`), plain text
+where none does, and a surface that knows a text's format names it — a serialized declaration
+is JSON whatever its carrier's extension, and a Codex `.rules` policy is Starlark, coloured by
+Python's grammar because shiki bundles no Starlark grammar. The themes are VS Code's Default
+Light+ and Dark+, applied as CSS variables so the page's own colour scheme decides which shows;
+they leave a TOML table header and a date in the text colour, which is accepted as those
+themes' own reading (`syntax-highlighting.ts`). Colouring is tokenizing and nothing more: no
+feature validates, completes, or hovers, because marking an inspected customization as invalid
+is a verdict this product does not make, and a grammar or highlighter that does not arrive
+leaves the text on screen uncoloured with no notice and no retry — the file is already there.
+The text is shown line for line as `sourceText` holds it, split where the tokenizer splits, at
+`\n` or `\r\n`, with line contents and line count exactly the file's. Every surface that
+renders authored text is a content owner the comparison or session state drops — as state,
+which the render before the next paint takes out of the document — on route close, selection replacement, source
+disable, generation replacement, and the central purge (FR-027). Display inertness rests on
+text nodes, Vue text bindings, and the absence of links: nothing is resolved, opened, or run,
+and the client loads no external worker, blob worker, or evaluated string; with the devframe
+host serving the Nuxt output directly (§ 8) there is no product-assembled CSP-hash manifest. A
+comparison is two `pre`s side by side, one per compared text, each holding one block per row of
+the comparison (`source-diff-rows.ts`): the lines are aligned by Myers' diff over the lines
+(`diff` § diffArrays), compared whole and exactly as authored, whitespace included, with no
+product-defined line or computation-time cutoff; a replaced run of lines stands opposite its
+replacement line by line, a line only one side has stands opposite a blank, and the characters
+of a changed line the other side lacks are marked at word granularity (`diff`
+§ diffWordsWithSpace) on a band of the row's colour taken one step stronger, drawn in the
+theme's default text colour rather than the runs' own so the band has one contrast ratio to
+keep. A `+` or `-` in the number column carries the line's difference where colour cannot
+— under forced colours, and to a reader who does not tell the two row colours apart
+(WCAG 1.4.1) — and the row and word colours are four `light-dark()` tokens (`main.css`
+§ --aci-diff-added). The two sides never collapse to one column: a
+comparison shown as one column has stopped comparing, so below the width two columns need the
+frame scrolls the pair sideways inside itself (WCAG 1.4.10). Each side scrolls sideways on its
+own for its long lines; the frame scrolls both down together, which keeps the rows opposite
+each other with nothing to synchronize. No control edits, merges, or reverts either side
+(FR-012), and no overview strip summarizes the changes: what scrolling shows is not drawn a
+second time. Each side and the frame are named for assistive technology — the side as which
+file, or which part of it, it shows, or as the stated absence a one-sided comparison has on
+that side (FR-025). Tool recognition is compared per tool,
 while a file's declared metadata is compared once, because a tool is not a
 coordinate of a declaration: each side serializes to one canonical document and the two
-documents diff in Monaco. The exception is a side whose carrier _is_ the declaration: a
+documents are compared side by side. The exception is a side whose carrier _is_ the declaration: a
 plugin manifest declares its plugin with its whole content and is strict JSON already, so
 that side is the file as written — re-serializing it would put the same document one round
 trip further from what the author wrote, which is why no surface parses a manifest for
@@ -923,8 +917,8 @@ and sorting every other key (frontmatter-yaml.ts, declaration-order.ts). The MCP
 comparison serializes instead of tabulating: its unit is one declared server name — the
 kind's inventory row unit (data-model.md § Inventory unit) — each side is that name's
 declaration in one of the row's carriers, and the surface serializes each declaration's
-parsed entries into one pretty-printed JSON document and diffs the two documents in
-Monaco. JSON rather than a display-only spelling, because the document is the value a
+parsed entries into one pretty-printed JSON document and compares the two documents side
+by side. JSON rather than a display-only spelling, because the document is the value a
 JSON carrier's entry holds under the server's name, so a reader of such a carrier
 pastes it as their own entry's body — a TOML carrier's reader copies values rather
 than syntax. The comparison's serialization is canonical in
@@ -947,40 +941,54 @@ The MCP detail renders each declaration's fields as the same JSON document in th
 own key order, the order a detail publishes by (FR-007). The two carriers
 of one name need not share a syntax — a `.codex/config.toml` declares in TOML, a
 `.mcp.json` in JSON — and no carrier shows its bytes (FR-007), so the canonical
-serialization is the one spelling both sides can be read in. Preserve Monaco's
-accessible diff viewer, ARIA labels, keyboard navigation, and narrow-screen inline mode
-for explicit accessibility testing.
+serialization is the one spelling both sides can be read in. Keyboard access to each side
+and the frame, the sides' names, and the marks that carry each difference are explicit
+accessibility test subjects (contracts/accessibility-acceptance.md).
 
 **Rationale**: Source files include Markdown and structured configuration where syntax
-coloring, line navigation, virtualized rendering, search, synchronized scrolling, and a
-well-tested diff surface materially improve inspection. Monaco already computes source
-differences and exposes editor- and environment-dependent computation and accessibility behavior, so a
-second text-diff package would duplicate responsibility. Recognition facts have domain
+colouring and a side-by-side comparison materially improve inspection, and every file here is
+read rather than edited, which is what makes an editor the wrong instrument: the browser's own
+text already gives find, selection, copy, and scrolling, and a reader's screen reader already
+reads it, while an editor brought a runtime an order of magnitude larger than the rest of the
+client together — the editor core alone was 672 KB compressed, and a skill detail mounted two
+of them — and its own key handling, focus model, and announcement machinery to keep inert.
+Tokenizing is the one thing an editor did that text does not, and shiki does that alone. Line
+alignment is a property of the comparison, and `diff` is a small, maintained implementation
+of Myers' algorithm that computes it with no product-defined ceiling. Recognition facts have domain
 semantics — set-like recognitions and their surfaces are compared structurally in typed
 rows, while literal spelling differences remain observable in the source diff. A
 declaration block has no such structure to lose: it is one authored mapping per side
 whose canonical serialization orders the fields identically on both sides, so added,
-removed, and changed fields appear as exactly the lines they are. The official
-[diff editor options](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IDiffEditorOptions.html)
-and [Monaco repository](https://github.com/microsoft/monaco-editor) document those editor,
-worker, accessibility, and model-lifecycle capabilities. The lockfile-pinned resolved
-version and the packaged browser tests protect the deliberately narrow ESM imports during
-upgrades.
+removed, and changed fields appear as exactly the lines they are. shiki's own
+documentation of its [bundles](https://shiki.style/guide/bundles) and
+[regex engines](https://shiki.style/guide/regex-engines) records the fine-grained entry
+points and the JavaScript engine this bundle takes, and the packaged client gate
+(`tests/package/client-assets.test.ts`) protects the choice through upgrades: no `.wasm`
+asset, no instantiation, and every grammar outside the highlighter's chunk.
 No content-based display transform is applied: authored values remain visible with no
 warning in front of or beside them, while inert rendering prevents their content from
 executing, loading, or navigating.
 
 **Alternatives considered**:
 
-- Adding `diff` beside Monaco was rejected because no current CLI, API, patch export, or
-  headless consumer needs a second diff engine.
+- Monaco (`monaco-editor`) is rejected for the size and the surface it brings: a read-only
+  editor is an editor's runtime, worker, icon font, and key handling kept inert around text a
+  reader only reads.
+- shiki's web bundle, a curated 57-language subset, was rejected because it omits TOML, which
+  `.codex/config.toml` is; a language list authored here was rejected because it would leave
+  every file outside it plain text and be one more table to maintain — so the whole bundled
+  set ships, each grammar as its own lazily fetched chunk (8.2 MB unpacked and 1.4 MB
+  compressed in the package on 2026-09-09, none of it fetched by a page that opens no file of
+  that language).
 - Serializing recognition metadata — which tools recognize a side, on which surfaces —
-  into Monaco was rejected because property ordering and line changes obscure added,
+  into the comparison was rejected because property ordering and line changes obscure added,
   removed, or changed domain fields. A declaration serialization — the MCP JSON, the
   frontmatter YAML — is not that case: each side is one authored mapping, and its
   canonical document orders the fields identically on both sides.
-- A custom `<pre>` source diff was rejected because it would recreate core navigation,
-  large-document rendering, synchronization, accessibility, and diff interaction work.
+- A diff component (`@git-diff-view/vue`) was rejected because it carries its own highlighter
+  (`lowlight`) beside shiki, at 333 KB compressed against 3 KB for `diff`; a CodeMirror merge
+  view (`@codemirror/merge`), at 107 KB, would have been a second editor for the one thing an
+  editor is not needed for.
 
 ## 8. Local session transport
 

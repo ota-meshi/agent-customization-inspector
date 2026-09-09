@@ -1959,8 +1959,8 @@ the post-acceptance failure's ordinary error. Disable itself never returns
   recovery; network/runtime failure, channel loss, or session mismatch
   purges before an ended view. A page-lifecycle event is not a purge trigger: FR-027 purges after a document-liveness failure or an equivalent terminal reset, and neither switching tabs nor navigating away is either — a discarded document frees its own memory, and a bfcached one holds the same user's view of their own files on their own machine, which the trusted-workspace model does not treat as exposure. The client installs no visibility or unload listener.
   The purge increments a
-  client epoch so a late in-flight result cannot repopulate DTOs or editor state, disposes
-  Monaco models/editors/workers and subscriptions, clears DOM/store content, and aborts
+  client epoch so a late in-flight result cannot repopulate DTOs or editor state, releases
+  every rendered source and subscription, clears DOM/store content, and aborts
   pending requests. Closing the Node process destroys the
   server-side session state, complete source content, source roots, generations, and
   diagnostics.

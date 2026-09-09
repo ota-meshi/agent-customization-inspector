@@ -13,6 +13,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { sourceBoxDecorations } from './source-viewer';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 import { openNoKindDisclosure } from './no-kind-disclosure';
@@ -151,7 +152,7 @@ test.describe('the complete literal Claude subagent detail', () => {
     await expect(page.getByRole('tab', { name: 'Agent', selected: true })).toBeVisible();
     await expect(main.getByRole('heading', { name: 'Metadata' })).toBeVisible();
     await expect(main.getByRole('heading', { name: 'Instructions' })).toBeVisible();
-    await expect(page.locator('.monaco-editor').first()).toBeVisible();
+    await expect(page.locator('.aci-source-viewer').first()).toBeVisible();
     await expect(main).toContainText('name: browser-tester');
     await expect(main).toContainText('memory: project');
     // The preloaded skill and the declared server are values, not links.
@@ -187,16 +188,15 @@ test.describe('the complete literal Claude subagent detail', () => {
     await expect(main).toContainText('---');
     await expect(main).toContainText('mcpServers:');
     await expect(main).toContainText('# Browser tester');
-    // No token-class assertion here, unlike the Codex agent detail: that one
+    // No run-colour assertion here, unlike the Codex agent detail: that one
     // names TOML for a file whose `.toml` suffix the viewer would resolve
     // anyway, so proving the named grammar took effect is the point. A Claude
     // subagent is `.md` and the language is the path's own resolution, which
     // the instruction and skill detail suites already exercise. What this case
-    // owns is that tokenizing is all it is: the grammar has no language
-    // service behind it, so nothing marks the file invalid (FR-033).
-    await expect(
-      page.locator('.monaco-editor .squiggly-error, .monaco-editor .squiggly-warning'),
-    ).toHaveCount(0);
+    // owns is that tokenizing is all it is: the box holds the text and its
+    // coloured runs and nothing else, so nothing marks the file invalid
+    // (FR-033).
+    await expect(sourceBoxDecorations(page)).toHaveCount(0);
   });
 
   test('shows the parse of a file that is also an instruction file', async ({ page }) => {
@@ -256,7 +256,7 @@ test.describe('the complete literal Claude subagent detail', () => {
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+    await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
   });
 });
 

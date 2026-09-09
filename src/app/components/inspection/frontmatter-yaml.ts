@@ -1,8 +1,8 @@
 // The frontmatter serialization the Markdown-kind surfaces render
 // (FR-007, FR-011): every key the file's frontmatter declares, as one YAML
-// document — the details show it read-only in the Monaco viewer beside the
-// instructions the block was removed from, and the comparison surfaces diff
-// two sides' canonical documents in Monaco. YAML because the frontmatter is
+// document — the details show it read-only in the source viewer beside the
+// instructions the block was removed from, and the comparison surfaces show
+// two sides' canonical documents side by side. YAML because the frontmatter is
 // YAML: the document is the parse's resolved reading spelled back in the
 // block's own language, so a reader compares it against their file without
 // translating, and pastes from it without converting.
@@ -181,7 +181,7 @@ export function frontmatterYamlText(entries: readonly DeclaredEntryDto[]): strin
 
 /**
  * Serializes one frontmatter block to the canonical YAML document a
- * comparison mounts as one Monaco side (FR-011): the caller's leading keys
+ * comparison shows as one side (FR-011): the caller's leading keys
  * first — each kind's comparison leads with the keys the vendors document for
  * it (declaration-order.ts) — then every other key, and every nested mapping's
  * keys, sorted, so both sides align line by line and a line difference is a

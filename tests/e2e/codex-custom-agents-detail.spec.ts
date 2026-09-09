@@ -13,6 +13,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { sourceBoxDecorations } from './source-viewer';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 import { openNoKindDisclosure } from './no-kind-disclosure';
@@ -132,7 +133,7 @@ test.describe('the complete literal Codex custom-agent detail', () => {
       'Instructions Markdown',
       'Source',
     ]);
-    await expect(page.locator('.monaco-editor').first()).toBeVisible();
+    await expect(page.locator('.aci-source-viewer').first()).toBeVisible();
     await expect(main).toContainText('name: docs_researcher');
     await expect(main).toContainText('model_reasoning_effort: medium');
     // The instructions half holds the prose and nothing else; the key that
@@ -174,17 +175,14 @@ test.describe('the complete literal Codex custom-agent detail', () => {
     await expect(main).toContainText('# The docs specialist.');
     await expect(main).toContainText('[mcp_servers.docs.env]');
     await expect(main).toContainText('developer_instructions = """');
-    // Uncoloured, and that is the measured state rather than a defect of this
-    // page: the pinned `monaco-editor` ships no TOML grammar, and the near fit
-    // would mislabel a `developer_instructions` block's prose
-    // (`composables/monaco-languages.ts`). The named grammars this kind's
-    // detail does apply — YAML for the metadata, Markdown for the
-    // instructions — are what the parse-tab case above covers. What holds
-    // either way is that tokenizing is all it is: no language service stands
-    // behind the viewer, so nothing marks the file invalid (FR-033).
-    await expect(
-      page.locator('.monaco-editor .squiggly-error, .monaco-editor .squiggly-warning'),
-    ).toHaveCount(0);
+    // Coloured by the TOML grammar its `.toml` suffix claims, as the
+    // `.codex/config.toml` detail proves (`codex-config-detail.spec.ts`); the
+    // named grammars this kind's detail applies to the parse tab — YAML for
+    // the metadata, Markdown for the instructions — are what the case above
+    // covers. What holds either way is that tokenizing is all it is: the box
+    // holds the text and its coloured runs and nothing else, so nothing marks
+    // the file invalid (FR-033).
+    await expect(sourceBoxDecorations(page)).toHaveCount(0);
   });
 
   test('publishes no MCP surface for the declared server table', async ({ page }) => {
@@ -217,7 +215,7 @@ test.describe('the complete literal Codex custom-agent detail', () => {
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+    await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
   });
 });
 

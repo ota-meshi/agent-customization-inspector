@@ -206,7 +206,7 @@ export class PromptComparisonState {
 
   /**
    * Disposers of component-owned holders of the open comparison's content —
-   * the two Monaco models above all. Run synchronously by every drop path,
+   * the rendered pair's text above all. Run synchronously by every drop path,
    * because the contract orders dispose before replace (data-model.md
    * § BrowserState): waiting for the reactive unmount would leave both
    * files' authored text in models for one render flush after the state was

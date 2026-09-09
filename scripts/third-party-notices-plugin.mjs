@@ -2,7 +2,7 @@
 // (spec.md FR-043).
 //
 // The published package inlines third-party code: the client bundle carries
-// Monaco, Vue, the Nuxt runtime, the devframe client, and the theme switch's
+// shiki and its grammars, Vue, the Nuxt runtime, the devframe client, and the theme switch's
 // stylesheet as its own bytes rather than as installed packages the user
 // receives with their license files. Every one of those licenses requires its
 // copyright and permission notice to travel with the copies, so the notice has
@@ -30,9 +30,8 @@ import { join, posix, resolve } from 'node:path';
 
 /**
  * Files that carry a package's own terms. A package may ship more than one —
- * Monaco ships its MIT `LICENSE` plus a `ThirdPartyNotices.txt` for the
- * components it in turn incorporates (the codicon font among them), and both
- * must reach the reader.
+ * a `LICENSE` beside a `ThirdPartyNotices.txt` for the components it in turn
+ * incorporates — and every one must reach the reader.
  */
 const NOTICE_FILE_PATTERN =
   /(?:^|[.\-_])(?:licen[cs]es?|copying|notices?|third[-_]?party[-_]?(?:notices?|licen[cs]es?))(?:$|[.\-_])/iu;
@@ -55,9 +54,8 @@ const NOTICE_DIRECTORIES = ['.', 'dist', 'licenses', 'license'];
  * cannot reach: a package that declares its license in its manifest but
  * publishes no file holding that license's text, so the text can only come
  * from upstream, copied verbatim from that project's own `LICENSE`. The
- * `@iconify-json/*` collections are one — their icon artwork is inlined into
- * the bundle as SVG paths — and `@ota-meshi/site-kit-monarch-syntaxes`, whose
- * TOML grammar the editor's language registration imports, is another.
+ * `@iconify-json/*` collections are the case: their icon artwork is inlined
+ * into the bundle as SVG paths.
  */
 const VENDORED_NOTICE_DIRECTORY = 'licenses';
 

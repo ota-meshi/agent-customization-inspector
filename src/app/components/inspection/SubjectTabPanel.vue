@@ -2,7 +2,7 @@
 // One half of a subject view, shown while its tab is the current one.
 //
 // Both panels stay in the document and the unselected one is hidden rather
-// than removed, so Monaco keeps its model and the reader keeps their scroll
+// than removed, so the source box keeps its text and the reader keeps their scroll
 // position across a switch. Every tab therefore names its panel and every
 // panel names its tab: both IDREFs resolve, and omitting one would drop a
 // relationship assistive technology uses to move between them.

@@ -623,13 +623,13 @@ picker's own comment no longer counts six pages where there are seven.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `5fe2e9e6b4978e1201d4bb44efaaaa82df86089c35a64d416659c756a237d8d5`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-05 by
+SHA-256 `7997a3a45f973f12c0686452b75016ab2a498596142680fb756db205c994cf8b`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-09 by
 running every suite each case names in `verifiedBy`: the vitest suites through
-`pnpm run test:contract`/`test:integration`/`test:security`, and the browser specs through the
-whole Chromium suite, 577 tests, all passing in the one run the release-gate table above
-records. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
-all 66 fixture digests in the same session.
+`pnpm run test:contract`/`test:integration`/`test:security` (405, 271, and 5 passing), and the
+browser specs through the whole Chromium suite, 577 tests, all passing, in one run on this
+host. `tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and
+all 66 fixture digests in the same run.
 
 The digest is read from the manifest rather than carried forward: an earlier record named a
 value the checked-in bytes no longer had, and the contract suite could not have caught it
@@ -638,7 +638,18 @@ because it compares the manifest against its own companion file and reaches no r
 `tests/fixtures/outcomes/manifest.sha256` are written from the same command in the change that
 moves the bytes.
 
-The set is non-comparable with the one before it: `tests/contract/host-startup.test.ts` changed
+The set is non-comparable with the one before it: ten referenced browser specs changed when
+the source surfaces moved from Monaco to shiki (T1207, T1209). The eight detail specs —
+`claude-custom-agents-`, `claude-settings-`, `codex-config-`, `codex-custom-agents-`,
+`codex-permissions-`, `codex-skills-`, `copilot-custom-agents-`, and `copilot-settings-detail` —
+stopped reaching the editor's DOM and read the source box, its runs' colours, and the absence
+of anything but text inside it instead; `comparison.spec.ts` dropped the editor's selector from
+its scan of the product's own copy; and `output-styles-detail.spec.ts` restated what its wait
+is for. Every case kept its ID, classes, and expected outcome, so the manifest version stays at
+3 under the same governance as the transitions below, and the browser half of this execution
+was again the Chromium project on this host.
+
+The set before it was non-comparable with the one before that: `tests/contract/host-startup.test.ts` changed
 when the closed environment-failure errno set was renamed for what it holds, which moved that
 fixture's digest and the canonical manifest digest with it. spec.md § Release-Evidence Fixture
 Governance makes a fixture-byte change a new, non-comparable measurement set; the manifest
@@ -646,8 +657,8 @@ version stays at 3, because that governance requires an increment for a case, re
 expected-outcome change and this is none of them — the same 99 case IDs across the same four
 criteria, each with a nonzero count for every required class.
 
-The set before it was non-comparable with the one recorded after the interface rework for its own
-reason: five referenced fixtures changed, all of them for the removal of the rail's
+The one before that was non-comparable with the set recorded after the interface rework for its
+own reason: five referenced fixtures changed, all of them for the removal of the rail's
 `Source diagnostics` entry. The
 three instructions inventory specs — `claude-`, `codex-`, and `copilot-` — dropped the
 assertions that opened that entry and read an empty list, and the Codex one now counts four
@@ -795,27 +806,49 @@ the two failures' artifacts are this machine's `test-results/` and are not check
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2` pass (chromium, firefox, webkit); `MANUAL-4.1.2` unexecuted |
 | 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3` pass (chromium, firefox, webkit); `MANUAL-4.1.3` unexecuted |
 
-**`AUTO-2.1.2` certifies the exit from the editor on all three browsers.** Chromium and WebKit
-assert a bounded forward-Tab exit. On the pinned Firefox revision, Tab does not leave Monaco's
-input textarea, while Shift+Tab leaves it on the first press, so Firefox explicitly asserts that
-backward exit. Measured on 2026-09-04
-with a capture-phase `keydown` listener on `window`: every press reaches the page with
-`defaultPrevented` false, no `focusin` follows, and `document.activeElement` stays
-`textarea.inputarea` — Monaco is not consuming the key, so `tabFocusMode: true` and the
-Ctrl+M toggle, which govern whether it does, change nothing. Firefox's forward sequential
-focus navigation does not move from the textarea Monaco renders at 0×0 on that engine alone
+**On 2026-09-04, `AUTO-2.1.2` certified the exit from the editor the detail then rendered, on
+all three browsers.** Chromium and WebKit asserted a bounded forward-Tab exit. On the pinned
+Firefox revision, Tab did not leave Monaco's input textarea, while Shift+Tab left it on the
+first press, so Firefox explicitly asserted that backward exit. Measured with a
+capture-phase `keydown` listener on `window`: every press reached the page with
+`defaultPrevented` false, no `focusin` followed, and `document.activeElement` stayed
+`textarea.inputarea` — Monaco was not consuming the key, so `tabFocusMode: true` and the
+Ctrl+M toggle, which govern whether it does, changed nothing. Firefox's forward sequential
+focus navigation did not move from the textarea Monaco rendered at 0×0 on that engine alone
 (`canUseZeroSizeTextarea = isFirefox` in its text-area edit context; 1px on the others).
-Chromium, whose input element is a `div.native-edit-context`, and WebKit release focus on
-the first press. The test records the forward-Tab exemption, no workaround is installed in this
-repository, and forward exit on Firefox stands as an open limitation of the editor on that
+Chromium, whose input element was a `div.native-edit-context`, and WebKit released focus on
+the first press. The test recorded the forward-Tab exemption, no workaround was installed in
+this repository, and forward exit on Firefox stood as an open limitation of the editor on that
 engine.
 
-The same limitation costs the case one other claim on Firefox alone. A forward walk of a
-detail page counts how many controls precede the editor at the moment it mounts rather than
-whether the walk moves, because it stops there: 6 to 8 presses' worth on a developer machine
-and 3 on a certification runner, where the editor is mounted by the second press. That count
-is therefore not claimed on Firefox, which the inventory walk — the one page with no editor
-on it — holds to the same claim as the other two engines.
+The same limitation cost the case one other claim on Firefox alone. A forward walk of a
+detail page counted how many controls preceded the editor at the moment it mounted rather
+than whether the walk moved, because it stopped there: 6 to 8 presses' worth on a developer
+machine and 3 on a certification runner, where the editor was mounted by the second press.
+That count was therefore not claimed on Firefox, which the inventory walk — the one page
+with no editor on it — held to the same claim as the other two engines.
+
+Re-measured on 2026-09-09, after the detail page's source box became the browser's own `pre`
+with `tabindex="0"` and no key handling of its own (T1207): the box holds nothing, so the
+forward-exit limitation above belonged to the editor that no longer renders there, and the
+detail walk's count is claimed on Firefox with the others. The comparison pages, whose diff
+stays Monaco's until T1209, are outside this case's walk. Run on the pinned Firefox
+and WebKit revisions through `playwright test --project=firefox --project=webkit
+tests/e2e/accessibility.spec.ts` (69 passed) and on Chromium through the same file. Run
+again on all three engines after the comparison became two `pre`s (T1209), with the same
+result: 105 passed.
+
+The exit is asserted backward, on all three engines, because the box is the last focusable
+element the detail renders: a forward press leaves the document, and the engines report that
+differently. Chromium answers `body` with `document.hasFocus()` false; Firefox keeps
+`document.activeElement` on the box, which a forward assertion reads as a trap — and did,
+exhausting ten presses on the certification runner. Appending any focusable after the box
+moves focus off it on the first forward press on both engines, so what a forward press meets
+there is the end of the document rather than anything the box holds. Backward navigation
+always has a control to reach, which is what makes it one claim on every engine rather than a
+per-engine split. Measured and run three times on each pinned revision through `playwright
+test --project=<engine> tests/e2e/accessibility.spec.ts -g 'AUTO-2.1.2 focus enters and
+leaves'`.
 
 **The manual half is outside the criterion.** The 36 `MANUAL-*` IDs would be executed over
 `3 × 5 × 3 × 8 × 3 = 1,080` keyed cells each — 38,880 cells requiring macOS with VoiceOver,

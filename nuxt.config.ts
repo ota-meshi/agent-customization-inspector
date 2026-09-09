@@ -48,7 +48,7 @@ export default defineNuxtConfig({
       // Iconify API-backed runtime is not used. Components stay explicitly
       // imported like every other dependency of this application.
       Icons({ compiler: 'vue3' }),
-      // The client bundle inlines third-party code — Monaco, Vue, the Nuxt
+      // The client bundle inlines third-party code — shiki, Vue, the Nuxt
       // runtime, the devframe client, the icon data above — so their license
       // notices have to ship with it. The plugin derives the list from the
       // finished module graph, so no hand-maintained list can fall behind a

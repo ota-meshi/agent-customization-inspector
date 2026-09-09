@@ -881,7 +881,6 @@ onBeforeUnmount(() => {
             <p class="aci-note">Each side is the file exactly as written, frontmatter included.</p>
             <SourceDiff
               v-bind="readyView.diff"
-              mount-error-message="The comparison viewer could not be loaded. Each side is shown below in full."
               :register-content-owner="registerComparisonContentOwner"
             />
           </div>

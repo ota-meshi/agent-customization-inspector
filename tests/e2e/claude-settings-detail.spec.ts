@@ -102,7 +102,7 @@ test.describe('the complete literal Claude settings detail', () => {
     // that is the other row's, and the declared values with the credential
     // whole and unmarked and the environment reference as the exact characters
     // that were written (FR-025, FR-026).
-    await expect(page.locator('.monaco-editor').first()).toBeVisible();
+    await expect(page.locator('.aci-source-viewer').first()).toBeVisible();
     await expect(main).toContainText('"cleanupPeriodDays": 20');
     await expect(main).toContainText(SETTINGS_ONLY_MARKER);
     await expect(main).toContainText('"enabledPlugins"');
@@ -160,7 +160,7 @@ test.describe('the complete literal Claude settings detail', () => {
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+    await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
   });
 });
 

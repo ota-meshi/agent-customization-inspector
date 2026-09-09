@@ -186,7 +186,7 @@ test('renders exact metadata rows and matches declarations by key', async ({ pag
   ).toHaveText('Not recognized');
 
   // The declared metadata is one canonical YAML document per side, every
-  // key sorted, diffed in Monaco under no tool caption
+  // key sorted, compared side by side under no tool caption
   // (frontmatter-yaml.ts): the shared key shows both resolved values, the
   // authored `7`/`007` spellings resolve to the one value both sides spell,
   // and a side-only key stands on its side alone (FR-011).

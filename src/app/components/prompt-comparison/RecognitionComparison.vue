@@ -4,8 +4,8 @@
 // invokes it by, what each side's frontmatter serializes to — live in
 // `recognition-comparison.ts`; this component only draws the comparison it
 // is given, as its two facts: the per-tool recognition rows, and the files'
-// frontmatter serialized to two canonical YAML documents and diffed in
-// Monaco — the declarations are the file's one parse for the kind, so no
+// frontmatter serialized to two canonical YAML documents and compared side
+// by side — the declarations are the file's one parse for the kind, so no
 // tool captions them (research.md § 7, frontmatter-yaml.ts).
 //
 // A recognized cell states two typed facts of that one recognition: the name
@@ -48,10 +48,6 @@ defineProps<{
 const sessionViewState = useSessionViewState();
 const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
   sessionViewState.promptComparison.registerOpenContentOwner(disposer);
-
-/** What both diffs below say when the editor cannot be constructed. */
-const MOUNT_ERROR_MESSAGE =
-  'The comparison viewer could not be loaded. Each side is shown below in full.';
 
 /**
  * What a cell with no definition reads as. A literal rather than a member of
@@ -189,9 +185,7 @@ function surfacesText(definition: PromptSideDefinition): string {
             :modified-path="rightPath"
             content-language="yaml"
             content-label="frontmatter of"
-            :mount-error-message="MOUNT_ERROR_MESSAGE"
             :register-content-owner="registerComparisonContentOwner"
-            fit-content
           />
         </template>
       </section>
@@ -219,9 +213,7 @@ function surfacesText(definition: PromptSideDefinition): string {
           :modified-path="rightPath"
           content-language="markdown"
           content-label="prompt or command content of"
-          :mount-error-message="MOUNT_ERROR_MESSAGE"
           :register-content-owner="registerComparisonContentOwner"
-          fit-content
         />
       </section>
     </template>

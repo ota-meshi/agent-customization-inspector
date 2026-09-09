@@ -89,7 +89,7 @@ test.describe('the complete literal Copilot settings detail', () => {
     // The complete authored document, in the author's own key order, with the
     // credential whole and unmarked and the environment reference as the exact
     // characters that were written (FR-025, FR-026).
-    await expect(page.locator('.monaco-editor').first()).toBeVisible();
+    await expect(page.locator('.aci-source-viewer').first()).toBeVisible();
     await expect(main).toContainText('"enabledPlugins"');
     await expect(main).toContainText('"extraKnownMarketplaces"');
     await expect(main).toContainText('./.github/copilot/statusline.sh');
@@ -144,7 +144,7 @@ test.describe('the complete literal Copilot settings detail', () => {
       await expect(page.locator('main')).toContainText(
         "Nothing in the current scan sits at this link's path.",
       );
-      await expect(page.locator('.monaco-editor')).toHaveCount(0);
+      await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
     }
   });
 });

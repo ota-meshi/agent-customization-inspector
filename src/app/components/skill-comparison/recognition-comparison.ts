@@ -8,7 +8,7 @@
 // under each recognizing tool would publish one fact as many: each side's
 // frontmatter serializes to one canonical YAML document — the documented
 // skill keys leading in their reading order, every other key sorted — and the
-// two documents are what Monaco diffs (research.md § 7, frontmatter-yaml.ts,
+// two documents are what the comparison diffs (research.md § 7, frontmatter-yaml.ts,
 // declaration-order.ts). This module is
 // the data half, kept out of the component so the decisions are testable
 // without a single-file-component compiler.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The MCP comparison route (T399/T400; FR-011, FR-012): one declared server
 // name's declarations compared across the carriers that declare it — each
-// side serialized to canonical JSON and diffed in Monaco (research.md § 7)
+// side serialized to canonical JSON and compared side by side (research.md § 7)
 // — with no verdict, no merge, and no fix
 // anywhere. There is no source half: no carrier shows its source on any
 // surface (FR-007), so the serialized declarations are the whole comparison.

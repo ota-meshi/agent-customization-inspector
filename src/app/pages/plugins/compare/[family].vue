@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The plugin comparison route (T829–T832; FR-011, FR-012): one plugin name's
 // declarations compared across two of the carriers that resolve it — each
-// side one JSON document diffed in Monaco (research.md § 7) — with no
+// side one JSON document compared side by side (research.md § 7) — with no
 // verdict, no merge, and no fix anywhere.
 //
 // The route is the plugin kind's, not a shared one: comparison is
@@ -124,13 +124,6 @@ const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
  */
 const registerFileContentOwner = (disposer: () => void): (() => void) =>
   comparison.registerOpenFileContentOwner(disposer);
-
-/** What both diffs below say when the editor cannot be constructed. */
-const MOUNT_ERROR_MESSAGE =
-  'The comparison viewer could not be loaded. Each side is shown below in full.';
-
-/** What both diffs below call a side that ships no corresponding file. */
-const ABSENCE_NOTE = 'no file in this plugin';
 
 /**
  * The page heading, focused on entry so a keyboard user starts at the top and
@@ -1989,8 +1982,6 @@ onBeforeUnmount(() => {
               <SourceDiff
                 v-else-if="manifestPair !== null"
                 v-bind="manifestPair"
-                :absence-note="ABSENCE_NOTE"
-                :mount-error-message="MOUNT_ERROR_MESSAGE"
                 :register-content-owner="registerComparisonContentOwner"
               />
               <p v-else-if="comparison.manifestStatus.value === 'loading'" class="aci-empty">
@@ -2069,8 +2060,6 @@ onBeforeUnmount(() => {
             <SourceDiff
               v-else-if="openFilePair !== null"
               v-bind="openFilePair"
-              :absence-note="ABSENCE_NOTE"
-              :mount-error-message="MOUNT_ERROR_MESSAGE"
               :register-content-owner="registerFileContentOwner"
             />
             <p v-else-if="comparison.fileStatus.value === 'loading'" class="aci-empty">

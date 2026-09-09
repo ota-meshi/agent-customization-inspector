@@ -126,9 +126,7 @@ test('shows the literal credential and environment reference with no mask or rev
     await expect(page.getByRole('button', { name: label })).toHaveCount(0);
   }
   // Awaited rather than read once: the declarations and the instructions
-  // render in Monaco, which writes only the lines its own box holds, and the
-  // box reaches the whole document one layout after the fit height is written
-  // to it (`SourceViewerHandle.mount` § fitContent).
+  // arrive with the detail's own asynchronous response (`SourceViewer.vue`).
   const declarations = page.locator('.aci-output-style-detail__declarations');
   await expect(declarations).toContainText(`api_key: ${FIXTURE_SECRET}`);
   const instructions = page.locator('.aci-output-style-detail__instructions');

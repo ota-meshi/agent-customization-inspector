@@ -214,7 +214,7 @@ test('keeps two values that both draw nothing distinguishable', async ({ page })
   // document's own quoting (FR-025): the quoted spelling carries the exact
   // characters, so nothing needs a note beside it. Raw `textContent` rather
   // than a matcher, because matchers normalize whitespace — exactly the
-  // difference under test — and Monaco renders spaces as no-break spaces.
+  // difference under test.
   const declarations = page.locator('.aci-skill-detail__declarations');
   // The viewer mounts asynchronously; wait for the document before reading
   // its raw text.
@@ -362,12 +362,12 @@ test('keeps the file tree in the first view, under the skill itself', async ({ p
   const tree = page.getByRole('navigation', { name: 'Files in this skill' });
   await expect(tree).toBeInViewport();
   await expect(tree.getByRole('link')).toHaveText(['SKILL.md', 'logo.png', 'run.sh']);
-  // And the source below it is a real editor rather than a collapsed box: it
+  // And the source below it is a real box rather than a collapsed one: it
   // takes a definite height now that the page around it scrolls. Polled rather
-  // than sampled once: the box fits its content, and the height it fits to
-  // arrives with Monaco's own content-size event — so a single read taken
-  // before that lands measures the `min-block-size` the element starts at
-  // (`SourceViewer.vue`).
+  // than sampled once: the box is as tall as its text from the first paint,
+  // but the text arrives with the detail's own asynchronous response, so a
+  // single read taken before that lands measures the `min-block-size` the
+  // element starts at (`SourceViewer.vue`).
   await expect
     .poll(() =>
       page
@@ -473,28 +473,30 @@ test('names the skill in the address and the file it is showing in the query', a
 });
 
 test('colours each file by the language its own path claims', async ({ page }) => {
-  // Monaco assigns one token class per colour, so a file whose grammar loaded
-  // renders several classes across a line and an uncoloured one renders a
-  // single class for the whole line. That difference is what "highlighted"
-  // means here.
+  // shiki writes each run's colour onto the run, so a file whose grammar
+  // loaded renders several colours across a line and an uncoloured one renders
+  // no run at all. That difference is what "highlighted" means here.
   //
   // Each assertion polls, because a grammar is a lazily fetched chunk: the text
-  // renders as soon as the model exists and is re-tokenized when the grammar
-  // arrives. Reading the DOM once after the text appears catches the plain
-  // render on a browser that fetches a moment slower.
-  const expectSeveralTokenClasses = async (): Promise<void> => {
+  // renders as one text node as soon as the detail arrives and is replaced by
+  // its coloured runs when the grammar does. Reading the DOM once after the
+  // text appears catches the plain render on a browser that fetches a moment
+  // slower.
+  const expectSeveralTokenColours = async (): Promise<void> => {
     await expect(async () => {
-      const classes = await page
-        .locator('.aci-skill-detail__main .aci-source-viewer .view-line span span')
-        .evaluateAll((spans) => [...new Set(spans.map((span) => span.className))]);
-      expect(classes.length).toBeGreaterThan(1);
+      const colours = await page
+        .locator('.aci-skill-detail__main .aci-source-viewer .aci-source-run')
+        .evaluateAll((runs) => [
+          ...new Set(runs.map((run) => run.style.getPropertyValue('--shiki-light'))),
+        ]);
+      expect(colours.length).toBeGreaterThan(1);
     }).toPass();
   };
 
   await openSkillFiles(page, '.agents/skills/greet/SKILL.md');
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('# Greet');
   // Markdown: the heading and the frontmatter fences are not the body text.
-  await expectSeveralTokenClasses();
+  await expectSeveralTokenColours();
 
   // A supporting file gets its own language from its own extension — the whole
   // point of registering more than the two the entry points use.
@@ -503,7 +505,7 @@ test('colours each file by the language its own path claims', async ({ page }) =
     .getByRole('link', { name: 'run.sh' })
     .click();
   await expect(page.locator('.aci-skill-detail__main .aci-source-viewer')).toContainText('echo hi');
-  await expectSeveralTokenClasses();
+  await expectSeveralTokenColours();
 });
 
 test('lists supporting files nowhere in the inventory', async ({ page }) => {

@@ -18,6 +18,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { sourceBoxDecorations } from './source-viewer';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 import { openNoKindDisclosure } from './no-kind-disclosure';
@@ -108,7 +109,7 @@ test.describe('the complete literal Codex configuration detail', () => {
     // section headers in the author's own order, and the declared values with
     // the credential whole and unmarked and the environment reference as the
     // exact characters that were written (FR-025, FR-026).
-    await expect(page.locator('.monaco-editor').first()).toBeVisible();
+    await expect(page.locator('.aci-source-viewer').first()).toBeVisible();
     await expect(main).toContainText('# The project layer for this repository.');
     await expect(main).toContainText('project_doc_max_bytes = 32_768');
     await expect(main).toContainText('[experimental]');
@@ -117,29 +118,28 @@ test.describe('the complete literal Codex configuration detail', () => {
     await expect(main).toContainText(ENVIRONMENT_REFERENCE);
 
     // Coloured rather than shown as one undifferentiated run: the `toml`
-    // grammar registered from `@ota-meshi/site-kit-monarch-syntaxes` colours
-    // this document's table headers, `key = value` lines, quoted strings,
-    // numbers, and `#` comments. Distinct token classes are what colouring
-    // looks like in the DOM; a plain-text model would put every character in
-    // one.
+    // grammar shiki bundles colours this document's `key = value` lines,
+    // quoted strings, numbers, and `#` comments. Distinct run colours are
+    // what colouring looks like in the DOM; a plain-text rendering would put
+    // every character in one.
     //
     // Polled rather than read once, because a grammar is a lazily fetched
-    // chunk: the text renders as soon as the model exists and is re-tokenized
-    // when the grammar arrives, so a single read taken when the text appears
-    // catches the plain render on a browser that fetches a moment slower —
-    // every character in one class, which is what an uncoloured document
-    // looks like too.
+    // chunk: the text renders as one text node as soon as the detail arrives
+    // and is replaced by its coloured runs when the grammar does, so a single
+    // read taken when the text appears catches the plain render on a browser
+    // that fetches a moment slower — no run at all, which is what an
+    // uncoloured document looks like too.
     await expect(async () => {
-      const tokenClasses = await page
-        .locator('.monaco-editor .view-line span[class^="mtk"]')
-        .evaluateAll((nodes) => new Set(nodes.map((node) => node.className)).size);
-      expect(tokenClasses).toBeGreaterThan(1);
+      const colours = await page
+        .locator('.aci-source-viewer .aci-source-run')
+        .evaluateAll(
+          (runs) => new Set(runs.map((run) => run.style.getPropertyValue('--shiki-light'))).size,
+        );
+      expect(colours).toBeGreaterThan(1);
     }).toPass();
-    // Tokenizing is all it is: no language service stands behind that
-    // grammar, so nothing marks the document invalid (FR-033).
-    await expect(
-      page.locator('.monaco-editor .squiggly-error, .monaco-editor .squiggly-warning'),
-    ).toHaveCount(0);
+    // Tokenizing is all it is: the box holds the text and its coloured runs
+    // and nothing else, so nothing marks the document invalid (FR-033).
+    await expect(sourceBoxDecorations(page)).toHaveCount(0);
 
     const text = await main.innerText();
     // Never the process value a same-named variable carries: the reference is
@@ -194,7 +194,7 @@ test.describe('the complete literal Codex configuration detail', () => {
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+    await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
   });
 });
 
@@ -233,7 +233,7 @@ test.describe('a configuration document whose bytes were never accepted', () => 
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+    await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
 
     await page.goto(host.origin);
     const unclassified = (await openNoKindDisclosure(page)).locator('.aci-item');
