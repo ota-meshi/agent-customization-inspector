@@ -9400,8 +9400,10 @@ comparison pages still do until T1209 lands.
   shown (FR-025, FR-027). Update the browser suites that reached
   Monaco's DOM — `.monaco-editor`, its token classes, and its squiggles — to the box, its runs'
   colour variables, and `tests/e2e/source-viewer.ts` § sourceBoxDecorations, and
-  `tests/e2e/accessibility.spec.ts` to a forward-Tab exit on every engine, since the box is a
-  `pre` with `tabindex="0"` and no key handling of its own (FR-032, FR-033, SC-008).
+  `tests/e2e/accessibility.spec.ts` to a bounded Shift+Tab exit on every engine — backward,
+  because the box is the last focusable element its detail renders, so a forward press
+  leaves the document, which the engines report differently — since the box is a `pre`
+  with `tabindex="0"` and no key handling of its own (FR-032, FR-033, SC-008).
 
 ### The package gate and the record
 

@@ -8036,7 +8036,9 @@ T1209が入るまでそれらをfetchし続ける。
   squiggle — に到達していたbrowser suiteを、box、そのrunの色variable、
   `tests/e2e/source-viewer.ts` § sourceBoxDecorations へ更新し、`tests/e2e/accessibility.spec.ts`
   は、boxが独自のkey handlingを持たない `tabindex="0"` の `pre` であることから、すべてのengineで
-  forward-Tabによる退出へ更新する（FR-032、FR-033、SC-008）。
+  有界のShift+Tabによる退出へ更新する — 後ろ向きなのは、boxがそのdetailの描画する最後の
+  focusable要素であり、前向きの押下はdocumentの外へ出て、その報告がengineごとに異なるため —
+  （FR-032、FR-033、SC-008）。
 
 ### パッケージゲートと記録
 

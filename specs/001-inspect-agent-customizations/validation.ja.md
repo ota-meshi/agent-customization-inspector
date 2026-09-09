@@ -686,24 +686,24 @@ checked inしていない。
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2` pass（chromium・firefox・webkit）; `MANUAL-4.1.2` 未実行 |
 | 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3` pass（chromium・firefox・webkit）; `MANUAL-4.1.3` 未実行 |
 
-**`AUTO-2.1.2`は3 browserすべてでeditorからの脱出を認証する。** ChromiumとWebKitでは上限付きの前向き
-Tab脱出をassertする。pinされたFirefox revisionでは、TabはMonacoの入力textareaから出ない。一方
-Shift+Tabは最初の押下で出るので、その後ろ向きの脱出をFirefoxで明示的にassertする。2026-09-04に`window`の
-capture phaseの`keydown`
-listenerで測定した。どの押下もページに`defaultPrevented`がfalseのまま届き、`focusin`は続かず、
-`document.activeElement`は`textarea.inputarea`のままである — Monacoはkeyを消費していないので、
-Monacoがkeyを取るかどうかを決める`tabFocusMode: true`とCtrl+M toggleは何も変えない。Firefoxの
-前向きのsequential focus navigationは、Monacoがそのengineでだけ0×0で描くtextarea（text-area edit contextの
-`canUseZeroSizeTextarea = isFirefox`。他のengineでは1px）から動かない。入力elementが
-`div.native-edit-context`であるChromiumと、WebKitは最初の押下でfocusを解放する。Testは前向きTabの免除を
-明記し、このrepositoryにworkaroundは入れておらず、Firefoxでの前向きの脱出はそのengine上のeditorの未解決の
-limitationとして残る。
+**2026-09-04に、`AUTO-2.1.2`は当時detailが描いていたeditorからの脱出を3 browserすべてで認証した。**
+ChromiumとWebKitでは上限付きの前向きTab脱出をassertした。pinされたFirefox revisionでは、Tabは
+Monacoの入力textareaから出なかった。一方Shift+Tabは最初の押下で出たので、その後ろ向きの脱出を
+Firefoxで明示的にassertした。`window`のcapture phaseの`keydown` listenerで測定した。どの押下も
+ページに`defaultPrevented`がfalseのまま届き、`focusin`は続かず、`document.activeElement`は
+`textarea.inputarea`のままだった — Monacoはkeyを消費していなかったので、Monacoがkeyを取るかどうかを
+決める`tabFocusMode: true`とCtrl+M toggleは何も変えなかった。Firefoxの前向きのsequential focus
+navigationは、Monacoがそのengineでだけ0×0で描いていたtextarea（text-area edit contextの
+`canUseZeroSizeTextarea = isFirefox`。他のengineでは1px）から動かなかった。入力elementが
+`div.native-edit-context`だったChromiumと、WebKitは最初の押下でfocusを解放した。Testは前向きTabの
+免除を明記し、このrepositoryにworkaroundは入れず、Firefoxでの前向きの脱出はそのengine上のeditorの
+未解決のlimitationとして残っていた。
 
-同じlimitationはFirefoxでだけもう1つのclaimを奪う。detail pageの前向きwalkはそこで止まるため、
-walkが動いているかではなく、editorがmountした時点でその手前にcontrolがいくつあったかを数えることになる —
-開発機で6〜8押下分、certification runnerでは3であり、そこではeditorは2押下目には既にmountしている。
-そのためこの数はFirefoxでは主張しない。editorが載らない唯一のページであるinventoryのwalkが、
-Firefoxを他の2 engineと同じclaimに保つ。
+同じlimitationはFirefoxでだけもう1つのclaimを奪っていた。detail pageの前向きwalkはそこで止まるため、
+walkが動いているかではなく、editorがmountした時点でその手前にcontrolがいくつあったかを数えることに
+なっていた — 開発機で6〜8押下分、certification runnerでは3であり、そこではeditorは2押下目には既に
+mountしていた。そのためこの数はFirefoxでは主張しなかった。editorが載らない唯一のページである
+inventoryのwalkが、Firefoxを他の2 engineと同じclaimに保っていた。
 
 2026-09-09に再測定した。detail pageのsource boxが、独自のkey handlingを持たない `tabindex="0"` の
 browser自身の `pre` になった後である（T1207）。boxは何も掴んでいないので、上記の前向き脱出の

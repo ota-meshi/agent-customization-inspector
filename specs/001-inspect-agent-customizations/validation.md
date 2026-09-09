@@ -806,27 +806,27 @@ the two failures' artifacts are this machine's `test-results/` and are not check
 | 4.1.2 Name, Role, Value | A | Applicable | `AUTO-4.1.2` pass (chromium, firefox, webkit); `MANUAL-4.1.2` unexecuted |
 | 4.1.3 Status Messages | AA | Applicable | `AUTO-4.1.3` pass (chromium, firefox, webkit); `MANUAL-4.1.3` unexecuted |
 
-**`AUTO-2.1.2` certifies the exit from the editor on all three browsers.** Chromium and WebKit
-assert a bounded forward-Tab exit. On the pinned Firefox revision, Tab does not leave Monaco's
-input textarea, while Shift+Tab leaves it on the first press, so Firefox explicitly asserts that
-backward exit. Measured on 2026-09-04
-with a capture-phase `keydown` listener on `window`: every press reaches the page with
-`defaultPrevented` false, no `focusin` follows, and `document.activeElement` stays
-`textarea.inputarea` — Monaco is not consuming the key, so `tabFocusMode: true` and the
-Ctrl+M toggle, which govern whether it does, change nothing. Firefox's forward sequential
-focus navigation does not move from the textarea Monaco renders at 0×0 on that engine alone
+**On 2026-09-04, `AUTO-2.1.2` certified the exit from the editor the detail then rendered, on
+all three browsers.** Chromium and WebKit asserted a bounded forward-Tab exit. On the pinned
+Firefox revision, Tab did not leave Monaco's input textarea, while Shift+Tab left it on the
+first press, so Firefox explicitly asserted that backward exit. Measured with a
+capture-phase `keydown` listener on `window`: every press reached the page with
+`defaultPrevented` false, no `focusin` followed, and `document.activeElement` stayed
+`textarea.inputarea` — Monaco was not consuming the key, so `tabFocusMode: true` and the
+Ctrl+M toggle, which govern whether it does, changed nothing. Firefox's forward sequential
+focus navigation did not move from the textarea Monaco rendered at 0×0 on that engine alone
 (`canUseZeroSizeTextarea = isFirefox` in its text-area edit context; 1px on the others).
-Chromium, whose input element is a `div.native-edit-context`, and WebKit release focus on
-the first press. The test records the forward-Tab exemption, no workaround is installed in this
-repository, and forward exit on Firefox stands as an open limitation of the editor on that
+Chromium, whose input element was a `div.native-edit-context`, and WebKit released focus on
+the first press. The test recorded the forward-Tab exemption, no workaround was installed in
+this repository, and forward exit on Firefox stood as an open limitation of the editor on that
 engine.
 
-The same limitation costs the case one other claim on Firefox alone. A forward walk of a
-detail page counts how many controls precede the editor at the moment it mounts rather than
-whether the walk moves, because it stops there: 6 to 8 presses' worth on a developer machine
-and 3 on a certification runner, where the editor is mounted by the second press. That count
-is therefore not claimed on Firefox, which the inventory walk — the one page with no editor
-on it — holds to the same claim as the other two engines.
+The same limitation cost the case one other claim on Firefox alone. A forward walk of a
+detail page counted how many controls preceded the editor at the moment it mounted rather
+than whether the walk moved, because it stopped there: 6 to 8 presses' worth on a developer
+machine and 3 on a certification runner, where the editor was mounted by the second press.
+That count was therefore not claimed on Firefox, which the inventory walk — the one page
+with no editor on it — held to the same claim as the other two engines.
 
 Re-measured on 2026-09-09, after the detail page's source box became the browser's own `pre`
 with `tabindex="0"` and no key handling of its own (T1207): the box holds nothing, so the
