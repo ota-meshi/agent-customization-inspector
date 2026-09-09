@@ -1,5 +1,11 @@
 # agent-customization-inspector
 
+## 0.5.0
+
+### Minor Changes
+
+- [#13](https://github.com/ota-meshi/agent-customization-inspector/pull/13) [`ea6a054`](https://github.com/ota-meshi/agent-customization-inspector/commit/ea6a0540a74c358bf8c04bd065e5c5f096f84e47) Thanks [@ota-meshi](https://github.com/ota-meshi)! - A Claude Code skill at the selected root is now listed under the `name` its frontmatter declares — the name Claude Code's own slash menu and the desktop app list it under — with the skill directory as the fallback, so a root `SKILL.md` that Claude Code and GitHub Copilot both read is one row rather than two. A nested skill keeps its directory-qualified command, such as `apps/web:deploy`.
+
 ## 0.4.0
 
 ### Minor Changes
