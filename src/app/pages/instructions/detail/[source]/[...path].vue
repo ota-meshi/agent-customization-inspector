@@ -615,7 +615,7 @@ useReportedPageSubject(titleSubject);
       </SubjectTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
-           so Monaco keeps its model and the reader's scroll position across a
+           so the source box keeps its text and the reader's scroll position across a
            tab switch, and both `aria-controls` IDREFs resolve. -->
       <SubjectTabPanel :tabs="subjectTabs" tab="instructions">
         <!-- A failed extraction leaves this panel with nothing parsed to

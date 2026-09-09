@@ -4,7 +4,7 @@
 // documents both Claude Code and Copilot read — opens the comparison from an
 // inventory row's entry link, and verifies the declaration comparison: one
 // declared event compared across the carriers of its own row, each side
-// serialized to canonical JSON and diffed in Monaco (research.md § 7),
+// serialized to canonical JSON and compared side by side (research.md § 7),
 // credential and environment-reference values shown exactly as authored with
 // no masking, reveal control, or process-environment substitution, no carrier
 // source anywhere (FR-007), a contained declaration selected through the file
@@ -200,10 +200,10 @@ test.describe('the hook declaration comparison', () => {
     await expect(main).toContainText('Repository · Hook · hook file');
     await expect(main).toContainText('OpenAI Codex');
 
-    // The Monaco diff holds both serialized declarations: the groups as JSON,
+    // The diff holds both serialized declarations: the groups as JSON,
     // the credentials whole and unmarked, the environment reference as its own
     // characters (FR-025, FR-026).
-    const diff = main.locator('.aci-hook-recognition-comparison__diff');
+    const diff = main.locator('.aci-source-diff');
     await expect(diff).toBeVisible();
     await expect(diff).toContainText(SETTINGS_SECRET);
     await expect(diff).toContainText(CODEX_SECRET);
@@ -239,9 +239,7 @@ test.describe('the hook declaration comparison', () => {
       ).toString(),
     );
     const main = page.locator('main');
-    await expect(main.locator('.aci-hook-recognition-comparison__diff')).toContainText(
-      SETTINGS_SECRET,
-    );
+    await expect(main.locator('.aci-source-diff')).toContainText(SETTINGS_SECRET);
 
     const second = page.getByLabel('Second hook file', { exact: true });
     await expect(second).toBeVisible();
@@ -250,14 +248,10 @@ test.describe('the hook declaration comparison', () => {
     // reads as the file's own path.
     await expect(page).toHaveURL(/right=\.claude\/settings\.local\.json/u);
     await expect(main).toContainText('.claude/settings.local.json');
-    await expect(main.locator('.aci-hook-recognition-comparison__diff')).toContainText(
-      'announce.sh',
-    );
+    await expect(main.locator('.aci-source-diff')).toContainText('announce.sh');
     // The side that moved away is gone with its declaration: the Codex
     // command is no longer on the page.
-    await expect(main.locator('.aci-hook-recognition-comparison__diff')).not.toContainText(
-      CODEX_SECRET,
-    );
+    await expect(main.locator('.aci-source-diff')).not.toContainText(CODEX_SECRET);
     // The other side's own file is unselectable — the two sides would hold one
     // file (FR-011).
     // The pickers key their options by offered position rather than by path
@@ -358,9 +352,9 @@ test.describe('the hook declaration comparison', () => {
         .locator('.aci-detail-header__line')
         .getByRole('link', { name: "Compare this event's declarations: SessionStart" }),
     ).toHaveCount(0);
-    // Do not wait for Monaco here. The regression boundary is the first reader
-    // action while this event's declaration viewer may still be mounting: its
-    // asynchronous fit must not move the entry out from under that action.
+    // Do not wait for the declaration viewer here. The regression boundary is
+    // the first reader action while it may still be tokenizing: its
+    // asynchronous colouring must not move the entry out from under that action.
     const entry = page.getByRole('link', {
       name: `Compare this event's declarations: ${SHARED_EVENT}`,
     });

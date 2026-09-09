@@ -640,22 +640,22 @@ Verify:
    among them — is not an absence, and selecting that pair reports the named not-readable
    outcome instead. A file readable in neither copy is never offered. Cross-Source
    comparison is verified only after Global enablement in the next workflow.
-2. Read-only Monaco source models contain the complete authored text without masking or
-   environment substitution, disable links/editing, and use opaque in-memory URIs rather
-   than filesystem paths.
-3. Monaco shows literal source differences without semantic ranking, merge, lint,
+2. Read-only source views contain the complete authored text without masking or
+   environment substitution, as the browser's own text with no link and no editing, and
+   name no filesystem path of their own.
+3. The comparison shows literal source differences without semantic ranking, merge, lint,
    validation, formatting, conversion, or fix suggestions. Declared metadata is compared as
-   one canonical serialized document per side, diffed in Monaco beside the typed recognition
+   one canonical serialized document per side, side by side beside the typed recognition
    rows each surface renders in Vue: the serialization is FR-012's stated presentation of the
    parse — the one spelling two sides written in different syntaxes can both be read in — not
    a conversion of either file.
-4. Monaco and browser capacity comes from the browser engine and execution environment.
-   A recoverable editor computation failure reports an actionable diagnostic without
-   removing the complete read-only side-by-side authored source.
+4. Colouring and comparison capacity comes from the browser engine and execution
+   environment. A grammar that does not arrive leaves the complete read-only side-by-side
+   authored source on screen uncoloured.
 5. Rescan, removal, Global disable, or route close clears stale selections and displayed
-   detail state and disposes every associated editor/model instance.
+   detail state and releases every associated rendered source.
 6. Keyboard and screen-reader users can enter, navigate, and leave the source diff through
-   labeled controls and the accessible diff viewer without a focus trap.
+   its named sides and frame without a focus trap.
 7. The packed app loads its editor worker from a same-origin static asset with no
    external request or `blob:` worker.
 8. Direct loads of `/`, `/global-consent`, every kind's `compare`-led comparison route

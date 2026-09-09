@@ -145,7 +145,7 @@ result valueを返し、devframeがその値を — successもhandler errorも �
 Handlerがreturnした後のserialization/encodingまたはdelivery failureはcommit済みjob/stateを
 rollbackまたはduplicateせず、2件目のfailureを記録せず、truncated bodyをpartial DTOへ
 変換しない。Requestは通常のerrorを報告し、clientはtransport failureとまったく同じように
-fresh session snapshotからrecoverする。Monacoとbrowserも実行環境が提供する能力を使い、comparison failure時も存在する各側のcomplete
+fresh session snapshotからrecoverする。着色とcomparisonもbrowser自身の能力を使い、届かなかったgrammarがあっても存在する各側のcomplete
 authored source view — 両ファイルの、または存在する1ファイルのviewとその明示された不在 — を利用可能なままにする。
 
 `globalEnableInProgress`のようなauthority-free live-operation projectionはadmit済みsuccessではなく、所有session API requestの実行中に
@@ -1143,7 +1143,7 @@ classify、retry、recoverしない。Triggerを所有するboundaryへpropagate
 generation resultを作らず、session API boundaryがtriggerを所有する場合はfailed requestのerrorとして通常どおり報告する。
 
 Recognitionはclosed tool順`copilot`、`claude`、`codex`、次にclosed kind順でsortし、opaque IDを使わない。
-File間のdeclaration comparisonは、sideごとに1つのcanonical serialized documentをMonacoでdiffする（research.md § 7）。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはdiffの横のtypedなrowでtoolごとに比較する — 各sideはYAMLへserializeし、各comparisonはそのkindについてvendorが文書化しているkeyを、それを公開するpageの順で先頭に置き、それ以外のkeyをsort順で並べる（declaration-order.ts）。prompt-and-command comparisonが`description`から始まるのはVS Codeのprompt file formatの表がそうしているからであって、この製品が順位付けした結果ではない。行の名前は宣言された1つのkeyではなくadmitしたruleの答えのままである。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、その比較surfaceは宣言済みserver名自身のもの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つのcanonical JSON documentへserializeしてMonacoでdiffする — で、通常の`get-mcp-carrier-detail` read 2件を通じてloadされる（§ BrowserState · ComparisonSelection）。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、fileが書いたkey順のまま表示する（FR-007）。
+File間のdeclaration comparisonは、sideごとに1つのcanonical serialized documentを並べて比較する（research.md § 7）。frontmatter宣言はfileの認識Markdown kindに対する1回のparseであってtoolは宣言の座標ではなく — tool recognitionはdiffの横のtypedなrowでtoolごとに比較する — 各sideはYAMLへserializeし、各comparisonはそのkindについてvendorが文書化しているkeyを、それを公開するpageの順で先頭に置き、それ以外のkeyをsort順で並べる（declaration-order.ts）。prompt-and-command comparisonが`description`から始まるのはVS Codeのprompt file formatの表がそうしているからであって、この製品が順位付けした結果ではない。行の名前は宣言された1つのkeyではなくadmitしたruleの答えのままである。MCP kindの宣言は各recognizing tool自身のreading（§ Field reading）であり、その比較surfaceは宣言済みserver名自身のもの — 1つの名前のdeclarationをその行の2つのcarrierそれぞれから取り、sideごとに1つのcanonical JSON documentへserializeして並べて比較する — で、通常の`get-mcp-carrier-detail` read 2件を通じてloadされる（§ BrowserState · ComparisonSelection）。いずれのdetailも自身のdeclaration contentを同じserialized documentとして、fileが書いたkey順のまま表示する（FR-007）。
 
 ### Field reading
 
@@ -1432,7 +1432,7 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   1つの宣言済みserver名 — このkindのrow unit — と、current generationのその名前の行が保持する2つの
   carrierの`sourceRelativePath` identityを名指す。名指された行の外にあるselectionは — currentなどの行でも
   ない名前を含めて — 比較されずに報告される。そのペアは通常の`get-mcp-carrier-detail` read 2件でloadし、
-  Monacoがdiffするのは、名指されたserverに対する各sideのdeclarationを1つのcanonical JSON documentへ
+  comparisonがdiffするのは、名指されたserverに対する各sideのdeclarationを1つのcanonical JSON documentへ
   serializeしたものである（research.md § 7）: carrier同士はsyntaxを共有するとは限らず、carrierはbytesを
   どこにも表示しない（FR-007）ため、serializationが両sideを読める唯一のspellingである。Prompt-and-command
   routeは、current generationの1つのinvocation-name行が保持する2つのfileの`sourceRelativePath` identityを
@@ -1448,19 +1448,19 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   `sourceRelativePath` identityを名指す。内包された宣言はそれを運ぶfileを通じて名指される: 行が列挙し、
   detail requestが解決するのはそのfileだからである。名指された行の外の選択は、どのcurrent行でもないeventを
   含めて、比較されずに報告される。clientがruntimeに決めることは何一つ名指せない。そのような値をどの行も
-  保持しないからである（FR-009）。ペアは通常の`get-hook-carrier-detail` read 2件でloadされ、Monacoがdiffする
+  保持しないからである（FR-009）。ペアは通常の`get-hook-carrier-detail` read 2件でloadされ、comparisonがdiffする
   のは、名指されたeventに対する各sideのdeclarationを、入れ子のmappingのkeyをすべてsortした1つのcanonical
   JSON documentへserializeしたものである（research.md § 7）: 1つのeventはTOMLのconfiguration layerからも
   JSONのsettings documentからも宣言され得るうえ、carrierはbytesをどこにも表示しない（FR-007）ため、
   serializationが両sideを読める唯一のspellingである。Cross-source comparisonは常に各sourceの最後に
   commit済みstateを比較する。fileのペアは通常の`FileDetail` request 2件で、片側のskill comparisonは1件でloadする — 不在はrequestを
-  要しない — 。MonacoはcompleteなsourceText同士を比較し、不在側は空として、存在する側の内容を行ごとにそれ自体が
+  要しない — 。comparisonはcompleteなsourceText同士を比較し、不在側は空として、存在する側の内容を行ごとにそれ自体が
   差分として描画する。Credential-like stringやenvironment referenceを含むliteralな差を表示する。
-- `EditorModelState`: Opaqueなin-memory URIと完全なauthored `sourceText` — sideがfileではなくdeclarationで
-  あるcomparisonでは、宣言済み値を完全に運び同じruleでpurgeされる、1つのdeclarationのparsed値のcanonical
-  serialization — を持つgeneration-scoped Monaco model。
-  所有editor、subscription、全modelはroute close、selection replacement、file removal、source disable、
-  所属sequenceのgeneration変更時に個別にdisposeする。
+- `EditorModelState`: viewerまたはcomparisonのsideが保持するgeneration-scopedなrendered source —
+  完全なauthored `sourceText`、またはsideがfileではなくdeclarationであるcomparisonでは、宣言済み値を
+  完全に運び同じruleでpurgeされる、1つのdeclarationのparsed値のcanonical serialization。
+  所有componentのrowはroute close、selection replacement、file removal、source disable、
+  所属sequenceのgeneration変更時に解放され、その要素は空にされる。
 - Sensitive-contentに関するstateは一切存在しない。acknowledged flagも、注意書きも、`FileDetail` requestや
   comparisonの前に立つ確認stepも持たない（FR-027）。sessionはloopback-boundでfileはユーザー自身のものであり、
   確認は何も守らない一方ですべてのfileを読むのに2回の操作を要求し、常設の注意書きは読み手自身のrepositoryに
@@ -1500,8 +1500,8 @@ readable-directory admissionだけが判定し、後のNode.js/OS rejectionは�
   見た自身のfileであり、trusted-workspace modelはこれをexposureとして扱わない。CurrentなRPCでtransportが
   報告するchannel lossまたは解釈できないprotocol、session-ID mismatchでは、
   session-ended viewをrenderする前に中央purgeを同期実行する。Ordinaryなhandler/serialization/delivery
-  failureはそのrequestだけのerrorであり、何もpurgeしない。全Monaco
-  editor/model/worker/subscriptionをdisposeし、comparisonとfilterのstateをclearし、全
+  failureはそのrequestだけのerrorであり、何もpurgeしない。全rendered
+  sourceとsubscriptionを解放し、comparisonとfilterのstateをclearし、全
   source/detail/metadata/diagnostic DTOをdropしてpending requestをabortし、epochを
   incrementして旧epochで開始したresponseを無視する。それらのDTOが描画していたDOMはframework自身の
   flushが除去する。これはmicrotaskであり次のpaintより前に完了するため、dropしたstateからframeが

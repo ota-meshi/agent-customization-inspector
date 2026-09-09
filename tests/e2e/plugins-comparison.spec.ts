@@ -2,7 +2,7 @@
 // Launches the packaged CLI against a repository that keeps one marketplace in
 // two catalogs — the shape a team publishing to two products has — whose
 // entries have drifted, and verifies what the comparison publishes: the two
-// declarations as one JSON document per side diffed in Monaco, the files the
+// declarations as one JSON document per side compared side by side, the files the
 // two copies ship compared by the name they share, every value exactly as
 // written, no runtime claim about either side, and no control that edits,
 // merges, or reverts one.
@@ -174,10 +174,11 @@ test.describe('the plugin comparison surface', () => {
     const codex = rows.filter({ hasText: 'OpenAI Codex' });
     await expect(codex.locator('td').nth(0)).toContainText('Recognized');
 
-    // The Monaco diff holds both declarations: the values as JSON, the
+    // The diff holds both declarations: the values as JSON, the
     // credential whole and unmarked, the environment reference as its own
     // characters, and the two versions that drifted (FR-025, FR-026).
-    const diff = page.locator('.aci-plugin-declaration-diff');
+    // The entries' diff leads the declaration panel; the manifests' follows it.
+    const diff = page.locator('#aci-plugin-compare-panel-declaration .aci-source-diff').first();
     await expect(diff).toBeVisible();
     await expect(diff).toContainText(FIXTURE_CREDENTIAL);
     await expect(diff).toContainText(FIXTURE_ENVIRONMENT_REFERENCE);
@@ -198,7 +199,7 @@ test.describe('the plugin comparison surface', () => {
     await expect(declarationPanel).toContainText(
       'plugins/review-assistant/.claude-plugin/plugin.json',
     );
-    await expect(declarationPanel.locator('.aci-source-diff')).toBeVisible();
+    await expect(declarationPanel.locator('.aci-source-diff').last()).toBeVisible();
 
     // Runtime is stated as outside this repository, never as a fact about
     // either side (FR-009).
@@ -246,7 +247,9 @@ test.describe('the plugin comparison surface', () => {
     // The declarations keep their own tab, and stepping back to it finds the
     // comparison the page opened on.
     await page.getByRole('tab', { name: /^Declaration/u }).click();
-    await expect(page.locator('.aci-plugin-declaration-diff')).toBeVisible();
+    await expect(
+      page.locator('#aci-plugin-compare-panel-declaration .aci-source-diff').first(),
+    ).toBeVisible();
 
     // A file only one copy ships is compared against that copy's stated
     // absence: the existence difference is part of the comparison, and the
@@ -321,6 +324,8 @@ test.describe('the plugin comparison surface', () => {
       ).href,
     );
     await expect(page.locator('body')).toContainText('names the same file twice');
-    await expect(page.locator('.aci-plugin-declaration-diff')).toHaveCount(0);
+    await expect(
+      page.locator('#aci-plugin-compare-panel-declaration .aci-source-diff'),
+    ).toHaveCount(0);
   });
 });

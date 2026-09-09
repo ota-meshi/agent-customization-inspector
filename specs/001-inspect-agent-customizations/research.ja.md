@@ -180,7 +180,7 @@ majorの越境、pre-1.0のcaret rangeの移動は今もこのgateに届く（AG
 | Frontmatter           |                                                          `vfile-matter` 5.0.1、`vfile` 6.0.3 | Frontmatterのdelimiter処理。Frontmatter blockの開始と終了を決めることはBOM処理、改行、閉じfenceの形を決め直すことであり、正規表現ではなくparserの仕事である。これは同表の`yaml` engineでblockをparseする。独自の`js-yaml`を持つpackageは1つのdocumentに2つの意味を与えてしまう。js-yaml 3はYAML 1.1、`yaml`はYAML 1.2だからである                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | File opening          |                                                            `which` 6.0.1、`env-editor` 1.3.0 | Detail surfaceのopen control（FR-022）。`which`はlaunchが実行するeditor commandを解決するため、hostが提示するものと起動できるものが2つの食い違い得る事実ではなく1つの事実になる。`env-editor`は、そのcommandが`PATH`に無いときにinstallが置く場所を供給し、それらの場所を各editorのpackagingへ追随させる自前の表ではなく、維持された第三者の事実のままに保つ。`which`は6.xに留める: 7.0.0は`^24.15.0`を宣言し、本projectが支援するNode rangeの一部を除外するためである。Launch自体は上に挙げた`open`を再利用する。installされたapplicationを汎用に探すpackage（`locate-app`）は採らない: CommonJS専用であり、本projectがauditするproduction closureへprompt engineering用packageと`crypto-js`を持ち込むためである                                                         |
 | Icon                  | `unplugin-icons` 23.0.1、`@iconify-json/lucide` 1.2.124、`@iconify-json/simple-icons` 1.2.93 | Build時のicon compile: `~icons/<collection>/<name>` importはそのicon自身のSVGを持つcomponentになるため、pageは何もfetchせず、icon runtimeも同梱されない — FR-022が要求する形であり、IconifyのAPI前提のruntime（`@nuxt/icon`、`@iconify/vue`）を採らない理由でもある。両collectionともicon dataを配布する一方で自身のlicense fileを持たないため、notice document（FR-043）が読めるよう、各setのupstream textを`licenses/`配下に本repositoryが保持する                                                                                                                                                                                                                                                                                                                      |
-| Source view/diff      |                         `monaco-editor` 0.55.1、`@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 | 現行stable read-only source/diff editor。固有diff engineによりclient dependency重複を避ける。MonacoはTOML grammarを持たず、`.codex/config.toml`はこのproductが開くcustomization formatであるため、`toml` idはsyntaxes packageから登録する: basic languageそのものであるMonarch grammarとlanguage configurationであり、language serviceもworkerも伴わない。この packageは自身のlicense fileを同梱しないため、notice documentが読めるようupstreamのtextを`licenses/`に置く（FR-043）                                                                                                                                                                                                                                                                                        |
+| Source view/diff      |                                                `shiki` 4.4.3、`@shikijs/themes` 4.4.3、`diff` 9.0.0 | shikiのJavaScript正規表現engine上のtokenizer専用の着色 — editor runtimeもworkerもWebAssemblyも無い —。同梱grammarは言語ごとに1 chunkでfetchし、2つのthemeは静的にimportする。`diff`はcomparisonのためのMyersの行/語の対応付けで、product独自の上限なしにpage上で計算する。いずれも自身のlicense fileを同梱するため、notice documentはそれを読む（FR-043）                                                                                                                                                                                                                                                                                        |
 | Colour-scheme control |                                                                     `shine-and-bright` 0.3.0 | 読み手がpageのcolour schemeを選ぶswitch。描画はこのpackageが同梱するstylesheetのものである: componentはそのclass名が選択するmarkupを描き、packageのcustom propertyを設定するだけなので、knobのスライドとsunからmoonへの変化はこのrepositoryのものではなくpackageのものである。上のiconやgrammar packageと同じく、CSSをclient bundleが運ぶdevDependencyであり、自身のlicense fileを同梱するため、notice documentはそのtextを読む（それらは`licenses/`配下に同梱テキストを置く）(FR-043)。forced colours有効時は`box-shadow`がすべて落ちるためsunとmoonも消えるが、buttonとknobのborderは読み手のpaletteで塗り直され、knobは依然として両端の間を移動する — 2026-08-25に計測。その状況で用途を述べるのはcontrolのaccessible nameである（WCAG 1.4.11）                        |
 | Lint                  | ESLint 10.7.0、`@nuxt/eslint` 1.16.0、`@stylistic/eslint-plugin` 5.10.0、`@typescript-eslint/parser` 8.64.0 | 現行互換stable release。`@stylistic`はESLint 10がcoreから外したstylistic rule（例: `quotes`）を提供する。Parserを直接宣言するのは、このrepository自身の`eslint-rules/`配下のruleをESLintの`RuleTester`で試験しており、そこではconfigではなくtestがparserを渡すためである。`@nuxt/eslint`経由の推移的解決はここが管理しないversionであり、宣言していないpackageをimportするtestは、持っていないものを求めていることになる。Releaseに関して変わるものは無い — 公開payloadがimportしないdevDependencyであり、runtime挙動も公開契約も移行も伴わない。この表の他のtoolと同じ扱いである                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Unit/integration      |                                            Vitestとcoverage-v8 4.1.10、Nuxt Test Utils 4.0.3 | Vitest/coverageを同じversionにし、Nuxt supportのtest harnessを使う                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -280,7 +280,7 @@ Versionの一次根拠はnpm registryの[Nuxt](https://www.npmjs.com/package/nux
 [Vue](https://www.npmjs.com/package/vue)、[Vue Router](https://www.npmjs.com/package/vue-router)、
 [tsdown](https://www.npmjs.com/package/tsdown)、
 [TypeScript](https://www.npmjs.com/package/typescript)、[Vite](https://www.npmjs.com/package/vite)、
-[pnpm](https://www.npmjs.com/package/pnpm)、[Monaco Editor](https://www.npmjs.com/package/monaco-editor)、
+[pnpm](https://www.npmjs.com/package/pnpm)、[shiki](https://www.npmjs.com/package/shiki)、[diff](https://www.npmjs.com/package/diff)、
 [devframe 0.7.5 registry metadata](https://registry.npmjs.org/devframe/0.7.5)、
 [Gunshi 0.37.0 registry metadata](https://registry.npmjs.org/gunshi/0.37.0)、
 [Vitest](https://www.npmjs.com/package/vitest)、
@@ -288,8 +288,8 @@ Versionの一次根拠はnpm registryの[Nuxt](https://www.npmjs.com/package/nux
 [release status](https://nodejs.org/en/about/previous-releases)を、development/build baselineが解決する
 active LTS lineの根拠にし、[Node 26.0.0 archive](https://nodejs.org/en/download/archive/v26.0.0)を第2のengine floorの根拠にする。GitHub公式の
 [runner-image labels](https://github.com/actions/runner-images#available-images)を3つのOS targetの根拠にする。
-Monaco公式の[v0.55.1 release](https://github.com/microsoft/monaco-editor/releases/tag/v0.55.1)を
-選択stable editor versionの根拠にする。
+shiki公式の[regex enginesのguide](https://shiki.style/guide/regex-engines)を、同梱grammarのすべてが
+JavaScript engineで動くことの根拠にする。
 Gunshi公式の[setup requirement](https://gunshi.dev/guide/introduction/setup)と
 [declarative/strict CLI guide](https://gunshi.dev/guide/essentials/declarative)を、ここで用いる
 Node/TypeScript互換性とclosedなunknown-option behaviorの根拠にする。
@@ -298,7 +298,7 @@ platform toolchainやruntime package dependencyを追加しない。
 Directなproduction `dependencies` setは`devframe`、`env-editor`、`gunshi`、`h3`、`open`、`smol-toml`、`strip-json-comments`、`vfile`、`vfile-matter`、`which`、`yaml`の
 正確に11個とする（caret rangeで宣言し、lockfileがexactなresolved versionへpinする。`h3`のresolved versionはdevframe自身のh3と一致し、両者は1つのmodule instanceへ解決される）: CLIとparserのpackageはnpm graph上のleafであり、h3は下記のtransitive host treeに既に含まれ、devframeがそのtreeを
 持ち込み、`open`はhelper検出の小さなtree（`default-browser`、`is-wsl`とそのleaf）をlockfileのpin付きで持ち込む。
-Nuxt/Vue/Vite/tsdown、Monaco、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
+Nuxt/Vue/Vite/tsdown、shiki、`diff`、test toolingは必要outputをclosed product assetへassembleするためbuild/development-onlyとする。
 Lockfileとisolated install済みproduction closureの両方をauditする。
 
 **検討した代案**:
@@ -675,53 +675,46 @@ security boundaryとして扱わない。
 
 ## 7. Source/metadata比較UI
 
-**決定**: File/compare routeで`monaco-editor`のESM buildをclient-only lazy-loadし、read-only
-single-file source viewとliteral source比較に使う。Editor workerと全basic-language contributionを
-importし、Nuxt/Viteにsame-origin assetとして出力させ、language-service workerは一切含めない。
-選抜ではなく全basic-language setとするのは、読み手が出会う言語がcustomization自身のdirectoryの中身で
-決まるためであり（contracts/inspection-path-allowlist.md § Bounded companion census）、各contributionは
-lazy loaderを登録するだけで、grammar chunkはその言語のfileを開いたときにだけ取得される。Basic language
-はtextに色を付けるだけである。Language serviceのworker-backedな機能 — 何よりdiagnostics、そして
-completion、hover、formatting、symbols — は除外する。与えられたものをvalidateし、調査対象の
-customizationをinvalidと示すのは、この productが下さないverdictだからである。JSONにはbasic-language
-grammarが無いため、登録moduleの中で1つ組み立てる: `json` idをJSON serviceのcontributionが行うのと同じ
-extension claimで登録し、そのidに配線する唯一の機能はservice自身のlocal tokenizer — workerを持たない
-module — である。contribution自体は決してimportしない。そのlazyにloadされるmodeがserviceのworkerを
-emitされるbundleへ引き込み、language-service workerの出荷はpackage gateが禁じるものだからである。
-したがって本物の`json` coloringがvalidationもworkerもなしで出荷され、`.jsonc`は同じtokenizerへmapされる
-（comment対応はtokenizer自身のもの）。Monacoが何も持たないTOMLは、grammarを
-`@ota-meshi/site-kit-monarch-syntaxes`から取る: serviceを伴わないMonarch grammarとlanguage
-configurationであり、`toml` idへbasic languageと同じlazy factoryで登録するため、それらを運ぶchunkは
-最初の`.toml` fileを開いたときに取得される。登録にpackage自身の`setupTomlLanguage`は使わない。その
-parameterは`monaco-editor` entry point全体であり、その型にはこのbundleが除外するlanguage serviceが
-含まれるため、呼び出すことはこのapplicationが意図的に持たない形を主張することになるからである。
-`.jsonc`のmappingはinternalで、model URIはopaqueのままであり、textはいずれにせよ
-記述されたとおりに表示される。
-Modelはopaqueなin-memory URIと完全な記述済みsource textを保持し、route close、selection replacement、source
-disable、generation replacement時にeditor/subscriptionとは別にdisposeする。Monacoのtext modelはdocumentごとに
-1つのend-of-line sequenceを保持するため、行末が混在するfileは多数派の行末でrenderされ、editorからのcopyも
-それに従う。行の内容と行数は変わらず、正確な`sourceText`は影響を受けない: それはdetail responseが運び、
-comparisonが消費する値である。`readOnly`、`domReadOnly`、
-`originalEditable: false`、`links: false`、`renderMarginRevertIcon: false`を設定し、
-`accessibilitySupport: 'auto'`、enabledな`accessibilityVerbose`、各source sideの`ariaLabel`を使う。
-`unicodeHighlight`（`nonBasicASCII`、`invisibleCharacters`、`ambiguousCharacters`）は
-オフにする。これらのdefaultは読み手自身のfileの文字にdecorationとwarning hoverを付けるもので、
-FR-032がこのsurfaceに禁じるlintingそのものである。文字の綴りが問題になる場面ではproduct自身が
-path presentationで明示する（data-model.md § SourceRelativePath）。Monacoのannounceは
-`document.body`直下のdefaultではなく、editor composable moduleが所有し全mountが共有する一つの
-elementへ行い、teardownでその
-element内のlive regionを空にする。Monacoのaria moduleはそれらをmodule-levelの変数で保持するため、
-detachするだけでは最後にannounceされたauthored sourceの行が到達可能なまま残る（FR-027）。Editor
-moduleがそもそもload
-できない場合は同じsourceをinertな`pre`でrenderし、pointerなしでもscroll boxへ到達できるよう
-focusableにする。
-devframe hostがNuxt outputを直接配信するため（§ 8）、product-assembledなCSP-hash manifestは存在しない。
-表示のinert性はread-onlyなeditor設定、Vue text binding、無効なlinkによって成立し、clientは引き続き
-external worker、blob worker、evaluated stringをloadしない。Diff highlightはproduct独自のline数/computation-time cutoffを設けず、Monacoとbrowserの
-capacityに従う。Monacoまたはbrowserがrecoverable failureを報告した場合もcomplete read-only side-by-side sourceと
-diagnosticを残す。Tool recognitionはtoolごとに比較し、fileの宣言済みmetadataは1回だけ比較する。
+**決定**: authoredなsourceはshikiで着色する — tokenizerだけを、そのJavaScript正規表現engineの上で、
+fileを表示する最初のrouteと共にloadする — そしてbrowser自身のtextとしてrenderする: 1つの`pre`が
+行ごとに、grammarが認識したrunをtext nodeとして持ち、各runのdual-theme colour variableから
+styleし、行番号は選択もcopyもされないgenerated contentとして描く。editorもworkerもWebAssemblyも、
+textから生成されたHTMLも出荷しない。すべてのassetはViteがpackaged SPAへemitし、同じlocal hostが
+配信する。grammarはshikiが同梱するsetであり、言語ごとに1つのlazyにfetchされるchunkとして、
+選抜ではなくshiki自身の登録表から取る。読み手が出会う言語はcustomization自身のdirectoryの中身で
+決まるためである（contracts/inspection-path-allowlist.md § Bounded companion census）。fileの
+言語は、その拡張子がidまたはaliasとして綴る同梱言語であり（`source-languages.ts`）、どれも綴らなければ
+plain textである。textのformatを知るsurfaceはそれを名指す — serializeされたdeclarationはcarrierの
+拡張子が何であれJSONであり、Codexの`.rules` policyはStarlarkであって、shikiがStarlark grammarを
+同梱しないためPythonのgrammarで着色する。themeはVS CodeのDefault Light+とDark+で、CSS variableとして
+適用するためpage自身のcolour schemeがどちらを見せるかを決める。両themeはTOMLのtable headerと
+dateをtext colourのままにし、それはそのtheme自身の読みとして受け入れる（`syntax-highlighting.ts`）。
+着色はtokenizingであってそれ以上ではない: validateもcompleteもhoverもする機能は無い。調査対象の
+customizationをinvalidと印付けるのはこのproductが下さないverdictだからである。届かなかったgrammarや
+highlighterは、通知も再試行もなく、textを未着色のまま画面に残す — fileは既にそこにある。textは
+`sourceText`が保持するとおり行ごとに表示し、tokenizerが分割する位置 — `\n`または`\r\n` — で
+分割するため、行の内容と行数はfileのものと正確に一致する。authored textをrenderするすべてのsurfaceは
+content ownerであり、comparisonまたはsessionのstateがroute close、selection replacement、source
+disable、generation replacement、中央purge時に同期的にdropする — 要素を空にし、rowを解放する
+（FR-027）。表示のinert性はtext node、Vue text binding、linkの不在によって成立する: 何も解決・open・
+実行されず、clientはexternal worker、blob worker、evaluated stringをloadしない。devframe hostが
+Nuxt outputを直接配信するため（§ 8）、product-assembledなCSP-hash manifestは存在しない。
+comparisonは並んだ2つの`pre`であり、比較するtextごとに1つ、それぞれがcomparisonのrowごとに1つの
+blockを持つ（`source-diff-rows.ts`）: 行は行に対するMyersのdiff（`diff` § diffArrays）で対応付け、
+whitespaceを含めて書かれたとおり丸ごと比較し、product独自の行数やcomputation-timeのcutoffは
+設けない。置き換えられた行の並びはその置き換えと行ごとに向かい合い、片側にしかない行は空白と
+向かい合い、変更行のうち相手側が持たない文字は語単位（`diff` § diffWordsWithSpace）でrun自身の色を
+またいで印付ける。行番号の桁の`+`または`-`が、色では担えない場面 — forced colours下、そして2つの
+row colourを見分けない読み手 — で差を担い（WCAG 1.4.1）、rowと語の色は4つの`light-dark()` token
+（`main.css` § --aci-diff-added）である。両sideは決して1列に畳まれない: 1列で示されたcomparisonは
+比較することをやめているので、2列に要る幅を下回ればframeが対をその内側で横にscrollさせる
+（WCAG 1.4.10）。各sideは長い行のために自分で横にscrollし、frameは両者を一緒に下へscrollさせる。
+それがrowを向かい合わせに保ち、同期させるものは何もない。どちらのsideも編集・merge・revertする
+controlは無く（FR-012）、変更を要約するoverviewの帯も無い: scrollが示すものを二度描かない。各sideと
+frameはassistive technology向けに名付けられる — sideはそれが示すfileまたはその部分として、あるいは
+片側だけのcomparisonがその側に持つ明示された不在として（FR-025）。Tool recognitionはtoolごとに比較し、fileの宣言済みmetadataは1回だけ比較する。
 toolは宣言の座標ではないからである: 各sideを1つのcanonical documentへserializeし、2つの
-documentをMonacoでdiffする。例外はcarrier自身が宣言であるsideである: plugin manifestは
+documentを並べて比較する。例外はcarrier自身が宣言であるsideである: plugin manifestは
 その内容全体で自身のpluginを宣言し、既にstrict JSONであるため、そのsideは書かれたままのfileと
 する。serializeし直せば同じdocumentを書き手が書いたものから1往復遠ざけることになり、
 そのためどのsurfaceも表示のためにmanifestをparseしない
@@ -738,7 +731,7 @@ YAML — blockそのものの言語 — へserializeし、各comparisonはその
 （frontmatter-yaml.ts、declaration-order.ts）。MCP comparisonは表ではなくserializationで比較する:
 その単位はkindのinventory row unitである1つの宣言済みserver名（data-model.md § Inventory unit）で、
 各sideはそのrowのcarrierの1つにあるその名前のdeclarationであり、surfaceは各declarationのparsed
-entryを1つのpretty-printed JSON documentへserializeし、2つのdocumentをMonacoでdiffする。
+entryを1つのpretty-printed JSON documentへserializeし、2つのdocumentを並べて比較する。
 表示専用のspellingではなくJSONなのは、このdocumentがJSON carrierのentryがserver名の下に持つ
 valueそのものであり、そのcarrierの読み手は自分のentryの本体としてpasteできるからである — TOML
 carrierの読み手はsyntaxではなくvalueをcopyする。comparisonのserializationは順序もspellingもcanonicalなので、
@@ -757,33 +750,45 @@ MCP detailは各declarationのfieldを同じJSON documentとして、fileが書�
 （detailが公開する順序はFR-007のもの）。1つの名前の2つのcarrierはsyntaxを共有するとは
 限らず（`.codex/config.toml`はTOML、`.mcp.json`はJSONで宣言する）、carrierはbytesをどこにも
 表示しない（FR-007）ため、canonical serializationが両sideを読める唯一のspellingである。
-Monacoのaccessible diff viewer、ARIA label、keyboard navigation、narrow-screen inline modeを維持し、
-明示的なaccessibility test対象にする。
+各sideとframeへのkeyboard access、sideの名前、各差を担う印は、明示的なaccessibility test対象である
+（contracts/accessibility-acceptance.md）。
 
-**理由**: Source fileにはMarkdownとstructured configurationがあり、syntax coloring、line navigation、
-virtualized rendering、search、synchronized scroll、実績のあるdiff surfaceがinspectionを明確に改善する。
-Monacoはsource差分を計算し、editor/環境依存のcomputation動作とaccessibility controlを提供するため、別の
-text-diff packageは責務を重複させる。Recognition factにはdomain semanticsがある —
+**理由**: Source fileにはMarkdownとstructured configurationがあり、syntax colouringと並べた比較が
+inspectionを明確に改善する。そしてここのfileはすべて編集ではなく読むものであり、それがeditorを
+誤った道具にする: browser自身のtextが既にfind、選択、copy、scrollを与え、読み手のscreen readerは
+既にそれを読む。一方editorはclientの残り全部より桁で大きいruntime — editor coreだけでgzip 672 KB、
+しかもskill detailはそれを2つmountしていた — と、inertに保たねばならない独自のkey handling、focus
+model、announce機構を持ち込んでいた。tokenizingはeditorがしてtextがしない唯一のことであり、
+shikiはそれだけをする。行の対応付けはcomparisonの性質であり、`diff`はMyersのalgorithmの小さく
+維持された実装として、product独自の上限なしにそれを計算する。Recognition factにはdomain semanticsがある —
 set-like recognitionとそのsurfaceはtypedなrowでstructureとして比較し、literal spellingの差は
 source diffで観測可能に保つ。declaration blockには失われるstructureがない:
 sideごとに1つのauthored mappingであり、canonical serializationがfieldを両sideで同一に並べるため、
-added/removed/changedなfieldはまさにそのlineとして現れる。公式[diff editor options](https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor_editor_api.editor.IDiffEditorOptions.html)と
-[Monaco repository](https://github.com/microsoft/monaco-editor)がeditor、worker、accessibility、model
-lifecycle capabilityを文書化している。意図的に狭いESM importはlockfileがpinするresolved versionと
-packaged browser testでupgrade時に保護する。
+added/removed/changedなfieldはまさにそのlineとして現れる。shiki公式の[bundles](https://shiki.style/guide/bundles)と
+[regex engines](https://shiki.style/guide/regex-engines)の文書が、このbundleが採るfine-grainedな
+entry pointとJavaScript engineを記録しており、packaged clientのgate
+（`tests/package/client-assets.test.ts`）がupgrade時にその選択を守る: `.wasm` assetなし、
+instantiationなし、すべてのgrammarはhighlighterのchunkの外。
 Content-based display transformは適用しない。記述済みvalueは、前にも隣にもwarningを置かずに表示したままとし、
 inert renderingによってcontent自体の実行、load、navigateを防ぐ。
 
 **検討した代案**:
 
-- Monacoと併せた`diff`追加は、現時点でCLI、API、patch export、headless consumerが第2のdiff engineを
-  必要としないため不採用。
-- Recognition metadata — どのtoolがどのsurfaceでsideを認識するか — のMonaco向けserializeは
+- 0.3.0までこのproductのviewerとdiffを出荷していたMonaco（`monaco-editor`）は、その大きさと
+  持ち込むsurfaceのために退役した: read-onlyなeditorとは、読むだけのtextの周りでinertに保たれた
+  editorのruntime、worker、icon font、key handlingである。
+- shikiのweb bundle — 選抜された57言語のsubset — は、`.codex/config.toml`がそうであるTOMLを
+  含まないため不採用。ここで書く言語listは、その外のfileをすべてplain textにし、維持する表を
+  もう1つ増やすため不採用 — したがって同梱setを丸ごと、grammarごとに1つのlazyにfetchされる
+  chunkとして出荷する（2026-09-09時点でpackage内にunpacked 8.2 MB、圧縮1.4 MB。その言語のfileを
+  開かないpageは何もfetchしない）。
+- Recognition metadata — どのtoolがどのsurfaceでsideを認識するか — のcomparison向けserializeは
   property orderとline changeがdomain fieldのadded/removed/changedを不明瞭にするため不採用。
   declarationのserialization — MCPのJSON、frontmatterのYAML — はこのcaseではない:
   各sideは1つのauthored mappingで、そのcanonical documentはfieldを両sideで同一に並べる。
-- Custom `<pre>` source diffはnavigation、large-document rendering、synchronization、accessibility、
-  diff interactionを再実装するため不採用。
+- diff component（`@git-diff-view/vue`）はshikiと並んで独自のhighlighter（`lowlight`）を運び、
+  `diff`の3 KBに対して圧縮333 KBであるため不採用。CodeMirrorのmerge view（`@codemirror/merge`、
+  107 KB）は、editorが要らない唯一のことのために第2のeditorを持ち込むことになる。
 
 ## 8. Local session transport
 

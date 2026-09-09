@@ -37,8 +37,8 @@ dispositionである。
 | FR-007 | T004, T074–T177, T216–T267, T292–T387, T411–T435, T1100–T1121, T449–T474, T495–T502, T517–T564, T589–T642, T667–T674, T689–T738, T763–T817, T844–T898, T920–T927, T1034–T1036, T1041–T1042, T1064–T1068, T1073–T1079, T1081, T1083, T1091–T1096, T1122, T1124, T1126, T1132, T1135, T1165–T1171, T1181, T1182–T1185 |
 | FR-008 | T205–T275, T920, T927, T1042, T1084–T1090 |
 | FR-009 | T079–T080, T091, T1042, T1091–T1093, T1118, T1142, T1146, T1156–T1162, T1179, T1181, T1182–T1183 |
-| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
-| FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175 |
+| FR-011 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
+| FR-012 | T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T928–T929, T1172–T1175, T1209 |
 | FR-013 | T930, T932–T943, T945–T946, T950, T958–T962, T1017–T1028, T1029, T1041, T1061–T1062, T1137, T1164 |
 | FR-014 | T930, T944–T947, T950–T951, T956–T959, T963–T964, T967–T968, T974–T975, T977–T978, T981–T982, T988–T989, T991, T993–T995, T997–T998, T1000–T1005, T1029, T1041, T1058, T1061–T1062, T1137, T1140 |
 | FR-015 | T977–T990, T1137 |
@@ -51,35 +51,35 @@ dispositionである。
 | FR-022 | T040, T043, T045–T047, T056, T294, T925, T996, T1054, T1098, T1123 |
 | FR-023 | T018, T020–T021, T031, T056, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061 |
 | FR-024 | T018–T022, T029–T032, T055, T057, T067, T069, T916, T924, T934, T940, T944–T945, T947, T959, T1008, T1014, T1029, T1041, T1051, T1054, T1058, T1061–T1062, T1069–T1072 |
-| FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169 |
+| FR-025 | T074–T085, T095, T517, T589, T612, T920–T927, T995–T997, T1029, T1041, T1055, T1058, T1061–T1062, T1069, T1169, T1207, T1209 |
 | FR-026 | T077, T085, T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925–T927, T995–T997, T1055 |
-| FR-027 | T084, T100, T102, T927, T1045 |
+| FR-027 | T084, T100, T102, T927, T1045, T1206–T1210 |
 | FR-028 | T015–T017, T027–T028, T032, T075–T076, T089, T095, T116, T141, T208, T217, T238, T282, T321, T371, T517, T589–T590, T612, T799, T805, T915, T921–T923, T926–T927, T1041, T1058, T1061–T1062, T1083, T1087, T1163 |
 | FR-029 | T015–T016, T020–T021, T023–T024, T026–T027, T031, T035, T037, T040, T046, T055, T067–T068, T141, T149, T217, T222–T223, T1085, T1087, T1090, T238, T242–T243, T915, T923–T924, T946, T958, T1006–T1008, T1013–T1014, T1017, T1021, T1023–T1024, T1029, T1041, T1043, T1046, T1054, T1058, T1062 |
 | FR-030 | T017, T026, T028, T037, T057, T068–T069, T071, T182–T183, T916, T918, T928, T958, T1006–T1016, T1023, T1052, T1058, T1082, T1149, T1151, T1152, T1180 |
 | FR-031 | T041, T048–T049, T096, T182, T1021, T1024, T1027 |
-| FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061 |
-| FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929 |
+| FR-032 | T004, T017, T028, T061, T191–T204, T276–T279, T397–T401, T503–T506, T573–T576, T747–T750, T829–T832, T908–T912, T916, T919, T926–T929, T995, T997, T1029, T1041–T1042, T1061, T1206–T1207 |
+| FR-033 | T178–T190, T268–T275, T388–T396, T475–T481, T565–T572, T643–T653, T739–T746, T818–T828, T899–T907, T925, T927–T929, T1206–T1207 |
 | FR-034 | T226–T244, T440, T442, T477, T857–T877, T1042 |
 | FR-035 | T205–T225, T944–T962, T1084–T1090 |
 | FR-036 | T226–T244, T963–T976 |
 | FR-037 | T245–T267 |
 | FR-038 | T001–T003, T005–T014, T024–T036, T1043–T1044, T1047–T1051 |
 | FR-042 | T041–T042, T044, T048–T049, T057, T1017–T1029, T1041, T1045–T1046, T1058, T1061–T1062 |
-| FR-043 | T1041–T1042, T1080 |
+| FR-043 | T1041–T1042, T1080, T1208, T1210 |
 | FR-044 | T1123, T1136, T1143, T1144 |
 | FR-045 | T977–T990, T991–T1005, T1137–T1140 |
 | QR-001 | T017–T039, T050–T073, T913–T920, T1031–T1042 |
 | QR-002 | T015–T028, T055–T057, T061, T067–T071, T183, T913–T935, T944–T950, T963–T967, T977–T981, T991–T997, T1006–T1024, T1041–T1055, T1058–T1062 |
-| QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062 |
+| QR-003 | T018–T049, T055–T057, T067–T069, T915–T927, T930, T946, T958, T995–T997, T1006–T1028, T1029, T1041, T1051, T1054–T1055, T1058, T1061–T1062, T1208 |
 | QR-004 | T044, T071, T084, T100, T919, T927, T929, T935, T950, T976, T990, T997, T1004–T1005, T1016, T1022, T1028–T1030, T1039–T1041, T1045, T1056–T1059, T1061–T1062, T1141, T1145, T1147, T1155, T1176, T1177, T1186–T1187, T1190–T1192, T1196, T1198, T1199, T1201, T1204 |
 | QR-005 | T050–T073, T913, T920, T1031–T1042, T1062 |
 | SC-001 | T040, T043, T046–T047, T917, T1029–T1030, T1041, T1048, T1056, T1061–T1062, T1195, T1202 |
-| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203 |
-| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203 |
-| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203 |
+| SC-003 | T913–T914, T919–T920, T1041–T1042, T1053, T1062, T1188, T1194, T1203, T1211 |
+| SC-004 | T018, T020–T021, T031, T056, T085, T924–T925, T930, T995–T997, T1029, T1041, T1054, T1061–T1062, T1188, T1194, T1203, T1211 |
+| SC-005 | T074, T077, T081–T085, T925–T927, T930, T995–T997, T1041, T1055, T1062, T1188, T1194, T1203, T1211 |
 | SC-006 | T1030, T1049, T1056–T1057, T1061–T1062, T1195, T1202 |
-| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203 |
+| SC-007 | T015–T021, T026, T038, T040, T046, T055, T057, T067–T069, T075–T076, T081, T089, T915, T921–T924, T926–T927, T930, T934, T944–T947, T958–T959, T963–T964, T975, T977–T978, T989, T991, T993, T995, T997, T1006, T1008, T1013–T1014, T1041, T1046, T1058, T1061–T1062, T1188, T1194, T1203, T1211 |
 | SC-008 | T044, T071, T084, T100, T919, T927, T929, T1004, T1029, T1041, T1045, T1059, T1193 |
 | Constitution/project governance | T001–T014, T1029–T1063, T1189, T1197, T1200, T1205 |
 
@@ -7998,6 +7998,99 @@ screenshot — に、このtreeが実際に持つartifactを名指させる。
   凍結されたcountを task 1,114件・phase 116件から 1,117件・117件へ。このtaskが走るまで
   `pnpm run test:docs` は追加されたIDでfailする（憲章 III）（missing）
 ---
+
+## フェーズ 114: shiki によるソース着色
+
+**目的**: 著者のソースを Monaco ではなく shiki で着色し、詳細routeが読者に課すものがeditorではなく
+tokenizerになるようにする — Monaco coreだけでgzip 672 KBあり、skillの詳細はそのeditorを同時に2つ
+mountしていた —。一方で、すべてのsurfaceはfileを書かれたとおりに示し続け（FR-027）、何もそれを
+invalidと印付けない（FR-032、FR-033）。
+
+**独立したテスト**: `pnpm run build` を実行し、次に `pnpm run test:unit`、`pnpm run test:package`、
+`npx playwright test --project=chromium tests/e2e/codex-config-detail.spec.ts
+tests/e2e/accessibility.spec.ts` を実行する。稼働中のsessionでskillの詳細を開き、frontmatterと
+instructionsが着色され、行番号が付き、行番号を含まずにcopyできることを確認する。
+
+**可視チェックポイント**: 詳細pageは `editor.worker` もMonacoのchunkもfetchしない。比較pageは
+T1209が入るまでそれらをfetchし続ける。
+
+### ハイライター
+
+- [X] T1206 `shiki` と `@shikijs/themes` をcaret rangeのdevDependencyとして追加し、
+  `src/app/composables/syntax-highlighting.ts` — shikiのJavaScript正規表現engine上で遅延構築される
+  1つのhighlighter、dual-theme CSS variableとして適用するVS CodeのDefault Light+とDark+のtheme、そして初回
+  使用時にgrammar chunkを読み込み1行ごとに着色runの配列を返す `highlightSource(text, languageId)`
+  （分割は `\n` または `\r\n`）— と、`src/app/composables/source-languages.ts` — Source-relative
+  Pathの拡張子をshiki自身のidとalias表（`bundledLanguagesInfo`）で引いてlanguage idまたはplain
+  textに解決し、ここで書いた拡張子表は決して用いない — を書く。両者を
+  `tests/unit/app/source-languages.test.ts` と `tests/unit/app/syntax-highlighting.test.ts` で
+  実物のshikiに対してcoverする（FR-027、FR-033、research.md § 7）。
+
+### 単一fileのviewer
+
+- [X] T1207 `src/app/components/inspection/SourceViewer.vue` を書き直し、runを1つの `pre` の中の
+  `<span>` 内のtext nodeとして描画する — `v-html` は使わない —。copyされないCSS counterの行番号、
+  runが届くまで同じ列に立つplaceholderのtext、通知も再試行もなく未着色のtextをその場に残す
+  tokenizingの失敗、要素を同期的に空にするpurge、そして `role="group"` によってfileとその示す部分
+  として名付けられたbox（FR-025、FR-027）。MonacoのDOM — `.monaco-editor`、そのtoken class、
+  squiggle — に到達していたbrowser suiteを、box、そのrunの色variable、
+  `tests/e2e/source-viewer.ts` § sourceBoxDecorations へ更新し、`tests/e2e/accessibility.spec.ts`
+  は、boxが独自のkey handlingを持たない `tabindex="0"` の `pre` であることから、すべてのengineで
+  forward-Tabによる退出へ更新する（FR-032、FR-033、SC-008）。
+
+### パッケージゲートと記録
+
+- [X] T1208 ビルドされた着色を `tests/package/client-assets.test.ts` でgateする —
+  `.wasm` assetもWebAssemblyのinstantiationもなく、highlighterは1つのchunkに、すべてのgrammarは
+  その外にある —。`tests/package/third-party-notices.test.ts` で `shiki` と `@shikijs/langs` を
+  名指す（FR-043、QR-003）。pinされたFirefoxとWebKitのrevisionでkeyboard trapからの退出を再測定し、
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する。
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.md` と
+  `specs/001-inspect-agent-customizations/contracts/accessibility-acceptance.ja.md` の2.1.2の行を、
+  測定が示すものから書き直す（SC-008）。
+
+### 比較
+
+- [X] T1209 `src/app/components/comparison/SourceDiff.vue`、2つの宣言diff
+  （`src/app/components/mcp-comparison/DeclarationDiff.vue`、
+  `src/app/components/plugin-comparison/DeclarationDiff.vue`）、およびhook比較
+  （`src/app/components/hook-comparison/RecognitionComparison.vue`）を、shikiのrunと `diff`
+  packageの上に書き直す。`diffLines` による行の対応付け、対にした変更行の語単位の範囲を
+  `diffWordsWithSpace` で取ってrunのoffsetで切ること、1つとしてscrollしどの幅でも2列を保つ1つの
+  CSS gridに置いた両側 — `min-inline-size: 60rem` で箱の中を横にscrollさせる。向かい合わなくなった
+  2つのfileはもはや比較ではないからである —、各側にそれ自身のfileの行番号を付け、追加行と削除行は
+  行番号の桁の `+` と `-` で印して差が色だけに載らないようにし（WCAG 1.4.1）、番号と印は選択とcopyの
+  外に置き、両側の間に線を引かず、overviewの帯も置かず、行と語の色は `src/app/styles/main.css` の
+  4つの `light-dark()` token（`--aci-diff-added`、`--aci-diff-removed`、および `--aci-text` に対して
+  実測した語単位の `-strong` の対）とする。whitespaceを含むliteralな比較（FR-011）、編集・merge・
+  revertするcontrolの不在（FR-012）、fileまたはその部分として名付けられた各側（FR-025）、Monacoの
+  accessible diff viewerに代わる差分のaccessibleな読み上げ（SC-008）。
+  `tests/unit/app/source-diff.test.ts`、比較のbrowser suite、`tests/e2e/source-type.spec.ts` を
+  新しいboxへ更新する。
+
+### 撤去
+
+- [X] T1210 `src/app/composables/monaco.ts`、`src/app/composables/monaco-languages.ts`、
+  `src/app/monaco-json-tokenization.d.ts`、`tests/unit/app/source-viewer.test.ts`、
+  `tests/package/monaco-assets.test.ts`、`licenses/@ota-meshi/site-kit-monarch-syntaxes.txt`、
+  および `monaco-editor` と `@ota-meshi/site-kit-monarch-syntaxes` のdevDependencyを削除する。
+  notice suiteにMonacoの代わりにshikiの著作権者を名指させる。最終状態を
+  `specs/001-inspect-agent-customizations/research.md` § 7、`plan.md`、`data-model.md`
+  § EditorModelState、`quickstart.md`、`contracts/http-api.md`、`spec.md` FR-027 — `pre` が
+  majority-endingの節を無意味にする — と `contracts/accessibility-acceptance.md` の2.1.1、2.4.11、
+  4.1.2の行に、それぞれ日本語版とともに書く。`.changeset/` entryを追加する。
+
+### リリースエビデンス
+
+- [ ] T1211 このフェーズが変更した、manifestが参照するbrowser suiteすべてのdigestを
+  `tests/fixtures/outcomes/manifest.json` と `tests/fixtures/outcomes/manifest.sha256` に
+  再記録し、SC-003/SC-004/SC-005/SC-007のcaseを新しいbyteに対して再実行して、その実行を
+  `specs/001-inspect-agent-customizations/validation.md` と
+  `specs/001-inspect-agent-customizations/validation.ja.md` に記録する（spec.md
+  § Release-Evidence Fixture Governance）。それが入るまで
+  `tests/contract/outcome-fixture-manifest.test.ts` はdriftを報告し、それはfreezeが働いている
+  ということである。
 
 ## ストーリーカバレッジマトリクス
 

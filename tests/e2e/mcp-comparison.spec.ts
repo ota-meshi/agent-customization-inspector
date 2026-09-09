@@ -3,8 +3,8 @@
 // shared root `.mcp.json`, and a `.github/mcp.json` of its own name, opens
 // the comparison from an inventory row's entry link, and verifies the
 // declaration comparison: one declared server name compared across the
-// carriers of its own row, each side serialized to JSON and diffed in
-// Monaco (research.md § 7), credential and environment-reference
+// carriers of its own row, each side serialized to JSON and compared side by
+// side (research.md § 7), credential and environment-reference
 // values shown exactly as authored with no masking, reveal control, or
 // process-environment substitution, no carrier source anywhere (FR-007),
 // other names' declarations kept off the page, and every selection outside
@@ -113,10 +113,10 @@ test.describe('the MCP declaration comparison', () => {
     const recognitions = main.locator('.aci-recognition-table');
     await expect(recognitions).toContainText('OpenAI Codex');
     await expect(recognitions).toContainText('Claude Code');
-    // The Monaco diff holds both serialized declarations: the fields as
+    // The diff holds both serialized declarations: the fields as
     // JSON, the credentials whole and unmarked, the environment reference as
     // its own characters (FR-025, FR-026).
-    const diff = page.locator('.aci-declaration-diff');
+    const diff = page.locator('.aci-source-diff');
     await expect(diff).toBeVisible();
     await expect(diff).toContainText('codex-owned');
     await expect(diff).toContainText(CODEX_SECRET);

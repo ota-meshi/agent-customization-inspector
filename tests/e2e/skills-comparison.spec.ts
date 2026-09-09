@@ -380,7 +380,7 @@ test('states tool recognition per tool and compares declared metadata once', asy
     'Not recognized',
   );
   // The declared metadata is one canonical YAML document per side, diffed
-  // in Monaco under no tool heading (frontmatter-yaml.ts): the credential
+  // side by side under no tool heading (frontmatter-yaml.ts): the credential
   // difference shows both resolved values, the `name`/`description` pair
   // leads, and a key only one file declares stands on its side alone.
   const metadataDiff = comparison.locator('.aci-source-diff').first();

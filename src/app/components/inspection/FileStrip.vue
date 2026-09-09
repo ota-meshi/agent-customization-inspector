@@ -90,7 +90,7 @@ defineProps<{
      area, so a strip 3,940px wide made the whole page scroll 3,928px sideways
      at a 1,280px viewport — the failure the line above says cannot happen
      (WCAG 1.4.10). Measured: hiding the strip took the document back to
-     1,280px and hiding the Monaco viewers changed nothing, so the overflow was
+     1,280px and hiding the source viewers changed nothing, so the overflow was
      this box's. Clipping an ancestor does not fix it either; paint containment
      does, because it makes this box the boundary its descendants are painted
      and scrolled within. */

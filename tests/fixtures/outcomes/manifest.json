@@ -44,7 +44,7 @@
     "tests/e2e/claude-custom-agents-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-custom-agents-detail.spec.ts",
-      "sha256": "5c34fb7882664e9ca6d5eca44cbfc4f7c5d6b095a4df95589cd57155397e497e"
+      "sha256": "78b38a465135f2138a667aeb564f1102deacf46929c5b5984c6e6c000a1f179b"
     },
     "tests/e2e/claude-custom-agents-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -109,7 +109,7 @@
     "tests/e2e/claude-settings-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-settings-detail.spec.ts",
-      "sha256": "25d3dca6abf201ef7cc33a3eeedd78274129580cdb9469a675784eefcbf5c13d"
+      "sha256": "09471c1ac878fb8944d8a3da71904dd9764166655e7cd99509b9d17c11a271a5"
     },
     "tests/e2e/claude-settings-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -129,7 +129,7 @@
     "tests/e2e/codex-config-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-config-detail.spec.ts",
-      "sha256": "f0e43c926508543b6221240d3874ea7623ee7236a28c5f5d4bf19b0c9ec698af"
+      "sha256": "30823c3f0576c7d04cdce44b5300df5d1620c1f3819d5a97f88b8c61c8dd854c"
     },
     "tests/e2e/codex-config-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -139,7 +139,7 @@
     "tests/e2e/codex-custom-agents-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-custom-agents-detail.spec.ts",
-      "sha256": "558a2d6767f99ac22c34d98e3c5147e31021285ee6d4c229b2814dd29797cae5"
+      "sha256": "1f75d97cb3f23ed8cc7cc54de045627cdeeef5c5d2809c681602761de9cd8d73"
     },
     "tests/e2e/codex-custom-agents-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -179,7 +179,7 @@
     "tests/e2e/codex-permissions-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-permissions-detail.spec.ts",
-      "sha256": "64b106ef3747d5c62c97becc2920d2d8945eaafae85a7d60b719187b7351dc6e"
+      "sha256": "64257e326d18b7fe3e83f80e2cdd7374b4acab7b937fad7ccbba9a8d05ac1865"
     },
     "tests/e2e/codex-permissions-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -199,7 +199,7 @@
     "tests/e2e/codex-skills-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/codex-skills-detail.spec.ts",
-      "sha256": "d4073a9f8b90fe31411acfd38dcf55b3f9386fc9ebc9f295593c3177d0951143"
+      "sha256": "19f9a019ae29901c86c0dd0f546c60cee3a6f457037dcca076eb0e1d5cd490c3"
     },
     "tests/e2e/codex-skills-list.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -209,7 +209,7 @@
     "tests/e2e/comparison.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/comparison.spec.ts",
-      "sha256": "c1d9e37cfc838b7b1b7008d1266c91abedadecde8d1c4a3c2b886f72f3f92c44"
+      "sha256": "50f8fa79bf4f1082a9f69fce74535c80acf2f4119bc7578e11af99079b355395"
     },
     "tests/e2e/copilot-commands-detail.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -224,7 +224,7 @@
     "tests/e2e/copilot-custom-agents-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-custom-agents-detail.spec.ts",
-      "sha256": "5ecaa4342698b8b8ec05ee1ddf4bb41f0c1df13f56b6567e2aced001f7279863"
+      "sha256": "f103a2527ad29e2c2ee5cf6043e30cc8cc7001ae1f20bad3a4e8e8fb41ee8d51"
     },
     "tests/e2e/copilot-custom-agents-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -264,7 +264,7 @@
     "tests/e2e/copilot-settings-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/copilot-settings-detail.spec.ts",
-      "sha256": "1aec1a25a2c4bb9f4f1990afee80202e7098bcd0f5ac0b91e7108eec214879b6"
+      "sha256": "81044a8fd74bb6f18f2ae677db8f839cbc1ca9ce35369d8abcd644d7d39fed8a"
     },
     "tests/e2e/copilot-settings-inventory.spec.ts": {
       "kind": "inline-fixture-suite",
@@ -309,7 +309,7 @@
     "tests/e2e/output-styles-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/output-styles-detail.spec.ts",
-      "sha256": "f21e5f88f2517bc4de1e4ae91e48866b9689ac335566d55d2645e41cbf2eb946"
+      "sha256": "867af49e0801cc1b394078631a8e42f6fc154a3e080eb369014063a4cd37ef33"
     },
     "tests/e2e/output-styles-inventory.spec.ts": {
       "kind": "inline-fixture-suite",

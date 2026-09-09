@@ -817,6 +817,17 @@ and 3 on a certification runner, where the editor is mounted by the second press
 is therefore not claimed on Firefox, which the inventory walk — the one page with no editor
 on it — holds to the same claim as the other two engines.
 
+Re-measured on 2026-09-09, after the detail page's source box became the browser's own `pre`
+with `tabindex="0"` and no key handling of its own (T1207): `AUTO-2.1.2` asserts a bounded
+forward-Tab exit on all three engines, and the detail walk's count is claimed on Firefox with
+the others. The pinned Firefox revision leaves the box on the first Tab, so the forward-exit
+limitation above belonged to the editor that no longer renders there; the comparison pages,
+whose diff stays Monaco's until T1209, are outside this case's walk. Run on the pinned Firefox
+and WebKit revisions through `playwright test --project=firefox --project=webkit
+tests/e2e/accessibility.spec.ts` (69 passed) and on Chromium through the same file. Run
+again on all three engines after the comparison became two `pre`s (T1209), with the same
+result: 105 passed.
+
 **The manual half is outside the criterion.** The 36 `MANUAL-*` IDs would be executed over
 `3 × 5 × 3 × 8 × 3 = 1,080` keyed cells each — 38,880 cells requiring macOS with VoiceOver,
 Windows with NVDA, and Ubuntu with Orca. SC-008 asserts the automated checks and the four

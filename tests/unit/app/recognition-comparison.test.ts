@@ -12,7 +12,7 @@
 // The contract: tool recognition is compared per tool, while the files'
 // declared metadata — one parse per kind (FR-028) — serializes to one
 // canonical YAML document per side, `name` and `description` leading and
-// every other key sorted, for Monaco to diff (frontmatter-yaml.ts), with no
+// every other key sorted, for the comparison to diff (frontmatter-yaml.ts), with no
 // ranking, no winner claim, and nothing fabricated for data the wire does
 // not carry (relationships ship with no recognition in this release, so
 // none may be invented here).

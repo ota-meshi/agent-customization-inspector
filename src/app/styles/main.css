@@ -79,6 +79,19 @@
      (contracts/accessibility-acceptance.md § Palette measurements.) */
   --aci-line: light-dark(#7f8899, #656f7e);
   --aci-hairline: light-dark(#e2e7ee, #262e39);
+  /* What a comparison paints under a line only one side has, and under the
+     words of a changed line the other side lacks. Never the only carrier of
+     the difference: the row's number column marks it with `+` or `-`, so the
+     colour is an aid and the mark is the fact (WCAG 1.4.1). The word-level
+     pair is the row's colour taken one step further, chosen so `--aci-text`
+     keeps AA contrast on it — measured 2026-09-09: 10.6:1 and 10.4:1 in
+     light, 5.4:1 and 7.9:1 in dark — and stands 1.5 to 2.2 steps off the row
+     colour it sits on. Syntax colour over these is the theme's own reading
+     and is not held to that ratio. */
+  --aci-diff-added: light-dark(#e6f4e9, #14301d);
+  --aci-diff-removed: light-dark(#fbe9e7, #3a1c19);
+  --aci-diff-added-strong: light-dark(#9fd4aa, #2a6b3d);
+  --aci-diff-removed-strong: light-dark(#f2b8b1, #76322b);
 
   --aci-accent: light-dark(#2d4ea2, #7a9bf0);
   /* The fill under a selected item. It is not what identifies the selection —
@@ -168,6 +181,13 @@
     --aci-muted: CanvasText;
     --aci-line: CanvasText;
     --aci-hairline: CanvasText;
+    /* The platform paints no background of its own choosing under forced
+       colours, so a comparison's rows keep the Canvas; the `+` and `-` marks
+       are what carries the difference there. */
+    --aci-diff-added: Canvas;
+    --aci-diff-removed: Canvas;
+    --aci-diff-added-strong: Canvas;
+    --aci-diff-removed-strong: Canvas;
     --aci-accent: LinkText;
     --aci-accent-soft: Canvas;
     --aci-on-accent: Canvas;
@@ -449,6 +469,29 @@ h2 {
    * beside it. Isolation changes no character; it closes the scope. */
   unicode-bidi: isolate;
   white-space: pre-wrap;
+}
+
+/* One run of tokenized source text, coloured from the variables shiki wrote on
+   it (`syntax-highlighting.ts`): each run states both themes' values and
+   paints neither, and the scheme the page is drawn in — the root class
+   `color-scheme.ts` writes — decides which shows. A utility rather than either
+   surface's own class because both surfaces that render runs, the viewer and
+   the comparison, apply it. Under forced colours the platform overrides the
+   colour (WCAG 1.4.11), and the run stands as text. A run without a variable
+   is one the theme leaves in the surrounding colour, which the fallbacks give
+   it. */
+.aci-source-run {
+  color: var(--shiki-light, inherit);
+  font-style: var(--shiki-light-font-style, inherit);
+  font-weight: var(--shiki-light-font-weight, inherit);
+  text-decoration: var(--shiki-light-text-decoration, none);
+}
+
+:root.dark .aci-source-run {
+  color: var(--shiki-dark, inherit);
+  font-style: var(--shiki-dark-font-style, inherit);
+  font-weight: var(--shiki-dark-font-weight, inherit);
+  text-decoration: var(--shiki-dark-text-decoration, none);
 }
 
 /* Keyboard operability is an acceptance criterion, so the focus ring is

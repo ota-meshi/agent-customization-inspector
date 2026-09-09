@@ -14,6 +14,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { sourceBoxDecorations } from './source-viewer';
 
 import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 import { openNoKindDisclosure } from './no-kind-disclosure';
@@ -138,7 +139,7 @@ test.describe('the complete literal Copilot agent-profile detail', () => {
     await expect(page.getByRole('tab', { name: 'Agent', selected: true })).toBeVisible();
     await expect(main.getByRole('heading', { name: 'Metadata' })).toBeVisible();
     await expect(main.getByRole('heading', { name: 'Instructions' })).toBeVisible();
-    await expect(page.locator('.monaco-editor').first()).toBeVisible();
+    await expect(page.locator('.aci-source-viewer').first()).toBeVisible();
     await expect(main).toContainText('name: Deployer');
     await expect(main).toContainText('target: github-copilot');
     // The handoff and the declared server are values, not links or controls.
@@ -175,11 +176,9 @@ test.describe('the complete literal Copilot agent-profile detail', () => {
     await expect(main).toContainText('---');
     await expect(main).toContainText('mcp-servers:');
     await expect(main).toContainText('# Deployer');
-    // Tokenizing is all it is: no language service stands behind the viewer,
-    // so nothing marks the file invalid (FR-033).
-    await expect(
-      page.locator('.monaco-editor .squiggly-error, .monaco-editor .squiggly-warning'),
-    ).toHaveCount(0);
+    // Tokenizing is all it is: the box holds the text and its coloured runs
+    // and nothing else, so nothing marks the file invalid (FR-033).
+    await expect(sourceBoxDecorations(page)).toHaveCount(0);
   });
 
   test('states both names a shared file is listed under', async ({ page }) => {
@@ -227,7 +226,7 @@ test.describe('the complete literal Copilot agent-profile detail', () => {
     await expect(page.locator('main')).toContainText(
       "Nothing in the current scan sits at this link's path.",
     );
-    await expect(page.locator('.monaco-editor')).toHaveCount(0);
+    await expect(page.locator('.aci-source-viewer')).toHaveCount(0);
   });
 });
 

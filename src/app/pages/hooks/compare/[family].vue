@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The hook comparison route (T911/T912; FR-011, FR-012): one declared
 // lifecycle event's declarations compared across the carriers that declare it
-// — each side serialized to canonical JSON and diffed in Monaco
+// — each side serialized to canonical JSON and compared side by side
 // (research.md § 7) — with no verdict, no merge, and no fix anywhere. There is
 // no source half: a hook carrier shows its source on no surface (FR-007), so
 // the serialized declarations are the whole comparison.

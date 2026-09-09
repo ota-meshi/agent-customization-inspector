@@ -85,9 +85,9 @@ systemQuery.addEventListener('change', (event) => {
 
 /**
  * The scheme the page is drawn in: the reader's choice while they have one, and
- * their system's preference until then. Read by the switch that sets it and by
- * the editor, which picks a theme by name rather than from CSS
- * (`monaco.ts` § themeForDisplay).
+ * their system's preference until then. Read by the switch that sets it; the
+ * source colouring follows the root class this value writes, from CSS alone
+ * (`main.css` § .aci-source-run).
  */
 export const colorScheme = computed<ColorScheme>(() => chosenScheme.value ?? systemScheme.value);
 

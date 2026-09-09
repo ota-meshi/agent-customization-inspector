@@ -10,9 +10,8 @@
 // each side's own answer needs the built table on screen, where a cell reading
 // `Not recognized` is the thing a side card cannot say. That the way out
 // reaches the list the comparison was opened from needs the router. And that
-// the diff stays side by side needs Monaco laid out at a real width: it drops
-// to one inline column below its own 900px breakpoint, and a comparison
-// collapsed to one column has stopped comparing.
+// the diff stays side by side needs it laid out at a real width, because a
+// comparison collapsed to one column has stopped comparing.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -149,14 +148,14 @@ test('keeps the two files opposite each other rather than collapsing to one colu
   const diff = page.locator('.aci-skill-compare__source .aci-source-diff');
   await expect(diff).toBeVisible();
 
-  // Monaco renders one editor per side while it is side by side, and a single
-  // merged editor once it drops to the inline column.
-  const columns = diff.locator('.editor.original, .editor.modified');
+  // One `pre` per side, whatever the width: the comparison never drops to one
+  // column.
+  const columns = diff.locator('.aci-source-diff__side');
   await expect(columns).toHaveCount(2);
   const layout = await diff.evaluate((element) => {
-    const editors = [...element.querySelectorAll('.editor.original, .editor.modified')];
+    const sides = [...element.querySelectorAll('.aci-source-diff__side')];
     return {
-      lefts: new Set(editors.map((editor) => Math.round(editor.getBoundingClientRect().left))).size,
+      lefts: new Set(sides.map((side) => Math.round(side.getBoundingClientRect().left))).size,
       width: element.getBoundingClientRect().width,
     };
   });

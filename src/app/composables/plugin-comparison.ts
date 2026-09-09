@@ -7,7 +7,7 @@
 // unit — one plugin name as its vendor addresses it (data-model.md
 // § Inventory unit). The two sides are that name's declarations in two of
 // its row's carriers, each serialized to one canonical JSON document and
-// diffed in Monaco (research.md § 7). Two carriers of one name is a
+// compared side by side (research.md § 7). Two carriers of one name is a
 // repository keeping parallel catalogs — one at the location Codex reads and
 // one at Claude's — and the comparison is what says whether the two entries
 // still agree.
@@ -27,8 +27,8 @@
 // § get-plugin-carrier-detail), so neither side ever holds another plugin's
 // declarations. The view is generation-scoped (FR-030), and the central
 // client-data purge (FR-027) clears it the same way — including the two
-// Monaco models holding the serialized declarations, whose disposers the
-// mounting component registers here.
+// rendered pair holding the serialized declarations, whose disposer the
+// rendering component registers here.
 //
 // Construction performs no I/O, and the state is owned by the one
 // `SessionViewState`: a second instance would race the first for the same
@@ -269,7 +269,7 @@ export class PluginComparisonState {
 
   /**
    * Disposers of component-owned holders of the open comparison's content —
-   * the two Monaco models carrying the serialized declarations. Run
+   * the rendered pair carrying the serialized declarations. Run
    * synchronously by every drop path, because the contract orders dispose
    * before replace (data-model.md § BrowserState).
    */

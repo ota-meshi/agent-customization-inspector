@@ -152,9 +152,7 @@ test('ranks nothing, merges nothing, and offers no way to change either side', a
     const copy = main.cloneNode(true) as HTMLElement;
     // The authored text and the paths are the reader's own words; what this
     // scans is the product's.
-    for (const authored of copy.querySelectorAll(
-      '.aci-authored-text, .aci-path, .monaco-editor, pre',
-    )) {
+    for (const authored of copy.querySelectorAll('.aci-authored-text, .aci-path, pre')) {
       authored.remove();
     }
     return copy.innerText.toLowerCase();

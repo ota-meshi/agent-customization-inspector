@@ -971,7 +971,7 @@ useReportedPageSubject(titleSubject);
 
 // While a switch to another file is in flight, the pane is replaced by its
 // loading state. If keyboard focus is inside it at that moment — reading the
-// source in Monaco when a history navigation changes the selection — the
+// source in the viewer when a history navigation changes the selection — the
 // unmount would drop focus to the document body, silently restarting keyboard
 // and reader position from the top. The guard runs synchronously, before Vue
 // patches the pane away, because afterwards the focused element is already
@@ -1162,7 +1162,7 @@ watch(
       </SubjectTabStrip>
 
       <!-- Both panels stay in the document and the unselected one is hidden,
-           so Monaco keeps its model and the reader's scroll position across a
+           so the source box keeps its text and the reader's scroll position across a
            tab switch. Every tab therefore names its panel: both IDREFs resolve,
            and omitting one would drop a relationship assistive technology
            uses to move from a tab to what it controls. -->

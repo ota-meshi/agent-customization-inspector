@@ -283,8 +283,8 @@ useReportedPageSubject(titleSubject);
            the vendor's: Codex's `.rules` is Starlark, whose syntax its own
            page states is like Python and whose examples that page presents in
            a `python` block, while `.rules` is a spelling unrelated tools give
-           files of their own and so borrows no grammar by suffix (monaco.ts
-           § BORROWED_GRAMMARS). Colouring is tokenizing rather than
+           files of their own and so borrows no grammar by suffix
+           (`source-languages.ts`). Colouring is tokenizing rather than
            validating: nothing here can mark the policy invalid (FR-033). The
            readability guard is the narrowing this detail's own union asks for
            and never a branch with a second outcome: a permissions recognition
@@ -300,7 +300,7 @@ useReportedPageSubject(titleSubject);
       <!-- The declared block, and nothing of the document around it: the
            carrier's other keys are the settings recognition's content and
            never reach this response (FR-007). One read-only JSON document in
-           the Monaco viewer, in the keys the file wrote and its own order,
+           the source viewer, in the keys the file wrote and its own order,
            which is the spelling a reader pastes back into their settings; JSON
            escaping is what keeps every character visible and transportable
            (FR-025, FR-026). A rule string is the characters its author wrote:

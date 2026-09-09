@@ -19,9 +19,9 @@
 
 /**
  * A format the viewer is told the text is in, overriding what the file's path
- * claims (`monaco.ts` § showSource). Only the formats this product's own
- * surfaces name are members: a caller showing a file whole passes none and the
- * path decides.
+ * claims (`source-languages.ts` § resolveSourceLanguage). Only the formats
+ * this product's own surfaces name are members: a caller showing a file whole
+ * passes none and the path decides.
  */
 export type SourceViewerLanguage =
   /** A frontmatter block, or a declaration set serialized as one document. */
@@ -53,9 +53,9 @@ export const SOURCE_VIEWER_LANGUAGE_TEXT: Readonly<Record<SourceViewerLanguage, 
 };
 
 /**
- * The registered Monaco language each format is coloured by. Its own table
+ * The bundled shiki language each format is coloured by. Its own table
  * because a format and the grammar that tokenizes it are not the same fact:
- * the editor ships no Starlark grammar, and Starlark's syntax is Python's for
+ * shiki bundles no Starlark grammar, and Starlark's syntax is Python's for
  * everything a policy writes — which is what the vendor's own page presents
  * its examples in. Colouring is tokenizing rather than validating, so a
  * borrowed grammar marks nothing invalid (FR-033).
@@ -67,6 +67,6 @@ export const SOURCE_VIEWER_LANGUAGE_GRAMMAR: Readonly<Record<SourceViewerLanguag
   markdown: 'markdown',
   /** As above. */
   json: 'json',
-  /** Borrowed: the editor registers no Starlark, and Starlark is Python-shaped. */
+  /** Borrowed: shiki bundles no Starlark grammar, and Starlark is Python-shaped. */
   starlark: 'python',
 };

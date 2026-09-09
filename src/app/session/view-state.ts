@@ -628,7 +628,7 @@ export class SessionViewState {
 
   /**
    * Disposers of component-owned holders of the open detail's content — the
-   * Monaco model above all. {@link closeFileDetail} runs them synchronously,
+   * source viewer's text above all. {@link closeFileDetail} runs them synchronously,
    * because the contract orders dispose before replace (data-model.md
    * § BrowserState): a sequence's greater generation is adopted only after
    * the previous generation's editor objects are gone, and waiting for the
@@ -1847,7 +1847,7 @@ export class SessionViewState {
    */
   #dropOpenDetails(): void {
     // What this clears is the owned state the contract names: the DTO slots
-    // here, and the Monaco models through their registered owners
+    // here, and the source viewers' text through their registered owners
     // (data-model.md § BrowserState). A page's computed projections over
     // these slots may lazily retain their last evaluation until re-read or
     // unmount; that is Vue's own cache, released by the platform lifecycle —
@@ -2562,13 +2562,13 @@ export class SessionViewState {
 
   /**
    * Registers one component-owned holder of the open detail's content,
-   * returning its unregister function. Exists because a Monaco model is owned
-   * by the component that mounted it while the disposal order is this
-   * module's contract: the central purge (FR-027) and the adoption of a
-   * greater generation must both dispose editor models synchronously, and
-   * waiting for the reactive unmount would leave authored content in the
-   * model for one render flush after everything else was already gone. Both
-   * paths run through {@link closeFileDetail}.
+   * returning its unregister function. Exists because the text a source
+   * viewer renders is owned by the component that rendered it while the
+   * disposal order is this module's contract: the central purge (FR-027)
+   * and the adoption of a greater generation must both drop that text
+   * synchronously, and waiting for the reactive unmount would leave authored
+   * content on screen for one render flush after everything else was
+   * already gone. Both paths run through {@link closeFileDetail}.
    */
   public registerOpenContentOwner(disposer: () => void): () => void {
     this.#openContentOwners.add(disposer);

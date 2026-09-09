@@ -4,7 +4,7 @@
 // serializes to — live in `recognition-comparison.ts`; this component only
 // draws the comparison it is given, as its two facts: the per-tool
 // recognition rows, and the files' frontmatter serialized to two canonical
-// YAML documents and diffed in Monaco — the declarations are the file's one
+// YAML documents and compared side by side — the declarations are the file's one
 // parse for the kind, so no tool captions them (research.md § 7,
 // frontmatter-yaml.ts).
 //
@@ -37,13 +37,6 @@ defineProps<{
 const sessionViewState = useSessionViewState();
 const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
   sessionViewState.skillComparison.registerOpenContentOwner(disposer);
-
-/** What both diffs below say when the editor cannot be constructed. */
-const MOUNT_ERROR_MESSAGE =
-  'The comparison viewer could not be loaded. Each side is shown below in full.';
-
-/** What both diffs below call a side whose copy ships no corresponding file. */
-const ABSENCE_NOTE = 'no file in this skill directory';
 </script>
 
 <template>
@@ -154,12 +147,9 @@ const ABSENCE_NOTE = 'no file in this skill directory';
             :modified-path="rightPath"
             :original-absent="comparison.frontmatterDiff.originalAbsent"
             :modified-absent="comparison.frontmatterDiff.modifiedAbsent"
-            :absence-note="ABSENCE_NOTE"
             content-language="yaml"
             content-label="frontmatter of"
-            :mount-error-message="MOUNT_ERROR_MESSAGE"
             :register-content-owner="registerComparisonContentOwner"
-            fit-content
           />
         </template>
       </section>
@@ -182,12 +172,9 @@ const ABSENCE_NOTE = 'no file in this skill directory';
           :modified-path="rightPath"
           :original-absent="comparison.bodyDiff.originalAbsent"
           :modified-absent="comparison.bodyDiff.modifiedAbsent"
-          :absence-note="ABSENCE_NOTE"
           content-language="markdown"
           content-label="instructions of"
-          :mount-error-message="MOUNT_ERROR_MESSAGE"
           :register-content-owner="registerComparisonContentOwner"
-          fit-content
         />
       </section>
     </template>

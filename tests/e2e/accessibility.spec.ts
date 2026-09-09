@@ -331,13 +331,13 @@ test('AUTO-2.1.1 every primary workflow is operable from the keyboard', async ({
   }
 
   // comparison: the range's own compare link opens the comparison, which
-  // renders its two sides in the diff editor.
+  // renders its two sides opposite each other.
   await openInventory(page);
   await page.locator('h1').focus();
   if (await tabUntilFocused(page, page.getByRole('link', { name: /Compare/u }).first(), 120)) {
     await page.keyboard.press('Enter');
     await expect(page).not.toHaveURL(`${host.origin}/`);
-    await expect(page.locator('.monaco-diff-editor').first()).toBeVisible();
+    await expect(page.locator('.aci-source-diff__side').first()).toBeVisible();
     completed.push('comparison');
   }
 
@@ -393,10 +393,7 @@ test('AUTO-2.1.1 every primary workflow is operable from the keyboard', async ({
   expect(completed.toSorted()).toEqual([...PRIMARY_WORKFLOWS].toSorted());
 });
 
-test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({
-  page,
-  browserName,
-}) => {
+test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({ page }) => {
   /** Walks Tab and Shift+Tab from the current position and reports what it reached. */
   const walk = async (presses: number): Promise<ReadonlySet<string>> => {
     const visited = new Set<string>();
@@ -419,80 +416,50 @@ test('AUTO-2.1.2 focus enters and leaves every state the row names', async ({
   const inventory = await walk(60);
   expect(inventory.size, 'the inventory walk stopped moving').toBeGreaterThan(5);
 
-  // The editor state. Monaco is the one surface here that installs its own key
-  // handling, so it is where a trap would actually be: focus must reach the
-  // editor and then leave it again by sequential keyboard navigation.
+  // The source box. It is the one surface here that takes focus for a reason
+  // other than being a control — the box scrolls, so it is in the tab order —
+  // and it is where a trap would actually be: focus must reach the box and
+  // then leave it again by sequential keyboard navigation.
   // A rule file's detail rather than whichever row sorts first: its subject
   // is the file itself, so it renders one source viewer with nothing hiding
-  // it, where a skill's editors sit inside whichever of its two tabs is
+  // it, where a skill's viewers sit inside whichever of its two tabs is
   // selected and a carrier's detail renders none at all.
   await page.getByRole('tab', { name: /^Rule/u }).click();
   await page.getByRole('tabpanel').locator('.aci-row-file a').first().click();
   await expect(page).not.toHaveURL(`${host.origin}/`);
   await page.locator('h1').focus();
   const detail = await walk(50);
-  // Not claimed on Firefox. Focus enters Monaco's `textarea.inputarea` there
-  // and Tab does not take it out again — the measurement is recorded at the
-  // exit walk below — so over a page that holds the editor this counts how
-  // many controls precede it at the moment it mounts rather than whether the
-  // walk moves: 6 to 8 on a developer machine, and 3 on a certification
-  // runner, where the editor is already mounted by the second press. The
-  // inventory walk above holds Firefox to this same claim on the one page
-  // with no editor on it, and entering and leaving the editor is asserted on
-  // every engine below.
-  if (browserName !== 'firefox') {
-    expect(detail.size, 'the detail walk stopped moving').toBeGreaterThan(3);
-  }
+  expect(detail.size, 'the detail walk stopped moving').toBeGreaterThan(3);
   // Reached deliberately rather than left to wherever a fixed number of
   // presses lands: how many controls a detail renders is not fixed, so a walk
-  // that happens to end outside the editor proves nothing about leaving it.
-  // The editor is read-only (`monaco.ts` § readOnly, domReadOnly), so Tab is
-  // not taken for indentation.
-  const inEditor = (): Promise<boolean> =>
-    page.evaluate(() => document.activeElement?.closest('.monaco-editor') !== null);
-  // Waited for rather than assumed: the editor mounts after the detail's own
+  // that happens to end outside the box proves nothing about leaving it.
+  const inSourceBox = (): Promise<boolean> =>
+    page.evaluate(() => document.activeElement?.closest('.aci-source-viewer') !== null);
+  // Waited for rather than assumed: the box renders once the detail's own
   // request settles, and it is not in the tab order until it exists — so a
   // walk started before that never reaches it however many times it presses.
-  await expect(page.locator('.monaco-editor').first()).toBeVisible();
+  await expect(page.locator('.aci-source-viewer').first()).toBeVisible();
   await page.locator('h1').focus();
   let entered = false;
   for (let press = 0; press < 60 && !entered; press += 1) {
     await page.keyboard.press('Tab');
-    entered = await inEditor();
+    entered = await inSourceBox();
   }
-  expect(entered, 'focus never entered the editor').toBe(true);
-  // Leaving it again is certified on every engine. Chromium and WebKit use a
-  // bounded forward-Tab walk; on the pinned Firefox revision focus enters
-  // Monaco's `textarea.inputarea` and Tab does not take it out, while Shift+Tab
-  // leaves on the first press, so Firefox explicitly asserts that backward exit.
-  // Measured on 2026-09-04 with a capture-phase `keydown` listener on
-  // `window`: every Tab reaches the page with `defaultPrevented` false, no
-  // `focusin` follows, and `document.activeElement` stays that textarea —
-  // Monaco is not consuming the key, so `tabFocusMode: true` and the Ctrl+M
-  // toggle, which govern whether it does, change nothing. Firefox's forward
-  // sequential focus navigation does not move from the textarea Monaco
-  // renders at 0×0 on that engine alone (`canUseZeroSizeTextarea = isFirefox`
-  // in its text-area edit context; 1px on the others). Chromium, whose input
-  // element is a `div.native-edit-context`, and WebKit release focus on the
-  // first press. The behaviour is the editor's on that engine rather than
-  // this repository's, so Firefox's forward-Tab limitation is recorded
-  // (validation.md § The automated half) rather than worked around here.
-  //
-  // The count is in the message because it is what tells a trap from a walk
-  // that merely needed more presses: a bound raised and still exhausted is the
-  // editor holding focus, not the editor being deep.
-  if (browserName === 'firefox') {
-    await page.keyboard.press('Shift+Tab');
-    expect(await inEditor(), 'focus did not leave the editor after Shift+Tab').toBe(false);
-  } else {
-    let leavePresses = 0;
-    for (; leavePresses < 10 && (await inEditor()); leavePresses += 1) {
-      await page.keyboard.press('Tab');
-    }
-    expect(await inEditor(), `focus did not leave the editor after ${leavePresses} presses`).toBe(
-      false,
-    );
+  expect(entered, 'focus never entered the source box').toBe(true);
+  // Leaving it again is certified on every engine by a bounded forward-Tab
+  // walk: the box is one `pre` with `tabindex="0"` that installs no key
+  // handling of its own, so the next Tab is the platform's. The count is in
+  // the message because it is what tells a trap from a walk that merely
+  // needed more presses: a bound raised and still exhausted is the box
+  // holding focus, not the box being deep.
+  let leavePresses = 0;
+  for (; leavePresses < 10 && (await inSourceBox()); leavePresses += 1) {
+    await page.keyboard.press('Tab');
   }
+  expect(
+    await inSourceBox(),
+    `focus did not leave the source box after ${leavePresses} presses`,
+  ).toBe(false);
 
   // The consent state, which is the one state reached through a decision rather
   // than through a route the inventory already renders.

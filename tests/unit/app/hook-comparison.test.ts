@@ -320,8 +320,8 @@ describe('hook comparison view (T908)', () => {
   });
 
   it('runs registered content-owner disposers on close, like the sibling surfaces', async () => {
-    // The Monaco models holding the serialized declarations are owned by the
-    // component that mounted them; the state's contract is that every drop
+    // The rendered pair holding the serialized declarations is owned by the
+    // component that rendered it; the state's contract is that every drop
     // path disposes them synchronously (data-model.md § BrowserState).
     const scripted = scriptedChannel({
       sessions: [dataResult(snapshotWith())],

@@ -24,9 +24,9 @@ as an adversary, and all inspected-source filesystem I/O lives only under
 `src/server/inspection/`, which performs an ordinary recursive `node:fs/promises` walk of
 the fixed inspection-path allowlist with per-file diagnostics for entries it cannot use.
 The browser presents complete authored
-source in a read-only Monaco editor and uses Monaco's diff editor for source comparison;
+source as its own coloured text and compares two sources side by side in the same rendering;
 tool recognition is compared per tool, and declared metadata is compared once —
-serialized to one canonical document per side, which the diff editor mounts beside the
+serialized to one canonical document per side, which the comparison shows beside the
 source. The parse behind it runs once per `(file, kind)` for the Markdown kinds and once
 per `(file, tool)` for the custom-agent kind.
 
@@ -135,8 +135,8 @@ outside the contract.
 **Primary Dependencies**: Nuxt 4.4.8, Vue Router 5.2.0, tsdown 0.22.8, Vite 7.3.6
 (latest Nuxt-compatible release), `devframe` 0.7.5 (the pre-1.0 local-tool
 host framework), `gunshi` 0.37.0, `open` 11.0.1, `yaml` 2.9.0,
-`strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, `monaco-editor` 0.55.1, and
-`@ota-meshi/site-kit-monarch-syntaxes` 0.7.3 (the TOML Monarch grammar Monaco ships none of).
+`strip-json-comments` 5.0.3, `smol-toml` 1.7.0, `h3` 2.0.1-rc.22, `shiki` 4.4.3,
+`@shikijs/themes` 4.4.3, and `diff` 9.0.0.
 Each is declared as a caret range in `package.json`,
 and the committed lockfile pins these exact resolved versions with integrity; `h3`'s
 resolution coincides with devframe's own h3, so the host's `/skills/**` shell fallback
@@ -425,9 +425,10 @@ reports to the page without being asked, so process loss is detected without pol
 it. A page-lifecycle event is not among the triggers: FR-027 purges after a failure or an
 equivalent terminal reset, and neither switching tabs nor navigating away is either, so the
 client installs no visibility or unload listener.
-Monaco receives complete authored source. If the browser or editor runtime cannot compute a
-diff, the UI keeps the complete read-only side-by-side source available and reports an
-actionable comparison failure without treating either artifact as valid or invalid. HTTP
+The colouring receives complete authored source, and a grammar that does not arrive leaves
+the text on screen uncoloured; the comparison's alignment needs only the lines, so the
+complete side-by-side source is on screen before any colour is, and neither artifact is
+treated as valid or invalid. HTTP
 delivery never truncates an API DTO.
 
 Typed derivation is a vendor's own reader, running before the walk when it opens its seed
@@ -583,9 +584,9 @@ RPC-handler failures cross the devframe channel as devframe serializes them — 
 sanitized envelope, generic error entity, or log-content rule remains in the design. The quickstart covers every stable behavior, rule, strategy, and
 source ID, official-source drift review, the typed segment-array selector grammar and its
 contract-gate rejections, lint and the remaining tests, all
-other required quality gates, and all four end-to-end stories. Monaco is
-client-only, same-origin, and model-lifetime scoped; its own diff engine avoids a
-duplicate dependency while exact authored metadata comparison stays explicit. The
+other required quality gates, and all four end-to-end stories. The colouring and the
+comparison are client-only, same-origin, and scoped to the content they render, while exact
+authored metadata comparison stays explicit. The
 product-owned browser launcher confines product child processes to startup opening —
 on macOS the fixed process-list probe and fixed tab-reuse script through the OS
 `osascript` automation host, otherwise the maintained `open` package's fixed startup OS
@@ -661,8 +662,8 @@ src/
 │   ├── composables/
 │   │   ├── skill-comparison.ts
 │   │   ├── filters.ts
-│   │   ├── monaco.ts
-│   │   └── monaco-languages.ts
+│   │   ├── source-languages.ts
+│   │   └── syntax-highlighting.ts
 │   ├── session/
 │   │   ├── api-client.ts
 │   │   ├── client-data.ts
@@ -972,8 +973,8 @@ gates. The Setup stage is not considered runnable until those paths exist.
 Production `dependencies` is the caret-declared direct set `devframe`, `env-editor`, `gunshi`, `h3`, `open`, `smol-toml`, `strip-json-comments`, `vfile`, `vfile-matter`, `which`, and `yaml`,
 asserted from `pnpm-lock.yaml` by `tests/package/production-graph.test.ts`;
 devframe's and `open`'s transitives are lockfile-owned.
-Nuxt/Vue/Vite/tsdown, Monaco, Playwright, and other build/test tooling remain development-
-only.
+Nuxt/Vue/Vite/tsdown, shiki, `diff`, Playwright, and other build/test tooling remain
+development-only.
 
 Cross-platform CI runs the same pure Node.js inspection-filesystem integration suite on
 macOS, Linux, and Windows. tsdown uses the single named `cli` entry
@@ -1280,15 +1281,13 @@ configuration.
   that purge before rendering.
   No acknowledgement is
   sent to or persisted by the API, because none exists. It renders source through Vue
-  components and the ESM build of `monaco-editor`, never `v-html`. Single-file source
-  models and both sides of a source comparison are read-only, use opaque in-memory URIs,
-  set `readOnly`, `domReadOnly`, `originalEditable: false`, `links: false`, and
-  `renderMarginRevertIcon: false`, and contain the complete authored text without resolving
-  environment-variable references. `accessibilitySupport`
-  stays `auto`, `accessibilityVerbose` is enabled, and each view has an `ariaLabel`.
-  Monaco's diff editor owns literal source comparison; tool recognition is compared per
-  tool, and a file's declared metadata is compared once — serialized to one canonical
-  document per side, which the diff editor mounts beside the source, rather than
+  components as text nodes coloured by shiki's runs, never `v-html`. A single-file view
+  and both sides of a source comparison are the browser's own text, contain the complete
+  authored text without resolving environment-variable references, offer no control that
+  edits, merges, or reverts, and are named for assistive technology as the file, or the part
+  of it, they show. The comparison owns literal source comparison; tool recognition is
+  compared per tool, and a file's declared metadata is compared once — serialized to one
+  canonical document per side, which the comparison shows beside the source, rather than
   field-matched and rendered in Vue. The parse behind it runs once per `(file, kind)` for
   the Markdown kinds and once per `(file, tool)` for the custom-agent kind, whose split is
   the admitting rule's own reading.

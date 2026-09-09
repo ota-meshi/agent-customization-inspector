@@ -1639,7 +1639,7 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
   projectionではcontrol-only recoveryへ入る前に中央purgeを実行し、network/runtime failure、
   channel loss、session mismatchではended view表示前にpurgeする。Page-lifecycle eventはpurge triggerではない: FR-027はdocument-liveness failureまたは同等のterminal reset後にpurgeするものであり、tab切り替えもページからの離脱もそのどちらでもない。破棄されたdocumentは自分のmemoryを解放し、bfcacheに入ったdocumentが保持するのは同じユーザーが自分のマシンで自分のファイルを見た状態であって、trusted-workspace modelはこれをexposureとして扱わない。clientはvisibility/unload listenerを設置しない。
   Purgeはclient epochをincrementしてlate in-flight resultによるDTO/editor stateの復活を防ぎ、
-  Monaco model/editor/worker/subscriptionをdisposeし、DOM/store contentをclearして
+  全rendered sourceとsubscriptionを解放し、DOM/store contentをclearして
   pending requestをabortする。Node process終了時はserver側session
   state、complete source content、source root、generation、diagnosticを破棄する。
 - Session-channel invocationはMCP serverを起動せず、importを追わず、inspected URLを開かず、

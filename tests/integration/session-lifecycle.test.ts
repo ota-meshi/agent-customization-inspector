@@ -8,11 +8,11 @@
 // and asks the session what it answers afterwards.
 //
 // The client half of the same lifecycle — the view state's held details, the
-// Monaco models a comparison mounts, the epoch that makes a late settlement a
+// rendered pair a comparison shows, the epoch that makes a late settlement a
 // no-op — is the app suite's, because it is browser state: `client-data`,
 // `session-view-state`, and each comparison surface's own unit file assert it
-// under a DOM. What is here is the half the session owns, where a Monaco model
-// cannot exist at all.
+// under a DOM. What is here is the half the session owns, where a rendered
+// pair cannot exist at all.
 //
 // There is no acknowledgement state anywhere in it (FR-027): nothing is
 // retained to reset, so a purge has nothing of that kind to clear and this

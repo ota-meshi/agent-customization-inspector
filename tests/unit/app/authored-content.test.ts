@@ -271,7 +271,7 @@ describe('authored file content in the browser', () => {
       // nothing that masks or reveals either side.
       'promptComparison',
       'refresh',
-      // Lets a component register its Monaco model for synchronous disposal
+      // Lets a component register its rendered source for synchronous disposal
       // on purge and on generation replacement — the opposite of a reveal.
       'registerClientDataOwner',
       'registerOpenContentOwner',

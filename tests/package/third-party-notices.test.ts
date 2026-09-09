@@ -1,7 +1,8 @@
 // FR-043: the tarball carries the notices of the code it inlines.
 //
-// The browser bundle includes third-party code as its own bytes — Monaco is the
-// largest, Vue, the Nuxt runtime, and the devframe client are also inlined — so
+// The browser bundle includes third-party code as its own bytes — shiki and its
+// grammars are the largest, Vue, the Nuxt runtime, and the devframe client are
+// also inlined — so
 // the user never receives those packages with their license files. The licenses
 // require the copyright and permission notice to travel with the copies, which
 // makes the notice file part of the published artifact rather than a courtesy.
@@ -79,10 +80,14 @@ function noticeText(): string {
 }
 
 describe('the packaged third-party notices', () => {
-  it("carries the bundled editor's copyright and permission notice", () => {
+  it("carries the bundled highlighter's copyright and permission notices", () => {
     const text = noticeText();
     // The two parts MIT actually requires: whose copyright it is, and the
     // permission text itself. A list of package names would satisfy neither.
+    // shiki's own holders, and Microsoft's for the TextMate engine it runs
+    // grammars on (`@shikijs/vscode-textmate`).
+    expect(text).toContain('Pine Wu');
+    expect(text).toContain('Anthony Fu');
     expect(text).toContain('Microsoft Corporation');
     expect(text).toContain('Permission is hereby granted, free of charge');
     expect(text).toContain(
@@ -98,7 +103,8 @@ describe('the packaged third-party notices', () => {
     // it as a runtime dependency: its client half is in the bundle, and bundling
     // is what decides membership (FR-043).
     for (const bundled of [
-      'monaco-editor@',
+      'shiki@',
+      '@shikijs/langs@',
       '@vue/runtime-core@',
       'vue-router@',
       'devframe@',

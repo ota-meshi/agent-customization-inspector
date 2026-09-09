@@ -175,7 +175,7 @@ test('renders the per-tool invocation names and the serialized declarations', as
   await expect(claudeRow.locator('td').nth(1)).toHaveText('Not recognized');
 
   // The declared metadata is one canonical YAML document per side, every key
-  // sorted and none promoted, diffed in Monaco under no tool caption
+  // sorted and none promoted, compared side by side under no tool caption
   // (frontmatter-yaml.ts): the shared key shows both values, and a side-only
   // key stands on its side alone (FR-011).
   const metadataDiff = metadata.locator('.aci-source-diff').first();

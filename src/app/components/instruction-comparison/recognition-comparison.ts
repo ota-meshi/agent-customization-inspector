@@ -8,7 +8,7 @@
 // rendering the same file-level fact under each recognizing tool would
 // publish one fact as many: each side's frontmatter serializes to one
 // canonical YAML document, every key sorted, and the two documents are what
-// Monaco diffs (research.md § 7, frontmatter-yaml.ts). This module is the
+// the comparison diffs (research.md § 7, frontmatter-yaml.ts). This module is the
 // data half, kept out of the component so the decisions are testable
 // without a single-file-component compiler.
 //

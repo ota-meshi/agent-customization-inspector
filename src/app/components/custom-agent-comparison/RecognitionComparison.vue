@@ -6,7 +6,7 @@
 // given, as its facts: the per-tool recognition rows, and the two halves of
 // each file's one parse — the declared metadata serialized to two canonical
 // YAML documents, and the instructions each file gives its agent — each
-// diffed in Monaco. Both halves are the file's one parse for the kind, so no
+// compared side by side. Both halves are the file's one parse for the kind, so no
 // tool captions either (research.md § 7, frontmatter-yaml.ts).
 //
 // The two halves stand in the order the detail shows them, so a reader who
@@ -66,10 +66,6 @@ defineProps<{
 const sessionViewState = useSessionViewState();
 const registerComparisonContentOwner = (disposer: () => void): (() => void) =>
   sessionViewState.customAgentComparison.registerOpenContentOwner(disposer);
-
-/** What both diffs below say when the editor cannot be constructed. */
-const MOUNT_ERROR_MESSAGE =
-  'The comparison viewer could not be loaded. Each side is shown below, exactly as this comparison holds it.';
 
 /**
  * What a cell with no definition reads as. A literal rather than a member of
@@ -222,9 +218,7 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
             :modified-path="rightPath"
             content-language="yaml"
             content-label="declared metadata of"
-            :mount-error-message="MOUNT_ERROR_MESSAGE"
             :register-content-owner="registerComparisonContentOwner"
-            fit-content
           />
         </template>
       </section>
@@ -247,9 +241,7 @@ function surfacesText(definition: CustomAgentSideDefinition): string {
           :modified-path="rightPath"
           content-language="markdown"
           content-label="instructions of"
-          :mount-error-message="MOUNT_ERROR_MESSAGE"
           :register-content-owner="registerComparisonContentOwner"
-          fit-content
         />
       </section>
     </template>

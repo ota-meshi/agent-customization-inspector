@@ -284,11 +284,11 @@ useReportedPageSubject(titleSubject);
            for and never a branch with a second outcome: a settings recognition
            exists only for a readable file, so this page is reached with
            nothing else. The viewer colours by the path's own extension: a
-           `.codex/config.toml` takes the `toml` grammar registered from
-           `@ota-meshi/site-kit-monarch-syntaxes`, which is what colours a
-           TOML document's table headers, `key = value` lines, quoted strings,
-           numbers, and `#` comments, the pinned `monaco-editor` shipping no
-           grammar of its own for the format (monaco-languages.ts). Colouring
+           `.codex/config.toml` takes the `toml` grammar shiki bundles
+           (`source-languages.ts`), which colours a TOML document's
+           `key = value` lines, quoted strings, numbers, and `#` comments — its
+           table headers and dates it classifies too, and the chosen themes
+           leave those in the text colour (`syntax-highlighting.ts`). Colouring
            is tokenizing rather than rendering, so nothing here can mark the
            document invalid (FR-033). -->
       <SourceViewer

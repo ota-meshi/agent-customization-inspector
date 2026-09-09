@@ -256,7 +256,7 @@ test('renders the per-tool agent names and the serialized declarations', async (
   await expect(codexRow.locator('td').nth(1)).toHaveText('Not recognized');
 
   // The declared metadata is one canonical YAML document per side — the
-  // documented agent keys leading, every other key sorted — diffed in Monaco
+  // documented agent keys leading, every other key sorted — compared side by side
   // under no tool caption (frontmatter-yaml.ts, declaration-order.ts):
   // YAML on both sides whichever format the file was written in, the shared
   // key shows both values, and a side-only key stands on its side alone

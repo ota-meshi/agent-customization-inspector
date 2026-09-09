@@ -731,8 +731,8 @@ useReportedPageSubject(titleSubject);
           /></NuxtLink>
         </p>
         <!-- The declaration's fields as one read-only JSON document in the
-             Monaco viewer — coloured by the `json` tokenizer a `.json`
-             file's model gets (monaco-languages.ts, tokens-only) — in the
+             source viewer — coloured by the JSON grammar a `.json` file
+             takes (`source-languages.ts`) — in the
              spelling a reader pastes into their own carrier. JSON's own escaping is what keeps every
              character visible and transportable: a control character or
              lone surrogate is its escape, a newline is `\n` (FR-025,
