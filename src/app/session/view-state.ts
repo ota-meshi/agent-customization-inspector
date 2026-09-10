@@ -603,15 +603,26 @@ export class SessionViewState {
 
   /**
    * The identity of the customization whose detail is open, as the page last
-   * asked for it — the Source and the entry point's Source-relative Path
-   * (FR-030), or null while nothing is open.
+   * asked for it — the Source, the entry point's Source-relative Path
+   * (FR-030), and the kind the route asked for it as — or null while nothing
+   * is open.
    *
    * Held so {@link openFileDetail} can tell a change of selection inside one
    * customization from a move to another: the first keeps the entry point on
    * screen, and the second must drop it. The requested address rather than the
    * response's, so the comparison is between two things the page asked for.
+   * The kind is part of it because one path can be two customizations — a
+   * `.gemini/commands/build.toml` that `context.fileName` also names is a
+   * command and a context file — and each route's detail is its own kind's
+   * variant (contracts/http-api.md § get-file-detail): a step from one
+   * route to the other at the same path, which the browser's history makes
+   * in one navigation, is a move to another customization.
    */
-  #openDetailAddress: { readonly source: SourceSelector; readonly entryPath: string } | null = null;
+  #openDetailAddress: {
+    readonly source: SourceSelector;
+    readonly entryPath: string;
+    readonly kind: FileDetailKind;
+  } | null = null;
 
   /**
    * The token of the page instance whose open call the detail state currently
@@ -1931,7 +1942,9 @@ export class SessionViewState {
     // "The customization has not changed" is the whole address staying the
     // same, never the path alone: the repository and a consented home can hold
     // one Source-relative Path, so a step between their two details keeps a
-    // path that is identical and a file that is not (FR-030). Compared against
+    // path that is identical and a file that is not (FR-030); and two kinds
+    // can hold one path, so a step between their two routes keeps a path that
+    // is identical and a variant that is not. Compared against
     // the address this state last requested rather than against the response,
     // because that is what "unchanged" is about — and holding the other
     // Source's detail here would leave it on screen, in the ready state, under
@@ -1941,6 +1954,7 @@ export class SessionViewState {
       openAddress !== null &&
       openAddress.source === source &&
       openAddress.entryPath === entryPath &&
+      openAddress.kind === kind &&
       this.entryDetail.value !== null
         ? this.entryDetail.value
         : null;
@@ -1964,7 +1978,7 @@ export class SessionViewState {
     }
     // After the drop, which clears the previous address with the rest: the
     // new selection's address is what the next call compares against.
-    this.#openDetailAddress = { source, entryPath };
+    this.#openDetailAddress = { source, entryPath, kind };
     const entry = held ?? (await this.#fetchOwnedFileDetail(entryPath, owns, 'page', source, kind));
     if (entry === null || !owns()) {
       return;

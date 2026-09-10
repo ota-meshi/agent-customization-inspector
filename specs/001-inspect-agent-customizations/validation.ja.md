@@ -538,7 +538,7 @@ pageを6つと数えないようにした。
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 4**、canonical SHA-256
-`6aeda202a98d99277ffa595318e593695920b5d5da11956fa60b234d9ace4e01`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 4は
+`f8d5334f19c57ece76ebf09b025a01048ca18cd6e64ae64390801f3bdae9a7f7`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 4は
 Gemini CLIのdenominatorである（specs/002-gemini-cli-support）。SC-003とSC-005それぞれに8つの
 `(Gemini CLI, kind)` row — instructions、settings/config、MCP、hook、prompt/command、skill、agent、
 permissions — 、rootの`GEMINI.md`をGitHub CopilotとGemini CLIに帰属させる

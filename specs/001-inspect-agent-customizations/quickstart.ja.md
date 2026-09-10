@@ -604,7 +604,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    `--inspect-personal-setup`もprocess inputを再読込しない。`HOME`/`USERPROFILE`の直接選択もexistence checkも
    行わない。Capture、classification、またはdisplay escapeのthrowはlauncher探索、session作成、browser
    attemptより前にstartupをfailさせる。
-2. Consent viewが正確なCopilot/Claude/Codex/共有agent home lexical root、input state、除外を表示し、
+2. Consent viewが正確なCopilot/Claude/Codex/Gemini CLI/共有agent home lexical root、input state、除外を表示し、
    read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。previewが束縛する2つのversionは
    どちらも表示しない。読み手はどちらに対しても行動できず、参照先もなく、それらが守るversion不一致は
    previewが画面にある間には起こりえない — 値はbuildの定数であり、異なるbuildは確認できるpreviewを

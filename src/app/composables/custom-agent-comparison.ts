@@ -11,8 +11,8 @@
 // rather than file by corresponding file.
 //
 // One surface covers the whole kind, because one kind is one comparison
-// surface: a Codex TOML agent, a Claude Code subagent, and a Copilot agent
-// profile all reach this page, and a TOML agent standing opposite a Markdown
+// surface: a Codex TOML agent, a Claude Code subagent, a Copilot agent
+// profile, and a Gemini CLI subagent all reach this page, and a TOML agent standing opposite a Markdown
 // one is the pair the kind's row unit makes possible (tasks.md T573/T575).
 //
 // The comparison selection is the route's:

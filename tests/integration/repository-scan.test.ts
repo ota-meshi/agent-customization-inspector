@@ -4947,14 +4947,12 @@ describe('the committed Claude subagent inventory (T529, T544)', () => {
     }
   });
 
-  it('serves an agent that is also an instruction file from the variant it reaches', async () => {
+  it('serves an agent that is also an instruction file under each kind that asks', async () => {
     // `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and a
     // Claude instruction file by its name, so both rules admit it and it is a
-    // row in both inventories. `get-file-detail` is addressed by the path
-    // alone and answers with the first variant its fixed order reaches — the
-    // instructions one — and that variant carries the same two values a
-    // Markdown agent's parse produces, so the agent route maps it rather than
-    // reporting a parsed file as unparsed (pages/agents/[source]/[...path].vue).
+    // row in both inventories. `get-file-detail` names the asking route's kind
+    // and answers with that kind's variant, so each route shows its own
+    // reading of the one file (contracts/http-api.md § get-file-detail).
     const root = createRepositoryFixtureRoot('inspector-scan-claude-agent-overlap');
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
     mkdirSync(join(root, '.claude/agents'), { recursive: true });

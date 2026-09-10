@@ -86,9 +86,10 @@ tests. The parent specification's amendments are enumerated in research.md § 10
 - [x] **Safe boundaries**: The Gemini CLI home is a fifth consented member under the same
       preview, admission, retry, and disable rules; credentials, the trust record, `.env`,
       session state, and installed extensions below it are never read (spec.md QR-003).
-      Trust is a recorded condition, never projected onto a recognition. No DTO shape
-      changes except the closed enum and the entry count; the bundled browser is the only
-      client.
+      Trust is a recorded condition, never projected onto a recognition. The DTO shapes
+      that change are the closed member enum, the preview entry count, and the
+      `get-file-detail` request, which gains the asking route's kind
+      (research.md § 11); the bundled browser is the only client.
 - [x] **Welcoming participation**: The fixture launcher gains `gemini-*` rows so a
       contributor can see each surface; the legend names the product; the mark carries its
       accessible name; diagnostics for an unparsable settings file name the file.

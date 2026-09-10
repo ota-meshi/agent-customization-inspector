@@ -1122,6 +1122,68 @@ describe('session view state — detail ownership across page instances', () => 
     state.dispose();
   });
 
+  it('re-requests the same path under another kind instead of holding the open detail', async () => {
+    // A step between two routes' details at one path — the command page and
+    // the instruction page of a `.gemini/commands/build.toml` that
+    // `context.fileName` also names, which the browser's history takes in one
+    // navigation. The Source and the path are identical; the kind is the half
+    // that says the variant is not (contracts/http-api.md § get-file-detail).
+    // Holding the entry here would leave the command variant under the
+    // instruction route, whose page reads only its own kind's.
+    const scripted = {
+      calls: [] as { method: SessionRpcFunctionName; args: readonly unknown[] }[],
+      channel: {
+        call: (method: SessionRpcFunctionName, ...args: readonly unknown[]) => {
+          scripted.calls.push({ method, args });
+          if (method === SESSION_RPC_FUNCTIONS.getSession) {
+            return Promise.resolve(sessionResult(bootstrapSnapshot()));
+          }
+          const request = args[0] as { sourceRelativePath: string; kind: string };
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            repositoryGeneration: 0,
+            globalGeneration: null,
+            data: {
+              // The kind the request named is the variant that answers.
+              kind: request.kind,
+              file: {
+                sourceId: 'source-repository',
+                sourceRelativePath: request.sourceRelativePath,
+                encoding: 'utf-8',
+                hadLeadingBom: false,
+                sourceText: 'prompt = "Run the build."\n',
+                sizeBytes: 26,
+                diagnosticIds: [],
+              },
+              presentation: null,
+              diagnostics: [],
+            },
+          });
+        },
+      },
+    };
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+
+    const path = '.gemini/commands/build.toml';
+    await state.openFileDetail(path, path, undefined, 'repository', 'prompt/command');
+    expect(state.entryDetail.value?.kind).toBe('prompt/command');
+
+    await state.openFileDetail(path, path, undefined, 'repository', 'instructions');
+    // Two detail requests, the second naming the other kind, and the state
+    // now holds that kind's variant.
+    expect(
+      scripted.calls
+        .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
+        .map((call) => call.args[0]),
+    ).toEqual([
+      { sourceRelativePath: path, source: 'repository', kind: 'prompt/command' },
+      { sourceRelativePath: path, source: 'repository', kind: 'instructions' },
+    ]);
+    expect(state.entryDetail.value?.kind).toBe('instructions');
+    state.dispose();
+  });
+
   it('still closes for the owning page, and unconditionally for the view state itself', async () => {
     const page = Symbol('page');
     const scripted = channelFrom([sessionResult(bootstrapSnapshot()), detailFor('entry-1')]);

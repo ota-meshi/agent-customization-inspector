@@ -264,3 +264,14 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 - [X] T084 Reword the stale counts in `tests/unit/host/global-consent.test.ts` ("the four roots", "all four members"), `tests/unit/session/coordinator.test.ts` ("all four tools"), and `tests/fixtures/global-homes/build-fixtures.ts` ("all four homes"), and add `GEMINI_CLI_HOME` with its `.gemini` join to `tests/fixtures/global-homes/README.md` and `README.ja.md`, per QR-001 / QR-004 (partial).
 - [X] T085 Add a Gemini CLI path example beside the other three tools' examples in the repository-paths sentence of `README.md` and `README.ja.md`, per T038 / QR-004 (partial).
 - [X] T086 Localize the `## Google official sources` heading in `specs/001-inspect-agent-customizations/contracts/official-sources.ja.md` and the section headings of `contracts/vendors/gemini-cli.ja.md` as the sibling Japanese contracts localize theirs, per QR-004 (partial).
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: The gaps the second `/speckit-converge` run found on 2026-09-10, after Phase 7 and the kind-addressed file detail landed.
+
+- [X] T087 Record the kind-addressed `get-file-detail` decision — a request names the asking route's kind, because one file can hold two kinds whose readings differ in syntax, a `.gemini/commands/build.toml` that `context.fileName` also names among them — as a section of `specs/002-gemini-cli-support/research.md` and `research.ja.md`, and correct the Safe boundaries gate of `plan.md` and `plan.ja.md`, which still states that no DTO shape changes but the closed enum and the entry count while `FileDetailRequestParams` and `FileDetailKind` ship in `src/shared/api-types.ts`, per plan: Safe boundaries (unrequested).
+- [X] T088 Reword the comments that still describe `get-file-detail` as addressed by the path alone and answering with the first variant of a fixed order — the header of the agent-that-is-also-an-instruction case in `tests/integration/repository-scan.test.ts` and the rule-detail overlap case in `tests/e2e/claude-rules-detail.spec.ts` — to the kind the request names, per contracts/http-api.md § get-file-detail (partial).
+- [X] T089 Reword the remaining count comments — `GlobalPreviewEntryDto.member` ("the four rows") in `src/shared/api-types.ts`, "all four documents" in `src/server/inspection/rules/mcp/server-map.ts`, and the product list naming a Codex, Claude Code, and Copilot agent in `src/app/composables/custom-agent-comparison.ts` — to five rows, five documents, and four products, per T076 / T083 / QR-001 (partial).
+- [X] T090 Add Gemini CLI to the consent-view roots step — "the exact Copilot, Claude, Codex, and shared agent lexical roots" — in `specs/001-inspect-agent-customizations/quickstart.md` and `quickstart.ja.md`, per T080 / FR-001 (partial).

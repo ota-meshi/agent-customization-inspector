@@ -206,6 +206,36 @@ owed (spec.md § Clarifications).
 Clarifications entry in the parent spec records that a fifth member joined and why; no other
 artifact narrates the change.
 
+## 11. A file detail is addressed by the path and the asking route's kind
+
+**Decision**: `get-file-detail` takes the file's identity and a `kind` — one of the seven
+file-subject kinds, spelled by the route that asks (`FileDetailRequestParams`,
+`FileDetailKind` in `src/shared/api-types.ts`) — and answers with that kind's variant, or
+the plain file when no recognition of that kind holds the path. Every detail page and
+comparison composable passes its own kind and reads only its own variant; no surface maps
+another kind's variant onto its shape.
+
+**Rationale**: One file can hold two kinds, and this feature adds a pair whose readings
+differ in syntax: a `.gemini/commands/build.toml` is a Gemini CLI command, and once
+`context.fileName` names `build.toml` it is a Gemini CLI context file too. The command
+reading is a TOML parse — metadata and prompt — while the instruction reading of the same
+bytes is the whole text as a Markdown body with no frontmatter. A detail addressed by the
+path alone has to pick one variant for both routes, and whichever it picks shows the other
+route a reading that is not its kind's: the command page showing TOML as a prompt body, or
+the instruction page showing a command's metadata as frontmatter. The Markdown overlaps the
+parent feature already carried — `.claude/agents/CLAUDE.md`, `.claude/commands/CLAUDE.md` —
+hid the choice, because both readings produced the same document; the TOML pair is where
+the choice becomes visible, so the request names the kind instead of the host choosing. The
+route already carries the kind in its first URL segment, so nothing new is asked of a link
+a reader keeps (contracts/http-api.md § get-file-detail).
+
+**Alternatives considered**: A fixed variant order with each surface mapping the other
+kinds' variants onto its own shape — the parent feature's arrangement — keeps one answer
+per path but shows one route the other kind's reading whenever the readings differ, and
+spreads a mapping over every detail page and comparison module. A per-tool address was
+rejected by the parent feature for the reason that still holds: two products read the same
+bytes, so a per-tool address gives one document two URLs.
+
 ## Migration impact
 
 None to users of the published package: no persisted state, profile, or public contract

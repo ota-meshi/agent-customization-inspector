@@ -190,6 +190,33 @@ http-api.md の consent preview。readme のツール数とディレクトリ数
 日付付き Clarifications entry が5つ目のメンバーが加わったこととその理由を記録し、他の
 artifact は変更を語らない。
 
+## 11. file detail は path と求める route の kind で address される
+
+**Decision**: `get-file-detail` は file の identity と `kind` — 7つの file 主題の kind のいずれかで、
+求める route が綴る (`src/shared/api-types.ts` の `FileDetailRequestParams`、`FileDetailKind`) —
+を受け取り、その kind の variant を返す。その kind の recognition が path を持たないときは plain
+file を返す。すべての detail page と comparison composable は自身の kind を渡し、自身の variant
+だけを読む。他の kind の variant を自身の形に写し取る surface はない。
+
+**Rationale**: 1つの file が2つの kind を持ちうるが、この機能は読みが syntax で異なる組を加える:
+`.gemini/commands/build.toml` は Gemini CLI の command であり、`context.fileName` が `build.toml`
+を名指せば Gemini CLI の context file でもある。command の読みは TOML の parse — metadata と
+prompt — であり、同じ byte の instruction の読みは frontmatter のない Markdown の body として
+の全文である。path だけで address される detail は両 route のために1つの variant を選ばねば
+ならず、どちらを選んでももう一方の route にはその kind のものではない読みを見せる: command
+page が TOML を prompt body として示すか、instruction page が command の metadata を
+frontmatter として示すかである。親機能が既に抱えていた Markdown の重なり —
+`.claude/agents/CLAUDE.md`、`.claude/commands/CLAUDE.md` — はこの選択を隠していた。両方の読みが
+同じ document を生むからである。TOML の組で選択が見えるようになったので、host が選ぶのではなく
+request が kind を名指す。route は既に最初の URL segment に kind を持つので、読み手が保存する
+link に新しく求めるものはない (contracts/http-api.md § get-file-detail)。
+
+**Alternatives considered**: 固定の variant 順と、各 surface が他 kind の variant を自身の形に
+写し取る配置 — 親機能の配置 — は path ごとに1つの答えを保つが、読みが異なるときは一方の route
+に他方の kind の読みを見せ、写し取りをすべての detail page と comparison module に広げる。
+tool ごとの address は親機能が却下しており、その理由は今も成り立つ: 2つの product は同じ byte
+を読むので、tool ごとの address は1つの document に2つの URL を与える。
+
 ## 移行影響
 
 公開 package のユーザーには無し: 永続 state、profile、公開 contract の形は変わらない。session

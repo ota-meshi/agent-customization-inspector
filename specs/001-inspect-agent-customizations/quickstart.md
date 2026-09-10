@@ -748,7 +748,7 @@ real home directory. Verify:
    `--inspect-personal-setup` rereads process inputs. No direct `HOME`/`USERPROFILE`
    selection or existence check occurs. A capture, classification, or display-escape throw
    fails startup before launcher discovery, session creation, or a browser attempt.
-2. The consent view shows the exact Copilot, Claude, Codex, and shared agent lexical roots,
+2. The consent view shows the exact Copilot, Claude, Codex, Gemini CLI, and shared agent lexical roots,
    input states, and exclusions, with the read scope explained in plain language rather than
    per-pattern path displays. It shows neither version the preview binds: a reader can act
    on neither, cannot look either up, and the version mismatch they guard against cannot

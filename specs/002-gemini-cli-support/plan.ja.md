@@ -78,8 +78,9 @@ vendor contract、両言語の文書編集、fixture、test。親仕様の改訂
 - [x] **Safe boundaries**: Gemini CLI home は同じ preview・admission・retry・disable のルール
       の下の5つ目の consent 済みメンバーである。その下の credential、trust record、`.env`、
       session state、インストール済み extension は決して読まれない (spec.md QR-003)。trust は
-      記録される condition であり recognition に投影されない。DTO の形は閉じた enum と entry
-      数以外変わらず、同梱ブラウザが唯一の client である。
+      記録される condition であり recognition に投影されない。変わる DTO の形は閉じた member
+      enum、preview の entry 数、そして求める route の kind を得る `get-file-detail` の request
+      である (research.md § 11)。同梱ブラウザが唯一の client である。
 - [x] **Welcoming participation**: fixture launcher は `gemini-*` の行を得るので、貢献者は各
       surface を見られる。legend はプロダクトを名指しし、mark は accessible name を持ち、
       parse できない settings ファイルの diagnostic はそのファイルを名指しする。

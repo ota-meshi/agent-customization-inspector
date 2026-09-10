@@ -123,10 +123,10 @@ test.describe('the complete literal Claude rule detail', () => {
 
   test('opens the rule detail of a file another kind also recognizes', async ({ page }) => {
     // `.claude/rules/CLAUDE.md` holds two recognitions — a Claude rule by its
-    // directory and a Claude instruction file by its name — while a detail is
-    // addressed by the path alone, so `get-file-detail` answers with whichever
-    // variant its fixed order reaches first. The rule row still links here, so
-    // this page shows the document rather than reporting a failed load.
+    // directory and a Claude instruction file by its name — and this route
+    // asks `get-file-detail` for the rule kind, so it receives the rule
+    // variant: the document whole, which is what this page shows
+    // (contracts/http-api.md § get-file-detail).
     await page.goto(
       new URL('/rules/detail/repository/.claude/rules/CLAUDE.md', host.origin).toString(),
     );

@@ -99,7 +99,7 @@
     "tests/e2e/claude-rules-detail.spec.ts": {
       "kind": "inline-fixture-suite",
       "path": "tests/e2e/claude-rules-detail.spec.ts",
-      "sha256": "f1fb61388def98d131b7194e70b4d0cd463a263715793b56b0d3fd3d026bbe98"
+      "sha256": "069b4f08b9bd65722e3a0ccaeefece18459018ca9ac994e89a4f3bb2c628034e"
     },
     "tests/e2e/claude-rules-inventory.spec.ts": {
       "kind": "inline-fixture-suite",

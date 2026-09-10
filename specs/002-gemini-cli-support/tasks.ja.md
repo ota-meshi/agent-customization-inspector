@@ -264,3 +264,14 @@
 - [X] T084 `tests/unit/host/global-consent.test.ts`（「the four roots」「all four members」）、`tests/unit/session/coordinator.test.ts`（「all four tools」）、`tests/fixtures/global-homes/build-fixtures.ts`（「all four homes」）の古い個数を書き直し、`tests/fixtures/global-homes/README.md` と `README.ja.md` に `GEMINI_CLI_HOME` とその `.gemini` join を加える。QR-001 / QR-004 に基づく (partial)。
 - [X] T085 `README.md` と `README.ja.md` の repository path の一文に、他3ツールの例と並べて Gemini CLI の path の例を加える。T038 / QR-004 に基づく (partial)。
 - [X] T086 `specs/001-inspect-agent-customizations/contracts/official-sources.ja.md` の `## Google official sources` 見出しと `contracts/vendors/gemini-cli.ja.md` の section 見出しを、兄弟の日本語 contract と同じように日本語化する。QR-004 に基づく (partial)。
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Phase 7 と kind で addressing する file detail が入った後、2026-09-10 の2回目の `/speckit-converge` が見つけた差分。
+
+- [X] T087 kind で addressing する `get-file-detail` の決定 — request は求める route の kind を名指す。1つの file が syntax の異なる読みを持つ2つの kind を持ちうるからで、`context.fileName` も名指す `.gemini/commands/build.toml` がその例 — を `specs/002-gemini-cli-support/research.md` と `research.ja.md` の section として記録し、`plan.md` と `plan.ja.md` の Safe boundaries gate を訂正する。そこは今も「DTO の形は閉じた enum と entry 数以外変わらない」と述べるが、`src/shared/api-types.ts` は `FileDetailRequestParams` と `FileDetailKind` を出荷している。plan: Safe boundaries に基づく (unrequested)。
+- [X] T088 `get-file-detail` を「path だけで addressing され、固定順の最初の variant で答える」と今も述べるコメント — `tests/integration/repository-scan.test.ts` の agent かつ instruction file である case の header と、`tests/e2e/claude-rules-detail.spec.ts` の rule detail の重複 case — を、request が名指す kind に書き直す。contracts/http-api.md § get-file-detail に基づく (partial)。
+- [X] T089 残る個数コメント — `src/shared/api-types.ts` の `GlobalPreviewEntryDto.member`（「the four rows」）、`src/server/inspection/rules/mcp/server-map.ts` の「all four documents」、`src/app/composables/custom-agent-comparison.ts` の Codex・Claude Code・Copilot の agent を挙げる product 一覧 — を5行・5文書・4 product に書き直す。T076 / T083 / QR-001 に基づく (partial)。
+- [X] T090 `specs/001-inspect-agent-customizations/quickstart.md` と `quickstart.ja.md` の consent view の root の step —「Copilot、Claude、Codex、共有 agent の正確な lexical root」— に Gemini CLI を加える。T080 / FR-001 に基づく (partial)。

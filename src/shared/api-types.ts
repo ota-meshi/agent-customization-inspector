@@ -2464,7 +2464,7 @@ export type GlobalRootOrigin =
  * the channel is the one-way escaped presentation of it.
  */
 export interface GlobalPreviewEntryDto {
-  /** The member this row is about; the four rows are in the contracted order. */
+  /** The member this row is about; the five rows are in the contracted order. */
   readonly member: GlobalMemberId;
   /** Where the root came from; see {@link GlobalRootOrigin}. */
   readonly origin: GlobalRootOrigin;
