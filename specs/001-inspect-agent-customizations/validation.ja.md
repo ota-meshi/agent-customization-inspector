@@ -117,6 +117,15 @@ scale factor 2 — でこのtreeに対して取り直した。1枚はall-kind fi
 rowを持つ。もう1枚は`changelog`のcomparison — `.agents/skills/`と`.github/skills/`のcopy — で、
 recognition tableにAntigravity CLIのrowがある。
 
+**reviewの対応で2026-09-11に再度gateを実行した。**`pnpm run test:docs` 42、
+`pnpm run test:unit` 1288、`pnpm run test:contract` 411、`pnpm run test:integration` 277、
+`pnpm run test:security` 5、`pnpm run test:package` 53 testが、このhost上で全件通り、
+`pnpm run format:check`、`pnpm run lint`、`pnpm run typecheck`はcleanであった。2つの数を
+動かしたのはこのpass自身のcoverageである。consent済みhomeにある出荷済みの2つのskillの形が、
+それぞれの行に対応する2つのunitへcompileされるようになり、hook carrierの2つの宣言は、著者が
+どう名付けても2つのままになった。browser側はOutcome manifestによる基準に記録している。それを
+必要にしたfixtureの変更がそこにあるからである。
+
 **CLIのaccepted batch failureは伝播するようになった。**
 `tests/integration/cli-global-batch-failure.test.ts`が失敗していたのはこの点である。
 `runGlobalEnable`は呼び出し側が必要とするdispositionを受け取る。consent pageが送るconfirmationは
@@ -556,7 +565,7 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 5**、canonical SHA-256
-`631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
+`6b9477725b2ebf6b0bdbdf47b0b2f7b3bdf29012af59c8a5227fb17f905b9d37`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
 Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063）。SC-003とSC-005それぞれに8つの
 `(Antigravity CLI, kind)` row — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
 — に加えて`sc003.global-source-form.antigravity`と`sc004.tool.antigravity`を持つ。この読み手を運ぶ帰属caseは3つある。
@@ -567,7 +576,30 @@ Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063�
 進める理由である。このtransitionはこのsession、すなわちagent駆動のreviewがreviewした
 （AGENTS.md § Evidence before conclusions）。
 比較したのは出荷済みregistryの`(tool, kind)` rowとcase IDで、`tests/contract/outcome-fixture-manifest.test.ts`が
-それをgateする。118 caseは2026-09-10にこのhost上で実行した。Antigravity CLIのcaseは、それらが名指す7つの新spec —
+それをgateする。118 caseは2026-09-11にこのhost上で実行した。vitestのcaseはRelease gateの実行に
+記録したgate script経由、browserのcaseはこのsetのfixtureが届くspec —
+`global-antigravity-admission`、`antigravity-custom-agents-detail`、`antigravity-skills-detail`、
+`global-consent-preview`、`global-claude-admission`、`detail-navigation`、`inventory-rows`、
+`inventory-return`、`repository-complete-inventory`、`repository-complete-comparison`、
+`skills-inventory`、`skills-comparison`、`skill-metadata-comparison`、`comparison-layout`、
+`discovery`、`source-type`、`accessibility`、`hooks-comparison`、`hooks-inventory` —
+をChromium projectで158 case実行し、全件が通った。それらのfixtureが届かないbrowser specはこの
+setのために再実行していない。contract suiteは同じrunで
+canonical digestと73件のfixture digestすべてを再現した。
+
+**これを新しいsetにしたのはfixture byteの変更である**。versionは同じままである。denominatorは
+変わっていない — 同じ118 case、同じrequired class — 一方で2つのbuilderがファイルを1つずつ得た。
+`tests/fixtures/global-homes/build-fixtures.ts`はフォルダ形のglobal custom agent
+`config/agents/triage/agent.md`を得た。これはvendorのsubagentsページがそのディレクトリについて
+与える2つ目の綴りであり、このリリースがadmitするものである。
+`tests/fixtures/repositories/build-fixtures.ts`は`.agents/skills/summarize.md`を得た。
+frontmatterブロックがYAMLでないフラットskillであり、起動できるfixtureで、ファイル形skillの
+ページが抽出に失敗したときに何を持つのかを示す。両方のbuilderのdigestと上のcanonical digestは
+一緒に再記録した。それがfixture byteの変更に求められることであり、それが認めることのすべてである。
+
+その前のsetは、同じ118 caseをcanonical SHA-256
+`631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`の下で保持し、2026-09-10に
+このhost上で実行した。Antigravity CLIのcaseは、それらが名指す7つの新spec —
 `antigravity-skills-detail`、`antigravity-mcp-detail`、`antigravity-custom-agents-detail`、
 `antigravity-instructions-detail`、`antigravity-rules-detail`、`antigravity-hooks-detail`、
 `antigravity-settings-detail` — と`global-antigravity-admission`、そして4つ目の認識がfixtureを変えた既存spec
@@ -575,9 +607,8 @@ Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063�
 `copilot-skills-detail`、`copilot-skills-list`、`claude-skills-list`、`claude-skills-detail`、
 `comparison-layout`、`discovery`、`instructions-inventory`、`skills-comparison`、
 `skill-metadata-comparison`、`skills-inventory`、`inventory-rows`、`hooks-comparison`、
-`hooks-inventory`、および`global-*`のadmission/consent spec）をChromium projectで実行し、vitestのcaseは
-Release gateの実行に記録したgate script経由で実行した。この変更が届かないbrowser specはこのsetのために
-再実行していない。contract suiteは同じrunでcanonical digestと73件のfixture digestすべてを再現した。
+`hooks-inventory`、および`global-*`のadmission/consent spec）をChromium projectで実行し、vitestの
+caseはRelease gateの実行に記録したgate script経由で実行した。
 
 それ以前のsetは`tests/fixtures/outcomes/manifest.json`の**version 3**、canonical SHA-256
 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`であった。その99

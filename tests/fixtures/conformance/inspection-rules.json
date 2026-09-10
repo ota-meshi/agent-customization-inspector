@@ -82,7 +82,54 @@
     ]
   },
   {
-    "ruleId": "antigravity.global.agent",
+    "ruleId": "antigravity.global.agent.directory",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "agent",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
+        [
+          {
+            "kind": "literal",
+            "value": "config"
+          },
+          {
+            "kind": "literal",
+            "value": "agents"
+          },
+          {
+            "kind": "regex",
+            "pattern": "/(?:)/u"
+          },
+          {
+            "kind": "literal",
+            "value": "agent.md"
+          }
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.subagents",
+        "url": "https://antigravity.google/docs/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Agent Location and Discovery"],
+        "reviewedOn": "2026-09-11",
+        "establishes": "Custom subagents are discovered at ~/.gemini/config/agents/<name>.md or at <name>/agent.md inside that same directory, the two spellings this page gives for the user tier as it gives them for the workspace."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.agent.file",
     "tool": "antigravity",
     "discoveryClass": "static-candidate",
     "kind": "agent",
@@ -121,6 +168,14 @@
         "sections": ["Custom Agents (Markdown Format)"],
         "reviewedOn": "2026-09-10",
         "establishes": "Global custom agents are discovered in ~/.gemini/config/agents/."
+      },
+      {
+        "sourceId": "google.antigravity.subagents",
+        "url": "https://antigravity.google/docs/subagents/",
+        "officialHost": "antigravity.google",
+        "sections": ["Agent Location and Discovery"],
+        "reviewedOn": "2026-09-11",
+        "establishes": "Custom subagents are discovered at ~/.gemini/config/agents/<name>.md or at <name>/agent.md inside that same directory, the two spellings this page gives for the user tier as it gives them for the workspace."
       }
     ]
   },
@@ -355,7 +410,7 @@
     ]
   },
   {
-    "ruleId": "antigravity.global.skill",
+    "ruleId": "antigravity.global.skill.directory",
     "tool": "antigravity",
     "discoveryClass": "static-candidate",
     "kind": "skill",
@@ -401,7 +456,44 @@
             "kind": "literal",
             "value": "SKILL.md"
           }
-        ],
+        ]
+      ]
+    },
+    "policyRefs": ["FR-013", "FR-014", "FR-018", "QR-001", "QR-003", "QR-004", "QR-005"],
+    "precedenceGroup": null,
+    "documentationStatus": "partially-documented",
+    "lifecycleQualifiers": [],
+    "evidence": [
+      {
+        "sourceId": "google.antigravity.skills",
+        "url": "https://antigravity.google/docs/skills/",
+        "officialHost": "antigravity.google",
+        "sections": ["Where skills live"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "A global skill, available across all workspaces, is a skill folder holding a SKILL.md at ~/.gemini/config/skills/<skill-folder>/."
+      },
+      {
+        "sourceId": "google.antigravity.cli-plugins-skills",
+        "url": "https://antigravity.google/docs/cli/plugins/",
+        "officialHost": "antigravity.google",
+        "sections": ["Sharing global skills"],
+        "reviewedOn": "2026-09-10",
+        "establishes": "Any skill placed in ~/.gemini/antigravity-cli/skills/ is automatically imported as a global slash command whenever agy launches in any directory, which is the second root a global skill folder is admitted at."
+      }
+    ]
+  },
+  {
+    "ruleId": "antigravity.global.skill.file",
+    "tool": "antigravity",
+    "discoveryClass": "static-candidate",
+    "kind": "skill",
+    "sourceKinds": ["global"],
+    "matcher": {
+      "base": {
+        "kind": "global",
+        "member": "antigravity"
+      },
+      "selectors": [
         [
           {
             "kind": "literal",
@@ -437,7 +529,7 @@
         "officialHost": "antigravity.google",
         "sections": ["Where skills live"],
         "reviewedOn": "2026-09-10",
-        "establishes": "A global skill, available across all workspaces, is a skill folder holding a SKILL.md at ~/.gemini/config/skills/<skill-folder>/."
+        "establishes": "A skill is a folder containing a SKILL.md file, which is the shape this page gives for a global skill and is why this rule is recorded as a conflict rather than as documented."
       }
     ]
   },

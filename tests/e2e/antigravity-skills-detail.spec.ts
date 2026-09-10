@@ -67,6 +67,14 @@ test.beforeAll(async () => {
     '---\ndescription: Expand the selected expression.\n---\n\nOne step at a time.\n',
     'utf8',
   );
+  // A flat file whose frontmatter block is not YAML: the extraction fails
+  // all-or-nothing, so this skill has no declarations and no instructions to
+  // show and only its diagnostic and its own text remain (FR-028).
+  await writeFile(
+    join(fixture, '.agents/skills/summarize.md'),
+    '---\nname: [\ndescription: Summarize the selected text.\n---\n\nSummarize the selection in three sentences.\n',
+    'utf8',
+  );
   host = await launchHost(fixture);
 });
 
@@ -134,5 +142,37 @@ test('renders a flat skill as the skill alone, with no strip and no file panel',
   await expect(page.getByRole('navigation', { name: 'Files in this skill' })).toHaveCount(0);
   await expect(page.locator('.aci-skill-detail__instructions')).toContainText(
     'One step at a time.',
+  );
+  // The file's own text, under the label and on the condition every other
+  // single-file detail uses: readable, not parsed successfully. The folder
+  // shape reads it in the files tab; this shape has no such tab, so the panel
+  // carries it — and carries it for a skill that parsed, which is what the
+  // other pages do. Each panel's name is its own band
+  // (`SourceViewer.vue` § panelLabel).
+  await expect(page.locator('.aci-skill-detail h3')).toHaveText([
+    'Frontmatter YAML',
+    'Instructions',
+    'Source',
+  ]);
+});
+
+test('keeps the file readable and openable when a flat skill declares no parsable block', async ({
+  page,
+}) => {
+  await page.goto(
+    new URL('/skills/detail/repository/.agents%2Fskills%2Fsummarize.md', host.origin).toString(),
+  );
+  // Nothing parsed, so there are no declarations and no instructions to show
+  // and the diagnostic says why (FR-028).
+  await expect(page.locator('.aci-skill-detail__declarations')).toHaveCount(0);
+  await expect(page.locator('.aci-skill-detail__instructions')).toHaveCount(0);
+  // What must survive it: the line stating the read outcome and the command
+  // that opens the file, and the file's own text below the diagnostic.
+  // Selecting a files tab this shape does not render took all three away.
+  await expect(page.locator('.aci-detail-attributes')).toContainText('Readable text');
+  await expect(page.locator('.aci-detail-attributes')).toContainText('Open in VS Code');
+  await expect(page.locator('.aci-skill-detail h3')).toHaveText(['Source']);
+  await expect(page.locator('.aci-skill-detail')).toContainText(
+    'Summarize the selection in three sentences.',
   );
 });

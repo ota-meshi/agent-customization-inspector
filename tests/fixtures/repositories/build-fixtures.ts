@@ -8455,6 +8455,25 @@ export function buildAntigravitySkillFixture(
       '',
     ].join('\n'),
   );
+  // A flat file whose frontmatter block is not YAML: the extraction fails
+  // all-or-nothing, so the skill has no declarations and no instructions to
+  // show, and the detail is left with its diagnostic and the file's own text
+  // (FR-028). The flat shape has no files tab to read that text in, which is
+  // why its panel carries the `Source` viewer every other single-file detail
+  // carries.
+  write(
+    root,
+    '.agents/skills/summarize.md',
+    [
+      '---',
+      'name: [',
+      'description: Summarize the selected text.',
+      '---',
+      '',
+      'Summarize the selection in three sentences.',
+      '',
+    ].join('\n'),
+  );
   // The superseded spelling, in the shape the page that states the backward
   // support shows there.
   write(
@@ -8483,6 +8502,7 @@ export function buildAntigravitySkillFixture(
       '.agents/skills/deploy.md',
       '.agents/skills/deploy/SKILL.md',
       '.agents/skills/release-notes/SKILL.md',
+      '.agents/skills/summarize.md',
       '.agents/skills/x.md',
     ],
     nearMissPaths: [

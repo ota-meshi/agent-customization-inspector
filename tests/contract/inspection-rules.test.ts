@@ -716,14 +716,19 @@ describe('the unified SKILL selector matrix (T179)', () => {
   // integration suite's (tests/integration/repository-scan.test.ts).
   const skillRules = rules.filter((rule) => rule.kind === 'skill');
 
-  it('ships exactly the ten read-authorizing skill rules', () => {
-    // T004: Antigravity CLI contributes three of the ten, and contributes no
+  it('ships exactly the eleven read-authorizing skill rules', () => {
+    // T004: Antigravity CLI contributes four of the eleven, and contributes no
     // shared-agent-home rule — its global skills live below `~/.gemini`, and no
     // cited page has it read `~/.agents` (FR-045) — and contributes a second
-    // Repository rule instead, because it admits two skill shapes at one
-    // location whose row units differ (spec.md § FR-004).
+    // rule at each boundary instead, because it admits two skill shapes at one
+    // location whose row units differ (spec.md § FR-004). The two shapes are
+    // two rules at the consented home for the same reason they are two in the
+    // workspace: a rule's selectors admit paths for one row unit, so a flat
+    // skill sharing the folder rule would take the folder's unit and publish
+    // every file beside it as its own companion census.
     expect(skillRules.map((rule) => rule.ruleId).sort()).toEqual([
-      'antigravity.global.skill',
+      'antigravity.global.skill.directory',
+      'antigravity.global.skill.file',
       'antigravity.repo.skill.directory',
       'antigravity.repo.skill.file',
       'claude.global.skill',
@@ -1242,7 +1247,7 @@ describe('structure-only projection vocabulary', () => {
 });
 
 describe('the registry this release owns (T913)', () => {
-  it('ships one hundred and one rules: fifty-nine Repository and forty-two Global (T992)', () => {
+  it('ships one hundred and three rules: fifty-nine Repository and forty-four Global (T992)', () => {
     // The phase gate: not a per-family list — each family's own case above
     // owns that — but the total this release is allowed to read by, split by
     // the scope each rule reads at. A rule added without a phase that owns it
@@ -1250,13 +1255,13 @@ describe('the registry this release owns (T913)', () => {
     // deriving them.
     //
     // T004: every literal in this case was written only after it was watched
-    // failing against the shipped registry. Antigravity CLI ships twenty-one
+    // failing against the shipped registry. Antigravity CLI ships twenty-three
     // rules, and where they fall follows from its own pages — no derived rule,
     // because none documents a terminal setting that renames a customization;
     // one Repository exclusion for the workspace plugin directory, which needs
     // a reason the installed-copy exclusion does not give; and no
     // shared-agent-home rule at all.
-    expect(rules).toHaveLength(101);
+    expect(rules).toHaveLength(103);
     const repository = rules.filter((rule) => rule.sourceKinds.includes('repository'));
     const global = rules.filter((rule) => rule.sourceKinds.includes('global'));
     expect(repository).toHaveLength(59);
@@ -1267,22 +1272,24 @@ describe('the registry this release owns (T913)', () => {
       repository.filter((rule) => rule.discoveryClass === 'bounded-derived-candidate'),
     ).toHaveLength(1);
     expect(repository.filter((rule) => rule.discoveryClass === 'excluded')).toHaveLength(8);
-    // The complete Global scope (T992): thirty-six static read-authorizing
+    // The complete Global scope (T992): thirty-eight static read-authorizing
     // rules across the five members, the five vendor exclusions, and the
     // shared managed-remote-state record. Naming the set is what keeps a new
     // rule from arriving without the phase that owns it.
-    expect(global.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(36);
+    expect(global.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(38);
     expect(global.map((rule) => rule.ruleId).toSorted()).toEqual([
       'antigravity.excluded.plugins',
       'antigravity.excluded.user-runtime',
-      'antigravity.global.agent',
+      'antigravity.global.agent.directory',
+      'antigravity.global.agent.file',
       'antigravity.global.context',
       'antigravity.global.hooks',
       'antigravity.global.hooks.inline',
       'antigravity.global.mcp',
       'antigravity.global.permissions',
       'antigravity.global.settings',
-      'antigravity.global.skill',
+      'antigravity.global.skill.directory',
+      'antigravity.global.skill.file',
       'claude.excluded.user-runtime',
       'claude.global.agent',
       'claude.global.command',

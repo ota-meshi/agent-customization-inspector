@@ -27,7 +27,7 @@ home がどこか、そして親仕様の「3つのツール」「4つの member
 - Q: 端末自身のページは workspace の skill をフラットな `.md` ファイルとして示し、vendor の Agent Skills ページは同じディレクトリが `SKILL.md` を持つフォルダを抱えると示す。このリリースはどちらの形を admit するのか？ → A: このツールについては両方である。`.agents/` は vendor の3製品が読む1つのディレクトリであり、それぞれの形はそのディレクトリについて vendor の公式ページが文書化している。一方だけを admit すれば、読み手自身の `.agents/skills/deploy/SKILL.md` が他の2製品には挙がるのに端末には挙がらない状態が残る。ファイル形は端末のページのもの、ディレクトリ形は Agent Skills ページのものであり、どちらのページも優先順位を述べないので、優先順位は捏造しない。端末自身のグローバルディレクトリが admit するものは変わらない。`antigravity-cli/skills/` は端末だけのものであり、そこで文書化されている形はフラットな1つだけである。
 - Q: `.agents/` は rules ディレクトリと hooks ファイルも抱える。このツールについて admit するのか？ → A: 両方 admit する。vendor の Rules ページは workspace の rule を `.agents/rules/` に置き、Hooks ページは `hooks.json` を workspace の `.agents/` と home の `config/` に置き、端末自身の移行ページは workspace の skill、rule、MCP server のサポートを維持すると述べている。これは端末のページが rules ディレクトリを端末の読む場所として名指したものである。どちらも既存の kind の下で、書かれたとおりに publish する。activation mode はファイルに対して評価せず、hook の command は決して実行しない。
 - Q: skills と rules のページはどちらも、現行の `.agents/` の隣に旧綴りの `.agent/` を記録している。これは admit するのか？ → A: admit する。ただし、そのページがその location について文書化している形に限る。すなわち `.agent/skills/<name>/SKILL.md` と `.agent/rules/<name>.md` であり、それ以外はない。後方互換は location を述べるページが述べているので、旧綴りが届くのはそのページがそこで示す形までである。フラットな skill 形は端末のページのものであり、そのページは `.agents/` しか名指さないので、`.agent/skills/<name>.md` は対象外とし、既知の不確実性として記録する。
-- Q: 公開されている `agy` 1.2.0 バイナリの静的解析は、端末がフォルダ形しか検出しないこと、および `name` 無しの skill がフォルダ名ではなく `SKILL` に解決されることを示している。このリリースはバイナリとページのどちらに従うのか？ → A: 両方に、それぞれがより良い証拠である場所で従う。フラット形は admit したままにする。端末自身のページに従った読み手はそのファイルを持っており、admit しなければその存在について何も示せない。admit する費用は、vendor 自身の文書が支える行1つである。観測は vendor contract に記録し、ページか後のビルドが決着させた時点でその rule を落とす。名付けはバイナリに従う。行の名前は認識する製品が解決する名前であり、これはどちらのページが正しいかではなく解決の事実だからである。よってこの vendor の名前無し skill は `SKILL` と名付け、同じファイルはそう解決する製品についてはフォルダ名で名付ける。global の allowlist もバイナリに従い、文書化された2つの global root を順位づけずに両方 admit する。端末が両方を歩くからである。
+- Q: 公開されている `agy` 1.2.0 バイナリの静的解析は、端末がフォルダ形しか検出しないこと、および `name` 無しの skill がフォルダ名ではなく `SKILL` に解決されることを示している。このリリースはバイナリとページのどちらに従うのか？ → A: 両方に、それぞれがより良い証拠である場所で従う。フラット形は admit したままにする。端末自身のページに従った読み手はそのファイルを持っており、admit しなければその存在について何も示せない。admit する費用は、vendor 自身の文書が支える行1つである。観測は vendor contract に記録し、ページか後のビルドが決着させた時点でその rule を落とす。名付けはバイナリに従わない。行の名前は認識する製品が解決する名前であり、同じバイナリの `GetSkillsCreatePath` は `{workspace}/.agents/skills/{skill_name}/SKILL.md` を組み立てる。つまり端末自身がフォルダを名前の持ち手として扱っている。よって名前無しのフォルダはそのフォルダ名で名付ける。これは同じファイルを読む他の2製品が与える答えでもある。名前無しのフラットファイルは、名前を取るフォルダが無いので、そのファイル自身の名前で名付ける。global の allowlist はバイナリに従い、文書化された2つの global root を順位づけずに両方 admit する。端末が両方を歩くからである。（2026-09-11 修正: この答えの名付けの側を、FR-004 と出荷される unit が述べる fallback に合わせた。バイナリ内の2つの読み取りを互いに突き合わせた結果である。）
 - Q: vendor は `.agents/plugins/` に workspace の plugin ディレクトリを文書化している。admit するのか？ → A: しない。どの端末のページもそれを名指していない。端末自身のページは plugin を `agy` が home へインストールする bundle としてのみ文書化しており、それがインストール済みコピーを除外している理由である。その除外の理由 —インストール済みコピーは原本の複製である— はリポジトリで著述された plugin には当てはまらないので、vendor contract は workspace ディレクトリ自身の理由を別に述べる。すなわち、端末がそれを読み込むという端末側の evidence がこのリリースにはない。
 - Q: Antigravity CLI の recognition はリポジトリルート配下の `GEMINI.md` と `AGENTS.md` に届くのか？ → A: 届かない。リポジトリルートの2つだけである。移行ガイドは workspace の context file を作業ディレクトリのものとして述べ、深さには何も述べないので、それより深くへ届かせるのは推論に立つ。これは前の vendor の home instruction rule を広げなかった理由と同じである。深さは vendor contract の既知の不確実性として記録し、vendor が階層を文書化した時点で rule を広げる。
 - Q: 5つ目の member のディレクトリは `~/.gemini` のままだが、それが名を取った製品はサポート対象でなくなる。ラベルは何と述べるのか？ → A: `Antigravity home` である。member の表は、ディレクトリ自身の名前ではなく「誰のディレクトリか」で member を名付けており、ラベルがパスと異なる例はその表に既にある。`~/.config/github-copilot` は `Copilot home` と呼ばれている。短い語の取り方も同じ family に従う。`OpenAI Codex` が `Codex` になるように `Antigravity CLI` は `Antigravity` になる。member の root パスはラベルの隣に表示されるので、ラベルは誰のディレクトリかを、パスはどこかを述べる。
@@ -174,15 +174,13 @@ read もされないことを確認する。
   コピーの理由とは別にその理由を述べなければならない (MUST)。リポジトリで著述された plugin は
   何かのコピーではないからである (§ Clarifications)。
 - **FR-004**: Antigravity CLI の skill は admit される両方の形で publish されなければならず
-  (MUST)、frontmatter が宣言する `name`、宣言がなければ拡張子を除いたファイル自身の名前 — skill
-  フォルダの `SKILL.md` では `SKILL` — で名付けられなければならない (MUST)。それがこの vendor が
-  解決する名前であり、行の名前は解決する製品のものだからである。同じファイルは、そう解決する製品
-  についてはそのディレクトリの名前で名付けられるので、1つのファイルが2つの名前で2つの行に定義を
-  持ちうる。detail の経路はどちらもそのファイル自身のものである。したがってこの vendor の名前無し
-  skill はすべて1つの `SKILL` 行を共有する。これは vendor 自身が持つ同名衝突であり、既存の同名の
-  仕組みが既にそれを述べる。ファイル形の skill は companion ディレクトリを持たないので、行はそれを
-  述べず、detail は skill だけを示し、持たないディレクトリを主題とする file panel を出さない
-  (§ Clarifications)。
+  (MUST)、frontmatter が宣言する `name`、宣言がなければその形自身の fallback で名付けられなければ
+  ならない (MUST)。fallback はフォルダ形なら skill フォルダ、フラット形なら拡張子を除いたファイル
+  自身の名前である。フラット形には名前を取るフォルダが無いからである。フォルダの fallback は同じ
+  ファイルを解決する他のすべての製品が使うものなので、1つの `SKILL.md` は2つの名前で2行に分かれる
+  ことなく、3つの読み手を持つ1行であり続ける。ファイル形の skill は companion ディレクトリを
+  持たないので、行はそれを述べず、detail は skill だけを示し、持たないディレクトリを主題とする
+  file panel を出さない (§ Clarifications)。
   1つの `.agents/skills/` にある skill ファイルと同名の skill ディレクトリは1つの inventory 行で
   なければならず (MUST)、両方の定義を抱え、どの製品がその名前をどちらのファイルに解決するかを
   述べる。今日2つのディレクトリで綴られた名前が1行になるのとまったく同じである。2つの形の間の
@@ -192,8 +190,11 @@ read もされないことを確認する。
   `httpUrl` も含め、書かれたとおりに示さなければならない (MUST)。server を起動・接続・probe せず、
   宣言中の environment 参照を解決しない。
 - **FR-006**: custom agent は admit される両方の形で custom-agent kind の下に publish されな
-  ければならず (MUST)、frontmatter が宣言する `name`、宣言がなければファイルまたはディレクトリ
-  自身の名前で名付けられなければならない (MUST)。
+  ければならず (MUST)、frontmatter が宣言する `name` で名付けられなければならない (MUST)。
+  宣言しないファイルは、ファイル名やディレクトリ名で名付けるのではなく、inventory の名前無しの行
+  に届かなければならない (MUST)。この vendor は他の2つの宣言名製品と同じく `name` を agent の
+  identity として文書化しており、パスによる fallback は製品が持たない agent 名を報告することに
+  なるからである。
 - **FR-007**: リポジトリルートの `GEMINI.md` と `AGENTS.md` は、既に持つ recognition に加えて
   Antigravity CLI の recognition を持たなければならない (MUST)。1つのファイルは複数の読み手を
   持つ1行のままである。ルートより下の `GEMINI.md` と `AGENTS.md` はそれを持ってはならない
@@ -208,10 +209,15 @@ read もされないことを確認する。
   されなければならず (MUST)、誰のディレクトリかを述べ、root パスをその隣に表示する
   (§ Clarifications)。
 - **FR-009**: その member の Global inspection path allowlist は次を正確に admit しなければ
-  ならない (MUST): `GEMINI.md`、`config/mcp_config.json`、`config/hooks.json`、`config/agents/`
-  配下の custom agent、`antigravity-cli/skills/<name>/SKILL.md`・`config/skills/<name>/SKILL.md`
+  ならない (MUST): `GEMINI.md`、`config/mcp_config.json`、`config/hooks.json`、
+  `config/agents/<name>.md` または `config/agents/<name>/agent.md` の custom agent、
+  `antigravity-cli/skills/<name>/SKILL.md`・`config/skills/<name>/SKILL.md`
   ・`antigravity-cli/skills/<name>.md` のいずれかの skill、`antigravity-cli/settings.json`。
   文書化された2つの global skill root は順位づけずに両方 admit する。端末が両方を歩くからである。
+  custom agent の2つの形も user tier で両方 admit する。理由は workspace で両方を admit するのと
+  同じで、subagents のページはそのディレクトリについて、workspace のものと同じ2つの綴りを与えて
+  いるからである。ファイル形だけを admit すれば、workspace の対応物は載るのにフォルダ形の global
+  agent はどの一覧にも載らないことになる。
   editor 拡張自身の global skill ディレクトリは admit してはならない (MUST NOT)。それはこの
   リリースが認識しない surface のものである。
 - **FR-010**: Global inspection はその member 配下の他の何も admit してはならず (MUST NOT)、

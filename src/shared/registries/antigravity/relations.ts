@@ -25,14 +25,16 @@ import {
   ANTIGRAVITY_EXCLUDED_PLUGINS_RULE,
   ANTIGRAVITY_EXCLUDED_USER_RUNTIME_RULE,
   ANTIGRAVITY_EXCLUDED_WORKSPACE_PLUGINS_RULE,
-  ANTIGRAVITY_GLOBAL_AGENT_RULE,
+  ANTIGRAVITY_GLOBAL_AGENT_DIRECTORY_RULE,
+  ANTIGRAVITY_GLOBAL_AGENT_FILE_RULE,
   ANTIGRAVITY_GLOBAL_CONTEXT_RULE,
   ANTIGRAVITY_GLOBAL_HOOKS_INLINE_RULE,
   ANTIGRAVITY_GLOBAL_HOOKS_RULE,
   ANTIGRAVITY_GLOBAL_MCP_RULE,
   ANTIGRAVITY_GLOBAL_PERMISSIONS_RULE,
   ANTIGRAVITY_GLOBAL_SETTINGS_RULE,
-  ANTIGRAVITY_GLOBAL_SKILL_RULE,
+  ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE,
+  ANTIGRAVITY_GLOBAL_SKILL_FILE_RULE,
   ANTIGRAVITY_REPO_AGENT_DIRECTORY_RULE,
   ANTIGRAVITY_REPO_AGENT_FILE_RULE,
   ANTIGRAVITY_REPO_CONTEXT_AGENTS_ROOT_RULE,
@@ -133,8 +135,13 @@ export const ANTIGRAVITY_RULE_RELATIONS: Readonly<Record<AntigravityRuleId, Rule
     basedOnBehaviors: [ANTIGRAVITY_USER_HOME_BEHAVIOR],
     explainedByStrategies: [],
   },
-  /** The global agent rule rests on the global agent behavior, explained by agent selection. */
-  [ANTIGRAVITY_GLOBAL_AGENT_RULE.ruleId]: {
+  /** The directory-shaped global agent rule rests on the global agent behavior, explained by agent selection. */
+  [ANTIGRAVITY_GLOBAL_AGENT_DIRECTORY_RULE.ruleId]: {
+    basedOnBehaviors: [ANTIGRAVITY_USER_AGENTS_BEHAVIOR],
+    explainedByStrategies: [ANTIGRAVITY_AGENTS_SELECTION_STRATEGY],
+  },
+  /** The file-shaped global agent rule rests on the same behavior. */
+  [ANTIGRAVITY_GLOBAL_AGENT_FILE_RULE.ruleId]: {
     basedOnBehaviors: [ANTIGRAVITY_USER_AGENTS_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_AGENTS_SELECTION_STRATEGY],
   },
@@ -168,8 +175,13 @@ export const ANTIGRAVITY_RULE_RELATIONS: Readonly<Record<AntigravityRuleId, Rule
     basedOnBehaviors: [ANTIGRAVITY_USER_SETTINGS_BEHAVIOR],
     explainedByStrategies: [],
   },
-  /** The global skill rule rests on the global skill behavior, explained by skill selection. */
-  [ANTIGRAVITY_GLOBAL_SKILL_RULE.ruleId]: {
+  /** The directory-shaped global skill rule rests on the global skill behavior, explained by skill selection. */
+  [ANTIGRAVITY_GLOBAL_SKILL_DIRECTORY_RULE.ruleId]: {
+    basedOnBehaviors: [ANTIGRAVITY_USER_SKILLS_BEHAVIOR],
+    explainedByStrategies: [ANTIGRAVITY_SKILLS_SELECTION_STRATEGY],
+  },
+  /** The flat global skill rule rests on the same behavior. */
+  [ANTIGRAVITY_GLOBAL_SKILL_FILE_RULE.ruleId]: {
     basedOnBehaviors: [ANTIGRAVITY_USER_SKILLS_BEHAVIOR],
     explainedByStrategies: [ANTIGRAVITY_SKILLS_SELECTION_STRATEGY],
   },

@@ -78,8 +78,9 @@ directory whose entry point is `SKILL.md`.
 
 **Decision**: The flat rule stays. The documentation conflict it rests on is recorded on the
 vendor contract with the build it was measured against, and the rule goes when a page or a
-later build settles it. Two things follow the measurement instead of the pages: an unnamed
-skill is named `SKILL`, and both documented global skill roots are admitted rather than ranked.
+later build settles it. One thing follows the measurement instead of the pages: both documented
+global skill roots are admitted rather than ranked. The naming does not — an unnamed folder is
+named by its folder, and an unnamed flat file by its own file name.
 
 **Rationale**: A static analysis of the published `agy` 1.2.0 Linux x64 binary — traced from
 the terminal's own `GetSkills` into the shared discovery, not from strings — found the skill

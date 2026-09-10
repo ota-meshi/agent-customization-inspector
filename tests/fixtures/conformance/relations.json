@@ -261,7 +261,11 @@
       "basedOnBehaviors": ["antigravity.behavior.user.plugins"],
       "explainedByStrategies": []
     },
-    "antigravity.global.agent": {
+    "antigravity.global.agent.directory": {
+      "basedOnBehaviors": ["antigravity.behavior.user.agents"],
+      "explainedByStrategies": ["antigravity.agents.selection"]
+    },
+    "antigravity.global.agent.file": {
       "basedOnBehaviors": ["antigravity.behavior.user.agents"],
       "explainedByStrategies": ["antigravity.agents.selection"]
     },
@@ -292,7 +296,11 @@
       "basedOnBehaviors": ["antigravity.behavior.user.settings"],
       "explainedByStrategies": []
     },
-    "antigravity.global.skill": {
+    "antigravity.global.skill.directory": {
+      "basedOnBehaviors": ["antigravity.behavior.user.skills"],
+      "explainedByStrategies": ["antigravity.skills.selection"]
+    },
+    "antigravity.global.skill.file": {
       "basedOnBehaviors": ["antigravity.behavior.user.skills"],
       "explainedByStrategies": ["antigravity.skills.selection"]
     },

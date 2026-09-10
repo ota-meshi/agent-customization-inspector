@@ -109,16 +109,21 @@ export class AntigravityCompiledOtherKindRule
  * and each is a place where one kind has two readings: the skill shapes, whose
  * row units differ (research.md § 2), and the hook carriers, where a file
  * whose whole purpose is hooks and a settings document that also declares them
- * are the split Codex's catalog already makes. The flat skill rules and the
- * inline hook rule are named explicitly, so a rule added later reaches the
- * directory-shaped and standalone units unless someone decides otherwise.
+ * are the split Codex's catalog already makes. The flat skill rules — one per
+ * boundary, because this vendor documents the shape at a workspace root and at
+ * the consented home — and the inline hook rule are named explicitly, so a
+ * rule added later reaches the directory-shaped and standalone units unless
+ * someone decides otherwise. Naming them is what keeps the row unit the rule's
+ * own declared fact: a unit chosen by re-reading the path would decide the
+ * shape a second time, in a second place, from data the plan already sorted.
  */
 function compileAntigravityRule(rule: InspectionRule): CompiledStaticCandidateRule {
   switch (rule.kind) {
     case 'instructions':
       return new AntigravityCompiledInstructionRule(rule);
     case 'skill':
-      return rule.ruleId === 'antigravity.repo.skill.file'
+      return rule.ruleId === 'antigravity.repo.skill.file' ||
+        rule.ruleId === 'antigravity.global.skill.file'
         ? new AntigravityCompiledFileSkillRule(rule)
         : new AntigravityCompiledSkillRule(rule);
     case 'MCP':

@@ -461,6 +461,8 @@ export type GoogleSourceId =
   | 'google.antigravity.skills'
   /** The vendor's shared Rules page, which documents workspace rules at `.agents/rules`, the four activation modes, and the global `~/.gemini/GEMINI.md`. */
   | 'google.antigravity.rules'
+  /** The vendor's shared Subagents page, which gives the custom-agent discovery locations and states both spellings — `<name>.md` and `<name>/agent.md` — for the workspace's `.agents/agents/` and for the user tier's `config/agents/`. */
+  | 'google.antigravity.subagents'
   /** The vendor's shared Hooks page, which documents the `hooks.json` schema and places the file in the workspace's `.agents/` or the user tier's `config/`. */
   | 'google.antigravity.hooks';
 
@@ -807,10 +809,14 @@ export type AntigravityRuleId =
   | 'antigravity.global.context'
   /** The consented home's global MCP carrier. */
   | 'antigravity.global.mcp'
-  /** A custom agent below the consented home's `config/agents/`. */
-  | 'antigravity.global.agent'
-  /** A skill file below the consented home's `antigravity-cli/skills/`. */
-  | 'antigravity.global.skill'
+  /** A custom agent written as one file directly below the consented home's `config/agents/`. */
+  | 'antigravity.global.agent.file'
+  /** A custom agent written as `agent.md` inside its own directory below that same `config/agents/`. */
+  | 'antigravity.global.agent.directory'
+  /** A skill folder's `SKILL.md` below the consented home, at either documented global skill root. */
+  | 'antigravity.global.skill.directory'
+  /** A flat skill file directly below the consented home's `antigravity-cli/skills/`. */
+  | 'antigravity.global.skill.file'
   /** The consented home's settings document, whose subject is the file. */
   | 'antigravity.global.settings'
   /** The permission lists the same settings carrier declares. */

@@ -117,7 +117,7 @@ agent home です。Consent ページは何も読む前にそのすべてを示�
 | --- | --- |
 | Instructions | `GEMINI.md` |
 | Skills | `config/skills/` または `antigravity-cli/skills/` 配下の各ディレクトリの `SKILL.md`。`antigravity-cli/skills/` 直下の `.md` |
-| Agents | `config/agents/` 直下の `.md` |
+| Agents | `config/agents/` 直下の `.md`。`config/agents/` 配下の各ディレクトリの `agent.md` |
 | MCP | `config/mcp_config.json` |
 | Hooks | `config/hooks.json` と `antigravity-cli/settings.json` |
 | Permissions / settings | `antigravity-cli/settings.json` |

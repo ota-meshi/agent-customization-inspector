@@ -22,6 +22,10 @@ import {
 import { AntigravityCompiledInstructionRule } from '../../../src/server/inspection/rules/instructions/antigravity';
 import { AntigravityCompiledAgentRule } from '../../../src/server/inspection/rules/agents/antigravity';
 import {
+  AntigravityCompiledFileSkillRule,
+  AntigravityCompiledSkillRule,
+} from '../../../src/server/inspection/rules/skills/antigravity';
+import {
   AntigravityCompiledInlineHookRule,
   AntigravityCompiledStandaloneHookRule,
 } from '../../../src/server/inspection/rules/hooks/antigravity';
@@ -43,6 +47,7 @@ beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), 'inspector-antigravity-metadata-'));
   mkdirSync(join(root, '.agents/skills/release-notes'), { recursive: true });
   mkdirSync(join(root, '.agents/agents'), { recursive: true });
+  mkdirSync(join(root, 'antigravity-cli/skills/release-notes'), { recursive: true });
 });
 
 afterAll(() => {
@@ -385,13 +390,56 @@ describe('the custom agent and the settings document’s policy (T021, T040)', (
 });
 
 describe('the Global units the consented home scan executes (T040)', () => {
-  it('compiles the home’s skill rule to the shape each of its roots holds', () => {
-    // One rule, three selectors: the terminal's own folder and flat file, and
-    // the shared configuration directory's folder. The row unit follows the
-    // rule rather than the path, so the home's flat skill is a file row.
-    const compiled = globalRule('antigravity.global.skill');
-    expect(compiled.kind).toBe('skill');
-    expect(compiled.plan.selectors).toHaveLength(3);
+  it('compiles the home’s two skill shapes to the two units their rows are', async () => {
+    // Two rules at the consented home for the reason the workspace has two:
+    // the row units differ, and the unit is the rule's own declared fact. A
+    // single rule carrying all three selectors gave the flat file the folder's
+    // unit, so `antigravity-cli/skills/refactor.md` and `triage.md` resolved to
+    // one row named after the directory they share and the census published
+    // every other file in it — a `notes.txt` beside them included — as one
+    // skill's companions (spec.md § FR-004).
+    const directory = globalRule('antigravity.global.skill.directory');
+    expect(directory).toBeInstanceOf(AntigravityCompiledSkillRule);
+    expect(directory.kind).toBe('skill');
+    // The terminal's own root and the shared configuration directory's, both
+    // folder-shaped.
+    expect(directory.plan.selectors).toHaveLength(2);
+
+    const file = globalRule('antigravity.global.skill.file');
+    expect(file).toBeInstanceOf(AntigravityCompiledFileSkillRule);
+    expect(file.kind).toBe('skill');
+    expect(file.plan.selectors).toHaveLength(1);
+
+    const flat = await recognizeCandidateForVendors(
+      {
+        matchedPath: 'antigravity-cli/skills/refactor.md',
+        absolutePath: join(root, 'antigravity-cli/skills/refactor.md'),
+        sourceRoot: root,
+        admissions: [{ compiled: file, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText: '---\nname: refactor\n---\n\nExtract the function.\n',
+      },
+      ['antigravity'],
+    );
+    expect(
+      flat.recognitions[0]?.details.kind === 'skill' && flat.recognitions[0].details.rowUnit,
+    ).toBe('file');
+    // Nothing is enumerated for it, so the files beside it stay other rows.
+    expect(flat.directories).toEqual([]);
+
+    const folder = await recognizeCandidateForVendors(
+      {
+        matchedPath: 'antigravity-cli/skills/release-notes/SKILL.md',
+        absolutePath: join(root, 'antigravity-cli/skills/release-notes/SKILL.md'),
+        sourceRoot: root,
+        admissions: [{ compiled: directory, origin: { planIndex: 0, selectorIndex: 0 } }],
+        sourceText: '---\nname: notes\n---\n\nGroup by area.\n',
+      },
+      ['antigravity'],
+    );
+    expect(
+      folder.recognitions[0]?.details.kind === 'skill' && folder.recognitions[0].details.rowUnit,
+    ).toBe('directory');
+    expect(folder.directories).toEqual(['antigravity-cli/skills/release-notes/']);
   });
 
   it('compiles one unit per Global carrier, each answering its own kind', () => {
@@ -401,7 +449,17 @@ describe('the Global units the consented home scan executes (T040)', () => {
     // `config/hooks.json` and a workspace `.agents/hooks.json` publish the
     // same declarations.
     expect(globalRule('antigravity.global.mcp')).toBeInstanceOf(AntigravityCompiledMcpCarrierRule);
-    expect(globalRule('antigravity.global.agent')).toBeInstanceOf(AntigravityCompiledAgentRule);
+    // Both custom-agent shapes, which the vendor's subagents page gives for
+    // the user tier as it gives them for the workspace: one file below
+    // `config/agents/`, and an `agent.md` inside its own directory there.
+    // Admitting only the first left a reader's folder-shaped global agent off
+    // every list while its workspace twin was listed.
+    expect(globalRule('antigravity.global.agent.file')).toBeInstanceOf(
+      AntigravityCompiledAgentRule,
+    );
+    expect(globalRule('antigravity.global.agent.directory')).toBeInstanceOf(
+      AntigravityCompiledAgentRule,
+    );
     expect(globalRule('antigravity.global.permissions')).toBeInstanceOf(
       AntigravityCompiledPermissionsCarrierRule,
     );

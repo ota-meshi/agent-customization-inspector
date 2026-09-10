@@ -441,6 +441,26 @@ describe('hook declaration JSON serialization (T908)', () => {
     expect(Object.keys(document)).toEqual(['audit-writes', 'lint-on-write']);
   });
 
+  it('keeps a hook or an event a carrier named `__proto__`', () => {
+    // An authored name is a key like any other. Assigning it into an object
+    // literal would run `Object.prototype`'s own setter instead of creating
+    // the property, so the declaration would leave the document with no trace
+    // of itself while the detail still showed it (FR-007). The name reaches
+    // the document as written, and the value under it is the declaration's.
+    const named = JSON.parse(
+      canonicalHookEventJsonText([
+        { event: 'PostToolUse', namedHook: { name: '__proto__', fields: [] }, groups: [] },
+      ]),
+    );
+    expect(Object.hasOwn(named, '__proto__')).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(named, '__proto__')?.value).toEqual({
+      PostToolUse: [],
+    });
+    // The same for a format with no hook level, whose key is the event.
+    const unnamed = JSON.parse(canonicalHookEventJsonText([event('__proto__', [text('always')])]));
+    expect(Object.getOwnPropertyDescriptor(unnamed, '__proto__')?.value).toEqual(['always']);
+  });
+
   it('keeps a malformed group as authored, and an eventless declaration an empty list', () => {
     // A group that is not an object at all is published as the scalar it is:
     // a reader comparing their own files needs it shown rather than dropped

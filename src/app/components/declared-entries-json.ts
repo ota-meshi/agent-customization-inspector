@@ -154,23 +154,33 @@ export function declaredEntriesJsonText(fields: readonly DeclaredEntryDto[]): st
 export function canonicalHookEventJsonText(
   declarations: readonly HookEventDeclarationDto[],
 ): string {
-  const document: Record<string, unknown> = {};
   const ordered = declarations.toSorted((a, b) => {
     const left = a.namedHook?.name ?? '';
     const right = b.namedHook?.name ?? '';
     return left < right ? -1 : left > right ? 1 : 0;
   });
-  for (const declaration of ordered) {
-    const groups = declaration.groups.map((group) => jsonValue(group, true));
-    if (declaration.namedHook === null) {
-      document[declaration.event] = groups;
-      continue;
-    }
-    document[declaration.namedHook.name] = {
-      ...objectOf(declaration.namedHook.fields.toSorted(compareKeyText), true),
-      [declaration.event]: groups,
-    };
-  }
+  // Built through `Object.fromEntries`, as every object here is, because the
+  // keys are authored: a carrier may name a hook — or an event — `__proto__`,
+  // and `document[name] = value` on an ordinary object runs
+  // `Object.prototype`'s setter instead of creating that property, so the
+  // declaration would leave the document with no trace of itself while the
+  // detail still showed it (FR-007). `Object.fromEntries` and a computed key
+  // in an object literal both define an own property, so the name survives
+  // whatever it is.
+  const document = Object.fromEntries(
+    ordered.map((declaration) => {
+      const groups = declaration.groups.map((group) => jsonValue(group, true));
+      return declaration.namedHook === null
+        ? ([declaration.event, groups] as const)
+        : ([
+            declaration.namedHook.name,
+            {
+              ...objectOf(declaration.namedHook.fields.toSorted(compareKeyText), true),
+              [declaration.event]: groups,
+            },
+          ] as const);
+    }),
+  );
   return JSON.stringify(document, null, 2);
 }
 

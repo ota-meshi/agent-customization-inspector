@@ -1318,9 +1318,15 @@ function unionOfHookReadings(
       continue;
     }
     for (const event of reading.details.events) {
-      // U+0000 joins the halves: no declared name contains it, so two
-      // declarations never collide by concatenation.
-      const key = `${event.namedHook?.name ?? ''}\u0000${event.event}`;
+      // The pair serialized rather than concatenated: a carrier's JSON spells
+      // a hook name with whatever characters its author wrote, a separator's
+      // own among them, so `("a", "b\u0000PostToolUse")` and
+      // `("a\u0000b", "PostToolUse")` would join to one key and the second
+      // declaration would vanish here while the inventory still counted both.
+      // `JSON.stringify` escapes what a name holds, so two different pairs
+      // are two different keys. `null` for a format with no hook level keeps
+      // it apart from a hook whose author named it the empty string.
+      const key = JSON.stringify([event.namedHook?.name ?? null, event.event]);
       if (!byDeclaration.has(key)) {
         byDeclaration.set(key, event);
       }

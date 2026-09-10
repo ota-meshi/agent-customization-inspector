@@ -769,6 +769,22 @@ export function buildGlobalHomeFixture(
       '',
     ].join('\n'),
   );
+  // The folder-shaped custom agent, the second spelling the subagents page
+  // gives for this same directory: the agent is the directory and `agent.md`
+  // is its entry point.
+  write(
+    homes.antigravity,
+    'config/agents/triage/agent.md',
+    [
+      '---',
+      'name: triage',
+      'description: Sorts new issues into the areas that own them.',
+      '---',
+      '',
+      'Read the issue and name the area that owns it, with the reason.',
+      '',
+    ].join('\n'),
+  );
   // A skill in the shared configuration directory, which this vendor walks
   // beside its own (contracts/vendors/antigravity-cli.md § Known uncertainties
   // item 6).
@@ -841,8 +857,9 @@ export function buildGlobalHomeFixture(
     ].join('\n'),
   );
   // Near misses inside admitted directories: a skill folder with no
-  // `SKILL.md`, a nested custom agent the page's one-level lookup does not
-  // reach, and a second level below the terminal's own skills directory.
+  // `SKILL.md`, a custom-agent directory whose file is not the `agent.md` the
+  // page names as the entry point, and a second level below the terminal's own
+  // skills directory.
   write(homes.antigravity, 'config/skills/README.md', '# personal skills live here\n');
   write(homes.antigravity, 'config/agents/archive/old.md', '---\nname: old\n---\n');
   write(
@@ -934,6 +951,7 @@ export function buildGlobalHomeFixture(
       // beside that entry point is published beside it (FR-024).
       'antigravity-cli/skills/release-notes/examples/sample.md',
       'config/agents/reviewer.md',
+      'config/agents/triage/agent.md',
       'config/hooks.json',
       'config/mcp_config.json',
       'config/skills/changelog/SKILL.md',

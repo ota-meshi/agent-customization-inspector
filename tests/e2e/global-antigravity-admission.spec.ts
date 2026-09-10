@@ -123,6 +123,21 @@ test('publishes every contracted Antigravity CLI kind from the one confirmation'
   await expect(panel).toContainText('changelog');
   await expect(panel).toContainText('refactor');
   await expect(panel).toContainText('release-notes');
+
+  // The two shapes stay two row units here as they do in a workspace: the flat
+  // file occupies no directory, so its detail is the skill alone and the files
+  // beside it in `antigravity-cli/skills/` are other rows rather than its
+  // companions (spec.md § FR-004). A single rule carrying both shapes gave
+  // this file the folder's unit, and its page then listed every file in the
+  // directory it shares.
+  await panel.getByRole('link', { name: 'refactor' }).first().click();
+  await expect(page.locator('.aci-skill-detail h2')).toHaveText(
+    'antigravity-cli/skills/refactor.md',
+  );
+  await expect(page.getByRole('tab', { name: /^files/iu })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Files in this skill' })).toHaveCount(0);
+  await page.goBack();
+  await page.getByRole('tab', { name: /^Skill/u }).click();
   // The shared agent home's skill names the two products that document that
   // location; this vendor is not one of them (FR-045).
   const shared = panel.locator('.aci-item').filter({ hasText: 'pathfinder' });
@@ -130,9 +145,12 @@ test('publishes every contracted Antigravity CLI kind from the one confirmation'
   await expect(shared).toContainText('GitHub Copilot');
   await expect(shared).not.toContainText('Antigravity CLI');
 
-  // The global custom agent; the nested archive stays a near miss.
+  // The global custom agents in both admitted shapes — the file directly below
+  // `config/agents/` and the `agent.md` inside its own directory there — while
+  // a directory whose file is not that entry point stays a near miss.
   await page.getByRole('tab', { name: /^Agent/u }).click();
   await expect(panel).toContainText('reviewer');
+  await expect(panel).toContainText('triage');
   await expect(panel).not.toContainText('config/agents/archive/old.md');
 
   // The settings document's permission policy, one row for the file.

@@ -436,11 +436,13 @@ const eventBlocks = computed(() => {
       value: { kind: 'sequence', items: event.groups },
     };
     return {
-      // U+0000 joins the halves, as every composite key here does: no declared
-      // name contains it, so two sections never collide by concatenation. The
-      // event alone collided exactly when one carrier named two hooks that
-      // declare it.
-      key: `${event.namedHook?.name ?? ''}\u0000${event.event}`,
+      // The pair serialized rather than concatenated, because both halves are
+      // authored: a carrier's JSON may spell a hook name holding the
+      // separator, and two sections that joined to one key would render as
+      // one. The event alone collided exactly when one carrier named two
+      // hooks that declare it. `JSON.stringify` escapes what a name holds, so
+      // two different pairs are two different keys.
+      key: JSON.stringify([event.namedHook?.name ?? null, event.event]),
       // The declared event as the block's heading and its links need it, which
       // is the same unit the page's own heading reads ({@link AuthoredName}).
       name: new AuthoredName(event.event),

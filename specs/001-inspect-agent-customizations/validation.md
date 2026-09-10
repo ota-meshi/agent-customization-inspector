@@ -142,6 +142,15 @@ of the all-kind fixture, whose legend now carries this release's four products a
 `changelog` comparison — the `.agents/skills/` and `.github/skills/` copies — whose
 recognition table has an Antigravity CLI row.
 
+**The review pass ran the gates again on 2026-09-11**: `pnpm run test:docs` 42,
+`pnpm run test:unit` 1288, `pnpm run test:contract` 411, `pnpm run test:integration` 277,
+`pnpm run test:security` 5, and `pnpm run test:package` 53 tests, all passing on this host,
+with `pnpm run format:check`, `pnpm run lint`, and `pnpm run typecheck` clean. What moved the
+two counts is the pass's own coverage: the two shipped skill shapes at the consented home now
+compile to the two units their rows are, and a hook carrier's two declarations stay two
+whatever their author named them. The browser half is recorded under Outcome-manifest
+criteria, where the fixture change that made it necessary is.
+
 **The CLI's accepted-batch failure now propagates**, which is what
 `tests/integration/cli-global-batch-failure.test.ts` had been failing on: `runGlobalEnable`
 takes the disposition its caller needs, so the confirmation the consent page sends retains a
@@ -670,7 +679,7 @@ the vendor's own glyph.
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 5**, canonical
-SHA-256 `631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`, recorded in
+SHA-256 `6b9477725b2ebf6b0bdbdf47b0b2f7b3bdf29012af59c8a5227fb17f905b9d37`, recorded in
 `tests/fixtures/outcomes/manifest.sha256`. Version 5 is the Antigravity CLI denominator
 (specs/003-antigravity-cli-support T063): eight `(Antigravity CLI, kind)` rows each for
 SC-003 and SC-005 — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
@@ -684,8 +693,31 @@ advances the version from 4 rather than keeping it under a fixture-byte change. 
 transition was reviewed by this session, an agent-driven review (AGENTS.md § Evidence before
 conclusions): what it compared is the shipped registry's `(tool, kind)` rows against the
 case IDs, which `tests/contract/outcome-fixture-manifest.test.ts` gates. Its 118 cases were
-executed on 2026-09-10 on this host: the Antigravity CLI cases through the Chromium project
-over the seven new specs they name — `antigravity-skills-detail`, `antigravity-mcp-detail`,
+executed on 2026-09-11 on this host: the vitest cases through the gate scripts recorded under
+Release gate execution, and the browser cases through the Chromium project over the specs the
+set's fixtures reach — `global-antigravity-admission`, `antigravity-custom-agents-detail`,
+`antigravity-skills-detail`, `global-consent-preview`, `global-claude-admission`,
+`detail-navigation`, `inventory-rows`, `inventory-return`, `repository-complete-inventory`,
+`repository-complete-comparison`, `skills-inventory`, `skills-comparison`,
+`skill-metadata-comparison`, `comparison-layout`, `discovery`, `source-type`,
+`accessibility`, `hooks-comparison`, and `hooks-inventory`, 158 cases, all passing. The
+browser specs those fixtures cannot reach were not re-run for this set. The
+contract suite reproduced the canonical digest and all 73 fixture digests in the same run.
+
+**Fixture-byte changes are what made this a new set**, at the same version: the denominator is
+untouched — the same 118 cases, the same required classes — while two builders gained a file.
+`tests/fixtures/global-homes/build-fixtures.ts` gained the folder-shaped global custom agent
+`config/agents/triage/agent.md`, the second spelling the vendor's subagents page gives for that
+directory and one this release admits; `tests/fixtures/repositories/build-fixtures.ts` gained
+`.agents/skills/summarize.md`, a flat skill whose frontmatter block is not YAML, so the
+launchable fixture shows what a file-shaped skill's page holds when its extraction fails.
+Both builders' digests and the canonical digest above were re-recorded together, which is what
+a fixture-byte change requires and all it authorizes.
+
+The set before it carried the same 118 cases under canonical SHA-256
+`631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`, executed on 2026-09-10 on
+this host: the Antigravity CLI cases through the Chromium project over the seven new specs they
+name — `antigravity-skills-detail`, `antigravity-mcp-detail`,
 `antigravity-custom-agents-detail`, `antigravity-instructions-detail`,
 `antigravity-rules-detail`, `antigravity-hooks-detail`, and `antigravity-settings-detail` —
 together with `global-antigravity-admission`, and over the existing specs whose fixtures the
@@ -695,9 +727,7 @@ fourth recognition changed (`codex-skills-detail`, `copilot-instructions-invento
 `instructions-inventory`, `skills-comparison`, `skill-metadata-comparison`,
 `skills-inventory`, `inventory-rows`, `hooks-comparison`, `hooks-inventory`, and the
 `global-*` admission and consent specs); the vitest cases through the gate scripts recorded
-under Release gate execution. The browser specs not reached by this change were not re-run
-for this set. The contract suite reproduced the canonical digest and all 73 fixture digests
-in the same run.
+under Release gate execution.
 
 An earlier set was `tests/fixtures/outcomes/manifest.json` **version 3**, canonical SHA-256
 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`. Its 99 cases were

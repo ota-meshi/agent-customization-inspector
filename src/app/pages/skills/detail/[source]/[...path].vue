@@ -783,6 +783,16 @@ watch(
     // marking while the panel holding that file stayed hidden. Selecting one
     // inside the panel is already there, so this moves nobody who clicked.
     //
+    // A skill with no directory of its own has no files panel to select
+    // (FR-004): its one panel is the skill itself, standalone. Selecting a
+    // panel nothing renders left the page with no panel at all and no strip
+    // to come back with — and took the attributes line with it, which is
+    // drawn only while the skill panel is the active one, so the file's read
+    // outcome, its recognitions, and the command that opens it went too.
+    if (!hasDirectory.value) {
+      subjectTabs.select('skill');
+      return;
+    }
     // A failed extraction is the same answer for a different reason: the skill
     // panel has nothing in it — no declarations and no instructions — while the
     // complete source is one tab away, and opening on an empty panel would read
@@ -1075,7 +1085,15 @@ watch(
            selected file's own path and facts on the viewer's line above it,
            and this line states the `SKILL.md`'s: with both on screen a reader
            selecting a companion read two sizes stacked and could not tell
-           which one the page was about. -->
+           which one the page was about.
+
+           A skill with no directory has no files tab, so its panel is the one
+           in view for the page's whole life and this line is always drawn —
+           the flat shape loses no read outcome, no recognition, and no command
+           that opens the file. What the condition needs is the guard beside
+           `subjectTabs` above, which keeps a panel nothing renders from being
+           selected; without it a flat skill whose extraction failed selected
+           the absent files tab and took this line with it. -->
       <DetailAttributes
         v-if="subjectTabs.activeTab === 'skill'"
         :file="entryDetail.file"
@@ -1242,6 +1260,23 @@ watch(
             content-label="Instructions of"
           />
         </div>
+
+        <!-- The file's own text, which every other single-file detail shows
+             under this same label and on this same condition — readable, never
+             parsed successfully (`rules`, `instructions`, `prompts and
+             commands`, `output styles`, and four more). A skill with a
+             directory already has it in the files tab, where the tree decides
+             which file it is; a skill without one has no such tab, so showing
+             it only when the extraction failed would make this the one page
+             that takes the source away from a reader whose file is fine.
+             Only the readable variants carry text, and an unreadable file's
+             diagnostic above says why it has none. -->
+        <SourceViewer
+          v-if="!hasDirectory && isReadableFile(entryDetail.file)"
+          panel-label="Source"
+          :source-text="entryDetail.file.sourceText"
+          :source-relative-path="entryDetail.file.sourceRelativePath"
+        />
       </SubjectTabPanel>
 
       <SubjectTabPanel v-if="hasDirectory" :tabs="subjectTabs" tab="files">

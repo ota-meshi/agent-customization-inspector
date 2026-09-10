@@ -117,7 +117,7 @@ the Antigravity editor, and `antigravity-cli/` is the terminal's own.
 | --- | --- |
 | Instructions | `GEMINI.md` |
 | Skills | `SKILL.md` in each directory under `config/skills/` or `antigravity-cli/skills/`; any `.md` file directly in `antigravity-cli/skills/` |
-| Agents | any `.md` file directly in `config/agents/` |
+| Agents | any `.md` file directly in `config/agents/`; `agent.md` in each directory under `config/agents/` |
 | MCP | `config/mcp_config.json` |
 | Hooks | `config/hooks.json` and `antigravity-cli/settings.json` |
 | Permissions, settings | `antigravity-cli/settings.json` |
