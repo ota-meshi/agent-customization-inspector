@@ -1436,9 +1436,9 @@ describe('Claude command recognition (T442)', () => {
   }
 
   it('recognizes the admitted file as the command kind with the parse it shares', async () => {
-    // A command file carries a skill's frontmatter keys, so the shared
+    // A command file carries a skill's metadata keys, so the shared
     // Markdown extraction is what the recognition publishes — the same one
-    // parse both other frontmatter-led kinds read.
+    // parse both other metadata-led kinds read.
     const recognitions = await recognizeClaudeCommand(
       '.claude/commands/deploy.md',
       '---\ndescription: Deploy the current branch\nmodel: opus\n---\n\n# Deploy\n',
@@ -1449,11 +1449,11 @@ describe('Claude command recognition (T442)', () => {
       tool: 'claude',
       details: {
         kind: 'prompt/command',
-        frontmatter: [
+        metadata: [
           { key: 'description', value: { kind: 'scalar', text: 'Deploy the current branch' } },
           { key: 'model', value: { kind: 'scalar', text: 'opus' } },
         ],
-        bodyText: '\n# Deploy\n',
+        promptText: '\n# Deploy\n',
       },
       parseStatus: 'parsed',
       diagnosticIds: [],
@@ -1473,10 +1473,10 @@ describe('Claude command recognition (T442)', () => {
     const details = recognitions[0]!.details;
     expect(details).toMatchObject({ kind: 'prompt/command', invocationName: 'frontend:component' });
     expect(Object.keys(details).toSorted()).toEqual([
-      'bodyText',
-      'frontmatter',
       'invocationName',
       'kind',
+      'metadata',
+      'promptText',
     ]);
   });
 
@@ -1494,7 +1494,7 @@ describe('Claude command recognition (T442)', () => {
     );
     expect(recognitions[0]).toMatchObject({
       parseStatus: 'failed',
-      details: { invocationName: 'team:review:security', frontmatter: [], bodyText: '' },
+      details: { invocationName: 'team:review:security', metadata: [], promptText: '' },
     });
   });
 
@@ -1517,7 +1517,7 @@ describe('Claude command recognition (T442)', () => {
     );
     expect(recognitions).toHaveLength(1);
     expect(recognitions[0]).toMatchObject({
-      details: { kind: 'prompt/command', frontmatter: [], bodyText: '' },
+      details: { kind: 'prompt/command', metadata: [], promptText: '' },
       parseStatus: 'failed',
     });
   });
@@ -1563,7 +1563,7 @@ describe('Copilot command recognition (T459)', () => {
       details: {
         kind: 'prompt/command',
         invocationName: 'deploy',
-        frontmatter: [
+        metadata: [
           { key: 'description', value: { kind: 'scalar', text: 'Deploy the current branch' } },
         ],
       },
@@ -1604,7 +1604,7 @@ describe('Copilot command recognition (T459)', () => {
     expect(copilot).toHaveLength(1);
     expect(copilot[0]).toMatchObject({
       tool: 'copilot',
-      details: { invocationName: 'deploy', bodyText: '\n# Deploy\n' },
+      details: { invocationName: 'deploy', promptText: '\n# Deploy\n' },
     });
     // Each recognition keeps only its own product's admission: a provenance
     // says which rule authorized this product's read, never another's.
@@ -1642,7 +1642,7 @@ describe('Copilot prompt recognition (T488)', () => {
       details: {
         kind: 'prompt/command',
         invocationName: 'scaffold-component',
-        bodyText: '\n# Scaffold\n',
+        promptText: '\n# Scaffold\n',
       },
       parseStatus: 'parsed',
     });
@@ -1669,7 +1669,7 @@ describe('Copilot prompt recognition (T488)', () => {
     );
     expect(recognitions[0]).toMatchObject({
       parseStatus: 'failed',
-      details: { invocationName: 'broken', frontmatter: [], bodyText: '' },
+      details: { invocationName: 'broken', metadata: [], promptText: '' },
     });
   });
 

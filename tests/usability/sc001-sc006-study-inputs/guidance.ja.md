@@ -17,7 +17,7 @@ npx --no-install agent-customization-inspector --no-open
 
 ## 表示されるもの
 
-1ページに、そのディレクトリで Claude Code、GitHub Copilot、OpenAI Codex が探すカスタマイズ
+1ページに、そのディレクトリで Claude Code、GitHub Copilot、OpenAI Codex、Gemini CLI が探すカスタマイズ
 ファイルが並びます。
 
 左に種類と件数が並びます。種類を選ぶと、その行が右に出ます。1行が何を指すかは種類によります。

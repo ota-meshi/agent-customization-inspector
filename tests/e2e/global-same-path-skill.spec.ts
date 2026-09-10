@@ -19,7 +19,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The base holding the four member homes and the HOME the fourth derives from. */
+/** The base holding the member homes and the HOME the shared agent home and the Gemini CLI home derive from. */
 let base: string;
 
 let host: LaunchedHost;
@@ -42,7 +42,9 @@ test.beforeAll(async () => {
       'utf8',
     );
   }
-  // The other two members admit readable empty homes, so all four commit.
+  // Two more members admit readable empty homes; the Gemini CLI home derives
+  // from this `HOME` and does not exist there, so it states that rather than
+  // committing.
   mkdirSync(join(base, 'claude-home'), { recursive: true });
   mkdirSync(join(base, 'codex-home'), { recursive: true });
   host = await launchHost(

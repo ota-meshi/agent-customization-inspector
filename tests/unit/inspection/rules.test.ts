@@ -61,6 +61,8 @@ import {
   type PriorityMcpFixture,
   type CopilotInstructionFixture,
   type CopilotSkillFixture,
+  buildGeminiSettingsFixture,
+  type GeminiSettingsFixture,
 } from '../../fixtures/repositories/build-fixtures';
 
 import {
@@ -80,6 +82,7 @@ import {
 } from '../../../src/server/inspection/rules/plugins/claude';
 import { ClaudeCompiledSettingsHookRule } from '../../../src/server/inspection/rules/hooks/claude';
 import { COPILOT_REPOSITORY_RULES } from '../../../src/server/inspection/rules/copilot';
+import { GEMINI_REPOSITORY_RULES } from '../../../src/server/inspection/rules/gemini';
 import { CopilotCompiledPluginCatalogRule } from '../../../src/server/inspection/rules/plugins/copilot';
 import {
   CopilotCompiledSettingsHookRule,
@@ -948,6 +951,48 @@ describe('the anchored Codex MCP carrier inventory (T282)', () => {
     // Scanned alone, the rule admits exactly the root layer and nothing else:
     // no descendant, no spelling variant, no configured target.
     expect(result.files.map((file) => file.publicPath)).toEqual([mcpFixture.carrierPath]);
+  });
+});
+
+describe('the anchored Gemini CLI settings carrier (specs/002 T020)', () => {
+  let settingsFixture: GeminiSettingsFixture;
+
+  beforeAll(() => {
+    settingsFixture = buildGeminiSettingsFixture('inspector-gemini-settings-rules');
+  });
+
+  afterAll(() => {
+    rmSync(settingsFixture.root, { recursive: true, force: true });
+  });
+
+  it('admits the carrier once from all three of its rules, with one read', async () => {
+    const result = await scanWith(settingsFixture.root, GEMINI_REPOSITORY_RULES);
+    const carrier = result.files.find((file) => file.publicPath === settingsFixture.carrierPath);
+    expect(carrier).toBeDefined();
+    // Three admissions, one candidate: the settings document, the MCP carrier
+    // its `mcpServers` map makes it, and the hook carrier its `hooks` object
+    // makes it — recognized as `.claude/settings.json` and `.codex/config.toml`
+    // are, over one read (spec.md FR-002, FR-009).
+    expect(
+      resolveAdmittingRules(GEMINI_REPOSITORY_RULES, carrier!.admissions)
+        .map((admitted) => admitted.rule.ruleId)
+        .toSorted(),
+    ).toEqual(['gemini.repo.hooks', 'gemini.repo.mcp', 'gemini.repo.settings']);
+    const opened = vi.mocked(fsIo.readFile).mock.calls.map((call) =>
+      String(call[0])
+        .slice(settingsFixture.root.length + 1)
+        .split(sep)
+        .join('/'),
+    );
+    expect(opened.filter((path) => path === settingsFixture.carrierPath)).toHaveLength(1);
+    // The nested layer, the named hook script, the environment file, the
+    // workspace policy tier the vendor documents as not loaded, and every
+    // spelling variant are admitted by nothing and opened by nothing.
+    const paths = new Set(result.files.map((file) => file.publicPath));
+    for (const nearMiss of settingsFixture.nearMissPaths) {
+      expect(paths.has(nearMiss), nearMiss).toBe(false);
+      expect(opened, nearMiss).not.toContain(nearMiss);
+    }
   });
 });
 
@@ -2732,7 +2777,7 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
     }
   });
 
-  it('ships MCP candidacy only through the seven explicit carrier rules', () => {
+  it('ships MCP candidacy only through the nine explicit carrier rules', () => {
     // Zero candidate rules from contained or runtime MCP facts: the closed
     // MCP rule set is the explicit carriers' — five Repository documents and
     // the two consented user carriers, Copilot's `mcp-config.json` (FR-015)
@@ -2749,6 +2794,8 @@ describe('the priority cross-vendor MCP matcher matrix (T390)', () => {
       'copilot.repo.mcp',
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
+      'gemini.global.mcp',
+      'gemini.repo.mcp',
     ]);
     // An agent rule ships now, so the claim is stated where it can still be
     // wrong: no rule of the agent kind rests on an MCP behavior or is
@@ -4234,6 +4281,9 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
     if (segments[0] === '.github') {
       return ['copilot'];
     }
+    if (segments[0] === '.gemini') {
+      return ['gemini'];
+    }
     return segments.length === 3 ? ['claude', 'copilot'] : ['claude'];
   }
 
@@ -4251,7 +4301,7 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
       publication.recognitions.filter((recognition) => recognition.details.kind === 'agent'),
       (recognition) => recognition.sourceRelativePath,
     );
-    // The three trees are all present, so the matrix is a matrix rather than
+    // The four trees are all present, so the matrix is a matrix rather than
     // one vendor's inventory read twice.
     const directories = new Set(
       [...agentsByPath.keys()].map((path) => path.split('/').slice(0, 2).join('/')),
@@ -4259,6 +4309,7 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
     expect([...directories].toSorted()).toEqual([
       '.claude/agents',
       '.codex/agents',
+      '.gemini/agents',
       '.github/agents',
     ]);
     for (const [sourceRelativePath, recognitions] of agentsByPath) {
@@ -4280,9 +4331,14 @@ describe('the unified custom-agent recognition matrix (T567)', () => {
       throw new Error(`expected a publishable scan, got ${publication.kind}`);
     }
     // An MCP declaration's home is an explicit carrier, so a file in any of
-    // the three agents directories is never an MCP row's owner — however it
+    // the four agents directories is never an MCP row's owner — however it
     // spells one (data-model.md § Inventory unit).
-    const agentDirectories = ['.codex/agents/', '.claude/agents/', '.github/agents/'];
+    const agentDirectories = [
+      '.codex/agents/',
+      '.claude/agents/',
+      '.gemini/agents/',
+      '.github/agents/',
+    ];
     for (const recognition of publication.recognitions) {
       if (recognition.details.kind !== 'MCP') {
         continue;

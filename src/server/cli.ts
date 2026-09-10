@@ -184,7 +184,7 @@ const command = define({
     if (ctx.values['inspect-personal-setup']) {
       // The flag is the confirmation. It states, in the command the reader
       // typed, the same thing the consent page's checkbox states: read the
-      // customization files the allowlist names below the four member
+      // customization files the allowlist names below the five member
       // directories, and nothing else in them (FR-013, FR-015 through
       // FR-018, FR-045). The preview is created from the retained startup
       // inputs and then confirmed, so what is read is decided by the same

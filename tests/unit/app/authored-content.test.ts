@@ -133,7 +133,7 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail('file-1', 'file-1');
+    await state.openFileDetail('file-1', 'file-1', undefined, 'repository', 'skill');
     expect(state.fileDetailState.value).toBe('ready');
     const file = state.entryDetail.value?.file;
     if (file?.encoding !== 'utf-8') {
@@ -304,7 +304,7 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail('file-1', 'file-1');
+    await state.openFileDetail('file-1', 'file-1', undefined, 'repository', 'skill');
     // A lost channel purges, and the content belongs to the session that is
     // gone — it is held in memory only and goes with it.
     state.reportChannelLost(new Error('socket closed'));
@@ -320,7 +320,7 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail('file-1', 'file-1');
+    await state.openFileDetail('file-1', 'file-1', undefined, 'repository', 'skill');
     state.closeFileDetail();
     expect(state.entryDetail.value).toBeNull();
     state.dispose();
@@ -341,7 +341,7 @@ describe('authored file content in the browser', () => {
       },
     });
     await state.start();
-    const opening = state.openFileDetail('file-1', 'file-1');
+    const opening = state.openFileDetail('file-1', 'file-1', undefined, 'repository', 'skill');
     state.closeFileDetail();
     detailResponse.reject(new Error('the host failed while the reader was leaving'));
     await opening;
@@ -372,7 +372,7 @@ describe('authored file content in the browser', () => {
       },
     });
     await state.start();
-    await state.openFileDetail('file-1', 'file-1');
+    await state.openFileDetail('file-1', 'file-1', undefined, 'repository', 'skill');
     expect(state.fileDetailState.value).toBe('ready');
     // The next adoption advances the sequence, so the ID this page holds names
     // a file that no longer exists.
@@ -388,7 +388,13 @@ describe('authored file content in the browser', () => {
     });
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail('from-an-older-generation', 'from-an-older-generation');
+    await state.openFileDetail(
+      'from-an-older-generation',
+      'from-an-older-generation',
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.fileDetailState.value).toBe('stale');
     expect(state.detailErrorMessage.value).toBeNull();
     state.dispose();
@@ -426,7 +432,7 @@ describe('authored file content in the browser', () => {
     const state = new SessionViewState({ channel });
     await state.start();
     hostGeneration = 2;
-    await state.openFileDetail('file-1', 'file-1');
+    await state.openFileDetail('file-1', 'file-1', undefined, 'repository', 'skill');
     // Nothing mixed rendered: the newer-generation response was withheld
     // rather than adopted.
     expect(state.entryDetail.value).toBeNull();

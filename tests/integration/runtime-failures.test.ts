@@ -538,7 +538,9 @@ describe('a domain operation that throws is the request’s, unchanged (T922)', 
     // A stale identity is answered, not thrown at: the file is not in this
     // generation, which is a fact the caller renders rather than a failure of
     // the request (contracts/http-api.md § get-file-detail).
-    expect(context.session.fileDetail('.agents/skills/gone/SKILL.md', 'repository')).toBeNull();
+    expect(
+      context.session.fileDetail('.agents/skills/gone/SKILL.md', 'repository', 'skill'),
+    ).toBeNull();
     expect(
       context.session.hookCarrierDetail('.agents/skills/gone/SKILL.md', 'repository'),
     ).toBeNull();

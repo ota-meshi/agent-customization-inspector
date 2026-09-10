@@ -1,12 +1,12 @@
-// T997: the selector-free fixed-four enablement, as a reader sees it
+// T997: the selector-free fixed-member enablement, as a reader sees it
 // (FR-013 through FR-018, FR-030, FR-045).
 //
 // One confirmation — here the `--inspect-personal-setup` flag, which is the
-// same confirmation the consent page's one checkbox states — admits all four
-// members with no per-member selection step, runs one shared batch, and
+// same confirmation the consent page's one checkbox states — admits every
+// member with no per-member selection step, runs one shared batch, and
 // publishes every admitted Source together in one Global generation:
 //
-//  - All four members appear simultaneously on the inventory page, each a
+//  - Every admitted member appears simultaneously on the inventory page, each a
 //    separately identified Source with its own escaped, inert boundary label,
 //    beside the untouched Repository results.
 //  - The Source-family filter narrows the inventory to one family and back.
@@ -29,7 +29,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The base holding the four member homes and the HOME the fourth derives from. */
+/** The base holding the member homes and the HOME the shared agent home and the Gemini CLI home derive from. */
 let base: string;
 
 /** The secret literal a consented home's file carries, shown exactly (FR-025). */
@@ -139,7 +139,7 @@ test.afterAll(async () => {
   await rm(base, { recursive: true, force: true });
 });
 
-test('publishes all four members together, each its own labelled Source', async ({ page }) => {
+test('publishes every admitted member together, each its own labelled Source', async ({ page }) => {
   await page.goto(host.origin);
   const main = page.locator('main');
   // The rail says from the list that the personal setup was read, and the
@@ -149,8 +149,10 @@ test('publishes all four members together, each its own labelled Source', async 
   await expect(page.getByRole('link', { name: 'Personal setup' })).toContainText('Inspected');
   await page.getByRole('link', { name: 'Personal setup' }).click();
   // The one confirmation published every member simultaneously: the panel lists
-  // all four, each with its escaped boundary label — a presentation, never a
-  // path — and its own status (FR-013, FR-045).
+  // each admitted one with its escaped boundary label — a presentation, never
+  // a path — and its own status (FR-013, FR-045). The Gemini CLI home derives
+  // from this fixture's `HOME` and does not exist there, so it is the member
+  // that states it could not be read rather than a Source.
   for (const member of ['Copilot home', 'Claude home', 'Codex home']) {
     await expect(main).toContainText(member);
   }

@@ -285,6 +285,26 @@ function acceptsComments({ tool, sourceRelativePath }: JsonDocumentContext): boo
       //   '/'`) or a trailing comma (`Expected double-quoted property name`)
       //   — called directly on that build's `runtime.node`, 2026-08-26.
       return false;
+    case 'gemini':
+      // Both carriers lenient, measured rather than documented: the vendor's
+      // own settings loader parses every settings file with
+      // `JSON.parse(stripJsonComments(content))`
+      // (`packages/cli/src/config/settings.ts` of google-gemini/gemini-cli,
+      // read 2026-09-09), while the configuration reference says nothing
+      // about comments. The two spellings are the one repository carrier and
+      // the one Global carrier a scan produces (`.gemini/settings.json` at the
+      // selected root; `settings.json` at the consented Gemini CLI boundary);
+      // the Global literal cannot collide with Copilot's `settings.json`
+      // above because the tool is part of this key.
+      //
+      // The vendor strips comments alone; the lenient reading here also blanks
+      // a trailing comma, so a file with one shows its declarations on a row
+      // whose product would reject it — the milder error the Copilot entries
+      // already accept, recorded here rather than given a third format
+      // (specs/002-gemini-cli-support/research.md § 6).
+      return (
+        sourceRelativePath === '.gemini/settings.json' || sourceRelativePath === 'settings.json'
+      );
     case 'claude':
       // Every carrier strict, one line each:
       //

@@ -494,7 +494,7 @@ staleness、duplicate-work、その他inspection-state checkより前にfenceを
 retained graph stateをleakせずfence conflictが常に優先する。
 
 各Sourceは正確に1つのrootを持つ。Repository Sourceはmemberを持たず、sessionはGlobal Sourceを
-0〜4個、`member: codex`、`member: claude`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
+0〜5個、`member: codex`、`member: claude`、`member: gemini`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
 boundaryとして表現しない。
 `repositoryGeneration`と`globalGeneration`は2つのsequenceがそれぞれ独立してcommitした
 generationであり、`globalGeneration`はGlobal inspectionがdisabledでGlobal sequenceが存在しない間
@@ -596,7 +596,7 @@ generation replacementはそのsequenceのscoped modelだけをdisposeする。G
 
 `globalControl`はGlobal consent/control stateがinactiveな場合だけnullとなる。それ以外では`state`が
 `active`または`disabling`となり、`previewId`がfrozen active previewを識別する。`confirmedTools`は
-常にfixed closed `[copilot, claude, codex, agents]` all-members consent setとする。Initial enableとretryの
+常にfixed closed `[copilot, claude, codex, gemini, agents]` all-members consent setとする。Initial enableとretryの
 validation/admissionはoperation-localのままとし、authority-freeな
 `globalEnableInProgress { kind, operationId, previewId }`だけを公開する。Initial enableでは
 `globalControl: null`を維持し、retryではresult-bound disposition 1件がatomic commitするまでexactな
@@ -642,21 +642,34 @@ Outcomes: fullまたはfenced DTO。
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters: fileのidentity全体を、functionの単一argumentであるobjectとして渡す。
-すなわちcommit済みSource-relative Pathと、それを保持するSourceである（FR-030）。
-Global commitが第2のSourceをpublishした後は、両者が1つのpathを保持しうるため、
-path単独ではどのfileも指さない。SourceはSource IDではなくselector — `repository`
-または`global-<member>` — で名指す。IDはそれをmintしたlaunchのものである一方、読み手が
-保存したlinkはそのlaunchより長く生きなければならないからである。Selectorの検証は
-他のdetail parameterと同じくresolutionであってfilesystem operandではないため、
-commit済みSourceのどれも名乗らないselectorはどこにも解決されず、未知のpathと同じ
-`stale-resource` rejectionになる。
+Parameters: fileのidentity全体と求めるkindを、functionの単一argumentであるobjectとして渡す。
+すなわちcommit済みSource-relative Path、それを保持するSource（FR-030）、そして呼び出し側が
+そのfileをどのkindの読みとして示すかである。Global commitが第2のSourceをpublishした後は、
+両者が1つのpathを保持しうるため、path単独ではどのfileも指さない。SourceはSource IDではなく
+selector — `repository`または`global-<member>` — で名指す。IDはそれをmintしたlaunchのもので
+ある一方、読み手が保存したlinkはそのlaunchより長く生きなければならないからである。Selectorの
+検証は他のdetail parameterと同じくresolutionであってfilesystem operandではないため、commit済み
+Sourceのどれも名乗らないselectorはどこにも解決されず、未知のpathと同じ`stale-resource`
+rejectionになる。kindは7つのfile主題のkind — `instructions`、`skill`、`agent`、
+`prompt/command`、`rule`、`output style`、`settings/config` — のいずれかで、求めるrouteの
+自身のkindである。1つのfileが2つのkindを持ちうる — `.claude/agents/CLAUDE.md`はdirectoryに
+よりClaudeのsubagentであり名前によりinstruction fileである。`.gemini/commands/build.toml`は
+Gemini CLIのcommandであり、`context.fileName`が`build.toml`を名指せばcontext fileでもある —
+そして各kindはそのfileを自身のsyntaxで読むため、fileを1つのkindとして示すpageは、hostが選ばざる
+を得ない他のkindのparseを受け取るのではなく、そのkindのparseを求める。kindの検証もresolution
+である: どのrecognitionのkindにも等しくない値はどのrecognitionにも一致せず、答えはplain file
+か、pathが無いときと同じrejectionになる。
 
 ```json
-{ "sourceRelativePath": ".claude/skills/deploy/SKILL.md", "source": "repository" }
+{
+  "sourceRelativePath": ".claude/skills/deploy/SKILL.md",
+  "source": "repository",
+  "kind": "skill"
+}
 ```
 
-Active-generation file detailを1件返す。fileをrecognitionが所有するかどうかで判別される。
+Active-generation file detailを1件返す。求めたkindのrecognitionがfileを所有するかどうかで
+判別される。
 
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
@@ -691,8 +704,11 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   └── diagnostics[]
 ├── kind 'prompt/command' — fileは認識されたcommand file:
 │   ├── file — 上と同じ
-│   ├── presentation — instructions variantと同じ: 同じscan時の1回のparseで、
-│   │   失敗時nullの規則も同じ（FR-028）
+│   ├── presentation — scan時の1回のparseをこのkindが表示する2つの半分に割ったもの。
+│   │   extractionがall-or-nothingで失敗したときに限りnull（FR-028）:
+│   │   ├── metadata[] { key, keyKind, value } — agent variantのmetadataが運ぶのと
+│   │   │   同じdeclared-entry shape。promptを持つ宣言を除くすべての宣言を、fileの順で
+│   │   └── promptText — fileが読み手のagentに与えるprompt
 │   └── diagnostics[]
 ├── kind 'rule' — fileは認識されたrule file:
 │   ├── file — 上と同じ
@@ -706,8 +722,9 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 ├── kind 'settings/config' — fileは認識されたsettingsまたはconfiguration file:
 │   ├── file — 上と同じ
 │   └── diagnostics[]
-└── kind 'file' — fileを所有するrecognitionが無い（censusだけが列挙したfile、
-    またはdiagnostic-onlyのcandidate）:
+└── kind 'file' — 求めたkindのrecognitionがfileを所有しない（censusだけが列挙した
+    file、diagnostic-onlyのcandidate、または他のkindのruleがadmitしたが求めたkindは
+    何も読み出さないfile）:
     ├── file — 上と同じ
     └── diagnostics[]
 ```
@@ -719,13 +736,15 @@ generationへ解決する: 絶対pathはhostのものであり、clientがSource
 detail responseは、pageが開けるものを何も渡さない。
 
 この木がresponseの形そのものである: clientは正確にこのfieldだけに依存できる。
-`prompt/command` variantが`presentation`を持つのは、prompt/command fileがskillと同じ
-frontmatter keyを取るためであり、そのdetailはfileが書いたdeclarationと、その後に続く
-promptから始まる。持たないのは、読み手が入力する名前である: これはdetailのfieldではなく
+`prompt/command` variantが独自のshapeの`presentation`を持つのは、`agent` variantと同じ理由で、
+分割点が常にfrontmatter blockとは限らないためである。Claude Code、Copilot、Codexのcommandは
+frontmatter fenceで分割されるMarkdownだが、Gemini CLIのcommandは`prompt` stringがpromptで残りのkeyが
+metadataであるTOMLなので、半分はそれが何であるかで名付ける — `metadata[]`と`promptText` — 。
+どのvendorの読み取りも同じ2 fieldを綴る。持たないのは、読み手が入力する名前である: これはdetailのfieldではなく
 ruleが答えるものであるため、inventoryの事実であり — 各`prompts[]` rowがgroup化される
 名前そのものであり — skillのinvocation nameが`skills[]`の事実であるのと同じで
 ある。名前を宣言したprompt fileも例外ではない: その宣言はfileが書いた他のkeyと同じく
-`presentation.frontmatter`にあり、ruleがそこから何を作ったかがrowの事実である。
+`presentation.metadata`にあり、ruleがそこから何を作ったかがrowの事実である。
 `agent` variantは独自のshapeの`presentation`を持つ。分割点が常にfrontmatter blockとは
 限らないためである: Codexのagentは、`developer_instructions`のstringがproseで、残りの
 top-level keyがconfigurationであるTOMLであり、Claudeのsubagentとcopilotのagent profileは
@@ -776,9 +795,9 @@ extractionは`(file, tool)`ごとになる。どの読み取りも同じshapeを
 どのtoolがこのfileを認識するか、各toolがそれを何として解決するか、そのparse stateはinventoryの
 事実であり、kindごとのinventoryがそれを運ぶ。skillのそれは`skills[].definitions[]`、
 instruction fileの認識toolはそのinventory row（`instructions[]`）、custom agentのそれは
-`agents[].definitions[]`でfileの隣に列挙される。どのkindのdetail routeもpathのみとする:
-1つのfileを読む2つのproductは同じbyteを読むため、toolごとのaddressは1つのdocumentに2つのURLを
-与えることになり、productが異なる点 — skillを呼び出す名前 — は、そのfileを抱えるrowから
+`agents[].definitions[]`でfileの隣に列挙される。どのkindのdetail routeもpathとそのkindであり、
+toolではない: 1つのfileを読む2つのproductは同じbyteを読むため、toolごとのaddressは1つのdocumentに
+2つのURLを与えることになり、productが異なる点 — skillを呼び出す名前 — は、そのfileを抱えるrowから
 pageがまとめて述べるためである。
 Admission recordも存在しない: どのruleがreadを認可しどこにmatchしたかは、commit済み
 generationの内部record（data-model.md § ToolRecognition）
@@ -800,7 +819,7 @@ formatであって、この製品ではない。
 keyである — ため、file間で宣言をmatchするclientは`key`単独ではなくこの組でmatchする。
 同じentry形は`keyKind`を含めて、nestした全`mapping` value内へ再帰する。
 
-Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。このfunctionが答えるのは主題がfile自身であるrowであるため、宣言を主題とするrowしか持たないpathは`FileDetail`を一切持たない: standaloneのMCP declaration carrier — MCP kindがrecognizeし、file主題のkindがclaimしないfile — は`get-mcp-carrier-detail`を通じて宣言を公開し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。file主題のrowも持つpathは、そのrowの下で答える。rowの主題こそがそのdetailの対象だからである（FR-007）: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名すると、そのcarrierはinstruction fileでもあり、instruction fileは完全なsourceを示すため、1つのpathが`get-mcp-carrier-detail`では宣言だけを、ここではdocument全体をserveする。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
+Readable fileでは`sourceText`を完全なdecoded sourceとし、書かれたとおりに保持する。このfunctionが答えるのは主題がfile自身であるrowであるため、宣言を主題とするrowしか持たないpathは`FileDetail`を一切持たない: standaloneのMCP declaration carrier — MCP kindがrecognizeし、file主題のkindがclaimしないfile — は`get-mcp-carrier-detail`を通じて宣言を公開し、自身のbyteは決して示さない（FR-007）。authored sourceをserveすることが目的のfunctionは、それを差し控えねばならないvariantを運ばない。そのpathをこのfunctionへrequestすると、このfunctionがdetailを保持しない他のあらゆるpathと同じ`stale-resource` rejectionに解決される。求めたkindのrowも持つpathは、そのrowの下で答える。rowの主題こそがそのdetailの対象だからである（FR-007）: Codexの`project_doc_fallback_filenames` entryが`.mcp.json`を指名すると、そのcarrierはinstruction fileでもあり、instruction fileは完全なsourceを示すため、1つのpathが`get-mcp-carrier-detail`では宣言だけを、instruction fileとして求められればここではdocument全体をserveする。MCP recognitionを持つのは明示的なcarrierだけである: 他のkindのfileが自身の内容にMCP風のconfigurationを綴っても — skillやagentのfrontmatter、settings fileのinline map — それはそのkindの通常のcontentであり、このfunctionが自身のkindの下でserveするpresentationに宣言済みkeyとして見えるだけで、どのMCP surfaceにも合流しない。
 
 Permission policyも同じ条件で、2つのformのいずれもここでは差し控える: permissions rowが名指すのは、それを宣言するfileではなくpolicyであるため（data-model.md § 一覧の単位）、どちらのformもこのfunctionが答える主題ではない — Policy blockを宣言するcarrierは、そのblockを公開するためにadmitされたfileであり、file全体の内容がpolicyであるfileは、このfunctionが自身として述べることを何も持たないfileではなくpolicyである。permissions rowを持ちfile主題のrowを持たないpathは`stale-resource` rejectionに解決し、policyをserveするのは`get-permission-policy-detail`である。
 
@@ -1340,11 +1359,13 @@ GlobalConsentPreview
 ```
 
 Editor-launcher探索前のsession startupで、serverは`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、
-`CODEX_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
+`CODEX_HOME`、`GEMINI_CLI_HOME`をこの順で正確に1回ずつreadする。`undefined`だけをabsentとし、
 empty stringはpresentとする。そのsessionでimport済み`node:os.homedir()`を
 正確に1回callし — 共有agent home memberは常にそこからderiveされる — 、対応するabsent entryについてactive-platformの`node:path.join`と固定suffix
-`.copilot`、`.claude`、`.codex`を、共有agent homeについて固定suffix `.agents`を使う。`member`はclosedな
-`copilot | claude | codex | agents`集合 — 3つのtool homeと共有agent home（FR-045） — の1つであり、
+`.copilot`、`.claude`、`.codex`、`.gemini`を、共有agent homeについて固定suffix `.agents`を使う。`.gemini` suffixは
+presentでeligibleな`GEMINI_CLI_HOME`にもjoinする。Vendorはこの設定を`.gemini` directoryの親を指すものとして
+文書化しているからである（specs/002-gemini-cli-support/spec.md FR-011）。`member`はclosedな
+`copilot | claude | codex | gemini | agents`集合 — 4つのtool homeと共有agent home（FR-045） — の1つであり、
 `…Tools`と綴られるcontrol/batch fieldはすべてこのmember idを運ぶ。`HOME`、`USERPROFILE`その他home sourceを独自選択せず、
 lexical capture/joinはexistence checkを行わない。それらのvariableは候補Global rootの特定だけに
 使い、inspected content内のreferenceのsubstitutionには使わない。その1つのimmutable captureをsession全体で保持する。Eligible entryを選択済みRepository rootと合わせて完全なlauncher-exclusion setとし、許可されたcreate invocationはすべてprocess inputを再読込せず同じ4 stringを使う。Serializeしないfrozen internal
@@ -1402,11 +1423,11 @@ Result data:
 GlobalEnableResult
 ├── state: queued | active-no-job
 ├── scanRequestId: opaque ID | null
-├── acceptedTools[]（member enumを0〜4個）
-└── rejectedTools[]（member enumを0〜4個）
+├── acceptedTools[]（member enumを0〜5個）
+└── rejectedTools[]（member enumを0〜5個）
 ```
 
-UIはそのpreviewの4 memberすべての正確なGlobal path集合、lexical input state、exclusionを表示した
+UIはそのpreviewの5 memberすべての正確なGlobal path集合、lexical input state、exclusionを表示した
 後だけ送信できる。Hostはfalse confirmation、古いcontract version、superseded previewを
 拒否する。
 
@@ -1418,8 +1439,8 @@ settlement、batchを実行する。すなわちこのfunctionが行うsequence�
 confirmationは、server導出の`retryableTools`が非空なら同一previewのretryを実行し、retryする残りが無いときに`no-retryable-global-tool` refusalになる。Stored internal raw `lexicalRoot`とstored typed
 traversal programだけを使い、environment inputを読み直さず、`displayRoot`をreverse-convertしない。
 Parameterは意図的にmember selectorを持たない。Initial
-enableは、すでにlexicalにinvalidなentryも含むfrozen preview entry 4件すべてからexact fixed
-`[copilot, claude, codex, agents]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
+enableは、すでにlexicalにinvalidなentryも含むfrozen preview entry 5件すべてからexact fixed
+`[copilot, claude, codex, gemini, agents]` setをderiveする。Retryはcurrent server-side `retryableTools` subset、
 すなわちunpublishedかつnon-pendingのadmitted controlとsame-preview rejected controlだけをexactに
 deriveする。Lexical `new-preview-required` controlにはdisableとnew previewが必要となる。Clientは
 toolを追加、omit、remove、reorderできない。
@@ -1440,7 +1461,7 @@ accept前failureも`globalEnableInProgress`をunregisterし、terminal operation
 
 そのようなexceptionなしでvalidationが終了すると、`acceptedTools`と`rejectedTools`はdisjointかつ
 uniqueなfixed-member-order arrayとなり、そのunionがtransactionでevaluateした全memberと一致する。
-Coordinatorは4 memberすべてのcontrolを持つinitial consentをatomicにactivateする。Rootを1つも
+Coordinatorは5 memberすべてのcontrolを持つinitial consentをatomicにactivateする。Rootを1つも
 admitしなければ、`state: active-no-job`、null `scanRequestId`、Source/job/generationなしで返し、
 disable用controlに加え、`retryDisposition`が許可する場合だけsame-preview retry用controlを維持
 する。それ以外では`scanRequestId`を1つallocateし、全admitted rootを1つのprovisional batch scanへ
@@ -1857,11 +1878,11 @@ failureではそのordinary error。Disable自体は`global-disable-pending`を�
    outcomeを返す。Escape-collision、control-character、backslash fixtureは、enableがstored raw
    valueだけを使ってprocess inputを再読込せず`displayRoot`を
    reverse-convertしないことを証明する。Parameterはmember selectorを持たず、initial enableは凍結
-   済みentry 4件すべてを必ずevaluateする。Missing/unreadableなconsented rootと決定的なlexical
+   済みentry 5件すべてを必ずevaluateする。Missing/unreadableなconsented rootと決定的なlexical
    outcomeがrejected memberとadmitted memberをpartitionし、unexpectedなthrow/rejectionは
    invocationをordinary errorでrejectし、initial control/jobをactivateせずprovisional subsetを
    一切commitしない。Provisional enable workはSourceをpublishしない。正常なcompleteまたはpartial
-   batch commit 1件は1〜4個の別々にidentifiedされたGlobal Sourceをexact 1つのGlobal generation
+   batch commit 1件は1〜5個の別々にidentifiedされたGlobal Sourceをexact 1つのGlobal generation
    に同時に作り、memberごとに最大1個、Sourceごとに正確に1 rootとし、cross-member mergeも
    observableなper-member commitも行わない。1 fileに限定されないaccepted batch throw/rejectionはその1つの
    `scanRequestId`についてfailed requestのerror messageをfailed `batchStatus`にretainし、

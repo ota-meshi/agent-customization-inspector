@@ -55,9 +55,10 @@
         "~/.claude",
         "~/.codex",
         "~/.copilot",
+        "~/.gemini",
         "~/.agents"
       ],
-      "matchRule": "All four, in any order. The equipment may point the first three elsewhere through CLAUDE_CONFIG_DIR, CODEX_HOME, and COPILOT_HOME; the page then names those, and those are what counts.",
+      "matchRule": "All five, in any order. The equipment may point the first three elsewhere through CLAUDE_CONFIG_DIR, CODEX_HOME, and COPILOT_HOME, and the Gemini CLI home to `.gemini` under GEMINI_CLI_HOME; the page then names those, and those are what counts.",
       "unsuccessful": "The page was not reached, or the directories were not named."
     }
   }

@@ -11,8 +11,10 @@
 // and the commit happens after.
 import { describe, expect, it } from 'vitest';
 import { RecognitionExtraction } from '../../../src/server/inspection/parsers/extraction';
+import { ParsedJsonDocument } from '../../../src/server/inspection/parsers/json';
 import { ParsedTomlDocument } from '../../../src/server/inspection/parsers/toml';
 import { configuredFallbackBasenamesOf } from '../../../src/server/inspection/rules/instructions/codex';
+import { configuredContextFilenamesOf } from '../../../src/server/inspection/rules/instructions/gemini';
 
 describe('recognition extraction', () => {
   it('publishes the declared name of an extractor that succeeds', () => {
@@ -148,6 +150,83 @@ describe('the Codex carrier seed extraction (T1086)', () => {
     );
     expect(failed.status).toBe('failed');
     expect(failed.extracted).toBeUndefined();
+  });
+});
+
+describe('the Gemini CLI context-filename seed extraction (specs/002 T020)', () => {
+  /** A settings document as the vendor's own loader accepts it: comments and a trailing comma. */
+  const COMMENTED_SETTINGS = [
+    '{',
+    '  // Project settings.',
+    '  "context": { "fileName": ["AGENTS.md", "CONTEXT.md"], },',
+    '  /* the map below is the MCP row’s */ "mcpServers": {},',
+    '}',
+    '',
+  ].join('\n');
+
+  it('reads a commented settings document with a trailing comma, as the vendor does', () => {
+    // `settings.ts` of google-gemini/gemini-cli parses
+    // `JSON.parse(stripJsonComments(content))`, so a comment is format syntax
+    // and never a declaration (research.md § 6). The trailing comma is blanked
+    // by the same seam (`parsers/json.ts` § acceptsComments).
+    expect(configuredContextFilenamesOf(COMMENTED_SETTINGS)).toEqual(['AGENTS.md', 'CONTEXT.md']);
+    expect(configuredContextFilenamesOf('{ "context": { "fileName": "TEAM.md" } }')).toEqual([
+      'TEAM.md',
+    ]);
+  });
+
+  it('fails the same bytes read as Claude’s strict carrier', () => {
+    // One physical spelling, two products, two answers: Claude’s `.mcp.json`
+    // is read strictly, so the comment that Gemini CLI’s loader strips is a
+    // syntax error there. The seam is asked for a `(tool, path)`, not a path.
+    expect(
+      () =>
+        new ParsedJsonDocument(COMMENTED_SETTINGS, {
+          tool: 'claude',
+          sourceRelativePath: '.mcp.json',
+        }),
+    ).toThrow(SyntaxError);
+    expect(
+      new ParsedJsonDocument(COMMENTED_SETTINGS, {
+        tool: 'gemini',
+        sourceRelativePath: '.gemini/settings.json',
+      }).entries.map((entry) => entry.key),
+    ).toEqual(['context', 'mcpServers']);
+  });
+
+  it('configures nothing for every unusable declaration, and only that', () => {
+    // Absent, wrong type, empty, mixed, or a `context` that is no object: each
+    // is one answer, "the default stands", and none is a failure (spec.md
+    // FR-004).
+    for (const source of [
+      '{ "ui": { "theme": "GitHub" } }',
+      '{ "context": { "fileName": 42 } }',
+      '{ "context": { "fileName": [] } }',
+      '{ "context": { "fileName": "" } }',
+      '{ "context": { "fileName": ["A.md", ""] } }',
+      '{ "context": { "fileName": ["A.md", 7] } }',
+      '{ "context": "GEMINI.md" }',
+    ]) {
+      expect(configuredContextFilenamesOf(source), source).toBeNull();
+    }
+  });
+
+  it('keeps every declared name in whole characters, whatever it spells', () => {
+    // No validation: a name with a slash, a dot-prefix, or non-ASCII is the
+    // author’s declaration, compared as written to what the walk enumerated.
+    expect(
+      configuredContextFilenamesOf(
+        '{ "context": { "fileName": ["docs/CONTEXT.md", ".context.md", "\u00e9t\u00e9.md", "GEMINI.md"] } }',
+      ),
+    ).toEqual(['docs/CONTEXT.md', '.context.md', '\u00e9t\u00e9.md', 'GEMINI.md']);
+  });
+
+  it('throws only for a document the format cannot parse', () => {
+    // The throw is the caller’s extraction boundary’s: a failed read
+    // configures nothing, and the carrier’s own settings recognition is
+    // where the parse failure gets its diagnostic (FR-028).
+    expect(() => configuredContextFilenamesOf('{ "context": { "fileName": ')).toThrow(SyntaxError);
+    expect(() => configuredContextFilenamesOf('')).toThrow(SyntaxError);
   });
 });
 

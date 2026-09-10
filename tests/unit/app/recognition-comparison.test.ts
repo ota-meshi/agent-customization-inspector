@@ -262,39 +262,6 @@ describe('recognition and declared-metadata comparison', () => {
     expect(comparison.frontmatterDiff).toBeNull();
   });
 
-  it('reads the parse off whatever Markdown variant the path answered with', () => {
-    // `get-file-detail` is addressed by the path alone and answers with the
-    // first variant its fixed order reaches (session.ts § fileDetail), which
-    // is that function's business rather than this surface's. Every
-    // parse-carrying variant holds the same parse for the same bytes, so
-    // requiring this kind's own variant here would state a parsed file's
-    // declarations as unknown and suppress the frontmatter diff.
-    const leftPath = '.agents/skills/alpha/SKILL.md';
-    const rightPath = '.claude/skills/alpha/SKILL.md';
-    const asSkill = entryDetail(leftPath, [scalar('name', 'alpha'), scalar('zeta', 'left')]);
-    if (asSkill.kind !== 'skill') {
-      throw new Error('expected this kind’s variant from the helper');
-    }
-    const otherVariant: FileDetailDto = {
-      kind: 'instructions',
-      file: asSkill.file,
-      presentation: asSkill.presentation,
-      diagnostics: asSkill.diagnostics,
-    };
-    const comparison = new SkillRecognitionComparison(
-      side(otherVariant, [definition(leftPath, 'claude')]),
-      side(entryDetail(rightPath, [scalar('name', 'alpha')]), [definition(rightPath, 'claude')]),
-    );
-    expect(comparison.leftDeclarations).toBe('parsed');
-    expect(comparison.rightDeclarations).toBe('parsed');
-    expect(comparison.frontmatterDiff).toEqual({
-      originalText: ['name: alpha', 'zeta: left', ''].join('\n'),
-      modifiedText: 'name: alpha\n',
-      originalAbsent: false,
-      modifiedAbsent: false,
-    });
-  });
-
   it('builds no recognition row at all for files no recognition owns', () => {
     // Two census companions compared through the generic path publish no
     // recognition rows and no serialized declaration document, because the

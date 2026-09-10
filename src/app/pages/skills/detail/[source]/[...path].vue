@@ -878,6 +878,7 @@ const request = useDetailRequest({
       resolved.definition.sourceRelativePath,
       openPath.value,
       openSource.value,
+      'skill',
     );
   },
   focusHeading: () => page.value?.focusHeading(),

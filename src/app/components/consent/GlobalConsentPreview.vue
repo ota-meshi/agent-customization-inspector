@@ -3,8 +3,10 @@
 // contracts/http-api.md § create-global-consent-preview).
 //
 // What this component renders is what a reader is being asked to authorize:
-// four proposed directories, how each one was arrived at, and — for the ones
-// nothing can be inspected under — why. It renders no per-pattern path list,
+// the proposed directories, how each one was arrived at, and — for the ones
+// nothing can be inspected under — why. No sentence here counts them: the
+// table below holds that number, and stating it twice is one fact kept in two
+// places (AGENTS.md § Implementation simplicity policy). It renders no per-pattern path list,
 // because none exists: what is read below an admitted root is fixed by the
 // shipped traversal plan the version pair identifies, so the read scope is
 // explained in plain language and the exclusions are named by the rules that
@@ -91,23 +93,23 @@ const exclusions = computed(() =>
       Inspecting your personal setup means reading the customization files each tool documents in
       its own configuration directory — instructions, and the skills, agents, prompts and commands,
       rules, permission policies, hooks, settings, output styles, and server declarations the tool
-      reads from there — plus the shared agent directory that Codex and Copilot both read skills
-      from, where Codex also reads the personal plugin marketplace file. Nothing else in those
-      directories is read: not credentials, not saved sessions, and not anything the tools generate
-      for themselves. Installed plugin copies are not read either — a marketplace file says where
-      each plugin comes from and is read as that list, while the plugin folders it points at stay
-      unread.
+      reads from there — plus the shared agent directory that Codex, Copilot, and Gemini CLI all
+      read skills from, where Codex also reads the personal plugin marketplace file. Nothing else in
+      those directories is read: not credentials, not saved sessions, and not anything the tools
+      generate for themselves. Installed plugin copies are not read either — a marketplace file says
+      where each plugin comes from and is read as that list, while the plugin folders it points at
+      stay unread.
     </p>
     <!-- Two sentences for two states, because the same page shows this preview
          before a confirmation and after one: "nothing has been read" is true of
          working the directories out, and false once a confirmation's batch has
          read them. -->
     <p v-if="consentGiven">
-      These four directories are the ones your confirmation covers. They are what the tools' own
+      These directories are the ones your confirmation covers. They are what the tools' own
       environment variables and documented defaults point at, worked out from those values alone.
     </p>
     <p v-else>
-      Nothing below has been read yet. These four directories are what the tools' own environment
+      Nothing below has been read yet. These directories are what the tools' own environment
       variables and documented defaults point at, worked out from those values alone.
     </p>
 
@@ -120,7 +122,7 @@ const exclusions = computed(() =>
     <table class="aci-global-consent-preview__roots" tabindex="0">
       <caption class="aci-global-consent-preview__caption">
         {{
-          consentGiven ? 'The four directories' : 'The four proposed directories'
+          consentGiven ? 'The directories' : 'The proposed directories'
         }}
       </caption>
       <thead>
@@ -158,7 +160,7 @@ const exclusions = computed(() =>
       <!-- The sentence once, then who it is recorded for. Every member's
            exclusion says the same thing — the registry holds one categorical
            rule per product, not prose about each — so stating it per product
-           printed one thirty-word sentence four times with only the leading
+           printed one thirty-word sentence five times with only the leading
            name different. Said once as the lead and listed under it, both
            facts the record carries survive: what is excluded, and which
            products carry a shipped exclusion.
@@ -183,7 +185,7 @@ const exclusions = computed(() =>
 <style scoped>
 /* Prose takes the shared measure (`main.css` § --aci-measure); the table of
    frozen roots below does not, because an absolute path held to a reading
-   measure wraps to four lines and the roots are what the decision rests on
+   measure wraps to several lines and the roots are what the decision rests on
    (FR-013). At the shell's full width these paragraphs ran to about 150
    characters a line. */
 .aci-global-consent-preview :where(p, li) {

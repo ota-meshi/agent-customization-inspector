@@ -30,7 +30,10 @@ import type {
   SourceDto,
   SourceKind,
 } from '../../../src/shared/api-types';
-import { SUPPORTED_TOOL_ORDER } from '../../../src/shared/entities';
+import {
+  SAME_NAME_SKILL_RESOLUTION_TEXT,
+  SUPPORTED_TOOL_ORDER,
+} from '../../../src/shared/entities';
 import type { CustomizationKind, SupportedTool } from '../../../src/shared/entities';
 
 const REPOSITORY_SOURCE: SourceDto = {
@@ -1300,9 +1303,11 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     const filters = withSelection(snapshot);
     // Compared in order, not as a set: this array is rendered unchanged as
     // the tool filter's options, so it must hold the closed tool order
-    // itself — all three tools recognize here, which makes the expectation
-    // the whole canonical order.
-    expect(filters.view.availableTools.value).toEqual(SUPPORTED_TOOL_ORDER);
+    // itself — the three tools that recognize here, in that order, and not
+    // the fourth, which recognizes no file of this snapshot.
+    expect(filters.view.availableTools.value).toEqual(
+      SUPPORTED_TOOL_ORDER.filter((tool) => tool !== 'gemini'),
+    );
     expect(filters.view.availableKinds.value).toEqual(['skill']);
     expect(filters.view.skillRows.value.map((entry) => entry.name)).toEqual([
       'alpha',
@@ -1331,6 +1336,50 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     expect(claudeRows.map((entry) => entry.name)).toEqual(['voyage']);
     expect(claudeRows[0]!.definitions.map((definition) => definition.tool)).toEqual(['claude']);
     expect(claudeRows[0]!.sameNameResolutions).toEqual([]);
+  });
+
+  it("keeps Gemini CLI's first-found statement while both of its definitions show", () => {
+    // The `.gemini/skills/` file and its `.agents/skills/` alias declare one
+    // name, so Gemini CLI faces its own two-file collision and the row states
+    // the derived first-found rule in the words the label table gives it;
+    // narrowing to Gemini CLI keeps both definitions and the statement, and
+    // narrowing to a path hides one side and the statement with it (FR-007;
+    // specs/002-gemini-cli-support T059).
+    const definition = (path: string): SkillInventoryEntryDto['definitions'][number] => ({
+      sourceId: 'src-repo',
+      sourceRelativePath: path,
+      tool: 'gemini',
+      surfaces: [],
+      parseStatus: 'parsed',
+      diagnosticIds: [],
+      companionFiles: [],
+    });
+    const entry: SkillInventoryEntryDto = {
+      name: 'deploy',
+      definitions: [
+        definition('.agents/skills/deploy/SKILL.md'),
+        definition('.gemini/skills/deploy/SKILL.md'),
+      ],
+      sameNameResolutions: [{ tool: 'gemini', resolution: 'select-first' }],
+    };
+    const snapshot = shallowRef<SessionSnapshot | null>(
+      snapshotWith(
+        [file('.agents/skills/deploy/SKILL.md'), file('.gemini/skills/deploy/SKILL.md')],
+        [entry],
+      ),
+    );
+    const filters = withSelection(snapshot);
+    expect(filters.view.availableTools.value).toEqual(['gemini']);
+    filters.tool.value = 'gemini';
+    const [row] = filters.view.skillRows.value;
+    expect(row!.definitions).toHaveLength(2);
+    expect(row!.sameNameResolutions).toEqual([{ tool: 'gemini', resolution: 'select-first' }]);
+    expect(SAME_NAME_SKILL_RESOLUTION_TEXT[row!.sameNameResolutions[0]!.resolution]).toBe(
+      'uses the first in its documented source order',
+    );
+    filters.searchQuery.value = '.gemini/';
+    expect(filters.view.skillRows.value[0]!.definitions).toHaveLength(1);
+    expect(filters.view.skillRows.value[0]!.sameNameResolutions).toEqual([]);
   });
 
   it('narrows by path across tools and drops a statement with the hidden side', () => {

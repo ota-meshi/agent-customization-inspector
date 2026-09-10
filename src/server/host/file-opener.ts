@@ -277,7 +277,7 @@ function insideInspectedRoot(candidate: string, inspectedRoots: readonly string[
  *
  * Resolving a candidate is not proposed-root I/O and does not become it when
  * the candidate leads into a personal home: the operand is a `PATH` entry or a
- * configured editor, never one of the four proposed roots, and FR-013 states
+ * configured editor, never one of the five proposed roots, and FR-013 states
  * that discovery as the one operation whose resolution the operating system
  * may route through such a root. The executable lookup below reaches the same
  * places by the same route, so this adds no class of pre-consent I/O the probe

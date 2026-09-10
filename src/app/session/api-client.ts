@@ -22,6 +22,8 @@ import type {
   GlobalRescanParams,
   CommandResult,
   FileDetailDto,
+  FileDetailKind,
+  FileDetailRequestParams,
   FileDetailParams,
   FileOpenTarget,
   GlobalConsentPreviewDto,
@@ -77,7 +79,7 @@ export const SESSION_RPC_FUNCTIONS = {
   openFile: 'agent-customization-inspector:open-file',
   /** The current Global consent preview, read without capturing anything. */
   getGlobalConsentPreview: 'agent-customization-inspector:get-global-consent-preview',
-  /** Capture the four proposed Global roots and replace the unconsented preview. */
+  /** Capture the five proposed Global roots and replace the unconsented preview. */
   createGlobalConsentPreview: 'agent-customization-inspector:create-global-consent-preview',
   /** Confirm the reviewed preview and admit every tool the server derives. */
   enableGlobal: 'agent-customization-inspector:enable-global',
@@ -312,7 +314,11 @@ export type HookCarrierDetailOutcome = DetailFetchOutcome<HookCarrierDetailDto>;
  * (contracts/http-api.md § get-plugin-carrier-detail).
  */
 type DetailRequestPayload =
-  string | FileDetailParams | PluginCarrierDetailParams | PluginFileDetailParams;
+  | string
+  | FileDetailParams
+  | FileDetailRequestParams
+  | PluginCarrierDetailParams
+  | PluginFileDetailParams;
 
 /**
  * The outcome of one guarded `get-plugin-carrier-detail` request: the shared
@@ -1037,19 +1043,20 @@ export class SessionApiClient {
    */
   public fetchFileDetail(
     sourceRelativePath: string,
-    source: SourceSelector = 'repository',
+    source: SourceSelector,
+    kind: FileDetailKind,
   ): Promise<FileDetailOutcome> {
     // Both halves of the identity, because both are needed: a consented Global
     // home and the selected repository can hold the same Source-relative Path,
     // and asking by path alone answers with whichever the session lists first
-    // (FR-030, contracts/http-api.md § get-file-detail).
-    //
-    // Every caller passes the Source its own address or side names; the
-    // `repository` default only keeps a bare-path call spelling the ordinary
-    // single-Source session's answer.
+    // (FR-030, contracts/http-api.md § get-file-detail). And the asking
+    // route's kind, because one file can hold two kinds and each reads it in
+    // its own syntax: the page shows the file as its kind reads it, so it asks
+    // for that kind's variant rather than whichever the host would choose.
     return this.#fetchDetail<FileDetailDto>(SESSION_RPC_FUNCTIONS.getFileDetail, {
       sourceRelativePath,
       source,
+      kind,
     });
   }
 
@@ -1322,7 +1329,7 @@ export class SessionApiClient {
   }
 
   /**
-   * Captures the four proposed Global roots and replaces the unconsented
+   * Captures the five proposed Global roots and replaces the unconsented
    * preview (contracts/http-api.md § create-global-consent-preview). It
    * submits no confirmation and grants no read authority: what comes back is
    * what the reader is about to be asked to confirm.

@@ -244,7 +244,7 @@ const SOURCE_SELECTORS: readonly SourceSelector[] = [
  * it and its Source-relative Path, which together are the file's identity
  * (FR-030). Every comparison surface carries its pair this way — each side
  * names its own Source in the query — because a pair lives inside one Source
- * family and the Global family holds up to four member Sources, so a pair may
+ * family and the Global family holds up to five member Sources, so a pair may
  * hold one consented home's file beside another member's
  * (contracts/http-api.md § Host requirements #5).
  */

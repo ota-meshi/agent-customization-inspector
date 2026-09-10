@@ -176,7 +176,7 @@ const rows = computed(() => {
                with no correlated progress to show it states the member and
                the status word the row shows, so a rescan that completed is
                heard as "Copilot home ready." rather than as silence. The
-               member is named in every branch because four rows offer the
+               member is named in every branch because five rows offer the
                same control and a bare status word — or a bare phase, which is
                what a reader who did not issue the command hears — says which
                of them changed to nobody; the root
@@ -225,7 +225,7 @@ const rows = computed(() => {
           </span>
           <!-- The accessible name carries the member, because every row offers
                the same visible phrase and a links-and-buttons walk would
-               otherwise hear one control four times (WCAG 2.4.6; label-in-name
+               otherwise hear one control five times (WCAG 2.4.6; label-in-name
                keeps the visible phrase as the prefix). -->
           <button
             type="button"

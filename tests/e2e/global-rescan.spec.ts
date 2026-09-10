@@ -27,7 +27,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The base holding the four member homes and the HOME the fourth derives from. */
+/** The base holding the member homes and the HOME the shared agent home and the Gemini CLI home derive from. */
 let base: string;
 
 /** The member homes, by the environment property that selects each. */
@@ -166,7 +166,7 @@ test('keeps a partial member partial across its own rescan, counting its files',
   // The member's announcement region never empties: with no correlated
   // progress to show it states the member and the status word the row shows,
   // so the same sentence is what a completed rescan is heard as (WCAG 4.1.3;
-  // `GlobalSourceControls.vue`). The member is named because four rows offer
+  // `GlobalSourceControls.vue`). The member is named because five rows offer
   // the same control; the root is not read, because it did not change. It is
   // visually hidden — the status word is already on screen in the row's
   // labelled field, and no screen states a Source fact twice (FR-030) — so it

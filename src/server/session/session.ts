@@ -57,6 +57,7 @@ import type {
   GlobalFenceRecoverySnapshot,
   InspectionDataResult,
   SourceSelector,
+  FileDetailKind,
   SourceDto,
   InstructionInventoryEntryDto,
   HookCarrierDetailDto,
@@ -1323,21 +1324,6 @@ function isSkillRecognition(recognition: ToolRecognition): recognition is SkillR
 }
 
 /**
- * A recognition narrowed to the instructions kind, so {@link
- * InspectionSession.fileDetail} reads the presentation fields where its guard
- * has already proved the kind instead of re-narrowing per access.
- */
-type InstructionRecognition = ToolRecognition & {
-  readonly details: Extract<RecognitionDetails, { kind: 'instructions' }>;
-};
-
-/** Whether one recognition is the instructions kind, narrowing it for the detail. */
-function isInstructionRecognition(
-  recognition: ToolRecognition,
-): recognition is InstructionRecognition {
-  return recognition.details.kind === 'instructions';
-}
-/**
  * The same-name resolution of each product behind a grouped entry, deduplicated
  * and in the contracted tool order. It states what each vendor documents so the
  * grouping never implies a winner the Inspector has not recorded (FR-007).
@@ -1642,7 +1628,19 @@ export class InspectionSession {
 
   /**
    * Resolves one committed file's complete detail, including the authored
-   * source the snapshot deliberately withholds (FR-027).
+   * source the snapshot deliberately withholds (FR-027), as the requested
+   * kind reads it (contracts/http-api.md § get-file-detail).
+   *
+   * The kind is the asking route's. One file can hold two kinds — a
+   * `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and an
+   * instruction file by its name; a `.gemini/commands/build.toml` is a Gemini
+   * CLI command and, once `context.fileName` names `build.toml`, a context
+   * file — and each kind's reading is its own: for a TOML file the command
+   * reading is a parse and the instruction reading is the whole text as a
+   * body. So the answer is never a choice among the kinds a path holds: the
+   * page asks for its kind and receives that kind's variant, or the plain file
+   * when no recognition of that kind holds the path — a skill's companion, a
+   * diagnostic-only candidate, or a path that reached the route by hand.
    *
    * It answers for the rows whose subject is the file itself, so a path
    * carrying only declaration-subject rows — an MCP carrier's servers, a
@@ -1654,7 +1652,7 @@ export class InspectionSession {
    * made after a commit answers with what the new generation holds at that
    * identity — or null when it holds nothing — never with a previous
    * generation's record. Every lookup below carries both halves: the Global
-   * generation holds all four members' recognitions together, so two members
+   * generation holds all five members' recognitions together, so two members
    * can hold one path — a Copilot home and the shared agent home each holding
    * `skills/<name>/SKILL.md` — and a path-only match would answer with
    * whichever member the batch listed first.
@@ -1662,6 +1660,7 @@ export class InspectionSession {
   public fileDetail(
     sourceRelativePath: string,
     source: SourceSelector | undefined,
+    kind: FileDetailKind | undefined,
   ): FileDetailDto | null {
     // Resolved by both halves of the identity. Searching by path alone answered
     // with whichever generation held it first, so a repository file shadowed a
@@ -1688,233 +1687,123 @@ export class InspectionSession {
       const diagnostics = generation.diagnostics.filter((diagnostic) =>
         file.diagnosticIds.includes(diagnostic.diagnosticId),
       );
-      // This function answers for the rows whose subject is the file itself,
-      // so every variant below carries the complete file and the two
-      // declaration-subject kinds are checked last, after none of them
-      // claimed the path (contracts/http-api.md § get-file-detail).
-      //
       // The parse the detail shows is the file's, not a recognizing tool's:
       // every recognition of the file's kind shares the one extraction
-      // (candidate.ts), so any one of them carries it. The file-subject
-      // variants are tried in a fixed order — the three Markdown kinds, then
-      // the custom-agent kind, then the rule kind, then the settings kind —
-      // and a file no recognition owns is the plain one: a census companion,
-      // or a diagnostic-only candidate.
-      // One file can hold two of these kinds: `CLAUDE.md` is a Claude
-      // instruction file at every depth, so a `.claude/rules/CLAUDE.md` is
-      // also a Claude rule and is a row in both inventories. A detail is
-      // addressed by the path alone, so both rows open the one answer this
-      // order settles on — which is why neither page requires its own kind of
-      // what arrives; what each renders is the document, and every variant
-      // carries it the same way. Only
-      // the explicit carriers hold MCP recognitions: a file of another kind that spells MCP-looking
-      // configuration is that kind's ordinary content, served here under its
-      // own kind with every declared key visible in its presentation.
-      const skill = generation.recognitions.find(
-        (recognition): recognition is SkillRecognition =>
-          recognition.sourceId === sourceId &&
-          recognition.sourceRelativePath === sourceRelativePath &&
-          isSkillRecognition(recognition),
-      );
-      if (skill !== undefined) {
-        return {
-          kind: 'skill',
-          file,
-          // Null exactly for a failed extraction: nothing was parsed, and the
-          // diagnostic above is the failure's record (FR-028).
-          presentation:
-            skill.parseStatus === 'parsed'
-              ? { frontmatter: skill.details.frontmatter, bodyText: skill.details.bodyText }
-              : null,
-          diagnostics,
-        };
-      }
-      const instruction = generation.recognitions.find(
-        (recognition): recognition is InstructionRecognition =>
-          recognition.sourceId === sourceId &&
-          recognition.sourceRelativePath === sourceRelativePath &&
-          isInstructionRecognition(recognition),
-      );
-      if (instruction !== undefined) {
-        return {
-          kind: 'instructions',
-          file,
-          // The same all-or-nothing rule as the skill variant (FR-028).
-          presentation:
-            instruction.parseStatus === 'parsed'
-              ? {
-                  frontmatter: instruction.details.frontmatter,
-                  bodyText: instruction.details.bodyText,
-                }
-              : null,
-          diagnostics,
-        };
-      }
-      // A recognized command file: the file plus the same one parse, because a
-      // command file carries a skill's frontmatter keys. Decided after the
-      // instructions variant, and that order is what a `.claude/commands/`
-      // directory holding a `CLAUDE.md` or an `AGENTS.md` settles on — such a
-      // file is an instruction file by its name and a command by its
-      // directory, and a detail is addressed by the path alone. Either variant
-      // renders the same document and the same declarations, so which one the
-      // order reaches changes nothing a reader sees.
+      // (candidate.ts), so any one of the requested kind carries it. A
+      // recognition of another kind is skipped whatever it holds — its parse
+      // is that kind's reading, which that kind's own route asks for.
       //
-      // A loop rather than `find`: the callback's narrowing would not reach
-      // here without a hand-authored predicate, which asserts the kind instead
-      // of proving it, while `continue` narrows `details` by the compiler's own
-      // control flow.
+      // A loop with a switch rather than `find`: a callback's narrowing would
+      // not reach here without a hand-authored predicate, which asserts the
+      // kind instead of proving it, while the switch narrows `details` by the
+      // compiler's own control flow. The switch lists the seven file-subject
+      // kinds and no other: `kind` is one of them, so a declaration-subject
+      // recognition never equals it and never reaches the switch.
       for (const recognition of generation.recognitions) {
         if (
           recognition.sourceId !== sourceId ||
           recognition.sourceRelativePath !== sourceRelativePath ||
-          recognition.details.kind !== 'prompt/command'
+          recognition.details.kind !== kind
         ) {
           continue;
         }
-        return {
-          kind: 'prompt/command',
-          file,
-          // The same all-or-nothing rule as the skill variant (FR-028).
-          presentation:
-            recognition.parseStatus === 'parsed'
-              ? {
-                  frontmatter: recognition.details.frontmatter,
-                  bodyText: recognition.details.bodyText,
-                }
-              : null,
-          diagnostics,
-        };
-      }
-      // A recognized output style: the file plus the same one parse, because
-      // an output style is frontmatter and the instructions below it. Decided
-      // after the command variant for the same reason that one comes after
-      // instructions — the order settles an overlap without changing what a
-      // reader sees, since every Markdown variant renders the same document
-      // and the same declarations.
-      //
-      // A loop rather than `find`, for the reason the branch above states.
-      for (const recognition of generation.recognitions) {
-        if (
-          recognition.sourceId !== sourceId ||
-          recognition.sourceRelativePath !== sourceRelativePath ||
-          recognition.details.kind !== 'output style'
-        ) {
-          continue;
+        const { details, parseStatus } = recognition;
+        switch (details.kind) {
+          case 'skill':
+            return {
+              kind: 'skill',
+              file,
+              // Null exactly for a failed extraction: nothing was parsed, and
+              // the diagnostic above is the failure's record (FR-028).
+              presentation:
+                parseStatus === 'parsed'
+                  ? { frontmatter: details.frontmatter, bodyText: details.bodyText }
+                  : null,
+              diagnostics,
+            };
+          case 'instructions':
+            return {
+              kind: 'instructions',
+              file,
+              // The same all-or-nothing rule as the skill variant (FR-028).
+              presentation:
+                parseStatus === 'parsed'
+                  ? { frontmatter: details.frontmatter, bodyText: details.bodyText }
+                  : null,
+              diagnostics,
+            };
+          case 'prompt/command':
+            // The file plus its own parse, in the two halves the kind shows
+            // (api-types.ts § PromptPresentationDto).
+            return {
+              kind: 'prompt/command',
+              file,
+              // The same all-or-nothing rule as the skill variant (FR-028).
+              presentation:
+                parseStatus === 'parsed'
+                  ? { metadata: details.metadata, promptText: details.promptText }
+                  : null,
+              diagnostics,
+            };
+          case 'output style':
+            // The file plus the same one parse, because an output style is
+            // frontmatter and the instructions below it.
+            return {
+              kind: 'output style',
+              file,
+              // The same all-or-nothing rule as the skill variant (FR-028).
+              presentation:
+                parseStatus === 'parsed'
+                  ? { frontmatter: details.frontmatter, bodyText: details.bodyText }
+                  : null,
+              diagnostics,
+            };
+          case 'agent':
+            // The file and the two halves its own parse resolved
+            // (api-types.ts § AgentPresentationDto).
+            return {
+              kind: 'agent',
+              file,
+              // Null exactly for a failed extraction, the same all-or-nothing
+              // rule the skill variant follows: both halves are unknown rather
+              // than absent, and the complete source stays readable (FR-028).
+              presentation:
+                parseStatus === 'parsed'
+                  ? { metadata: details.metadata, instructionsText: details.instructionsText }
+                  : null,
+              diagnostics,
+            };
+          case 'rule':
+            // The file, and nothing read out of it. A rule is published as the
+            // one document its author wrote — a Claude rule whole, frontmatter
+            // block included — so the variant carries no presentation
+            // (contracts/http-api.md § get-file-detail).
+            return { kind: 'rule', file, diagnostics };
+          case 'settings/config':
+            // The file, and nothing read out of it. The kind's row unit is the
+            // file itself (data-model.md § Inventory unit), so the document its
+            // author wrote is the whole answer — a Codex `.codex/config.toml`
+            // reaches the page as the TOML it is, comments and section order
+            // intact. Its `[mcp_servers.*]` tables are the MCP rows' subject
+            // and are served declaration-first by `mcpCarrierDetail`; that
+            // they are visible here too is the one document seen under its own
+            // row rather than a second publication of one fact (FR-007).
+            return { kind: 'settings/config', file, diagnostics };
         }
-        return {
-          kind: 'output style',
-          file,
-          // The same all-or-nothing rule as the skill variant (FR-028).
-          presentation:
-            recognition.parseStatus === 'parsed'
-              ? {
-                  frontmatter: recognition.details.frontmatter,
-                  bodyText: recognition.details.bodyText,
-                }
-              : null,
-          diagnostics,
-        };
       }
-      // A recognized custom-agent file: the file and the two halves its own
-      // parse resolved. Decided after the three Markdown kinds, and the
-      // overlap that order settles is shipped rather than hypothetical: a
-      // `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and a
-      // Claude instruction file by its name, so both rules admit it and this
-      // order hands it out as the instructions variant. Nothing is lost by
-      // that: a Markdown agent's two halves are the frontmatter block and the
-      // body, which is exactly what `MarkdownPresentationDto` carries, so the
-      // agent route maps that variant onto its own shape rather than treating
-      // the file as unparsed (`pages/agents/[source]/[...path].vue` § presentation).
-      // Reordering would only move the problem: the instruction route would
-      // then receive an agent variant it has no mapping for.
-      //
-      // A loop rather than `find`: the callback's narrowing would not reach
-      // here without a hand-authored predicate, which asserts the kind instead
-      // of proving it, while `continue` narrows `details` by the compiler's own
-      // control flow.
-      for (const recognition of generation.recognitions) {
-        if (
-          recognition.sourceId !== sourceId ||
-          recognition.sourceRelativePath !== sourceRelativePath ||
-          recognition.details.kind !== 'agent'
-        ) {
-          continue;
-        }
-        return {
-          kind: 'agent',
-          file,
-          // Null exactly for a failed extraction, the same all-or-nothing rule
-          // the skill variant follows: both halves are unknown rather than
-          // absent, and the complete source stays readable (FR-028).
-          presentation:
-            recognition.parseStatus === 'parsed'
-              ? {
-                  metadata: recognition.details.metadata,
-                  instructionsText: recognition.details.instructionsText,
-                }
-              : null,
-          diagnostics,
-        };
-      }
-      // A recognized rule file: the file, and nothing read out of it. A rule
-      // is published as the one document its author wrote — a Claude rule
-      // whole, frontmatter block included — so the variant carries no
-      // presentation (contracts/http-api.md § get-file-detail). Decided after
-      // the two Markdown kinds because one file can hold two of these kinds —
-      // a `.claude/rules/CLAUDE.md` is a Claude rule by its directory and a
-      // Claude instruction file by its name — and a detail is addressed by
-      // the path alone, so this fixed order is what settles which variant
-      // both rows open.
-      if (
-        generation.recognitions.some(
-          (recognition) =>
-            recognition.sourceId === sourceId &&
-            recognition.sourceRelativePath === sourceRelativePath &&
-            recognition.details.kind === 'rule',
-        )
-      ) {
-        return {
-          kind: 'rule',
-          file,
-          diagnostics,
-        };
-      }
-      // A recognized settings or configuration file: the file, and nothing
-      // read out of it. The kind's row unit is the file itself
-      // (data-model.md § Inventory unit), so the document its author wrote is
-      // the whole answer — a Codex `.codex/config.toml` reaches the page as
-      // the TOML it is, comments and section order intact. Its
-      // `[mcp_servers.*]` tables are the MCP rows' subject and are served
-      // declaration-first by `mcpCarrierDetail`; that they are visible here
-      // too is the one document seen under its own row rather than a second
-      // publication of one fact (FR-007).
-      if (
-        generation.recognitions.some(
-          (recognition) =>
-            recognition.sourceId === sourceId &&
-            recognition.sourceRelativePath === sourceRelativePath &&
-            recognition.details.kind === 'settings/config',
-        )
-      ) {
-        return {
-          kind: 'settings/config',
-          file,
-          diagnostics,
-        };
-      }
-      // Past here the path carries no row whose subject is the file, so a
-      // declaration-subject recognition is all it has and this function holds
-      // no detail for it. Null is the same stale-resource answer as a path
-      // the generations hold nothing at (contracts/http-api.md
-      // § get-file-detail).
+      // No recognition of the requested kind holds the path. What the path
+      // does carry decides between the plain file and no detail at all: a
+      // path whose rows are declarations' alone has no file-subject detail,
+      // and null is the same stale-resource answer as a path the generations
+      // hold nothing at (contracts/http-api.md § get-file-detail).
       //
       // A standalone MCP carrier: its detail is `mcpCarrierDetail`'s own
       // result, because every variant this function serves carries the full
       // file while an MCP row's subject is one declaration inside it
-      // (FR-007). A carrier that also holds a file-subject row — a
+      // (FR-007). A carrier that also holds a row of the requested kind — a
       // `.mcp.json` a Codex `project_doc_fallback_filenames` entry names is
-      // an instruction file besides — was already answered above under that
-      // row, which is what "the row's subject decides" means.
+      // an instruction file besides — was answered above under that row,
+      // which is what "the row's subject decides" means.
       if (
         generation.recognitions.some(
           (recognition) =>
@@ -1929,11 +1818,8 @@ export class InspectionSession {
       // declared event inside the file, so its detail is
       // `hookCarrierDetail`'s own result — the shape with no `sourceText`
       // field at all (FR-007). Answering here would hand back the bytes that
-      // response deliberately does not carry. A carrier that also holds a
-      // file-subject row was already answered above under it: a
-      // `.codex/config.toml` is its settings document besides, which is why
-      // the settings branch runs first and this one is reached only by a file
-      // whose whole purpose is hooks.
+      // response deliberately does not carry. A `.codex/config.toml` is its
+      // settings document besides, and the settings route asks for that kind.
       if (
         generation.recognitions.some(
           (recognition) =>
@@ -1976,6 +1862,9 @@ export class InspectionSession {
       ) {
         return null;
       }
+      // The plain file: a census-listed companion, a diagnostic-only
+      // candidate, or a file another kind's rule admitted that the requested
+      // kind reads nothing out of.
       return {
         kind: 'file',
         file,

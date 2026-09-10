@@ -32,7 +32,17 @@ is found by that reading, not by a lookup.
 
 **Mutation.** The command changes nothing. It reports, and a reviewer decides what follows.
 
-**Network runs.** 2026-09-04, over all 52 records. The first run reported 18 sections
+**Network runs.** 2026-09-10, over all 65 records, the thirteen `google.gemini-cli.*` records
+included (specs/002-gemini-cli-support T066). Every Google record resolved: each URL answered
+`200` directly on `geminicli.com`, and every cited section resolved as a served heading. The
+run reported one record with drift a reviewer must resolve, outside this feature:
+`anthropic.claude-code.skills.locations-discovery` (`https://code.claude.com/docs/en/skills`),
+whose cited sections `Where skills live` and `Discovery from parent and nested directories`
+were not served as headings or table-of-contents fragments. That record was left as it is —
+what the vanished headings mean is a reading, not a lookup — and is recorded here for the
+review that owns it.
+
+2026-09-04, over all 52 records. The first run reported 18 sections
 missing. Seventeen were on code.claude.com pages whose headings are served with a zero-width
 space inside each heading's own anchor link, which the checker's text normalization had kept;
 it now drops format characters, and those sections resolve as served headings. One was
@@ -113,6 +123,24 @@ profile or user data, and no migration workflow. No breaking public-contract cha
 proposed. The task set is not superseded by this review.
 
 ## Release gate execution
+
+**The Gemini CLI change ran the gates on 2026-09-10** (specs/002-gemini-cli-support T064,
+T065): `pnpm run test:docs` 42, `pnpm run test:unit` 1275, `pnpm run test:contract` 411,
+`pnpm run test:integration` 282, `pnpm run test:security` 5, and `pnpm run test:package` 53
+tests, all passing on this host, with `pnpm run format`, `pnpm run lint`, and the type check
+clean. The browser half was the Chromium project over the specs the change reaches — the
+thirteen Gemini CLI specs and the existing specs named under Outcome-manifest criteria — rather
+than the whole suite, which is what the agent-run verification policy asks for
+(AGENTS.md § Agent-run Playwright verification policy); CI's run of the commit is where the
+three-browser suite is executed. Both readme screenshots were retaken against this tree at the
+committed pair's dimensions, 1280×800 CSS pixels at a device scale factor of 2: the Skill tab
+of the all-kind fixture, whose legend now carries four products and whose `.agents/skills/`
+rows carry three marks, and the `changelog` comparison the row's own Compare link opens — the
+`.agents/skills/` and `.gemini/skills/` copies, the pair a reader who launches the fixture and
+presses Compare lands on — whose recognition table has a Gemini CLI row. The inventory alt text
+in both readmes stopped counting the files a shared name spans, because the row it describes
+now spans three and a count in an alt text goes false with every fixture change; the comparison
+alt text still describes its image.
 
 **The CLI's accepted-batch failure now propagates**, which is what
 `tests/integration/cli-global-batch-failure.test.ts` had been failing on: `runGlobalEnable`
@@ -622,9 +650,32 @@ picker's own comment no longer counts six pages where there are seven.
 
 ## Outcome-manifest criteria
 
-The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 3**, canonical
-SHA-256 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`, recorded in
-`tests/fixtures/outcomes/manifest.sha256`. Its 99 cases were executed on 2026-09-09 by
+The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 4**, canonical
+SHA-256 `f8d5334f19c57ece76ebf09b025a01048ca18cd6e64ae64390801f3bdae9a7f7`, recorded in
+`tests/fixtures/outcomes/manifest.sha256`. Version 4 is the Gemini CLI denominator
+(specs/002-gemini-cli-support): eight `(Gemini CLI, kind)` rows each for SC-003 and SC-005 —
+instructions, settings/config, MCP, hook, prompt/command, skill, agent, and permissions — the
+`sc003.shared-file.repository-root-gemini-md` attribution of the root `GEMINI.md` to GitHub
+Copilot and Gemini CLI, `sc003.global-source-form.gemini`, and `sc004.tool.gemini`; the two
+`.agents/skills/` attribution cases name Gemini CLI as a third recognizing tool. A new
+`(tool, kind)` row is a denominator change, which is what advances the version rather than
+keeping it at 3 under a fixture-byte change. The transition was reviewed by this session, an
+agent-driven review (AGENTS.md § Evidence before conclusions): what it compared is the shipped
+registry's `(tool, kind)` rows against the case IDs, which
+`tests/contract/outcome-fixture-manifest.test.ts` gates. Its 118 cases were executed on
+2026-09-10 on this host: the Gemini CLI cases through the Chromium project over the thirteen
+new specs they name — `gemini-*-inventory`, `gemini-*-detail`, `gemini-skills-list`,
+`gemini-context-filename`, `gemini-same-name-skill`, and `global-gemini-admission` — and over
+the existing specs whose fixtures the third recognition changed (`codex-skills-detail`,
+`copilot-instructions-inventory`, `copilot-skills-detail`, `copilot-skills-list`, `discovery`,
+`instructions-inventory`, `skills-comparison`, `skills-inventory`, `inventory-rows`, and the
+`global-*` admission and consent specs); the vitest cases through the gate scripts recorded
+under Release gate execution. The browser specs not reached by the Gemini CLI change were not
+re-run for this set. The contract suite reproduced the canonical digest and all 79 fixture
+digests in the same run.
+
+The set before it was `tests/fixtures/outcomes/manifest.json` **version 3**, canonical
+SHA-256 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`. Its 99 cases were executed on 2026-09-09 by
 running every suite each case names in `verifiedBy`: the vitest suites through
 `pnpm run test:contract`/`test:integration`/`test:security` (405, 271, and 5 passing), and the
 browser specs through the Chromium project over the 65 specs the manifest names, 351 tests,
@@ -699,17 +750,17 @@ above: `sc003.shared-file.repository-agents-md`, `sc003.shared-file.repository-r
 project every assertion in those specs passed; what the earlier execution recorded about the
 local macOS WebKit project stands as that execution's.
 
-**Denominators.** SC-003 covers 28 `(tool, kind)` rows at the Repository boundary — the exact
+**Denominators.** SC-003 covers 36 `(tool, kind)` rows at the Repository boundary — the exact
 set the shipped registry produces, cross-checked in the contract suite rather than restated —
 the four frozen selector families (`exact`, `direct-child`, `descendant-inventory`,
-`recursive-subtree`), the eight documented multi-tool attribution combinations, and the three
+`recursive-subtree`), the nine documented multi-tool attribution combinations, and the four
 Global source forms. The Global boundary has its own cases rather than a second case per row
 because it is admitted per consented member: the admission specs are what exercise it. SC-004
-covers three tools, five prohibited-effect classes, both source boundaries, and the three
+covers four tools, five prohibited-effect classes, both source boundaries, and the three
 classes that are about the environment moving under a running scan: an external writer
 changing a fixture mid-read, a directory removed, renamed, or created during enumeration, and
 a late result discarded after its authority was revoked. SC-005 covers
-the same 28 rows plus both display surfaces, both credential classes, and both
+the same 36 rows plus both display surfaces, both credential classes, and both
 referenced-variable states. SC-007 covers four file-confined outcome classes and five failure
 classes, the failed initial Global enable among them — a distinct outcome from a
 post-acceptance failure, because it creates neither Global Source nor generation. Each
@@ -885,6 +936,15 @@ versions; this session has one macOS host. The certification result is what a CI
 matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
+
+**No run was owed for the Gemini CLI change.** specs/002-gemini-cli-support/spec.md
+§ Clarifications settles that the twenty-session evaluation is repeated only if the
+designated SC-006 file's ground truth changes. The designated file is the prepared
+repository's `AGENTS.md`; its ground truth in `ground-truth.json` — Repository, recognized
+by GitHub Copilot and OpenAI Codex, an instruction file — is unchanged, because that
+repository configures no `context.fileName` and Gemini CLI's default context file is
+`GEMINI.md`. The study guidance names Gemini CLI among the products the page lists, and the
+prepared state and rubric are untouched.
 
 **Twenty agent-driven sessions, run on 2026-09-05 against the release candidate, with the
 runner holding the clock.** The build is `npm pack` of the tree as it stood for that run —

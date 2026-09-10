@@ -290,32 +290,12 @@ export class CustomAgentRecognitionComparison {
 
 /**
  * One side's agent parse, or null when there is none. The parse is the
- * file's, one per kind (FR-028).
- *
- * Every Markdown-parse variant is accepted beside the agent one and mapped
- * onto the same two halves, exactly as the agent detail route maps them: one
- * file can hold two kinds — a `.claude/agents/CLAUDE.md` is a subagent by its
- * directory and an instruction file by its name, and a `SKILL.md` under a
- * nested `.claude` inside an agents subtree is a subagent and a skill — while
- * `get-file-detail` is addressed by the path alone and answers with the first
- * variant its fixed order reaches, the skill one first (session.ts
- * § fileDetail). A surface that required its own kind would report those
- * parsed files as unparsed. The excluded variants carry no such split: a rule
- * file is published whole, and an unrecognized file has nothing read out of
- * it.
+ * file's, one per kind (FR-028). Only this kind's variant carries it: the
+ * detail was asked for as an agent, so a file of another kind answers as the
+ * plain file, which has nothing read out of it (session.ts § fileDetail).
  */
 function presentationOf(side: CustomAgentComparisonSideInput): AgentPresentationDto | null {
-  const detail = side.detail;
-  if (detail.kind === 'rule' || detail.kind === 'settings/config' || detail.kind === 'file') {
-    return null;
-  }
-  if (detail.kind === 'agent') {
-    return detail.presentation;
-  }
-  const presentation = detail.presentation;
-  return presentation === null
-    ? null
-    : { metadata: presentation.frontmatter, instructionsText: presentation.bodyText };
+  return side.detail.kind === 'agent' ? side.detail.presentation : null;
 }
 
 /**

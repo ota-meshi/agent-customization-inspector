@@ -169,7 +169,7 @@ export class GlobalToolControl {
  * `confirmedTools` is the fixed all-members set the confirmation is for, and
  * it is deliberately not the same thing as the controls: a control exists for
  * every member this build can evaluate. Publishing both is not publishing a
- * fact twice — the consent covers the four members, and which of them this
+ * fact twice — the consent covers the five members, and which of them this
  * build has a port for is a different fact, visible as the absence of a
  * control.
  */
@@ -324,7 +324,7 @@ export type GlobalMemberPort = (
 ) => Promise<GlobalMemberOutcome>;
 
 /**
- * One member's slot in the fixed-four transaction, as the host hands it to
+ * One member's slot in the five-member transaction, as the host hands it to
  * the coordinator: the frozen preview's facts about that member plus the port
  * that can admit it.
  *

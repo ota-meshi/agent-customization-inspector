@@ -540,37 +540,6 @@ describe('custom-agent recognition metadata comparison (T573)', () => {
     expect(comparison.instructionsDiff).toBeNull();
   });
 
-  it('reads the instructions variant of a file both kinds own', () => {
-    // `.claude/agents/CLAUDE.md` is a subagent by its directory and an
-    // instruction file by its name, and `get-file-detail` answers with the
-    // first variant its fixed order reaches — the comparison maps that
-    // variant's two halves rather than reporting a parsed file as unparsed
-    // (session.ts § fileDetail).
-    const overlapping: FileDetailDto = {
-      kind: 'instructions',
-      file: {
-        sourceId: 'source-repository',
-        sourceRelativePath: '.claude/agents/CLAUDE.md',
-        diagnosticIds: [],
-        encoding: 'utf-8',
-        hadLeadingBom: false,
-        sourceText: '---\nname: overlapping\n---\n\nBody\n',
-        sizeBytes: 32,
-      },
-      presentation: {
-        frontmatter: [scalar('name', 'overlapping')],
-        bodyText: '\nBody\n',
-      },
-      diagnostics: [],
-    };
-    const comparison = new CustomAgentRecognitionComparison(
-      side(overlapping, []),
-      side(agentDetail(RIGHT_PATH, [scalar('name', 'overlapping')]), []),
-    );
-    expect(comparison.leftDeclarations).toBe('parsed');
-    expect(comparison.metadataDiff?.originalText).toBe('name: overlapping\n');
-  });
-
   it('projects no carrier inheritance, order, or winner anywhere', () => {
     // Codex documents that a spawned agent inherits its parent's MCP
     // configuration, and Claude Code documents that only one of two same-name

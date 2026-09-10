@@ -3,9 +3,10 @@
 //
 // Where that map is, and which key holds it, is each vendor's own contract —
 // Codex's TOML `[mcp_servers.*]` tables, Claude's strict-JSON `mcpServers`, the
-// Copilot CLI's optional wrapper of the same name, and the VS Code guide's
-// top-level `servers` — so each reading finds its own container and hands the
-// entries here. What a found map means is not a vendor difference: all four
+// Copilot CLI's optional wrapper of the same name, the VS Code guide's
+// top-level `servers`, and Gemini CLI's `mcpServers` in its JSON with comments
+// — so each reading finds its own container and hands the entries here. What a
+// found map means is not a vendor difference: all five
 // documents describe a name-to-configuration map, and one shared projection is
 // what keeps a server row identical whoever declared it.
 import type { DeclaredEntryDto, McpServerDeclarationDto } from '../../../../shared/api-types';

@@ -289,12 +289,11 @@ const styleNames = computed(() =>
  * URL's own. The path check keeps a slow previous detail from rendering under
  * this route's heading.
  *
- * The variant is deliberately not checked, the same way the rule route leaves
- * it unchecked: one file can hold recognitions of two kinds — a
- * `.claude/commands/CLAUDE.md` is a Claude command by its directory and a
- * Claude instruction file by its name, so it is a row in both inventories —
- * while `get-file-detail` is addressed by the path alone and answers with the
- * first variant its fixed order reaches.
+ * The variant is this route's own or the plain file: `get-file-detail` is
+ * asked for this kind, so a file another kind also owns — a
+ * `.claude/output-styles/CLAUDE.md` is an instruction file by its name —
+ * arrives as the output-style variant here and as the instructions variant on
+ * that route (session.ts § fileDetail).
  */
 const openDetail = computed(() => {
   const detail = entryDetail.value;
@@ -302,24 +301,15 @@ const openDetail = computed(() => {
 });
 
 /**
- * The file's own presentation — the one scan-time parse, published on every
- * variant that carries one. Null when extraction failed all-or-nothing, and
- * null for a variant that publishes none: a rule file is served whole and a
- * custom agent publishes declarations without a body, so a file two kinds own
- * shows its complete source under the file tab either way (FR-028).
+ * The file's own presentation — the one scan-time parse, published on the
+ * output-style variant of the detail (OutputStyleFileDetailDto). Null when
+ * extraction failed all-or-nothing, which is when there is nothing parsed to
+ * show and the failure's diagnostic says so (FR-028), and null for the plain
+ * file, which has nothing read out of it.
  */
 const presentation = computed(() => {
   const detail = openDetail.value;
-  if (
-    detail === null ||
-    detail.kind === 'rule' ||
-    detail.kind === 'agent' ||
-    detail.kind === 'settings/config' ||
-    detail.kind === 'file'
-  ) {
-    return null;
-  }
-  return detail.presentation;
+  return detail !== null && detail.kind === 'output style' ? detail.presentation : null;
 });
 
 /**
@@ -392,7 +382,12 @@ const request = useDetailRequest({
   selection: null,
   ready: () => owner.value.length > 0,
   perform: () => {
-    void pageOwnership.openFileDetail(openPath.value, openPath.value, openSource.value);
+    void pageOwnership.openFileDetail(
+      openPath.value,
+      openPath.value,
+      openSource.value,
+      'output style',
+    );
   },
   focusHeading: () => page.value?.focusHeading(),
 });
@@ -578,7 +573,12 @@ useReportedPageSubject(titleSubject);
                sized to the block, because a frontmatter is short
                (SourceViewer § fitContent). YAML because the block is YAML:
                nothing here is markup, a link, or a resolved reference
-               (FR-025, FR-026, FR-033). -->
+               (FR-025, FR-026, FR-033). "Frontmatter" because every output
+               style this product reads is Markdown, so the word names what
+               the reader sees on screen; a kind whose keys can arrive in
+               another syntax says "Metadata" instead (the agent and prompt
+               details), and this label changes with it the day an output
+               style does. -->
           <SourceViewer
             v-else
             panel-label="Frontmatter"

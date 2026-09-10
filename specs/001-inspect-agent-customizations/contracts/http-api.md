@@ -591,7 +591,7 @@ inspection-state checks; the fence conflict therefore wins without leaking retai
 state.
 
 Every Source has exactly one root. The Repository Source has no member; the session has
-zero to four Global Sources, at most one each with `member: codex`, `member: claude`,
+zero to five Global Sources, at most one each with `member: codex`, `member: claude`, `member: gemini`,
 `member: copilot`, or `member: agents` — the shared agent home (FR-045). A Global root is never represented as a boundary inside another Source.
 `repositoryGeneration` and `globalGeneration` are the two sequences' independently
 committed generations; `globalGeneration` is null exactly while Global inspection is
@@ -713,7 +713,7 @@ filesystem authority or alters the returned content.
 
 `globalControl` is null only when Global consent/control state is inactive. Otherwise
 `state` is `active` or `disabling`, and `previewId` identifies the frozen active preview.
-`confirmedTools` is always the fixed closed `[copilot, claude, codex, agents]` all-members consent set.
+`confirmedTools` is always the fixed closed `[copilot, claude, codex, gemini, agents]` all-members consent set.
 Initial enable and retry validation/admission remain operation-local: only the authority-free
 `globalEnableInProgress { kind, operationId, previewId }` is visible. Initial enable keeps
 `globalControl: null`; retry preserves its exact pre-operation control projection until one
@@ -766,22 +766,35 @@ Outcomes: the full or fenced DTO.
 
 ### `agent-customization-inspector:get-file-detail`
 
-Parameters: the file's whole identity as the function's single argument — an object
-carrying the committed Source-relative Path and the Source that holds it (FR-030). A
-path alone names no file once a Global commit publishes a second Source, because both
-can hold one path. The Source is named by a selector — `repository` or
-`global-<member>` — rather than by a Source ID: an ID belongs to the launch that minted
-it, while a link a reader keeps has to outlive that launch. The selector resolves like
-every other detail parameter and is never a filesystem operand, so one no committed
-Source answers to resolves nowhere and takes the same `stale-resource` rejection an
-unknown path does.
+Parameters: the file's whole identity and the kind asked for, as the function's single
+argument — an object carrying the committed Source-relative Path, the Source that holds
+it (FR-030), and the kind whose reading of the file the caller shows. A path alone names
+no file once a Global commit publishes a second Source, because both can hold one path.
+The Source is named by a selector — `repository` or `global-<member>` — rather than by a
+Source ID: an ID belongs to the launch that minted it, while a link a reader keeps has to
+outlive that launch. The selector resolves like every other detail parameter and is never
+a filesystem operand, so one no committed Source answers to resolves nowhere and takes the
+same `stale-resource` rejection an unknown path does. The kind is one of the seven
+file-subject kinds — `instructions`, `skill`, `agent`, `prompt/command`, `rule`,
+`output style`, `settings/config` — and is the asking route's own: one file can hold two
+kinds — a `.claude/agents/CLAUDE.md` is a Claude subagent by its directory and an
+instruction file by its name; a `.gemini/commands/build.toml` is a Gemini CLI command and,
+once `context.fileName` names `build.toml`, a context file — and each kind reads the file
+in its own syntax, so the page that shows the file as one kind asks for that kind's
+parse rather than receiving whichever kind's the host would otherwise have to choose. The
+kind validates by resolution too: a value no recognition's kind equals matches no
+recognition, and the answer is the plain file or the same rejection a missing path takes.
 
 ```json
-{ "sourceRelativePath": ".claude/skills/deploy/SKILL.md", "source": "repository" }
+{
+  "sourceRelativePath": ".claude/skills/deploy/SKILL.md",
+  "source": "repository",
+  "kind": "skill"
+}
 ```
 
-Returns one active-generation file detail, discriminated by whether a recognition owns
-the file:
+Returns one active-generation file detail, discriminated by whether a recognition of the
+requested kind owns the file:
 
 ```text
 FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'rule' |
@@ -817,8 +830,13 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   └── diagnostics[]
 ├── kind 'prompt/command' — the file is a recognized command file:
 │   ├── file — as above
-│   ├── presentation — as the instructions variant: the same one scan-time
-│   │   parse, with the same null-on-failure rule (FR-028)
+│   ├── presentation — the one scan-time parse split into the two halves the
+│   │   kind shows, or null exactly when extraction failed all-or-nothing
+│   │   (FR-028):
+│   │   ├── metadata[] { key, keyKind, value } — the same declared-entry
+│   │   │   shape the agent variant's metadata carries: every declaration
+│   │   │   except the one holding the prompt, in the file's own order
+│   │   └── promptText — the prompt the file gives the reader's agent
 │   └── diagnostics[]
 ├── kind 'rule' — the file is a recognized rule file:
 │   ├── file — as above
@@ -834,8 +852,9 @@ FileDetail — kind: 'instructions' | 'skill' | 'agent' | 'prompt/command' | 'ru
 │   configuration file:
 │   ├── file — as above
 │   └── diagnostics[]
-└── kind 'file' — no recognition owns the file (a file only the census
-    lists, or a diagnostic-only candidate):
+└── kind 'file' — no recognition of the requested kind owns the file (a file
+    only the census lists, a diagnostic-only candidate, or a file another
+    kind's rule admitted that the requested kind reads nothing out of):
     ├── file — as above
     └── diagnostics[]
 ```
@@ -848,14 +867,17 @@ host's, the client receives a Source's root only as the one-way `displayRoot` es
 it could open.
 
 This tree is the response shape: a client can rely on exactly these fields and no
-others. The `prompt/command` variant carries a `presentation` because a prompt or command file
-supports a skill's frontmatter keys, so its detail leads with the declarations the file
-wrote and the prompt that follows them. What it does not carry is the name a reader
-would type: that is the rule's answer rather than a field of the detail, so it is the
+others. The `prompt/command` variant carries a `presentation` of its own shape, for the
+reason the `agent` variant does: the split is not always a frontmatter block. A Claude Code,
+Copilot, or Codex command is Markdown split at the frontmatter fence, while a Gemini CLI
+command is TOML whose `prompt` string is the prompt and whose remaining keys are the
+metadata, so the halves are named after what they are — `metadata[]` and `promptText` — and
+every vendor's reading spells the same two fields. What it does not carry is the name a
+reader would type: that is the rule's answer rather than a field of the detail, so it is the
 inventory's fact — the name each `prompts[]` row is grouped under — exactly as a skill's
-invocation name is (`skills[]`). A prompt file declaring one is
-no exception: the declaration is in `presentation.frontmatter` like every other key the
-file wrote, and what the rule made of it is the row's.
+invocation name is (`skills[]`). A prompt file declaring one is no exception: the
+declaration is in `presentation.metadata` like every other key the file wrote, and what the
+rule made of it is the row's.
 The `agent` variant carries a `presentation` of its own shape, because the split is not
 always a frontmatter block: a Codex agent is TOML whose `developer_instructions` string is
 the prose and whose remaining top-level keys are the configuration, while a Claude
@@ -914,9 +936,10 @@ which tools recognize the file, what each resolves it as, and its parse state ar
 inventory's facts, and each kind's own inventory carries them. A skill's are
 `skills[].definitions[]`, an instruction file's are listed beside it on its inventory row
 (`instructions[]`), and a custom agent's on `agents[].definitions[]`. Every kind's detail
-route is the path alone: two products reading one file read the same bytes, so a per-tool
-address would give one document two URLs, and where the products differ — the name each
-invokes a skill by — the page states them together from the rows that hold the file. There is no admission record either: which rule
+route is the path and that kind, never a tool: two products reading one file read the same
+bytes, so a per-tool address would give one document two URLs, and where the products
+differ — the name each invokes a skill by — the page states them together from the rows
+that hold the file. There is no admission record either: which rule
 authorized a read, and where it matched, is an internal record of the committed
 generation (data-model.md § ToolRecognition); no
 session response carries it — a configured fallback instruction file's detail is
@@ -948,11 +971,12 @@ a file the MCP kind recognizes and no file-subject kind claims — publishes its
 through `get-mcp-carrier-detail` and never its own bytes (FR-007), and a function whose
 purpose is serving authored source carries no variant that must withhold it. Its path
 requested here resolves to the same `stale-resource` rejection as any path this function
-holds no detail for. A path that also carries a file-subject row is answered under that row
-instead, because a row's subject is what its detail is about (FR-007): a Codex
+holds no detail for. A path that also carries a row of the requested kind is answered under
+that row instead, because a row's subject is what its detail is about (FR-007): a Codex
 `project_doc_fallback_filenames` entry naming `.mcp.json` makes that carrier an instruction
 file besides, and an instruction file shows its complete source, so the one path serves its
-declarations alone through `get-mcp-carrier-detail` and its whole document here. Only the
+declarations alone through `get-mcp-carrier-detail` and, asked for as an instruction file,
+its whole document here. Only the
 explicit carriers hold MCP recognitions: a file
 of any other kind that spells MCP-looking configuration in its own content — a skill's
 or an agent's frontmatter, a settings file's inline map — is that kind's ordinary
@@ -1600,19 +1624,22 @@ GlobalConsentPreview
 ```
 
 Before editor-launcher discovery, session startup reads `COPILOT_HOME`,
-`CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once each in that order. Only `undefined` is
-absent; an empty string is present. It calls imported `node:os.homedir()` exactly once for
-the session — the shared agent home member always derives from it — and uses active-platform
-`node:path.join` with fixed `.copilot`, `.claude`, or `.codex` suffixes for the corresponding
-absent entries and the fixed `.agents` suffix for the shared agent home. A `member` is one of the closed
-`copilot | claude | codex | agents` set — the three tool homes and the shared agent home
+`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and `GEMINI_CLI_HOME` exactly once each in that order. Only
+`undefined` is absent; an empty string is present. It calls imported `node:os.homedir()` exactly
+once for the session — the shared agent home member always derives from it — and uses
+active-platform `node:path.join` with fixed `.copilot`, `.claude`, `.codex`, or `.gemini` suffixes
+for the corresponding absent entries and the fixed `.agents` suffix for the shared agent home.
+The `.gemini` suffix is joined onto a present eligible `GEMINI_CLI_HOME` as well, because the
+vendor documents that setting as naming the parent of its `.gemini` directory
+(specs/002-gemini-cli-support/spec.md FR-011). A `member` is one of the closed
+`copilot | claude | codex | gemini | agents` set — the four tool homes and the shared agent home
 (FR-045) — and every `…Tools`-spelled control or batch field carries these member ids.
 It does not independently select `HOME`, `USERPROFILE`, or another home source, and the
 lexical capture/join performs no existence check. Those variables are used only to locate proposed
 Global roots and never to substitute references inside inspected content. The one immutable
 capture is retained for the whole session: eligible entries join the selected Repository root
 as the complete launcher-exclusion set, and every permitted create invocation uses those same
-four strings without rereading process inputs. The frozen
+five strings without rereading process inputs. The frozen
 internal preview record, which is never serialized, additionally keeps each entry's
 `lexicalRoot` as the exact raw string. Empty, relative, invalid, control-containing, and
 backslash-containing values remain exact raw strings with their separate `inputState`. `displayRoot` is
@@ -1684,11 +1711,11 @@ Result data:
 GlobalEnableResult
 ├── state: queued | active-no-job
 ├── scanRequestId: opaque ID | null
-├── acceptedTools[] (zero to four member enums)
-└── rejectedTools[] (zero to four member enums)
+├── acceptedTools[] (zero to five member enums)
+└── rejectedTools[] (zero to five member enums)
 ```
 
-The UI may send this only after showing all four exact Global member path sets, lexical input
+The UI may send this only after showing all five exact Global member path sets, lexical input
 states, and exclusions from that preview. The host rejects a false confirmation, stale
 contract version, or superseded preview.
 
@@ -1703,7 +1730,7 @@ retry when the server-derived `retryableTools` is nonempty, and takes the
 the stored internal raw `lexicalRoot` and stored typed traversal program; it never rereads
 environment input or reverse-converts `displayRoot`.
 The parameters intentionally have no member selector. Initial enable derives the exact fixed
-`[copilot, claude, codex, agents]` set from all four frozen preview entries, including entries that
+`[copilot, claude, codex, gemini, agents]` set from all five frozen preview entries, including entries that
 are already lexically invalid. A retry derives the exact current server-side
 `retryableTools` subset: unpublished non-pending admitted controls and same-preview rejected
 controls only. Lexical `new-preview-required` controls require disable and a new preview.
@@ -1729,7 +1756,7 @@ history is retained.
 When validation finishes without such an exception, `acceptedTools` and `rejectedTools`
 are disjoint, unique, fixed-member-order arrays whose union is every member evaluated by the
 transaction. The coordinator atomically activates
-initial consent with controls for all four members. If no root was admitted, it returns
+initial consent with controls for all five members. If no root was admitted, it returns
 `state: active-no-job`, null `scanRequestId`, no Source/job/generation, and keeps controls
 for disable plus same-preview retry only where `retryDisposition` permits it. Otherwise it allocates one `scanRequestId`, transfers every
 admitted root into one provisional batch scan, returns `state: queued`, and publishes no
@@ -2225,12 +2252,12 @@ the post-acceptance failure's ordinary error. Disable itself never returns
    enable uses only the stored raw value, never a process-input reread or
    `displayRoot` reverse conversion. The parameters have no tool selector and initial
    enable always
-   evaluates all four frozen entries. Missing or unreadable consented roots and
+   evaluates all five frozen entries. Missing or unreadable consented roots and
    deterministic lexical outcomes partition rejected tools from admitted ones; an
    unexpected throw/rejection
    rejects the invocation with its ordinary error, activates no initial control/job, and
    commits none of a provisional subset. Provisional enable work publishes no Source. One
-   successful complete or partial batch commit produces one to four separately
+   successful complete or partial batch commit produces one to five separately
    identified Global Sources together in exactly one Global generation, at most one per tool and
    exactly one root per Source; no cross-tool merge or observable per-tool commit occurs. An
    accepted batch throw/rejection not confined to one file retains the failed request's

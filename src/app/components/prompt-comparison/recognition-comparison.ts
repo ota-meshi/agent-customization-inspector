@@ -6,7 +6,7 @@
 // (US3 scenario 2). The declared metadata is the file's one scan-time parse
 // for the kind (FR-028), so it is compared once — a tool is not a coordinate
 // of a declaration, and rendering the same file-level fact under each
-// recognizing tool would publish one fact as many: each side's frontmatter
+// recognizing tool would publish one fact as many: each side's metadata
 // serializes to one canonical YAML document, every key sorted, and the two
 // documents are what the comparison diffs (research.md § 7, frontmatter-yaml.ts).
 // This module is the data half, kept out of the component so the decisions
@@ -37,18 +37,18 @@
 //
 // The comparison is literal and descriptive by construction (FR-012): it
 // states which recognitions exist, what each rests on, what each is invoked
-// by, and what each side's frontmatter serializes to. Its closed shape
+// by, and what each side's metadata serializes to. Its closed shape
 // carries no rank, no winner, and no fabricated rows — relationships above
 // all, because a prompt or command file publishes no edge for the wire to
 // carry, and a name its prompt mentions stays text in the source diff
 // (api-types.ts § PromptFileDetailDto, FR-019).
 import { canonicalFrontmatterYamlText } from '../inspection/frontmatter-yaml';
-import { LEADING_PROMPT_FRONTMATTER_KEYS } from '../inspection/declaration-order';
+import { LEADING_PROMPT_METADATA_KEYS } from '../inspection/declaration-order';
 import { SUPPORTED_TOOL_ORDER, type SupportedTool } from '../../../shared/entities';
 import type {
   FileDetailDto,
-  MarkdownPresentationDto,
   PromptDefinitionDto,
+  PromptPresentationDto,
 } from '../../../shared/api-types';
 
 /**
@@ -182,13 +182,13 @@ export class PromptRecognitionComparison {
   public readonly rightDeclarations: PromptDeclarationSideState;
 
   /**
-   * The two canonical YAML documents the frontmatter diff mounts — the
+   * The two canonical YAML documents the metadata diff mounts — the
    * documented prompt keys leading, every other key sorted
    * (declaration-order.ts) — or null unless both sides are
    * 'parsed': an unparsed side's declarations are unknown, and nothing may
    * be diffed against them (FR-028).
    */
-  public readonly frontmatterDiff: {
+  public readonly metadataDiff: {
     /** The first side's canonical document (frontmatter-yaml.ts). */
     readonly originalText: string;
     /** The second side's canonical document. */
@@ -196,22 +196,23 @@ export class PromptRecognitionComparison {
   } | null;
 
   /**
-   * The two body texts the content diff mounts — each file with its
-   * frontmatter block removed, exactly as the one parse left it (FR-007) — or
-   * null under the same condition {@link frontmatterDiff} is.
+   * The two prompts the content diff mounts — each as the one parse resolved
+   * it, a Markdown file's body once its frontmatter block is removed or a TOML
+   * command's `prompt` value (FR-007) — or null under the same condition
+   * {@link metadataDiff} is.
    *
-   * Its own diff beside the declarations, rather than left to the source
+   * Its own diff beside the metadata, rather than left to the source
    * comparison, because the two halves are one split and showing only one of
-   * them normalized would privilege it: the declarations align key by key
-   * whatever order each file wrote them in, and the body aligns line by line
-   * without the frontmatter block above it moving the lines. The complete
-   * authored source stays below both, which is where every authored spelling
-   * is readable (FR-011).
+   * them normalized would privilege it: the metadata aligns key by key
+   * whatever order each file wrote it in, and the prompt aligns line by line
+   * without the metadata above it moving the lines. The complete authored
+   * source stays below both, which is where every authored spelling is
+   * readable (FR-011).
    */
-  public readonly bodyDiff: {
-    /** The first side's body text. */
+  public readonly promptDiff: {
+    /** The first side's prompt text. */
     readonly originalText: string;
-    /** The second side's body text. */
+    /** The second side's prompt text. */
     readonly modifiedText: string;
   } | null;
 
@@ -233,58 +234,41 @@ export class PromptRecognitionComparison {
     const rightPresentation = presentationOf(right);
     this.leftDeclarations = leftPresentation === null ? 'extraction-failed' : 'parsed';
     this.rightDeclarations = rightPresentation === null ? 'extraction-failed' : 'parsed';
-    this.frontmatterDiff =
+    this.metadataDiff =
       leftPresentation !== null && rightPresentation !== null
         ? {
             originalText: canonicalFrontmatterYamlText(
-              leftPresentation.frontmatter,
-              LEADING_PROMPT_FRONTMATTER_KEYS,
+              leftPresentation.metadata,
+              LEADING_PROMPT_METADATA_KEYS,
             ),
             modifiedText: canonicalFrontmatterYamlText(
-              rightPresentation.frontmatter,
-              LEADING_PROMPT_FRONTMATTER_KEYS,
+              rightPresentation.metadata,
+              LEADING_PROMPT_METADATA_KEYS,
             ),
           }
         : null;
     // The other half of the same one parse, under the same guard: a side that
-    // offers no declarations offers no body either, because both come from the
+    // offers no metadata offers no prompt either, because both come from the
     // presentation that failed.
-    this.bodyDiff =
+    this.promptDiff =
       leftPresentation !== null && rightPresentation !== null
         ? {
-            originalText: leftPresentation.bodyText,
-            modifiedText: rightPresentation.bodyText,
+            originalText: leftPresentation.promptText,
+            modifiedText: rightPresentation.promptText,
           }
         : null;
   }
 }
 
 /**
- * One side's parse, or null when there is none. The parse is the file's, one
- * per kind (FR-028), and every Markdown kind's variant carries the same one
- * for the same bytes (candidate.ts § recognizePrompt), so this asks what the
- * adopted variant carries rather than requiring it to be this kind's: one
- * file can hold two Markdown kinds — a `.claude/commands/CLAUDE.md` is a
- * Claude command by its directory and a Claude instruction file by its name —
- * while `get-file-detail` is addressed by the path alone and answers with the
- * first variant its fixed order reaches, so a surface that required its own
- * kind would report a parsed file as unparsed (session.ts § fileDetail). The
- * excluded variants are the ones that carry no `MarkdownPresentationDto` at
- * all: a rule file is published whole, a custom agent publishes its own two
- * halves under its own shape (api-types.ts § AgentPresentationDto), and an
- * unrecognized file has nothing read out of it.
+ * One side's parse as this kind's two halves, or null when there is none. The
+ * parse is the file's, one per kind (FR-028). Only this kind's variant
+ * carries it: the detail was asked for as a command, so a file of another kind
+ * answers as the plain file, which has nothing read out of it (session.ts
+ * § fileDetail).
  */
-function presentationOf(side: PromptComparisonSideInput): MarkdownPresentationDto | null {
-  const detail = side.detail;
-  if (
-    detail.kind === 'rule' ||
-    detail.kind === 'agent' ||
-    detail.kind === 'settings/config' ||
-    detail.kind === 'file'
-  ) {
-    return null;
-  }
-  return detail.presentation;
+function presentationOf(side: PromptComparisonSideInput): PromptPresentationDto | null {
+  return side.detail.kind === 'prompt/command' ? side.detail.presentation : null;
 }
 
 /**

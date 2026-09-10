@@ -7,7 +7,8 @@
 // prompt file alone (AGENTS.md § Class and interface policy). Each vendor's
 // answer is its own module beside this one, and the two locations of this kind
 // answer differently even inside one vendor.
-import type { DeclaredEntryDto } from '../../../../shared/api-types';
+import { ParsedMarkdownDocument } from '../../parsers/markdown';
+import type { DeclaredEntryDto, PromptPresentationDto } from '../../../../shared/api-types';
 import type { CompiledInspectionRule } from '../registry';
 
 /**
@@ -28,6 +29,22 @@ import type { CompiledInspectionRule } from '../registry';
 export interface CompiledStaticPromptRule extends CompiledInspectionRule {
   /** The recognized kind; this unit compiles `prompt/command` records alone. */
   readonly kind: 'prompt/command';
+  /**
+   * One admitted file's complete decoded text, split into the two halves its
+   * detail publishes — the metadata the file declares and the prompt the
+   * product sends — both in the parser's resolved order and resolution
+   * (FR-007). The admitting rule's own reading, as an agent's is
+   * (`../agents/compiled-rule.ts` § agentPresentationOf), because the format
+   * is the vendor's: a Claude Code, Copilot, or Codex command is Markdown
+   * whose frontmatter block is the metadata and whose remainder is the prompt
+   * ({@link markdownPromptPresentationOf}), while a Gemini CLI command is TOML
+   * whose `prompt` value is the prompt and whose other keys are the metadata.
+   * Throws on text the format cannot read; the recognizer's extraction
+   * boundary turns the throw into the recognition's `failed` state while the
+   * file stays an admitted candidate whose complete source is still displayed
+   * (FR-028).
+   */
+  promptPresentationOf(sourceText: string): PromptPresentationDto;
   /**
    * The name one admitted file is invoked by, as the admitting product builds
    * it. Empty exactly where that product's own derivation is — a file named
@@ -53,4 +70,16 @@ export interface CompiledStaticPromptRule extends CompiledInspectionRule {
    * searches is runtime this tool never observes (FR-009).
    */
   invocationNameOf(sourceRelativePath: string, declared: readonly DeclaredEntryDto[]): string;
+}
+
+/**
+ * The reading of every product whose command or prompt file is Markdown —
+ * Claude Code, Copilot, and Codex: the frontmatter block's entries are the
+ * metadata and the text the block leaves is the prompt, the parser module's
+ * own split (`parsers/markdown.ts`). One function rather than three that
+ * happen to agree, so the products that share a format share its answer.
+ */
+export function markdownPromptPresentationOf(sourceText: string): PromptPresentationDto {
+  const document = new ParsedMarkdownDocument(sourceText);
+  return { metadata: document.frontmatterEntries, promptText: document.body };
 }

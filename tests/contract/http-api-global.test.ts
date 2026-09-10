@@ -162,7 +162,7 @@ describe('get-global-consent-preview', () => {
 });
 
 describe('create-global-consent-preview', () => {
-  it('creates all four entries in the fixed order, with no selector', () => {
+  it('creates all five entries in the fixed order, with no selector', () => {
     process.env[GLOBAL_HOME_VARIABLES.copilot] = '/env/copilot';
     process.env[GLOBAL_HOME_VARIABLES.claude] = '/env/claude';
     process.env[GLOBAL_HOME_VARIABLES.codex] = '/env/codex';
@@ -171,18 +171,22 @@ describe('create-global-consent-preview', () => {
 
     // Every member is always evaluated: the request carries no parameter, so
     // there is nothing a client could send to narrow the set or to propose a
-    // root the environment does not name. The shared agent home is the
-    // always-derived fourth entry (FR-045).
+    // root the environment does not name. The Gemini CLI home is the `.gemini`
+    // below its unset setting's default, the home (specs/002-gemini-cli-support
+    // FR-011), and the shared agent home is the always-derived fifth entry
+    // (FR-045).
     expect(preview.entries.map((entry) => entry.member)).toEqual([
       'copilot',
       'claude',
       'codex',
+      'gemini',
       'agents',
     ]);
     expect(preview.entries.map((entry) => entry.displayRoot)).toEqual([
       '/env/copilot',
       '/env/claude',
       '/env/codex',
+      '/env/home/.gemini',
       '/env/home/.agents',
     ]);
   });
@@ -194,8 +198,8 @@ describe('create-global-consent-preview', () => {
     // later enable request is refused when either no longer matches — so a
     // version that changed without anyone deciding to change it is the failure
     // this freezes.
-    expect(preview.allowlistVersion).toBe('2026-08-27');
-    expect(preview.traversalPlanVersion).toBe('2026-08-27');
+    expect(preview.allowlistVersion).toBe('2026-09-10');
+    expect(preview.traversalPlanVersion).toBe('2026-09-10');
   });
 
   it('shows an unusable override as itself rather than falling back', () => {
@@ -218,6 +222,7 @@ describe('create-global-consent-preview', () => {
       ['present-empty', 'environment'],
       ['relative', 'environment'],
       ['eligible', 'environment'],
+      ['eligible', 'default-home'],
       ['eligible', 'default-home'],
     ]);
     // An empty override still has a row, and its display is the empty string:
@@ -275,7 +280,7 @@ describe('the preview performs no I/O under a proposed root', () => {
     rmSync(fixture.base, { recursive: true, force: true });
   });
 
-  it('leaves all four homes exactly as it found them', () => {
+  it('leaves all five homes exactly as it found them', () => {
     const before = observeTree(fixture.base);
     expect(before.size).toBeGreaterThan(10);
 
@@ -300,6 +305,7 @@ describe('the preview performs no I/O under a proposed root', () => {
         fixture.homes.claude,
         fixture.homes.codex,
         fixture.homes.copilot,
+        fixture.homes.gemini,
       ].toSorted(),
     );
   });
@@ -312,7 +318,7 @@ describe('the preview performs no I/O under a proposed root', () => {
     // admitted root is fixed by the shipped plan the version pair identifies,
     // and the consent copy explains that scope in plain language. A candidate
     // filename appearing here would be a second, drifting allowlist.
-    for (const member of ['copilot', 'claude', 'codex', 'agents'] as const) {
+    for (const member of ['copilot', 'claude', 'codex', 'gemini', 'agents'] as const) {
       for (const candidate of fixture.expectedCandidatePaths[member]) {
         expect(serialized, candidate).not.toContain(candidate);
       }
@@ -325,12 +331,15 @@ describe('the preview performs no I/O under a proposed root', () => {
     // the rules that could disagree with them — and only the Global-scoped
     // ones: a Repository exclusion says nothing about what consent to read a
     // home directory covers, so putting one here would describe the wrong
-    // boundary to a reader deciding. The three vendor exclusions and the
-    // shared managed-remote one are all of them.
+    // boundary to a reader deciding. The five vendor exclusions — Gemini
+    // CLI's installed extensions among them — and the shared managed-remote
+    // one are all of them.
     expect(preview.excludedRuleIds).toEqual([
       'claude.excluded.user-runtime',
       'codex.excluded.user-runtime',
       'copilot.excluded.user-runtime',
+      'gemini.excluded.extensions',
+      'gemini.excluded.user-runtime',
       'shared.excluded.managed-remote-state',
     ]);
   });
@@ -438,12 +447,12 @@ describe('enable-global', () => {
         // A key this product never ships. It names nothing the server reads, so
         // it cannot narrow the consent — which is the whole reason there is no
         // selector to send. Naming one bound member is the sharper case: the
-        // accepted set below is all four, so the key neither narrowed the
+        // accepted set below is all five, so the key neither narrowed the
         // consent to it nor excluded the others.
         tools: ['claude'],
       }),
     );
-    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'agents']);
+    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'gemini', 'agents']);
   });
 
   it('queues one batch with one shared request ID for the admitted subset', async () => {
@@ -457,13 +466,13 @@ describe('enable-global', () => {
       }),
     );
 
-    // All four members are bound and every fixture root is a readable
+    // All five members are bound and every fixture root is a readable
     // directory, so the admitted set is the whole evaluated one. One request
-    // ID covers them all: the batch is one operation over the fixed four,
+    // ID covers them all: the batch is one operation over the fixed five,
     // never one job per member.
     expect(result.state).toBe('queued');
     expect(result.scanRequestId).not.toBeNull();
-    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'agents']);
+    expect(result.acceptedTools).toEqual(['copilot', 'claude', 'codex', 'gemini', 'agents']);
     expect(result.rejectedTools).toEqual([]);
   });
 
@@ -476,6 +485,7 @@ describe('enable-global', () => {
     process.env[GLOBAL_HOME_VARIABLES.copilot] = '';
     process.env[GLOBAL_HOME_VARIABLES.claude] = '';
     process.env[GLOBAL_HOME_VARIABLES.codex] = '';
+    process.env[GLOBAL_HOME_VARIABLES.gemini] = '';
     process.env.HOME = join(fixture.base, 'no-agents-here');
     const { create, enable } = enableFunctions();
     const preview = payload(create());
@@ -494,7 +504,7 @@ describe('enable-global', () => {
       state: 'active-no-job',
       scanRequestId: null,
       acceptedTools: [],
-      rejectedTools: ['copilot', 'claude', 'codex', 'agents'],
+      rejectedTools: ['copilot', 'claude', 'codex', 'gemini', 'agents'],
     });
   });
 
@@ -540,7 +550,7 @@ describe('enable-global', () => {
   it('retries exactly the retryable subset under the same preview', async () => {
     // The Codex home is unreadable at the first confirmation, so its member
     // is rejected `root-unreadable` with the same-preview disposition while
-    // the other three publish. Restoring the directory and confirming the
+    // the other four publish. Restoring the directory and confirming the
     // exact same preview again must run the retry for that one member —
     // preserving the published Sources and their controls untouched
     // (contracts/http-api.md § enable-global `retryableTools`).
@@ -576,7 +586,7 @@ describe('enable-global', () => {
       };
       const first = accepted(await enableCall(body));
       expect(first.state).toBe('queued');
-      expect(first.acceptedTools).toEqual(['copilot', 'claude', 'agents']);
+      expect(first.acceptedTools).toEqual(['copilot', 'claude', 'gemini', 'agents']);
       expect(first.rejectedTools).toEqual(['codex']);
       // The confirmation answered with its batch committed, so the published
       // Sources already exist before the retry runs beside them.
@@ -587,7 +597,7 @@ describe('enable-global', () => {
         .map((source) => source.sourceId)
         .toSorted();
       const survivorsBefore = new Set(before.sources.map((source) => source.sourceId));
-      expect(publishedSourceIds).toHaveLength(3);
+      expect(publishedSourceIds).toHaveLength(4);
       expect(before.globalControl?.retryableTools).toEqual(['codex']);
 
       chmodSync(codexHome, 0o700);
@@ -600,7 +610,7 @@ describe('enable-global', () => {
         .poll(() => context.session.snapshot().globalControl?.batchStatus, { timeout: 10_000 })
         .toBeNull();
       const after = context.session.snapshot();
-      // The three published Sources survive with their identities; the
+      // The four published Sources survive with their identities; the
       // retried member's commit adds its own beside them.
       const survivors = after.sources.map((source) => source.sourceId);
       for (const sourceId of publishedSourceIds) {

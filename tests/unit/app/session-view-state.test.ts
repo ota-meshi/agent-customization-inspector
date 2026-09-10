@@ -455,7 +455,7 @@ describe('session view state — session loss', () => {
           : {
               state: 'active',
               previewId: 'preview-1',
-              confirmedTools: ['copilot', 'claude', 'codex', 'agents'],
+              confirmedTools: ['copilot', 'claude', 'codex', 'gemini', 'agents'],
               controls: [],
               pendingTools: ['codex'],
               retryableTools: [],
@@ -522,7 +522,7 @@ describe('session view state — session loss', () => {
       globalControl: {
         consentGiven: true,
         disabling: false,
-        confirmedTools: ['copilot', 'claude', 'codex', 'agents'],
+        confirmedTools: ['copilot', 'claude', 'codex', 'gemini', 'agents'],
         controls: [],
         pendingTools: ['codex'],
         retryableTools: [],
@@ -1041,12 +1041,20 @@ describe('session view state — detail ownership across page instances', () => 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), outgoingPage);
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      outgoingPage,
+      'repository',
+      'skill',
+    );
 
     const replacementOpen = state.openFileDetail(
       pathFor('entry-2'),
       pathFor('entry-2'),
       replacementPage,
+      'repository',
+      'skill',
     );
     // The outgoing page's unmount cleanup, arriving after the replacement's
     // open: a no-op, because the state is no longer its to drop.
@@ -1096,10 +1104,10 @@ describe('session view state — detail ownership across page instances', () => 
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
 
-    await state.openFileDetail('AGENTS.md', 'AGENTS.md', undefined, 'repository');
+    await state.openFileDetail('AGENTS.md', 'AGENTS.md', undefined, 'repository', 'instructions');
     expect(state.entryDetail.value?.file.sourceId).toBe('source-repository');
 
-    await state.openFileDetail('AGENTS.md', 'AGENTS.md', undefined, 'global-codex');
+    await state.openFileDetail('AGENTS.md', 'AGENTS.md', undefined, 'global-codex', 'instructions');
     // Two detail requests, the second naming the other Source, and the state
     // now holds that Source's file.
     expect(
@@ -1107,10 +1115,72 @@ describe('session view state — detail ownership across page instances', () => 
         .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
         .map((call) => call.args[0]),
     ).toEqual([
-      { sourceRelativePath: 'AGENTS.md', source: 'repository' },
-      { sourceRelativePath: 'AGENTS.md', source: 'global-codex' },
+      { sourceRelativePath: 'AGENTS.md', source: 'repository', kind: 'instructions' },
+      { sourceRelativePath: 'AGENTS.md', source: 'global-codex', kind: 'instructions' },
     ]);
     expect(state.entryDetail.value?.file.sourceId).toBe('source-global');
+    state.dispose();
+  });
+
+  it('re-requests the same path under another kind instead of holding the open detail', async () => {
+    // A step between two routes' details at one path — the command page and
+    // the instruction page of a `.gemini/commands/build.toml` that
+    // `context.fileName` also names, which the browser's history takes in one
+    // navigation. The Source and the path are identical; the kind is the half
+    // that says the variant is not (contracts/http-api.md § get-file-detail).
+    // Holding the entry here would leave the command variant under the
+    // instruction route, whose page reads only its own kind's.
+    const scripted = {
+      calls: [] as { method: SessionRpcFunctionName; args: readonly unknown[] }[],
+      channel: {
+        call: (method: SessionRpcFunctionName, ...args: readonly unknown[]) => {
+          scripted.calls.push({ method, args });
+          if (method === SESSION_RPC_FUNCTIONS.getSession) {
+            return Promise.resolve(sessionResult(bootstrapSnapshot()));
+          }
+          const request = args[0] as { sourceRelativePath: string; kind: string };
+          return Promise.resolve({
+            globalContentEpoch: 0,
+            repositoryGeneration: 0,
+            globalGeneration: null,
+            data: {
+              // The kind the request named is the variant that answers.
+              kind: request.kind,
+              file: {
+                sourceId: 'source-repository',
+                sourceRelativePath: request.sourceRelativePath,
+                encoding: 'utf-8',
+                hadLeadingBom: false,
+                sourceText: 'prompt = "Run the build."\n',
+                sizeBytes: 26,
+                diagnosticIds: [],
+              },
+              presentation: null,
+              diagnostics: [],
+            },
+          });
+        },
+      },
+    };
+    const state = new SessionViewState({ channel: scripted.channel });
+    await state.start();
+
+    const path = '.gemini/commands/build.toml';
+    await state.openFileDetail(path, path, undefined, 'repository', 'prompt/command');
+    expect(state.entryDetail.value?.kind).toBe('prompt/command');
+
+    await state.openFileDetail(path, path, undefined, 'repository', 'instructions');
+    // Two detail requests, the second naming the other kind, and the state
+    // now holds that kind's variant.
+    expect(
+      scripted.calls
+        .filter((call) => call.method === SESSION_RPC_FUNCTIONS.getFileDetail)
+        .map((call) => call.args[0]),
+    ).toEqual([
+      { sourceRelativePath: path, source: 'repository', kind: 'prompt/command' },
+      { sourceRelativePath: path, source: 'repository', kind: 'instructions' },
+    ]);
+    expect(state.entryDetail.value?.kind).toBe('instructions');
     state.dispose();
   });
 
@@ -1119,7 +1189,7 @@ describe('session view state — detail ownership across page instances', () => 
     const scripted = channelFrom([sessionResult(bootstrapSnapshot()), detailFor('entry-1')]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), page);
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), page, 'repository', 'skill');
     // The owner leaving to a non-detail route drops what it requested.
     state.closeFileDetail(page);
     expect(state.fileDetailState.value).toBe('idle');
@@ -1127,7 +1197,7 @@ describe('session view state — detail ownership across page instances', () => 
 
     // An ownerless close is the view state's own lifecycle — refresh, purge —
     // and always applies.
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), page);
+    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'), page, 'repository', 'skill');
     state.closeFileDetail();
     expect(state.fileDetailState.value).toBe('idle');
     expect(state.entryDetail.value).toBeNull();
@@ -1171,7 +1241,13 @@ describe('session view state — detail ownership across page instances', () => 
     await state.openCarrierDetail('.mcp.json');
     expect(state.carrierDetail.value?.file.sourceRelativePath).toBe('.mcp.json');
 
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
     expect(state.carrierDetail.value).toBeNull();
     expect(state.fileDetailState.value).toBe('ready');
@@ -1189,7 +1265,13 @@ describe('session view state — detail ownership across page instances', () => 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
 
     await state.openPolicyDetail('.codex/rules/deploy.rules');
@@ -1214,7 +1296,13 @@ describe('session view state — detail ownership across page instances', () => 
     await state.openPolicyDetail('.codex/rules/deploy.rules');
     expect(state.policyDetail.value?.file.sourceRelativePath).toBe('.codex/rules/deploy.rules');
 
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
     expect(state.policyDetail.value).toBeNull();
     expect(state.fileDetailState.value).toBe('ready');
@@ -1273,10 +1361,22 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.fileDetailState.value).toBe('ready');
 
-    await state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     // The recognition and the file tree describe the skill, not the file
     // that did not load, so the entry survives its companion's failure.
     expect(state.entryDetail.value?.file.sourceRelativePath).toBe(pathFor('entry-1'));
@@ -1294,11 +1394,29 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
-    await state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.fileDetailState.value).toBe('companion-failed');
 
-    const retry = state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    const retry = state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     // Synchronously back in flight: the failed branch — and its retry
     // button — unmounts, so a second click cannot double-dispatch.
     expect(state.fileDetailState.value).toBe('ready');
@@ -1317,11 +1435,29 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
-    await state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     const requestsBefore = scripted.calls.length;
 
-    await state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     // Returning to what is already held is a change of selection, not of
     // content: no request leaves, and the held detail stays adopted.
     expect(scripted.calls.length).toBe(requestsBefore);
@@ -1342,7 +1478,13 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
 
     expect(state.fileDetailState.value).toBe('idle');
     expect(state.entryDetail.value).toBeNull();
@@ -1376,8 +1518,20 @@ describe('session view state — companion failures stay confined to the pane', 
     // The detail failure arrives while the session failure is unresolved. Each
     // reaches its own surface: the shell keeps reporting the session's, and the
     // route now has one of its own to report.
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
-    await state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.sessionErrorMessage.value).toBe('refresh lost the host briefly');
     expect(state.detailErrorMessage.value).toBe('companion chunk lost');
 
@@ -1405,8 +1559,20 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
-    await state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
 
     expect(state.detailErrorMessage.value).toBe('companion chunk lost');
     expect(state.sessionErrorMessage.value).toBeNull();
@@ -1422,8 +1588,20 @@ describe('session view state — companion failures stay confined to the pane', 
     ]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
-    await state.openFileDetail(pathFor('entry-1'), pathFor('companion-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('companion-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.detailErrorMessage.value).toBe('companion chunk lost');
 
     // A refresh success answers session-level failures only; the retained
@@ -1446,7 +1624,13 @@ describe('session view state — companion failures stay confined to the pane', 
     const scripted = channelFrom([sessionResult(bootstrapSnapshot()), detailFor('entry-1')]);
     const state = new SessionViewState({ channel: scripted.channel });
     await state.start();
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.entryDetail.value).not.toBeNull();
 
     let stateWhenDisposed: unknown;
@@ -1628,7 +1812,13 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
     await state.requestRescan();
     expect(state.snapshot.value?.repositoryGeneration).toBe(2);
 
-    await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    await state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     expect(state.fileDetailState.value).toBe('stale');
     expect(state.entryDetail.value).toBeNull();
     expect(state.openCompanion.value).toBeNull();
@@ -1648,7 +1838,13 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
       },
     });
     await state.start();
-    const opened = state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+    const opened = state.openFileDetail(
+      pathFor('entry-1'),
+      pathFor('entry-1'),
+      undefined,
+      'repository',
+      'skill',
+    );
     state.closeFileDetail();
     firstDetail.resolve(detailFor('entry-1'));
     await opened;
@@ -1695,7 +1891,13 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
       },
     });
     await state.start();
-    const opened = state.openFileDetail(pathFor('entry-2'), pathFor('entry-2'));
+    const opened = state.openFileDetail(
+      pathFor('entry-2'),
+      pathFor('entry-2'),
+      undefined,
+      'repository',
+      'skill',
+    );
     const rescanned = state.requestRescan();
     // Let the acceptance settle and its refresh dispatch (and stall).
     await Promise.resolve();
@@ -1765,7 +1967,13 @@ describe('an explicit rescan replaces the whole adopted generation (T182)', () =
       const scripted = channelFrom([sessionResult(committedSnapshot()), detailFor('entry-1')]);
       const state = new SessionViewState({ channel: scripted.channel });
       await state.start();
-      await state.openFileDetail(pathFor('entry-1'), pathFor('entry-1'));
+      await state.openFileDetail(
+        pathFor('entry-1'),
+        pathFor('entry-1'),
+        undefined,
+        'repository',
+        'skill',
+      );
       state.closeFileDetail();
       expect(localSet).not.toHaveBeenCalled();
     } finally {

@@ -116,12 +116,12 @@ bindされたportを述べる場所はprintされたURLだけである。誰か�
 奪ってはならない起動には`--port 0`を使う。suiteも同じ理由でその形で起動する
 （AGENTS.md § Agent-started process policy）。
 
-`--inspect-personal-setup`は、4つのmember root — 各tool自身の設定ディレクトリと共有agent home — に
+`--inspect-personal-setup`は、5つのmember root — 各tool自身の設定ディレクトリと共有agent home — に
 ある文書化済みカスタマイズfileもinspectする。consent pageのcheckboxが認可するのと同じreadを、commandで
 述べる形である。このflagそのものがconfirmationである。CLIはstartupで1回captureしたimmutableなGlobal
 root inputからpreviewを構築して確認し、batchのsettleを待つ。したがってprintされたURLが現れる時点で、
 そのconfirmationが生んだものは既にcommit済みである。Rootを1つ以上admitした場合はGlobal generationと
-そのSourceがinventoryに載る。4件すべてがrejectされた場合、settleしたdispositionは`active-no-job`で
+そのSourceがinventoryに載る。5件すべてがrejectされた場合、settleしたdispositionは`active-no-job`で
 あり、Sourceもgenerationも存在せず、各memberの`failureCode`が説明するcontrol stateだけが残る。Flagもpreview requestも環境プロパティやhome directoryを
 再captureしない。各toolがどう終わったか、何が除外されたままかは、これまでどおりconsent pageにある。
 Flagなしのlaunchは選択されたrepositoryの外を一切readせず、pageはディレクトリの割り出しを申し出る。
@@ -156,7 +156,7 @@ CLIは呼び出し時の`process.cwd()`を1回だけcaptureする。省略時は
 受理し（反復指定はparserのlast valueへ解決）、absolute optionはそのまま保持し、relative optionはcaptureした呼び出しdirectoryに対してresolveする。
 明示的なempty valueはsessionまたはbrowser attemptより前に固定actionableかつsource-value-freeなoutputを出して終了し、
 valueの欠落は同じboundaryでGunshiのtyped argument validationによりrejectされる。Editor launcherの探索と
-session作成より前に、CLIは文書化された3つのtool-home環境プロパティを固定順で1回ずつcaptureし、
+session作成より前に、CLIは文書化された4つのtool-home環境プロパティを固定順で1回ずつcaptureし、
 `node:os.homedir()`を無条件で1回callする。そのretained captureをlauncher lookupから除外するeligibleな
 personal rootとすべてのpreviewに使う。Selectionは`process.chdir()`を呼ばず、startupのinput capture、
 classification、またはdisplay escapeのfailureはsessionやbrowserが存在する前にlaunchを終了させ、
@@ -261,7 +261,7 @@ pnpm run test:e2e
   exact occurrenceであること、tuple membershipだけで1つのsource formのkindを別formへeligibleにしないことも証明する。
   Skillの宣言はこのgateを通らない。fileが書いたkeyだからである。Allowlistが記載していないreferenceは完全な
   source textからだけ利用可能とする。これらのtestまたはimplementationを開始する
-  前に、3つすべてのvendor-contract language pairのPresentation Allowlist sectionがsupportedな全`(tool, kind)`とadmit済み
+  前に、4つすべてのvendor-contract language pairのPresentation Allowlist sectionがsupportedな全`(tool, kind)`とadmit済み
   source formを列挙済みでなければならない。このgateは承認済みrowとbilingual digestを検証するだけで、rowを作成したり
   semanticに編集したりしてはならない。Membership/source-form/extractor/relationshipに変更が必要なら作業を停止し、
   design artifactを同期してplan/task generationを再実行する。
@@ -577,7 +577,7 @@ pnpm exec playwright test tests/e2e/repository-complete-comparison.spec.ts
 
 ### 4. Global inspectionへのopt-in
 
-opt-in の全体が出荷されています: preview、固定4 memberの確認、memberごとの再スキャン、
+opt-in の全体が出荷されています: preview、固定5 memberの確認、memberごとの再スキャン、
 same-preview retry、そしてすべてのGlobal結果を再び除去する優先disable barrierです。
 
 ```bash
@@ -604,7 +604,7 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    `--inspect-personal-setup`もprocess inputを再読込しない。`HOME`/`USERPROFILE`の直接選択もexistence checkも
    行わない。Capture、classification、またはdisplay escapeのthrowはlauncher探索、session作成、browser
    attemptより前にstartupをfailさせる。
-2. Consent viewが正確なCopilot/Claude/Codex/共有agent home lexical root、input state、除外を表示し、
+2. Consent viewが正確なCopilot/Claude/Codex/Gemini CLI/共有agent home lexical root、input state、除外を表示し、
    read scopeはpatternごとのpath表示ではなく平易な言葉で説明する。previewが束縛する2つのversionは
    どちらも表示しない。読み手はどちらに対しても行動できず、参照先もなく、それらが守るversion不一致は
    previewが画面にある間には起こりえない — 値はbuildの定数であり、異なるbuildは確認できるpreviewを
@@ -613,8 +613,10 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    起きたfailureはreal errorを返し、prior current previewを置き換えない。DTO構築またはtransport serializationは
    completeなpreviewがcurrentになった後にfailし得る。その場合はordinary request errorとなり、新しく作成したpreviewが
    retainedされたままになり得る。どちらのfailureもauthorityやjobを作らず、`scanRequestId`を発行しない。
-3. Opt-in後は文書化されたmember candidateだけが0から4つの別識別member Global Sourceに表示される。
-   Copilot、Claude、Codexごとに最大1つで、各Sourceは正確に1つのrootを持つ。Initial/retry transactionでadmitされた
+3. Opt-in後は文書化されたmember candidateだけが0から5つの別識別member Global Sourceに表示される。
+   Copilot、Claude、Codex、Gemini CLI、共有agent homeごとに最大1つで、各Sourceは正確に1つのrootを持つ。Gemini CLI homeは
+   `GEMINI.md`、settings・MCP・hookの各rowに載る`settings.json`、`commands/**/*.toml`、`skills/*/SKILL.md`、
+   `agents/*.md`、`policies/*.toml`をpublishし、その他は何もpublishしない（specs/002-gemini-cli-support/spec.md FR-010）。Initial/retry transactionでadmitされた
    全Sourceは、観測可能なper-tool commitなしに1つのatomicなGlobal generationへ一緒に現れる — enable commitは
    Repositoryのviewとstateに触れずにGlobal sequenceをgeneration 1で作成する。同じrowの2つのconsent済みhomeのreadableなfileを比較し
    — comparisonは1つのSource familyの内側に留まるため、Repository fileがそのpairのsideとして提示されることはない
@@ -637,8 +639,8 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    valueとstored planだけを使い、environmentを再読込せず、`displayRoot`をreverse-convertしない。Recordが別fieldを保持し、admissionが
    stored raw valueを使うことをescape-collision、control-character、backslash fixtureで証明する。
    Previewにeligibleとinvalidのentryが混在してもrequest側tool selectorは持たない。Initial enableは固定の
-   `confirmedTools: [copilot, claude, codex, agents]`を導出して4つすべてをevaluateする。Responseのdisjointな
-   `acceptedTools`/`rejectedTools`のunionは4つすべてと一致する。`tools` keyなどselector-shaped inputはrejectする。
+   `confirmedTools: [copilot, claude, codex, gemini, agents]`を導出して5つすべてをevaluateする。Responseのdisjointな
+   `acceptedTools`/`rejectedTools`のunionは5つすべてと一致する。`tools` keyなどselector-shaped inputはrejectする。
    Retryはnon-pending unpublished `admitted` controlと`same-preview` rejected controlからなるcomplete fixed-order
    `retryableTools` projectionをderiveし、published、pending、lexicalな`new-preview-required` controlを除外する。Clientは
    targetを追加、subset化、reorderできない。同じexact active consentはprojectionがnonemptyの場合だけ再利用でき、既存Sourceは
@@ -691,8 +693,8 @@ Test harnessはisolated fake tool homeを渡し、developerのreal homeを絶対
    Same-preview rejected/non-pending unpublished admitted controlをretryableとして表示してよいが、全pending work完了まではretryを
    disabledとして固定の`global-enable-in-progress` conflictを返す。その後はexact nonempty `retryableTools` projectionを使用して成功済みSourceを
    保持する。Lexicalな`new-preview-required` controlにはdisable/new previewを要求し、disableは直ちに利用できる。
-10. Initial activationで4 memberすべてがlexicalまたはconsent後root validationでdeterministicallyにrejectされた場合、enableはempty
-    `acceptedTools`、4つすべての`rejectedTools`、Source/job/generation/stale entryなしの`active-no-job`を返す。
+10. Initial activationで5 memberすべてがlexicalまたはconsent後root validationでdeterministicallyにrejectされた場合、enableはempty
+    `acceptedTools`、5つすべての`rejectedTools`、Source/job/generation/stale entryなしの`active-no-job`を返す。
     `globalControl`はsame-preview rejected controlだけをretryableとしてactiveのままとし、lexicalな`new-preview-required` controlを
     除外する。したがってall-lexically-invalid previewの`retryableTools`はemptyでdisable/new previewを必要とする。Preview routeは
     同じfrozen previewを返し、disableも利用できる。
@@ -722,7 +724,7 @@ fixtureの自分の複製とguidanceだけを渡し、このworking treeの外�
 Run の前に各sessionへ自分のfolderを用意する。そのfolderから`npx --no-install`が解決する場所に
 packしたrelease candidateを入れ、`tests/fixtures/repositories/build-fixtures.ts`がそのfolderの
 `repository/`としてall-kind fixtureをその場所に構築し、`tests/fixtures/global-homes/build-fixtures.ts`が
-自分だけの`HOME`の下に4つのpersonal-setup homeを構築する。1つの共有hostではrunにならない。
+自分だけの`HOME`の下に5つのpersonal-setup homeを構築する。1つの共有hostではrunにならない。
 20 sessionは20回の起動と20個のconsent状態である。全sessionを`validation.md`と`validation.ja.md`へ
 記録する。4つのworkflow outcome、2つの計測区間、safetyの観測を、除外も置換もせず記録し、runが
 agent駆動であったことと、どのmodelで走ったかも記録する。

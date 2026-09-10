@@ -12,7 +12,8 @@
 // that base, and a base declared in either would have to be imported back by
 // the other.
 import { ClaudeCompiledRule } from '../vendor/claude';
-import type { CompiledStaticPromptRule } from './compiled-rule';
+import { markdownPromptPresentationOf, type CompiledStaticPromptRule } from './compiled-rule';
+import type { PromptPresentationDto } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
 /**
@@ -26,6 +27,11 @@ export class ClaudeCompiledPromptRule
 {
   /** Narrowed to the one kind this unit compiles; the constructor proves it. */
   declare public readonly kind: 'prompt/command';
+
+  /** A Claude command file is Markdown: the shared reading of that format. */
+  public promptPresentationOf(sourceText: string): PromptPresentationDto {
+    return markdownPromptPresentationOf(sourceText);
+  }
 
   /**
    * The command name one admitted file is invoked by: the path below the

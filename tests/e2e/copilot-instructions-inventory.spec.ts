@@ -55,14 +55,15 @@ test.describe('Copilot instruction rows and their surfaces', () => {
       'utf8',
     );
     // Shared files: `AGENTS.md` is Codex's and Copilot's, the root
-    // `CLAUDE.md` is Claude's and Copilot's, and `GEMINI.md` is Copilot's
-    // alone — on the two surfaces that document it.
+    // `CLAUDE.md` is Claude's and Copilot's, and `GEMINI.md` is Copilot's —
+    // on the two surfaces that document it — and Gemini CLI's own.
     await writeFile(join(fixture, 'AGENTS.md'), '# Agent instructions\n', 'utf8');
     await writeFile(join(fixture, 'CLAUDE.md'), '# Claude-compatible\n', 'utf8');
     await writeFile(join(fixture, 'GEMINI.md'), '# Gemini-compatible\n', 'utf8');
     // Excluded by initial scope: the `.claude` spelling and the non-root
     // alternatives Copilot documents but this release does not admit. The
-    // first stays a Claude row; the second is nobody's.
+    // first stays a Claude row; the second is Gemini CLI's, whose context
+    // file is read at every depth.
     await mkdir(join(fixture, '.claude'), { recursive: true });
     await writeFile(join(fixture, '.claude/CLAUDE.md'), '# Directory form\n', 'utf8');
     await writeFile(join(fixture, 'packages/api/GEMINI.md'), '# Nested Gemini\n', 'utf8');
@@ -130,10 +131,16 @@ test.describe('Copilot instruction rows and their surfaces', () => {
     await expect(nestedRepositoryWide).toContainText('GitHub Copilot');
     await expect(nestedRepositoryWide).toContainText('CLI');
     await expect(nestedRepositoryWide).not.toContainText('VS Code');
-    // `GEMINI.md` names the two surfaces that document it and not the editor.
+    // `GEMINI.md` names the two surfaces that document it and not the editor,
+    // beside Gemini CLI's own recognition of its default context file; the
+    // nested one is Gemini CLI's alone.
     const gemini = entryFor('GEMINI.md');
     await expect(gemini).toContainText('CLI, Cloud agent');
     await expect(gemini).not.toContainText('VS Code');
+    await expect(gemini).toContainText('Gemini CLI');
+    const nestedGemini = entryFor('packages/api/GEMINI.md');
+    await expect(nestedGemini).toContainText('Gemini CLI');
+    await expect(nestedGemini).not.toContainText('GitHub Copilot');
 
     // The shared files keep every product that recognizes them, each with its
     // own surface, and the Claude-only spelling stays Claude's.
@@ -157,7 +164,6 @@ test.describe('Copilot instruction rows and their surfaces', () => {
     // it. The exclusion records say the omission was decided; they are
     // maintenance data no surface renders.
     expect(text).not.toContain('.copilot/instructions');
-    expect(text).not.toContain('packages/api/GEMINI.md');
     expect(text).not.toContain('copilot-instructions.markdown');
     expect(text).not.toContain('README.md');
     // No contract identifier reaches a screen: an excluded rule ID stands
@@ -185,10 +191,11 @@ test.describe('Copilot instruction rows and their surfaces', () => {
       .getByRole('tabpanel')
       .locator('.aci-source-family-blocks__members > li');
     await expect(items).toHaveCount(3);
-    await expect(fileEntries).toHaveCount(7);
+    await expect(fileEntries).toHaveCount(8);
 
     // Tool: GitHub Copilot keeps every file Copilot recognizes and drops the
-    // `.claude` spelling it does not, leaving every range standing.
+    // `.claude` spelling and the nested `GEMINI.md` it does not, leaving every
+    // range standing.
     await page.getByLabel('Tool').selectOption('copilot');
     await expect(items).toHaveCount(3);
     await expect(fileEntries).toHaveCount(6);
@@ -210,10 +217,11 @@ test.describe('Copilot instruction rows and their surfaces', () => {
       'Showing 1 of 3',
     );
 
-    // Clearing restores the committed rows, the Claude-only file included.
+    // Clearing restores the committed rows, the Claude-only and Gemini
+    // CLI-only files included.
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(items).toHaveCount(3);
-    await expect(fileEntries).toHaveCount(7);
+    await expect(fileEntries).toHaveCount(8);
   });
 });
 

@@ -30,7 +30,7 @@ import { waitForInventory } from './repository-status';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The base holding the four member homes and the HOME the fourth derives from. */
+/** The base holding the member homes and the HOME the shared agent home and the Gemini CLI home derive from. */
 let base: string;
 
 let host: LaunchedHost;

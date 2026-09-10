@@ -19,10 +19,11 @@ candidate は `expectedCandidatePaths`、どの rule も admit してはなら�
 `nearMissPaths` です。隣接 path が enumerate、open、read されたことを見つけた suite は、古い
 fixture ではなく defect を見つけています。
 
-fixture は、環境を build された home に向けることで使います — 3つの tool member には
-`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME` を、そして `HOME` を。製品は共有 agent
-home `~/.agents` を `HOME` から自身で導出します（FR-013、FR-045）。4つとも `environment` が
-名前で keyed した形で返します。この製品の入力はそのプロパティだけであり、Global root を
+fixture は、環境を build された home に向けることで使います — 4つの tool member には
+`COPILOT_HOME`、`CLAUDE_CONFIG_DIR`、`CODEX_HOME`、`GEMINI_CLI_HOME` を（最後のものは製品が
+その配下に `.gemini` を join するディレクトリを名指します。specs/002-gemini-cli-support/spec.md
+FR-011）、そして `HOME` を。製品は共有 agent home `~/.agents` を `HOME` から自身で導出します
+（FR-013、FR-045）。5つとも `environment` が名前で keyed した形で返します。この製品の入力はそのプロパティだけであり、Global root を
 引数として受け取ることはありません。
 
 どの home にも2つの規則が成り立ちます。

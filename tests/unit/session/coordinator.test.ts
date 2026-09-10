@@ -237,17 +237,17 @@ describe('the atomic disposition (T946)', () => {
     expect(control.retryableTools).toEqual(['claude']);
   });
 
-  it('fixes confirmedTools to all four members however many were evaluated', () => {
+  it('fixes confirmedTools to all five members however many were evaluated', () => {
     const { session, coordinator } = bootstrap();
     const operationId = register(coordinator);
     coordinator.settleGlobalEnable(operationId, PREVIEW_ID, [admitted('codex')]);
 
-    // The consent is for all three tools even in this slice, where only the
+    // The consent is for all five members even in this slice, where only the
     // Codex port is bound: what a reader confirmed is the whole preview, and
     // the absent controls are how the unbound members stay visible as
     // unevaluated rather than as refusals nothing produced.
     const control = session.snapshot().globalControl!;
-    expect(control.confirmedTools).toEqual(['copilot', 'claude', 'codex', 'agents']);
+    expect(control.confirmedTools).toEqual(['copilot', 'claude', 'codex', 'gemini', 'agents']);
     expect(control.controls.map((entry) => entry.member)).toEqual(['codex']);
   });
 });

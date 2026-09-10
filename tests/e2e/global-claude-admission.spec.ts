@@ -32,7 +32,7 @@ import { openPersonalSetup } from './repository-status';
 /** The repository the session is launched against. */
 let repository: string;
 
-/** The three Global homes the environment points at. */
+/** The five Global homes the environment points at. */
 let homes: GlobalHomeFixture;
 
 let host: LaunchedHost;
@@ -88,6 +88,7 @@ test('inspects Claude and Codex from one confirmation, each as its own Source', 
     [
       '/instructions/detail/global-claude/CLAUDE.md',
       '/instructions/detail/global-codex/AGENTS.override.md',
+      '/instructions/detail/global-gemini/GEMINI.md',
       '/instructions/detail/repository/CLAUDE.md',
       '/instructions/detail/global-copilot/copilot-instructions.md',
       ...homes.expectedCandidatePaths.copilot
@@ -121,15 +122,16 @@ test('states each tool’s own outcome from the one shared batch', async ({ page
   await page.goto(new URL('/global-consent', host.origin).toString());
   const main = page.locator('main');
   await expect(main).toContainText('Scan status');
-  // All four members were read: every fixture root is a readable directory,
+  // All five members were read: every fixture root is a readable directory,
   // and each states its own outcome from the one shared batch (FR-014).
   await expect(main).toContainText('Copilot home — Inspected');
   await expect(main).toContainText('Claude home — Inspected');
   await expect(main).toContainText('Codex home — Inspected');
+  await expect(main).toContainText('Gemini home — Inspected');
   await expect(main).toContainText('Shared agent home — Inspected');
   const outcomes = await page.locator('.aci-global-consent-page__outcomes li').allInnerTexts();
-  expect(outcomes).toHaveLength(4);
-  await expect(main).toContainText('4 of these directories were read');
+  expect(outcomes).toHaveLength(5);
+  await expect(main).toContainText('5 of these directories were read');
 });
 
 test('publishes the one CLAUDE.md instruction row and nothing beside it', async ({ page }) => {
@@ -211,7 +213,7 @@ test('shows the home’s file whole, and no credential from any home', async ({ 
   }
 });
 
-test('leaves every byte of all four homes exactly as it found them', async ({ page }) => {
+test('leaves every byte of all five homes exactly as it found them', async ({ page }) => {
   // Its own launch and its own observation, so what is compared spans the whole
   // session rather than one page: the read happened before this suite's first
   // navigation, and a mutation would already be on disk.

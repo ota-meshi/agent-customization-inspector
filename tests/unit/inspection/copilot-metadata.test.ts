@@ -551,11 +551,11 @@ describe('the Copilot command reading (T467)', () => {
     expect(recognition.details).toMatchObject({
       kind: 'prompt/command',
       invocationName: 'deploy',
-      bodyText: '\n# Deploy\n',
+      promptText: '\n# Deploy\n',
     });
     expect(
       recognition.details.kind === 'prompt/command'
-        ? recognition.details.frontmatter.map((entry) => entry.key)
+        ? recognition.details.metadata.map((entry) => entry.key)
         : [],
     ).toEqual([
       'description',
@@ -575,7 +575,7 @@ describe('the Copilot command reading (T467)', () => {
     const recognition = await recognizePrompt('---\nname: something-else\n---\n\n# Deploy\n');
     expect(recognition.details).toMatchObject({
       invocationName: 'deploy',
-      frontmatter: [
+      metadata: [
         {
           key: 'name',
           keyKind: 'string',
@@ -599,7 +599,7 @@ describe('the Copilot command reading (T467)', () => {
       `---\ndescription: Publish with ${CONTENT_FIXTURE_SECRET}\nendpoint: \${DEPLOY_ENDPOINT}\n---\n\n# Publish\n`,
     );
     expect(recognition.details).toMatchObject({
-      frontmatter: [
+      metadata: [
         {
           key: 'description',
           value: { kind: 'scalar', text: `Publish with ${CONTENT_FIXTURE_SECRET}` },
@@ -615,8 +615,8 @@ describe('the Copilot command reading (T467)', () => {
     expect(recognition.details).toEqual({
       kind: 'prompt/command',
       invocationName: 'deploy',
-      frontmatter: [],
-      bodyText: '',
+      metadata: [],
+      promptText: '',
     });
     expect(recognition.parseStatus).toBe('failed');
   });
@@ -667,11 +667,11 @@ describe('the Copilot prompt reading (T495)', () => {
     expect(recognition.details).toMatchObject({
       kind: 'prompt/command',
       invocationName: 'scaffold-component',
-      bodyText: '\n# Scaffold\n',
+      promptText: '\n# Scaffold\n',
     });
     expect(
       recognition.details.kind === 'prompt/command'
-        ? recognition.details.frontmatter.map((entry) => entry.key)
+        ? recognition.details.metadata.map((entry) => entry.key)
         : [],
     ).toEqual(['name', 'description', 'argument-hint', 'tools']);
     expect(recognition.parseStatus).toBe('parsed');
@@ -684,7 +684,7 @@ describe('the Copilot prompt reading (T495)', () => {
     const recognition = await recognizePromptFile('---\nname: scaffold-component\n---\n\n# S\n');
     expect(recognition.details).toMatchObject({
       invocationName: 'scaffold-component',
-      frontmatter: [
+      metadata: [
         {
           key: 'name',
           keyKind: 'string',
@@ -699,7 +699,7 @@ describe('the Copilot prompt reading (T495)', () => {
       `---\ndescription: Publish with ${CONTENT_FIXTURE_SECRET}\nendpoint: \${DEPLOY_ENDPOINT}\n---\n\n# Publish\n`,
     );
     expect(recognition.details).toMatchObject({
-      frontmatter: [
+      metadata: [
         {
           key: 'description',
           value: { kind: 'scalar', text: `Publish with ${CONTENT_FIXTURE_SECRET}` },
@@ -726,8 +726,8 @@ describe('the Copilot prompt reading (T495)', () => {
     );
     expect(recognition.details).toMatchObject({
       invocationName: 'audit',
-      // The whole file, because it declares no frontmatter block to remove.
-      bodyText: [
+      // The whole file, because it declares no metadata block to remove.
+      promptText: [
         '# Audit',
         '',
         '- See [the guide](https://example.com/guide).',

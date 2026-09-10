@@ -1117,16 +1117,46 @@ export interface AgentFileDetailDto extends FileDetailBase {
 }
 
 /**
+ * What one prompt or command file declares, split the way its detail shows it
+ * (contracts/http-api.md § get-file-detail): the metadata a product reads as
+ * configuration, and the prompt it sends.
+ *
+ * Its own shape rather than {@link MarkdownPresentationDto}, for the reason
+ * {@link AgentPresentationDto} has one: the split is not always a frontmatter
+ * block. A Claude Code, Copilot, or Codex command is Markdown split at the
+ * frontmatter fence, while a Gemini CLI command is TOML whose `prompt` string
+ * is the prompt and whose remaining top-level keys are the metadata. Naming
+ * the halves after what they are lets every vendor spell the same two fields,
+ * and lets one detail surface render them the same way — the metadata as
+ * YAML, the prompt as Markdown.
+ */
+export interface PromptPresentationDto {
+  /**
+   * Every declaration the file makes except the one holding the prompt, in
+   * the file's own order — a VS Code prompt file's `name` among them, because
+   * the name is a declaration like any other on this surface and the row it
+   * heads is the inventory's fact (FR-007). Empty when the file declares
+   * nothing else.
+   */
+  readonly metadata: readonly DeclaredEntryDto[];
+  /**
+   * The prompt the file gives the reader's agent, as the parser resolved it:
+   * a Markdown file's body once its frontmatter block is removed, a Gemini
+   * CLI command's `prompt` string. Empty when the file declares none.
+   */
+  readonly promptText: string;
+}
+
+/**
  * Detail of a recognized command file: the file plus what the one scan-time
- * parse resolved (contracts/http-api.md § get-file-detail). A command file
- * carries a skill's frontmatter keys, so its detail leads with the
- * declarations the file wrote and the instructions that follow them, from the
- * same one parse the other Markdown kinds publish.
+ * parse resolved (contracts/http-api.md § get-file-detail). Its detail leads
+ * with the metadata the file wrote and the prompt that follows it, split as
+ * the admitting vendor's format splits them ({@link PromptPresentationDto}).
  *
  * No per-tool identity exists here, and no invocation name: which tools
  * recognize the file is the inventory's fact, and so is the name a reader
  * would type — the rule that admitted the file answers it, and a prompt file's
- * own `name` declaration arrives here as a frontmatter entry like every other
+ * own `name` declaration arrives here as a metadata entry like every other
  * key it wrote. The detail page states the name by reading the rows this file
  * is listed under, so the one fact is published once.
  */
@@ -1134,12 +1164,12 @@ export interface PromptFileDetailDto extends FileDetailBase {
   /** Discriminant: the file is a recognized command file. */
   readonly kind: 'prompt/command';
   /**
-   * The parsed declarations and instructions, or null exactly when extraction
-   * failed all-or-nothing (FR-028), the same rule the instructions variant
-   * states: nothing was parsed, the failure's Diagnostic is in `diagnostics`,
-   * and the complete source stays readable.
+   * The parsed metadata and prompt, or null exactly when extraction failed
+   * all-or-nothing (FR-028), the same rule the agent variant states: nothing
+   * was parsed, the failure's Diagnostic is in `diagnostics`, and the complete
+   * source stays readable.
    */
-  readonly presentation: MarkdownPresentationDto | null;
+  readonly presentation: PromptPresentationDto | null;
 }
 
 /**
@@ -1605,11 +1635,13 @@ export interface SettingsFileDetailDto extends FileDetailBase {
 }
 
 /**
- * Detail of a file no recognition owns: a census-listed companion, or a
- * diagnostic-only candidate whose bytes never parsed. At this level nothing
- * says the file is Markdown, so no parsed structure exists to publish — what
- * there is to show is the file itself: its complete source when its read
- * yielded text, its read outcome alone otherwise (FR-025).
+ * Detail of a file no recognition of the requested kind owns: a census-listed
+ * companion, a diagnostic-only candidate whose bytes never parsed, or a file
+ * another kind's rule admitted that the requested kind reads nothing out of.
+ * At this level nothing says the file is Markdown, so no parsed structure
+ * exists to publish — what there is to show is the file itself: its complete
+ * source when its read yielded text, its read outcome alone otherwise
+ * (FR-025).
  */
 export interface UnrecognizedFileDetailDto extends FileDetailBase {
   /** Discriminant: no recognition is attached to the file. */
@@ -2011,11 +2043,11 @@ export type SourceKind =
   | 'global';
 
 /**
- * One Global member: the three tool homes and the shared agent home
+ * One Global member: the four tool homes and the shared agent home
  * (spec.md § FR-013, FR-045). A member is what one preview entry, one control,
  * and at most one Global Source are about; `agents` is `~/.agents`, the
- * directory Codex and Copilot document for personal skills and the personal
- * plugin marketplace, which no setting relocates. Every `…Tools`-spelled
+ * directory Codex, Copilot, and Gemini CLI document for personal skills and
+ * Codex for the personal plugin marketplace, which no setting relocates. Every `…Tools`-spelled
  * control and batch field carries these member ids
  * (contracts/http-api.md § create-global-consent-preview).
  */
@@ -2432,7 +2464,7 @@ export type GlobalRootOrigin =
  * the channel is the one-way escaped presentation of it.
  */
 export interface GlobalPreviewEntryDto {
-  /** The member this row is about; the four rows are in the contracted order. */
+  /** The member this row is about; the five rows are in the contracted order. */
   readonly member: GlobalMemberId;
   /** Where the root came from; see {@link GlobalRootOrigin}. */
   readonly origin: GlobalRootOrigin;
@@ -2460,8 +2492,8 @@ export interface GlobalPreviewEntryDto {
 export type SourceSelector = 'repository' | `global-${GlobalMemberId}`;
 
 /**
- * What one `get-file-detail` request names: both halves of the file's identity
- * (contracts/http-api.md § get-file-detail).
+ * What one detail request names: both halves of the file's identity
+ * (contracts/http-api.md § get-file-detail, § get-mcp-carrier-detail).
  *
  * Both, because both are needed: a consented Global home and the selected
  * repository can hold the same Source-relative Path, and a request naming the
@@ -2473,6 +2505,30 @@ export interface FileDetailParams {
   readonly sourceRelativePath: string;
   /** Which Source holds it; see {@link SourceSelector}. */
   readonly source: SourceSelector;
+}
+
+/**
+ * The kind a `get-file-detail` request asks for: every file-subject kind, the
+ * discriminant of the variant the answer takes when a recognition of that kind
+ * holds the path (contracts/http-api.md § get-file-detail). `file` is not
+ * among them — it is what the answer falls to when none does, never a kind a
+ * route asks for.
+ */
+export type FileDetailKind = Exclude<FileDetailDto['kind'], 'file'>;
+
+/**
+ * What one `get-file-detail` request names: the file's identity and the kind
+ * whose reading of it is asked for (contracts/http-api.md § get-file-detail).
+ *
+ * The kind is the asking route's, because one file can hold two kinds — a
+ * `.claude/agents/CLAUDE.md` is a subagent and an instruction file — and each
+ * kind reads it in its own syntax: the page that shows the file as one kind
+ * asks for that kind's parse rather than receiving whichever kind's the host
+ * would otherwise have to choose.
+ */
+export interface FileDetailRequestParams extends FileDetailParams {
+  /** The kind whose variant is asked for; see {@link FileDetailKind}. */
+  readonly kind: FileDetailKind;
 }
 
 /**
@@ -2731,7 +2787,7 @@ export interface GlobalConsentPreviewDto {
   readonly allowlistVersion: string;
   /** The shipped compiled traversal-plan set version this preview binds. */
   readonly traversalPlanVersion: string;
-  /** Exactly four rows: Copilot, Claude, Codex, then the shared agent home. */
+  /** Exactly five rows: Copilot, Claude, Codex, Gemini, then the shared agent home. */
   readonly entries: readonly GlobalPreviewEntryDto[];
   /**
    * The excluded rules' IDs, sorted, which drive the displayed exclusions. A

@@ -52,6 +52,7 @@ import { runSourceScan } from '../inspection/scan';
 import { CLAUDE_GLOBAL_RULES } from '../inspection/rules/claude';
 import { CODEX_AGENTS_HOME_RULES, CODEX_GLOBAL_RULES } from '../inspection/rules/codex';
 import { COPILOT_AGENTS_HOME_RULES, COPILOT_GLOBAL_RULES } from '../inspection/rules/copilot';
+import { GEMINI_AGENTS_HOME_RULES, GEMINI_GLOBAL_RULES } from '../inspection/rules/gemini';
 import type { CompiledStaticCandidateRule } from '../inspection/rules/registry';
 import type { ToolRecognition } from '../inspection/recognizers/candidate';
 
@@ -62,6 +63,7 @@ import type {
   DeterministicRejection,
   FileDetailDto,
   FileDetailParams,
+  FileDetailRequestParams,
   GlobalConsentPreviewDto,
   GlobalDisableResultDto,
   GlobalEnableResultDto,
@@ -97,7 +99,8 @@ const GLOBAL_RULES_BY_MEMBER: Readonly<
   copilot: COPILOT_GLOBAL_RULES,
   claude: CLAUDE_GLOBAL_RULES,
   codex: CODEX_GLOBAL_RULES,
-  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES],
+  gemini: GEMINI_GLOBAL_RULES,
+  agents: [...CODEX_AGENTS_HOME_RULES, ...COPILOT_AGENTS_HOME_RULES, ...GEMINI_AGENTS_HOME_RULES],
 };
 
 /** The one session and its coordinator the RPC functions operate on. */
@@ -615,7 +618,7 @@ export function createInspectorDevframe(
         // another type included — resolves nowhere and takes the same
         // `stale-resource` rejection below.
         handler: (
-          request: FileDetailParams,
+          request: FileDetailRequestParams,
         ): InspectionDataResult<FileDetailDto> | DeterministicRejection => {
           if (context.session.globalDisableInProgress !== null) {
             // The disable fence outranks every inspection-data answer: the
@@ -624,7 +627,14 @@ export function createInspectorDevframe(
             // § get-session `GlobalFenceRecoverySnapshot`, § disable-global).
             return { error: { code: 'global-disable-pending' } };
           }
-          const detail = context.session.fileDetail(request?.sourceRelativePath, request?.source);
+          // The kind validates by resolution too: a value no recognition's
+          // kind equals matches no recognition, and the answer is the plain
+          // file or the same rejection a missing path takes.
+          const detail = context.session.fileDetail(
+            request?.sourceRelativePath,
+            request?.source,
+            request?.kind,
+          );
           if (detail === null) {
             // The current committed generations hold no detail of this
             // function's at the path — never scanned, removed by the commit
@@ -1051,8 +1061,8 @@ export function createInspectorDevframe(
         // (contracts/http-api.md § create-global-consent-preview).
         //
         // It takes no parameters, so there is no selector a client could use
-        // to narrow the four members or to propose a root of its own: the roots
-        // come from the session-start capture, and all four are always
+        // to narrow the five members or to propose a root of its own: the roots
+        // come from the session-start capture, and all five are always
         // evaluated.
         //
         // A throw during preview construction or serialization is deliberately
@@ -1107,7 +1117,7 @@ export function createInspectorDevframe(
         // {@link runGlobalEnable} before this host exists (FR-013).
         //
         // Its parameters carry no tool selector, and that absence is the
-        // position: consent is for all three tools, so a client that could
+        // position: consent is for all four tools, so a client that could
         // name a subset could consent to something other than what it showed
         // the reader. The server derives the set from the frozen preview and
         // evaluates every slot it has a port for.

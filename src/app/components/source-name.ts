@@ -87,7 +87,7 @@ export function fileSourceRootOf(sources: readonly SourceDto[], sourceId: string
  * The member's name rather than its root, because the roots are stated once on
  * the personal setup's own surface and a root per row was the second line the
  * compressed row exists to remove. The name is what a reader needs here:
- * `settings.json` exists at the same Source-relative path in three of the four
+ * `settings.json` exists at the same Source-relative path in four of the five
  * homes, so the path alone names no file (FR-002, FR-030).
  *
  * `GLOBAL_MEMBER_TEXT` rather than a phrase of this component's own: the member

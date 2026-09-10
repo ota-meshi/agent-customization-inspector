@@ -174,7 +174,7 @@ function promptDetail(
       sourceText,
       sizeBytes: sourceText.length,
     },
-    presentation: frontmatter === null ? null : { frontmatter, bodyText: sourceText },
+    presentation: frontmatter === null ? null : { metadata: frontmatter, promptText: sourceText },
     diagnostics: [],
   };
 }
@@ -477,7 +477,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
     // either side: the declarations are the files' one parse, not any tool's,
     // so no tool repeats or captions them (research.md § 7,
     // frontmatter-yaml.ts).
-    expect(comparison.frontmatterDiff).toEqual({
+    expect(comparison.metadataDiff).toEqual({
       originalText: [
         'description: Deploy the current branch',
         'argument-hint: "[environment]"',
@@ -503,46 +503,11 @@ describe('prompt and command recognition comparison rows (T503)', () => {
     );
     expect(comparison.leftDeclarations).toBe('extraction-failed');
     expect(comparison.rightDeclarations).toBe('parsed');
-    expect(comparison.frontmatterDiff).toBeNull();
+    expect(comparison.metadataDiff).toBeNull();
     expect(comparison.tools.map((row) => row.left?.invocationName ?? null)).toEqual([
       null,
       SHARED_NAME,
     ]);
-  });
-
-  it('reads the parse off whatever Markdown variant the path answered with', () => {
-    // One file can hold two Markdown kinds — a `.claude/commands/CLAUDE.md`
-    // is a Claude command by its directory and a Claude instruction file by
-    // its name — and `get-file-detail` is addressed by the path alone,
-    // answering with the first variant its fixed order reaches
-    // (session.ts § fileDetail). The parse is the same for the same bytes, so
-    // requiring this kind's own variant here would report a parsed file as
-    // unparsed.
-    const asPrompt = promptDetail('.claude/commands/CLAUDE.md', [
-      scalarEntry('description', 'Both kinds'),
-    ]);
-    if (asPrompt.kind !== 'prompt/command') {
-      throw new Error('expected this kind’s variant from the helper');
-    }
-    const bothKinds: FileDetailDto = {
-      kind: 'instructions',
-      file: asPrompt.file,
-      presentation: asPrompt.presentation,
-      diagnostics: asPrompt.diagnostics,
-    };
-    const comparison = new PromptRecognitionComparison(
-      side(bothKinds, [
-        invoked('CLAUDE', '.claude/commands/CLAUDE.md', 'claude', ['claude-cli-and-ide-clients']),
-      ]),
-      side(promptDetail(RIGHT_PATH, [scalarEntry('description', 'Editor')]), [
-        invoked('CLAUDE', RIGHT_PATH, 'copilot', ['copilot-vscode']),
-      ]),
-    );
-    expect(comparison.leftDeclarations).toBe('parsed');
-    expect(comparison.frontmatterDiff).toEqual({
-      originalText: 'description: Both kinds\n',
-      modifiedText: 'description: Editor\n',
-    });
   });
 
   it('publishes descriptive rows only — no rank, no winner, no fabricated relationships', () => {
@@ -561,9 +526,9 @@ describe('prompt and command recognition comparison rows (T503)', () => {
       ]),
     );
     expect(Object.keys(comparison).sort()).toEqual([
-      'bodyDiff',
-      'frontmatterDiff',
       'leftDeclarations',
+      'metadataDiff',
+      'promptDiff',
       'rightDeclarations',
       'tools',
     ]);
@@ -575,7 +540,7 @@ describe('prompt and command recognition comparison rows (T503)', () => {
         }
       }
     }
-    expect(Object.keys(comparison.frontmatterDiff ?? {}).sort()).toEqual([
+    expect(Object.keys(comparison.metadataDiff ?? {}).sort()).toEqual([
       'modifiedText',
       'originalText',
     ]);

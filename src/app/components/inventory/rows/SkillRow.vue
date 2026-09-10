@@ -20,7 +20,7 @@
 // beneath it, each with the surfaces its admission rests on.
 //
 // When several definitions share a name, the row states how each product
-// resolves it and never orders them: the three products' recorded statements
+// resolves it and never orders them: the four products' recorded statements
 // differ and none is completely documented, so an order would be a winner the
 // Inspector has not recorded.
 //

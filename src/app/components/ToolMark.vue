@@ -2,9 +2,9 @@
 // The mark that names one product beside a recognition (T1146, FR-009).
 //
 // An inventory states its recognizing products more often than it states
-// anything else — every file row carries one to three of them — so the product
-// name is drawn rather than spelled: three glyphs down a column read at a
-// glance where three repeated names do not, and the width they give back is
+// anything else — every file row carries one to four of them — so the product
+// name is drawn rather than spelled: glyphs down a column read at a glance
+// where repeated names do not, and the width they give back is
 // what the documented surfaces beside them take.
 //
 // The product's name rides with the mark as text that is not drawn. The glyph
@@ -19,13 +19,14 @@
 // The colour is this repository's one exception to inheriting `currentColor`,
 // and both the reason and its limits are the Icon policy's (AGENTS.md § Icon
 // policy): a reader scanning for one product follows a colour faster than they
-// tell three 15px silhouettes apart, nothing rests on the colour alone, and
+// tell four 15px silhouettes apart, nothing rests on the colour alone, and
 // forced colours return every mark to `CanvasText` — which loses the scanning
 // aid and no information.
 import type { Component } from 'vue';
 import ClaudeIcon from '~icons/simple-icons/claude';
 import CopilotIcon from '~icons/simple-icons/githubcopilot';
 import CodexIcon from '~icons/simple-icons/openai';
+import GeminiIcon from '~icons/simple-icons/googlegemini';
 import { SUPPORTED_TOOL_TEXT, type SupportedTool } from '../../shared/entities';
 
 const props = defineProps<{
@@ -57,6 +58,8 @@ const TOOL_GLYPH: Readonly<Record<SupportedTool, Component>> = {
   claude: ClaudeIcon,
   /** OpenAI Codex is drawn by OpenAI's mark, for the same reason. */
   codex: CodexIcon,
+  /** Gemini CLI is drawn by Google's Gemini mark, the one the product ships under. */
+  gemini: GeminiIcon,
 };
 </script>
 
@@ -104,5 +107,9 @@ const TOOL_GLYPH: Readonly<Record<SupportedTool, Component>> = {
 
 .aci-tool-mark--codex {
   color: var(--aci-brand-codex);
+}
+
+.aci-tool-mark--gemini {
+  color: var(--aci-brand-gemini);
 }
 </style>

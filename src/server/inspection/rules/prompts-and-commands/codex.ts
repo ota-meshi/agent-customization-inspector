@@ -3,7 +3,8 @@
 // prompt file by. Its own module beside the other vendors' answers, because
 // how a name follows from a path is each admitting vendor's own contract.
 import { CodexCompiledRule } from '../vendor/codex';
-import type { CompiledStaticPromptRule } from './compiled-rule';
+import { markdownPromptPresentationOf, type CompiledStaticPromptRule } from './compiled-rule';
+import type { PromptPresentationDto } from '../../../../shared/api-types';
 import type { InspectionRule } from '../../../../shared/registries/rule-types';
 
 /**
@@ -29,6 +30,11 @@ export class CodexCompiledPromptRule extends CodexCompiledRule implements Compil
    */
   public invocationNameOf(sourceRelativePath: string): string {
     return sourceRelativePath.split('/').at(-1)!.slice(0, -'.md'.length);
+  }
+
+  /** A Codex prompt file is Markdown: the shared reading of that format. */
+  public promptPresentationOf(sourceText: string): PromptPresentationDto {
+    return markdownPromptPresentationOf(sourceText);
   }
 
   /** Compiles one Codex prompt record, rejecting one of another kind. */

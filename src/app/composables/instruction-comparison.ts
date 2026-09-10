@@ -331,7 +331,11 @@ export class InstructionComparisonState {
    * report, which is true of the session rather than of this request.
    */
   async #fetchOwned(side: ComparisonSide, owns: () => boolean): Promise<FileDetailDto | null> {
-    const outcome = await this.#client.fetchFileDetail(side.sourceRelativePath, side.source);
+    const outcome = await this.#client.fetchFileDetail(
+      side.sourceRelativePath,
+      side.source,
+      'instructions',
+    );
     switch (outcome.kind) {
       case 'adopted':
         if (!owns()) {

@@ -363,7 +363,7 @@ describe('closed-catalog predicates', () => {
     // A near miss in spelling or case is not a member: the wire values are
     // exact, and a tab that opened on a guessed kind would show rows the URL
     // did not ask for.
-    for (const value of ['', 'Skill', 'skills', 'instruction', 'CLAUDE', 'gemini']) {
+    for (const value of ['', 'Skill', 'skills', 'instruction', 'CLAUDE', 'Gemini', 'cursor']) {
       expect(isCustomizationKind(value), value).toBe(false);
       expect(isSupportedTool(value), value).toBe(false);
     }

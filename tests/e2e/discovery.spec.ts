@@ -20,7 +20,7 @@ import { launchHost, stopHost, type LaunchedHost } from './launch-host';
  * Copilot's, and one directory below it no rule reaches — unlike a nested
  * `CLAUDE.md`, which is Claude Code's own instruction file at any depth.
  */
-const NEAR_MISS = 'docs/GEMINI.md';
+const NEAR_MISS = 'docs/AGENTS.override.md';
 
 test.describe('discovering the customizations of one repository', () => {
   let fixture: string;

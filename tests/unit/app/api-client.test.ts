@@ -169,7 +169,7 @@ describe("a commit aborts only its own sequence's data requests (FR-030)", () =>
     };
     const client = new SessionApiClient({ channel, clientData: guard() });
     await client.fetchSession();
-    const detail = client.fetchFileDetail('AGENTS.md', 'repository');
+    const detail = client.fetchFileDetail('AGENTS.md', 'repository', 'instructions');
     const adopted = await client.fetchSession();
     expect(adopted).toMatchObject({ kind: 'adopted', advancedSequences: ['global'] });
     detailResponse.resolve({
@@ -208,8 +208,8 @@ describe("a commit aborts only its own sequence's data requests (FR-030)", () =>
     };
     const client = new SessionApiClient({ channel, clientData: guard() });
     await client.fetchSession();
-    const abandonedGlobal = client.fetchFileDetail('CLAUDE.md', 'global-claude');
-    const comparisonDetail = client.fetchFileDetail('AGENTS.md', 'repository');
+    const abandonedGlobal = client.fetchFileDetail('CLAUDE.md', 'global-claude', 'instructions');
+    const comparisonDetail = client.fetchFileDetail('AGENTS.md', 'repository', 'instructions');
     const adopted = await client.fetchSession();
     expect(adopted).toMatchObject({ kind: 'adopted', advancedSequences: ['global'] });
     globalDetail.resolve({
@@ -242,7 +242,7 @@ describe("a commit aborts only its own sequence's data requests (FR-030)", () =>
     };
     const client = new SessionApiClient({ channel, clientData: guard() });
     await client.fetchSession();
-    const detail = client.fetchFileDetail('AGENTS.md', 'repository');
+    const detail = client.fetchFileDetail('AGENTS.md', 'repository', 'instructions');
     const adopted = await client.fetchSession();
     expect(adopted).toMatchObject({ kind: 'adopted', advancedSequences: ['repository'] });
     detailResponse.resolve({

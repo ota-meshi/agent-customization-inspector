@@ -5,9 +5,9 @@
 //
 // Global inspection is disabled in every new session, and consent is what
 // authorizes reading the customization files the allowlist names below the
-// four member roots — the three product home directories and the shared agent
+// five member roots — the four product home directories and the shared agent
 // home (FR-045). This module owns everything that happens before that:
-// retaining the session-start capture of the three environment properties and
+// retaining the session-start capture of the four environment properties and
 // the one derived shared agent home, deciding each captured string's lexical
 // state, escaping it for display, and retaining the one preview record the
 // later enable request names.
@@ -59,29 +59,52 @@ import type {
 } from '../../shared/api-types';
 
 /**
- * The three tool homes located by their own environment properties, in the
+ * The four tool homes located by their own environment properties, in the
  * contracted capture order. The shared agent home is deliberately absent: no
  * documented setting relocates it, so its entry is always the derived default
- * (FR-045) and the capture appends it after these three, completing the
+ * (FR-045) and the capture appends it after these four, completing the
  * contracted member order (`GLOBAL_MEMBER_ORDER`, api-text.ts).
  */
-const GLOBAL_TOOL_HOME_ORDER: readonly SupportedTool[] = ['copilot', 'claude', 'codex'];
+const GLOBAL_TOOL_HOME_ORDER: readonly SupportedTool[] = ['copilot', 'claude', 'codex', 'gemini'];
 
 /**
- * How each tool's home is located: its own environment property, and the
- * directory name joined to the captured home when that property is absent
- * (contracts/http-api.md § create-global-consent-preview). Both halves are
- * fixed literals of the vendor contracts — this product chooses neither.
+ * How one tool's home is located (contracts/http-api.md
+ * § create-global-consent-preview). Every half is a fixed literal of the
+ * vendor contracts — this product chooses none of them.
  */
-const GLOBAL_HOME_SOURCES: Readonly<
-  Record<SupportedTool, { readonly variable: string; readonly defaultSuffix: string }>
-> = {
-  /** Copilot's `COPILOT_HOME`, defaulting to `.copilot` in the home directory. */
-  copilot: { variable: 'COPILOT_HOME', defaultSuffix: '.copilot' },
-  /** Claude's `CLAUDE_CONFIG_DIR`, defaulting to `.claude` in the home directory. */
-  claude: { variable: 'CLAUDE_CONFIG_DIR', defaultSuffix: '.claude' },
-  /** Codex's `CODEX_HOME`, defaulting to `.codex` in the home directory. */
-  codex: { variable: 'CODEX_HOME', defaultSuffix: '.codex' },
+interface GlobalHomeSource {
+  /** The environment property read exactly once per session. */
+  readonly variable: string;
+  /**
+   * The directory name of the tool's home: joined to the captured home
+   * directory when {@link variable} is absent, and — for a tool whose setting
+   * names the parent — to the setting's value as well.
+   */
+  readonly suffix: string;
+  /**
+   * What an eligible value of {@link variable} names: the member root itself
+   * (`root`), or the directory the root's {@link suffix} directory is created
+   * in (`parent`). Copilot, Claude, and Codex document their setting as the
+   * home; Gemini CLI documents `GEMINI_CLI_HOME` as the directory its `.gemini`
+   * folder is created in — the home's stand-in, not `.gemini` itself — so its
+   * root is a join in every case (specs/002-gemini-cli-support/spec.md
+   * FR-011; research.md § 3).
+   */
+  readonly settingNames: 'root' | 'parent';
+}
+
+/**
+ * How each tool's home is located; see {@link GlobalHomeSource}.
+ */
+const GLOBAL_HOME_SOURCES: Readonly<Record<SupportedTool, GlobalHomeSource>> = {
+  /** Copilot's `COPILOT_HOME` names the home, defaulting to `.copilot` in the home directory. */
+  copilot: { variable: 'COPILOT_HOME', suffix: '.copilot', settingNames: 'root' },
+  /** Claude's `CLAUDE_CONFIG_DIR` names the home, defaulting to `.claude` in the home directory. */
+  claude: { variable: 'CLAUDE_CONFIG_DIR', suffix: '.claude', settingNames: 'root' },
+  /** Codex's `CODEX_HOME` names the home, defaulting to `.codex` in the home directory. */
+  codex: { variable: 'CODEX_HOME', suffix: '.codex', settingNames: 'root' },
+  /** Gemini CLI's `GEMINI_CLI_HOME` names the parent of `.gemini`, defaulting to the home directory. */
+  gemini: { variable: 'GEMINI_CLI_HOME', suffix: '.gemini', settingNames: 'parent' },
 };
 
 /**
@@ -191,7 +214,7 @@ export function classifyGlobalRoot(
 }
 
 /**
- * One session's startup capture of the three environment properties and,
+ * One session's startup capture of the four environment properties and,
  * exactly once, the home directory (data-model.md § GlobalRootInputCapture).
  *
  * The capture is session-local: the CLI creates it before launcher discovery,
@@ -202,17 +225,24 @@ export function classifyGlobalRoot(
  */
 export class GlobalRootInputCapture {
   /**
-   * The four entries in the contracted order — the three tool homes, then the
+   * The five entries in the contracted order — the four tool homes, then the
    * shared agent home — each carrying the exact captured string that produced
    * it.
    */
   public readonly entries: readonly GlobalPreviewEntry[];
 
   /**
-   * Reads `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` exactly once
-   * each in that order, then calls `node:os.homedir()` exactly once for the
-   * session: the shared agent home always derives from it, and an absent
-   * property's default joins against the same one string (FR-013).
+   * Reads `COPILOT_HOME`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, and
+   * `GEMINI_CLI_HOME` exactly once each in that order, then calls
+   * `node:os.homedir()` exactly once for the session: the shared agent home
+   * always derives from it, and an absent property's default joins against
+   * the same one string (FR-013).
+   *
+   * A present value is classified as the string it is — `present-empty`,
+   * `relative`, `invalid`, or `eligible` — before any join, so a setting that
+   * names the parent is joined with its suffix only once it is eligible: an
+   * empty or relative `GEMINI_CLI_HOME` stays the state its own text earns
+   * rather than becoming a relative `.gemini` path.
    *
    * Only a captured `undefined` is absent: every string, `''` included, is a
    * present override. This product does not read `HOME`, `USERPROFILE`, or any
@@ -229,16 +259,25 @@ export class GlobalRootInputCapture {
     // and the shared agent home below needs it unconditionally (FR-045).
     const capturedHomedir = homedir();
     this.entries = [
-      ...captured.map(([tool, value]) =>
-        value === undefined
-          ? new GlobalPreviewEntry(
-              tool,
-              'default-home',
-              // The join is lexical and performs no existence check.
-              join(capturedHomedir, GLOBAL_HOME_SOURCES[tool].defaultSuffix),
-            )
-          : new GlobalPreviewEntry(tool, 'environment', value),
-      ),
+      ...captured.map(([tool, value]) => {
+        const source = GLOBAL_HOME_SOURCES[tool];
+        if (value === undefined) {
+          return new GlobalPreviewEntry(
+            tool,
+            'default-home',
+            // The join is lexical and performs no existence check.
+            join(capturedHomedir, source.suffix),
+          );
+        }
+        const entry = new GlobalPreviewEntry(tool, 'environment', value);
+        // A setting that names the parent is joined with the tool's suffix,
+        // and only when the value is eligible: the closed lexical state is a
+        // fact about the setting the reader wrote, so it is decided on that
+        // text before the join (spec 002 FR-011).
+        return source.settingNames === 'parent' && entry.inputState === 'eligible'
+          ? new GlobalPreviewEntry(tool, 'environment', join(value, source.suffix))
+          : entry;
+      }),
       // The shared agent home: always the derived default, because no
       // documented setting relocates `~/.agents` (FR-045) — an environment
       // origin here would claim a property no vendor documents.
@@ -311,8 +350,8 @@ export class GlobalConsentPreview {
     //
     // `traversalPlanVersion` is distinct from `TraversalPlan.schemaVersion`,
     // which versions one plan record's shape rather than what the set selects.
-    this.allowlistVersion = '2026-08-27';
-    this.traversalPlanVersion = '2026-08-27';
+    this.allowlistVersion = '2026-09-10';
+    this.traversalPlanVersion = '2026-09-10';
     this.excludedRuleIds = Object.values(INSPECTION_RULES)
       .filter((rule) => rule.discoveryClass === 'excluded' && rule.sourceKinds.includes('global'))
       .map((rule) => rule.ruleId)
@@ -416,12 +455,12 @@ export class GlobalConsentDomain {
  * It issues no filesystem call of its own and never inspects or converts a
  * Node error code — what an `EACCES` on a home directory means is the
  * inspection module's decision (QR-003) — and a throw propagates unchanged, so
- * a failure not confined to one member aborts the whole fixed-four
+ * a failure not confined to one member aborts the whole five-member
  * transaction.
  *
  * One function for every bound member rather than one per member. Whether a
  * proposed root can be read is a question about a directory, and the answer
- * comes from the same `admitGlobalRoot` for all four: a per-member copy would
+ * comes from the same `admitGlobalRoot` for all five: a per-member copy would
  * be this body written again under another name, free to drift from the others
  * while claiming to do the same thing. What a member's admission then
  * authorizes is the member's own, and that lives in its rule catalog
@@ -437,7 +476,7 @@ export const admitGlobalMemberRoot: GlobalMemberPort = async (lexicalRoot, still
 /**
  * The member ports this build has bound, keyed by member.
  *
- * All four are production-backed, through the one admission every member
+ * All five are production-backed, through the one admission every member
  * shares. A null port would be a member this build cannot evaluate — it is not
  * a rejection and not an admission, and it receives no control at all rather
  * than an outcome nothing produced (T959).
@@ -451,6 +490,8 @@ export const PRODUCTION_GLOBAL_MEMBER_PORTS: Readonly<
   claude: admitGlobalMemberRoot,
   /** Bound by T951, through the same. */
   codex: admitGlobalMemberRoot,
+  /** Bound by specs/002-gemini-cli-support T043, through the same. */
+  gemini: admitGlobalMemberRoot,
   /** Bound by T1137, through the same (FR-045). */
   agents: admitGlobalMemberRoot,
 };
@@ -475,7 +516,7 @@ function lexicalRejection(entry: GlobalPreviewEntry): GlobalResolvedOutcome | nu
 }
 
 /**
- * Resolves every member of one fixed-four transaction against the frozen
+ * Resolves every member of one five-member transaction against the frozen
  * preview: the lexical refusals with no I/O, and each eligible entry through
  * its bound port (contracts/http-api.md § enable-global).
  *

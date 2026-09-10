@@ -615,6 +615,14 @@ describe('the Copilot skill slice of the reference graph (T154, T158)', () => {
     // (`skill-resolution.ts`; FR-007).
     expect(sameNameSkillResolutionFor('copilot')).toBe('surface-dependent');
   });
+
+  it('derives the first-found statement from the one Gemini CLI skill strategy', () => {
+    // The skills page documents a workspace skill over a user one and the
+    // alias over the directory: one pipeline that selects first and states its
+    // order, so the grouped row states a documented first-found winner
+    // (`skill-resolution.ts`; specs/002-gemini-cli-support/spec.md FR-007).
+    expect(sameNameSkillResolutionFor('gemini')).toBe('select-first');
+  });
 });
 
 // Applies one authored selector program to one already-split public path.
@@ -680,7 +688,7 @@ describe('the unified SKILL selector matrix (T179)', () => {
   // integration suite's (tests/integration/repository-scan.test.ts).
   const skillRules = rules.filter((rule) => rule.kind === 'skill');
 
-  it('ships exactly the seven read-authorizing skill rules', () => {
+  it('ships exactly the ten read-authorizing skill rules', () => {
     expect(skillRules.map((rule) => rule.ruleId).sort()).toEqual([
       'claude.global.skill',
       'claude.repo.skill',
@@ -689,6 +697,9 @@ describe('the unified SKILL selector matrix (T179)', () => {
       'copilot.global.agents-home.skill',
       'copilot.global.skill',
       'copilot.repo.skill',
+      'gemini.global.agents-home.skill',
+      'gemini.global.skill',
+      'gemini.repo.skill',
     ]);
     for (const rule of skillRules) {
       expect(rule.discoveryClass, rule.ruleId).toBe('static-candidate');
@@ -703,12 +714,15 @@ describe('the unified SKILL selector matrix (T179)', () => {
   // exclusion is the traversal boundary's, not any matcher's.
   const RECOGNITION_MATRIX: readonly (readonly [string, readonly string[]])[] = [
     ['.github/skills/ship/SKILL.md', ['copilot']],
-    ['.agents/skills/orbit/SKILL.md', ['codex', 'copilot']],
+    ['.agents/skills/orbit/SKILL.md', ['codex', 'copilot', 'gemini']],
     ['.claude/skills/lander/SKILL.md', ['claude', 'copilot']],
     // Claude's documented lazy descendant discovery is the one downward
     // program; no other vendor documents one (FR-003).
     ['packages/api/.claude/skills/deploy/SKILL.md', ['claude']],
     ['packages/api/.agents/skills/deploy/SKILL.md', []],
+    // Gemini CLI documents its `.gemini` directory at the project root alone.
+    ['.gemini/skills/lander/SKILL.md', ['gemini']],
+    ['packages/api/.gemini/skills/deploy/SKILL.md', []],
     ['packages/api/.github/skills/nested-ship/SKILL.md', []],
     // Configured-root shapes stay condition facts rather than selectors.
     ['.copilot/skills/tool/SKILL.md', []],
@@ -737,9 +751,9 @@ describe('the unified instruction selector matrix (T269)', () => {
     (rule) => rule.discoveryClass === 'static-candidate',
   );
 
-  it('ships exactly the thirteen static instruction selectors of the three vendors', () => {
-    // Nine Repository selectors plus the two Global selectors consent
-    // authorizes. They are in this list rather than a Global one of their own
+  it('ships exactly the fourteen static instruction selectors of the four vendors', () => {
+    // Nine Repository selectors plus the five Global selectors consent
+    // authorizes; Gemini CLI's Repository context file is the derived rule below. They are in this list rather than a Global one of their own
     // because the matrix is about the instruction kind: a selector's base is a
     // field of it, and the Global-scope assertions below are what separate the
     // two.
@@ -757,6 +771,7 @@ describe('the unified instruction selector matrix (T269)', () => {
       'copilot.repo.instructions.path-cli-context',
       'copilot.repo.instructions.repository',
       'copilot.repo.instructions.repository-cli-context',
+      'gemini.global.instructions',
     ]);
     for (const rule of staticInstructionRules) {
       expect(rule.matcher, rule.ruleId).not.toBeNull();
@@ -771,9 +786,19 @@ describe('the unified instruction selector matrix (T269)', () => {
     const derived = instructionRules.filter(
       (rule) => rule.discoveryClass === 'bounded-derived-candidate',
     );
-    expect(derived.map((rule) => rule.ruleId)).toEqual(['codex.derived.fallback-basename']);
-    expect(derived[0]!.matcher).toBeNull();
-    expect(derived[0]!.tool).toBe('codex');
+    // Two derivations, one per vendor whose configuration names the kind's
+    // files: Codex's fallback basenames at the root, and Gemini CLI's context
+    // filenames at every depth — the one rule that owns the default `GEMINI.md`
+    // too, so no static Gemini CLI instruction selector exists at the
+    // Repository scope (specs/002-gemini-cli-support/research.md § 2).
+    expect(derived.map((rule) => rule.ruleId).toSorted()).toEqual([
+      'codex.derived.fallback-basename',
+      'gemini.derived.context-filename',
+    ]);
+    for (const rule of derived) {
+      expect(rule.matcher, rule.ruleId).toBeNull();
+    }
+    expect(derived.map((rule) => rule.tool).toSorted()).toEqual(['codex', 'gemini']);
   });
 
   it('keeps every shipped exclusion non-authorizing', () => {
@@ -793,6 +818,9 @@ describe('the unified instruction selector matrix (T269)', () => {
       'copilot.excluded.extra-directories',
       'copilot.excluded.user-runtime',
       'copilot.excluded.vscode-settings',
+      'gemini.excluded.extensions',
+      'gemini.excluded.repo-non-customizations',
+      'gemini.excluded.user-runtime',
       'shared.excluded.managed-remote-state',
     ]);
     for (const rule of exclusions) {
@@ -820,7 +848,12 @@ describe('the unified instruction selector matrix (T269)', () => {
     ['.claude/CLAUDE.md', ['claude']],
     ['CLAUDE.local.md', ['claude']],
     ['packages/api/CLAUDE.local.md', ['claude']],
-    ['GEMINI.md', ['copilot']],
+    // The root file is two products': Copilot's static rule, and Gemini CLI's
+    // — whose Repository rule is a derivation rather than a static selector,
+    // so the match this matrix sees is its Global rule's `GEMINI.md`, the same
+    // spelling at the consented home. The traversal suite covers the merged
+    // Repository candidate.
+    ['GEMINI.md', ['copilot', 'gemini']],
     ['packages/api/GEMINI.md', []],
     ['.github/copilot-instructions.md', ['copilot']],
     ['packages/api/.github/copilot-instructions.md', ['copilot']],
@@ -991,6 +1024,8 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'copilot.repo.mcp',
       'copilot.repo.mcp.vscode',
       'copilot.repo.mcp.vscode-root',
+      'gemini.global.mcp',
+      'gemini.repo.mcp',
     ]);
     // The matrix is about the Repository scope: a Global carrier's selector
     // is authored against its consented member boundary, so running it
@@ -1093,6 +1128,10 @@ describe('the Codex MCP carrier slice of the reference graph (T282)', () => {
       'codex.global.hooks.inline',
       'codex.repo.hooks',
       'codex.repo.hooks.inline',
+      // Gemini CLI documents one hook owner, its settings document, at each
+      // of its two tiers (specs/002-gemini-cli-support/spec.md FR-009).
+      'gemini.global.hooks',
+      'gemini.repo.hooks',
     ]);
   });
 });
@@ -1134,28 +1173,28 @@ describe('structure-only projection vocabulary', () => {
 });
 
 describe('the registry this release owns (T913)', () => {
-  it('ships eighty-one rules: forty-nine Repository and thirty-two Global (T992)', () => {
+  it('ships one hundred rules: fifty-seven Repository and forty-three Global (T992)', () => {
     // The phase gate: not a per-family list — each family's own case above
     // owns that — but the total this release is allowed to read by, split by
     // the scope each rule reads at. A rule added without a phase that owns it
     // fails here, which is the point of freezing the numbers rather than
     // deriving them.
-    expect(rules).toHaveLength(81);
+    expect(rules).toHaveLength(100);
     const repository = rules.filter((rule) => rule.sourceKinds.includes('repository'));
     const global = rules.filter((rule) => rule.sourceKinds.includes('global'));
-    expect(repository).toHaveLength(49);
+    expect(repository).toHaveLength(57);
     expect(repository.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(
-      41,
+      47,
     );
     expect(
       repository.filter((rule) => rule.discoveryClass === 'bounded-derived-candidate'),
-    ).toHaveLength(1);
-    expect(repository.filter((rule) => rule.discoveryClass === 'excluded')).toHaveLength(7);
-    // The complete Global scope (T992): twenty-eight static read-authorizing
-    // rules across the four members, the three vendor exclusions, and the
+    ).toHaveLength(2);
+    expect(repository.filter((rule) => rule.discoveryClass === 'excluded')).toHaveLength(8);
+    // The complete Global scope (T992): thirty-seven static read-authorizing
+    // rules across the five members, the five vendor exclusions, and the
     // shared managed-remote-state record. Naming the set is what keeps a new
     // rule from arriving without the phase that owns it.
-    expect(global.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(28);
+    expect(global.filter((rule) => rule.discoveryClass === 'static-candidate')).toHaveLength(37);
     expect(global.map((rule) => rule.ruleId).toSorted()).toEqual([
       'claude.excluded.user-runtime',
       'claude.global.agent',
@@ -1188,6 +1227,17 @@ describe('the registry this release owns (T913)', () => {
       'copilot.global.mcp',
       'copilot.global.settings',
       'copilot.global.skill',
+      'gemini.excluded.extensions',
+      'gemini.excluded.user-runtime',
+      'gemini.global.agent',
+      'gemini.global.agents-home.skill',
+      'gemini.global.command',
+      'gemini.global.hooks',
+      'gemini.global.instructions',
+      'gemini.global.mcp',
+      'gemini.global.policies',
+      'gemini.global.settings',
+      'gemini.global.skill',
       'shared.excluded.managed-remote-state',
     ]);
     // No rule reads at both scopes. A Global selector is authored against a
@@ -1227,11 +1277,11 @@ describe('the registry this release owns (T913)', () => {
 
   it('adds no rule for a contained MCP declaration and one for each contained hook location', () => {
     // A contained MCP declaration is the carrying file's own content: the MCP
-    // kind ships exactly the seven explicit carriers, so a settings document,
+    // kind ships exactly the nine explicit carriers, so a settings document,
     // an agent file, or a plugin manifest that spells MCP configuration adds
     // no rule and no candidate (data-model.md § Inventory unit).
     const mcpMatchers = rules.filter((rule) => rule.kind === 'MCP' && rule.matcher !== null);
-    expect(mcpMatchers).toHaveLength(7);
+    expect(mcpMatchers).toHaveLength(9);
     for (const path of [
       '.claude/settings.json',
       '.github/copilot/settings.json',

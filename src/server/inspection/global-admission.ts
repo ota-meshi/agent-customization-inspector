@@ -13,7 +13,7 @@
 // process can read? A root that is missing or is not a readable directory is
 // that member's own deterministic rejection, which leaves the other members
 // free to commit (FR-014). Anything else is not confined to one member and
-// throws, so the whole fixed-four transaction aborts and the request reports
+// throws, so the whole five-member transaction aborts and the request reports
 // its real error.
 //
 // It is deliberately not a permission check on the files below the root.

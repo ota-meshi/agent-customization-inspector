@@ -72,7 +72,7 @@ test("states each side's own recognitions in the table, not on the cards", async
   // The whole point: the two copies are not read by the same products, and the
   // table is where that shows — one row per product, one cell per side.
   const rows = page.locator('.aci-recognition-table tbody tr');
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(4);
   const stated: { product: string; first: string; second: string }[] = [];
   for (const row of await rows.all()) {
     stated.push({
@@ -85,15 +85,20 @@ test("states each side's own recognitions in the table, not on the cards", async
     'GitHub Copilot',
     'Claude Code',
     'OpenAI Codex',
+    'Gemini CLI',
   ]);
   // The product both copies share recognizes both; each copy's own product
-  // recognizes one side and is stated as reading neither of the other.
+  // recognizes one side and is stated as reading neither of the other, and
+  // Gemini CLI reads the `.agents/skills/` copy alone
+  // (specs/002-gemini-cli-support/spec.md FR-007).
   expect(stated[0]?.first).toMatch(/^Recognized/u);
   expect(stated[0]?.second).toMatch(/^Recognized/u);
   expect(stated[1]?.first).toBe('Not recognized');
   expect(stated[1]?.second).toMatch(/^Recognized/u);
   expect(stated[2]?.first).toMatch(/^Recognized/u);
   expect(stated[2]?.second).toBe('Not recognized');
+  expect(stated[3]?.first).toMatch(/^Recognized/u);
+  expect(stated[3]?.second).toBe('Not recognized');
   // Every recognized cell carries the surfaces its admission rests on, here as
   // everywhere else the product states one (FR-009).
   for (const row of stated) {

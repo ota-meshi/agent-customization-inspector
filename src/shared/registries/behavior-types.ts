@@ -73,7 +73,16 @@ export type VendorSurface =
    * because another surface supports a similarly named customization
    * (contracts/vendors/github-copilot.md § Surface boundary).
    */
-  | 'copilot-cloud';
+  | 'copilot-cloud'
+  /**
+   * The Gemini CLI terminal client, whether launched directly or through the
+   * IDE companion that drives the same client. One surface, because the vendor
+   * documents no second client that reads a local customization file
+   * differently; what differs for Gemini CLI is the tier — system, user,
+   * project, extension — and a tier is a lookup base, not a surface
+   * (contracts/vendors/gemini-cli.md § Surface boundary).
+   */
+  | 'gemini-cli';
 
 /**
  * Which documented ownership scope a behavior belongs to

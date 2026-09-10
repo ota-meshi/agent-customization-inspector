@@ -2,11 +2,11 @@
 // Which consented home a file came from, where naming it distinguishes
 // something (T1164, FR-002, FR-030).
 //
-// The member's own name rather than its root: the four roots are stated once
+// The member's own name rather than its root: the five roots are stated once
 // on the personal setup's own surface, and repeating one under every path was
 // the second line the compressed row exists to remove. What a reader needs on
 // the row is which home, because `settings.json` sits at the same
-// Source-relative path in three of the four — the path alone names no file.
+// Source-relative path in four of the five — the path alone names no file.
 //
 // It renders nothing for a Repository file, and nothing where one home is
 // consented: with one there is nothing to tell apart, and the family heading

@@ -21,7 +21,7 @@ const repositoryRoot = resolve(import.meta.dirname, '../..');
 const vendorDirectory = 'specs/001-inspect-agent-customizations/contracts/vendors';
 
 /**
- * The six recorded freeze digests, written out as the contract writes them.
+ * The eight recorded freeze digests, written out as the contract writes them.
  * Deliberately the same strings twice — here and in
  * `contracts/official-sources.md` — because they disagree exactly when someone
  * changed one without deciding to change the other.
@@ -44,6 +44,12 @@ const RECORDED_DIGESTS = [
     file: 'openai-codex',
     english: '2a598e1bd30690cfe07d64cd6e1a8c5d80512249eacb5e1e59741bd3d9194226',
     japanese: 'e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301',
+  },
+  {
+    vendor: 'Gemini CLI',
+    file: 'gemini-cli',
+    english: 'fedf1e2053d3e0f1365d71e0aaea2c6d0323fb8215671ffb4b4d0a78773c9b7a',
+    japanese: '1370b7fa54d61539ceda6f646e657fb5db9a4408ac9e6ed932aa0218584e483f',
   },
 ] as const;
 
@@ -139,17 +145,17 @@ describe.each(RECORDED_DIGESTS)('the $vendor Presentation Allowlist', (frozen) =
 });
 
 describe('the recorded freeze table', () => {
-  it('records exactly the six digests this gate checks', () => {
+  it('records exactly the eight digests this gate checks', () => {
     const registry = readFileSync(
       join(repositoryRoot, 'specs/001-inspect-agent-customizations/contracts/official-sources.md'),
       'utf8',
     );
     // The registry is where the freeze is published; this gate and that table
-    // are two spellings of the same six values, and a row added to one without
+    // are two spellings of the same eight values, and a row added to one without
     // the other is what this notices.
     const published = [
       ...registry.matchAll(
-        /^\| (GitHub Copilot|Claude Code|OpenAI Codex) \| `([0-9a-f]{64})` \| `([0-9a-f]{64})` \|$/gmu,
+        /^\| (GitHub Copilot|Claude Code|OpenAI Codex|Gemini CLI) \| `([0-9a-f]{64})` \| `([0-9a-f]{64})` \|$/gmu,
       ),
     ];
     expect(published).toHaveLength(RECORDED_DIGESTS.length);

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // Prompt and command recognition-metadata comparison (T505; FR-011,
 // FR-012). The data decisions — which tools recognize which side, what each
-// invokes it by, what each side's frontmatter serializes to — live in
+// invokes it by, what each side's metadata serializes to — live in
 // `recognition-comparison.ts`; this component only draws the comparison it
 // is given, as its two facts: the per-tool recognition rows, and the files'
-// frontmatter serialized to two canonical YAML documents and compared side
+// metadata serialized to two canonical YAML documents and compared side
 // by side — the declarations are the file's one parse for the kind, so no
 // tool captions them (research.md § 7, frontmatter-yaml.ts).
 //
@@ -167,49 +167,50 @@ function surfacesText(definition: PromptSideDefinition): string {
         >
           Second file {{ PROMPT_DECLARATION_SIDE_STATE_TEXT[comparison.rightDeclarations] }}
         </p>
-        <template v-if="comparison.frontmatterDiff !== null">
+        <template v-if="comparison.metadataDiff !== null">
           <!-- What the diff holds, said before it: both sides are the
-               canonical serialization of the frontmatter, not the files'
-               own spellings — those stay in the source comparison below
-               (FR-007). The canonical key order is stated too, because a
-               reader comparing against their own file would otherwise read
-               the order as authored. -->
+               canonical serialization of the metadata, not the files' own
+               spellings — those stay in the source comparison below (FR-007).
+               "Metadata" rather than "frontmatter", because a Gemini CLI
+               command carries its keys as TOML beside its `prompt`; the
+               canonical key order is stated too, because a reader comparing
+               against their own file would otherwise read the order as
+               authored. -->
           <p class="aci-note">
-            Each side is the file's frontmatter serialized as YAML with its keys in one canonical
+            Each side is the file's metadata serialized as YAML with its keys in one canonical
             order; the files' own spelling and key order stay in the source comparison below.
           </p>
           <SourceDiff
-            :original-text="comparison.frontmatterDiff.originalText"
+            :original-text="comparison.metadataDiff.originalText"
             :original-path="leftPath"
-            :modified-text="comparison.frontmatterDiff.modifiedText"
+            :modified-text="comparison.metadataDiff.modifiedText"
             :modified-path="rightPath"
             content-language="yaml"
-            content-label="frontmatter of"
+            content-label="metadata of"
             :register-content-owner="registerComparisonContentOwner"
           />
         </template>
       </section>
-      <section v-if="comparison.bodyDiff !== null">
+      <section v-if="comparison.promptDiff !== null">
         <h3 class="aci-compare-block-title">Prompt or command content</h3>
         <!-- The other half of the same one parse, diffed on its own: the
-             declarations align key by key whatever order each file wrote them
-             in, and the body aligns line by line without the frontmatter block
-             above it moving the lines. Normalizing one half and leaving the
-             other only inside the source comparison would privilege it
-             (FR-007).
+             metadata aligns key by key whatever order each file wrote it in,
+             and the prompt aligns line by line without the metadata above it
+             moving the lines. Normalizing one half and leaving the other only
+             inside the source comparison would privilege it (FR-007).
              Named for the kind rather than for one of its source forms: one
              kind covers a VS Code prompt file and a command file alike, and
              captioning a command's body "prompt" would name it after the
              half of the kind it is not (entities.ts § CUSTOMIZATION_KIND_TEXT). -->
         <p class="aci-note">
-          Each side is what that file tells the reader's agent, left once its frontmatter block is
-          removed — the prompt of a prompt file, the body of a command file; the block itself is
-          above, and each file whole is in the source comparison below.
+          Each side is what that file tells the reader's agent, as its own format holds it — a
+          Markdown file's body once its frontmatter block is removed, a TOML command's prompt value;
+          the metadata is above, and each file whole is in the source comparison below.
         </p>
         <SourceDiff
-          :original-text="comparison.bodyDiff.originalText"
+          :original-text="comparison.promptDiff.originalText"
           :original-path="leftPath"
-          :modified-text="comparison.bodyDiff.modifiedText"
+          :modified-text="comparison.promptDiff.modifiedText"
           :modified-path="rightPath"
           content-language="markdown"
           content-label="prompt or command content of"

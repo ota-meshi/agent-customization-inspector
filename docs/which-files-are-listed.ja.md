@@ -49,11 +49,21 @@
 | Hooks | `.codex/hooks.json` と `.codex/config.toml` |
 | Plugins | `.agents/plugins/marketplace.json` と `.claude-plugin/marketplace.json` |
 
+### Gemini CLI
+
+| 種別 | 場所 |
+| --- | --- |
+| Instructions | 任意のディレクトリの `GEMINI.md`。ただし `.gemini/settings.json` が `context.fileName` を設定しているときは、`GEMINI.md` の代わりに、そこに挙げられたファイル（任意のディレクトリ） |
+| Skills | `.gemini/skills/` または `.agents/skills/` 配下の各ディレクトリの `SKILL.md` |
+| Agents | `.gemini/agents/` 直下の `.md` |
+| Prompts / commands | `.gemini/commands/` 配下の任意の深さの `.toml` |
+| MCP / hooks / settings | `.gemini/settings.json` |
+
 ## 個人設定
 
-オプトインした場合だけです。ディレクトリは3つではなく**4つ**あります。各ツール自身のホームと、
-その隣にある共有 agent home です。Consent ページは何も読む前に4つすべてを示します。以下の各
-パスは、それが載っている見出しのディレクトリからの相対です。
+オプトインした場合だけです。対象のディレクトリは、各ツール自身のホームと、その隣にある共有
+agent home です。Consent ページは何も読む前にそのすべてを示します。以下の各パスは、それが載って
+いる見出しのディレクトリからの相対です。
 
 ### Claude Code のホーム
 
@@ -95,13 +105,28 @@
 | MCP / settings | `config.toml` |
 | Hooks | `hooks.json` と `config.toml` |
 
+### Gemini CLI のホーム
+
+`GEMINI_CLI_HOME` 配下の `.gemini`、未設定なら `~/.gemini`。この設定は `.gemini` そのものではなく
+`.gemini` を置くディレクトリを指すので、`GEMINI_CLI_HOME=/work` なら `/work/.gemini` を読みます。
+
+| 種別 | 場所 |
+| --- | --- |
+| Instructions | `GEMINI.md` |
+| Skills | `skills/` 配下の各ディレクトリの `SKILL.md` |
+| Agents | `agents/` 直下の `.md` |
+| Prompts / commands | `commands/` 配下の任意の深さの `.toml` |
+| Permissions | `policies/` 直下の `.toml` |
+| MCP / hooks / settings | `settings.json` |
+
 ### 共有 agent home
 
-`~/.agents`。どのツールのものでもなく、`CODEX_HOME` や `COPILOT_HOME` を変えても動きません。
+`~/.agents`。どのツールのものでもなく、`CODEX_HOME`、`COPILOT_HOME`、`GEMINI_CLI_HOME` を変えても
+動きません。
 
 | 種別 | 場所 | 読むツール |
 | --- | --- | --- |
-| Skills | `skills/` 配下の各ディレクトリの `SKILL.md` | OpenAI Codex と GitHub Copilot |
+| Skills | `skills/` 配下の各ディレクトリの `SKILL.md` | OpenAI Codex、GitHub Copilot、Gemini CLI |
 | Plugins | `plugins/marketplace.json` | OpenAI Codex |
 
 ## 一覧に載せたものの内側で行う2つの読み取り

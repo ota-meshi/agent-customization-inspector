@@ -55,9 +55,10 @@
         "~/.claude",
         "~/.codex",
         "~/.copilot",
+        "~/.gemini",
         "~/.agents"
       ],
-      "matchRule": "順不同で4つすべて。機材が CLAUDE_CONFIG_DIR・CODEX_HOME・COPILOT_HOME で最初の3つを別の場所へ向けている場合は、ページが示すその場所が正解になる。",
+      "matchRule": "順不同で5つすべて。機材が CLAUDE_CONFIG_DIR・CODEX_HOME・COPILOT_HOME で最初の3つを、GEMINI_CLI_HOME で Gemini CLI のホームをその配下の `.gemini` へと、別の場所へ向けている場合は、ページが示すその場所が正解になる。",
       "unsuccessful": "ページに到達しなかった、またはディレクトリを挙げられなかった。"
     }
   }

@@ -218,6 +218,65 @@
     },
     "copilot.vscode.skills.selection": {
       "consumesBehaviors": ["copilot.behavior.vscode.skills", "copilot.behavior.vscode.user.skills"]
+    },
+    "gemini.agents.selection": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.agents",
+        "gemini.behavior.repo.trust",
+        "gemini.behavior.user.agents"
+      ]
+    },
+    "gemini.commands.selection": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.commands",
+        "gemini.behavior.repo.trust",
+        "gemini.behavior.user.commands"
+      ]
+    },
+    "gemini.context.layering": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.context",
+        "gemini.behavior.repo.trust",
+        "gemini.behavior.user.context"
+      ]
+    },
+    "gemini.hooks.merge": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.hooks",
+        "gemini.behavior.repo.trust",
+        "gemini.behavior.user.extensions",
+        "gemini.behavior.user.settings"
+      ]
+    },
+    "gemini.mcp.configuration": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.mcp",
+        "gemini.behavior.repo.trust",
+        "gemini.behavior.user.extensions",
+        "gemini.behavior.user.settings"
+      ]
+    },
+    "gemini.policies.tiers": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.policies",
+        "gemini.behavior.user.extensions",
+        "gemini.behavior.user.policies"
+      ]
+    },
+    "gemini.settings.precedence": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.settings",
+        "gemini.behavior.repo.trust",
+        "gemini.behavior.user.settings"
+      ]
+    },
+    "gemini.skills.selection": {
+      "consumesBehaviors": [
+        "gemini.behavior.repo.skills",
+        "gemini.behavior.repo.trust",
+        "gemini.behavior.user.extensions",
+        "gemini.behavior.user.skills"
+      ]
     }
   },
   "rules": {
@@ -670,6 +729,91 @@
         "copilot.vscode.skills.selection"
       ]
     },
+    "gemini.derived.context-filename": {
+      "basedOnBehaviors": ["gemini.behavior.repo.context", "gemini.behavior.repo.settings"],
+      "explainedByStrategies": ["gemini.context.layering", "gemini.settings.precedence"]
+    },
+    "gemini.excluded.extensions": {
+      "basedOnBehaviors": ["gemini.behavior.user.extensions"],
+      "explainedByStrategies": []
+    },
+    "gemini.excluded.repo-non-customizations": {
+      "basedOnBehaviors": [
+        "gemini.behavior.repo.env",
+        "gemini.behavior.repo.hooks",
+        "gemini.behavior.repo.ignore",
+        "gemini.behavior.repo.policies"
+      ],
+      "explainedByStrategies": ["gemini.policies.tiers"]
+    },
+    "gemini.excluded.user-runtime": {
+      "basedOnBehaviors": [
+        "gemini.behavior.user.env",
+        "gemini.behavior.user.home",
+        "gemini.behavior.user.trust-record"
+      ],
+      "explainedByStrategies": []
+    },
+    "gemini.global.agent": {
+      "basedOnBehaviors": ["gemini.behavior.user.agents", "gemini.behavior.user.home"],
+      "explainedByStrategies": ["gemini.agents.selection"]
+    },
+    "gemini.global.agents-home.skill": {
+      "basedOnBehaviors": ["gemini.behavior.user.skills"],
+      "explainedByStrategies": ["gemini.skills.selection"]
+    },
+    "gemini.global.command": {
+      "basedOnBehaviors": ["gemini.behavior.user.commands", "gemini.behavior.user.home"],
+      "explainedByStrategies": ["gemini.commands.selection"]
+    },
+    "gemini.global.hooks": {
+      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.settings"],
+      "explainedByStrategies": ["gemini.hooks.merge"]
+    },
+    "gemini.global.instructions": {
+      "basedOnBehaviors": ["gemini.behavior.user.context", "gemini.behavior.user.home"],
+      "explainedByStrategies": ["gemini.context.layering"]
+    },
+    "gemini.global.mcp": {
+      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.settings"],
+      "explainedByStrategies": ["gemini.mcp.configuration"]
+    },
+    "gemini.global.policies": {
+      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.policies"],
+      "explainedByStrategies": ["gemini.policies.tiers"]
+    },
+    "gemini.global.settings": {
+      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.settings"],
+      "explainedByStrategies": ["gemini.settings.precedence"]
+    },
+    "gemini.global.skill": {
+      "basedOnBehaviors": ["gemini.behavior.user.home", "gemini.behavior.user.skills"],
+      "explainedByStrategies": ["gemini.skills.selection"]
+    },
+    "gemini.repo.agent": {
+      "basedOnBehaviors": ["gemini.behavior.repo.agents"],
+      "explainedByStrategies": ["gemini.agents.selection"]
+    },
+    "gemini.repo.command": {
+      "basedOnBehaviors": ["gemini.behavior.repo.commands"],
+      "explainedByStrategies": ["gemini.commands.selection"]
+    },
+    "gemini.repo.hooks": {
+      "basedOnBehaviors": ["gemini.behavior.repo.hooks", "gemini.behavior.repo.settings"],
+      "explainedByStrategies": ["gemini.hooks.merge"]
+    },
+    "gemini.repo.mcp": {
+      "basedOnBehaviors": ["gemini.behavior.repo.mcp", "gemini.behavior.repo.settings"],
+      "explainedByStrategies": ["gemini.mcp.configuration"]
+    },
+    "gemini.repo.settings": {
+      "basedOnBehaviors": ["gemini.behavior.repo.settings"],
+      "explainedByStrategies": ["gemini.settings.precedence"]
+    },
+    "gemini.repo.skill": {
+      "basedOnBehaviors": ["gemini.behavior.repo.skills"],
+      "explainedByStrategies": ["gemini.skills.selection"]
+    },
     "shared.excluded.managed-remote-state": {
       "basedOnBehaviors": [
         "claude.behavior.user.mcp-state",
@@ -679,7 +823,8 @@
         "copilot.behavior.cloud.organization-agents",
         "copilot.behavior.cloud.organization-instructions",
         "copilot.behavior.cloud.plugins",
-        "copilot.behavior.cloud.remote-skills"
+        "copilot.behavior.cloud.remote-skills",
+        "gemini.behavior.user.extensions"
       ],
       "explainedByStrategies": []
     }
