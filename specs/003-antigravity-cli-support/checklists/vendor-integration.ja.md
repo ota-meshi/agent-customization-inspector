@@ -2,7 +2,7 @@
 
 [English](vendor-integration.md)
 
-**目的**: Antigravity CLI を4つ目のサポート対象ツールにする要件 — 読み取り allowlist と evidence、置き換えられるツールの削除、親仕様の改訂、Global member、文書とリリース evidence の義務 — が、task 生成の前に完全・正確・一貫・測定可能であることを検証する
+**目的**: Antigravity CLI を4つ目のサポート対象ツールにする要件 — 読み取り allowlist と evidence、親仕様の改訂、Global member、文書とリリース evidence の義務 — が、task 生成の前に完全・正確・一貫・測定可能であることを検証する
 **作成日**: 2026-09-10
 **対象機能**: [Antigravity CLI のサポート仕様](../spec.ja.md)
 **深さ**: Standard
@@ -15,8 +15,7 @@
 - [x] CHK001 FR-002 と FR-009 が admit するすべての location に、文書化された vendor behavior の行、Inspector rule の行、vendor contract 中の引用済み公式見出しがあり、類推だけに立つ admit されたパスが1つもないか [Completeness, Spec §FR-002, §FR-009; Contract §Inspector Repository rule, §Inspector Global rule]
 - [x] CHK002 FR-003 と FR-010 が名指すすべての除外が、述べられた理由と contract の excluded group の behavior record を伴い、読み手が「書き忘れ」と「決定」を見分けられるか [Completeness, Spec §FR-003, §FR-010; Contract §Relationship-only と excluded group]
 - [x] CHK003 このツールが publish する kind が行の単位 — ファイル、宣言された名前、宣言された server 名 — とともに名指され、publish しない kind が触れられないままではなく列挙されているか [Completeness, Spec §FR-004–FR-006, §FR-011, §FR-012; Data Model §Compiled unit]
-- [x] CHK004 FR-014 の削除要件が、消すべき artifact の種類 — vendor module、contract、registry record、fixture、文書の節、label、mark、evidence record — をすべて名指し、凍結された件数と、置き換えられる作業の feature ディレクトリおよび changeset にも届いているか [Completeness, Spec §FR-014; Plan §Implementation Boundaries]
-- [x] CHK005 置き換えられる feature ディレクトリを引用する親 artifact の付け替えが、実装者が気づくのに任されるのではなく要件として述べられているか — 2026-09-10 に、引用するすべての artifact の付け替えを FR-014 に加えて充足した。plan だけの境界ではなく要件になった [Completeness, Gap; Plan §Implementation Boundaries]
+- [x] CHK004 FR-014 が、このリリースがサポートしない製品を名指してはならない artifact の種類 — vendor module、contract、registry record、fixture、文書の節、label、mark、evidence record — をすべて名指し、凍結された件数にも届いているか [Completeness, Spec §FR-014; Plan §Implementation Boundaries]
 - [x] CHK006 FR-001 が変わる親仕様の条項を列挙し、research § 11 が同じ集合を挙げ、片方にしか名指されない artifact がないか [Completeness, Spec §FR-001; Research §11]
 - [x] CHK007 ファイルの形の skill の detail の要件 — file panel を出さない、tab strip を出さない、見出しは変えない — が、要件の裏付けのない表示上の判断のままではなく述べられているか [Completeness, Spec §FR-004, §Clarifications; Data Model §skill の行と detail]
 - [x] CHK008 contract が名指す各 strategy が operation と引用済みの根拠を持ち、ページが解決を述べないものも含めて記録されているか [Completeness, Contract §Canonical evidence-assessment index, §文書化済み Repository behavior]
@@ -50,7 +49,7 @@
 
 ## シナリオと edge case の網羅
 
-- [x] CHK027 読み手が出会いうる失敗ごとに edge case が述べられているか。frontmatter が parse できない skill ファイル、形式が parse できない MCP ファイル、空の skills ディレクトリ、端末のディレクトリを持たない home、置き換えられるツールのディレクトリをまだ持つリポジトリ [Coverage, Spec §Edge Cases]
+- [x] CHK027 読み手が出会いうる失敗ごとに edge case が述べられているか。frontmatter が parse できない skill ファイル、形式が parse できない MCP ファイル、空の skills ディレクトリ、端末のディレクトリを持たない home [Coverage, Spec §Edge Cases]
 - [x] CHK028 vendor のページが合成を述べない箇所 — 同名の workspace と global の skill、同名の workspace と global の MCP server — で、製品が述べないことが gap のままではなく決定として書かれているか [Coverage, Gap; Contract §既知の不確実性 項目 2–3]
 - [x] CHK029 `agent.md` の隣に他のファイルを持つ custom agent のディレクトリについて、それらが挙がるかどうかが読み手に分かる要件があるか — 2026-09-10 に、そのディレクトリは `agent.md` だけを挙げるという edge case を加えて充足した [Coverage, Gap, Spec §FR-006]
 

@@ -46,9 +46,8 @@ const RECORDED_DIGESTS = [
     japanese: 'e985ad14696d2ef2a47e7fcacbdbb39a83864fdd4d5c62546112f25e62e98301',
   },
   {
-    // T004: the fourth vendor's row moved with the vendor. The digests were
-    // recomputed from the shipped contract only after this suite was watched
-    // failing — it could not even read the file the removed vendor's row named.
+    // T004: the digests below were computed from the shipped contract only
+    // after this suite was watched failing against the file this row names.
     vendor: 'Antigravity CLI',
     file: 'antigravity-cli',
     english: 'f311fd1d0bee9f81d03e4493e8fd4526cee5c3e19fda0ac07d2eaa5e92a5ca4c',

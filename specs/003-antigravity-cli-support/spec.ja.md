@@ -8,7 +8,7 @@
 
 **ステータス**: Draft
 
-**入力**: ユーザーの記述: 「Gemini CLI に代えて Antigravity CLI を4つ目のツールとしてサポートする。`.agents/` 配下でそれが読むリポジトリのカスタマイズと、ルートの context file、そして `~/.gemini` 配下の個人 home を認識し、inventory が Antigravity CLI を、それが読むファイルの読み手として名指すようにする。」
+**入力**: ユーザーの記述: 「Antigravity CLI を4つ目のツールとしてサポートする。`.agents/` 配下でそれが読むリポジトリのカスタマイズと、ルートの context file、そして `~/.gemini` 配下の個人 home を認識し、inventory が Antigravity CLI を、それが読むファイルの読み手として名指すようにする。」
 
 この仕様は [Inspect Agent Customizations](../001-inspect-agent-customizations/spec.ja.md) を
 拡張する。サポート対象ツールに対してその仕様が求めるもの — allowlist の規律、非実行の保証、
@@ -21,9 +21,8 @@ home がどこか、そして親仕様の「3つのツール」「4つの member
 
 ### Session 2026-09-10
 
-- Q: main ブランチでは Gemini CLI が4つ目のサポート対象ツールとして出荷されている。この機能はその隣に Antigravity CLI を加えるのか、それとも置き換えるのか？ → A: 置き換える。Google の 2026-05-19 の移行告知は、無料枠と Google AI Pro/Ultra への Gemini CLI の提供を 2026-06-18 に終え、後続の製品として Antigravity CLI を名指している。したがって読み手が判断の対象にしている端末は Antigravity CLI である。ベンダーを1つ抱えることは以後のあらゆる変更に掛かる乗数であり、文書が別製品へ畳まれつつあるベンダーは、それが依存する official-source review の費用を上げる。よってこのリリースは Antigravity CLI をサポートし、Gemini CLI をどの surface でも名指さない。企業ライセンスの利用者は動く Gemini CLI を持ち続けるが、その `.gemini/commands/` と `.gemini/settings.json` はこのリリースでは一覧に出ない。これは受け入れる費用である。当該サポートは npm に公開されたことがないため、削除を受け取るユーザーはいない。
-- Q: Antigravity CLI は `~/.gemini/GEMINI.md`、`~/.gemini/config/`、`~/.gemini/antigravity-cli/` を読む。personal setup の member は残るのか？ → A: 残る。位置も admission も変わらない。member は製品ではなくディレクトリであり、Antigravity CLI が読むディレクトリは5つ目の member が既に提示する `~/.gemini` と同じである。よって member 集合は5つのままで、変わるのはその配下で admit するパスだけである。
-- Q: vendor は端末、editor 拡張、desktop アプリを文書化しており、editor と desktop は端末が読まない場所も読む。このリリースはどれを認識するのか？ → A: 端末だけである。この機能がたどる移行は端末が端末を置き換えるものであり、対象の読み手は自分が動かす端末について判断している。editor と desktop の surface を取り込むと、どの端末のページも文書化しない workspace の plugin ディレクトリのような場所まで admit することになり、読み手の置き換えではなく inventory が挙げるものの拡大になる。共有された `.agents/` のページが文書化し、端末のページが裏づける location はこの拡大には当たらない。端末はそのディレクトリを読んでおり、その中の何を読むかを決めるのはページの内容であって、ページがどの製品ツリーに置かれているかではない。他の surface は後続の機能に残す。その場合は別のツールではなく、同じツールの surface として加える。
+- Q: Antigravity CLI は `~/.gemini/GEMINI.md`、`~/.gemini/config/`、`~/.gemini/antigravity-cli/` を読む。personal setup の member はどうそこへ届くのか？ → A: 5つ目の member として届く。member は製品ではなくディレクトリであり、その member が提示するのが `~/.gemini` で、その配下で admit するパスがこの vendor のものである。
+- Q: vendor は端末、editor 拡張、desktop アプリを文書化しており、editor と desktop は端末が読まない場所も読む。このリリースはどれを認識するのか？ → A: 端末だけである。対象の読み手は自分が動かす端末について判断している。editor と desktop の surface を取り込むと、どの端末のページも文書化しない workspace の plugin ディレクトリのような場所まで admit することになり、その読み手が動かすものを超えて inventory が挙げるものを広げてしまう。共有された `.agents/` のページが文書化し、端末のページが裏づける location はこの拡大には当たらない。端末はそのディレクトリを読んでおり、その中の何を読むかを決めるのはページの内容であって、ページがどの製品ツリーに置かれているかではない。他の surface は後続の機能に残す。その場合は別のツールではなく、同じツールの surface として加える。
 - Q: `.agents/skills/` は2つの形を抱える。`deploy.md` と `deploy/SKILL.md` が並んだとき、inventory は1行か2行か？ → A: 1行である。skill の行の単位は「1つの名前を各製品がどう解決するか」であり、それが既に `.agents/skills/x/SKILL.md` と `.claude/skills/x/SKILL.md` を1行に置いている。行は両方の定義を抱え、どの製品がどちらを読むかを述べる。新しい仕組みは要らず、2つの形の間に優先順位を捏造もしない。
 - Q: 端末自身のページは workspace の skill をフラットな `.md` ファイルとして示し、vendor の Agent Skills ページは同じディレクトリが `SKILL.md` を持つフォルダを抱えると示す。このリリースはどちらの形を admit するのか？ → A: このツールについては両方である。`.agents/` は vendor の3製品が読む1つのディレクトリであり、それぞれの形はそのディレクトリについて vendor の公式ページが文書化している。一方だけを admit すれば、読み手自身の `.agents/skills/deploy/SKILL.md` が他の2製品には挙がるのに端末には挙がらない状態が残る。ファイル形は端末のページのもの、ディレクトリ形は Agent Skills ページのものであり、どちらのページも優先順位を述べないので、優先順位は捏造しない。端末自身のグローバルディレクトリが admit するものは変わらない。`antigravity-cli/skills/` は端末だけのものであり、そこで文書化されている形はフラットな1つだけである。
 - Q: `.agents/` は rules ディレクトリと hooks ファイルも抱える。このツールについて admit するのか？ → A: 両方 admit する。vendor の Rules ページは workspace の rule を `.agents/rules/` に置き、Hooks ページは `hooks.json` を workspace の `.agents/` と home の `config/` に置き、端末自身の移行ページは workspace の skill、rule、MCP server のサポートを維持すると述べている。これは端末のページが rules ディレクトリを端末の読む場所として名指したものである。どちらも既存の kind の下で、書かれたとおりに publish する。activation mode はファイルに対して評価せず、hook の command は決して実行しない。
@@ -33,8 +32,8 @@ home がどこか、そして親仕様の「3つのツール」「4つの member
 - Q: Antigravity CLI の recognition はリポジトリルート配下の `GEMINI.md` と `AGENTS.md` に届くのか？ → A: 届かない。リポジトリルートの2つだけである。移行ガイドは workspace の context file を作業ディレクトリのものとして述べ、深さには何も述べないので、それより深くへ届かせるのは推論に立つ。これは前の vendor の home instruction rule を広げなかった理由と同じである。深さは vendor contract の既知の不確実性として記録し、vendor が階層を文書化した時点で rule を広げる。
 - Q: 5つ目の member のディレクトリは `~/.gemini` のままだが、それが名を取った製品はサポート対象でなくなる。ラベルは何と述べるのか？ → A: `Antigravity home` である。member の表は、ディレクトリ自身の名前ではなく「誰のディレクトリか」で member を名付けており、ラベルがパスと異なる例はその表に既にある。`~/.config/github-copilot` は `Copilot home` と呼ばれている。短い語の取り方も同じ family に従う。`OpenAI Codex` が `Codex` になるように `Antigravity CLI` は `Antigravity` になる。member の root パスはラベルの隣に表示されるので、ラベルは誰のディレクトリかを、パスはどこかを述べる。
 - Q: 1つのファイルである skill — 端末自身のページがリポジトリと home の双方について文書化している形 — にはディレクトリがなく、detail の file panel は「skill のディレクトリと開いているファイル」を持つ panel である。そのページは何を示すのか？ → A: skill の panel だけを示し、file panel も tab strip も出さない。panel の主題はその skill が持たないディレクトリであり、tab が1つの tab strip は選択肢ではない。見出しは skill 自身のパスのままとする。そこに書かれた理由 — それを読むすべての製品が共有する唯一の identity であり、各製品が呼び出す名前はそれぞれ異なる — はディレクトリと同じくファイルにも当てはまるからである。行の companion の数は新しい判断を要さない。companion を持つ skill にだけ描かれる仕組みが既にある。
-- Q: 親仕様は、指定ファイルの ground truth が動いたときにだけ初回利用評価をやり直す。そのファイルはリポジトリルートの `AGENTS.md` であり、このツールはそれを読むので、読み手が2つから3つに変わる。実施は必要か？ → A: 必要である。親が定めた条件を満たすので、study input を更新し、リリース前に20セッションのエージェント駆動実行を行い、結果を記録する。前の vendor はそのファイルを読まなかったため前回の変更では実施不要だった。指定ファイルの読み手が増えたことで読み手が述べるべき答えは難しくなっており、一致しなくなったページに対して測る criterion は何も測っていないことになる。
-- Q: Gemini CLI が文書化していた custom command の surface には対応物がない。このリリースはこのツールに prompt/command kind の行を publish するのか？ → A: しない。Antigravity CLI の移行ガイドは legacy command を skill へ変換し、リポジトリの command ディレクトリを文書化するページもない。よってこのツールはこの kind の行を持たない。kind 自体は、それを publish する3つのツールのために閉じた集合に残る。
+- Q: 親仕様は、指定ファイルの ground truth が動いたときにだけ初回利用評価をやり直す。そのファイルはリポジトリルートの `AGENTS.md` であり、このツールはそれを読むので、読み手が2つから3つに変わる。実施は必要か？ → A: 必要である。親が定めた条件を満たすので、study input を更新し、リリース前に20セッションのエージェント駆動実行を行い、結果を記録する。指定ファイルの読み手が増えたことで読み手が述べるべき答えは難しくなっており、一致しなくなったページに対して測る criterion は何も測っていないことになる。
+- Q: このリリースはこのツールに prompt/command kind の行を publish するのか？ → A: しない。Antigravity CLI の移行ガイドは legacy command を skill へ変換し、リポジトリの command ディレクトリを文書化するページもない。よってこのツールはこの kind の行を持たない。kind 自体は、それを publish する3つのツールのために閉じた集合に残る。
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -232,10 +231,8 @@ read もされないことを確認する。
   ならない (MUST)。それは Copilot 自身の文書に基づいており、この機能はそれに触れない。
 - **FR-014**: このリリースがサポートしない製品の vendor module、vendor contract、registry
   record、fixture、文書の節、label、mark、evidence record は tree に残ってはならず (MUST NOT)、
-  どの gate もそれを数えてはならない (MUST NOT)。置き換えられる作業の仕様ディレクトリと未公開の
-  changeset も一緒に消え、そのディレクトリを引用するすべての artifact は同じ変更でこちらへ
-  付け替えられなければならない (MUST)。tree がもう持たないディレクトリを指す参照を残さないため
-  である。
+  どの gate もそれを数えてはならない (MUST NOT)。tree が持たない artifact を指す参照もその
+  record の1つなので、そうした引用を残す artifact があってはならない (MUST NOT)。
 - **FR-015**: 記録される Antigravity CLI の behavior は、それを確立する公式文書を引用しなければ
   ならず (MUST)、引用したページが述べない主張は documented ではなく partially documented として
   記録しなければならない (MUST)。端末自身のツリーではなく vendor の共有文書のページが確立する
@@ -261,8 +258,7 @@ read もされないことを確認する。
 - **Antigravity CLI surface**: すべての Antigravity CLI behavior が名指す唯一の surface。vendor
   はこれらのファイルを読む端末 client を1つ文書化している。その editor と desktop の surface は
   このリリースの外にある。
-- **`~/.gemini` Global member**: 5つ目の consent member。位置は変わらず、admit するパスをこの
-  機能が置き換える。
+- **`~/.gemini` Global member**: 5つ目の consent member。この機能が admit するパスを定める。
 - **Antigravity CLI skill**: 1つの skill 名。リポジトリでは Markdown ファイルまたは `SKILL.md`
   を持つディレクトリとして、home では Markdown ファイルとして綴られる。ファイル形の行の単位は
   ファイル自身であり、companion ディレクトリを持たないのはこの形である。
@@ -356,8 +352,6 @@ read もされないことを確認する。
   文書から読んだ — CLI の overview、features、migration、MCP、plugins and skills、subagents、
   settings、permissions の各ページと、共有の Agent Skills、Rules、Hooks、Plugins の各ページ。Planning は各パスをそれらのページに対して再検証し、正確な節
   見出しを記録し、pattern を狭めることはあるが、仕様変更なしに surface を追加しない。
-- 移行は Google 自身の 2026-05-19 の告知が確立している。そこには無料枠と Google AI Pro/Ultra への
-  提供が終わる日付と、後続の製品としての Antigravity CLI が名指されている。
 - 文書化された home は引用したどのページでも文字どおり `~/.gemini` と書かれている。それを移動
   させる環境プロパティを文書化するページはないので、導出もしない。そこでの導出は推論に立つことに
   なり、それは vendor が文書化していない home rule を広げなかった親機能の理由と同じである。

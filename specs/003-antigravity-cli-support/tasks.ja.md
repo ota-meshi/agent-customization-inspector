@@ -8,7 +8,7 @@
 
 **テスト**: すべての振る舞いの変更は、実装の前にリスクに応じた自動テストを要する。テストの task はそれが覆う実装に先行し、凍結された件数・digest・tuple・version literal は、その gate が新しい source に対して落ちるところを確認してからのみ変更する (AGENTS.md § Implementation simplicity policy)。
 
-**構成**: task は user story ごとにまとめる。Phase 2 は、すべての story が compile の対象とする閉じた語彙・vendor registry・凍結された contract であり、置き換えられる vendor の record が tree を去る場所でもある。1つの閉じた union が2つの製品を名指せないからである。Phase 3 はリポジトリ (US1)、Phase 4 は Antigravity home (US2)、Phase 5 は1行を共有する2つの skill の形 (US3)、Phase 6 はリリース evidence、置き換えられる機能の artifact の削除、そして parity review である。
+**構成**: task は user story ごとにまとめる。Phase 2 は、すべての story が compile の対象とする閉じた語彙・vendor registry・凍結された contract である。閉じた union は、その上のすべての網羅的な record が一緒に動かなければ member を1つも増やせないからである。Phase 3 はリポジトリ (US1)、Phase 4 は Antigravity home (US2)、Phase 5 は1行を共有する2つの skill の形 (US3)、Phase 6 はリリース evidence と parity review である。
 
 ## Format: `[ID] [P?] [Story?] Description`
 
@@ -16,6 +16,8 @@
 - **[Story]**: Phase 3–5 では必須。Setup・Foundational・Polish では省く。
 - 各項目は主要な結果を1つ持ち、リポジトリ相対の正確なファイルパスを少なくとも1つ持つ。新しいテストファイルは、所有する task ID と対象の振る舞いを述べるコメントで始める (AGENTS.md § Code commenting policy)。
 - 「両言語」は canonical な `*.md` とその `*.ja.md` を同じ task で扱うことを指す。
+- `T015` と `T066` は空番である。番号は両言語で一致していることが前提なので、作業を持たなくなった
+  ID は、以降のすべての task を振り直して詰めるのではなくそのまま残す。
 
 ## Normative Requirement Traceability
 
@@ -36,7 +38,7 @@
 | FR-011 | T044–T046、T050 |
 | FR-012 | T011、T016、T021 |
 | FR-013 | T023 |
-| FR-014 | T012–T013、T015–T016、T063、T065–T066 |
+| FR-014 | T012–T013、T016、T063、T065 |
 | FR-015 | T002、T009、T073 |
 | FR-016 | T011、T020–T021、T037–T038、T059 |
 | FR-017 | T011、T020–T021、T036、T038、T051、T059 |
@@ -51,7 +53,7 @@
 | SC-003 | T005、T039、T041、T048 |
 | SC-004 | T024、T042 |
 | SC-005 | T006、T048、T059–T060、T071 |
-| SC-006 | T066–T067、T071 |
+| SC-006 | T067、T071 |
 | SC-007 | T073 |
 
 ---
@@ -60,40 +62,39 @@
 
 **目的**: 以降のすべての task が引用する2つの artifact — リリース entry と evidence registry の行。
 
-- [X] T001 4つ目のサポート対象ツールについて `minor` の changeset entry を `pnpm exec changeset` で書き、ユーザー向けに1文で述べる。同じ task で未公開の `.changeset/support-gemini-cli.md` を削除する。このリリースが出荷しないサポートを告知しているからである (research.ja.md § 移行影響)。
-- [X] T002 Google の source 行を `google.antigravity.*` の集合に置き換える。`antigravity.google` 上の canonical URL、host、正確な rendered section 見出し、`reviewedOn: 2026-09-10` を持たせる。端末自身のページと、共有カスタマイズ root を確立する共有ページ3つの両方を覆う。official-host の表も更新し、登録可能な接頭辞を挙げる `sourceId` の文法に `"google"` を加える。`specs/001-inspect-agent-customizations/contracts/official-sources.md` と `official-sources.ja.md` (contracts/vendors/antigravity-cli.ja.md の evidence 欄)。
+- [X] T001 4つ目のサポート対象ツールについて `minor` の changeset entry を `pnpm exec changeset` で書き、ユーザー向けに1文で述べる。`.changeset/` (research.ja.md § 移行影響)。
+- [X] T002 Google の source 行を `google.antigravity.*` の集合として書く。`antigravity.google` 上の canonical URL、host、正確な rendered section 見出し、`reviewedOn: 2026-09-10` を持たせる。端末自身のページと、共有カスタマイズ root を確立する共有ページ3つの両方を覆う。official-host の表も更新し、登録可能な接頭辞を挙げる `sourceId` の文法に `"google"` を加える。`specs/001-inspect-agent-customizations/contracts/official-sources.md` と `official-sources.ja.md` (contracts/vendors/antigravity-cli.ja.md の evidence 欄)。
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**目的**: 閉じた語彙、vendor registry、凍結された contract。すべての story はこれに対して compile され、これが揃うまで contract gate は落ちる。置き換えられる vendor の record はここで去る。`SupportedTool` は閉じた union であり、2つの製品を名指せないからである。
+**目的**: 閉じた語彙、vendor registry、凍結された contract。すべての story はこれに対して compile され、これが揃うまで contract gate は落ちる。
 
-**Build の状態**: T006 から最後の compiled unit が入るまで、tree は compile できない。union の member を改名すると、それを網羅するすべての record が壊れ、T014 のカタログは story が書く kind ごとの unit — リポジトリのものは Phase 3、Global のものは Phase 4 — を組み立てるからである。typecheck と suite が再び緑になるのは Phase 4 の終わりであり、そこが読み取り集合の全体が揃う最初の時点である。その間の赤い build は想定された状態であり、原因を探すべき失敗ではない。
+**Build の状態**: T006 から最後の compiled unit が入るまで、tree は compile できない。union に member を加えると、それを網羅するすべての record が壊れ、T014 のカタログは story が書く kind ごとの unit — リポジトリのものは Phase 3、Global のものは Phase 4 — を組み立てるからである。typecheck と suite が再び緑になるのは Phase 4 の終わりであり、そこが読み取り集合の全体が揃う最初の時点である。その間の赤い build は想定された状態であり、原因を探すべき失敗ではない。
 
 **⚠️ CRITICAL**: この phase が完了するまで user story の作業は始められない
 
 ### Phase 2 のテスト
 
-- [X] T003 [P] tool の語彙の期待値を置き換え、`antigravity` を4つ目の member とし、順序の gate が `copilot`・`claude`・`codex`・`antigravity` を覆うようにする。`tests/unit/shared/entities.test.ts`、`tests/unit/shared/display-text.test.ts`、`tests/unit/shared/skill-collision.test.ts`。各コメントに、以前の語彙に対して落ちたことを記録する。
+- [X] T003 [P] tool の語彙の期待値を定め、`antigravity` を4つ目の member とし、順序の gate が `copilot`・`claude`・`codex`・`antigravity` を覆うようにする。`tests/unit/shared/entities.test.ts`、`tests/unit/shared/display-text.test.ts`、`tests/unit/shared/skill-collision.test.ts`。各コメントに、member を宣言する前に落ちるところを確認したことを記録する。
 - [X] T004 [P] registry の変更が動かす凍結値をすべて更新する。各コメントに、変更前の registry に対して失敗したことを記録する(AGENTS.md § Implementation simplicity policy)。rule・behavior・strategy・source の総数、ソート済みの Global rule-ID 一覧、kind ごとの rule 一覧と recognition matrix、vendor ごとのリポジトリ件数を `tests/contract/inspection-rules.test.ts`・`tests/contract/vendor-behaviors.test.ts`・`tests/contract/runtime-composition.test.ts` で。presentation-allowlist の digest を `tests/contract/presentation-allowlist-freeze.test.ts` と、それを公開する `specs/001-inspect-agent-customizations/contracts/official-sources.md`・`.ja.md` の表で。そして `tests/fixtures/conformance/` 配下の checked-in な materialization を、隣の `regen.mts` で一括再記録する。
 - [X] T005 [P] capture が3つの環境プロパティを固定順で読むこと、4つ目の member の root が常に home ディレクトリとの join で origin が `default-home` であることを assert する。`tests/unit/cli.test.ts` と `tests/unit/host/global-consent.test.ts`。そのディレクトリが取りうる4つの状態 — 存在する、存在しない、存在するが空、読めない — を覆い、preview が5つの member を挙げ、親が各入力に固定する閉じた結果になることを assert する (spec.ja.md § SC-003)。
 
 ### Phase 2 の実装
 
-- [X] T006 `SupportedTool` の `'gemini'` を `'antigravity'` に置き換え、`SUPPORTED_TOOL_ORDER` では `codex` の後の位置に、`SUPPORTED_TOOL_TEXT` では `Antigravity CLI` とし、member の doc comment を付ける。`src/shared/entities.ts` (data-model.ja.md § SupportedTool)。
-- [X] T007 [P] `AntigravityBehaviorId`、`AntigravityRuleId`、`AntigravityStrategyId`、Google の source-ID union を、member ごとの doc comment を持つ閉じた string-literal union として宣言し、`BehaviorId`・`RuleId`・`StrategyId`・`SourceId` に join し、置き換えられる vendor の union を取り除く。`src/shared/registries/identifier-types.ts`。
-- [X] T008 [P] `src/shared/registries/behavior-types.ts` の `gemini-cli` surface を `antigravity-cli` に置き換え、`src/shared/registries/behavior-text.ts` でその `CLI` label と最後の順序位置を与える (data-model.ja.md § VendorSurface)。
+- [X] T006 `SupportedTool` に `'antigravity'` を宣言し、`SUPPORTED_TOOL_ORDER` では `codex` の後の位置に、`SUPPORTED_TOOL_TEXT` では `Antigravity CLI` とし、member の doc comment を付ける。`src/shared/entities.ts` (data-model.ja.md § SupportedTool)。
+- [X] T007 [P] `AntigravityBehaviorId`、`AntigravityRuleId`、`AntigravityStrategyId`、Google の source-ID union を、member ごとの doc comment を持つ閉じた string-literal union として宣言し、`BehaviorId`・`RuleId`・`StrategyId`・`SourceId` に join する。`src/shared/registries/identifier-types.ts`。
+- [X] T008 [P] `src/shared/registries/behavior-types.ts` に `antigravity-cli` surface を宣言し、`src/shared/registries/behavior-text.ts` でその `CLI` label と最後の順序位置を与える (data-model.ja.md § VendorSurface)。
 - [X] T009 vendor behavior record — workspace の4つ、workspace の rules と hooks、user tier の9つ — を、`evidence` の引用、surface `antigravity-cli`、contract の assessment index どおりの record ごとの `documentationStatus`/`lifecycleQualifiers` とともに書く。`src/shared/registries/antigravity/behaviors.ts` (contracts/vendors/antigravity-cli.ja.md § 文書化済み Repository behavior、§ 文書化済み User behavior)。
 - [X] T010 [P] runtime-composition の strategy を、文書化された順の operation と evidence とともに書く。`antigravity.rules.activation` は `filter` だけを持つ。`src/shared/registries/antigravity/strategies.ts`。
 - [X] T011 Inspector の rule を書く。ルートの context 2つ、skill 2つ、workspace の rules、workspace の hooks carrier、custom agent 2つ、MCP carrier、Global の8つ、そしてそれぞれの理由を述べる excluded group 3つ。`src/shared/registries/antigravity/rules.ts`。matcher はすべて inline に綴り、各 record の `policyRefs`/`evidence` は `SHIPS_MAINTENANCE_DATA` の三項で包む (contracts/vendors/antigravity-cli.ja.md § Inspector Repository rule、§ Inspector Global rule、§ Relationship-only と excluded group)。
 - [X] T012 [P] relationship-only の record と skill の同名 statement を `src/shared/registries/antigravity/relations.ts` と `skill-collision.ts` に書き、statement はその skill rule が名指す strategy から導出する。
-- [X] T013 `src/shared/registries/gemini/` とそのすべての export を削除し、`src/shared/registries/shared/relations.ts` から置き換えられる vendor の行を取り除く。新しい module を registry の索引に登録するのと同じ変更で行う。
+- [X] T013 新しい vendor module を registry の索引に登録する。`src/shared/registries/` の `inspection-rules.ts`・`vendor-behaviors.ts`・`relations.ts`・`runtime-composition.ts`・`skill-collision.ts`。gate が読むどの catalog もこの vendor の record を持つようにする。
 - [X] T014 このツールのすべての compiled unit が継承する vendor の基底クラスを書く。`src/server/inspection/rules/vendor/antigravity.ts`。それらの unit を組み立てる rule カタログは Phase 4 末尾の T051 が持つ。まだ誰も書いていない unit を import するカタログは `scan.ts` を読み込み不能にし、他のすべての vendor の suite を道連れにしてどの gate も走らせられなくする。これは赤い typecheck より悪い中間状態であり、phase の計画が意図したものでもない。
-- [X] T015 置き換えられる vendor の compiled unit とそのすべての import を削除する。`src/server/inspection/rules/gemini.ts`、`rules/vendor/gemini.ts`、および prompt/command の unit を含む kind ごとの7つの `rules/**/gemini.ts` である。このリリースがサポートしない製品の unit を残さないためである (spec.ja.md § FR-014)。
-- [X] T016 vendor contract を `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` と `.ja.md` へ移し、`gemini-cli.md` と `.ja.md` を削除し、`contracts/runtime-composition.md` と `.ja.md` の contract 索引・strategy の表（`antigravity.rules.activation` が加わる）・relationship-only の表を出荷される集合へ更新する。
-- [X] T017 `@iconify-json/thesvg` を、icon の方針の3点セット — `package.json` の devDependency、`scripts/third-party-notices-plugin.mjs` の `~icons/thesvg/` の行、`licenses/` に置く collection の upstream の license text — とともに1つの変更で取る。同じ変更で `src/app/components/ToolMark.vue` の mark の import と、`src/app/styles/main.css` の `--aci-brand-gemini` → `--aci-brand-antigravity` の token 改名を行い、値は保ち、コメントは製品名だけを述べるよう書き換える (research.ja.md § 8、§ 8a)。
-- [X] T018 [P] member entry を `antigravity` に改名し `Antigravity home` と label する。`src/shared/api-text.ts`。member の doc comment を `src/shared/api-types.ts` で更新する (data-model.ja.md § GlobalMemberId と member の tuple)。
+- [X] T016 vendor contract を `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` と `.ja.md` へ移し、`contracts/runtime-composition.md` と `.ja.md` の contract 索引・strategy の表（`antigravity.rules.activation` が加わる）・relationship-only の表を出荷される集合へ更新する。
+- [X] T017 `@iconify-json/thesvg` を、icon の方針の3点セット — `package.json` の devDependency、`scripts/third-party-notices-plugin.mjs` の `~icons/thesvg/` の行、`licenses/` に置く collection の upstream の license text — とともに1つの変更で取る。同じ変更で `src/app/components/ToolMark.vue` の mark の import と、`src/app/styles/main.css` の `--aci-brand-antigravity` token を置く。値はどちらの地に対しても読めるまで彩度を落とす (research.ja.md § 8、§ 8a)。
+- [X] T018 [P] member entry `antigravity` を宣言し `Antigravity home` と label する。`src/shared/api-text.ts`。member の doc comment を `src/shared/api-types.ts` で更新する (data-model.ja.md § GlobalMemberId と member の tuple)。
 - [X] T019 環境の capture を3つのプロパティに減らし、`settingNames` の field とそれが存在した理由である parent-join の分岐を削除し、4つ目の member の root を home ディレクトリとの join として導出する。`src/server/host/global-consent.ts` (research.ja.md § 4)。
 
 ---
@@ -181,16 +182,15 @@
 
 ## Phase 6: Polish、リリース evidence、削除
 
-**目的**: story をまたぐ gate と record、そして置き換えられる機能の artifact の削除。
+**目的**: story をまたぐ gate と record、そして parity review。
 
-- [X] T059 [P] `docs/which-files-are-listed.md` と `.ja.md` の Gemini CLI の節を、リポジトリと personal setup の下の Antigravity CLI の節に置き換える。出荷される rule が admit する literal segment を、`.agent`・`rules`・`hooks.json`・`SKILL.md` を含めてすべて名指す散文とし、共有 agent home の「読むツール」欄も正す。
+- [X] T059 [P] `docs/which-files-are-listed.md` と `.ja.md` に、リポジトリと personal setup の下の Antigravity CLI の節を加える。出荷される rule が admit する literal segment を、`.agent`・`rules`・`hooks.json`・`SKILL.md` を含めてすべて名指す散文とし、共有 agent home の「読むツール」欄も正す。
 - [X] T060 [P] `README.md` と `README.ja.md` がツールの集合を名指すすべての箇所で、このリリースがサポートする4つを名指す。`docs/images/inventory.png` と `comparison.png` を撮り直す。どちらもこの変更で動く legend を写している。
 - [X] T061 [P] 初回利用の study input を、このリリースがサポートするツールを名指すよう更新し、FR-008 が取り除く環境プロパティを落とし、指定ファイルの読み手をリポジトリルートの `AGENTS.md` を読む3つに設定する。`tests/usability/sc001-sc006-study-inputs/`。
-- [ ] T062 更新された input に対して親仕様の20セッションのエージェント駆動実行を行い、その実行・日付・結果を `specs/001-inspect-agent-customizations/validation.md` と `.ja.md` に記録する (spec.ja.md § QR-003)。
-- [X] T063 outcome manifest を次の version へ進め、置き換えられる vendor の case を除き、このツールが加える `(tool, customization file type, admitted source form)` ごとに1 case を持たせ、影響を受ける fixture digest と canonical digest を再計算する。`tests/fixtures/outcomes/manifest.json` と `manifest.sha256`。この task が入るまで `tests/contract/outcome-fixture-manifest.test.ts` は不足する `(tool, kind)` の case で失敗する。
+- [X] T062 更新された input に対して親仕様の20セッションのエージェント駆動実行を行い、その実行・日付・結果を `specs/001-inspect-agent-customizations/validation.md` と `.ja.md` に記録する (spec.ja.md § QR-003)。
+- [X] T063 outcome manifest を次の version へ進め、このツールが加える `(tool, customization file type, admitted source form)` ごとに1 case を持たせ、影響を受ける fixture digest と canonical digest を再計算する。`tests/fixtures/outcomes/manifest.json` と `manifest.sha256`。この task が入るまで `tests/contract/outcome-fixture-manifest.test.ts` は不足する `(tool, kind)` の case で失敗する。
 - [X] T064 manifest version の遷移とその denominator、実行した Antigravity CLI の case ID、official-source の実行を `specs/001-inspect-agent-customizations/validation.md` と `.ja.md` に記録する。
-- [X] T065 削除される機能の task と phase の件数の凍結を、この機能の `specs/003-antigravity-cli-support/tasks.md` と `tasks.ja.md` の件数に置き換える。literal を `tests/documentation/cross-artifact.test.ts` に綴り、先に落ちるところを確認する。
-- [X] T066 `specs/002-gemini-cli-support/` を削除し、それを引用するすべての artifact を `specs/003-antigravity-cli-support/` へ付け替える。親の spec・data-model・http-api・quickstart・validation、registry のコメント、それを名指すテストを含む (spec.ja.md § FR-014)。
+- [X] T065 この機能の `specs/003-antigravity-cli-support/tasks.md` と `tasks.ja.md` の task と phase の件数を凍結する。literal を `tests/documentation/cross-artifact.test.ts` に綴り、先に落ちるところを確認する。
 - [X] T067 出荷される tree、その文書、その gate を検索し、このリリースがサポートしない製品のサポート対象ツール識別子・label・mark・contract・凍結件数が無いことを確認し、結果を記録する。ファイル名 `GEMINI.md` とディレクトリ `~/.gemini` はその出現に当たらない。どちらもこのツール自身が読むものだからである (spec.ja.md § SC-006)。
 - [X] T068 [P] 親仕様の tool 一覧、supported-file の表、FR-018 の除外、FR-045 の共有 home の読み手を、このリリースがサポートする4つのツールへ改める。`specs/001-inspect-agent-customizations/spec.md` と `spec.ja.md`。
 - [X] T069 [P] 親の data model の member entity と session API contract の consent preview を、このリリースが出荷する member id と label へ改める。`specs/001-inspect-agent-customizations/data-model.md`、`data-model.ja.md`、`contracts/http-api.md`、`http-api.ja.md`。
@@ -213,7 +213,6 @@
 - Phase 4 (US2) は Phase 2 に依存し、Phase 3 の compiled unit を再利用する。US1 の surface には依存しない。
 - Phase 5 (US3) は Phase 3 の skill unit に依存する。
 - Phase 6 はすべての story に依存する。ただし T059・T060・T068–T070 は Phase 2 の語彙だけを要する。
-- Phase 6 の中で T065 は T066 に先行する。文書 gate が削除される機能の task ファイルを読むので、凍結を動かす前に消すとその gate は落ちるのではなく例外になる。
 
 ### 並行できる箇所
 
@@ -234,7 +233,7 @@ Phase 1・2・3 で、リポジトリの inventory が4つ目のツールを名�
 
 ### Incremental Delivery
 
-各 story の phase は、上の独立テストが測れる状態で終わる。Phase 6 の削除の task を意図的に最後に置くのは、置き換えられる vendor の record が union の都合で Phase 2 に去る一方、その feature ディレクトリ・件数・manifest の case は、それを数える gate が新しく数える対象を得てから去るためである。
+各 story の phase は、上の独立テストが測れる状態で終わる。Phase 6 を意図的に最後に置くのは、その件数・digest・manifest の case が、それらを読む gate に出荷される集合の全体が揃ってからでなければ動かせないためである。
 
 ---
 

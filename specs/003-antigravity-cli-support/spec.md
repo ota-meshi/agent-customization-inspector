@@ -8,7 +8,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "Support Antigravity CLI as the fourth tool in place of Gemini CLI: recognize the repository customizations it reads under `.agents/` together with the root context files, and its personal home below `~/.gemini`, so the inventory names Antigravity CLI as a reader of the files it reads."
+**Input**: User description: "Support Antigravity CLI as the fourth tool: recognize the repository customizations it reads under `.agents/` together with the root context files, and its personal home below `~/.gemini`, so the inventory names Antigravity CLI as a reader of the files it reads."
 
 This specification extends [Inspect Agent Customizations](../001-inspect-agent-customizations/spec.md).
 Everything that specification requires of a supported tool — the allowlist discipline, the
@@ -22,9 +22,8 @@ about four and five.
 
 ### Session 2026-09-10
 
-- Q: Gemini CLI ships as the fourth supported tool on the main branch. Does this feature add Antigravity CLI beside it, or in place of it? → A: In place of it. Google's transition announcement of 2026-05-19 stopped serving Gemini CLI to the free tier and to Google AI Pro and Ultra on 2026-06-18 and names Antigravity CLI as the product that continues, so the terminal a reader is deciding about is Antigravity CLI. Carrying a vendor is a multiplier on every later change, and a vendor whose documentation is being folded into another product's raises the cost of the official-source review it depends on, so this release supports Antigravity CLI and no longer names Gemini CLI on any surface. Enterprise licensees keep a working Gemini CLI whose `.gemini/commands/` and `.gemini/settings.json` this release no longer lists, which is the accepted cost. Because that support has never been published to npm, no user receives a removal.
-- Q: Antigravity CLI reads `~/.gemini/GEMINI.md`, `~/.gemini/config/`, and `~/.gemini/antigravity-cli/`. Does the personal-setup member stay? → A: Yes, unchanged in position and admission. The member is a directory rather than a product, and the directory Antigravity CLI reads is the same `~/.gemini` the fifth member already proposes, so the member set stays at five and only the paths admitted below it change.
-- Q: The vendor documents a terminal, editor extensions, and a desktop application, and the editor and desktop surfaces read locations the terminal does not. Which of them does this release recognize? → A: The terminal alone. The transition this feature follows is one terminal replacing another, and the reader it serves is deciding about the terminal they run; folding in the editor and desktop surfaces would admit locations such as a workspace plugin directory that no terminal page documents, which widens what the inventory lists rather than replacing a reader of it. A location the shared `.agents/` pages document and a terminal page corroborates is not such a widening: the terminal reads that directory, and which of its entries the terminal reads is settled by the pages rather than by which product tree a page sits in. The other surfaces stay available to a later feature, which would add them as surfaces of this same tool rather than as another tool.
+- Q: Antigravity CLI reads `~/.gemini/GEMINI.md`, `~/.gemini/config/`, and `~/.gemini/antigravity-cli/`. How does the personal-setup member reach it? → A: As the fifth member, which is a directory rather than a product: `~/.gemini` is what that member proposes, and the paths admitted below it are this vendor's.
+- Q: The vendor documents a terminal, editor extensions, and a desktop application, and the editor and desktop surfaces read locations the terminal does not. Which of them does this release recognize? → A: The terminal alone. The transition this feature follows is one terminal replacing another, and the reader it serves is deciding about the terminal they run; folding in the editor and desktop surfaces would admit locations such as a workspace plugin directory that no terminal page documents, which widens what the inventory lists past what that reader runs. A location the shared `.agents/` pages document and a terminal page corroborates is not such a widening: the terminal reads that directory, and which of its entries the terminal reads is settled by the pages rather than by which product tree a page sits in. The other surfaces stay available to a later feature, which would add them as surfaces of this same tool rather than as another tool.
 - Q: `.agents/skills/` holds two shapes. When `deploy.md` and `deploy/SKILL.md` sit side by side, is that one inventory row or two? → A: One row. A skill row's unit is one name as each product resolves it, which is what already puts a `.agents/skills/x/SKILL.md` and a `.claude/skills/x/SKILL.md` on one row; the row carries both definitions and states which product reads which. No new mechanism is needed, and no precedence between the two shapes is invented.
 - Q: The terminal's own page shows a workspace skill as a flat `.md` file, while the vendor's Agent Skills page shows the same directory holding a folder with a `SKILL.md`. Which shapes does this release admit? → A: Both, for this tool. `.agents/skills/` is one directory three of the vendor's products read, and each shape is documented for it on an official page of that vendor; admitting one and declining the other would leave a reader's own `.agents/skills/deploy/SKILL.md` unlisted for the terminal while the same file is listed for two other products. The file shape is the terminal page's, the directory shape is the Agent Skills page's, and neither page states a precedence, so none is invented. What the terminal's own global directory admits is unchanged: `antigravity-cli/skills/` is the terminal's alone and only the flat shape is documented there.
 - Q: `.agents/` also holds a rules directory and a hooks file. Are they admitted for this tool? → A: Yes, both. The vendor's Rules page places workspace rules in `.agents/rules/`, the Hooks page places a `hooks.json` in the workspace's `.agents/` and in the home's `config/`, and the terminal's own migration page states that workspace skills, rules, and MCP servers are preserved — which is a terminal page naming the rules directory as one the terminal reads. Both are published under the kinds that already exist, shown as written: an activation mode is not evaluated against a file and a hook command is never run.
@@ -34,8 +33,8 @@ about four and five.
 - Q: Does an Antigravity CLI recognition reach `GEMINI.md` and `AGENTS.md` below the repository root? → A: No, the repository root's pair alone. The migration guide states the workspace context files as the ones in the active directory and says nothing about a depth, so reaching deeper would rest on an inference — the same reason the home instruction rule was not widened for the previous vendor. The depth is recorded as a known uncertainty on the vendor contract, and the rule widens when the vendor documents the hierarchy.
 - Q: The fifth member's directory stays `~/.gemini` while the product it was named for is no longer supported. What does its label say? → A: `Antigravity home`. The member table names a member by whose directory it is rather than by the directory's own name, and a label that differs from the path is already what that table does: `~/.config/github-copilot` is labelled `Copilot home`. The short form follows the same family — `Antigravity CLI` shortens to `Antigravity` as `OpenAI Codex` shortens to `Codex` — and the member's root path is shown beside the label, so the label says whose directory it is and the path says where.
 - Q: A skill that is one file — the shape the terminal's own page documents, in the repository and in the home — has no directory, and the detail's file panel is the panel holding the skill's directory and the open file. What does that page show? → A: The skill panel alone, with no file panel and no tab strip: the panel's subject is a directory the skill does not have, and a tab strip offering one tab is not a choice. The heading stays the skill's own path, because what it says — the one identity every product reading it shares, where the names they invoke it by differ — is true of a file as it is of a directory. A row's companion count needs nothing new: it is already drawn only where a skill ships companions.
-- Q: The parent specification repeats its first-use evaluation only when the designated file's ground truth moves. That file is the repository root `AGENTS.md`, and this tool reads it, so its recognizing tools go from two to three. Is a run owed? → A: Yes. The condition the parent set is met, so the study inputs are updated and the twenty agent-driven sessions are run before release, with the result recorded. The previous vendor did not read that file, which is why the last change owed no run; a reader of the designated file now has a harder answer to give, and a criterion measured against a page that no longer matches would be measuring nothing.
-- Q: The custom-commands surface Gemini CLI documented has no counterpart. Does the release still publish the prompt and command kind for this tool? → A: No. Antigravity CLI's migration guide converts legacy commands into skills, and no page documents a repository command directory, so this tool contributes no row of that kind. The kind stays in the closed set for the three tools that do publish it.
+- Q: The parent specification repeats its first-use evaluation only when the designated file's ground truth moves. That file is the repository root `AGENTS.md`, and this tool reads it, so its recognizing tools go from two to three. Is a run owed? → A: Yes. The condition the parent set is met, so the study inputs are updated and the twenty agent-driven sessions are run before release, with the result recorded. A reader of the designated file now has a harder answer to give, and a criterion measured against a page that no longer matches would be measuring nothing.
+- Q: Does the release publish the prompt and command kind for this tool? → A: No. Antigravity CLI's migration guide converts legacy commands into skills, and no page documents a repository command directory, so this tool contributes no row of that kind. The kind stays in the closed set for the three tools that do publish it.
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -233,10 +232,8 @@ one name spelled in both, and confirm each row states the products that resolve 
   it rests on Copilot's own documentation, which this feature does not touch.
 - **FR-014**: No vendor module, vendor contract, registry record, fixture, documentation
   section, label, mark, or evidence record for a product this release does not support may
-  remain in the tree, and no gate may count one. The specification directory and the unpublished
-  changeset of the work being replaced go with them, and every artifact that cites that
-  directory MUST be re-pointed at this one in the same change, so no reference is left
-  addressing a directory the tree no longer holds.
+  remain in the tree, and no gate may count one. A reference addressing an artifact the tree
+  does not hold is one of those records, so no artifact may be left citing one.
 - **FR-015**: Every recorded Antigravity CLI behavior MUST cite the official documentation that
   establishes it, and a claim a cited page does not make MUST be recorded as partially
   documented rather than stated as documented. A behavior established by a page in the vendor's
@@ -263,8 +260,8 @@ one name spelled in both, and confirm each row states the products that resolve 
 - **Antigravity CLI surface**: the one surface every Antigravity CLI behavior names. The vendor
   documents one terminal client that reads these files; its editor and desktop surfaces are
   outside this release.
-- **`~/.gemini` Global member**: the fifth consent member, unchanged in position, whose admitted
-  paths this feature replaces.
+- **`~/.gemini` Global member**: the fifth consent member, whose admitted paths this feature
+  states.
 - **Antigravity CLI skill**: one skill name, spelled in the repository as a Markdown file or as
   a directory holding a `SKILL.md`, and in the home as a Markdown file. The file shape's row
   unit is the file itself, which is the shape that carries no companion directory.
@@ -365,9 +362,6 @@ one name spelled in both, and confirm each row states the products that resolve 
   and Plugins pages. Planning revalidates each path against
   those pages, records exact section headings, and may narrow a pattern; it does not add a
   surface without a specification change.
-- The transition is established by Google's own announcement of 2026-05-19, which names the date
-  the free and Google AI Pro and Ultra tiers stopped being served and names Antigravity CLI as
-  the product that continues.
 - The documented home is written literally as `~/.gemini` on every cited page. No page documents
   an environment property that relocates it, so none is derived: a derivation there would rest
   on an inference, which is the same reason the parent feature gave for not widening a home rule

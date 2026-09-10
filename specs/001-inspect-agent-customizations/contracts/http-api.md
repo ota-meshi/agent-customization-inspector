@@ -591,7 +591,7 @@ inspection-state checks; the fence conflict therefore wins without leaking retai
 state.
 
 Every Source has exactly one root. The Repository Source has no member; the session has
-zero to five Global Sources, at most one each with `member: codex`, `member: claude`, `member: gemini`,
+zero to five Global Sources, at most one each with `member: codex`, `member: claude`, `member: antigravity`,
 `member: copilot`, or `member: agents` — the shared agent home (FR-045). A Global root is never represented as a boundary inside another Source.
 `repositoryGeneration` and `globalGeneration` are the two sequences' independently
 committed generations; `globalGeneration` is null exactly while Global inspection is

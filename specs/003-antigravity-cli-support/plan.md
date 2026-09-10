@@ -8,18 +8,18 @@
 
 ## Summary
 
-Make Antigravity CLI the fourth supported tool in place of the one the vendor has folded into
-it, by giving it what the other three have — a vendor registry directory, compiled units per
-kind, a vendor contract, a Global member, a mark, a label, and documentation — and by removing
-the records, fixtures, and documentation of the tool it replaces so that no surface names a
-product this release does not support. The member set does not move: the fifth member is the
-same `~/.gemini` directory, because that is where Antigravity CLI keeps its personal setup.
+Make Antigravity CLI the fourth supported tool by giving it what the other three have — a
+vendor registry directory, compiled units per kind, a vendor contract, a Global member, a mark,
+a label, and documentation — so that the inventory names it as a reader of the files it reads
+and no surface names a product this release does not support. The member set holds five: the
+fifth is the `~/.gemini` directory, because that is where Antigravity CLI keeps its personal
+setup.
 
 Two decisions shape the code. The skill kind gains a second compiled shape whose row unit is one
 Markdown file, as its own unit beside the directory-shaped one rather than as optional fields on
 it (research.md § 2). And the member's root is derived from the home directory alone, which
-removes the environment property, the descriptor row, and the `settingNames` field that existed
-for the previous vendor (§ 4). Everything else reuses a shape the codebase already has: the
+removes the descriptor row and the `settingNames` field that a per-member environment property
+would have needed (§ 4). Everything else reuses a shape the codebase already has: the
 Markdown instruction and custom-agent units, the shared MCP server-map reading over a standalone
 strict-JSON carrier, the shared hook and permissions readings, and the settings carrier with
 several recognitions over one selector.
@@ -61,8 +61,7 @@ the closed kind set are the parent's and are unchanged. No kind is added.
 - [x] **Root-cause design**: The file-shaped skill is a unit of its own rather than optional
       fields widening the directory-shaped record (research.md § 2); the member's root comes
       from the home directory as the shared agent home's already does, which deletes a field
-      rather than adding a branch (§ 4); the records of the replaced vendor are removed rather
-      than left as history (§ 9). No kind, parser, package, or mechanism is added.
+      rather than adding a branch (§ 4). No kind, parser, package, or mechanism is added.
 - [x] **Readable implementation**: The vendor's answers live in
       `src/shared/registries/antigravity/` and `src/server/inspection/rules/**/antigravity.ts`,
       shaped like the three existing vendors, so a reader carries what one taught them. The
@@ -75,14 +74,14 @@ the closed kind set are the parent's and are unchanged. No kind is added.
       security zero-activation over hook declarations, permission rules, and MCP declarations;
       the containment gate; end-to-end specs per kind and for the fifth member; the
       official-source check over the new records (spec.md QR-003).
-- [x] **Documentation parity**: Listed in research.md § 11 and § Project Structure below, each
+- [x] **Documentation parity**: Listed in research.md § 10 and § Project Structure below, each
       with its `.ja.md`: the vendor contract, official-sources, runtime-composition, the parent
       spec and data-model and http-api, the readme, `docs/which-files-are-listed`, the study
       inputs, and `validation.md`.
 - [x] **Safe boundaries**: The home is a consented member under the same preview, admission,
       retry, and disable rules; credentials, session and history state, and installed plugin
       copies below it are never read (spec.md QR-005). No DTO shape changes: the member enum
-      keeps five values and one of them is renamed, and the bundled browser is the only client.
+      holds five values, one of them this member's, and the bundled browser is the only client.
 - [x] **Welcoming participation**: The fixture launcher gains `antigravity-*` rows so a
       contributor can see each surface; the legend names the product; the mark carries its
       accessible name; a diagnostic for an unparsable carrier names the file.
@@ -91,9 +90,9 @@ the closed kind set are the parent's and are unchanged. No kind is added.
 
 All six gates hold after Phase 1. The one design cost that could be read as complexity — a
 second compiled shape for one kind — is what the row-unit rule requires rather than an
-addition of the author's choosing, and it removes more than it adds: the descriptor field, the
-environment property, and the derivation the replaced vendor needed all go. Complexity Tracking
-is therefore empty.
+addition of the author's choosing, and it removes more than it adds: the descriptor field and
+the environment property it existed for both go, because this member's root has no property to
+describe. Complexity Tracking is therefore empty.
 
 ## Project Structure
 
@@ -112,19 +111,17 @@ specs/003-antigravity-cli-support/
 
 The vendor contract is authored here and moves to
 `specs/001-inspect-agent-customizations/contracts/vendors/` in the change that ships the rules,
-which is where the shipped vendor contracts live and where the gates read them. The contract of
-the replaced vendor is deleted in the same change.
+which is where the shipped vendor contracts live and where the gates read them.
 
 ### Source Code (repository root)
 
 ```text
 src/shared/registries/
-├── antigravity/          # rules, behaviors, strategies, relations, skill collisions
-└── (gemini/ removed)
+└── antigravity/          # rules, behaviors, strategies, relations, skill collisions
 src/server/inspection/rules/
 ├── skills/               # gains the file-shaped compiled unit beside the directory one
 ├── instructions/, agents/, mcp/, hooks/, permissions/, settings/
-└── **/antigravity.ts     # this vendor's units; **/gemini.ts removed
+└── **/antigravity.ts     # this vendor's units, one per kind it publishes
 src/server/host/global-consent.ts   # three environment properties; no settingNames field
 src/shared/entities.ts, api-text.ts, registries/behavior-text.ts  # labels and orders
 src/app/components/ToolMark.vue     # the vendor mark
@@ -144,16 +141,15 @@ tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outco
 - **One file, several products**: The root `GEMINI.md` keeps Copilot's recognition and gains
   this tool's; the root `AGENTS.md` gains it beside Copilot's and Codex's. `.agents/skills/`
   now holds two shapes, which share a row when they share a name.
-- **Removal is part of the change**: The replaced vendor's module, contract, records, fixtures,
-  label, mark, documentation sections, evidence entries, frozen counts, and outcome-manifest
-  cases go in the same change that adds this one, and `specs/002-gemini-cli-support` and its
-  unpublished changeset go with them. The parent artifacts that cite that feature directory are
-  re-pointed at this one.
+- **The tree names four tools and no others**: no module, contract, record, fixture, label,
+  mark, documentation section, evidence entry, frozen count, or outcome-manifest case may name
+  a product this release does not support, and no artifact may cite one that the tree does not
+  hold (FR-014).
 - **Freezes**: The counts, tuples, digests, version literals, and manifest version move in the
   same change as the code, and each is watched failing first.
 - **Family conversion**: Every `Record<SupportedTool, …>` compiles only once the member is
-  renamed; the order arrays are covered by their gates; every count of tools or members in copy
-  and comments is re-read.
+  declared in each of them; the order arrays are covered by their gates; every count of tools or
+  members in copy and comments is re-read.
 
 ## Complexity Tracking
 

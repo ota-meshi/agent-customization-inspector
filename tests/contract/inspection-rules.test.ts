@@ -717,8 +717,7 @@ describe('the unified SKILL selector matrix (T179)', () => {
   const skillRules = rules.filter((rule) => rule.kind === 'skill');
 
   it('ships exactly the ten read-authorizing skill rules', () => {
-    // T004: the fourth vendor's three rules leave and its three arrive, so the
-    // count holds at ten while the names move. Antigravity CLI contributes no
+    // T004: Antigravity CLI contributes three of the ten, and contributes no
     // shared-agent-home rule — its global skills live below `~/.gemini`, and no
     // cited page has it read `~/.agents` (FR-045) — and contributes a second
     // Repository rule instead, because it admits two skill shapes at one
@@ -805,12 +804,11 @@ describe('the unified instruction selector matrix (T269)', () => {
     // field of it, and the Global-scope assertions below are what separate the
     // two.
     //
-    // T004: fourteen became sixteen. The replaced vendor contributed one
-    // static selector, its Repository context file being a derivation;
-    // Antigravity CLI contributes three static ones — the repository root's
-    // `GEMINI.md` and `AGENTS.md`, and the consented home's `GEMINI.md` —
-    // because no cited page documents a terminal setting that renames a
-    // context file, so this vendor ships no derived rule at all.
+    // T004: sixteen, of which Antigravity CLI contributes three — the
+    // repository root's `GEMINI.md` and `AGENTS.md`, and the consented home's
+    // `GEMINI.md` — all of them static, because no cited page documents a
+    // terminal setting that renames a context file, so this vendor ships no
+    // derived rule at all.
     expect(staticInstructionRules.map((rule) => rule.ruleId).sort()).toEqual([
       'antigravity.global.context',
       'antigravity.repo.context.agents-root',
@@ -843,14 +841,13 @@ describe('the unified instruction selector matrix (T269)', () => {
       (rule) => rule.discoveryClass === 'bounded-derived-candidate',
     );
     // One derivation, from the one vendor whose configuration names the kind's
-    // files: Codex's fallback basenames at the root. The fourth vendor shipped
-    // the second one until this release; Antigravity CLI ships none, because no
-    // cited page documents a terminal setting that renames or relocates a
-    // workspace customization (contracts/vendors/antigravity-cli.md § Derived
-    // Repository rules).
+    // files: Codex's fallback basenames at the root. Antigravity CLI ships
+    // none, because no cited page documents a terminal setting that renames or
+    // relocates a workspace customization
+    // (contracts/vendors/antigravity-cli.md § Derived Repository rules).
     //
     // T004: this assertion was watched failing against the shipped registry
-    // before the second entry was removed.
+    // before the one entry below was written.
     expect(derived.map((rule) => rule.ruleId).toSorted()).toEqual([
       'codex.derived.fallback-basename',
     ]);
@@ -866,9 +863,9 @@ describe('the unified instruction selector matrix (T269)', () => {
     // User-runtime records consent is measured against; an exclusion authorizes
     // nothing: no matcher to admit by and no kind to recognize as.
     //
-    // T004: the fourth vendor's three records leave and its three arrive, so
-    // the count holds at fourteen. Antigravity CLI's third is a workspace
-    // plugin directory rather than an extensions record, and it exists because
+    // T004: three of the fourteen are Antigravity CLI's. Its third is a
+    // workspace plugin directory rather than a runtime-state record, and it
+    // exists because
     // the installed-copy reason the other plugin exclusions give does not reach
     // a plugin authored in a repository
     // (contracts/vendors/antigravity-cli.md § Relationship-only and excluded
@@ -1252,14 +1249,13 @@ describe('the registry this release owns (T913)', () => {
     // fails here, which is the point of freezing the numbers rather than
     // deriving them.
     //
-    // T004: every literal in this case moved with the fourth vendor, and each
-    // was changed only after this case was watched failing against the shipped
-    // registry. The replaced product shipped twenty rules; Antigravity CLI
-    // ships twenty-one, and they fall differently — one fewer derived rule
-    // because no cited page documents a terminal setting that renames a
-    // customization, one more Repository exclusion because the workspace
-    // plugin directory needs a reason the installed-copy exclusion does not
-    // give, and no shared-agent-home rule at all.
+    // T004: every literal in this case was written only after it was watched
+    // failing against the shipped registry. Antigravity CLI ships twenty-one
+    // rules, and where they fall follows from its own pages — no derived rule,
+    // because none documents a terminal setting that renames a customization;
+    // one Repository exclusion for the workspace plugin directory, which needs
+    // a reason the installed-copy exclusion does not give; and no
+    // shared-agent-home rule at all.
     expect(rules).toHaveLength(101);
     const repository = rules.filter((rule) => rule.sourceKinds.includes('repository'));
     const global = rules.filter((rule) => rule.sourceKinds.includes('global'));

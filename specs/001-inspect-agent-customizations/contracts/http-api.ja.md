@@ -494,7 +494,7 @@ staleness、duplicate-work、その他inspection-state checkより前にfenceを
 retained graph stateをleakせずfence conflictが常に優先する。
 
 各Sourceは正確に1つのrootを持つ。Repository Sourceはmemberを持たず、sessionはGlobal Sourceを
-0〜5個、`member: codex`、`member: claude`、`member: gemini`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
+0〜5個、`member: codex`、`member: claude`、`member: antigravity`、`member: copilot`、`member: agents` — 共有agent home（FR-045） — ごとに最大1個持つ。Global rootを別Source内の
 boundaryとして表現しない。
 `repositoryGeneration`と`globalGeneration`は2つのsequenceがそれぞれ独立してcommitした
 generationであり、`globalGeneration`はGlobal inspectionがdisabledでGlobal sequenceが存在しない間

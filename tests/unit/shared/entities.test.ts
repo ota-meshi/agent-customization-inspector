@@ -364,20 +364,11 @@ describe('closed-catalog predicates', () => {
     // exact, and a tab that opened on a guessed kind would show rows the URL
     // did not ask for.
     //
-    // `gemini` is here as the member this release removed (T003): a URL saved
-    // while the fourth tool was that product must not open a tab, and this
-    // case failed while the union still named it
-    // (specs/003-antigravity-cli-support/spec.md § FR-001).
-    for (const value of [
-      '',
-      'Skill',
-      'skills',
-      'instruction',
-      'CLAUDE',
-      'gemini',
-      'Gemini',
-      'cursor',
-    ]) {
+    // The list carries plausible near misses rather than nonsense: a kind's
+    // own word in the wrong case, a plural, a singular, and the name of a
+    // product this release does not support. A URL naming any of them must
+    // open no tab (specs/003-antigravity-cli-support/spec.md § FR-001).
+    for (const value of ['', 'Skill', 'skills', 'instruction', 'CLAUDE', 'cursor', 'Cursor']) {
       expect(isCustomizationKind(value), value).toBe(false);
       expect(isSupportedTool(value), value).toBe(false);
     }

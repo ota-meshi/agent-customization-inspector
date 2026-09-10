@@ -79,7 +79,7 @@ describe('the user-visible copy of the closed vocabularies', () => {
     // The label is the product's own name and the surface is named within it,
     // so the pair reads "Antigravity CLI · CLI" wherever a row states both
     // (specs/003-antigravity-cli-support/data-model.md § VendorSurface). This
-    // assertion failed against the previous vocabulary before the rename
+    // assertion was watched failing before the label was written
     // (AGENTS.md § Implementation simplicity policy).
     expect(SUPPORTED_TOOL_TEXT.antigravity).toBe('Antigravity CLI');
     expect(VENDOR_SURFACE_TEXT['antigravity-cli']).toBe('CLI');

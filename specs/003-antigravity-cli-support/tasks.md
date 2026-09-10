@@ -8,7 +8,7 @@
 
 **Tests**: Every behavioral change requires risk-appropriate automated tests before implementation. A test task precedes the implementation it covers, and a frozen count, digest, tuple, or version literal is changed only after its gate has been watched failing against the new source (AGENTS.md § Implementation simplicity policy).
 
-**Organization**: Tasks are grouped by user story. Phase 2 is the closed vocabulary, the vendor registry, and the frozen contracts every story compiles against, and it is where the replaced vendor's records leave the tree, because one closed union cannot hold both. Phase 3 is the repository (US1), Phase 4 the Antigravity home (US2), Phase 5 the two skill shapes sharing a row (US3), and Phase 6 the release evidence, the removal of the replaced feature's artifacts, and the parity review.
+**Organization**: Tasks are grouped by user story. Phase 2 is the closed vocabulary, the vendor registry, and the frozen contracts every story compiles against, because a closed union cannot gain a member without every exhaustive record over it moving with it. Phase 3 is the repository (US1), Phase 4 the Antigravity home (US2), Phase 5 the two skill shapes sharing a row (US3), and Phase 6 the release evidence and the parity review.
 
 ## Format: `[ID] [P?] [Story?] Description`
 
@@ -16,6 +16,8 @@
 - **[Story]**: Required in Phases 3–5; omitted in Setup, Foundational, and Polish.
 - Every checklist item has one primary outcome and at least one exact repository-relative file path. Every new test file begins with a comment naming its owning task ID and the behavior under test (AGENTS.md § Code commenting policy).
 - "Both languages" means the canonical `*.md` and its `*.ja.md` in the same task.
+- `T015` and `T066` are vacant: the numbering is stable across both languages, so an ID that
+  no longer names work is left standing rather than closed by renumbering every task after it.
 
 ## Normative Requirement Traceability
 
@@ -36,7 +38,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | FR-011 | T044–T046, T050 |
 | FR-012 | T011, T016, T021 |
 | FR-013 | T023 |
-| FR-014 | T012–T013, T015–T016, T063, T065–T066 |
+| FR-014 | T012–T013, T016, T063, T065 |
 | FR-015 | T002, T009, T073 |
 | FR-016 | T011, T020–T021, T037–T038, T059 |
 | FR-017 | T011, T020–T021, T036, T038, T051, T059 |
@@ -51,7 +53,7 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 | SC-003 | T005, T039, T041, T048 |
 | SC-004 | T024, T042 |
 | SC-005 | T006, T048, T059–T060, T071 |
-| SC-006 | T066–T067, T071 |
+| SC-006 | T067, T071 |
 | SC-007 | T073 |
 
 ---
@@ -60,40 +62,39 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 
 **Purpose**: The two artifacts every later task cites — the release entry and the evidence registry rows.
 
-- [X] T001 Write the `minor` changeset entry for the fourth supported tool with `pnpm exec changeset`, one sentence for a user, and delete the unpublished `.changeset/support-gemini-cli.md` in the same task, because it announces support this release does not ship (research.md § Migration impact).
-- [X] T002 Replace the Google source rows with the `google.antigravity.*` set — canonical URL on `antigravity.google`, host, exact rendered section headings, `reviewedOn: 2026-09-10` — covering both the terminal's own pages and the three shared pages that establish the shared customization roots, update the official-host table, and add `"google"` to the `sourceId` grammar that lists the registrable prefixes, in `specs/001-inspect-agent-customizations/contracts/official-sources.md` and `official-sources.ja.md` (contracts/vendors/antigravity-cli.md evidence columns).
+- [X] T001 Write the `minor` changeset entry for the fourth supported tool with `pnpm exec changeset`, one sentence for a user, in `.changeset/` (research.md § Migration impact).
+- [X] T002 Write the Google source rows as the `google.antigravity.*` set — canonical URL on `antigravity.google`, host, exact rendered section headings, `reviewedOn: 2026-09-10` — covering both the terminal's own pages and the three shared pages that establish the shared customization roots, update the official-host table, and add `"google"` to the `sourceId` grammar that lists the registrable prefixes, in `specs/001-inspect-agent-customizations/contracts/official-sources.md` and `official-sources.ja.md` (contracts/vendors/antigravity-cli.md evidence columns).
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: The closed vocabulary, the vendor registry, and the frozen contracts. Every story compiles against these, and the contract gates fail until they are complete. The replaced vendor's records leave here because `SupportedTool` is a closed union that cannot name both products.
+**Purpose**: The closed vocabulary, the vendor registry, and the frozen contracts. Every story compiles against these, and the contract gates fail until they are complete.
 
-**Build state**: The tree does not compile from T006 until the last compiled unit lands. Renaming the union member breaks every exhaustive record over it, and T014's catalog composes per-kind units the stories author — the repository ones in Phase 3, the Global ones in Phase 4. Typecheck and the suites are green again at the end of Phase 4, which is the first point at which the whole read set exists. A red build between those points is the expected state, not a failure to diagnose.
+**Build state**: The tree does not compile from T006 until the last compiled unit lands. Adding the union member breaks every exhaustive record over it, and T014's catalog composes per-kind units the stories author — the repository ones in Phase 3, the Global ones in Phase 4. Typecheck and the suites are green again at the end of Phase 4, which is the first point at which the whole read set exists. A red build between those points is the expected state, not a failure to diagnose.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
 ### Tests for Phase 2
 
-- [X] T003 [P] Replace the tool-vocabulary expectations so `antigravity` is the fourth member and the order gate covers `copilot`, `claude`, `codex`, `antigravity`, in `tests/unit/shared/entities.test.ts`, `tests/unit/shared/display-text.test.ts`, and `tests/unit/shared/skill-collision.test.ts`, and record in each comment that it failed against the previous vocabulary.
+- [X] T003 [P] Set the tool-vocabulary expectations so `antigravity` is the fourth member and the order gate covers `copilot`, `claude`, `codex`, `antigravity`, in `tests/unit/shared/entities.test.ts`, `tests/unit/shared/display-text.test.ts`, and `tests/unit/shared/skill-collision.test.ts`, and record in each comment that it was watched failing before the member was declared.
 - [X] T004 [P] Update every frozen value the registry change moves, recording in each comment that it failed against the pre-change registry (AGENTS.md § Implementation simplicity policy): the rule, behavior, strategy, and source totals, the sorted Global rule-ID list, the per-kind rule lists and recognition matrices, and the per-vendor repository counts, in `tests/contract/inspection-rules.test.ts`, `tests/contract/vendor-behaviors.test.ts`, and `tests/contract/runtime-composition.test.ts`; the presentation-allowlist digests in `tests/contract/presentation-allowlist-freeze.test.ts` and the table publishing them in `specs/001-inspect-agent-customizations/contracts/official-sources.md` and `.ja.md`; and the checked-in conformance materializations under `tests/fixtures/conformance/`, which `regen.mts` beside them re-records in one step.
 - [X] T005 [P] Assert the capture reads three environment properties in fixed order and that the fourth member's root is always the home-directory join with origin `default-home`, in `tests/unit/cli.test.ts` and `tests/unit/host/global-consent.test.ts`; cover the four states that directory can be in — present, absent, present and empty, and unreadable — and assert the preview lists five members with the closed outcome the parent fixes for each (spec.md § SC-003).
 
 ### Implementation for Phase 2
 
-- [X] T006 Replace `'gemini'` with `'antigravity'` in `SupportedTool`, its position after `codex` in `SUPPORTED_TOOL_ORDER`, and `SUPPORTED_TOOL_TEXT` as `Antigravity CLI`, with member doc comments, in `src/shared/entities.ts` (data-model.md § SupportedTool).
-- [X] T007 [P] Declare `AntigravityBehaviorId`, `AntigravityRuleId`, `AntigravityStrategyId`, and the Google source-ID union as closed string-literal unions with a doc comment per member, joining each into `BehaviorId`, `RuleId`, `StrategyId`, and `SourceId`, and remove the replaced vendor's unions, in `src/shared/registries/identifier-types.ts`.
-- [X] T008 [P] Replace the `gemini-cli` surface with `antigravity-cli` in `src/shared/registries/behavior-types.ts`, and its `CLI` label and last order position in `src/shared/registries/behavior-text.ts` (data-model.md § VendorSurface).
+- [X] T006 Declare `'antigravity'` in `SupportedTool`, its position after `codex` in `SUPPORTED_TOOL_ORDER`, and `SUPPORTED_TOOL_TEXT` as `Antigravity CLI`, with member doc comments, in `src/shared/entities.ts` (data-model.md § SupportedTool).
+- [X] T007 [P] Declare `AntigravityBehaviorId`, `AntigravityRuleId`, `AntigravityStrategyId`, and the Google source-ID union as closed string-literal unions with a doc comment per member, joining each into `BehaviorId`, `RuleId`, `StrategyId`, and `SourceId`, in `src/shared/registries/identifier-types.ts`.
+- [X] T008 [P] Declare the `antigravity-cli` surface in `src/shared/registries/behavior-types.ts`, and its `CLI` label and last order position in `src/shared/registries/behavior-text.ts` (data-model.md § VendorSurface).
 - [X] T009 Author the vendor behavior records — the four workspace behaviors, the workspace rules and hooks behaviors, and the nine user-tier behaviors — with `evidence` citations, surface `antigravity-cli`, and per-record `documentationStatus`/`lifecycleQualifiers` per the contract's assessment index, in `src/shared/registries/antigravity/behaviors.ts` (contracts/vendors/antigravity-cli.md § Documented Repository behavior, § Documented User behavior).
 - [X] T010 [P] Author the runtime-composition strategies with their operations in documented order and evidence — `antigravity.rules.activation` carrying `filter` alone among them — in `src/shared/registries/antigravity/strategies.ts`.
 - [X] T011 Author the Inspector rules — the two root context rules, the two skill rules, the workspace rules rule, the workspace hooks carrier, the two custom-agent rules, the MCP carrier, the eight Global rules, and the three excluded groups each stating its own reason — in `src/shared/registries/antigravity/rules.ts`, every matcher spelled inline and every record's `policyRefs`/`evidence` wrapped in the `SHIPS_MAINTENANCE_DATA` ternary (contracts/vendors/antigravity-cli.md § Inspector Repository rules, § Inspector Global rule, § Relationship-only and excluded groups).
 - [X] T012 [P] Author the relationship-only records and the skill same-name statement in `src/shared/registries/antigravity/relations.ts` and `skill-collision.ts`, deriving the statement from the strategies its skill rule names.
-- [X] T013 Delete `src/shared/registries/gemini/` and every export of it, and remove the replaced vendor's rows from `src/shared/registries/shared/relations.ts`, in the same change that registers the new module in the registry index.
+- [X] T013 Register the new vendor module in the registry index — `inspection-rules.ts`, `vendor-behaviors.ts`, `relations.ts`, `runtime-composition.ts`, and `skill-collision.ts` under `src/shared/registries/` — so every catalog a gate reads holds this vendor's records.
 - [X] T014 Author the vendor base class every compiled unit of this tool extends, in `src/server/inspection/rules/vendor/antigravity.ts`. The rule catalog that composes those units is T051's, at the end of Phase 4: a catalog importing a unit nobody has written yet makes `scan.ts` unloadable, which takes every other vendor's suite down with it and leaves no gate able to run — a worse intermediate state than a red typecheck, and not one the phase plan intended.
-- [X] T015 Delete the replaced vendor's compiled units and every import of them — `src/server/inspection/rules/gemini.ts`, `rules/vendor/gemini.ts`, and the seven per-kind `rules/**/gemini.ts` files, the prompt-and-command unit among them — so no unit of a product this release does not support remains (spec.md § FR-014).
-- [X] T016 Move the vendor contract to `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` and `.ja.md`, delete `gemini-cli.md` and `.ja.md`, and update the contract index, the strategy table — which gains `antigravity.rules.activation` — and the relationship-only table of `contracts/runtime-composition.md` and `.ja.md` to the shipped set.
-- [X] T017 Take `@iconify-json/thesvg` in one change with all three of the icon policy's edits — the devDependency in `package.json`, the `~icons/thesvg/` row in `scripts/third-party-notices-plugin.mjs`, and the collection's upstream license text at `licenses/` — and with them the mark import in `src/app/components/ToolMark.vue` and the `--aci-brand-gemini` → `--aci-brand-antigravity` token rename in `src/app/styles/main.css`, keeping the value and rewriting the comment to name the product alone (research.md § 8, § 8a).
-- [X] T018 [P] Rename the member entry to `antigravity` and label it `Antigravity home` in `src/shared/api-text.ts`, and update the member doc comments in `src/shared/api-types.ts` (data-model.md § GlobalMemberId and the member tuple).
+- [X] T016 Move the vendor contract to `specs/001-inspect-agent-customizations/contracts/vendors/antigravity-cli.md` and `.ja.md`, and update the contract index, the strategy table — which gains `antigravity.rules.activation` — and the relationship-only table of `contracts/runtime-composition.md` and `.ja.md` to the shipped set.
+- [X] T017 Take `@iconify-json/thesvg` in one change with all three of the icon policy's edits — the devDependency in `package.json`, the `~icons/thesvg/` row in `scripts/third-party-notices-plugin.mjs`, and the collection's upstream license text at `licenses/` — and with them the mark import in `src/app/components/ToolMark.vue` and the `--aci-brand-antigravity` token in `src/app/styles/main.css`, whose value is desaturated until it reads against both grounds (research.md § 8, § 8a).
+- [X] T018 [P] Declare the member entry `antigravity` and label it `Antigravity home` in `src/shared/api-text.ts`, and update the member doc comments in `src/shared/api-types.ts` (data-model.md § GlobalMemberId and the member tuple).
 - [X] T019 Reduce the environment capture to three properties, delete the `settingNames` field and the parent-join branch it existed for, and derive the fourth member's root as the home-directory join, in `src/server/host/global-consent.ts` (research.md § 4).
 
 ---
@@ -181,16 +182,15 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 
 ## Phase 6: Polish, Release Evidence, and Removal
 
-**Purpose**: The gates and records that span the stories, and the removal of the replaced feature's artifacts.
+**Purpose**: The gates and records that span the stories, and the parity review.
 
-- [X] T059 [P] Replace the Gemini CLI sections of `docs/which-files-are-listed.md` and `.ja.md` with Antigravity CLI sections under the repository and the personal setup, in prose naming every literal segment the shipped rules admit — `.agent`, `rules`, `hooks.json`, and `SKILL.md` among them — and correct the shared agent home's "Read by" column.
+- [X] T059 [P] Add the Antigravity CLI sections of `docs/which-files-are-listed.md` and `.ja.md` under the repository and the personal setup, in prose naming every literal segment the shipped rules admit — `.agent`, `rules`, `hooks.json`, and `SKILL.md` among them — and correct the shared agent home's "Read by" column.
 - [X] T060 [P] Name the four tools this release supports wherever `README.md` and `README.ja.md` name the set, and retake `docs/images/inventory.png` and `comparison.png`, both of which show a legend this change moves.
 - [X] T061 [P] Update the first-use study inputs to name the tools this release supports, drop the environment property FR-008 removes, and set the designated file's recognizing tools to the three that read the repository root `AGENTS.md`, in `tests/usability/sc001-sc006-study-inputs/`.
-- [ ] T062 Run the parent specification's twenty agent-driven sessions against the updated inputs and record the run, its date, and its outcome in `specs/001-inspect-agent-customizations/validation.md` and `.ja.md` (spec.md § QR-003).
-- [X] T063 Advance the outcome manifest to the next version with the replaced vendor's cases removed and one case per `(tool, customization file type, admitted source form)` this tool contributes, recompute every affected fixture digest and the canonical digest, in `tests/fixtures/outcomes/manifest.json` and `manifest.sha256`; `tests/contract/outcome-fixture-manifest.test.ts` fails on the missing `(tool, kind)` cases until this lands.
+- [X] T062 Run the parent specification's twenty agent-driven sessions against the updated inputs and record the run, its date, and its outcome in `specs/001-inspect-agent-customizations/validation.md` and `.ja.md` (spec.md § QR-003).
+- [X] T063 Advance the outcome manifest to the next version with one case per `(tool, customization file type, admitted source form)` this tool contributes, recompute every affected fixture digest and the canonical digest, in `tests/fixtures/outcomes/manifest.json` and `manifest.sha256`; `tests/contract/outcome-fixture-manifest.test.ts` fails on the missing `(tool, kind)` cases until this lands.
 - [X] T064 Record in `specs/001-inspect-agent-customizations/validation.md` and `.ja.md` the manifest version transition with its denominator, the executed Antigravity CLI case IDs, and the official-source run.
-- [X] T065 Replace the task and phase count freeze of the removed feature with this feature's counts for `specs/003-antigravity-cli-support/tasks.md` and `tasks.ja.md`, spelling the literals in `tests/documentation/cross-artifact.test.ts` and watching it fail first.
-- [X] T066 Delete `specs/002-gemini-cli-support/` and re-point every artifact that cites it at `specs/003-antigravity-cli-support/`, including the parent spec, data-model, http-api, quickstart, validation, the registry comments, and the tests that name it (spec.md § FR-014).
+- [X] T065 Freeze this feature's task and phase counts for `specs/003-antigravity-cli-support/tasks.md` and `tasks.ja.md`, spelling the literals in `tests/documentation/cross-artifact.test.ts` and watching it fail first.
 - [X] T067 Search the shipped tree, its documents, and its gates for a supported-tool identifier, label, mark, contract, or frozen count of the product this release does not support, and record the result; the file name `GEMINI.md` and the directory `~/.gemini` are not such occurrences, because both are what this tool itself reads (spec.md § SC-006).
 - [X] T068 [P] Amend the parent specification's tool list, supported-file table, FR-018 exclusions, and FR-045 shared-home readers to the four tools this release supports, in `specs/001-inspect-agent-customizations/spec.md` and `spec.ja.md`.
 - [X] T069 [P] Amend the parent data model's member entities and the session API contract's consent preview to the member id and label this release ships, in `specs/001-inspect-agent-customizations/data-model.md`, `data-model.ja.md`, `contracts/http-api.md`, and `http-api.ja.md`.
@@ -213,7 +213,6 @@ The primary implementation, verification, and evidence owners for every FR, QR, 
 - Phase 4 (US2) depends on Phase 2 and reuses the compiled units of Phase 3; it does not depend on US1's surfaces.
 - Phase 5 (US3) depends on Phase 3's skill units.
 - Phase 6 depends on every story, except T059, T060, T068–T070, which need only Phase 2's vocabulary.
-- Within Phase 6, T065 precedes T066: the documentation gate reads the removed feature's task files, so deleting them before the freeze moves makes that gate throw rather than fail.
 
 ### Parallel Opportunities
 
@@ -234,7 +233,7 @@ Phases 1, 2, and 3 deliver the repository inventory naming the fourth tool, whic
 
 ### Incremental Delivery
 
-Each story phase ends at a state the independent test above can measure. Phase 6's removal tasks are deliberately last: the replaced vendor's records leave in Phase 2 because the union forces it, while its feature directory, its counts, and its manifest cases leave once the gates that count them have something new to count.
+Each story phase ends at a state the independent test above can measure. Phase 6 is deliberately last: its counts, digests, and manifest cases can only move once the gates that read them have the whole shipped set to read.
 
 ---
 

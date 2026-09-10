@@ -379,10 +379,10 @@ describe('outcome fixture manifest coverage', () => {
     // Enumerated rather than bounded below by two tools: a floor would pass a
     // manifest that dropped one of the three-tool combinations this release
     // documents, which is the case a two-tool check is least able to see.
-    // T063: the fourth vendor moved three of these. It reads the repository
-    // root's `AGENTS.md` and `GEMINI.md`, so both gain it, and it reads no
-    // `~/.agents`, so the shared agent home's skill loses one — this case was
-    // watched failing against each of those before the row was rewritten
+    // T063: three of these carry the fourth vendor's reading. It reads the
+    // repository root's `AGENTS.md` and `GEMINI.md`, so both name it, and it
+    // reads no `~/.agents`, so the shared agent home's skill does not — this
+    // case was watched failing on each of those before the rows were written
     // (specs/003-antigravity-cli-support FR-002, FR-045).
     const documented = new Map<string, readonly string[]>([
       ['repository-agents-md', ['OpenAI Codex', 'GitHub Copilot', 'Antigravity CLI']],

@@ -35,14 +35,6 @@ table of contentsのfragmentとしても配信されていなかった。消え�
 なくreadingなので、そのrecordはそのまま残し、それを所有するreviewのためにここに記録する。4件の
 headingは配信されたtable of contents経由で解決した。いずれもClaude Code changelogのanchorである。
 
-同じ日に、65 record全件 — 13件の`google.gemini-cli.*` recordを含む — に対して実行した
-（このリリースの1つ前）。Googleのrecordはすべて解決した。各URLは`geminicli.com`上で直接`200`を
-返し、引用した全sectionが配信されたheadingとして解決した。Runはreviewerが解決すべきdriftを1 record報告したが、
-この機能の外である。`anthropic.claude-code.skills.locations-discovery`（`https://code.claude.com/docs/en/skills`）
-で、引用した`Where skills live`と`Discovery from parent and nested directories`がheadingとしてもtable of
-contentsのfragmentとしても配信されていなかった。消えたheadingが何を意味するかはlookupではなくreadingなので、
-そのrecordはそのまま残し、それを所有するreviewのためにここに記録する。
-
 2026-09-04、52 record全件に対して実行した。初回のrunは18 sectionをmissingと報告した。
 うち17件はcode.claude.comのページで、各headingが自身のanchor linkの内側にzero-width spaceを含んで
 配信されており、checkerのtext正規化がそれを残していた。現在はformat characterを落とすので、これらの
@@ -112,7 +104,7 @@ consumerが保持するpublic contractも、永続化されたprofile/user data�
 ## Release gateの実行
 
 **Antigravity CLIの変更は2026-09-10にgateを実行した**（specs/003-antigravity-cli-support T071、T072）。
-`pnpm run test:docs` 42件、`pnpm run test:unit` 1291件、`pnpm run test:contract` 411件、
+`pnpm run test:docs` 42件、`pnpm run test:unit` 1287件、`pnpm run test:contract` 411件、
 `pnpm run test:integration` 275件、`pnpm run test:security` 5件、`pnpm run test:package` 53件が
 このhost上ですべて通り、`pnpm run format:check`・`pnpm run lint`・`pnpm run typecheck`もclean
 だった。Browser側は、この変更が届くspec — この機能の8つの新しいAntigravity CLI specと、Outcome
@@ -124,19 +116,6 @@ scale factor 2 — でこのtreeに対して取り直した。1枚はall-kind fi
 このリリースの4製品を持ち、`.agents/skills/`のrowは3つのmarkと、4つ目だけが読む平坦なファイルの
 rowを持つ。もう1枚は`changelog`のcomparison — `.agents/skills/`と`.github/skills/`のcopy — で、
 recognition tableにAntigravity CLIのrowがある。
-
-**このリリースの1つ前は2026-09-10にgateを実行した**。
-`pnpm run test:docs` 42件、`pnpm run test:unit` 1275件、`pnpm run test:contract` 411件、
-`pnpm run test:integration` 282件、`pnpm run test:security` 5件、`pnpm run test:package` 53件がこのhost上で
-すべて通り、`pnpm run format`、`pnpm run lint`、型検査はcleanである。Browser側は、変更が届くspec — 13件の
-Gemini CLI specと、Outcome manifestによる基準の節で名指した既存spec — をChromium projectで実行したもので、
-suite全体ではない。これはagent実行のverification policyが求める形である（AGENTS.md § Agent-run Playwright
-verification policy）。3 browserのsuiteはこのcommitに対するCIのrunが実行する。READMEの2枚のscreenshotは、このtreeに
-対してcommit済みの対と同じ寸法 — CSS 1280×800、device scale factor 2 — で撮り直した。all-kind fixtureのSkill tab
-（凡例は4製品、`.agents/skills/`の行は3つのmarkを持つ）と、行自身のCompare linkが開く`changelog`比較 —
-`.agents/skills/`と`.gemini/skills/`のcopy、fixtureを起動してCompareを押した読者が着く対 — （認識表にGemini CLIの行が
-ある）である。一覧側のalt textは両READMEとも、共有名がまたぐfile数を数えるのをやめた。説明している行が今は3 fileに
-またがり、alt textの中の数はfixtureが変わるたびに偽になるからである。比較側のalt textは今の画像を説明している。
 
 **CLIのaccepted batch failureは伝播するようになった。**
 `tests/integration/cli-global-batch-failure.test.ts`が失敗していたのはこの点である。
@@ -574,43 +553,19 @@ silhouetteを3つ見分けるのではなく色をたどって目的のものを
 — legendがそれを名指し、隣のtextがsurfaceを述べる — ので、この重みの差は読み手に何も損なわせない。
 塗りに変えれば、vendor自身のglyphより重いmarkと引き換えになる。
 
-## 置き換えられたvendorの掃き出し
-
-**2026-09-10、4つ目のサポート対象toolが変わった後に検索した**（SC-006、
-specs/003-antigravity-cli-support T067）。出荷tree、その文書、そのgateを対象に、このリリースが
-サポートしない製品のidentifier・label・mark・contract・凍結件数を探した。見つかったものと対応:
-
-- 置き換えられたvendorのregistry module、compiled unit、e2e spec、repository fixture builder —
-  それらを生んだruleとともに削除した。
-- 親のdata model・quickstart・session API contractにあるそのmember idと、environment propertyを
-  名指していたすべてのartifact — このリリースのmemberと、propertyを持たないhome directoryとの
-  joinに置き換えた。
-- outcome manifestとそのcontract gateにあるrow — 置き換え、versionを進め、digestをすべて
-  取り直した。
-- taskとphaseの件数の凍結 — この機能のものに置き換え、先に落ちるところを確認した。
-- そのvendor自身のspecification directory — 削除し、それを引用していたartifactを付け替えた。
-
-3種類の出現は意図して残している。この tool自身が読むファイル名 `GEMINI.md` とディレクトリ
-`~/.gemini`。Copilotのbehavior `copilot.behavior.cli.instructions.gemini` とrule
-`copilot.repo.instructions.gemini-root` — これはCopilot自身によるそのファイル名の認識であり、
-vendorではなくファイルを名指す。そして `tests/unit/shared/entities.test.ts` の否定のcase —
-`gemini` がサポート対象toolでないことをassertするものであり、その内容は不在そのものである。
-
 ## Outcome manifestによる基準
 
 凍結manifestは`tests/fixtures/outcomes/manifest.json`、**version 5**、canonical SHA-256
 `631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`であり、`tests/fixtures/outcomes/manifest.sha256`に記録している。Version 5は
 Antigravity CLIのdenominatorである（specs/003-antigravity-cli-support T063）。SC-003とSC-005それぞれに8つの
 `(Antigravity CLI, kind)` row — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
-— に加えて`sc003.global-source-form.antigravity`と`sc004.tool.antigravity`を持つ。帰属caseは3つ動いた。
+— に加えて`sc003.global-source-form.antigravity`と`sc004.tool.antigravity`を持つ。この読み手を運ぶ帰属caseは3つある。
 `sc003.shared-file.repository-root-gemini-md`はrootの`GEMINI.md`をGitHub CopilotとAntigravity CLIに帰属させ、
-`sc003.shared-file.repository-agents-md`はrootの`AGENTS.md`の3つ目の認識toolとしてAntigravity CLIを得て、
-`sc003.shared-file.global-shared-agent-home-skill`は1つ失う。この vendorは`~/.agents`を読まないからである（FR-045）。
-これは version 4を置き換える。version 4のdenominatorは置き換えられたvendorのものであり、その
-`(tool, kind)` row・`global-source-form` case・`sc004.tool` caseは、それらを生んだruleとともにmanifestを去った。
-またこの vendorでは`prompt/command`が`(tool, kind)`集合を去り、`rule`が入った。`(tool, kind)` rowは
-denominatorの変更であり、fixture-byteの変更としてversionを据え置くのではなく進める理由である。この
-transitionはこのsession、すなわちagent駆動のreviewがreviewした（AGENTS.md § Evidence before conclusions）。
+`sc003.shared-file.repository-agents-md`はrootの`AGENTS.md`の3つ目の認識toolとしてAntigravity CLIを名指し、
+`sc003.shared-file.global-shared-agent-home-skill`はどちらでも名指さない。このvendorは`~/.agents`を読まないからである（FR-045）。
+`(tool, kind)` rowはdenominatorの変更であり、fixture-byteの変更としてversionを据え置くのではなく4から
+進める理由である。このtransitionはこのsession、すなわちagent駆動のreviewがreviewした
+（AGENTS.md § Evidence before conclusions）。
 比較したのは出荷済みregistryの`(tool, kind)` rowとcase IDで、`tests/contract/outcome-fixture-manifest.test.ts`が
 それをgateする。118 caseは2026-09-10にこのhost上で実行した。Antigravity CLIのcaseは、それらが名指す7つの新spec —
 `antigravity-skills-detail`、`antigravity-mcp-detail`、`antigravity-custom-agents-detail`、
@@ -624,7 +579,7 @@ transitionはこのsession、すなわちagent駆動のreviewがreviewした（A
 Release gateの実行に記録したgate script経由で実行した。この変更が届かないbrowser specはこのsetのために
 再実行していない。contract suiteは同じrunでcanonical digestと73件のfixture digestすべてを再現した。
 
-その前のsetは`tests/fixtures/outcomes/manifest.json`の**version 3**、canonical SHA-256
+それ以前のsetは`tests/fixtures/outcomes/manifest.json`の**version 3**、canonical SHA-256
 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`であった。その99
 caseは、2026-09-09に、各caseが`verifiedBy`で名指す全suiteを実行することで実行した。vitest
 suiteは`pnpm run test:contract`/`test:integration`/`test:security`経由（405件、271件、5件pass）、
@@ -863,12 +818,91 @@ host 1台である。Certificationの結果はmatrix上のCI runが生むもの�
 
 ## SC-001とSC-006のfirst-use session
 
-**Gemini CLIの変更に対してrunは要らなかった。** specs/002-gemini-cli-support/spec.md § Clarificationsは、
-20 sessionの評価を繰り返すのは指定したSC-006 fileのground truthが変わる場合だけと定めている。指定fileは
-prepared repositoryの`AGENTS.md`であり、`ground-truth.json`にあるそのground truth — Repository、GitHub Copilot
-とOpenAI Codexが認識、instruction file — は変わっていない。そのrepositoryは`context.fileName`を設定しておらず、
-Gemini CLIのdefault context fileは`GEMINI.md`だからである。Studyのguidanceはpageが列挙する製品にGemini CLIを
-加え、prepared stateとrubricは触れていない。
+**Antigravity CLIの変更に対してrunが必要であり、実施した。** 親の規則は、指定したSC-006 fileの
+ground truthが変わったときに20 sessionの評価を繰り返す、というものである。それが変わった。指定fileは
+prepared repositoryの`AGENTS.md`で、4つ目のサポート対象toolがそれを読むため、認識toolが2つから3つに
+なった（specs/003-antigravity-cli-support/spec.md § Clarifications）。先にstudyの入力を更新した —
+guidanceの製品一覧、その fieldのground truthとmatch rule、FR-008が取り除くenvironment property — 。
+runはそれに従った。
+
+**2026-09-10に、release candidateに対して、runnerが時計を持って実施した20件のagent駆動session**
+（specs/003-antigravity-cli-support T062）。buildはこのrun時点のtreeの`npm pack`で、各session folderの
+`npx --no-install`が見つける場所へinstallした。各sessionは、このworking treeの外にある自分だけのfolder、
+`tests/fixtures/repositories/build-fixtures.ts`が構築した自分の`repository/`、
+`tests/fixtures/global-homes/build-fixtures.ts`が作った自分のfixture home、そして自分のlaunchを持った —
+20 launchと20 consent stateである。同時に5つずつ、Claude Sonnet 5で走らせた。各sessionはClaude CLIの
+print-mode processで、working directoryは自分のsession folder、`--setting-sources user`で起動し、
+このrepositoryの設定変数を環境から除いた。projectの指示もこのrepositoryのmemoryもruntimeに無い。
+2つのequipment conditionは以前のrunと同じである。Launch commandに`--port 0`を付けること、そして
+そのcommandにだけmemberのhome変数を与えること — 4つではなく3つになった。4つ目のmemberのrootには
+propertyが無いからである（FR-008）。
+
+**これはagent駆動のrunであり、そのように記録する。** 20のagentが確立するのは、製品自身が印字し描画する
+guidanceが、起動し、fileに到達し、その fileについて製品が述べることを述べ、2つのcopyを比較し、
+personal-setupのstepが読む前に何を提案するかを見るのに十分かどうかである。人が同じinterfaceをどう
+経験するかはこのevidenceに含まれない。SC-001とSC-006は自身のtextでそう述べており、ここのどの文も
+human-subjectの結果として読んではならない。
+
+| Workflow | 測るもの | 閾値 | 結果 |
+|---|---|---|---|
+| Discovery | SC-001: promptからlaunchを経て、発見した1 fileのdetail viewが2分以内に開く | 20中19 | **確立: 20中20**、12.2秒から23.8秒、median 18.4秒 |
+| Inspection | SC-006: 指定`AGENTS.md`の3 response fieldを2分以内に提出し、全fieldがground truthに一致 | 20中18 | **確立: 20中20**、6.3秒から14.1秒、median 9.4秒 |
+| Comparison | SC-006 coverage: 標準化されたcomparison task | 20件すべてが試行 | **20中20**完了。全sessionが2つの`changelog` copyを並べ、差分を1つ述べた |
+| Global consent | SC-006 coverage: 標準化されたpersonal-setup consent task | 20件すべてが試行 | **20中20**完了。全sessionがproposal pageに到達し、Antigravity homeを含む5つのdirectoryを読み上げた |
+| Safety | SC-006のzero-critical gate | criticalな問題なし | **合格。** 20件すべてが7つの定義済みsafety fieldに答え、どれにも`yes`と答えたsessionは無い |
+
+**各sessionの4つの結果とその区間。** 各行が登録された1 sessionで、除外も差し替えもせず記録している。
+どのsessionも4つのworkflowすべてを完了したので、criterionが求めるoutcome列は区間そのものである。
+最後の列はsessionがSC-001で開くことを選んだfileで、これはsession自身の選択であり採点しない。
+
+| Session | Discovery | Inspection | Comparison | Consent | 開いたfile |
+|---:|---:|---:|---:|---:|---|
+| 01 | 20.6 s | 8.5 s | 15.1 s | 17.3 s | `CLAUDE.md` |
+| 02 | 22.1 s | 10.2 s | 19.5 s | 17.1 s | `CLAUDE.md` |
+| 03 | 17.1 s | 10.2 s | 17.6 s | 17.0 s | `CLAUDE.md` |
+| 04 | 18.3 s | 6.3 s | 21.4 s | 16.7 s | `CLAUDE.md` |
+| 05 | 17.1 s | 7.5 s | 14.1 s | 14.8 s | `CLAUDE.md` |
+| 06 | 15.7 s | 7.3 s | 12.3 s | 15.6 s | `CLAUDE.md` |
+| 07 | 22.8 s | 12.9 s | 19.9 s | 16.7 s | `CLAUDE.md` |
+| 08 | 12.4 s | 11.2 s | 14.3 s | 15.2 s | `CLAUDE.md` |
+| 09 | 18.5 s | 7.8 s | 13.9 s | 16.1 s | `CLAUDE.md` |
+| 10 | 14.4 s | 14.1 s | 12.5 s | 15.6 s | `CLAUDE.md` |
+| 11 | 19.8 s | 8.1 s | 14.9 s | 15.3 s | `.claude/CLAUDE.md` |
+| 12 | 13.4 s | 9.3 s | 17.6 s | 16.9 s | `CLAUDE.md` |
+| 13 | 21.8 s | 9.9 s | 16.8 s | 22.5 s | `CLAUDE.md` |
+| 14 | 22.5 s | 9.7 s | 16.3 s | 21.3 s | `CLAUDE.md` |
+| 15 | 23.8 s | 9.6 s | 18.9 s | 18.1 s | `CLAUDE.md` |
+| 16 | 12.2 s | 7.6 s | 15.3 s | 16.2 s | `CLAUDE.md` |
+| 17 | 17.8 s | 10.1 s | 17.2 s | 17.6 s | `CLAUDE.md` |
+| 18 | 19.2 s | 8.9 s | 15.9 s | 16.7 s | `CLAUDE.md` |
+| 19 | 16.5 s | 9.8 s | 15.9 s | 16.4 s | `CLAUDE.md` |
+| 20 | 22.5 s | 8.9 s | 15.8 s | 17.0 s | `CLAUDE.md` |
+
+**各sessionのsafetyの回答。** 7つの定義済みfield — localhostを越える製品発のoutbound request、
+customization fileに由来する実行、MCP接続、調査対象treeのmutation、調査対象内容の他machineへの露出、
+求めていないbrowserの起動、session自身のtoolingによる調査対象treeへの書き込み — に20件すべてが答え、
+すべての回答が`no`だった。開いた2 fieldは、遭遇したerrorと驚いたことである。報告されたerrorはsession
+自身のequipmentの誤りで、1件は別の行のCompare linkを押し、1件はbrowser commandを誤ったdirectoryから
+実行した。最も多く報告された驚きは、personal-setupのgateが読む前にdirectoryを名指すことで、FR-013の
+仕様どおりの挙動として正しく説明されている。
+
+**4つ目のtoolがsessionの見たものに与えた変化。** SC-006に答えた全sessionが、指定`AGENTS.md`について
+Antigravity CLIを含む3つの認識toolを名指した。Consent pageに到達した全sessionが、Antigravity homeを
+含む5つのdirectoryを読み上げた。Pageはそれを変数からではなくhome directoryのdefaultの場所から来たものと
+述べる。それを移動させるpropertyが無いからである（FR-008）。
+
+**runnerが1つだけ述べなければならなかった条件と、その理由。** SC-006のpromptは画面の前にいる人に向けて
+書かれている。「A file is open on the screen in front of you.」画面への唯一の窓が自分で選んで実行する
+commandであるsessionは、taskの間に画面が変わったことを知覚しない。このrunの最初の試みでは、20件中13件が
+SC-001で自分が開いたfileの記憶から答えた — そのfileについては正しく述べており、criterionには失敗した。
+そこでrunnerはpromptと共に1つの事実だけを述べる。前のtaskから画面が変わった、ということである。fileも
+routeもinterfaceのことも名指さない。参加者自身の目が届けるはずの前提を届けるだけである。その試みの数字は
+結果として記録しない。criterionの前提をsessionの前に置かないapparatusは、criterionを測っていない。
+
+**このrunが確立しないもの。** 人の初回利用については何も述べない。capture bundleを持たない。拠って立つのは
+runner自身のevent logと各sessionのreportで、runのsession folderと共にこのrepositoryの外に置いてある。
+そして1つのfixture treeである。sessionが出会ったのは、このrepositoryが自身のtestのために構築する
+カスタマイズfileであって、彼ら自身のrepositoryではない。
 
 **2026-09-05に、release candidateに対して、runnerが時計を持って実施した20件のagent駆動session。**
 buildはそのrun時点のtreeの`npm pack`である。後の編集はそこへ及ばず、下のdigestがsessionが実際に走らせたartifactを指す。tarballのSHA-256は

@@ -120,7 +120,7 @@ pnpm run check:official-sources -- --network
 ## リリース evidence
 
 outcome manifest は、このツールが加える `(tool, customization file type, admitted source form)`
-ごとに1 case を得て、置き換えられるツールの case を失う。これは denominator の変更なので、
+ごとに1 case を得る。これは denominator の変更なので、
 manifest version を増やし canonical digest を記録し直し、その実行を `validation.md` に両言語で
 記録する。
 

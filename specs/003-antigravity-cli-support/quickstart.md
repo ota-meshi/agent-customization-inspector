@@ -122,7 +122,7 @@ the cited text still establishes the maintained paraphrase, stay a reviewer's ju
 ## Release evidence
 
 The outcome manifest gains one case per `(tool, customization file type, admitted source form)`
-this tool contributes and loses the cases of the tool it replaces, which is a denominator change:
+this tool contributes, which is a denominator change:
 the manifest version increments and the canonical digest is re-recorded, with the run recorded in
 `validation.md` in both languages.
 

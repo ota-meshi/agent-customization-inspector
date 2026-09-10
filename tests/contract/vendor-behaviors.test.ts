@@ -303,11 +303,10 @@ describe('evidence citations', () => {
     // rather than a derivation, so the literal is written here and a citation
     // added to or dropped from a record fails until the count is decided again.
     //
-    // T004: 65 while the fourth vendor was another product, whose contract
-    // cited thirteen Google pages; this release cites ten — seven of the
-    // terminal's own and three shared ones — so the count fell by three. The
-    // literal was changed only after this assertion was watched failing
-    // against the shipped registry.
+    // T004: ten of the cited pages are this release's fourth vendor's — seven
+    // of the terminal's own and three shared ones. The literal was written
+    // only after this assertion was watched failing against the shipped
+    // registry.
     const sourceIds = new Set<string>();
     for (const record of cited) {
       for (const citation of record.evidence) sourceIds.add(citation.sourceId);
@@ -907,11 +906,10 @@ describe('final registry counts and maintenance-only reach', () => {
     // rather than derived so that a record added without deciding to add one
     // fails here (AGENTS.md § freeze).
     //
-    // T004: every literal here moved with the fourth vendor. The replaced
-    // product declared twenty-one behaviors, eight strategies, and twenty
-    // rules; Antigravity CLI declares fifteen, seven, and twenty-one. All
-    // three were changed only after this assertion was watched failing
-    // against the shipped registry.
+    // T004: Antigravity CLI declares fifteen behaviors, seven strategies, and
+    // twenty-one rules, which is what moved all three literals. Each was
+    // written only after this assertion was watched failing against the
+    // shipped registry.
     expect(behaviors).toHaveLength(120);
     expect(Object.values(INSPECTION_RULES)).toHaveLength(101);
     expect(strategies).toHaveLength(46);

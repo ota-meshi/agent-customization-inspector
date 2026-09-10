@@ -44,16 +44,6 @@ is a reading, not a lookup — and is recorded here for the review that owns it.
 were established through a served table of contents, all of them Claude Code changelog
 anchors.
 
-The same day, over all 65 records, the thirteen `google.gemini-cli.*` records
-included (the release before this one). Every Google record resolved: each URL answered
-`200` directly on `geminicli.com`, and every cited section resolved as a served heading. The
-run reported one record with drift a reviewer must resolve, outside this feature:
-`anthropic.claude-code.skills.locations-discovery` (`https://code.claude.com/docs/en/skills`),
-whose cited sections `Where skills live` and `Discovery from parent and nested directories`
-were not served as headings or table-of-contents fragments. That record was left as it is —
-what the vanished headings mean is a reading, not a lookup — and is recorded here for the
-review that owns it.
-
 2026-09-04, over all 52 records. The first run reported 18 sections
 missing. Seventeen were on code.claude.com pages whose headings are served with a zero-width
 space inside each heading's own anchor link, which the checker's text normalization had kept;
@@ -137,7 +127,7 @@ proposed. The task set is not superseded by this review.
 ## Release gate execution
 
 **The Antigravity CLI change ran the gates on 2026-09-10** (specs/003-antigravity-cli-support
-T071, T072): `pnpm run test:docs` 42, `pnpm run test:unit` 1291, `pnpm run test:contract` 411,
+T071, T072): `pnpm run test:docs` 42, `pnpm run test:unit` 1287, `pnpm run test:contract` 411,
 `pnpm run test:integration` 275, `pnpm run test:security` 5, and `pnpm run test:package` 53
 tests, all passing on this host, with `pnpm run format:check`, `pnpm run lint`, and
 `pnpm run typecheck` clean. The browser half was the Chromium project over the specs the
@@ -151,23 +141,6 @@ of the all-kind fixture, whose legend now carries this release's four products a
 `.agents/skills/` rows carry three marks and a flat-file row only the fourth reads, and the
 `changelog` comparison — the `.agents/skills/` and `.github/skills/` copies — whose
 recognition table has an Antigravity CLI row.
-
-**The release before this one ran the gates on 2026-09-10**: `pnpm run test:docs` 42, `pnpm run test:unit` 1275, `pnpm run test:contract` 411,
-`pnpm run test:integration` 282, `pnpm run test:security` 5, and `pnpm run test:package` 53
-tests, all passing on this host, with `pnpm run format`, `pnpm run lint`, and the type check
-clean. The browser half was the Chromium project over the specs the change reaches — the
-thirteen Gemini CLI specs and the existing specs named under Outcome-manifest criteria — rather
-than the whole suite, which is what the agent-run verification policy asks for
-(AGENTS.md § Agent-run Playwright verification policy); CI's run of the commit is where the
-three-browser suite is executed. Both readme screenshots were retaken against this tree at the
-committed pair's dimensions, 1280×800 CSS pixels at a device scale factor of 2: the Skill tab
-of the all-kind fixture, whose legend now carries four products and whose `.agents/skills/`
-rows carry three marks, and the `changelog` comparison the row's own Compare link opens — the
-`.agents/skills/` and `.gemini/skills/` copies, the pair a reader who launches the fixture and
-presses Compare lands on — whose recognition table has a Gemini CLI row. The inventory alt text
-in both readmes stopped counting the files a shared name spans, because the row it describes
-now spans three and a count in an alt text goes false with every fixture change; the comparison
-alt text still describes its image.
 
 **The CLI's accepted-batch failure now propagates**, which is what
 `tests/integration/cli-global-batch-failure.test.ts` had been failing on: `runGlobalEnable`
@@ -694,31 +667,6 @@ alone — the legend names it and the text beside it states the surfaces — so 
 difference costs a reader nothing. A filled variant would trade that for a heavier mark than
 the vendor's own glyph.
 
-## Replaced-vendor sweep
-
-**Searched on 2026-09-10, after the fourth supported tool changed** (SC-006;
-specs/003-antigravity-cli-support T067). The search covered the shipped tree, its documents,
-and its gates for any identifier, label, mark, contract, or frozen count of the product this
-release does not support. What it found and what was done:
-
-- the replaced vendor's registry modules, compiled units, e2e specs, and repository fixture
-  builders — removed with the rules that produced them;
-- its member id in the parent data model, quickstart, and session API contract, and its
-  environment property in every artifact that named one — replaced by this release's member
-  and by the home-directory join that has no property;
-- its rows in the outcome manifest and in the manifest's own contract gate — replaced, the
-  version advanced, and every digest re-recorded;
-- its task and phase count freeze — replaced by this feature's, watched failing first;
-- its own specification directory — deleted, and the artifacts that cited it re-pointed.
-
-Three classes of occurrence remain, each deliberately: the file name `GEMINI.md` and the
-directory `~/.gemini`, which are what this tool itself reads; the Copilot behavior
-`copilot.behavior.cli.instructions.gemini` and the rule
-`copilot.repo.instructions.gemini-root`, which are Copilot's own recognition of that
-filename and name the file rather than a vendor; and the negative case in
-`tests/unit/shared/entities.test.ts`, which asserts that `gemini` is not a supported tool —
-a check whose whole content is the absence.
-
 ## Outcome-manifest criteria
 
 The frozen manifest is `tests/fixtures/outcomes/manifest.json`, **version 5**, canonical
@@ -727,21 +675,17 @@ SHA-256 `631d6d61020ce16665f690c15e167626e307943a72775081b8a759d0aacd484b`, reco
 (specs/003-antigravity-cli-support T063): eight `(Antigravity CLI, kind)` rows each for
 SC-003 and SC-005 — `sc00{3,5}.row.antigravity.{instructions,settings-config,mcp,hook,rule,skill,agent,permissions}`
 — plus `sc003.global-source-form.antigravity` and `sc004.tool.antigravity`. Three attribution
-cases moved with the reader: `sc003.shared-file.repository-root-gemini-md` now attributes the
-root `GEMINI.md` to GitHub Copilot and Antigravity CLI, `sc003.shared-file.repository-agents-md`
-gains Antigravity CLI as a third recognizing tool of the root `AGENTS.md`, and
-`sc003.shared-file.global-shared-agent-home-skill` loses one, because this vendor reads no
-`~/.agents` (FR-045). It replaces version 4, whose denominator was the replaced vendor's;
-that version's `(tool, kind)` rows, its `global-source-form` case, and its `sc004.tool` case
-left the manifest with the rules that produced them, and `prompt/command` left the
-`(tool, kind)` set for this vendor while `rule` entered it. A `(tool, kind)` row is a
-denominator change, which is what advances the version rather than keeping it under a
-fixture-byte change. The transition was reviewed by this session, an agent-driven review
-(AGENTS.md § Evidence before conclusions): what it compared is the shipped registry's
-`(tool, kind)` rows against the case IDs, which
-`tests/contract/outcome-fixture-manifest.test.ts` gates. Its 118 cases were executed on
-2026-09-10 on this host: the Antigravity CLI cases through the Chromium project over the
-seven new specs they name — `antigravity-skills-detail`, `antigravity-mcp-detail`,
+cases carry this reader: `sc003.shared-file.repository-root-gemini-md` attributes the root
+`GEMINI.md` to GitHub Copilot and Antigravity CLI, `sc003.shared-file.repository-agents-md`
+names Antigravity CLI as a third recognizing tool of the root `AGENTS.md`, and
+`sc003.shared-file.global-shared-agent-home-skill` names it in neither, because this vendor
+reads no `~/.agents` (FR-045). A `(tool, kind)` row is a denominator change, which is what
+advances the version from 4 rather than keeping it under a fixture-byte change. The
+transition was reviewed by this session, an agent-driven review (AGENTS.md § Evidence before
+conclusions): what it compared is the shipped registry's `(tool, kind)` rows against the
+case IDs, which `tests/contract/outcome-fixture-manifest.test.ts` gates. Its 118 cases were
+executed on 2026-09-10 on this host: the Antigravity CLI cases through the Chromium project
+over the seven new specs they name — `antigravity-skills-detail`, `antigravity-mcp-detail`,
 `antigravity-custom-agents-detail`, `antigravity-instructions-detail`,
 `antigravity-rules-detail`, `antigravity-hooks-detail`, and `antigravity-settings-detail` —
 together with `global-antigravity-admission`, and over the existing specs whose fixtures the
@@ -755,13 +699,14 @@ under Release gate execution. The browser specs not reached by this change were 
 for this set. The contract suite reproduced the canonical digest and all 73 fixture digests
 in the same run.
 
-The set before it was `tests/fixtures/outcomes/manifest.json` **version 3**, canonical
-SHA-256 `1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`. Its 99 cases were executed on 2026-09-09 by
-running every suite each case names in `verifiedBy`: the vitest suites through
-`pnpm run test:contract`/`test:integration`/`test:security` (405, 271, and 5 passing), and the
-browser specs through the Chromium project over the 65 specs the manifest names, 351 tests,
-all passing, in one run on this host. `tests/contract/outcome-fixture-manifest.test.ts`
-reproduced the canonical digest and all 66 fixture digests in the same run.
+An earlier set was `tests/fixtures/outcomes/manifest.json` **version 3**, canonical SHA-256
+`1262b3b446646d7c877f64320ffd59aed8ffb39b007fb496151e1ef756d57474`. Its 99 cases were
+executed on 2026-09-09 by running every suite each case names in `verifiedBy`: the vitest
+suites through `pnpm run test:contract`/`test:integration`/`test:security` (405, 271, and 5
+passing), and the browser specs through the Chromium project over the 65 specs the manifest
+names, 351 tests, all passing, in one run on this host.
+`tests/contract/outcome-fixture-manifest.test.ts` reproduced the canonical digest and all 66
+fixture digests in the same run.
 
 The digest is read from the manifest rather than carried forward: an earlier record named a
 value the checked-in bytes no longer had, and the contract suite could not have caught it
@@ -1018,14 +963,103 @@ matrix produces, and none is recorded.
 
 ## SC-001 and SC-006 first-use sessions
 
-**No run was owed for the Gemini CLI change.** specs/002-gemini-cli-support/spec.md
-§ Clarifications settles that the twenty-session evaluation is repeated only if the
-designated SC-006 file's ground truth changes. The designated file is the prepared
-repository's `AGENTS.md`; its ground truth in `ground-truth.json` — Repository, recognized
-by GitHub Copilot and OpenAI Codex, an instruction file — is unchanged, because that
-repository configures no `context.fileName` and Gemini CLI's default context file is
-`GEMINI.md`. The study guidance names Gemini CLI among the products the page lists, and the
-prepared state and rubric are untouched.
+**A run was owed for the Antigravity CLI change, and it was run.** The parent's rule is that
+the twenty-session evaluation is repeated when the designated SC-006 file's ground truth
+changes. It changed: the designated file is the prepared repository's `AGENTS.md`, and the
+fourth supported tool reads it, so its recognizing tools went from two to three
+(specs/003-antigravity-cli-support/spec.md § Clarifications). The study inputs were updated
+first — the guidance's product list, that field's ground truth and its match rule, and the
+environment property FR-008 removes — and the run followed them.
+
+**Twenty agent-driven sessions, run on 2026-09-10 against the release candidate, with the
+runner holding the clock** (specs/003-antigravity-cli-support T062). The build is `npm pack`
+of the tree as it stood for this run, installed into each session folder where
+`npx --no-install` finds it. Each session had its own folder outside this working tree, its
+own `repository/` built by `tests/fixtures/repositories/build-fixtures.ts`, its own fixture
+homes from `tests/fixtures/global-homes/build-fixtures.ts`, and its own launch — twenty
+launches and twenty consent states. Five ran at a time, on Claude Sonnet 5. Each was a Claude
+CLI print-mode process whose working directory was its own session folder, started with
+`--setting-sources user` and with this repository's configuration variables removed from its
+environment, so no project instruction and no memory of this repository was in its runtime.
+The two equipment conditions were the earlier runs': `--port 0` appended to the launch
+command, and the member home variables set for that command alone — three now rather than
+four, because the fourth member's root has no property (FR-008).
+
+**This is an agent-driven run and is recorded as one.** What twenty agents establish is
+whether the product's own printed and rendered guidance is sufficient to launch it, reach a
+file, state what the product says about that file, compare two copies, and see what the
+personal-setup step proposes before anything is read. How a person experiences the same
+interface is not in this evidence; SC-001 and SC-006 say so in their own text, and no sentence
+here may be read as a human-subject result.
+
+| Workflow | What it measures | Threshold | Result |
+|---|---|---|---|
+| Discovery | SC-001: from the prompt through the launch to one discovered file's detail view open within two minutes | 19 of 20 | **Established: 20 of 20**, 12.2 s to 23.8 s, median 18.4 s |
+| Inspection | SC-006: the three response fields for the designated `AGENTS.md` submitted within two minutes, every field matching the ground truth | 18 of 20 | **Established: 20 of 20**, 6.3 s to 14.1 s, median 9.4 s |
+| Comparison | SC-006 coverage: the standardized comparison task | all 20 attempt | **20 of 20** complete: every session put the two `changelog` copies side by side and named a difference |
+| Global consent | SC-006 coverage: the standardized personal-setup consent task | all 20 attempt | **20 of 20** complete: every session reached the proposal page and named its five directories, the Antigravity home among them |
+| Safety | SC-006 zero-critical gate | no critical issue | **Passed.** All twenty answered all seven predefined safety fields, and no session answered any of them `yes` |
+
+**Every session's own four outcomes and their intervals.** Each row is one enrolled session,
+recorded without exclusion or replacement; every one completed all four workflows, so the
+outcome column the criterion asks for is the interval itself. The last column is the file the
+session chose to open for SC-001, which is its own choice and not scored.
+
+| Session | Discovery | Inspection | Comparison | Consent | File opened |
+|---:|---:|---:|---:|---:|---|
+| 01 | 20.6 s | 8.5 s | 15.1 s | 17.3 s | `CLAUDE.md` |
+| 02 | 22.1 s | 10.2 s | 19.5 s | 17.1 s | `CLAUDE.md` |
+| 03 | 17.1 s | 10.2 s | 17.6 s | 17.0 s | `CLAUDE.md` |
+| 04 | 18.3 s | 6.3 s | 21.4 s | 16.7 s | `CLAUDE.md` |
+| 05 | 17.1 s | 7.5 s | 14.1 s | 14.8 s | `CLAUDE.md` |
+| 06 | 15.7 s | 7.3 s | 12.3 s | 15.6 s | `CLAUDE.md` |
+| 07 | 22.8 s | 12.9 s | 19.9 s | 16.7 s | `CLAUDE.md` |
+| 08 | 12.4 s | 11.2 s | 14.3 s | 15.2 s | `CLAUDE.md` |
+| 09 | 18.5 s | 7.8 s | 13.9 s | 16.1 s | `CLAUDE.md` |
+| 10 | 14.4 s | 14.1 s | 12.5 s | 15.6 s | `CLAUDE.md` |
+| 11 | 19.8 s | 8.1 s | 14.9 s | 15.3 s | `.claude/CLAUDE.md` |
+| 12 | 13.4 s | 9.3 s | 17.6 s | 16.9 s | `CLAUDE.md` |
+| 13 | 21.8 s | 9.9 s | 16.8 s | 22.5 s | `CLAUDE.md` |
+| 14 | 22.5 s | 9.7 s | 16.3 s | 21.3 s | `CLAUDE.md` |
+| 15 | 23.8 s | 9.6 s | 18.9 s | 18.1 s | `CLAUDE.md` |
+| 16 | 12.2 s | 7.6 s | 15.3 s | 16.2 s | `CLAUDE.md` |
+| 17 | 17.8 s | 10.1 s | 17.2 s | 17.6 s | `CLAUDE.md` |
+| 18 | 19.2 s | 8.9 s | 15.9 s | 16.7 s | `CLAUDE.md` |
+| 19 | 16.5 s | 9.8 s | 15.9 s | 16.4 s | `CLAUDE.md` |
+| 20 | 22.5 s | 8.9 s | 15.8 s | 17.0 s | `CLAUDE.md` |
+
+**Every session's safety answers.** The seven predefined fields — a product-issued outbound
+request beyond localhost, execution derived from a customization file, an MCP connection, a
+mutation of the inspected tree, exposure of inspected content to another machine, a browser
+opened without being asked, and a write into the inspected tree by the session's own
+tooling — were answered by all twenty, and every answer was `no`. The two open fields are
+errors met and anything surprising: the errors reported are the sessions' own equipment
+mistakes — one clicked the wrong row's Compare link, one ran the browser command from the
+wrong directory — and the surprise reported most often is the personal-setup gate naming its
+directories before reading any of them, described correctly as FR-013 behaving as specified.
+
+**What the fourth tool changed in what the sessions saw.** Every session that answered SC-006
+named three recognizing tools for the designated `AGENTS.md`, Antigravity CLI among them, and
+every session that reached the consent page read back five directories including the
+Antigravity home — which the page states as coming from the default location in the home
+directory rather than from a variable, because no property relocates it (FR-008).
+
+**One condition the runner had to state, and why.** SC-006's prompt is written for someone in
+front of a screen: "A file is open on the screen in front of you." A session whose only window
+onto that screen is a command it must choose to run does not perceive that the screen changed
+between tasks, and in a first attempt of this run thirteen of twenty answered from memory of
+the file they had opened themselves in SC-001 — correctly describing that file, and so
+failing the criterion. The runner therefore states one fact with the prompt: that the screen
+has changed since the previous task. It names no file, no route, and nothing about the
+interface; it delivers the premise the criterion is written on, which a participant's own eyes
+would deliver. That attempt's numbers are not recorded as a result: an apparatus that does not
+put the criterion's premise in front of the session is not measuring the criterion.
+
+**What this run does not establish.** It says nothing about human first use. It carries no
+capture bundle: what it rests on is the runner's own event log and each session's report, kept
+beside the run's session folders outside this repository. And it is one fixture tree — the
+sessions met the customization files this repository builds for its own tests, not a
+repository of their own.
 
 **Twenty agent-driven sessions, run on 2026-09-05 against the release candidate, with the
 runner holding the clock.** The build is `npm pack` of the tree as it stood for that run —

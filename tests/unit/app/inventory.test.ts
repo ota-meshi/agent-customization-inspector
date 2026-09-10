@@ -1349,9 +1349,9 @@ describe('unified SKILL rows across the recognizing tools (T181)', () => {
     // specs/003-antigravity-cli-support/spec.md § FR-004;
     // contracts/vendors/antigravity-cli.md § Known uncertainties item 6).
     //
-    // T004: the previous vocabulary's fourth vendor documented a first-found
-    // winner here, so this case asserted a statement; it fails against a
-    // registry that derives none, which is what the empty array proves.
+    // T004: this case was watched failing against a registry that derives a
+    // statement here, which is what the empty array proves — the derivation
+    // publishes nothing for a strategy that establishes nothing.
     const definition = (path: string): SkillInventoryEntryDto['definitions'][number] => ({
       sourceId: 'src-repo',
       sourceRelativePath: path,

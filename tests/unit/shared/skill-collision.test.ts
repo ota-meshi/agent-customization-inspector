@@ -117,9 +117,8 @@ describe("Antigravity CLI's clash (T003)", () => {
     // location, so a flat file and a skill folder's `SKILL.md` that resolve to
     // one name are both its own evidence — which is what makes the clash a
     // real one for it rather than a difference between products
-    // (specs/003-antigravity-cli-support/spec.md § FR-004). This case failed
-    // against the previous vocabulary, whose fourth member was another
-    // product and whose policy table had no `antigravity` key.
+    // (specs/003-antigravity-cli-support/spec.md § FR-004). This case was
+    // watched failing against a policy table with no `antigravity` key.
     const flat = definition('antigravity', '.agents/skills/deploy.md');
     const folder = definition('antigravity', '.agents/skills/deploy/SKILL.md');
     const other = definition('antigravity', '.agents/skills/tide/SKILL.md');

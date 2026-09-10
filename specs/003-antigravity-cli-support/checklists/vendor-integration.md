@@ -2,7 +2,7 @@
 
 [日本語](vendor-integration.ja.md)
 
-**Purpose**: Validate that the requirements for making Antigravity CLI the fourth supported tool — its read allowlist and evidence, the removal of the tool it replaces, the parent specification's amendments, the Global member, and the documentation and release-evidence obligations — are complete, precise, consistent, and measurable before task generation
+**Purpose**: Validate that the requirements for making Antigravity CLI the fourth supported tool — its read allowlist and evidence, the parent specification's amendments, the Global member, and the documentation and release-evidence obligations — are complete, precise, consistent, and measurable before task generation
 **Created**: 2026-09-10
 **Feature**: [Support Antigravity CLI specification](../spec.md)
 **Depth**: Standard
@@ -15,8 +15,7 @@
 - [x] CHK001 Does every location FR-002 and FR-009 admit have a documented vendor behavior row, an Inspector rule row, and a cited official heading in the vendor contract, with no admitted path resting on analogy alone? [Completeness, Spec §FR-002, §FR-009; Contract §Inspector Repository rules, §Inspector Global rule]
 - [x] CHK002 Does every exclusion FR-003 and FR-010 names carry its stated reason and a behavior record in the contract's excluded groups, so a reader can tell an omission from a decision? [Completeness, Spec §FR-003, §FR-010; Contract §Relationship-only and excluded groups]
 - [x] CHK003 Are the kinds this tool publishes named together with their row unit — the file, the declared name, the declared server name — and are the kinds it publishes none of enumerated rather than left unmentioned? [Completeness, Spec §FR-004–FR-006, §FR-011, §FR-012; Data Model §Compiled units]
-- [x] CHK004 Does FR-014's removal requirement name every artifact class that must go — vendor module, contract, registry record, fixture, documentation section, label, mark, evidence record — and does it reach the frozen counts and the feature directory and changeset of the replaced work? [Completeness, Spec §FR-014; Plan §Implementation Boundaries]
-- [x] CHK005 Is the re-pointing of every parent artifact that cites the replaced feature directory stated as a requirement rather than left to the implementer to notice? — satisfied 2026-09-10 by adding the re-pointing of every citing artifact to FR-014, so the obligation is a requirement rather than a plan-only boundary [Completeness, Gap; Plan §Implementation Boundaries]
+- [x] CHK004 Does FR-014 name every artifact class that may not name a product this release does not support — vendor module, contract, registry record, fixture, documentation section, label, mark, evidence record — and does it reach the frozen counts? [Completeness, Spec §FR-014; Plan §Implementation Boundaries]
 - [x] CHK006 Does FR-001 enumerate the parent-specification clauses that change, and does research § 11 list the same set with no artifact named in only one place? [Completeness, Spec §FR-001; Research §11]
 - [x] CHK007 Are the requirements for a file-shaped skill's detail stated — no file panel, no tab strip, heading unchanged — rather than left as a presentation decision with no requirement behind it? [Completeness, Spec §FR-004, §Clarifications; Data Model §Skill row and detail]
 - [x] CHK008 Does each strategy the contract names carry operations and a cited basis, including those whose resolution the pages leave unstated? [Completeness, Contract §Canonical evidence-assessment index, §Documented Repository behavior]
@@ -50,7 +49,7 @@
 
 ## Scenario and Edge Case Coverage
 
-- [x] CHK027 Are edge cases stated for each failure a reader can meet — a skill file whose frontmatter fails to parse, an MCP file the format cannot parse, an empty skills directory, a home with no terminal directory, and a repository still holding the replaced tool's directories? [Coverage, Spec §Edge Cases]
+- [x] CHK027 Are edge cases stated for each failure a reader can meet — a skill file whose frontmatter fails to parse, an MCP file the format cannot parse, an empty skills directory, a home with no terminal directory? [Coverage, Spec §Edge Cases]
 - [x] CHK028 Where the vendor's pages leave a composition unstated — a workspace and a global skill of one name, a workspace and a global MCP server of one name — is the product's silence written as a decision rather than left as a gap? [Coverage, Gap; Contract §Known uncertainties items 2–3]
 - [x] CHK029 Are requirements stated for a custom-agent directory that holds files beside `agent.md`, so a reader knows whether they are listed? — satisfied 2026-09-10 by adding the edge case that such a directory lists its `agent.md` alone [Coverage, Gap, Spec §FR-006]
 

@@ -8,17 +8,17 @@
 
 ## Summary
 
-vendor が畳み込んだ側のツールに代えて Antigravity CLI を4つ目のサポート対象ツールにする。他の
-3つが持つもの — vendor registry ディレクトリ、kind ごとの compiled unit、vendor contract、Global
-member、mark、label、文書 — を与え、置き換えられるツールの record・fixture・文書を取り除いて、
-このリリースがサポートしない製品をどの surface も名指さないようにする。member 集合は動かない。
+Antigravity CLI を4つ目のサポート対象ツールにする。他の3つが持つもの — vendor registry
+ディレクトリ、kind ごとの compiled unit、vendor contract、Global member、mark、label、文書 — を
+与え、inventory がそれを、それが読むファイルの読み手として名指すようにし、このリリースが
+サポートしない製品をどの surface も名指さないようにする。member 集合は5つである。
 5つ目の member は同じ `~/.gemini` ディレクトリである。Antigravity CLI が個人設定をそこに置く
 からである。
 
 コードの形を決める判断は2つある。skill kind は行の単位が1つの Markdown ファイルである2つ目の
 compiled な形を得る。それはディレクトリの形に optional な field を足すのではなく、その隣に置く
 自身の unit である (research.ja.md § 2)。そして member の root は home ディレクトリだけから
-導出する。これにより、前の vendor のために存在した環境プロパティ、記述子の行、`settingNames` の
+導出する。これにより、member ごとの環境プロパティが必要としたはずの記述子の行と `settingNames` の
 field が取り除かれる (§ 4)。他はすべて、コードベースが既に持つ形を再利用する。Markdown の
 instruction unit と custom-agent unit、strict JSON の standalone carrier に対する共有の MCP
 server-map の読み、共有の hook と permissions の読み、そして1つの selector に複数の recognition
@@ -61,8 +61,7 @@ Vue 3.5.39。
 - [x] **Root-cause design**: ファイルの形の skill は、ディレクトリの形の record を optional な
       field で広げるのではなく自身の unit にする (research.ja.md § 2)。member の root は共有
       agent home が既にそうしているように home ディレクトリから来るので、分岐を足すのではなく
-      field を削除する (§ 4)。置き換えられる vendor の record は履歴として残すのではなく取り除く
-      (§ 9)。kind も parser も package も仕組みも追加しない。
+      field を削除する (§ 4)。kind も parser も package も仕組みも追加しない。
 - [x] **Readable implementation**: この vendor の答えは `src/shared/registries/antigravity/` と
       `src/server/inspection/rules/**/antigravity.ts` にあり、既存3つの vendor と同じ形なので、
       1つを読んだ読み手はその知識を持ち越せる。自明でない判断には理由のコメントを置く。skill
@@ -73,7 +72,7 @@ Vue 3.5.39。
       読むファイルを含む fixture の integration scan。hook 宣言・permission rule・MCP 宣言に対する
       security の zero-activation。containment gate。kind ごとと5つ目の member の end-to-end spec。
       新しい record に対する official-source の確認 (spec.ja.md QR-003)。
-- [x] **Documentation parity**: research.ja.md § 11 と下の § Project Structure に列挙し、
+- [x] **Documentation parity**: research.ja.md § 10 と下の § Project Structure に列挙し、
       それぞれ `.ja.md` を伴う。vendor contract、official-sources、runtime-composition、親の
       spec と data-model と http-api、readme、`docs/which-files-are-listed`、study input、
       `validation.md`。
@@ -89,8 +88,8 @@ Vue 3.5.39。
 
 Phase 1 の後も6つの gate はすべて成り立つ。複雑さと読めたかもしれない1つの設計コスト — 1つの
 kind に2つ目の compiled な形 — は、著者が選んだ追加ではなく行の単位の規則が求めるものであり、
-足すより多くを取り除く。記述子の field、環境プロパティ、置き換えられる vendor が必要とした導出が
-すべて消える。したがって Complexity Tracking は空である。
+足すより多くを取り除く。記述子の field と、それが存在する理由だった環境プロパティが消える。この
+member の root には記述すべきプロパティが無いからである。したがって Complexity Tracking は空である。
 
 ## Project Structure
 
@@ -109,19 +108,17 @@ specs/003-antigravity-cli-support/
 
 vendor contract はここで書き、rule を出荷する変更で
 `specs/001-inspect-agent-customizations/contracts/vendors/` へ移す。そこが出荷済み vendor
-contract の置き場であり、gate が読む場所である。置き換えられる vendor の contract は同じ変更で
-削除する。
+contract の置き場であり、gate が読む場所である。
 
 ### Source Code (repository root)
 
 ```text
 src/shared/registries/
-├── antigravity/          # rule、behavior、strategy、relation、skill collision
-└── (gemini/ は削除)
+└── antigravity/          # rule、behavior、strategy、relation、skill collision
 src/server/inspection/rules/
 ├── skills/               # ディレクトリの unit の隣にファイルの形の compiled unit を得る
 ├── instructions/, agents/, mcp/, hooks/, permissions/, settings/
-└── **/antigravity.ts     # この vendor の unit。**/gemini.ts は削除
+└── **/antigravity.ts     # この vendor の unit。publish する kind ごとに1つ
 src/server/host/global-consent.ts   # 環境プロパティ3つ。settingNames の field は無し
 src/shared/entities.ts, api-text.ts, registries/behavior-text.ts  # label と順序
 src/app/components/ToolMark.vue     # vendor の mark
@@ -140,10 +137,10 @@ tests/fixtures/repositories/, tests/fixtures/global-homes/, tests/fixtures/outco
 - **One file, several products**: ルートの `GEMINI.md` は Copilot の recognition を保ち、この
   ツールのものを得る。ルートの `AGENTS.md` は Copilot と Codex のものの隣にそれを得る。
   `.agents/skills/` は2つの形を抱えるようになり、名前が同じなら行を共有する。
-- **Removal is part of the change**: 置き換えられる vendor の module、contract、record、fixture、
-  label、mark、文書の節、evidence entry、凍結された件数、outcome manifest の case は、この vendor
-  を加えるのと同じ変更で消える。`specs/002-gemini-cli-support` と未公開の changeset も一緒に消える。
-  その feature ディレクトリを引用する親の artifact は、こちらへ付け替える。
+- **tree が名指すのは4つのツールだけ**: このリリースがサポートしない製品を、module・contract・
+  record・fixture・label・mark・文書の節・evidence entry・凍結された件数・outcome manifest の
+  case のいずれも名指してはならず、tree が持たないものを引用する artifact もあってはならない
+  (FR-014)。
 - **Freezes**: 件数、tuple、digest、version の literal、manifest version はコードと同じ変更で動き、
   それぞれ先に落ちるところを確認する。
 - **Family conversion**: すべての `Record<SupportedTool, …>` は member の名前が変わって初めて

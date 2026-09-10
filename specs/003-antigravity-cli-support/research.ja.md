@@ -125,17 +125,17 @@ badge は読み手が何の行動も取らない区別に印を付けること�
 **Decision**: `~/.gemini` member の root は、どの場合も capture された home ディレクトリ配下の
 `.gemini` である。それを位置づける環境プロパティはない。したがってツールと環境プロパティを
 対応づける表は、環境プロパティが位置づける member だけを key とし、`settingNames:
-'root' | 'parent'` の field は `parent` を必要とした唯一の member とともに取り除く。
+'root' | 'parent'` の field は持たない。`parent` を必要とする member がないからである。
 
 **Rationale**: 引用したどのページも home を文字どおり `~/.gemini` と書き、それを移動させる設定を
 文書化するページはないので、導出は推論に立つことになる。root が home ディレクトリだけから来る
 member は既に存在する。共有 agent home であり、それはその表に載っていない。よってこの決定が必要と
-する形は、コードが既に持つ形である。最後の `parent` の member が消えれば field の値は1つになり、
+する形は、コードが既に持つ形である。`parent` の member がなければ field の値は1つになり、
 値が1つの field は union として保つのではなく削除するものである。
 
-**Alternatives considered**: ディレクトリが今も `.gemini` だからという理由で `GEMINI_CLI_HOME` を
-残す案は却下した。そのプロパティはそれを文書化した製品のものであり、このリリースはその製品を
-サポートしない。member 1つのために field を残す案は simplicity の方針により却下した。
+**Alternatives considered**: この member に専用のプロパティを与える案は却下した。それを文書化する
+ページが引用可能な範囲に無く、vendor が名指さない入力を製品が読むことになるからである。値が1つの
+まま field を残す案は simplicity の方針により却下した。
 
 ## 5. home の1ファイルが3つの recognition を担う
 
@@ -263,8 +263,7 @@ collection の行、collection の upstream の license text — は glyph を�
 **Alternatives considered**: 会社自身の glyph である `simple-icons/google` は、製品の glyph が
 見つかった時点で却下した。製品ではなく会社を名指すからである。フルカラーの `logos:antigravity`
 は却下した。6色・11パスであり、icon の方針がまさにその理由で除外している — 固定色のロゴは
-muted な行の中で明るいまま残る。前の vendor の glyph を保つ案は却下した。別の製品を名指すから
-である。mark を手で描く案は icon の方針により却下した。
+muted な行の中で明るいまま残る。mark を手で描く案は icon の方針により却下した。
 
 ## 8a. mark の色は accent が既に決めていたパレット値
 
@@ -274,25 +273,9 @@ muted な行の中で明るいまま残る。前の vendor の glyph を保つ�
 **Rationale**: この値を決めた制約は動いていない。vendor のパレットはリンクが描かれる色相から3°の
 青が支配的であり、そこから取った mark はリンクだらけの一覧の中でリンクに見える。紫はその答えで
 あり、パレットが塗るどの地に対してもライト 6.03・ダーク 7.18 を確保し、隣の黒・オレンジ・
-ティールと弁別できる。画面上でこれと競合するものはない。置き換えられる製品はサポート対象ツール
-ではなくなるからである。
+ティールと弁別できる。画面上でこれと競合するものはない。
 
-## 9. 削除が連れていくものと、残るもの
-
-**Decision**: このリリースがサポートしなくなる製品の vendor module、contract、record、fixture、
-label、mark、文書の節、evidence entry を取り除く。それ専用だった context filename の導出も一緒に
-取り除く。その導出が動いていた場所は残す。共有の configuration-read stage には今も seed する
-vendor があり、共有の JSON reader はどの vendor のものでもあり、derived rule の仕組みには利用者が
-残るので、3つとも孤立しない。
-
-**Rationale**: 出荷される contract の値はそれ自体として今真でなければならず、リリースがサポート
-しない製品の record はそうではない。simplicity の方針は最後の利用者が消えた仕組みを取り除き、
-まだ利用者がある仕組みは残す。
-
-**Alternatives considered**: 履歴として record を残す案は documentation content policy により
-却下した。artifact は今真であることを述べ、何が変わったかは version control が持つ。
-
-## 10. gate と件数と評価
+## 9. gate と件数と評価
 
 **Decision**: rule・behavior・strategy・relationship の件数、Global rule-ID の一覧、presentation
 allowlist の digest、outcome manifest、リリース gate の task と phase の件数を、すべて出荷される
@@ -301,13 +284,13 @@ allowlist の digest、outcome manifest、リリース gate の task と phase �
 
 **Rationale**: これらの凍結は、誰も変えるつもりのなかった件数が気づかれずに変わらないために
 存在する。つまり、変えるつもりの変更が同じ commit でそれを記録し直す。評価の条件は親が定めた
-ものであり、この変更はそれを満たす。前の vendor はリポジトリルートの `AGENTS.md` を読まず、
-この vendor は読む。
+ものであり、この変更はそれを満たす。指定ファイルはリポジトリルートの `AGENTS.md` であり、
+このツールはそれを読む。
 
 **Alternatives considered**: 実施不要になるよう評価の条件を狭める案は却下した。測るのを避ける
 ために criterion が測るものを変えることになる。
 
-## 11. 親仕様の artifact が変わるもの
+## 10. 親仕様の artifact が変わるもの
 
 **Decision**: 親の tool 一覧、supported-file の表、FR-018 の除外、FR-045 の共有 home の読み手、
 member の label、vendor contract の索引が、このリリースがサポートする4つのツールを名指すように
@@ -318,7 +301,7 @@ member はディレクトリであり、そのディレクトリは同じだか�
 
 ## 移行影響
 
-公開 package のユーザーには無し。置き換えられるサポートは公開されたことがないので、削除を
-受け取るユーザーはいない。session API の preview DTO は entry を5つ保ったまま、member id を1つと
-label を1つ変える。同梱ブラウザが唯一の client である。`allowlistVersion` と
+公開 package のユーザーには、このリリースが加えるツール以外の影響は無い。session API の preview
+DTO は entry を5つ持ち、その1つがこの member の id と label である。同梱ブラウザが唯一の client
+である。`allowlistVersion` と
 `traversalPlanVersion` は進むが、それがそれらの存在理由である。changeset entry は `minor`。

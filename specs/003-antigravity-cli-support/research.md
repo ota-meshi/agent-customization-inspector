@@ -139,18 +139,18 @@ visibly, and a badge marks a distinction no reader acts on.
 **Decision**: The `~/.gemini` member's root is `.gemini` below the captured home directory in
 every case. No environment property locates it. The table that maps a tool to its environment
 property therefore keys only the members an environment property locates, and the
-`settingNames: 'root' | 'parent'` field is removed with the one member that needed `parent`.
+`settingNames: 'root' | 'parent'` field is not carried, because no member needs `parent`.
 
 **Rationale**: Every cited page writes the home literally as `~/.gemini`, and none documents a
 setting that relocates it, so deriving one would rest on an inference. A member whose root comes
 from the home directory alone already exists — the shared agent home — and it is not in that
-table at all, so the shape this decision needs is the shape the code already has. Once the last
-`parent` member is gone the field has one value, and a field with one value is a field to
-delete rather than a union to keep.
+table at all, so the shape this decision needs is the shape the code already has. With no
+`parent` member the field has one value, and a field with one value is a field to delete rather
+than a union to keep.
 
-**Alternatives considered**: Keeping `GEMINI_CLI_HOME` because the directory is still `.gemini`
-was rejected: the property belongs to the product that documented it, and this release does not
-support that product. Keeping the field with one member was rejected by the simplicity policy.
+**Alternatives considered**: Giving this member a property of its own was rejected: no cited
+page documents one, so the product would be reading an input the vendor never names. Keeping
+the field with one value was rejected by the simplicity policy.
 
 ## 5. One home file carries three recognitions
 
@@ -287,8 +287,7 @@ measurement.
 the product glyph was found: it names the company rather than the product. The full-colour
 `logos:antigravity` was rejected because it is eleven paths in six fixed colours, which the icon
 policy excludes for exactly the reason it gives — a fixed-colour logo stays bright inside a
-muted row. Keeping the previous vendor's glyph was rejected: it names a different product.
-Drawing a mark by hand was rejected by the icon policy.
+muted row. Drawing a mark by hand was rejected by the icon policy.
 
 ## 8a. The mark's colour is the palette value the accent already forced
 
@@ -299,26 +298,9 @@ and the class name change together.
 dominated by a blue three degrees from the hue links are drawn in, so a mark taken from it would
 read as a link on a list that is mostly links; the purple is the answer to that, and it clears
 every ground the palette paints at 6.03 in light and 7.18 in dark while staying distinguishable
-from the black, the orange, and the teal beside it. Nothing on screen competes with it, because
-the product it replaces is no longer a supported tool.
+from the black, the orange, and the teal beside it. Nothing on screen competes with it.
 
-## 9. What the removal takes with it, and what stays
-
-**Decision**: The vendor module, contract, records, fixtures, label, mark, documentation
-sections, and evidence entries of the product this release stops supporting are removed, along
-with the context-filename derivation that was its alone. What that derivation ran in stays: the
-shared configuration-read stage still has a vendor seeding it, the shared JSON reader is every
-vendor's, and the derived-rule mechanism keeps a user, so none of the three is orphaned.
-
-**Rationale**: A shipped contract value must be true as itself, and a record for a product the
-release does not support is not. The simplicity policy removes a mechanism whose last user is
-gone, and keeps one that still has a user.
-
-**Alternatives considered**: Leaving the records in place as history was rejected by the
-documentation content policy: an artifact states what is true now, and version control holds
-what changed.
-
-## 10. Gates, counts, and the evaluation
+## 9. Gates, counts, and the evaluation
 
 **Decision**: The rule, behavior, strategy, and relationship counts, the Global rule-ID list, the
 presentation-allowlist digests, the outcome manifest, and the release gate's task and phase
@@ -327,13 +309,13 @@ is run again, because the designated file's recognizing tools move from two to t
 
 **Rationale**: Those freezes exist so a count nobody intended to change cannot change unnoticed,
 which means the change that intends it re-records it in the same commit. The evaluation's
-condition is the one the parent set, and this change meets it: the previous vendor did not read
-the repository root `AGENTS.md`, and this one does.
+condition is the one the parent set, and this change meets it: the designated file is the
+repository root `AGENTS.md`, and this tool reads it.
 
 **Alternatives considered**: Narrowing the evaluation's condition so no run is owed was rejected:
 it would change what the criterion measures in order to avoid measuring it.
 
-## 11. What the parent specification's artifacts change
+## 10. What the parent specification's artifacts change
 
 **Decision**: The parent's tool list, its supported-file table, its FR-018 exclusions, its
 FR-045 shared-home readers, its member labels, and the vendor contract index change to name the
@@ -345,7 +327,7 @@ because the member is a directory and the directory is the same one.
 
 ## Migration impact
 
-None to users of the published package: the support being replaced has never been published, so
-no user receives a removal. The session API's preview DTO keeps its five entries and changes one
-member id and one label; the bundled browser is the only client. `allowlistVersion` and
+None to users of the published package beyond the tool this release adds. The session API's
+preview DTO carries five entries, one of them this member's id and label; the bundled browser is
+the only client. `allowlistVersion` and
 `traversalPlanVersion` advance, which is what they exist to do. The changeset entry is a `minor`.
